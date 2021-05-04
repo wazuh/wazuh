@@ -55,7 +55,7 @@ static void help_logtest(char * home_path)
     print_out("    -t          Test configuration");
     print_out("    -a          Alerts output");
     print_out("    -v          Verbose (full) output/rule debugging");
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_MANAGER);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out("    -U <rule:alert:decoder>  Unit test. Refer to ruleset/testing/runtests.py");
     print_out(" ");
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     int test_config = 0;
     int c = 0;
     char *ut_str = NULL;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_MANAGER;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
                 /* Read decoders */
                 Read_Rules(NULL, &Config, NULL);
 
-                /* New loaded based on file specified in ossec.conf */
+                /* New loaded based on file specified in manager.conf */
                 char **decodersfiles;
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
                 }
 
             } else {
-                /* New loaded based on file specified in ossec.conf */
+                /* New loaded based on file specified in manager.conf */
                 char **decodersfiles;
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {

@@ -8387,7 +8387,7 @@ R"(
 		"utime": 4,
 		"vm_size": 10176
 	}, {
-		"argvs": "--fwdargv0 /usr/bin/subl /var/ossec/etc/ossec.conf",
+		"argvs": "--fwdargv0 /usr/bin/subl /var/ossec/etc/agent.conf",
 		"cmd": "/opt/sublime_text/sublime_text",
 		"egroup": "root",
 		"euser": "root",
@@ -17327,7 +17327,7 @@ R"(
 		"utime": 4,
 		"vm_size": 10176
 	}, {
-		"argvs": "--fwdargv0 /usr/bin/subl /var/ossec/etc/ossec.conf",
+		"argvs": "--fwdargv0 /usr/bin/subl /var/ossec/etc/agent.conf",
 		"cmd": "/opt/sublime_text/sublime_text",
 		"egroup": "root",
 		"euser": "root",

@@ -18,8 +18,8 @@
 #include <commctrl.h>
 
 /* Default values */
-#define CONFIG          "ossec.conf"
-#define LASTCONFIG      "last-ossec.conf"
+#define CONFIG          "agent.conf"
+#define LASTCONFIG      "last-agent.conf"
 #define VERSION_FILE    "VERSION"
 #define REVISION_FILE   "REVISION"
 #define OSSECLOGS       "ossec.log"

@@ -10,9 +10,9 @@ from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
-from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
+from wazuh.core.configuration import get_manager_conf, write_manager_conf
 from wazuh.core.exception import WazuhError
-from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
+from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_manager_conf
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml
 from wazuh.rbac.decorators import expose_resources
@@ -193,7 +193,7 @@ def validation():
     result = AffectedItemsWazuhResult(**_validation_default_result_kwargs)
 
     try:
-        response = validate_ossec_conf()
+        response = validate_manager_conf()
         result.affected_items.append({'name': node_id, **response})
         result.total_affected_items += 1
     except WazuhError as e:
@@ -230,8 +230,8 @@ def get_config(component=None, config=None):
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def read_ossec_conf(section=None, field=None, raw=False):
-    """ Wrapper for get_ossec_conf
+def read_manager_conf(section=None, field=None, raw=False):
+    """ Wrapper for get_manager_conf
 
     :param section: Filters by section (i.e. rules).
     :param field: Filters by field in section (i.e. included).
@@ -246,9 +246,9 @@ def read_ossec_conf(section=None, field=None, raw=False):
 
     try:
         if raw:
-            with open(common.ossec_conf) as f:
+            with open(common.manager_conf) as f:
                 return f.read()
-        result.affected_items.append(get_ossec_conf(section=section, field=field))
+        result.affected_items.append(get_manager_conf(section=section, field=field))
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
@@ -281,9 +281,9 @@ def get_basic_info():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def update_ossec_conf(new_conf=None):
+def update_manager_conf(new_conf=None):
     """
-    Replace wazuh configuration (ossec.conf) with the provided configuration.
+    Replace wazuh configuration (manager.conf) with the provided configuration.
 
     Parameters
     ----------
@@ -296,7 +296,7 @@ def update_ossec_conf(new_conf=None):
                                       none_msg=f"Could not update configuration"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    backup_file = f'{common.ossec_conf}.backup'
+    backup_file = f'{common.manager_conf}.backup'
     try:
         # Check a configuration has been provided
         if not new_conf:
@@ -307,13 +307,13 @@ def update_ossec_conf(new_conf=None):
 
         # Create a backup of the current configuration before attempting to replace it
         try:
-            copyfile(common.ossec_conf, backup_file)
+            copyfile(common.manager_conf, backup_file)
         except IOError:
             raise WazuhError(1019)
 
         # Write the new configuration and validate it
-        write_ossec_conf(new_conf)
-        is_valid = validate_ossec_conf()
+        write_manager_conf(new_conf)
+        is_valid = validate_manager_conf()
 
         if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
             raise WazuhError(1125)
@@ -323,7 +323,7 @@ def update_ossec_conf(new_conf=None):
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
+        exists(backup_file) and safe_move(backup_file, common.manager_conf)
 
     result.total_affected_items = len(result.affected_items)
     return result

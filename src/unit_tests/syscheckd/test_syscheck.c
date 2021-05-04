@@ -127,11 +127,11 @@ void test_Start_win32_Syscheck_no_config_file(void **state)
 
     /* Conf file not found */
     will_return_always(__wrap_getDefine_Int, 1);
-    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    expect_string(__wrap_File_DateofChange, file, "agent.conf");
     will_return(__wrap_File_DateofChange, -1);
-    expect_string(__wrap__merror_exit, formatted_msg, "(1239): Configuration file not found: 'ossec.conf'.");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1239): Configuration file not found: 'agent.conf'.");
 
-    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    expect_string(__wrap_Read_Syscheck_Config, file, "agent.conf");
     will_return(__wrap_Read_Syscheck_Config, 0);
 
     will_return(__wrap_rootcheck_init, 1);
@@ -158,12 +158,12 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state)
     syscheck.disabled = 1;
 
     will_return_always(__wrap_getDefine_Int, 1);
-    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    expect_string(__wrap_File_DateofChange, file, "agent.conf");
     will_return(__wrap_File_DateofChange, 0);
 
-    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    expect_string(__wrap_Read_Syscheck_Config, file, "agent.conf");
     will_return(__wrap_Read_Syscheck_Config, -1);
-    expect_string(__wrap__merror, formatted_msg, "(1207): syscheck remote configuration in 'ossec.conf' is corrupted.");
+    expect_string(__wrap__merror, formatted_msg, "(1207): syscheck remote configuration in 'agent.conf' is corrupted.");
 
     will_return(__wrap_rootcheck_init, 1);
     expect_value(__wrap_fim_db_init, memory, 0);
@@ -186,10 +186,10 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state)
 
     will_return_always(__wrap_getDefine_Int, 1);
 
-    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    expect_string(__wrap_File_DateofChange, file, "agent.conf");
     will_return(__wrap_File_DateofChange, 0);
 
-    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    expect_string(__wrap_Read_Syscheck_Config, file, "agent.conf");
     will_return(__wrap_Read_Syscheck_Config, 1);
 
     expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
@@ -229,10 +229,10 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state)
 
     will_return_always(__wrap_getDefine_Int, 1);
 
-    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    expect_string(__wrap_File_DateofChange, file, "agent.conf");
     will_return(__wrap_File_DateofChange, 0);
 
-    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    expect_string(__wrap_Read_Syscheck_Config, file, "agent.conf");
     will_return(__wrap_Read_Syscheck_Config, 1);
 
     expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
@@ -291,10 +291,10 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
 
     will_return_always(__wrap_getDefine_Int, 1);
 
-    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    expect_string(__wrap_File_DateofChange, file, "agent.conf");
     will_return(__wrap_File_DateofChange, 0);
 
-    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    expect_string(__wrap_Read_Syscheck_Config, file, "agent.conf");
     will_return(__wrap_Read_Syscheck_Config, 0);
 
     will_return(__wrap_rootcheck_init, 0);
@@ -352,10 +352,10 @@ void test_Start_win32_Syscheck_whodata_active(void **state)
 
     will_return_always(__wrap_getDefine_Int, 1);
 
-    expect_string(__wrap_File_DateofChange, file, "ossec.conf");
+    expect_string(__wrap_File_DateofChange, file, "agent.conf");
     will_return(__wrap_File_DateofChange, 0);
 
-    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
+    expect_string(__wrap_Read_Syscheck_Config, file, "agent.conf");
     will_return(__wrap_Read_Syscheck_Config, 0);
 
     will_return(__wrap_rootcheck_init, 0);

@@ -275,7 +275,7 @@ int Test_Rootcheck(const char * path){
     int fail = 0;
     rkconfig test_rootcheck = { .workdir = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CROOTCHECK, path, &test_rootcheck, NULL) < 0) {
+    if (ReadConfig(CSHARED_CONFIG | CROOTCHECK, path, &test_rootcheck, NULL) < 0) {
         merror(RCONFIG_ERROR,"Rootcheck", path);
 		fail = 1;
 	}

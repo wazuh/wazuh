@@ -145,8 +145,8 @@ Install()
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
-        # Update versions previous to Wazuh 1.2
-        UpdateOldVersions
+        # Update versions previous to Wazuh 5.0.0
+        UpdateOldVersions $breaking_upgrade
         echo "Starting Wazuh..."
         UpdateStartOSSEC
     fi
@@ -865,6 +865,7 @@ main()
     fi
 
     . ./src/init/update.sh
+
     # Is this an update?
     if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
         echo ""
@@ -894,6 +895,41 @@ main()
             esac
         done
 
+        # Only if the update is for a version lower than 5.0.0
+        USER_OLD_VERSION=`getPreinstalledVersion`
+        VERSIONv5="v5.0.0"
+
+        if [ "$USER_OLD_VERSION" \< "$VERSIONv5" ]; then
+            echo ""
+            ct="1"
+            while [ $ct = "1" ]; do
+                ct="0"
+                echo " - ${breakingupgrade1}"
+                echo "  -- ${breakingupgrade2} $USER_OLD_VERSION"
+                echo "  -- ${breakingupgrade3}"
+                $ECHO "  -- ${breakingupgrade4} ($yes/$no): "
+                if [ "X${USER_UPDATE}" = "X" ]; then
+                    read ANY
+                else
+                    ANY=$yes
+                fi
+
+                case $ANY in
+                    $yes)
+                        breaking_upgrade="yes"
+                        break;
+                        ;;
+                    $no)
+                        echo ""
+                        echo "${breakingupgrade5} - http://www.wazuh.com"
+                        exit 0;
+                        ;;
+                    *)
+                        ct="1"
+                        ;;
+                esac
+            done
+        fi
 
         # Do some of the update steps.
         if [ "X${update_only}" = "Xyes" ]; then
@@ -993,7 +1029,7 @@ main()
     askForDelete
 
     # Configuring the system (based on the installation type)
-    if [ "X${update_only}" = "X" ]; then
+    if ([ "X${update_only}" = "X" ] || [ "X$breaking_upgrade" = "Xyes" ]); then
         if [ "X$INSTYPE" = "Xserver" ]; then
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
@@ -1019,7 +1055,11 @@ main()
     echo " - ${tostop}:"
     echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
-    echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
+    echo " - ${configat}:"
+    if ([ "X$INSTYPE" = "Xserver" ] || [ "X$INSTYPE" = "Xlocal" ]); then
+        echo "      $INSTALLDIR/etc/manager.conf"
+    fi
+    echo "      $INSTALLDIR/etc/agent.conf"
     echo ""
 
 
@@ -1036,11 +1076,15 @@ main()
         fi
         echo ""
 
-        # If version < wazuh 1.2
-        if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
+        # Only if the update is a breaking change
+        if [ "X$breaking_upgrade" = "Xyes" ]; then
             echo " ====================================================================================="
             echo "  ${update_rev_newconf1}"
-            echo "  ${update_rev_newconf2}"
+            if [ "X$INSTYPE" = "Xagent" ]; then
+                echo "  ${update_rev_newconf3}"
+            else
+                echo "  ${update_rev_newconf2}"
+            fi
             echo " ====================================================================================="
             echo " "
         fi

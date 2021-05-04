@@ -156,11 +156,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AR_BINDIR       "active-response/bin"
 #ifndef WIN32
 #define DEFAULTAR       "etc/shared/" DEFAULTAR_FILE
-#define AGENTCONFIG     "etc/shared/agent.conf"
+#define SHAREDCONFIG    "etc/shared/shared.conf"
 #define DEF_CA_STORE    "etc/wpk_root.pem"
 #else
 #define DEFAULTAR       "shared/" DEFAULTAR_FILE
-#define AGENTCONFIG     "shared/agent.conf"
+#define SHAREDCONFIG    "shared/shared.conf"
 #define DEF_CA_STORE    "wpk_root.pem"
 #endif
 
@@ -339,9 +339,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Built-in defines */
 
 #ifndef WIN32
-#define OSSECCONF       "etc/ossec.conf"
+#define WAZUHCONF_AGENT       "etc/agent.conf"
+#define WAZUHCONF_MANAGER     "etc/manager.conf"
 #else
-#define OSSECCONF       "ossec.conf"
+#define WAZUHCONF_AGENT       "agent.conf"
 #endif
 
 #define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"

@@ -913,8 +913,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Upgrade an agent
-    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
+  - name: Try to upgrade an agent with version < 5.0.0 to >= 5.0.0 (breaking changes)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -928,16 +927,19 @@ stages:
       status_code: 200
       json:
         data:
-          affected_items:
-            - agent: '006'
-              task_id: !anyint
-          total_affected_items: 1
-          total_failed_items: 0
-          failed_items: [ ]
+          affected_items: [ ]
+          total_affected_items: 0
+          total_failed_items: 1
+          failed_items:
+            - error:
+                code: 1836
+                message: !anystr
+                remediation: !anything
+              id:
+                - '006'
         message: !anystr
 
   - name: Try to upgrade an agent that is updated to the latest version
-    skip: True # At this time this test does not work because the 4.1.0 packages of the agents are not in production server
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -945,7 +947,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '006'
+        agents_list: '001'
     response:
       status_code: 200
       json:
@@ -955,11 +957,11 @@ stages:
           total_failed_items: 1
           failed_items:
             - error:
-                code: 1819
+                code: 1822
                 message: !anystr
                 remediation: !anything
               id:
-                - '006'
+                - '001'
         message: !anystr
 
   - name: Downgrade agent to an specific version using force

@@ -52,7 +52,7 @@ static void help_dbd(char *home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_MANAGER);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
     print_out("  Database Support:");
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     /* Use USER (read only) */
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_MANAGER;
     char *home_path = w_homedir(argv[0]);
 
     /* Database Structure */
@@ -149,7 +149,7 @@ int main(int argc, char **argv)
 
     /* Read configuration */
     if ((c = OS_ReadDBConf(test_config, cfg, &db_config)) < 0) {
-        merror_exit(CONFIG_ERROR, OSSECCONF);
+        merror_exit(CONFIG_ERROR, WAZUHCONF_MANAGER);
     }
 
     /* Exit here if test config is set */
@@ -219,7 +219,7 @@ int main(int argc, char **argv)
     /* If after the maxreconnect attempts, it still didn't work, exit here */
     if (!db_config.conn) {
         merror(DB_CONFIGERR);
-        merror_exit(CONFIG_ERROR, OSSECCONF);
+        merror_exit(CONFIG_ERROR, WAZUHCONF_MANAGER);
     }
 
     /* We must notify that we connected -- easy debugging */
@@ -248,12 +248,12 @@ int main(int argc, char **argv)
     /* Insert server info into the db */
     db_config.server_id = OS_Server_ReadInsertDB(&db_config);
     if (db_config.server_id <= 0) {
-        merror_exit(CONFIG_ERROR, OSSECCONF);
+        merror_exit(CONFIG_ERROR, WAZUHCONF_MANAGER);
     }
 
     /* Read rules and insert into the db */
     if (OS_InsertRulesDB(&db_config) < 0) {
-        merror_exit(CONFIG_ERROR, OSSECCONF);
+        merror_exit(CONFIG_ERROR, WAZUHCONF_MANAGER);
     }
 
     /* Change user */

@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2021, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
-#                      or stopping ossec-hids
+#                      or stopping WAZUH-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 # Getting where we are installed
@@ -265,9 +265,9 @@ start_service()
     TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
     if [ ! -z "$TEST" ]; then
         if [ $USE_JSON = true ]; then
-            echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
+            echo -n '{"error":21,"message":"WAZUH analysisd: Testing rules failed. Configuration error."}'
         else
-            echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
+            echo "WAZUH analysisd: Testing rules failed. Configuration error. Exiting."
         fi
         touch ${DIR}/var/run/wazuh-analysisd.failed
         exit 1;
@@ -287,17 +287,17 @@ start_service()
     for i in ${SDAEMONS}; do
         ## If wazuh-maild is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-maild" ]; then
-             grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
+             grep "<email_notification>no<" ${DIR}/etc/manager.conf >/dev/null 2>&1
              if [ $? = 0 ]; then
                  continue
              fi
         fi
         ## If wazuh-clusterd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-clusterd" ]; then
-             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             start_config="$(grep -n "<cluster>" ${DIR}/etc/manager.conf | cut -d':' -f 1)"
+             end_config="$(grep -n "</cluster>" ${DIR}/etc/manager.conf | cut -d':' -f 1)"
              if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/manager.conf | grep "<disabled>yes" >/dev/null 2>&1
                 if [ $? = 0 ]; then
                     continue
                 fi
@@ -307,10 +307,10 @@ start_service()
         fi
         ## If wazuh-authd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-authd" ]; then
-             start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+             start_config="$(grep -n "<auth>" ${DIR}/etc/manager.conf | cut -d':' -f 1)"
+             end_config="$(grep -n "</auth>" ${DIR}/etc/manager.conf | cut -d':' -f 1)"
              if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/manager.conf | grep "<disabled>yes" >/dev/null 2>&1
                 if [ $? = 0 ]; then
                     continue
                 fi

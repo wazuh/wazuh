@@ -419,11 +419,11 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 
     os_calloc(1, sizeof(wlabel_t), labels);
 
-    if (ReadConfig(CLABELS, OSSECCONF, &labels, NULL) < 0)
+    if (ReadConfig(CLABELS, WAZUHCONF_AGENT, &labels, NULL) < 0)
         goto end;
 
 #ifdef CLIENT
-    ReadConfig(CLABELS | CAGENT_CONFIG, AGENTCONFIG, &labels, NULL);
+    ReadConfig(CLABELS | CSHARED_CONFIG, SHAREDCONFIG, &labels, NULL);
 #endif
 
     // Do we have labels defined?

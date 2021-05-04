@@ -258,7 +258,7 @@ static void help_analysisd(char * home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_MANAGER);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
     os_free(home_path);
@@ -282,7 +282,7 @@ int main_analysisd(int argc, char **argv)
     uid_t uid;
     gid_t gid;
 
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_MANAGER;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -537,7 +537,7 @@ int main_analysisd(int argc, char **argv)
                 Read_Rules(NULL, &Config, NULL);
             }
 
-            /* New loaded based on file loaded (in ossec.conf or default) */
+            /* New loaded based on file loaded (in manager.conf or default) */
             {
                 char **decodersfiles;
                 decodersfiles = Config.decoders;

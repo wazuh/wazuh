@@ -1670,9 +1670,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #ifdef WIN32
     const char *xml_registry_ignore_value = "registry_ignore_value";
 #endif
-    const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
-    const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
-    const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
     const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
@@ -2005,11 +2002,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             } else {
                 process_option(&syscheck->nodiff, node[i]);
             }
-
-        } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
-            /* auto_ignore is not read here */
-        } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
-            /* alert_new_files option is not read here */
         } else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
             struct stat statbuf;
 
@@ -2037,8 +2029,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     return (OS_INVALID);
                 }
             }
-        } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
-            // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
             // To be deprecated. This field is now read inside the <whodata> block.
             if(strcmp(node[i]->content, "yes") == 0)
@@ -2147,8 +2137,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
-            if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).",
+            if (modules & CSHARED_CONFIG) {
+                mwarn("'%s' option can't be changed using centralized configuration (shared.conf).",
                       xml_allow_remote_prefilter_cmd);
                 i++;
                 continue;
@@ -2174,10 +2164,10 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         }
     }
 
-    // Set prefilter only if it's expressly allowed (ossec.conf in agent side).
+    // Set prefilter only if it's expressly allowed (agent.conf in agent side).
 
     if (prefilter_cmd[0]) {
-        if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
+        if (!(modules & CSHARED_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
             free(syscheck->prefilter_cmd);
             os_strdup(prefilter_cmd, syscheck->prefilter_cmd);
         } else if (!syscheck->allow_remote_prefilter_cmd) {
@@ -2249,7 +2239,7 @@ int Test_Syscheck(const char * path){
     int fail = 0;
     syscheck_config test_syscheck = { .rootcheck = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
+    if (ReadConfig(CSHARED_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Syscheck", path);
 		fail = 1;
 	}

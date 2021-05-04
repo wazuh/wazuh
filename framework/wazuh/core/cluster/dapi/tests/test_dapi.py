@@ -17,20 +17,23 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch('wazuh.core.common.manager_conf',
+                   new=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                    '../../../../tests/data/manager_base.conf')):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
+            del sys.modules['wazuh.rbac.orm']
 
-        from wazuh.tests.util import RBAC_bypasser
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
-        from wazuh.core.manager import get_manager_status
-        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
-        from wazuh.core.exception import WazuhClusterError
-        from api.util import raise_if_exc
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue
+            from wazuh.core.manager import get_manager_status
+            from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+            from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
+            from wazuh.core.exception import WazuhClusterError
+            from api.util import raise_if_exc
 
 logger = logging.getLogger('wazuh')
 loop = asyncio.get_event_loop()

@@ -31,7 +31,7 @@ __attribute__((noreturn)) static void help_syscheckd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_AGENT);
     print_out(" ");
     exit(1);
 }
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     int c, r;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_AGENT;
     gid_t gid;
     const char *group = GROUPGLOBAL;
 

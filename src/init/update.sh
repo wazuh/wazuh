@@ -420,82 +420,133 @@ UpdateOldVersions()
         done
     fi
 
-    # If it is Wazuh 2.0 or newer, exit
-    if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
-        return
-    fi
+    # Update versions previous to Wazuh 5.0.0, which is a breaking change
+    if [ "X$1" = "Xyes" ]; then
 
-    if [ "X$PREINSTALLEDDIR" != "X" ]; then
-        getPreinstalledDir
-    fi
+        OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
+        OSSEC_CONF_FILE_BACKUP="$PREINSTALLEDDIR/etc/ossec.conf.backup"
 
-    OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
-    OSSEC_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/ossec.conf.orig"
+        # Rename ossec.conf to ossec.conf.backup
+        mv $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
 
-    # ossec.conf -> ossec.conf.orig
-    cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
+        # Delete centralized agent.conf
+        if [ ! "$INSTYPE" = "agent" ]; then
+            for item_path in $PREINSTALLEDDIR/etc/shared/*
+            do
+                OLD_GROUP_SHARED_FILE="$item_path/agent.conf"
+                NEW_GROUP_SHARED_FILE="$item_path/shared.conf"
+                OLD_TEMPLATE="$item_path/agent-template.conf"
+                NEW_TEMPLATE="$item_path/shared-template.conf"
+                if [ -d "$item_path" ]; then
+                    if [ -f "$OLD_GROUP_SHARED_FILE" ]; then
+                        rm $OLD_GROUP_SHARED_FILE
+                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_GROUP_SHARED_FILE
+                    fi
 
-    # Delete old service
-    if [ -f /etc/init.d/ossec ]; then
-        rm /etc/init.d/ossec
-    fi
+                    if [ -f "$OLD_TEMPLATE" ]; then
+                        rm $OLD_TEMPLATE
+                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_TEMPLATE
+                    fi
+                fi
+            done
 
-    if [ ! "$INSTYPE" = "agent" ]; then
+            for item_multigroup in $PREINSTALLEDDIR/var/multigroups/*
+            do
+                OLD_MULTIGROUP_FILE="$item_multigroup/agent.conf"
+                OLD_MULTIGROUP_TEMPLATE="$item_multigroup/agent-template.conf"
+                if [ -d "$item_multigroup" ]; then
+                    if [ -f "$OLD_MULTIGROUP_FILE" ]; then
+                        rm $OLD_MULTIGROUP_FILE
+                    fi
 
-        # Delete old update ruleset
-        if [ -d "$PREINSTALLEDDIR/update" ]; then
-            rm -rf "$PREINSTALLEDDIR/update"
-        fi
-
-        ETC_DECODERS="$PREINSTALLEDDIR/etc/decoders"
-        ETC_RULES="$PREINSTALLEDDIR/etc/rules"
-
-        # Moving local_decoder
-        if [ -f "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
-            if [ -s "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
-                mv "$PREINSTALLEDDIR/etc/local_decoder.xml" $ETC_DECODERS
-            else
-                # it is empty
-                rm -f "$PREINSTALLEDDIR/etc/local_decoder.xml"
+                    if [ -f "$OLD_MULTIGROUP_TEMPLATE" ]; then
+                        rm $OLD_MULTIGROUP_TEMPLATE
+                    fi
+                fi
+            done
+        else
+            OLD_SHARED_FILE="$PREINSTALLEDDIR/etc/shared/agent.conf"
+            if [ -f "$OLD_SHARED_FILE" ]; then
+                rm $OLD_SHARED_FILE
             fi
         fi
 
-        # Moving local_rules
-        if [ -f "$PREINSTALLEDDIR/rules/local_rules.xml" ]; then
-            mv "$PREINSTALLEDDIR/rules/local_rules.xml" $ETC_RULES
+        # If it is Wazuh 2.0 or newer, exit
+        if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
+            return
         fi
 
-        # Creating backup directory
-        BACKUP_RULESET="$PREINSTALLEDDIR/etc/backup_ruleset"
-        mkdir $BACKUP_RULESET > /dev/null 2>&1
-        chmod 750 $BACKUP_RULESET > /dev/null 2>&1
-        chown root:wazuh $BACKUP_RULESET > /dev/null 2>&1
+        if [ "X$PREINSTALLEDDIR" != "X" ]; then
+            getPreinstalledDir
+        fi
 
-        # Backup decoders: Wazuh v1.0.1 to v1.1.1
-        old_decoders="ossec_decoders wazuh_decoders"
-        for old_decoder in $old_decoders
-        do
-            if [ -d "$PREINSTALLEDDIR/etc/$old_decoder" ]; then
-                mv "$PREINSTALLEDDIR/etc/$old_decoder" $BACKUP_RULESET
+        # Delete old service
+        if [ -f /etc/init.d/ossec ]; then
+            rm /etc/init.d/ossec
+        fi
+
+        if [ ! "$INSTYPE" = "agent" ]; then
+
+            # Delete old update ruleset
+            if [ -d "$PREINSTALLEDDIR/update" ]; then
+                rm -rf "$PREINSTALLEDDIR/update"
             fi
-        done
 
-        # Backup decoders: Wazuh v1.0 and OSSEC
-        if [ -f "$PREINSTALLEDDIR/etc/decoder.xml" ]; then
-            mv "$PREINSTALLEDDIR/etc/decoder.xml" $BACKUP_RULESET
+            ETC_DECODERS="$PREINSTALLEDDIR/etc/decoders"
+            ETC_RULES="$PREINSTALLEDDIR/etc/rules"
+
+            # Moving local_decoder
+            if [ -f "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
+                if [ -s "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
+                    mv "$PREINSTALLEDDIR/etc/local_decoder.xml" $ETC_DECODERS
+                else
+                    # it is empty
+                    rm -f "$PREINSTALLEDDIR/etc/local_decoder.xml"
+                fi
+            fi
+
+            # Moving local_rules
+            if [ -f "$PREINSTALLEDDIR/rules/local_rules.xml" ]; then
+                mv "$PREINSTALLEDDIR/rules/local_rules.xml" $ETC_RULES
+            fi
+
+            # Creating backup directory
+            BACKUP_RULESET="$PREINSTALLEDDIR/etc/backup_ruleset"
+            mkdir $BACKUP_RULESET > /dev/null 2>&1
+            chmod 750 $BACKUP_RULESET > /dev/null 2>&1
+            chown root:wazuh $BACKUP_RULESET > /dev/null 2>&1
+
+            # Backup decoders: Wazuh v1.0.1 to v1.1.1
+            old_decoders="ossec_decoders wazuh_decoders"
+            for old_decoder in $old_decoders
+            do
+                if [ -d "$PREINSTALLEDDIR/etc/$old_decoder" ]; then
+                    mv "$PREINSTALLEDDIR/etc/$old_decoder" $BACKUP_RULESET
+                fi
+            done
+
+            # Backup decoders: Wazuh v1.0 and OSSEC
+            if [ -f "$PREINSTALLEDDIR/etc/decoder.xml" ]; then
+                mv "$PREINSTALLEDDIR/etc/decoder.xml" $BACKUP_RULESET
+            fi
+
+            # Backup rules: All versions
+            mv "$PREINSTALLEDDIR/rules" $BACKUP_RULESET
+
+            MANAGER_CONF_FILE="$PREINSTALLEDDIR/etc/manager.conf"
+            AGENT_CONF_FILE="$PREINSTALLEDDIR/etc/agent.conf"
+
+            # New manager.conf and agent.conf by default
+            ./gen_wazuh.sh conf "manager" $DIST_NAME $DIST_VER > $MANAGER_CONF_FILE
+            ./gen_wazuh.sh conf "agent-server" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
+            ./add_localfiles.sh $PREINSTALLEDDIR >> $MANAGER_CONF_FILE
+        else
+            AGENT_CONF_FILE="$PREINSTALLEDDIR/etc/agent.conf"
+
+            # New agent.conf by default
+            ./gen_wazuh.sh conf "agent" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
+            ./add_localfiles.sh $PREINSTALLEDDIR >> $AGENT_CONF_FILE
         fi
-
-        # Backup rules: All versions
-        mv "$PREINSTALLEDDIR/rules" $BACKUP_RULESET
-
-        # New ossec.conf by default
-        ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
-        ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
-    else
-        # New ossec.conf by default
-        ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
-        # Replace IP
-        ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE
-        ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
     fi
+
 }

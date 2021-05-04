@@ -105,7 +105,7 @@ You have two options:
 cp /path/to/certificate etc/wpk_root.pem
 ```
 
-2. Add a new certificate by editing the `ossec.conf` file:
+2. Add a new certificate by editing the `agent.conf` file:
 
 ```
 <active-response>

@@ -63,7 +63,7 @@ static void WinExecd_Shutdown()
 int WinExecd_Start()
 {
     int c;
-    char *cfg = OSSECCONF;
+    char *cfg = WAZUHCONF_AGENT;
     winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */

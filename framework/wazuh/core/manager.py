@@ -101,7 +101,7 @@ def get_logs_summary(limit=2000):
     return tags
 
 
-def validate_ossec_conf():
+def validate_manager_conf():
     """Check if Wazuh configuration is OK.
 
     Raises

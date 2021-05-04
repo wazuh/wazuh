@@ -23,7 +23,7 @@ int main(int argc, char **argv)
         return (0);
     }
 
-    /* Try to chdir to the OSSEC directory */
+    /* Try to chdir to the WAZUH directory */
     if (chdir(argv[1]) != 0) {
         printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
         return (0);
@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 
         system("echo y|icacls .  /remove  \"*S-1-5-32-545\" ");
 
-        system("echo y|icacls ossec.conf  /remove  \"*S-1-1-0\" ");
+        system("echo y|icacls agent.conf  /remove  \"*S-1-1-0\" ");
 
         /* Copy them back */
 

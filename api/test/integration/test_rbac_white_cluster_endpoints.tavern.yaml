@@ -312,18 +312,11 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
-              osquery: !anything
               remote: !anything
-              rootcheck: !anything
               ruleset: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1

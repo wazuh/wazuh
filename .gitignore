@@ -13,6 +13,8 @@ src/LOCATION
 src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
+etc/wazuh-agent.mc
+etc/wazuh-manager.mc
 src/Config.OS
 src/selinux/*.mod
 src/selinux/*.pp
@@ -88,6 +90,8 @@ src/win32/LICENSE.txt
 src/win32/default-local_internal_options.conf
 src/win32/default-ossec.conf
 src/win32/default-ossec-pre6.conf
+src/win32/default-agent.conf
+src/win32/default-agent-pre6.conf
 src/win32/help_win.txt
 src/win32/internal_options.conf
 src/win32/restart-ossec.cmd

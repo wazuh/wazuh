@@ -412,7 +412,7 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
 
     const char *(xml_node[]) = {"wazuh_config", "cluster", "node_name", NULL};
 
-    if (OS_ReadXML(OSSECCONF, &xml) >= 0) {
+    if (OS_ReadXML(WAZUHCONF_MANAGER, &xml) >= 0) {
         node_name = OS_GetOneContentforElement(&xml, xml_node);
     }
 

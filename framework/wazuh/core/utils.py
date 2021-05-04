@@ -1576,7 +1576,7 @@ def add_dynamic_detail(detail, value, attribs, details):
 
 
 def validate_wazuh_xml(content: str, config_file: bool = False):
-    """Validate Wazuh XML files (rules, decoders and ossec.conf)
+    """Validate Wazuh XML files (rules, decoders and manager.conf)
 
     Parameters
     ----------
@@ -1618,7 +1618,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
 
 def upload_file(content, path, check_xml_formula_values=True):
     """
-    Upload files (rules, lists, decoders and ossec.conf)
+    Upload files (rules, lists, decoders and manager.conf)
     :param content: content of the XML file
     :param path: Destination of the new XML file
     :return: Confirmation message

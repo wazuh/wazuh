@@ -119,8 +119,14 @@ updatefailed="アップデートは失敗しました．"
 updaterules="ルールをアップデートしますか?"
 updatingrules="ルールをアップデートしています"
 notupdatingrules="ルールはアップデートしません．"
-update_rev_newconf1="ossec.confからのバックアップは$INSTALLDIR/etc/ossec.conf.origで作成されています。"
-update_rev_newconf2="ossec.confの設定を$INSTALLDIR/etc/ossec.confで確認してください。"
+breakingupgrade1="警告:"
+breakingupgrade2="現在の$NAMEバージョン："
+breakingupgrade3="v5.0.0より古いバージョンを使用している場合、アップグレードするとすべての構成が失われます。"
+breakingupgrade4="続けますか？"
+breakingupgrade5="詳細については、ドキュメントを読むことをお勧めします"
+update_rev_newconf1="ossec.confからのバックアップは$INSTALLDIR/etc/ossec.conf.backupで作成されています。"
+update_rev_newconf2="manager.confの設定を$INSTALLDIR/etc/manager.confで確認してください。"
+update_rev_newconf3="agent.confの設定を$INSTALLDIR/etc/agent.confで確認してください。"
 
 
 # Pf support

@@ -22,7 +22,7 @@ except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(1)
 
-# ossec.conf configuration:
+# manager.conf configuration:
 #  <integration>
 #      <name>virustotal</name>
 #      <api_key>api_key_here</api_key>

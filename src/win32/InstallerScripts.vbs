@@ -67,10 +67,20 @@ If Not objFSO.fileExists(home_dir & "client.keys") Then
     objFSO.CreateTextFile(home_dir & "client.keys")
 End If
 
+' Rename ossec.conf to ossec.conf.backup
 If objFSO.fileExists(home_dir & "ossec.conf") Then
-    ' Reading ossec.conf file
+    objFSO.MoveFile home_dir & "ossec.conf" , home_dir & "ossec.conf.backup"
+End If
+
+' Delete centralized agent.conf
+If objFSO.fileExists(home_dir & "shared\agent.conf") Then
+    objFSO.DeleteFile home_dir & "shared\agent.conf"
+End If
+
+If objFSO.fileExists(home_dir & "agent.conf") Then
+    ' Reading agent.conf file
     Const ForReading = 1
-    Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
+    Set objFile = objFSO.OpenTextFile(home_dir & "agent.conf", ForReading)
 
     strText = objFile.ReadAll
     objFile.Close
@@ -155,9 +165,9 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             End If
         End If
 
-        ' Writing the ossec.conf file
+        ' Writing the agent.conf file
         const ForWriting = 2
-        Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+        Set objFile = objFSO.OpenTextFile(home_dir & "agent.conf", ForWriting)
         objFile.WriteLine strText
         objFile.Close
 
@@ -182,7 +192,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 			objFile.WriteLine("# This file should be handled with care. It contains")
 			objFile.WriteLine("# run time modifications that can affect the use")
 			objFile.WriteLine("# of OSSEC. Only change it if you know what you")
-			objFile.WriteLine("# are doing. Look first at ossec.conf")
+			objFile.WriteLine("# are doing. Look first at agent.conf")
 			objFile.WriteLine("# for most of the things you want to change.")
 			objFile.WriteLine("#")
 			objFile.WriteLine("# This file will not be overwritten during upgrades")
@@ -206,8 +216,8 @@ If GetVersion() >= 6 Then
 	remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545"
 	WshShell.run remUserPerm
 
-	' Remove Everyone group for ossec.conf
-	remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0"
+	' Remove Everyone group for agent.conf
+	remEveryonePerms = "icacls """ & home_dir & "agent.conf" & """ /remove *S-1-1-0"
 	WshShell.run remEveryonePerms
 End If
 

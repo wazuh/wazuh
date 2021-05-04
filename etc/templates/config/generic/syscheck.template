@@ -9,7 +9,7 @@
 
     <!-- Directories to check  (perform all possible verifications) -->
     <directories>/etc,/usr/bin,/usr/sbin</directories>
-    <directories>/bin,/sbin</directories>
+    <directories>/bin,/sbin,/boot</directories>
 
     <!-- Files/directories to ignore -->
     <ignore>/etc/mtab</ignore>
@@ -24,6 +24,8 @@
     <ignore>/etc/cups/certs</ignore>
     <ignore>/etc/dumpdates</ignore>
     <ignore>/etc/svc/volatile</ignore>
+    <ignore>/sys/kernel/security</ignore>
+    <ignore>/sys/kernel/debug</ignore>
 
     <!-- File types to ignore -->
     <ignore type="sregex">.log$|.swp$</ignore>

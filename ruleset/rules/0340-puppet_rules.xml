@@ -87,7 +87,7 @@
     - Oct  1 16:16:56 puppet puppet-master[7879]: Duplicate declaration: Concat[undef] is already declared in file /etc/puppet/modules/wazuh/manifests/client.pp:68; cannot redeclare at /etc/puppet/modules/wazuh/manifests/client.pp:88 on node windows.localdomain
     - Oct  1 19:25:42 puppet puppet-master[7879]: Unrecognised escape sequence '\P' in file /etc/puppet/modules/wazuh/manifests/params.pp at line 71
     - Oct  2 19:24:14 puppet puppet-master[1027]: Invalid parameter create_parents on File[C:/wazuh-agent-4.1.0-1.msi] at /etc/puppet/modules/wazuh/manifests/client.pp:40 on node windows.localdomain
-    - Oct  1 16:41:38 puppet puppet-master[7879]: "${env_programfiles(x86)}/ossec-agent/ossec.conf" is not an absolute path. at /etc/puppet/modules/concat/manifests/init.pp:71 on node windows.localdomain
+    - Oct  1 16:41:38 puppet puppet-master[7879]: "${env_programfiles(x86)}/ossec-agent/agent.conf" is not an absolute path. at /etc/puppet/modules/concat/manifests/init.pp:71 on node windows.localdomain
     - Oct  2 18:21:46 puppet puppet-master[1027]: "" is not a boolean.  It looks to be a String at /etc/puppet/modules/wazuh/manifests/client.pp:12 on node windows.localdomains
     - Oct  1 17:56:46 puppet puppet-master[7879]: This Wazuh module has not been tested on your distribution at /etc/puppet/modules/wazuh/manifests/common.pp:95 on node windows.localdomain
     - Oct  8 09:24:44 vpc-puppet puppet-master[1399]: Unknown function includes at /etc/puppet/manifests/nodes.pp:3 on node vpc-puppet.wazuh.com
@@ -338,7 +338,7 @@
             Check the field "time:last_run" in file /var/lib/puppet/state/last_run_summary.yaml
 
         Setup:
-        These rules need to read a command output, so it is necessary to copy the code below to /<INSTALLATION_PATH>/etc/ossec.conf (in every agent)
+        These rules need to read a command output, so it is necessary to copy the code below to /<INSTALLATION_PATH>/etc/agent.conf (in every agent)
 
         <localfile>
             <log_format>full_command</log_format>

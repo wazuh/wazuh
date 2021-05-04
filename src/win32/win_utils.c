@@ -48,7 +48,7 @@ static void stop_wmodules()
 int local_start()
 {
     int rc;
-    char *cfg = OSSECCONF;
+    char *cfg = WAZUHCONF_AGENT;
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;

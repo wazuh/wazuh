@@ -89,7 +89,7 @@ int w_logtest_init_parameters() {
     w_logtest_conf.max_sessions = LOGTEST_MAX_SESSIONS;
     w_logtest_conf.session_timeout = LOGTEST_SESSION_TIMEOUT;
 
-    if (ReadConfig(modules, OSSECCONF, NULL, NULL) < 0) {
+    if (ReadConfig(modules, WAZUHCONF_MANAGER, NULL, NULL) < 0) {
         return OS_INVALID;
     }
 

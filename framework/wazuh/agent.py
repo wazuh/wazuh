@@ -414,9 +414,9 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
         for group in query_data['items']:
             full_entry = path.join(common.shared_path, group['name'])
 
-            # merged.mg and agent.conf sum
+            # merged.mg and shared.conf sum
             merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+            conf_sum = get_hash(path.join(full_entry, "shared.conf"), hash_algorithm)
 
             if merged_sum:
                 group['mergedSum'] = merged_sum
@@ -507,10 +507,10 @@ def create_group(group_id):
         raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/shared
-    group_def_path = path.join(common.shared_path, 'agent-template.conf')
+    group_def_path = path.join(common.shared_path, 'shared-template.conf')
     try:
         mkdir_with_mode(group_path)
-        copyfile(group_def_path, path.join(group_path, 'agent.conf'))
+        copyfile(group_def_path, path.join(group_path, 'shared.conf'))
         chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)
@@ -928,7 +928,7 @@ def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=common.database_limit):
+def get_shared_conf(group_list=None, filename='shared.conf', offset=0, limit=common.database_limit):
     """ Reads agent conf for specified group.
 
     :param group_list: List of Group names.
@@ -942,11 +942,11 @@ def get_agent_conf(group_list=None, filename='agent.conf', offset=0, limit=commo
     group_id = group_list[0]
 
     return WazuhResult(
-        {'data': configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)})
+        {'data': configuration.get_shared_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)})
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
-def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
+def upload_group_file(group_list=None, file_data=None, file_name='shared.conf'):
     """Updates a group file.
 
     :param group_list: List of Group names.

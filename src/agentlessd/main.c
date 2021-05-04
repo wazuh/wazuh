@@ -30,7 +30,7 @@ static void help_agentlessd(char * home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_MANAGER);
     print_out("    -D <dir>    Directory to chdir and chroot into (default: %s)", home_path);
     print_out(" ");
     os_free(home_path);
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     char * home_path = w_homedir(argv[0]);
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_MANAGER;
 
     /* Set the name */
     OS_SetName(ARGV0);

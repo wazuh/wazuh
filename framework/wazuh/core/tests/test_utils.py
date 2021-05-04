@@ -1617,7 +1617,7 @@ def test_delete_file_with_backup_ko(mock_copyfile):
 
 def test_to_relative_path():
     """Test to_relative_path function."""
-    path = 'etc/ossec.conf'
+    path = 'etc/manager.conf'
     assert to_relative_path(join(wazuh_path, path)) == path
 
     assert to_relative_path(path, prefix='etc') == basename(path)

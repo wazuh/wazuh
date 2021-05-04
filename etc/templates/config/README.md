@@ -2,7 +2,7 @@
 
 
 
-## Manager 'ossec.conf' file
+## Manager 'manager.conf' file
 
 
     header-comments.template
@@ -18,28 +18,16 @@
 
         [remote-syslog.template]
 
-        rootcheck.template
-
-        wodle-openscap.template
-
-        wodle-syscollector.template
-
-        syscheck.template
-
         global-ar.template
 
         ar-commands.template
 
         ar-definitions.template
 
-        localfile-logs*
-
-        localfile-commands.template
-
         rules.template
     </wazuh_config>
 
-## Agent 'ossec.conf' file
+## Agent 'agent.conf' file
 
     header-comments.template
 

@@ -40,7 +40,7 @@ static void help_logcollector(char * home_path)
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_AGENT);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_AGENT;
     gid_t gid;
     const char *group = GROUPGLOBAL;
     lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);

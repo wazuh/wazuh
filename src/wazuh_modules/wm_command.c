@@ -193,7 +193,7 @@ void * wm_command_main(wm_command_t * command) {
             }
             break;
         case WM_ERROR_TIMEOUT:
-            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at '%s'. Exiting...", command->tag, OSSECCONF);
+            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at '%s'. Exiting...", command->tag, WAZUHCONF_AGENT);
             break;
 
         default:

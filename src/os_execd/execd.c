@@ -57,7 +57,7 @@ static void help_execd(char * home_path)
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_AGENT);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     }
 
     const char *group = GROUPGLOBAL;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_AGENT;
 
 
     while ((c = getopt(argc, argv, "Vtdhfg:c:")) != -1) {
