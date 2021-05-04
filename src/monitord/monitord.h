@@ -170,6 +170,7 @@ typedef struct _monitor_time_control {
 extern monitor_config mond;
 extern bool worker_node;
 extern OSHash* agents_to_alert_hash;
+extern monitor_time_control mond_time_control;
 
 
 #endif /* MONITORD_H */
