@@ -194,22 +194,23 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @brief Update sync attempt timestamp
  *
  * Set the column "last_attempt" with the timestamp argument,
- * and increase "n_attempts" one unit.
+ * and increase "n_attempts" one unit (non legacy agents).
  *
  * @param wdb Database node.
  * @param component Name of the component.
+ * @param legacy Flag to avoid the n_attempts column overflow in legacy agents.
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy) {
 
     assert(wdb != NULL);
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
+    if (wdb_stmt_cache(wdb, legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
     }
 
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_UPDATE_ATTEMPT];
+    sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
     sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
@@ -230,7 +231,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
 
     assert(wdb != NULL);
 
@@ -319,7 +320,7 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
         switch (retval) {
         case 0: // No data
         case 1: // Checksum failure
-            wdbi_update_attempt(wdb, component, timestamp);
+            wdbi_update_attempt(wdb, component, timestamp, FALSE);
             break;
 
         case 2: // Data is synchronized
