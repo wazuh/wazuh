@@ -184,8 +184,6 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     char *payload;
     char url[OS_SIZE_8192];
     char org_state_name[OS_SIZE_1024];
-    char last_scan_time_str[OS_SIZE_1024];
-    char new_scan_time_str[OS_SIZE_1024];
     time_t last_scan_time;
     time_t new_scan_time;
     char *error_msg = NULL;
@@ -207,12 +205,16 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         }
 
         last_scan_time = (time_t)org_state_struc.last_log_time + 1;
-        new_scan_time = time(0) - github_config->time_delay;
+        char last_scan_time_str[80];
+        struct tm tm_last_scan = { .tm_sec = 0 };
+        localtime_r(&last_scan_time, &tm_last_scan);
+        strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_last_scan);
 
-        memset(last_scan_time_str, '\0', OS_SIZE_1024);
-        strftime(last_scan_time_str, 20, "%Y-%m-%dT%H:%M:%SZ", localtime(&last_scan_time));
-        memset(new_scan_time_str, '\0', OS_SIZE_1024);
-        strftime(new_scan_time_str, 20, "%Y-%m-%dT%H:%M:%SZ", localtime(&new_scan_time));
+        new_scan_time = time(0) - github_config->time_delay;
+        char new_scan_time_str[80];
+        struct tm tm_new_scan = { .tm_sec = 0 };
+        localtime_r(&new_scan_time, &tm_new_scan);
+        strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_new_scan);
 
         if (initial_scan && github_config->only_future_events) {
             org_state_struc.last_log_time = new_scan_time;

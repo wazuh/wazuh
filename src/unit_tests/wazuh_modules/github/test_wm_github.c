@@ -132,7 +132,7 @@ void test_read_default_configuration(void **state) {
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
     wm_github *module_data = (wm_github*)test->module->data;
-    assert_int_equal(module_data->enabled, 0);
+    assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->run_on_start, 1);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);

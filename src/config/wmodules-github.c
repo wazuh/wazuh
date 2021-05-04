@@ -30,7 +30,7 @@ time_t time_convert(const char *time_c) {
     char *endptr;
     time_t time_i = strtoul(time_c, &endptr, 0);
 
-    if (time_i <= 0 || time_i >= UINT_MAX) {
+    if (time_i <= 0 || time_i >= INT_MAX) {
         return OS_INVALID;
     }
 
