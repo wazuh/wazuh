@@ -102,7 +102,6 @@ void Monitord()
 
 cJSON *getMonitorInternalOptions(void) {
 
-    cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(monconf,"day_wait",mond.day_wait);
@@ -115,31 +114,25 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
     cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
 
-    cJSON_AddItemToObject(root,"monitord",monconf);
-
-    return root;
+    return monconf;
 }
 
 cJSON *getMonitorGlobalOptions(void) {
 
-    cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(monconf,"agents_disconnection_time",mond.global.agents_disconnection_time);
     cJSON_AddNumberToObject(monconf,"agents_disconnection_alert_time",mond.global.agents_disconnection_alert_time);
 
-    cJSON_AddItemToObject(root,"monitord",monconf);
-
-    return root;
+    return monconf;
 }
 
 cJSON *getReportsOptions(void) {
 
-    cJSON *root = cJSON_CreateObject();
+    cJSON *arr = cJSON_CreateArray();
     unsigned int i;
 
     if (mond.reports) {
-        cJSON *arr = cJSON_CreateArray();
         for (i=0;mond.reports[i];i++) {
             cJSON *rep = cJSON_CreateObject();
             if (mond.reports[i]->title) cJSON_AddStringToObject(rep,"title",mond.reports[i]->title);
@@ -160,10 +153,9 @@ cJSON *getReportsOptions(void) {
             }
             cJSON_AddItemToArray(arr, rep);
         }
-        cJSON_AddItemToObject(root,"reports",arr);
     }
 
-    return root;
+    return arr;
 }
 
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait) {
