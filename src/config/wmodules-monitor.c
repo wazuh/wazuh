@@ -10,6 +10,7 @@
  */
 
 #ifndef CLIENT
+#include "../headers/shared.h"
 #include "../wazuh_modules/wmodules.h"
 #include "../monitord/monitord.h"
 
@@ -17,7 +18,7 @@
 int wm_monitor_read(__attribute__((unused)) const OS_XML *xml, __attribute__((unused)) XML_NODE node, wmodule *module) {
     if (module) {
         module->context = &WM_MONITOR_CONTEXT;
-        module->tag = strdup(module->context->name);
+        os_strdup(module->context->name, module->tag);
         if (NULL == module->data) {
             os_calloc(1, sizeof(wm_monitor_t), module->data);
         }

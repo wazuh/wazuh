@@ -116,11 +116,14 @@ void* wm_monitor_main(wm_monitor_t *data) {
     // Read the cluster status and the node type from the configuration file
     // Do not monitor agents in client/worker nodes
     switch (w_is_worker()){
+        case -1:
+            mterror(WM_MONITOR_LOGTAG, "Invalid option at cluster configuration");
+            break;
         case 0:
             worker_node = false;
             break;
         case 1:
-            mdebug1("Cluster client node: Disabled the agent monitoring");
+            mtdebug1(WM_MONITOR_LOGTAG, "Cluster client node: Disabled the agent monitoring");
             worker_node = true;
             mond.monitor_agents = 0;
             break;
