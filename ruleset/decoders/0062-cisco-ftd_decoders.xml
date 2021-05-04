@@ -6,3 +6,10 @@
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
+
+<!-- General decoder -->
+<decoder name="cisco-ftd">
+    <prematch type="pcre2">[^%]+?%FTD-[0-7]-[^:]+:\s.+</prematch>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:]+):\s(.+)</regex>
+    <order>header, product.name, event.severity, event.id, message</order>
+</decoder>
