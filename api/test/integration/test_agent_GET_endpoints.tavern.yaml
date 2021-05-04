@@ -814,7 +814,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        older_than: 30s
+        older_than: 1d
     response:
       status_code: 200
       json:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,7 +9,7 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree import ElementTree
+from xml.etree.ElementTree import Element
 
 import pytest
 
@@ -534,7 +534,7 @@ def test_load_wazuh_xml(mock_compile):
         f.return_value.__enter__.return_value = StringIO(test_xml)
         result = load_wazuh_xml('test_file')
 
-        assert isinstance(result, ElementTree.Element)
+        assert isinstance(result, Element)
 
 
 @pytest.mark.parametrize('version1, version2', [
