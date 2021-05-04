@@ -143,6 +143,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_DELETE_AROUND,
     WDB_STMT_FIM_DELETE_RANGE,
     WDB_STMT_FIM_CLEAR,
+    WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
@@ -1193,7 +1194,9 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp);
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy);
+
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
