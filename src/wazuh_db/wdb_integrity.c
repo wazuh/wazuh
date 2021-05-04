@@ -190,15 +190,14 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     return 0;
 }
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum) {
-
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum, bool legacy) {
     assert(wdb != NULL);
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
+    if (wdb_stmt_cache(wdb, legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
     }
 
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_UPDATE_ATTEMPT];
+    sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
     sqlite3_bind_text(stmt, 2, manager_checksum, -1, NULL);
@@ -210,7 +209,6 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
 }
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum) {
-
     assert(wdb != NULL);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_COMPLETION) == -1) {
@@ -298,11 +296,12 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
         switch (status) {
         case INTEGRITY_SYNC_NO_DATA:
         case INTEGRITY_SYNC_CKS_FAIL:
-            wdbi_update_attempt(wdb, component, timestamp, "");
+            wdbi_update_attempt(wdb, component, timestamp, "", FALSE);
             break;
 
         case INTEGRITY_SYNC_CKS_OK:
             wdbi_update_completion(wdb, component, timestamp, manager_checksum);
+            break;
 
         default:
             break;
