@@ -25,7 +25,7 @@
 #define ITEM_PER_PAGE 100
 #define RETRIES_TO_SEND_ERROR 3
 
-#define GITHUB_API_URL "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d"
+#define GITHUB_API_URL "https://api.github.com/orgs/%s/audit-log?phrase=created:>=%s&include=%s&order=asc&per_page=%d"
 
 typedef struct curl_request {
     char *buffer;
@@ -47,6 +47,7 @@ typedef struct wm_github_auth {
 
 typedef struct wm_github_state {
     time_t last_log_time;                      // Absolute time of last scan
+    char next_page[OS_SIZE_8192];
 } wm_github_state;
 
 typedef struct wm_github_fail {
