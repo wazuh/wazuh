@@ -349,8 +349,6 @@ void test_monitor_queue_connect_msg_fail(void **state) {
 /* Tests getMonitorInternalOptions */
 
 void test_getMonitorInternalOptions_success(void **state) {
-    cJSON *options = NULL;
-    cJSON *object = NULL;
 
     // Arbitrary configuration
     mond.day_wait = 2;
@@ -363,7 +361,8 @@ void test_getMonitorInternalOptions_success(void **state) {
     mond.daily_rotations = 100;
     mond.delete_old_agents = 3;
 
-    options = getMonitorInternalOptions();
+    cJSON *object = NULL;
+    cJSON *options = getMonitorInternalOptions();
 
     if (options) {
         object = cJSON_GetObjectItem(options, "day_wait");
@@ -392,14 +391,13 @@ void test_getMonitorInternalOptions_success(void **state) {
 /* Tests getMonitorGlobalOptions */
 
 void test_getMonitorGlobalOptions_success(void **state) {
-    cJSON *options = NULL;
-    cJSON *object = NULL;
 
     // Arbitrary configuration
     mond.global.agents_disconnection_time = 20;
     mond.global.agents_disconnection_alert_time = 100;
 
-    options = getMonitorGlobalOptions();
+    cJSON *object = NULL;
+    cJSON *options = getMonitorGlobalOptions();
 
     if (options) {
         object = cJSON_GetObjectItem(options, "agents_disconnection_time");
