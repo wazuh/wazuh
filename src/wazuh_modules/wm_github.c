@@ -19,6 +19,7 @@ static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
 static int wm_github_execute_scan(wm_github *github_config, int initial_scan);
 static curl_response* wm_github_execute_curl(char *token, const char *url);
 static char* wm_github_get_next_page(char *header);
+static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
 cJSON *wm_github_dump(const wm_github* github_config);
 
 /* Context definition */
@@ -265,7 +266,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             if (next_page == NULL) {
                                 scan_finished = 1;
                             } else {
-                                memset(url, '\0', PATH_MAX);
+                                memset(url, '\0', OS_SIZE_8192);
                                 strncpy(url, next_page, strlen(next_page));
                                 os_free(next_page);
                             }
@@ -292,59 +293,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         }
 
         if (fail) {
-            org_fail = wm_github_get_fail_by_org(github_config->fails, current->org_name);
-
-            if (org_fail == NULL) {
-                os_calloc(1, sizeof(wm_github_fail), org_fail);
-
-                if (github_config->fails) {
-                    wm_github_fail *aux = github_config->fails;
-
-                    while (aux->next) {
-                        aux = aux->next;
-                    }
-                    aux->next = org_fail;
-                } else {
-                    // First wm_github_fail
-                    github_config->fails = org_fail;
-                }
-
-                os_malloc(strlen(current->org_name) + 1, org_fail->org_name);
-                strncpy(org_fail->org_name, current->org_name, strlen(current->org_name));
-
-                org_fail->fails = 1;
-            } else {
-                org_fail->fails = org_fail->fails + 1;
-
-                if (org_fail->fails == RETRIES_TO_SEND_ERROR) {
-                    // Send fail message
-                    cJSON *msg_obj = cJSON_Parse(error_msg);
-                    cJSON *fail_object = cJSON_CreateObject();
-                    cJSON_AddStringToObject(fail_object, "actor", "wazuh");
-                    cJSON_AddStringToObject(fail_object, "source", WM_GITHUB_CONTEXT.name);
-                    cJSON_AddStringToObject(fail_object, "created_at", last_scan_time_str);
-                    cJSON_AddStringToObject(fail_object, "request", url);
-
-                    if (msg_obj) {
-                        payload = cJSON_PrintUnformatted(msg_obj);
-                        cJSON_AddStringToObject(fail_object, "response", payload);
-                        os_free(payload);
-                    } else {
-                        cJSON_AddStringToObject(fail_object, "response", "Unknown error");
-                    }
-
-                    payload = cJSON_PrintUnformatted(fail_object);
-                    mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
-
-                    if (wm_sendmsg(WM_GITHUB_MSG_DELAY, github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
-                        mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                    }
-
-                    os_free(payload);
-                    cJSON_Delete(fail_object);
-                    cJSON_Delete(msg_obj);
-                }
-            }
+            wm_github_scan_failure_action(&github_config->fails, current->org_name, error_msg, github_config->queue_fd);
         } else {
             org_state_struc.last_log_time = new_scan_time;
             if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
@@ -462,9 +411,68 @@ static char* wm_github_get_next_page(char *header) {
         return NULL;
     }
 
-    os_malloc(strlen(regex.d_sub_strings[0]) + 1, next_page);
-    strncpy(next_page, regex.d_sub_strings[0], strlen(regex.d_sub_strings[0]));
-    OSRegex_FreePattern(&regex);
+    os_strdup(regex.d_sub_strings[0], next_page);
 
+    OSRegex_FreePattern(&regex);
     return next_page;
+}
+
+static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd) {
+    char *payload;
+    wm_github_fail *org_fail;
+
+    org_fail = wm_github_get_fail_by_org(*current_fails, org_name);
+
+    if (org_fail == NULL) {
+
+        os_calloc(1, sizeof(wm_github_fail), org_fail);
+
+        if (*current_fails) {
+            wm_github_fail *aux = *current_fails;
+
+            while (aux->next) {
+                aux = aux->next;
+            }
+            aux->next = org_fail;
+        } else {
+            // First wm_github_fail
+            *current_fails = org_fail;
+
+        }
+
+        os_malloc(strlen(org_name) + 1, org_fail->org_name);
+        strncpy(org_fail->org_name, org_name, strlen(org_name));
+
+        org_fail->fails = 1;
+    } else {
+        org_fail->fails = org_fail->fails + 1;
+
+        if (org_fail->fails == RETRIES_TO_SEND_ERROR) {
+            // Send fail message
+            cJSON *msg_obj = cJSON_Parse(error_msg);
+            cJSON *fail_object = cJSON_CreateObject();
+            cJSON_AddStringToObject(fail_object, "actor", "wazuh");
+            cJSON_AddStringToObject(fail_object, "source", WM_GITHUB_CONTEXT.name);
+            cJSON_AddStringToObject(fail_object, "organization", org_name);
+
+            if (msg_obj) {
+                payload = cJSON_PrintUnformatted(msg_obj);
+                cJSON_AddStringToObject(fail_object, "response", payload);
+                os_free(payload);
+            } else {
+                cJSON_AddStringToObject(fail_object, "response", "Unknown error");
+            }
+
+            payload = cJSON_PrintUnformatted(fail_object);
+            mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
+
+            if (wm_sendmsg(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
+                mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+            }
+
+            os_free(payload);
+            cJSON_Delete(fail_object);
+            cJSON_Delete(msg_obj);
+        }
+    }
 }
