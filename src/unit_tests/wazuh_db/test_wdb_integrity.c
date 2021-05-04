@@ -24,8 +24,6 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
-void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
-
 /* setup/teardown */
 static int setup_wdb_t(void **state) {
     wdb_t *data = calloc(1, sizeof(wdb_t));
@@ -268,7 +266,7 @@ static void test_wdbi_delete_success(void **state)
 
 static void test_wdbi_update_attempt_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1));
+    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, FALSE));
 }
 
 static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
@@ -278,7 +276,7 @@ static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, FALSE);
 }
 
 static void test_wdbi_update_attempt_no_sql_done(void **state)
@@ -293,7 +291,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, FALSE);
 }
 
 static void test_wdbi_update_attempt_success(void **state)
@@ -305,7 +303,7 @@ static void test_wdbi_update_attempt_success(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, FALSE);
 }
 
 static void test_wdbi_update_completion_wbs_null(void **state)

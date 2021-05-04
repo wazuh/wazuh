@@ -390,5 +390,7 @@ INSERT INTO metadata (key, value) VALUES ('db_version', '8');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
+INSERT INTO sync_info (component) VALUES ('syscollector-packages');
+INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');
 
 COMMIT;
