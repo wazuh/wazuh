@@ -44,6 +44,7 @@ def get_logs():
     with open(ossec_log_path) as f:
         return f.read()
 
+
 @pytest.mark.parametrize('process_status', [
     'running',
     'stopped',
@@ -69,6 +70,7 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
     process_status : str
         Status to test (valid values: running/stopped/failed/restarting).
     """
+
     def mock_glob(path_to_check):
         return [path_to_check.replace('*', '0234')] if process_status == 'running' else []
 
@@ -76,8 +78,8 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
         if path_to_check == '/proc/0234':
             return process_status == 'running'
         else:
-            return path_to_check.endswith(f'.{process_status.replace("ing","").replace("re", "")}') or \
-                   path_to_check.endswith(f'.{process_status.replace("ing","")}')
+            return path_to_check.endswith(f'.{process_status.replace("ing", "").replace("re", "")}') or \
+                   path_to_check.endswith(f'.{process_status.replace("ing", "")}')
 
     manager_glob.side_effect = mock_glob
     manager_exists.side_effect = mock_exists
@@ -158,7 +160,7 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
 
         # execq_socket_path not exists
         with patch("wazuh.core.manager.exists", return_value=False):
-             with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
+            with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
                 validate_ossec_conf()
 
         with patch('socket.socket.connect'):
