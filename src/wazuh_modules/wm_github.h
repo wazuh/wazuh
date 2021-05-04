@@ -14,17 +14,46 @@
 
 #define WM_GITHUB_LOGTAG ARGV0 ":" GITHUB_WM_NAME
 
-#define WM_GITHUB_DEFAULT_ENABLED 0
+#define WM_GITHUB_DEFAULT_ENABLED 1
 #define WM_GITHUB_DEFAULT_RUN_ON_START 1
 #define WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS 0
 #define WM_GITHUB_DEFAULT_INTERVAL 600
 #define WM_GITHUB_DEFAULT_DELAY 1
+#define WM_GITHUB_MSG_DELAY 1000000 / wm_max_eps
+
+#define CHUNK_SIZE 2048
+#define ITEM_PER_PAGE 100
+#define RETRIES_TO_SEND_ERROR 3
+
+#define GITHUB_API_URL "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d"
+
+typedef struct curl_request {
+    char *buffer;
+    size_t len;
+    size_t buflen;
+} curl_request;
+
+typedef struct curl_response {
+    char *header;
+    char *body;
+    long status_code;
+} curl_response;
 
 typedef struct wm_github_auth {
     char *org_name;                         // Organization name
     char *api_token;                        // Personal access token
     struct wm_github_auth *next;
 } wm_github_auth;
+
+typedef struct wm_github_state {
+    time_t last_log_time;                      // Absolute time of last scan
+} wm_github_state;
+
+typedef struct wm_github_fail {
+    int fails;
+    char *org_name;
+    struct wm_github_fail *next;
+} wm_github_fail;
 
 typedef struct wm_github {
     int enabled;
@@ -35,6 +64,8 @@ typedef struct wm_github {
     wm_github_auth *auth;
     // api_parameters
     char *event_type;                       // Event types to include: web/git/all
+    wm_github_fail *fails;
+    int queue_fd;
 } wm_github;
 
 extern const wm_context WM_GITHUB_CONTEXT;  // Context
