@@ -19,7 +19,7 @@ static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
 static int wm_github_execute_scan(wm_github *github_config, int initial_scan);
 static curl_response* wm_github_execute_curl(char *token, const char *url);
 static char* wm_github_get_next_page(char *header);
-static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd, char *last_scan_time_str, char *url);
+static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
 cJSON *wm_github_dump(const wm_github* github_config);
 
 /* Context definition */
@@ -186,6 +186,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     char url[OS_SIZE_8192];
     char org_state_name[OS_SIZE_1024];
     char last_scan_time_str[OS_SIZE_1024];
+    char new_scan_time_str[OS_SIZE_1024];
     time_t last_scan_time;
     time_t new_scan_time;
     char *error_msg = NULL;
@@ -204,7 +205,6 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         if (wm_state_io(org_state_name, WM_IO_READ, &org_state_struc, sizeof(org_state_struc)) < 0) {
             memset(&org_state_struc, 0, sizeof(org_state_struc));
             org_state_struc.last_log_time = 0;
-            memset(org_state_struc.next_page, '\0', OS_SIZE_8192);
         }
 
         last_scan_time = (time_t)org_state_struc.last_log_time + 1;
@@ -212,6 +212,8 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
         memset(last_scan_time_str, '\0', OS_SIZE_1024);
         strftime(last_scan_time_str, 20, "%Y-%m-%dT%H:%M:%SZ", localtime(&last_scan_time));
+        memset(new_scan_time_str, '\0', OS_SIZE_1024);
+        strftime(new_scan_time_str, 20, "%Y-%m-%dT%H:%M:%SZ", localtime(&new_scan_time));
 
         if (initial_scan && github_config->only_future_events) {
             org_state_struc.last_log_time = new_scan_time;
@@ -223,11 +225,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         }
 
         memset(url, '\0', OS_SIZE_8192);
-        if (org_state_struc.next_page[0] == '\0') {
-            snprintf(url, OS_SIZE_8192 -1, GITHUB_API_URL, current->org_name, last_scan_time_str, github_config->event_type, ITEM_PER_PAGE);
-        } else {
-            strncpy(url, org_state_struc.next_page, strlen(org_state_struc.next_page));
-        }
+        snprintf(url, OS_SIZE_8192 -1, GITHUB_API_URL, current->org_name, last_scan_time_str, new_scan_time_str, github_config->event_type, ITEM_PER_PAGE);
 
         mtdebug1(WM_GITHUB_LOGTAG, "GitHub API URL: '%s'", url);
 
@@ -293,16 +291,9 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         }
 
         if (fail) {
-            wm_github_scan_failure_action(&github_config->fails, current->org_name, error_msg, github_config->queue_fd, last_scan_time_str, url);
-
-            memset(org_state_struc.next_page, '\0', OS_SIZE_8192);
-            strncpy(org_state_struc.next_page, url, strlen(url));
-            if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
-                mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
-            }
+            wm_github_scan_failure_action(&github_config->fails, current->org_name, error_msg, github_config->queue_fd);
         } else {
             org_state_struc.last_log_time = new_scan_time;
-            memset(org_state_struc.next_page, '\0', OS_SIZE_8192);
             if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
                 mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
             }
@@ -424,7 +415,7 @@ static char* wm_github_get_next_page(char *header) {
     return next_page;
 }
 
-static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd, char *last_scan_time_str, char *url) {
+static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd) {
     char *payload;
     wm_github_fail *org_fail;
 
@@ -460,8 +451,7 @@ static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
             cJSON *fail_object = cJSON_CreateObject();
             cJSON_AddStringToObject(fail_object, "actor", "wazuh");
             cJSON_AddStringToObject(fail_object, "source", WM_GITHUB_CONTEXT.name);
-            cJSON_AddStringToObject(fail_object, "created_at", last_scan_time_str);
-            cJSON_AddStringToObject(fail_object, "request", url);
+            cJSON_AddStringToObject(fail_object, "organization", org_name);
 
             if (msg_obj) {
                 payload = cJSON_PrintUnformatted(msg_obj);
