@@ -143,6 +143,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_DELETE_AROUND,
     WDB_STMT_FIM_DELETE_RANGE,
     WDB_STMT_FIM_CLEAR,
+    WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_SYNC_GET_INFO,
@@ -1198,7 +1199,6 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-
 /**
  * @brief Update sync attempt timestamp
  *
@@ -1213,8 +1213,9 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @param wdb Database node.
  * @param component Name of the component.
  * @param manager_checksum Checksum of the last calculated component on the manager to be stored.
+ * @param legacy Flag to identify if the updated agent works with dbsync or not (legacy)
  */
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum);
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum, bool legacy);
 
 /**
  * @brief Update sync completion timestamp
