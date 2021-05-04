@@ -2714,7 +2714,9 @@ STATIC char * w_save_files_status_to_cJSON() {
     OSHashNode * hash_node;
     unsigned int index = 0;
 
+    w_rwlock_rdlock(&files_status->mutex);
     if (hash_node = OSHash_Begin(files_status, &index), !hash_node) {
+        w_rwlock_unlock(&files_status->mutex);
         return NULL;
     }
 
@@ -2737,6 +2739,7 @@ STATIC char * w_save_files_status_to_cJSON() {
 
         hash_node = OSHash_Next(files_status, &index, hash_node);
     }
+    w_rwlock_unlock(&files_status->mutex);
 
     char * global_json_str = cJSON_PrintUnformatted(global_json);
     cJSON_Delete(global_json);
