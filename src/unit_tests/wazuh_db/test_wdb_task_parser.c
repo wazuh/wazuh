@@ -61,7 +61,7 @@ void test_wdb_parse_task_open_tasks_fail(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Task query: ");
     expect_string(__wrap__mdebug2, formatted_msg, "Couldn't open DB task: queue/tasks/tasks.db");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Couldn't open DB task");
     assert_int_equal(ret, OS_INVALID);
@@ -76,7 +76,7 @@ void test_wdb_parse_task_no_space(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "DB query: task");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'task'");
     assert_int_equal(ret, OS_INVALID);
@@ -95,7 +95,7 @@ void test_wdb_parse_task_invalid_command(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "Task DB query error near: invalid");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'invalid'");
     assert_int_equal(ret, OS_INVALID);
@@ -111,7 +111,7 @@ void test_wdb_parse_task_upgrade_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
@@ -127,7 +127,7 @@ void test_wdb_parse_task_upgrade_custom_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
@@ -143,7 +143,7 @@ void test_wdb_parse_task_upgrade_get_status_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
@@ -159,7 +159,7 @@ void test_wdb_parse_task_upgrade_update_status_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
@@ -175,7 +175,7 @@ void test_wdb_parse_task_upgrade_result_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
@@ -191,7 +191,7 @@ void test_wdb_parse_task_upgrade_cancel_tasks_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
@@ -207,7 +207,7 @@ void test_wdb_parse_task_delete_old_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
@@ -223,7 +223,7 @@ void test_wdb_parse_task_set_timeout_invalid_parameters(void **state)
 
     will_return(__wrap_wdb_open_tasks, data->wdb);
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid command parameters, near 'no_json'");
     assert_int_equal(ret, OS_INVALID);
