@@ -541,6 +541,14 @@ DWORD FileSizeWin(const char * file);
  */
 FILE * w_fopen_r(const char *file, const char * mode);
 
+/**
+ * @brief Expands wildcards for Windows (using FindFirstFile and FindNexFile)
+ *
+ * @param path Path containing the wildcards to expand.
+ * @return char** Vector with the expanded paths.
+ */
+char **expand_win32_wildcards(const char *path);
+
 #endif // Windows
 
 /**
@@ -634,7 +642,7 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest);
  * @brief Get the Wazuh installation directory
  *
  * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
- * 
+ *
  * @param arg ARGV0 - Program name
  * @return Pointer to the Wazuh installation path on success
  */
