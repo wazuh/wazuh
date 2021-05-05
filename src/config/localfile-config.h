@@ -13,7 +13,7 @@
 
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
-#define OSLOG        "oslog"
+#define MACOS        "macos"
 #define MULTI_LINE_REGEX              "multi-line-regex"
 #define MULTI_LINE_REGEX_TIMEOUT      5
 #define MULTI_LINE_REGEX_MAX_TIMEOUT  120
@@ -22,21 +22,21 @@
 #define DIFF_DEFAULT_SIZE 10 * 1024 * 1024
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
 
-/* oslog configurations */
+/* macOS log command configurations */
 
-#define OSLOG_LEVEL_DEFAULT_STR "default"  ///< Represents the lowest loggin level in oslog
-#define OSLOG_LEVEL_INFO_STR    "info"     ///< Represents the intermediate loggin level in oslog
-#define OSLOG_LEVEL_DEBUG_STR   "debug"    ///< Represents the highest loggin level in oslog
-#define OSLOG_TYPE_ACTIVITY_STR "activity" ///< Is used to filter by `activity` logs
-#define OSLOG_TYPE_LOG_STR      "log"      ///< Is used to filter by `log` logs
-#define OSLOG_TYPE_TRACE_STR    "trace"    ///< Is used to filter by `trace` logs
-#define OSLOG_TYPE_ACTIVITY     (0x1 << 0) ///< Flag used to filter by `activity` logs
-#define OSLOG_TYPE_LOG          (0x1 << 1) ///< Flag used to filter by `log` logs
-#define OSLOG_TYPE_TRACE        (0x1 << 2) ///< Flag used to filter by `trace` logs
+#define MACOS_LOG_LEVEL_DEFAULT_STR     "default"  ///< Represents the lowest loggin level in macOS log command
+#define MACOS_LOG_LEVEL_INFO_STR        "info"     ///< Represents the intermediate loggin level in macOS log command
+#define MACOS_LOG_LEVEL_DEBUG_STR       "debug"    ///< Represents the highest loggin level in macOS log command
+#define MACOS_LOG_TYPE_ACTIVITY_STR     "activity" ///< Is used to filter by `activity` logs
+#define MACOS_LOG_TYPE_LOG_STR          "log"      ///< Is used to filter by `log` logs
+#define MACOS_LOG_TYPE_TRACE_STR        "trace"    ///< Is used to filter by `trace` logs
+#define MACOS_LOG_TYPE_ACTIVITY         (0x1 << 0) ///< Flag used to filter by `activity` logs
+#define MACOS_LOG_TYPE_LOG              (0x1 << 1) ///< Flag used to filter by `log` logs
+#define MACOS_LOG_TYPE_TRACE            (0x1 << 2) ///< Flag used to filter by `trace` logs
 
 /** regex to determine the start of a log */
-#define OSLOG_START_REGEX       "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d"
-#define OSLOG_TIMEOUT           5
+#define MACOS_LOG_START_REGEX           "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d"
+#define MACOS_LOG_TIMEOUT               5
 
 #include <pthread.h>
 
@@ -116,33 +116,33 @@ typedef struct {
     int64_t offset_last_read;  ///< absolut file offset of last complete multiline log processed
 } w_multiline_config_t;
 
-typedef enum _w_oslog_state_t {
+typedef enum _w_macos_log_state_t {
     LOG_NOT_RUNNING,
     LOG_RUNNING_STREAM,
     LOG_RUNNING_SHOW
-} w_oslog_state_t;
+} w_macos_log_state_t;
 
 /**
- * @brief Context of a oslog that was not completely written.
+ * @brief Context of a macOS log that was not completely written.
  *
- * An instance of w_oslog_config_t allow save the context of a log that have not yet completely read.
+ * An instance of w_macos_log_config_t allow save the context of a log that have not yet completely read.
  */
 typedef struct {
-    char buffer[OS_MAXSTR]; ///< store current read when oslog is in process
-    time_t timestamp;       ///< last successful read
-    w_oslog_state_t state;  ///< stores the current oslog' running state
-} w_oslog_ctxt_t;
+    char buffer[OS_MAXSTR];     ///< Stores the current read while macOS log is running
+    time_t timestamp;           ///< last successful read
+} w_macos_log_ctxt_t;
 
 /**
- * @brief An instance of w_oslog_config_t represents a OSlog (ULS) and its state
+ * @brief An instance of w_macos_log_config_t represents the state of macOS log command
  */
 typedef struct {
-    w_expression_t * start_log_regex; ///< used to check the start of a new log
-    bool is_header_processed;            ///< True if the stream header was processed
-    w_oslog_ctxt_t ctxt;              ///< store current status when read log is in process
+    w_expression_t * log_start_regex;   ///< Used to check the start of a new log
+    bool is_header_processed;           ///< True if the stream header was processed
+    w_macos_log_state_t state;          ///< Stores the current macOS log running state
+    w_macos_log_ctxt_t ctxt;            ///< Stores current status when read log is in process
     wfd_t * stream_wfd;                 ///< `log stream` IPC connector
     wfd_t * show_wfd;                   ///< `log show` IPC connector
-} w_oslog_config_t;
+} w_macos_log_config_t;
 
 /* Logreader config */
 typedef struct _logreader {
@@ -165,7 +165,7 @@ typedef struct _logreader {
     char *file;
     char *logformat;
     w_multiline_config_t * multiline; ///< Multiline regex config & state
-    w_oslog_config_t * oslog;         ///< oslog config & state
+    w_macos_log_config_t * macos_log;   ///< macOS log config & state
     long linecount;
     char *djb_program_name;
     char *command;
@@ -174,8 +174,8 @@ typedef struct _logreader {
     char future;
     long diff_max_size;
     char *query;
-    int query_type;      ///< Filtering by type in oslog
-    char * query_level;  ///< Filtering by level in oslog
+    int query_type;      ///< Filtering by type in macOS log
+    char * query_level;  ///< Filtering by level in macOS log
     int filter_binary;
     int ucs2;
     outformat ** out_format;
@@ -205,7 +205,7 @@ typedef struct _logreader_glob {
 typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
-    unsigned int oslog_count;
+    unsigned int macos_blocks_count;
     logreader_glob *globs;
     logreader *config;
     logsocket *socket_list;

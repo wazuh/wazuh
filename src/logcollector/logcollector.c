@@ -127,10 +127,10 @@ static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 #define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-static struct _oslog_wfd_t {
+static struct _macos_log_wfd_t {
     wfd_t * show;
     wfd_t * stream;
-} oslog_wfd = { .show = NULL, .stream = NULL };
+} macos_log_wfd = { .show = NULL, .stream = NULL };
 #endif
 
 /* Handle file management */
@@ -338,20 +338,20 @@ void LogCollectorStart()
             }
         }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-        else if (strcmp(current->logformat, OSLOG) == 0) {
-            w_oslog_create_env(current);
-            current->read = read_oslog;
-            if (current->oslog->ctxt.state != LOG_NOT_RUNNING) {
-                if (atexit(w_oslog_release)) {
+        else if (strcmp(current->logformat, MACOS) == 0) {
+            w_macos_create_log_env(current);
+            current->read = read_macos;
+            if (current->macos_log->state != LOG_NOT_RUNNING) {
+                if (atexit(w_macos_release_log_execution)) {
                     merror(ATEXIT_ERROR);
                 }
-                // OSLog's info needs to be globally reachable to be released
-                oslog_wfd.show = current->oslog->show_wfd;
-                oslog_wfd.stream = current->oslog->stream_wfd;
+                // macOS log's resources need to be globally reachable to be released
+                macos_log_wfd.show = current->macos_log->show_wfd;
+                macos_log_wfd.stream = current->macos_log->stream_wfd;
 
                 for(int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
-                    mdebug1("Socket target for '%s' -> %s", OSLOG_NAME, current->target[tg_idx]);
-                    w_logcollector_state_add_target(OSLOG_NAME, current->target[tg_idx]);
+                    mdebug1("Socket target for '%s' -> %s", MACOS_LOG_NAME, current->target[tg_idx]);
+                    w_logcollector_state_add_target(MACOS_LOG_NAME, current->target[tg_idx]);
                 }
             }
         }
@@ -2137,8 +2137,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         }
                     }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-                    /* Read process `log` in stream  (oslog) */
-                    else if (current->oslog != NULL && current->oslog->ctxt.state != LOG_NOT_RUNNING) {
+                    /* Read the macOS `log` process output */
+                    else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
                         current->read(current, &r, 0);
                     }
 #endif
@@ -2761,12 +2761,12 @@ STATIC void w_load_files_status(cJSON * global_json) {
         }
     }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-    cJSON * oslog = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_OSLOG);
-    char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(oslog, OS_LOGCOLLECTOR_JSON_TIMESTAMP));
-    char * settings = cJSON_GetStringValue(cJSON_GetObjectItem(oslog, OS_LOGCOLLECTOR_JSON_SETTINGS));
+    cJSON * macos_log = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_MACOS);
+    char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP));
+    char * settings = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS));
     if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
-        w_oslog_set_timestamp(timestamp);
-        w_oslog_set_settings(settings);
+        w_macos_set_last_log_timestamp(timestamp);
+        w_macos_set_log_settings(settings);
     }
 #endif
 
@@ -2804,13 +2804,13 @@ STATIC char * w_save_files_status_to_cJSON() {
     w_rwlock_unlock(&files_status->mutex);
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-    cJSON * oslog = cJSON_CreateObject();
-    char * timestamp = w_oslog_get_timestamp();
-    char * settings = w_oslog_get_settings();
+    cJSON * macos_log = cJSON_CreateObject();
+    char * timestamp = w_macos_get_last_log_timestamp();
+    char * settings = w_macos_get_log_settings();
     if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
-        cJSON_AddItemToObject(oslog, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
-        cJSON_AddItemToObject(oslog, OS_LOGCOLLECTOR_JSON_SETTINGS, cJSON_CreateString(settings));
-        cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_OSLOG, oslog);
+        cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
+        cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS, cJSON_CreateString(settings));
+        cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_MACOS, macos_log);
     }
     os_free(settings);
     os_free(timestamp);
@@ -2936,30 +2936,30 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
 }
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-void w_oslog_release_show(void) {
-    if (oslog_wfd.show != NULL) {
-        mdebug1("Releasing OSLog's log show resources.");
-        if(oslog_wfd.show->pid > 0) {
-            kill(oslog_wfd.show->pid, SIGTERM);
+void w_macos_release_log_show(void) {
+    if (macos_log_wfd.show != NULL) {
+        mdebug1("Releasing macOS `log show` resources.");
+        if(macos_log_wfd.show->pid > 0) {
+            kill(macos_log_wfd.show->pid, SIGTERM);
         }
-        wpclose(oslog_wfd.show);
-        oslog_wfd.show = NULL;
+        wpclose(macos_log_wfd.show);
+        macos_log_wfd.show = NULL;
     }
 }
 
-void w_oslog_release_stream(void) {
-    if (oslog_wfd.stream != NULL) {
-        mdebug1("Releasing OSLog log stream resources.");
-        if(oslog_wfd.stream->pid > 0) {
-            kill(oslog_wfd.stream->pid, SIGTERM);
+void w_macos_release_log_stream(void) {
+    if (macos_log_wfd.stream != NULL) {
+        mdebug1("Releasing macOS `log stream` resources.");
+        if(macos_log_wfd.stream->pid > 0) {
+            kill(macos_log_wfd.stream->pid, SIGTERM);
         }
-        wpclose(oslog_wfd.stream);
-        oslog_wfd.stream = NULL;
+        wpclose(macos_log_wfd.stream);
+        macos_log_wfd.stream = NULL;
     }
 }
 
-void w_oslog_release(void) {
-    w_oslog_release_show();
-    w_oslog_release_stream();
+void w_macos_release_log_execution(void) {
+    w_macos_release_log_show();
+    w_macos_release_log_stream();
 }
 #endif
