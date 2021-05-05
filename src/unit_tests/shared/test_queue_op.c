@@ -42,7 +42,7 @@ void callback_queue_pop_ex() {
 void callback_queue_push_ex() {
     int *ptr = malloc(sizeof(int));
     *ptr = 0;
-    queue_push_ex(queue_ptr, ptr);   
+    queue_push_ex(queue_ptr, ptr);
 }
 /*****************WRAPS********************/
 int __wrap_pthread_mutex_lock(pthread_mutex_t *mutex) {
@@ -58,7 +58,7 @@ int __wrap_pthread_mutex_unlock(pthread_mutex_t *mutex) {
 int __wrap_pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex) {
     check_expected_ptr(cond);
     check_expected_ptr(mutex);
-    // callback function to avoid infinite loops when testing 
+    // callback function to avoid infinite loops when testing
     if (callback_ptr)
         callback_ptr();
     return 0;
@@ -68,7 +68,7 @@ int __wrap_pthread_cond_timedwait(pthread_cond_t *cond,pthread_mutex_t *mutex, c
     check_expected_ptr(cond);
     check_expected_ptr(mutex);
     check_expected_ptr(abstime);
-    // callback function to avoid infinite loops when testing 
+    // callback function to avoid infinite loops when testing
     if (callback_ptr)
         callback_ptr();
     return mock_type(int);
@@ -149,7 +149,7 @@ void test_queue_push_ex_block(void **state) {
     expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE + 1);
     expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE + 1);
 
-    // Set callback and wait 
+    // Set callback and wait
     expect_value(__wrap_pthread_cond_wait, cond, &queue->available_not_empty);
     expect_value(__wrap_pthread_cond_wait, mutex, &queue->mutex);
     callback_ptr = callback_queue_pop_ex;

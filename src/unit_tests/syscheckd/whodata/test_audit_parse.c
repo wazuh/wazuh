@@ -549,6 +549,8 @@ void test_audit_parse_delete_recursive(void **state) {
     expect_string_count(__wrap__mwarn, formatted_msg, FIM_WARN_AUDIT_RULES_MODIFIED, 5);
     expect_function_calls(__wrap_fim_audit_reload_rules, 4);
 
+    expect_value(__wrap_atomic_int_set, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_set, 0);
 
     expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 5);
     expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 6);
@@ -765,7 +767,7 @@ void test_audit_parse_rm_hc(void **state) {
 
 void test_audit_parse_add_hc(void **state) {
     (void) state;
-
+    extern atomic_int_t audit_health_check_creation;
     char * buffer = " \
         type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=257 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"touch\" exe=\"/usr/bin/touch\" key=\"wazuh_hc\" \
         type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
@@ -777,6 +779,9 @@ void test_audit_parse_add_hc(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
     expect_string(__wrap__mdebug2, formatted_msg, "(6252): Whodata health-check: Detected file creation event (257)");
+
+    expect_value(__wrap_atomic_int_set, atomic, &audit_health_check_creation);
+    will_return(__wrap_atomic_int_set, 1);
 
     audit_parse(buffer);
 }

@@ -122,13 +122,14 @@ void realtime_process() {
     buf[REALTIME_EVENT_BUFFER] = '\0';
 
     w_mutex_lock(&syscheck.fim_realtime_mutex);
-
     len = read(syscheck.realtime->fd, buf, REALTIME_EVENT_BUFFER);
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     if (len < 0) {
         merror(FIM_ERROR_REALTIME_READ_BUFFER);
     }
     else if (len > 0) {
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
         rb_tree * tree = rbtree_init();
 
         for (size_t i = 0; i < (size_t) len; i += REALTIME_EVENT_SIZE + event->len) {

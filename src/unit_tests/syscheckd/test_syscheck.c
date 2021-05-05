@@ -366,6 +366,11 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     expect_function_call(__wrap_os_wait);
 
     expect_function_call(__wrap_start_daemon);
+    expect_value(wrap_CreateEvent, lpEventAttributes, NULL);
+    expect_value(wrap_CreateEvent, bManualReset, TRUE);
+    expect_value(wrap_CreateEvent, bInitialState, FALSE);
+    expect_value(wrap_CreateEvent, lpName, NULL);
+    will_return(wrap_CreateEvent, (HANDLE)123456);
 
     Start_win32_Syscheck();
 }
