@@ -147,7 +147,7 @@
 #define FIM_AUDIT_EVENT2                    "(6249): audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
 #define FIM_AUDIT_DELETE_RULE               "(6250): Deleting Audit rules."
 #define FIM_AUDIT_MATCH_KEY                 "(6251): Match audit_key: '%s'"
-#define FIM_HEALTHCHECK_CREATE              "(6252): Whodata health-check: Detected file creation event (%s)"
+#define FIM_HEALTHCHECK_CREATE              "(6252): Whodata health-check: Detected file creation event (%d)"
 #define FIM_HEALTHCHECK_DELETE              "(6253): Whodata health-check: Detected file deletion event (%s)"
 #define FIM_HEALTHCHECK_UNRECOGNIZED_EVENT  "(6254): Whodata health-check: Unrecognized event (%s)"
 #define FIM_HEALTHCHECK_THREAD_ACTIVE       "(6255): Whodata health-check: Reading thread active."

@@ -800,6 +800,7 @@ LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB 	= $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
+AUPARSE_LIB = $(EXTERNAL_AUDIT)auparse/.libs/libauparse.a
 LIBFFI_LIB 	= $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
@@ -1034,7 +1035,7 @@ ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
 	${MAKE} -C $(EXTERNAL_AUDIT)lib CC=$(CC)
 
 $(EXTERNAL_AUDIT)Makefile:
-	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no --disable-zos-remote --with-python=no --with-python3=no --with-golang=no
 
 #### msgpack #########
 
@@ -1773,13 +1774,13 @@ syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
 	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | sed s/\\\\\\\/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\/g | tr -d \\\n`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 syscheckd/%.o: syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -I$(EXTERNAL_AUDIT)auparse -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@
 
 syscheckd/%-event.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@
 
-wazuh-syscheckd: ${syscheck_o} rootcheck.a
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+wazuh-syscheckd: ${syscheck_o} rootcheck.a ${AUPARSE_LIB}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${AUPARSE_LIB} -o $@
 
 #### Monitor #######
 

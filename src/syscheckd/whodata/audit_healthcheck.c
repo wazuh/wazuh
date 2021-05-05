@@ -10,14 +10,25 @@
 #ifdef ENABLE_AUDIT
 #include "syscheck_audit.h"
 
+#define AUDIT_HEALTHCHECK_DIR       "tmp"
+#define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
+#define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
+
 volatile int audit_health_check_creation;
 volatile int hc_thread_active;
 pthread_mutex_t audit_hc_mutex;
 pthread_cond_t audit_hc_started;
 
+/**
+ * @brief Thread that performs a healthcheck on audit
+ * It reads an event from audit socket to check if it's running
+ *
+ * @param [out] audit_sock The audit socket to read the events from
+ */
+void *audit_healthcheck_thread(audit_data_t *audit_data);
 
 // Audit healthcheck before starting the main thread
-int audit_health_check(int audit_socket) {
+int audit_health_check(audit_data_t *audit_data) {
     int retval;
     FILE *fp;
     audit_health_check_creation = 0;
@@ -42,7 +53,7 @@ int audit_health_check(int audit_socket) {
     w_cond_init(&audit_hc_started, NULL);
 
     // Start reading thread
-    w_create_thread(audit_healthcheck_thread, &audit_socket);
+    w_create_thread(audit_healthcheck_thread, audit_data);
 
     w_mutex_lock(&audit_hc_mutex);
     while (!hc_thread_active)
@@ -82,7 +93,7 @@ int audit_health_check(int audit_socket) {
 }
 
 // LCOV_EXCL_START
-void *audit_healthcheck_thread(int *audit_sock) {
+void *audit_healthcheck_thread(audit_data_t *audit_data) {
 
     w_mutex_lock(&audit_hc_mutex);
     hc_thread_active = 1;
@@ -91,13 +102,55 @@ void *audit_healthcheck_thread(int *audit_sock) {
 
     mdebug2(FIM_HEALTHCHECK_THREAD_ACTIVE);
 
-    audit_read_events(audit_sock, HEALTHCHECK_MODE);
+    audit_data->wmode = HEALTHCHECK_MODE;
+    audit_read_events(audit_data);
 
     mdebug2(FIM_HEALTHCHECK_THREAD_FINISHED);
 
     return NULL;
 }
 // LCOV_EXCL_STOP
+
+void healthcheck_callback(auparse_state_t *state,
+                          auparse_cb_event_t cb_event_type,
+                          __attribute__((unused)) void *_unused) {
+    if (cb_event_type == AUPARSE_CB_EVENT_READY) {
+        const char *key = NULL;
+        int syscall = -1;
+
+        if (auparse_first_record(state) <= 0) {
+            return;
+        }
+
+        do {
+            if (auparse_get_type(state) != AUDIT_SYSCALL) {
+                continue;
+            }
+
+            do {
+                const char *field_name = auparse_get_field_name(state);
+
+                if (strcmp(field_name, "key") == 0) {
+                    key = auparse_get_field_str(state);
+                    if (key != NULL && strcmp(key, AUDIT_HEALTHCHECK_KEY) != 0) {
+                        key = NULL;
+                    }
+                } else if (strcmp(field_name, "syscall") == 0) {
+                    syscall = auparse_get_field_int(state);
+                    if (syscall != 2 && syscall != 257 && syscall != 5 && syscall != 295) {
+                        syscall = -1;
+                    }
+                }
+
+                if (syscall != -1 && key != NULL) {
+                    mdebug2(FIM_HEALTHCHECK_CREATE, syscall);
+                    audit_health_check_creation = 1;
+                    return;
+                }
+            } while (auparse_next_field(state));
+        } while (auparse_next_record(state));
+    }
+}
 
 #endif // ENABLE_AUDIT
 #endif // __linux__

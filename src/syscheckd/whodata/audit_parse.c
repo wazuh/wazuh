@@ -824,31 +824,6 @@ void audit_parse(char *buffer) {
             free_whodata_event(w_evt);
         }
         break;
-    case 3:
-        if (regexec(&regexCompiled_syscall, buffer, 2, match, 0) == 0) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            char *syscall = NULL;
-            os_malloc(match_size + 1, syscall);
-            snprintf(syscall, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-            if (!strcmp(syscall, "2") || !strcmp(syscall, "257") || !strcmp(syscall, "5") || !strcmp(syscall, "295")) {
-                // x86_64: 2 open
-                // x86_64: 257 openat
-                // i686: 5 open
-                // i686: 295 openat
-                mdebug2(FIM_HEALTHCHECK_CREATE, syscall);
-                audit_health_check_creation = 1;
-            } else if (!strcmp(syscall, "87") || !strcmp(syscall, "263") || !strcmp(syscall, "10") ||
-                       !strcmp(syscall, "301")) {
-                // x86_64: 87 unlink
-                // x86_64: 263 unlinkat
-                // i686: 10 unlink
-                // i686: 301 unlinkat
-                mdebug2(FIM_HEALTHCHECK_DELETE, syscall);
-            } else {
-                mdebug2(FIM_HEALTHCHECK_UNRECOGNIZED_EVENT, syscall);
-            }
-            os_free(syscall);
-        }
     }
 }
 

@@ -24,9 +24,6 @@
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 #define AUDIT_SOCKET                "queue/sockets/audit"
 #define AUDIT_CONF_FILE             "etc/af_wazuh.conf"
-#define AUDIT_HEALTHCHECK_DIR       "tmp"
-#define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
-#define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
 
 #ifdef WIN32
 #define FIM_REGULAR _S_IFREG
@@ -402,8 +399,6 @@ void fim_send_sync_msg(const char *location, const char * msg);
 int send_log_msg(const char *msg);
 
 #ifdef __linux__
-#define READING_MODE 0
-#define HEALTHCHECK_MODE 1
 
 /**
  * @brief Initialize Audit events reader thread
@@ -441,13 +436,6 @@ void add_whodata_directory(const char *path);
  */
 void remove_audit_rule_syscheck(const char *path);
 
-/**
- * @brief Read an audit event from socket
- *
- * @param [out] audit_sock The audit socket to read the events from
- * @param [in] reading_mode READING_MODE or HEALTHCHECK_MODE
- */
-void audit_read_events(int *audit_sock, int reading_mode);
 
 /**
  * @brief Makes Audit thread to wait for audit healthcheck to be performed
@@ -488,13 +476,6 @@ int init_auditd_socket(void);
  */
 void *audit_reload_thread();
 
-/**
- * @brief Thread that performs a healthcheck on audit
- * It reads an event from audit socket to check if it's running
- *
- * @param [out] audit_sock The audit socket to read the events from
- */
-void *audit_healthcheck_thread(int *audit_sock);
 
 // TODO
 /**
@@ -530,13 +511,6 @@ void fim_audit_reload_rules(void);
  */
 void audit_parse(char *buffer);
 
-/**
- * @brief Generate the audit event that the healthcheck thread should read
- *
- * @param audit_socket The audit socket to read the events from
- * @return 0 on success, -1 on error
- */
-int audit_health_check(int audit_socket);
 
 /**
  * @brief Deletes all the existing audit rules added by FIM

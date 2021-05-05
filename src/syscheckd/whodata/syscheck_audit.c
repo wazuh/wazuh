@@ -25,10 +25,10 @@
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 
 #ifndef WAZUH_UNIT_TESTING
-#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
-                                (mode == HEALTHCHECK_MODE && hc_thread_active))
+#define audit_thread_status(mode) \
+    ((mode == READING_MODE && audit_thread_active) || (mode == HEALTHCHECK_MODE && hc_thread_active))
 #else
-#define audit_thread_status() FOREVER()
+#define audit_thread_status(mode) FOREVER()
 #endif
 
 // Global variables
@@ -45,10 +45,7 @@ volatile int audit_db_consistency_flag = 0;
 volatile int audit_thread_active;
 
 #ifdef ENABLE_AUDIT
-typedef struct _audit_data_s {
-    int socket;
-    audit_mode mode;
-} audit_data_t;
+
 
 /**
  * @brief Creates the necessary threads to process audit events
@@ -205,7 +202,7 @@ void audit_no_rules_to_realtime() {
 
 // LCOV_EXCL_START
 int audit_init(void) {
-    static audit_data_t audit_data = { .socket = -1, .mode = AUDIT_DISABLED };
+    static audit_data_t audit_data = { .socket = -1, .mode = AUDIT_DISABLED, .parser = NULL };
 
     w_mutex_init(&audit_mutex, NULL);
 
@@ -235,6 +232,11 @@ int audit_init(void) {
         return -1;
     }
 
+    audit_data.parser = auparse_init(AUSOURCE_FEED, 0);
+    if (audit_data.parser == NULL) {
+        return -1;
+    }
+
     int regex_comp = init_regex();
     if (regex_comp < 0) {
         merror("Can't init regex in 'init_regex()'");
@@ -247,7 +249,9 @@ int audit_init(void) {
 
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
-        if(audit_health_check(audit_data.socket)) {
+        auparse_add_callback(audit_data.parser, healthcheck_callback, NULL, NULL);
+
+        if(audit_health_check(&audit_data)) {
             merror(FIM_ERROR_WHODATA_HEALTHCHECK_START);
             return -1;
         }
@@ -324,7 +328,8 @@ void *audit_main(audit_data_t *audit_data) {
     minfo(FIM_WHODATA_STARTED);
 
     // Read events
-    audit_read_events(&audit_data->socket, READING_MODE);
+    audit_data->wmode = READING_MODE;
+    audit_read_events(audit_data);
 
     // Auditd is not runnig or socket closed.
     mdebug1(FIM_AUDIT_THREAD_STOPED);
@@ -355,75 +360,63 @@ void *audit_main(audit_data_t *audit_data) {
         clean_rules();
     }
 
+    auparse_destroy(audit_data->parser);
+
     return NULL;
 }
 // LCOV_EXCL_STOP
 
 
-void audit_read_events(int *audit_sock, int mode) {
+void audit_read_events(audit_data_t *audit_data) {
     size_t byteRead;
-    char * cache;
-    char * cache_id = NULL;
-    char * line;
-    char * endline;
-    size_t cache_i = 0;
-    size_t buffer_i = 0; // Buffer offset
-    size_t len;
     fd_set fdset;
     struct timeval timeout;
     count_reload_retries = 0;
     int conn_retries;
-    char * eoe_found = false;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
-    os_malloc(BUF_SIZE, cache);
 
-    while (audit_thread_status()) {
+    while (audit_thread_status(audit_data->wmode)) {
         FD_ZERO(&fdset);
-        FD_SET(*audit_sock, &fdset);
+        FD_SET(audit_data->socket, &fdset);
 
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
 
-        switch (select(*audit_sock + 1, &fdset, NULL, NULL, &timeout)) {
+        switch (select(audit_data->socket + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
             merror(SELECT_ERROR, errno, strerror(errno));
             sleep(1);
             continue;
 
         case 0:
-            if (cache_i) {
-                // Flush cache
-                audit_parse(cache);
-                cache_i = 0;
-            }
-
             continue;
 
         default:
-            if ((mode == READING_MODE && !audit_thread_active) ||
-                (mode == HEALTHCHECK_MODE && !hc_thread_active)) {
+            if ((audit_data->wmode == READING_MODE && !audit_thread_active) ||
+                (audit_data->wmode == HEALTHCHECK_MODE && !hc_thread_active)) {
                 continue;
             }
 
             break;
         }
 
-        if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
+        byteRead = recv(audit_data->socket, buffer, BUF_SIZE, 0);
+        if (byteRead == 0) {
             // Connection closed
             mwarn(FIM_WARN_AUDIT_CONNECTION_CLOSED);
             // Reconnect
             conn_retries = 0;
             sleep(1);
             minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
-            *audit_sock = init_auditd_socket();
-            while (conn_retries < MAX_CONN_RETRIES && *audit_sock < 0) {
+            audit_data->socket = init_auditd_socket();
+            while (conn_retries < MAX_CONN_RETRIES && audit_data->socket < 0) {
                 minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
                 sleep(1);
-                *audit_sock = init_auditd_socket();
+                audit_data->socket = init_auditd_socket();
             }
-            if (*audit_sock >= 0) {
+            if (audit_data->socket >= 0) {
                 minfo(FIM_AUDIT_CONNECT);
                 // Reload rules
                 fim_audit_reload_rules();
@@ -436,75 +429,9 @@ void audit_read_events(int *audit_sock, int mode) {
             break;
         }
 
-        buffer[buffer_i += byteRead] = '\0';
-
-        // Find first endline
-
-        if (endline = strchr(buffer, '\n'), !endline) {
-            // No complete line yet.
-            continue;
-        }
-
-        // Get all the lines
-        line = buffer;
-
-        char * id;
-        char *event_too_long_id = NULL;
-
-        do {
-            *endline = '\0';
-
-            if (id = audit_get_id(line), id) {
-                // If there was cached data and the ID is different, parse cache first
-
-                if (cache_id && strcmp(cache_id, id) && cache_i) {
-                    if (!event_too_long_id) {
-                        audit_parse(cache);
-                    }
-                    cache_i = 0;
-                }
-
-                // Append to cache
-                len = endline - line;
-                if (cache_i + len + 1 <= BUF_SIZE) {
-                    strncpy(cache + cache_i, line, len);
-                    cache_i += len;
-                    cache[cache_i++] = '\n';
-                    cache[cache_i] = '\0';
-                } else if (!event_too_long_id){
-                    mwarn(FIM_WARN_WHODATA_EVENT_TOOLONG, id);
-                    os_strdup(id, event_too_long_id);
-                }
-                eoe_found = strstr(line, "type=EOE");
-
-                free(cache_id);
-                cache_id = id;
-            } else {
-                mwarn(FIM_WARN_WHODATA_GETID, line);
-            }
-
-            line = endline + 1;
-        } while (*line && (endline = strchr(line, '\n'), endline));
-
-        // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
-        if (eoe_found && !event_too_long_id){
-            audit_parse(cache);
-            cache_i = 0;
-        }
-
-        // If some data remains in the buffer, move it to the beginning
-        if (*line) {
-            buffer_i = strlen(line);
-            memmove(buffer, line, buffer_i);
-        } else {
-            buffer_i = 0;
-        }
-
-        os_free(event_too_long_id);
+        auparse_feed(audit_data->parser, buffer, BUF_SIZE);
     }
 
-    free(cache_id);
-    free(cache);
     free(buffer);
 }
 

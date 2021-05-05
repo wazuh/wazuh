@@ -14,6 +14,7 @@
 #include "shared.h"
 #include "../syscheck.h"
 #include "audit_op.h"
+#include "external/audit-userspace/auparse/auparse.h"
 
 #define WHODATA_PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
@@ -24,6 +25,15 @@ typedef struct {
     char *path;
     int pending_removal;
 } whodata_directory_t;
+
+typedef enum _whodata_mode_s { READING_MODE = 0, HEALTHCHECK_MODE } whodata_mode_t;
+
+typedef struct _audit_data_s {
+    int socket;
+    audit_mode mode;
+    whodata_mode_t wmode;
+    auparse_state_t *parser;
+} audit_data_t;
 
 /**
  * @brief Checks if the manipulation of the audit rule was done by FIM or by an user
@@ -50,6 +60,24 @@ int fim_rules_initial_load();
 
 // Public parse functions
 void clean_regex();
+
+void healthcheck_callback(auparse_state_t *state, auparse_cb_event_t cb_event_type, void *);
+
+/**
+ * @brief Read an audit event from socket
+ *
+ * @param [out] audit_sock The audit socket to read the events from
+ * @param [in] reading_mode READING_MODE or HEALTHCHECK_MODE
+ */
+void audit_read_events(audit_data_t *audit_data);
+
+/**
+ * @brief Generate the audit event that the healthcheck thread should read
+ *
+ * @param audit_socket The audit socket to read the events from
+ * @return 0 on success, -1 on error
+ */
+int audit_health_check(audit_data_t *audit_data);
 
 extern pthread_mutex_t audit_mutex;
 extern volatile int audit_thread_active;
