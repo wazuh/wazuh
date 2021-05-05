@@ -15,37 +15,37 @@
 
     <rule id="150001" level="6">
         <if_sid>150000</if_sid>
-        <event.severity>1</event.severity>
+        <field name="event.severity">1</field>
         <description>FTD alert message.</description>
     </rule>
 
     <rule id="150002" level="5">
         <if_sid>150000</if_sid>
-        <event.severity>2</event.severity>
+        <field name="event.severity">2</field>
         <description>ASA critical message.</description>
     </rule>
 
     <rule id="150003" level="4">
         <if_sid>150000</if_sid>
-        <event.severity>3</event.severity>
+        <field name="event.severity">3</field>
         <description>ASA error message.</description>
     </rule>
 
     <rule id="150004" level="3">
         <if_sid>150000</if_sid>
-        <event.severity>4</event.severity>
+        <field name="event.severity">4</field>
         <description>ASA warning message.</description>
     </rule>
 
     <rule id="150005" level="0">
         <if_sid>150000</if_sid>
-        <event.severity>5|6</event.severity>
+        <field name="event.severity">5|6</field>
         <description>ASA notification/informational message.</description>
     </rule>
 
     <rule id="150006" level="0">
         <if_sid>150000</if_sid>
-        <event.severity>7</event.severity>
+        <field name="event.severity">7</field>
         <description>ASA debug message.</description>
     </rule>
 
