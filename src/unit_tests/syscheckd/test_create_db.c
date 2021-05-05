@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -41,7 +41,7 @@ extern fim_state_db _db_state;
 
 /* auxiliary structs */
 typedef struct __fim_data_s {
-    fim_element *item;
+    event_data_t *evt_data;
     whodata_evt *w_evt;
     fim_entry *fentry;
     fim_file_data *new_data;
@@ -52,6 +52,14 @@ typedef struct __fim_data_s {
     OSList *list;
     rb_tree *tree;
 } fim_data_t;
+
+const struct stat DEFAULT_STATBUF = { .st_mode = S_IFREG | 00444,
+                                      .st_size = 1000,
+                                      .st_uid = 0,
+                                      .st_gid = 0,
+                                      .st_ino = 1234,
+                                      .st_dev = 2345,
+                                      .st_mtime = 3456 };
 
 /* redefinitons/wrapping */
 
@@ -72,7 +80,7 @@ static int setup_fim_data(void **state) {
     if(fim_data == NULL)
         return -1;
 
-    if(fim_data->item = calloc(1, sizeof(fim_element)), fim_data->item == NULL)
+    if (fim_data->evt_data = calloc(1, sizeof(event_data_t)), fim_data->evt_data == NULL)
         return -1;
 
     if(fim_data->w_evt = calloc(1, sizeof(whodata_evt)), fim_data->w_evt == NULL)
@@ -155,7 +163,7 @@ static int setup_fim_data(void **state) {
 static int teardown_fim_data(void **state) {
     fim_data_t *fim_data = *state;
 
-    free(fim_data->item);
+    free(fim_data->evt_data);
     free_whodata_event(fim_data->w_evt);
     free_file_data(fim_data->new_data);
     free_file_data(fim_data->old_data);
@@ -238,15 +246,6 @@ static int setup_fim_entry(void **state) {
 
     fim_data->fentry->file_entry.data = fim_data->local_data;
     fim_data->fentry->file_entry.path = NULL;
-
-    fim_data->item->index = 1;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM  |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
 
     fim_data->fentry->file_entry.path = strdup("file");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -370,15 +369,6 @@ static int setup_fim_scan_realtime(void **state) {
 }
 
 static int teardown_fim_scan_realtime(void **state) {
-    int *dir_opts = *state;
-    int it = 0;
-
-    while (syscheck.dir[it] != NULL) {
-        syscheck.opts[it] = dir_opts[it];
-        it++;
-    }
-
-    free(dir_opts);
     os_free(syscheck.database);
 
     syscheck.realtime = NULL; // Used with local variables in some tests
@@ -524,21 +514,15 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
 /* tests */
 static void test_fim_json_event(void **state) {
     fim_data_t *fim_data = *state;
+    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+    directory_t configuration = { .tag = "tag1,tag2" };
 
 #ifndef TEST_WINAGENT
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, NULL);
 #endif
 
-    fim_data->json = fim_json_event(
-                    "test.file",
-                    fim_data->old_data,
-                    fim_data->new_data,
-                    1,
-                    FIM_MODIFICATION,
-                    FIM_REALTIME,
-                    NULL,
-                    NULL
-                );
+    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
     assert_non_null(fim_data->json);
     cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
@@ -555,10 +539,8 @@ static void test_fim_json_event(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-#ifdef TEST_WINAGENT
-    assert_null(tags);
-#else
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+#ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
 #endif
@@ -582,25 +564,21 @@ static void test_fim_json_event(void **state) {
 
 static void test_fim_json_event_whodata(void **state) {
     fim_data_t *fim_data = *state;
+    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
+    event_data_t evt_data = {
+        .mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true, .type = FIM_MODIFICATION
+    };
+    directory_t configuration = { .tag = "tag1,tag2" };
 
-    syscheck.opts[1] |= CHECK_SEECHANGES;
+    syscheck.directories[1]->options |= CHECK_SEECHANGES;
 
 #ifndef TEST_WINAGENT
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, NULL);
 #endif
 
-    fim_data->json = fim_json_event(
-        "test.file",
-        fim_data->old_data,
-        fim_data->new_data,
-        1,
-        FIM_MODIFICATION,
-        FIM_WHODATA,
-        fim_data->w_evt,
-        "diff"
-    );
+    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, "diff");
 
-    syscheck.opts[1] &= ~CHECK_SEECHANGES;
+    syscheck.directories[1]->options &= ~CHECK_SEECHANGES;
 
     assert_non_null(fim_data->json);
     cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
@@ -617,10 +595,8 @@ static void test_fim_json_event_whodata(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-#ifdef TEST_WINAGENT
-    assert_null(tags);
-#else
     assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
+#ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
 #endif
@@ -638,24 +614,22 @@ static void test_fim_json_event_whodata(void **state) {
 
 static void test_fim_json_event_no_changes(void **state) {
     fim_data_t *fim_data = *state;
+    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
+    event_data_t evt_data = {
+        .mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true, .type = FIM_MODIFICATION
+    };
+    directory_t configuration = { .tag = "tag1,tag2" };
 
-    fim_data->json = fim_json_event(
-                        "test.file",
-                        fim_data->new_data,
-                        fim_data->new_data,
-                        1,
-                        FIM_MODIFICATION,
-                        FIM_WHODATA,
-                        NULL,
-                        NULL
-                    );
+    fim_data->json = fim_json_event(&entry, fim_data->new_data, &configuration, &evt_data, NULL);
 
     assert_null(fim_data->json);
 }
 
-
 static void test_fim_json_event_hardlink_one_path(void **state) {
     fim_data_t *fim_data = *state;
+    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+    directory_t configuration = { .tag = NULL };
 
     char **paths = calloc(2, sizeof(char *));
     paths[0] = strdup("test.file");
@@ -665,17 +639,7 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, paths);
 
 #endif
-
-    fim_data->json = fim_json_event(
-                    "test.file",
-                    fim_data->old_data,
-                    fim_data->new_data,
-                    2,
-                    FIM_MODIFICATION,
-                    FIM_REALTIME,
-                    NULL,
-                    NULL
-                );
+    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
     assert_non_null(fim_data->json);
     cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
@@ -692,10 +656,8 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-#ifdef TEST_WINAGENT
-    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
-#else
     assert_null(tags);
+#ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_null(hard_links);
 #endif
@@ -718,6 +680,9 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
 
 static void test_fim_json_event_hardlink_two_paths(void **state) {
     fim_data_t *fim_data = *state;
+    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+    directory_t configuration = { .tag = NULL };
 
     char **paths = calloc(3, sizeof(char *));
     paths[0] = strdup("test.file");
@@ -728,16 +693,7 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, paths);
 #endif
 
-    fim_data->json = fim_json_event(
-                    "test.file",
-                    fim_data->old_data,
-                    fim_data->new_data,
-                    2,
-                    FIM_MODIFICATION,
-                    FIM_REALTIME,
-                    NULL,
-                    NULL
-                );
+    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
     assert_non_null(fim_data->json);
     cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
@@ -754,10 +710,8 @@ static void test_fim_json_event_hardlink_two_paths(void **state) {
     assert_non_null(timestamp);
     assert_int_equal(timestamp->valueint, 1570184221);
     cJSON *tags = cJSON_GetObjectItem(data, "tags");
-#ifdef TEST_WINAGENT
-    assert_string_equal(cJSON_GetStringValue(tags), "tag1,tag2");
-#else
     assert_null(tags);
+#ifndef TEST_WINAGENT
     cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
     assert_non_null(hard_links);
 #endif
@@ -1145,71 +1099,73 @@ static void test_fim_get_checksum_wrong_size(void **state) {
 }
 
 static void test_fim_check_depth_success(void **state) {
-    int ret;
-
 #ifndef TEST_WINAGENT
-    // Pos 4 = "/usr/bin"
     char * path = "/usr/bin/folder1/folder2/folder3/file";
+    directory_t configuration = { .path = "/usr/bin", .recursion_level = 4 };
 #else
-    // Pos 4 = "%WINDIR%\\SysNative\\wbem"
-    char *aux_path = "%WINDIR%\\SysNative\\wbem\\folder1\\folder2\\folder3\\path.exe";
+    char *aux_path = "c:\\windows\\sysnative\\wbem\\folder1\\folder2\\folder3\\path.exe";
+    directory_t configuration = { .path = "c:\\windows\\sysnative\\wbem", .recursion_level = 4 };
     char path[OS_MAXSTR];
 
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
 #endif
-    ret = fim_check_depth(path, 4);
+    int ret;
+
+    ret = fim_check_depth(path, &configuration);
 
     assert_int_equal(ret, 3);
 }
 
 
 static void test_fim_check_depth_failure_strlen(void **state) {
-   int ret;
-
     char * path = "fl/fd";
-    // Pos 4 = "/usr/bin"
-    ret = fim_check_depth(path, 4);
+    directory_t configuration = { .path = "/usr/bin", .recursion_level = 4 };
+    int ret;
+
+    ret = fim_check_depth(path, &configuration);
 
     assert_int_equal(ret, -1);
 
 }
 
 static void test_fim_check_depth_failure_null_directory(void **state) {
-   int ret;
-
     char * path = "/usr/bin";
+    directory_t configuration = { .path = "/usr/bin", .recursion_level = 6 };
+    int ret;
+
     // Pos 4 = "/usr/bin"
-    ret = fim_check_depth(path, 6);
+    ret = fim_check_depth(path, &configuration);
 
     assert_int_equal(ret, -1);
 
 }
 
 static void test_fim_configuration_directory_no_path(void **state) {
-    int ret;
+    directory_t *ret;
 
     ret = fim_configuration_directory(NULL);
 
-    assert_int_equal(ret, -1);
+    assert_null(ret);
 }
 
 
 #ifndef TEST_WINAGENT
 static void test_fim_configuration_directory_file(void **state) {
-    int ret;
+    directory_t *ret;
 
     const char * path = "/media";
 
     ret = fim_configuration_directory(path);
 
-    assert_int_equal(ret, 3);
+    assert_non_null(ret);
+    assert_ptr_equal(ret, syscheck.directories[3]);
 }
 #else
 static void test_fim_configuration_directory_file(void **state) {
     char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
     char path[OS_MAXSTR];
-    int ret;
+    directory_t *ret;
 
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
@@ -1218,21 +1174,20 @@ static void test_fim_configuration_directory_file(void **state) {
 
     ret = fim_configuration_directory(path);
 
-    assert_int_equal(ret, 3);
+    assert_ptr_equal(ret, syscheck.directories[3]);
 }
 #endif
 
 
 static void test_fim_configuration_directory_not_found(void **state) {
-    int ret;
-
     const char *path = "/invalid";
+    directory_t *ret;
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/invalid'");
 
     ret = fim_configuration_directory(path);
 
-    assert_int_equal(ret, -1);
+    assert_null(ret);
 }
 
 static void test_init_fim_data_entry(void **state) {
@@ -1267,35 +1222,14 @@ static void expect_fim_db_set_scanned(fdb_t *db, const char *file_path, int ret)
 }
 
 static void test_fim_file_add(void **state) {
-    fim_data_t *fim_data = *state;
-    struct stat buf;
-
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                             CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES };
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
-
-    buf.st_mode = S_IFREG | 00444 ;
-    buf.st_size = 1000;
-    buf.st_uid = 0;
-    buf.st_gid = 0;
-    buf.st_ino = 1234;
-    buf.st_dev = 2345;
-    buf.st_mtime = 3456;
-
-    fim_data->item->index = 1;
-    fim_data->item->statbuf = buf;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_MTIME |
-                                    CHECK_SHA256SUM;
-
-    fim_data->item->configuration |= CHECK_SEECHANGES;
 
     expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
     will_return(__wrap_fim_db_file_is_scanned, 0);
@@ -1310,8 +1244,8 @@ static void test_fim_file_add(void **state) {
     will_return(__wrap_fim_db_get_path, NULL);
 
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, fim_data->item->statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, fim_data->item->statbuf.st_dev);
+    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
+    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
     will_return(__wrap_fim_db_data_exists, 0);
 
     expect_fim_db_insert(syscheck.database, file_path, FIMDB_OK);
@@ -1326,28 +1260,20 @@ static void test_fim_file_add(void **state) {
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    fim_file(file_path, fim_data->item, NULL, 1);
-
-    fim_data->item->configuration &= ~CHECK_SEECHANGES;
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 
 static void test_fim_file_modify(void **state) {
     fim_data_t *fim_data = *state;
-
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
-    fim_data->item->index = 1;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM  |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
 
     fim_data->fentry->file_entry.path = strdup("file");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -1397,8 +1323,8 @@ static void test_fim_file_modify(void **state) {
                                         0x400, 0);
 
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, fim_data->item->statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, fim_data->item->statbuf.st_dev);
+    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
+    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
     will_return(__wrap_fim_db_data_exists, 0);
 #endif
 
@@ -1414,20 +1340,21 @@ static void test_fim_file_modify(void **state) {
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    fim_file(file_path, fim_data->item, NULL, 1);
+
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 static void test_fim_file_no_attributes(void **state) {
-    fim_data_t *fim_data = *state;
     char buffer1[OS_SIZE_256];
     char buffer2[OS_SIZE_256];
-
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
 #ifdef TEST_WINAGENT
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
 #else
     char file_path[] = "/bin/ls";
 #endif
-    fim_data->item->index = 1;
 
     expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
     will_return(__wrap_fim_db_file_is_scanned, 0);
@@ -1467,26 +1394,20 @@ static void test_fim_file_no_attributes(void **state) {
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    fim_file(file_path, fim_data->item, NULL, 1);
+
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 static void test_fim_file_error_on_insert(void **state) {
     fim_data_t *fim_data = *state;
-
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
-
-    fim_data->item->index = 1;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM  |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
 
     fim_data->fentry->file_entry.path = strdup(file_path);
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -1545,8 +1466,8 @@ static void test_fim_file_error_on_insert(void **state) {
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, fim_data->item->statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, fim_data->item->statbuf.st_dev);
+    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
+    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
     will_return(__wrap_fim_db_data_exists, 0);
 #endif
 
@@ -1556,106 +1477,69 @@ static void test_fim_file_error_on_insert(void **state) {
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    fim_file(file_path, fim_data->item, NULL, 1);
+
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 static void test_fim_checker_scheduled_configuration_directory_error(void **state) {
-    fim_data_t *fim_data = *state;
-
     char * path = "/not/found/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_SCHEDULED;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/not/found/test.file'");
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_not_scheduled_configuration_directory_error(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * path = "/not/found/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    const char *path = "/not/found/test.file";
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/not/found/test.file'");
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 }
 
 #ifndef TEST_WINAGENT
-static void test_fim_checker_invalid_fim_mode(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * path = "/media/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = -1;
-
-    // Nothing to check on this condition
-
-    fim_checker(path, fim_data->item, NULL, 1);
-}
-
 static void test_fim_checker_over_max_recursion_level(void **state) {
-    fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    const char *path = "/media/a/test.file";
 
-    char * path = "/media/a/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
-
-    syscheck.recursion_level[3] = 0;
+    syscheck.directories[3]->recursion_level = 0;
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/a/test.file'");
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 
-    syscheck.recursion_level[3] = 50;
+    syscheck.directories[3]->recursion_level = 50;
 }
 
 static void test_fim_checker_deleted_file(void **state) {
-    struct stat buf = { .st_mode = S_IFREG };
-    fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    struct stat statbuf = DEFAULT_STATBUF;
+    const char *path = "/media/test.file";
 
-    char * path = "/media/test.file";
-    fim_data->item->index = 3;
-    fim_data->item->mode = FIM_REALTIME;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: '/media/test.file' due to [(1)-(Operation not permitted)]");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "(6222): Stat() function failed on: '/media/test.file' due to [(1)-(Operation not permitted)]");
 
     expect_string(__wrap_lstat, filename, path);
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, -1);
 
     errno = 1;
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 
     errno = 0;
-
-    assert_int_equal(fim_data->item->configuration, 33279);
-    assert_int_equal(fim_data->item->index, 3);
 }
 
 static void test_fim_checker_deleted_file_enoent(void **state) {
-    struct stat buf = { .st_mode = S_IFREG };
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    struct stat statbuf = DEFAULT_STATBUF;
+    const char *path = "/media/test.file";
 
-    char * path = "/media/test.file";
-    fim_data->item->index = 3;
-    syscheck.opts[3] |= CHECK_SEECHANGES;
+    syscheck.directories[3]->options |= CHECK_SEECHANGES;
 
     fim_data->fentry->file_entry.path = strdup("/media/test.file");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -1680,7 +1564,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     expect_string(__wrap_lstat, filename, path);
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, -1);
     errno = ENOENT;
 
@@ -1692,61 +1576,43 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 
     errno = 0;
-    syscheck.opts[3] &= ~CHECK_SEECHANGES;
-
-    assert_int_equal(fim_data->item->configuration, 41471);
-    assert_int_equal(fim_data->item->index, 3);
+    syscheck.directories[3]->options &= ~CHECK_SEECHANGES;
 }
 
 static void test_fim_checker_no_file_system(void **state) {
-    struct stat buf = { .st_mode = S_IFREG };
-    fim_data_t *fim_data = *state;
-
-    char * path = "/media/test.file";
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    struct stat statbuf = DEFAULT_STATBUF;
+    const char *path = "/media/test.file";
 
     expect_string(__wrap_lstat, filename, path);
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
     will_return(__wrap_HasFilesystem, -1);
 
-    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 33279);
-    assert_int_equal(fim_data->item->index, 3);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_regular(void **state) {
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_dev = 1,
-                        .st_ino = 999,
-                        .st_uid = 0,
-                        .st_gid = 0,
-                        .st_mtime = 1433395216,
-                        .st_size = 1500 };
-    fim_data_t *fim_data = *state;
-
-    char * path = "/media/test.file";
-    fim_data->item->statbuf.st_dev = 1;
-    fim_data->item->statbuf.st_ino = 999;
-    fim_data->item->statbuf.st_uid = 0;
-    fim_data->item->statbuf.st_gid = 0;
-    fim_data->item->statbuf.st_mtime = 1433395216;
-    fim_data->item->statbuf.st_size = 1500;
-    fim_data->item->index = 3;
+    const char *path = "/media/test.file";
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    struct stat statbuf = { .st_mode = S_IFREG,
+                            .st_dev = 1,
+                            .st_ino = 999,
+                            .st_uid = 0,
+                            .st_gid = 0,
+                            .st_mtime = 1433395216,
+                            .st_size = 1500 };
 
     expect_string(__wrap_lstat, filename, path);
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_HasFilesystem, path, "/media/test.file");
+    expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
 
     // Inside fim_file
@@ -1759,34 +1625,29 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 999, 1, NULL);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
+    expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, "/media/test.file");
+    expect_string(__wrap_fim_db_insert, file_path, path);
     will_return(__wrap_fim_db_insert, 0);
 
-    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 33279);
-    assert_int_equal(fim_data->item->index, 3);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_regular_warning(void **state) {
-    struct stat buf = { .st_mode = S_IFREG };
-    fim_data_t *fim_data = *state;
+    const char *path = "/media/test.file";
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    struct stat statbuf = { .st_mode = S_IFREG,
+                            .st_dev = 1,
+                            .st_ino = 999,
+                            .st_uid = 0,
+                            .st_gid = 0,
+                            .st_mtime = 1433395216,
+                            .st_size = 1500 };
 
-    char * path = "/media/test.file";
-    fim_data->item->statbuf.st_dev = 1;
-    fim_data->item->statbuf.st_ino = 999;
-    fim_data->item->statbuf.st_uid = 0;
-    fim_data->item->statbuf.st_gid = 0;
-    fim_data->item->statbuf.st_mtime = 1433395216;
-    fim_data->item->statbuf.st_size = 1500;
-
-    fim_data->item->index = 3;
     expect_string(__wrap_lstat, filename, path);
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/test.file");
@@ -1807,22 +1668,16 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_string(__wrap_fim_db_insert, file_path, "/media/test.file");
     will_return(__wrap_fim_db_insert, -1);
 
-    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 33279);
-    assert_int_equal(fim_data->item->index, 3);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_regular_ignore(void **state) {
-    struct stat buf = { .st_mode = S_IFREG };
-    fim_data_t *fim_data = *state;
-
-    char * path = "/etc/mtab";
-    fim_data->item->index = 3;
-    fim_data->item->mode = FIM_WHODATA;
+    struct stat statbuf = DEFAULT_STATBUF;
+    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = NULL, .report_event = true };
+    const char *path = "/etc/mtab";
 
     expect_string(__wrap_lstat, filename, path);
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/etc/mtab");
@@ -1830,47 +1685,40 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'file' '/etc/mtab' due to '/etc/mtab'");
 
-    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 66047);
-    assert_int_equal(fim_data->item->index, 1);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_regular_restrict(void **state) {
-    struct stat buf = { .st_mode = S_IFREG };
-    fim_data_t *fim_data = *state;
-
-    char * path = "/media/test";
-    fim_data->item->index = 3;
-    fim_data->item->mode = FIM_REALTIME;
+    struct stat statbuf = DEFAULT_STATBUF;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    const char *path = "/media/test";
 
     expect_string(__wrap_lstat, filename, path);
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
+
     expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6203): Ignoring entry '/media/test' due to restriction 'file$'");
 
-    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 33279);
-    assert_int_equal(fim_data->item->index, 3);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_directory(void **state) {
-    struct stat buf = { .st_mode = S_IFDIR };
     fim_data_t *fim_data = *state;
+    struct stat directory_stat = DEFAULT_STATBUF;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    const char *path = "/media/";
 
-    char * path = "/media/";
-    fim_data->item->index = 3;
-    fim_data->item->mode = FIM_REALTIME;
+    directory_stat.st_mode = S_IFDIR;
 
     expect_string(__wrap_lstat, filename, "/media/");
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &directory_stat);
     will_return(__wrap_lstat, 0);
+
     expect_string(__wrap_lstat, filename, "/media/test");
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &directory_stat);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "/media/");
@@ -1878,10 +1726,8 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return_always(__wrap_HasFilesystem, 0);
 
     expect_string(__wrap_realtime_adddir, dir, "/media/");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
     will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/media/test");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
     will_return(__wrap_realtime_adddir, 0);
 
     strcpy(fim_data->entry->d_name, "test");
@@ -1891,29 +1737,27 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(__wrap_readdir, NULL);
     will_return(__wrap_readdir, NULL);
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) {
-    struct stat buf = { .st_mode = S_IFDIR };
     fim_data_t *fim_data = *state;
+    struct stat statbuf = DEFAULT_STATBUF;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    const char *path = "/media";
 
-    char * path = "/media";
-    buf.st_mode = S_IFDIR;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
+    statbuf.st_mode = S_IFDIR;
 
-    syscheck.recursion_level[3] = 0;
+    syscheck.directories[3]->recursion_level = 0;
 
-    expect_string(__wrap_lstat, filename, "/media");
-    will_return(__wrap_lstat, &buf);
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
-    expect_string(__wrap_HasFilesystem, path, "/media");
+
+    expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap_realtime_adddir, dir, "/media");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
+    expect_string(__wrap_realtime_adddir, dir, path);
     will_return(__wrap_realtime_adddir, 0);
 
     will_return(__wrap_opendir, 1);
@@ -1921,8 +1765,9 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
     will_return(__wrap_readdir, fim_data->entry);
 
     expect_string(__wrap_lstat, filename, "/media/test");
-    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
+
     expect_string(__wrap_HasFilesystem, path, "/media/test");
     will_return(__wrap_HasFilesystem, 0);
 
@@ -1930,42 +1775,34 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
-    fim_checker(path, fim_data->item, NULL, 1);
 
-    syscheck.recursion_level[3] = 50;
+    fim_checker(path, &evt_data, NULL);
+
+    syscheck.directories[3]->recursion_level = 50;
 }
 
 static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char * path = "/media/test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 0;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    const char *path = "/media/test.file";
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/test.file'");
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_root_file_within_recursion_level(void **state) {
-    struct stat buf = { .st_mode = S_IFREG, .st_gid = 0 };
-    fim_data_t *fim_data = *state;
+    struct stat statbuf = DEFAULT_STATBUF;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    const char *path = "/test.file";
 
-    char * path = "/test.file";
+    statbuf.st_size = 0;
 
-    fim_data->item->index = 0;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
-
-    expect_string(__wrap_lstat, filename, "/test.file");
-    will_return(__wrap_lstat, &buf);
+    expect_string(__wrap_lstat, filename, path);
+    will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_HasFilesystem, path, "/test.file");
+    expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
     // Inside fim_file
     expect_value(__wrap_get_user, uid, 0);
@@ -1975,28 +1812,26 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     will_return(__wrap_get_group, strdup("group"));
 
     expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_any(__wrap_fim_db_get_paths_from_inode, inode);
-    expect_any(__wrap_fim_db_get_paths_from_inode, dev);
+    expect_value(__wrap_fim_db_get_paths_from_inode, inode, statbuf.st_ino);
+    expect_value(__wrap_fim_db_get_paths_from_inode, dev, statbuf.st_dev);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test.file");
+    expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, "/test.file");
+    expect_string(__wrap_fim_db_insert, file_path, path);
     will_return(__wrap_fim_db_insert, 0);
 
-    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 33279);
-    assert_int_equal(fim_data->item->index, 0);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     struct stat file_buf = { .st_mode = S_IFREG };
     struct dirent *file = *state;
+    directory_t *dir_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2009,24 +1844,22 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    int it = 0;
-
     // First scan
-    while (syscheck.dir[it]) {
-        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+    foreach_array(dir_it, syscheck.directories) {
+        expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
-        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+
+        expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
-        if (it == 0 || it == 2 || it == 3){
-            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
-            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
             will_return_count(__wrap_realtime_adddir, 0, 2);
         }
+
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
-
-        it++;
     }
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
@@ -2041,17 +1874,20 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_lstat, filename, "/boot");
     will_return(__wrap_lstat, &directory_buf);
     will_return(__wrap_lstat, 0);
+
     expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return(__wrap_HasFilesystem, 0);
+
     expect_string(__wrap_realtime_adddir, dir, "/boot");
-    expect_value(__wrap_realtime_adddir, whodata, 0);
     will_return(__wrap_realtime_adddir, 0);
+
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, file);
 
     expect_string(__wrap_lstat, filename, "/boot/test_file");
     will_return(__wrap_lstat, &file_buf);
     will_return(__wrap_lstat, 0);
+
     expect_string(__wrap_HasFilesystem, path, "/boot/test_file");
     will_return(__wrap_HasFilesystem, 0);
 
@@ -2093,79 +1929,10 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     fim_scan();
 }
 
-static void test_fim_scan_no_realtime(void **state) {
-    struct stat directory_buf = { .st_mode = S_IFDIR };
-    int *dir_opts;
-    int it = 0;
-
-    while (syscheck.dir[it] != NULL) {
-        it++;
-    }
-    dir_opts = calloc(it, sizeof(int));
-
-    if (!dir_opts) {
-        fail();
-    }
-
-    it = 0;
-    while (syscheck.dir[it] != NULL) {
-        dir_opts[it] = syscheck.opts[it];
-        syscheck.opts[it] &= ~REALTIME_ACTIVE;
-        it++;
-    }
-
-    *state = dir_opts;
-
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
-
-    // fim_diff_folder_size
-    expect_string(__wrap_IsDir, file, "queue/diff/local");
-    will_return(__wrap_IsDir, 0);
-
-    expect_string(__wrap_DirSize, path, "queue/diff/local");
-    will_return(__wrap_DirSize, 0.0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
-
-    it = 0;
-    // First scan
-    while (syscheck.dir[it]) {
-        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
-        will_return(__wrap_lstat, &directory_buf);
-        will_return(__wrap_lstat, 0);
-        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
-        will_return(__wrap_HasFilesystem, 0);
-        will_return(__wrap_opendir, 1);
-        will_return(__wrap_readdir, NULL);
-
-        it++;
-    }
-
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-
-    expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
-    will_return(__wrap_fim_db_get_not_scanned, NULL);
-    will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
-
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
-
-    expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of entries to be monitored: '50000'");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
-    will_return(__wrap_send_log_msg, 1);
-
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
-
-    fim_scan();
-}
 
 static void test_fim_scan_db_full_not_double_scan(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
+    directory_t *dir_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2178,24 +1945,22 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    int it = 0;
-
     // First scan
-    while (syscheck.dir[it]) {
-        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+    foreach_array(dir_it, syscheck.directories) {
+        expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
-        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+
+        expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
-        if (it == 0 || it == 2 || it == 3){
-            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
-            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
             will_return_count(__wrap_realtime_adddir, 0, 2);
         }
+
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
-
-        it++;
     }
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
@@ -2222,22 +1987,9 @@ static void test_fim_scan_realtime_enabled(void **state) {
     OSHash dirtb = { .elements = 10, .table = &table, .rows = 0 }; // this hash is not reallistic but works for testing
     rtfim realtime = { .queue_overflow = true, .dirtb = &dirtb };
     struct stat directory_buf = { .st_mode = S_IFDIR };
-    int *dir_opts = calloc(6, sizeof(int));
-    int it = 0;
-
-    if (!dir_opts) {
-        fail();
-    }
+    directory_t *dir_it;
 
     syscheck.realtime = &realtime;
-
-    while (syscheck.dir[it] != NULL) {
-        dir_opts[it] = syscheck.opts[it];
-        syscheck.opts[it] |= REALTIME_ACTIVE;
-        it++;
-    }
-
-    *state = dir_opts;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2250,22 +2002,22 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    it = 0;
-
     // First scan
-    while (syscheck.dir[it]) {
-        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+    foreach_array(dir_it, syscheck.directories) {
+        expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
-        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+
+        expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
-        expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
-        expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
-        will_return_count(__wrap_realtime_adddir, 0, 2);
+
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
+            will_return_count(__wrap_realtime_adddir, 0, 2);
+        }
+
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
-
-        it++;
     }
 
     // check_deleted_files
@@ -2291,6 +2043,10 @@ static void test_fim_scan_realtime_enabled(void **state) {
     // fim_scan
     expect_string(__wrap__mdebug2, formatted_msg, "(6345): Folders monitored with real-time engine: 10");
 
+    expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    will_return(__wrap_send_log_msg, 1);
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
     fim_scan();
@@ -2300,6 +2056,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
 static void test_fim_scan_db_free(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
+    directory_t *dir_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2312,24 +2069,21 @@ static void test_fim_scan_db_free(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    int it = 0;
-
     // First scan
-    while (syscheck.dir[it]) {
-        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+    foreach_array(dir_it, syscheck.directories) {
+        expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
-        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+
+        expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
-        if (it == 0 || it == 2 || it == 3){
-            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
-            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
             will_return_count(__wrap_realtime_adddir, 0, 2);
         }
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
-
-        it++;
     }
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 1000);
@@ -2358,6 +2112,7 @@ static void test_fim_scan_db_free(void **state) {
 
 static void test_fim_scan_no_limit(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
+    directory_t *dir_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2370,24 +2125,22 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    int it = 0;
-
     // First scan
-    while (syscheck.dir[it]) {
-        expect_string(__wrap_lstat, filename, syscheck.dir[it]);
+    foreach_array(dir_it, syscheck.directories) {
+        expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
-        expect_string(__wrap_HasFilesystem, path, syscheck.dir[it]);
+
+        expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
-        if (it == 0 || it == 2 || it == 3){
-            expect_string_count(__wrap_realtime_adddir, dir, syscheck.dir[it], 2);
-            expect_value_count(__wrap_realtime_adddir, whodata, 0, 2);
+
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
             will_return_count(__wrap_realtime_adddir, 0, 2);
         }
+
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
-
-        it++;
     }
 
     // check_deleted_files
@@ -2410,6 +2163,7 @@ static void test_fim_scan_no_limit(void **state) {
 /**** delete_file_event ****/
 void test_fim_delete_file_event_delete_error(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
 
     fim_data->fentry->file_entry.path = strdup("/media/test");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -2436,11 +2190,12 @@ void test_fim_delete_file_event_delete_error(void **state) {
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
 
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *)true, NULL, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_remove_success(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
 
     fim_data->fentry->file_entry.path = strdup("/media/test");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -2471,12 +2226,13 @@ void test_fim_delete_file_event_remove_success(void **state) {
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true, NULL, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 
 void test_fim_delete_file_event_no_conf(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
 
     fim_data->fentry->file_entry.path = strdup("/a/random/path");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -2511,11 +2267,12 @@ void test_fim_delete_file_event_no_conf(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, buffer_msg);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true, NULL, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
 
     fim_data->fentry->file_entry.path = strdup("/media/test");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -2546,12 +2303,12 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true,
-                          (void *) FIM_SCHEDULED, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
 
     fim_data->fentry->file_entry.path = strdup("/media/test");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -2576,14 +2333,14 @@ void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true,
-                          (void *) FIM_WHODATA, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME };
 
-    fim_data->fentry->file_entry.path = strdup("/media/test");
+    fim_data->fentry->file_entry.path = strdup("/etc/test");
     fim_data->fentry->file_entry.data = fim_data->local_data;
 
     fim_data->local_data->size = 1500;
@@ -2605,19 +2362,13 @@ void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    int pos = fim_configuration_directory(fim_data->fentry->file_entry.path);
-    syscheck.opts[pos] |= WHODATA_ACTIVE;
-    syscheck.opts[pos] &= ~REALTIME_ACTIVE;
-
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true,
-                          (void *) FIM_REALTIME, NULL);
-
-    syscheck.opts[pos] &= ~WHODATA_ACTIVE;
-    syscheck.opts[pos] |= REALTIME_ACTIVE;
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_report_changes(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .type = FIM_DELETE, .report_event = true };
+    directory_t *configuration;
 
     fim_data->fentry->file_entry.path = strdup("/media/test");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -2640,8 +2391,9 @@ void test_fim_delete_file_event_report_changes(void **state) {
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
-    int pos = fim_configuration_directory(fim_data->fentry->file_entry.path);
-    syscheck.opts[pos] |= CHECK_SEECHANGES;
+
+    configuration = fim_configuration_directory(fim_data->fentry->file_entry.path);
+    configuration->options |= CHECK_SEECHANGES;
 
     char buffer[OS_SIZE_128] = {0};
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
@@ -2652,43 +2404,19 @@ void test_fim_delete_file_event_report_changes(void **state) {
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true, NULL, NULL);
-    syscheck.opts[pos] &= ~CHECK_SEECHANGES;
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
+
+    configuration->options &= ~CHECK_SEECHANGES;
 }
 #else
-static void test_fim_checker_invalid_fim_mode(void **state) {
-    fim_data_t *fim_data = *state;
-
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
-    char expanded_path[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 3;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = -1;
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
-        fail();
-
-    str_lowercase(expanded_path);
-
-    // Nothing to check on this condition
-    fim_checker(expanded_path, fim_data->item, NULL, 1);
-}
-
 static void test_fim_checker_over_max_recursion_level(void **state) {
-    fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true, .w_evt = NULL };
 
     char *path = "%WINDIR%\\System32\\drivers\\etc\\random\\test.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 2;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
 
-    syscheck.recursion_level[2] = 0;
+    syscheck.directories[2]->recursion_level = 0;
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -2699,17 +2427,14 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
-    fim_checker(expanded_path, fim_data->item, NULL, 1);
+    fim_checker(expanded_path, &evt_data, NULL);
 }
 
 static void test_fim_checker_deleted_file(void **state) {
-    fim_data_t *fim_data = *state;
-
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    fim_data->item->mode = FIM_REALTIME;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: 'c:\\windows\\system32\\drivers\\etc\\test.exe' due to [(1)-(Operation not permitted)]");
 
@@ -2724,22 +2449,19 @@ static void test_fim_checker_deleted_file(void **state) {
 
     errno = 1;
 
-    fim_checker(expanded_path, fim_data->item, NULL, 1);
+    fim_checker(expanded_path, &evt_data, NULL);
 
     errno = 0;
-
-    assert_int_equal(fim_data->item->configuration, 37375);
-    assert_int_equal(fim_data->item->index, 7);
 }
 
 static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data_t *fim_data = *state;
-
     struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    syscheck.opts[7] |= CHECK_SEECHANGES;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+
+    syscheck.directories[7]->options |= CHECK_SEECHANGES;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2786,34 +2508,25 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    fim_checker(expanded_path, fim_data->item, NULL, 1);
+    fim_checker(expanded_path, &evt_data, NULL);
 
     errno = 0;
-    syscheck.opts[7] &= ~CHECK_SEECHANGES;
-
-    assert_int_equal(fim_data->item->configuration, 45567);
-    assert_int_equal(fim_data->item->index, 7);
+    syscheck.directories[7]->options &= ~CHECK_SEECHANGES;
 }
 
 static void test_fim_checker_fim_regular(void **state) {
     fim_data_t *fim_data = *state;
-
     struct stat stat_s = { .st_mode = S_IFREG };
-
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
-
+    char *path = "%WINDIR%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
     char expanded_path[OS_SIZE_128];
+    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true };
 
-    fim_data->item->index = 7;
-
-    fim_data->item->statbuf.st_size = 1500;
-
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_SIZE_128)){
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_SIZE_128)) {
         fail();
     }
+
     expect_string(__wrap_stat, __file, expanded_path);
     will_return(__wrap_stat, &stat_s);
-
     will_return(__wrap_stat, 0);
 
     str_lowercase(expanded_path);
@@ -2839,21 +2552,15 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_string(__wrap_fim_db_insert, file_path, expanded_path);
     will_return(__wrap_fim_db_insert, 0);
 
-    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 37375);
-    assert_int_equal(fim_data->item->index, 7);
+    fim_checker(expanded_path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_regular_ignore(void **state) {
-    fim_data_t *fim_data = *state;
-
     struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\ignored.file";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    fim_data->item->index = 7;
-    // fim_data->item->mode = FIM_REALTIME;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2870,21 +2577,15 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'file' '%s' due to '%s'", expanded_path, expanded_path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
-    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 37375);
-    assert_int_equal(fim_data->item->index, 7);
+    fim_checker(expanded_path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_regular_restrict(void **state) {
-    fim_data_t *fim_data = *state;
-
     struct stat stat_s = { .st_mode = S_IFREG };
     char * path = "%WINDIR%\\System32\\wbem\\restricted.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    fim_data->item->index = 8;
-    fim_data->item->mode = FIM_REALTIME;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2901,19 +2602,14 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     snprintf(debug_msg, OS_MAXSTR, "(6203): Ignoring entry '%s' due to restriction 'wmic.exe$'", expanded_path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
-    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 37375);
-    assert_int_equal(fim_data->item->index, 8);
+    fim_checker(expanded_path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_regular_warning(void **state) {
-    fim_data_t *fim_data = *state;
     struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    fim_data->item->statbuf.st_size = 1500;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2945,10 +2641,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_string(__wrap_fim_db_insert, file_path, expanded_path);
     will_return(__wrap_fim_db_insert, -1);
 
-    fim_checker(expanded_path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 37375);
-    assert_int_equal(fim_data->item->index, 7);
+    fim_checker(expanded_path, &evt_data, NULL);
 }
 
 static void test_fim_checker_fim_directory(void **state) {
@@ -2958,8 +2651,7 @@ static void test_fim_checker_fim_directory(void **state) {
     char skip_directory_message[OS_MAXSTR];
     char expanded_path[OS_MAXSTR];
     char expanded_path_test[OS_MAXSTR];
-    fim_data->item->index = 7;
-    fim_data->item->mode = FIM_REALTIME;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2990,34 +2682,26 @@ static void test_fim_checker_fim_directory(void **state) {
         "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
     expect_string(__wrap__mdebug2, formatted_msg, skip_directory_message);
 
-    fim_checker(expanded_path, fim_data->item, NULL, 1);
+    fim_checker(expanded_path, &evt_data, NULL);
 }
 
 
 static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
-    fim_data_t *fim_data = *state;
-
     char * path = "c:\\windows\\test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
-    fim_data->item->index = 0;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 'c:\\windows\\test.file'");
 
-    fim_checker(path, fim_data->item, NULL, 1);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_checker_root_file_within_recursion_level(void **state) {
-    fim_data_t *fim_data = *state;
-
     char * path = "c:\\test.file";
-    struct stat buf = { .st_mode = S_IFREG };
-    fim_data->item->index = 0;
-    fim_data->item->statbuf = buf;
-    fim_data->item->mode = FIM_REALTIME;
+    struct stat statbuf = DEFAULT_STATBUF;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true, .w_evt = NULL };
+
+    statbuf.st_size = 0;
 
     // Inside fim_file
     expect_get_data(strdup("user"), "", path, 0);
@@ -3036,16 +2720,13 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     will_return(__wrap_fim_db_insert, 0);
 
     expect_string(__wrap_stat, __file, "c:\\test.file");
-    will_return(__wrap_stat, &buf);
+    will_return(__wrap_stat, &statbuf);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "c:\\test.file");
     will_return(__wrap_HasFilesystem, 0);
 
-    fim_checker(path, fim_data->item, fim_data->w_evt, 1);
-
-    assert_int_equal(fim_data->item->configuration, 37375);
-    assert_int_equal(fim_data->item->index, 0);
+    fim_checker(path, &evt_data, NULL);
 }
 
 static void test_fim_scan_db_full_double_scan(void **state) {
@@ -3317,11 +2998,9 @@ static void test_fim_scan_no_limit(void **state) {
 
 void test_fim_delete_file_event_delete_error(void **state) {
     fim_data_t *fim_data = *state;
-
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    syscheck.opts[7] |= CHECK_SEECHANGES;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .type=FIM_DELETE };
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -3348,22 +3027,19 @@ void test_fim_delete_file_event_delete_error(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_fim_diff_process_delete_file(expanded_path, 0);
-
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *)true, NULL, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_remove_success(void **state) {
     fim_data_t *fim_data = *state;
-
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    syscheck.opts[7] |= CHECK_SEECHANGES;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
+
     char buffer[OS_SIZE_128] = {0};
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -3390,8 +3066,6 @@ void test_fim_delete_file_event_remove_success(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_fim_diff_process_delete_file(expanded_path, 0);
-
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -3399,16 +3073,15 @@ void test_fim_delete_file_event_remove_success(void **state) {
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true, NULL, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_no_conf(void **state) {
     fim_data_t *fim_data = *state;
-
     char *path = "C:\\A\\random\\path";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    syscheck.opts[7] |= CHECK_SEECHANGES;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -3443,17 +3116,16 @@ void test_fim_delete_file_event_no_conf(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, buffer_config);
     expect_string(__wrap__mdebug2, formatted_msg, buffer_msg);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true, NULL, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     fim_data_t *fim_data = *state;
-
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    syscheck.opts[7] |= CHECK_SEECHANGES;
     char buffer[OS_SIZE_128] = {0};
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -3478,8 +3150,6 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
-
-    expect_fim_diff_process_delete_file(expanded_path, 0);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
@@ -3488,17 +3158,15 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true,
-                          (void *) FIM_SCHEDULED, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
     fim_data_t *fim_data = *state;
-
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    syscheck.opts[7] |= CHECK_SEECHANGES;
+    event_data_t evt_data = { .mode = FIM_WHODATA, .report_event = true };
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -3524,17 +3192,15 @@ void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true,
-                          (void *) FIM_WHODATA, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
 
 void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
     fim_data_t *fim_data = *state;
-
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    fim_data->item->index = 7;
-    syscheck.opts[7] |= CHECK_SEECHANGES;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -3560,15 +3226,14 @@ void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    int pos = fim_configuration_directory(fim_data->fentry->file_entry.path);
-    syscheck.opts[pos] |= WHODATA_ACTIVE;
-    syscheck.opts[pos] &= ~REALTIME_ACTIVE;
+    directory_t *configuration = fim_configuration_directory(fim_data->fentry->file_entry.path);
+    configuration->options |= WHODATA_ACTIVE | CHECK_SEECHANGES;
+    configuration->options &= ~REALTIME_ACTIVE;
 
-    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *) true,
-                          (void *) FIM_REALTIME, NULL);
+    fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 
-    syscheck.opts[pos] &= ~WHODATA_ACTIVE;
-    syscheck.opts[pos] |= REALTIME_ACTIVE;
+    configuration->options &= ~(WHODATA_ACTIVE | CHECK_SEECHANGES);
+    configuration->options |= REALTIME_ACTIVE;
 }
 
 #endif
@@ -4077,6 +3742,7 @@ static void test_fim_check_db_state_nodes_count_database_error(void **state) {
 /* fim_directory */
 static void test_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
     int ret;
 
     strcpy(fim_data->entry->d_name, "test");
@@ -4091,15 +3757,14 @@ static void test_fim_directory(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'test\\test'");
 #endif
 
-    fim_data->item->index = 1;
-
-    ret = fim_directory("test", fim_data->item, NULL, 1);
+    ret = fim_directory("test", &evt_data, NULL);
 
     assert_int_equal(ret, 0);
 }
 
 static void test_fim_directory_ignore(void **state) {
     fim_data_t *fim_data = *state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
     int ret;
 
     strcpy(fim_data->entry->d_name, ".");
@@ -4108,9 +3773,7 @@ static void test_fim_directory_ignore(void **state) {
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
 
-    fim_data->item->index = 1;
-
-    ret = fim_directory(".", fim_data->item, NULL, 1);
+    ret = fim_directory(".", &evt_data, NULL);
 
     assert_int_equal(ret, 0);
 }
@@ -4120,7 +3783,7 @@ static void test_fim_directory_nodir(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1105): Attempted to use null string.");
 
-    ret = fim_directory(NULL, NULL, NULL, 1);
+    ret = fim_directory(NULL, NULL, NULL);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -4134,7 +3797,7 @@ static void test_fim_directory_opendir_error(void **state) {
 
     errno = EACCES;
 
-    ret = fim_directory("test", NULL, NULL, 1);
+    ret = fim_directory("test", NULL, NULL);
 
     errno = 0;
 
@@ -4144,29 +3807,18 @@ static void test_fim_directory_opendir_error(void **state) {
 /* fim_get_data */
 static void test_fim_get_data(void **state) {
     fim_data_t *fim_data = *state;
-    struct stat buf;
-
-    buf.st_mode = S_IFREG | 00444 ;
-    buf.st_size = 1000;
-    buf.st_uid = 0;
-    buf.st_gid = 0;
-    buf.st_ino = 1234;
-    buf.st_dev = 2345;
-    buf.st_mtime = 3456;
-
-    fim_data->item->index = 1;
-    fim_data->item->statbuf = buf;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM |
-                                    CHECK_MTIME |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP |
+                                             CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM };
+    struct stat statbuf = { .st_mode = S_IFREG | 00444,
+                            .st_size = 1000,
+                            .st_uid = 0,
+                            .st_gid = 0,
+                            .st_ino = 1234,
+                            .st_dev = 2345,
+                            .st_mtime = 3456 };
 
     expect_get_data(strdup("user"), strdup("group"), "test", 1);
-    fim_data->local_data = fim_get_data("test", fim_data->item);
+    fim_data->local_data = fim_get_data("test", &configuration, &statbuf);
 
 #ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
@@ -4180,28 +3832,18 @@ static void test_fim_get_data(void **state) {
 
 static void test_fim_get_data_no_hashes(void **state) {
     fim_data_t *fim_data = *state;
-    struct stat buf;
-
-    buf.st_mode = S_IFREG | 00444 ;
-    buf.st_size = 1000;
-    buf.st_uid = 0;
-    buf.st_gid = 0;
-    buf.st_ino = 1234;
-    buf.st_dev = 2345;
-    buf.st_mtime = 3456;
-
-    fim_data->item->index = 1;
-    fim_data->item->statbuf = buf;
-    fim_data->item->configuration = 0 | CHECK_SIZE |
-                                    CHECK_PERM |
-                                    CHECK_MTIME |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP;
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP };
+    struct stat statbuf = { .st_mode = S_IFREG | 00444,
+                            .st_size = 1000,
+                            .st_uid = 0,
+                            .st_gid = 0,
+                            .st_ino = 1234,
+                            .st_dev = 2345,
+                            .st_mtime = 3456 };
 
     expect_get_data(strdup("user"), strdup("group"), "test", 0);
 
-
-    fim_data->local_data = fim_get_data("test", fim_data->item);
+    fim_data->local_data = fim_get_data("test", &configuration, &statbuf);
 
 #ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
@@ -4215,16 +3857,15 @@ static void test_fim_get_data_no_hashes(void **state) {
 
 static void test_fim_get_data_hash_error(void **state) {
     fim_data_t *fim_data = *state;
-
-    fim_data->item->index = 1;
-    fim_data->item->configuration = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_MTIME | \
-                          CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP;
-    struct stat buf;
-    buf.st_mode = S_IFREG | 00444 ;
-    buf.st_size = 1000;
-    buf.st_uid = 0;
-    buf.st_gid = 0;
-    fim_data->item->statbuf = buf;
+    directory_t configuration = { .options = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_MTIME |
+                          CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP };
+    struct stat statbuf = { .st_mode = S_IFREG | 00444,
+                            .st_size = 1000,
+                            .st_uid = 0,
+                            .st_gid = 0,
+                            .st_ino = 1234,
+                            .st_dev = 2345,
+                            .st_mtime = 3456 };
 
     expect_get_data(strdup("user"), strdup("group"), "test", 0);
 
@@ -4243,7 +3884,7 @@ static void test_fim_get_data_hash_error(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6324): Couldn't generate hashes for 'test'");
 
-    fim_data->local_data = fim_get_data("test", fim_data->item);
+    fim_data->local_data = fim_get_data("test", &configuration, &statbuf);
 
     assert_null(fim_data->local_data);
 }
@@ -4251,26 +3892,9 @@ static void test_fim_get_data_hash_error(void **state) {
 #ifdef TEST_WINAGENT
 static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
     fim_data_t *fim_data = *state;
-    struct stat buf;
-
-    buf.st_mode = S_IFREG | 00444 ;
-    buf.st_size = 1000;
-    buf.st_uid = 0;
-    buf.st_gid = 0;
-    buf.st_ino = 1234;
-    buf.st_dev = 2345;
-    buf.st_mtime = 3456;
-
-    fim_data->item->index = 1;
-    fim_data->item->statbuf = buf;
-    fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM |
-                                    CHECK_MTIME |
-                                    CHECK_OWNER |
-                                    CHECK_GROUP |
-                                    CHECK_MD5SUM |
-                                    CHECK_SHA1SUM |
-                                    CHECK_SHA256SUM;
+    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP |
+                                             CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM };
+    struct stat statbuf = DEFAULT_STATBUF;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6325): It was not possible to extract the permissions of 'test'. Error: 5");
 
@@ -4279,7 +3903,7 @@ static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
     will_return(__wrap_w_get_file_permissions, ERROR_ACCESS_DENIED);
 
 
-    fim_data->local_data = fim_get_data("test", fim_data->item);
+    fim_data->local_data = fim_get_data("test", &configuration, &statbuf);
 
     assert_null(fim_data->local_data);
 }
@@ -4545,7 +4169,6 @@ static void test_fim_process_missing_entry_failure(void **state) {
     expect_value(__wrap_fim_db_process_missing_entry, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_process_missing_entry, file, file);
     expect_value(__wrap_fim_db_process_missing_entry, storage, FIM_DB_DISK);
-    expect_value(__wrap_fim_db_process_missing_entry, mode, FIM_REALTIME);
     will_return(__wrap_fim_db_process_missing_entry, FIMDB_ERR);
 
     expect_string(__wrap__merror, formatted_msg, error_msg);
@@ -5515,7 +5138,7 @@ int main(void) {
         cmocka_unit_test(test_fim_check_db_state_80_percentage_to_normal),
         cmocka_unit_test(test_fim_check_db_state_nodes_count_database_error),
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_fim_scan_no_realtime, setup_fim_scan_realtime, teardown_fim_scan_realtime),
+        // cmocka_unit_test_setup_teardown(test_fim_scan_no_realtime, setup_fim_scan_realtime, teardown_fim_scan_realtime),
         cmocka_unit_test_setup_teardown(test_fim_scan_realtime_enabled, setup_fim_scan_realtime,
                                         teardown_fim_scan_realtime),
 #endif
@@ -5523,7 +5146,7 @@ int main(void) {
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
         cmocka_unit_test(test_fim_checker_not_scheduled_configuration_directory_error),
-        cmocka_unit_test(test_fim_checker_invalid_fim_mode),
+        // cmocka_unit_test(test_fim_checker_invalid_fim_mode),
         cmocka_unit_test(test_fim_checker_over_max_recursion_level),
         cmocka_unit_test(test_fim_checker_deleted_file),
         cmocka_unit_test_setup(test_fim_checker_deleted_file_enoent, setup_fim_entry),

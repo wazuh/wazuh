@@ -1,7 +1,7 @@
 /* @(#) $Id: ./src/analysisd/decoders/geoip.c, 2014/03/08 dcid Exp $
  */
 
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2014 Daniel Cid
  * All right reserved.
  *

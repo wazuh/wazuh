@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,7 +14,6 @@
 #include "rootcheck/rootcheck.h"
 
 #ifdef WIN32
-static char *SYSCHECK_EMPTY[] = { NULL };
 static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
 #endif
 
@@ -22,7 +21,8 @@ static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
 int Read_Syscheck_Config(const char *cfgfile)
 {
     int modules = 0;
-    int it = 0;
+    directory_t *dir_it;
+
     modules |= CSYSCHECK;
 
     syscheck.rootcheck      = 0;
@@ -42,8 +42,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.scan_time      = NULL;
     syscheck.file_limit_enabled = true;
     syscheck.file_limit     = 100000;
-    syscheck.dir            = NULL;
-    syscheck.opts           = NULL;
+    syscheck.directories = NULL;
     syscheck.enable_synchronization = 1;
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
@@ -99,22 +98,14 @@ int Read_Syscheck_Config(const char *cfgfile)
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
 
-    // Check directories options to determine whether to start the whodata thread or not
-    if (syscheck.dir) {
-        for (it = 0; syscheck.dir[it]; it++) {
-            if (syscheck.opts[it] & WHODATA_ACTIVE) {
-                syscheck.enable_whodata = 1;
-
-                break;  // Exit loop with the first whodata directory
-            }
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it->diff_size_limit == -1) {
+            dir_it->diff_size_limit = syscheck.file_size_limit;
         }
-    }
 
-    if (syscheck.diff_size_limit) {
-        for (it = 0; syscheck.diff_size_limit[it]; it++) {
-            if (syscheck.diff_size_limit[it] == -1) {
-                syscheck.diff_size_limit[it] = syscheck.file_size_limit;
-            }
+        // Check directories options to determine whether to start the whodata thread or not
+        if (dir_it->options & WHODATA_ACTIVE) {
+            syscheck.enable_whodata = 1;
         }
     }
 
@@ -128,22 +119,19 @@ int Read_Syscheck_Config(const char *cfgfile)
 
 #ifndef WIN32
     /* We must have at least one directory to check */
-    if (!syscheck.dir || syscheck.dir[0] == NULL) {
+    if (syscheck.directories == NULL || syscheck.directories[0] == NULL) {
         return (1);
     }
 #else
-    /* We must have at least one directory or registry key to check. Since
-       it's possible on Windows to have syscheck enabled but only monitoring
-       either the filesystem or the registry, both lists must be valid,
-       even if empty.
+    /* It used to be that we needed to ensure the dir array was not null
+       and had at least a null element, this is no longer the case. In Windows,
+       if syscheck.directories is null nothing will go wrong.
+       syscheck.registry though... That's a different story.
      */
-    if (!syscheck.dir) {
-        syscheck.dir = SYSCHECK_EMPTY;
-    }
     if (!syscheck.registry) {
             syscheck.registry = REGISTRY_EMPTY;
     } else {
-        it = 0;
+        int it = 0;
         while (syscheck.registry[it].entry) {
             if (syscheck.registry[it].diff_size_limit == -1) {
                 syscheck.registry[it].diff_size_limit = syscheck.file_size_limit;
@@ -151,7 +139,7 @@ int Read_Syscheck_Config(const char *cfgfile)
             it++;
         }
     }
-    if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
+    if ((syscheck.directories == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
     }
     syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
@@ -186,9 +174,11 @@ void free_whodata_event(whodata_evt *w_evt) {
 
 cJSON *getSyscheckConfig(void) {
 
-    if (!syscheck.dir) {
+#ifndef WIN32
+    if (!syscheck.directories) {
         return NULL;
     }
+#endif
 
     cJSON *root = cJSON_CreateObject();
     cJSON *syscfg = cJSON_CreateObject();
@@ -224,40 +214,73 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
-    if (syscheck.dir) {
+    if (syscheck.directories) {
+        directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
-        for (i=0;syscheck.dir[i];i++) {
+
+        foreach_array(dir_it, syscheck.directories) {
             cJSON *pair = cJSON_CreateObject();
             cJSON *opts = cJSON_CreateArray();
-            if (syscheck.opts[i] & CHECK_MD5SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_md5sum"));
-            if (syscheck.opts[i] & CHECK_SHA1SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha1sum"));
-            if (syscheck.opts[i] & CHECK_PERM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_perm"));
-            if (syscheck.opts[i] & CHECK_SIZE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_size"));
-            if (syscheck.opts[i] & CHECK_OWNER) cJSON_AddItemToArray(opts, cJSON_CreateString("check_owner"));
-            if (syscheck.opts[i] & CHECK_GROUP) cJSON_AddItemToArray(opts, cJSON_CreateString("check_group"));
-            if (syscheck.opts[i] & CHECK_MTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("check_mtime"));
-            if (syscheck.opts[i] & CHECK_INODE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
-            if (syscheck.opts[i] & REALTIME_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
-            if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
-            if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
-            if (syscheck.opts[i] & WHODATA_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
-#ifdef WIN32
-            if (syscheck.opts[i] & CHECK_ATTRS) cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
-#endif
-            if (syscheck.opts[i] & CHECK_FOLLOW) cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
-            cJSON_AddItemToObject(pair,"opts",opts);
-            cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
-            if (syscheck.symbolic_links[i]) cJSON_AddStringToObject(pair,"symbolic_link",syscheck.symbolic_links[i]);
-            cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
-            if (syscheck.filerestrict && syscheck.filerestrict[i]) {
-                cJSON_AddStringToObject(pair,"restrict",syscheck.filerestrict[i]->raw);
+            if (dir_it->options & CHECK_MD5SUM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_md5sum"));
             }
-            if (syscheck.tag && syscheck.tag[i]) {
-                cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
+            if (dir_it->options & CHECK_SHA1SUM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha1sum"));
+            }
+            if (dir_it->options & CHECK_PERM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_perm"));
+            }
+            if (dir_it->options & CHECK_SIZE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_size"));
+            }
+            if (dir_it->options & CHECK_OWNER) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_owner"));
+            }
+            if (dir_it->options & CHECK_GROUP) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_group"));
+            }
+            if (dir_it->options & CHECK_MTIME) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_mtime"));
+            }
+            if (dir_it->options & CHECK_INODE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
+            }
+            if (dir_it->options & REALTIME_ACTIVE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
+            }
+            if (dir_it->options & CHECK_SEECHANGES) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
+            }
+            if (dir_it->options & CHECK_SHA256SUM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
+            }
+            if (dir_it->options & WHODATA_ACTIVE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
+            }
+#ifdef WIN32
+            if (dir_it->options & CHECK_ATTRS) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
+            }
+#endif
+            if (dir_it->options & CHECK_FOLLOW) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
             }
 
-            if (syscheck.file_size_enabled && syscheck.diff_size_limit[i]) {
-                cJSON_AddNumberToObject(pair, "diff_size_limit", syscheck.diff_size_limit[i]);
+            cJSON_AddItemToObject(pair,"opts",opts);
+            cJSON_AddStringToObject(pair, "dir", dir_it->path);
+            if (dir_it->symbolic_links) {
+                cJSON_AddStringToObject(pair, "symbolic_link", dir_it->symbolic_links);
+            }
+            cJSON_AddNumberToObject(pair, "recursion_level", dir_it->recursion_level);
+            if (dir_it->filerestrict) {
+                cJSON_AddStringToObject(pair, "restrict", dir_it->filerestrict->raw);
+            }
+            if (dir_it->tag) {
+                cJSON_AddStringToObject(pair, "tags", dir_it->tag);
+            }
+
+            if (syscheck.file_size_enabled && dir_it->diff_size_limit) {
+                cJSON_AddNumberToObject(pair, "diff_size_limit", dir_it->diff_size_limit);
             }
 
             cJSON_AddItemToArray(dirs, pair);

@@ -3,7 +3,7 @@
  * @brief Definition of FIM database library.
  * @date 2019-08-28
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 #include "fim_db.h"
@@ -376,6 +376,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     if (entry->registry_entry.key == NULL) {
         free(key_path);
         free(full_path);
+        os_free(value_name);
         fim_registry_free_entry(entry);
         return NULL;
     }
@@ -383,6 +384,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     if (value_name == NULL || *value_name == '\0') {
         free(key_path);
         free(full_path);
+        os_free(value_name);
         return entry;
     }
 

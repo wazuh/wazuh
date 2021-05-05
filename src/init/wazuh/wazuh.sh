@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#Copyright (C) 2015-2020, Wazuh Inc.
+#Copyright (C) 2015-2021, Wazuh Inc.
 # Install functions for Wazuh
 # Wazuh.com (https://github.com/wazuh)
 

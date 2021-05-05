@@ -2,7 +2,7 @@
   -  Active response decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -44,6 +44,6 @@ Tue 08/28/2018 09:27:23.14 "active-response/bin/netsh.cmd" add "-" "1.2.3.4" "15
 </decoder>
 
 <decoder name="ar_log_json">
-    <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d /\S+/active-response/bin/\S+: </prematch>
+    <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d active-response/bin/\S+: </prematch>
     <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
 </decoder>

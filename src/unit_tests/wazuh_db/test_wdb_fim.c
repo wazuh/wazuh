@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -59,7 +59,6 @@ void expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode) {
     expect_cJSON_GetStringValue_call("/test");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
-    expect_cJSON_IsNumber_call(true);
     expect_cJSON_GetStringValue_call("file");
 
     expect_wdb_stmt_cache_call(1);
@@ -270,7 +269,6 @@ static void test_wdb_fim_insert_entry2_attributes_null(void **state) {
     will_return(__wrap_cJSON_GetStringValue, "/test");
 
     will_return(__wrap_cJSON_IsNumber, true);
-    will_return(__wrap_cJSON_IsNumber, true);
 
     will_return(__wrap_cJSON_IsObject, false);
 
@@ -290,7 +288,6 @@ static void test_wdb_fim_insert_entry2_fail_cache(void **state) {
     cJSON *data = cJSON_Parse(VALID_ENTRY);
 
     expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
 
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
@@ -317,7 +314,6 @@ static void test_wdb_fim_insert_entry2_fail_element_null(void **state) {
     data->child->next->next->child->string = NULL;
 
     expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsNumber_call(true);
 
     expect_cJSON_IsObject_call(true);
@@ -348,7 +344,6 @@ static void test_wdb_fim_insert_entry2_fail_element_string(void **state) {
     cJSON_ReplaceItemInObject(data, "attributes", array);
 
     expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("file");
@@ -381,7 +376,6 @@ static void test_wdb_fim_insert_entry2_fail_element_number(void **state) {
 
     expect_cJSON_GetStringValue_call("/test");
     expect_cJSON_IsNumber_call(true);
-    expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("file");
 
@@ -408,7 +402,6 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
     expect_cJSON_GetStringValue_call("/test");
-    expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("file");
@@ -437,11 +430,11 @@ static void test_wdb_fim_insert_entry2_registry_arch_null(void **state) {
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateObject());
 
     expect_cJSON_IsNumber_call(true);
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("registry_value");
@@ -460,12 +453,12 @@ static void test_wdb_fim_insert_entry2_registry_value_name_null(void **state) {
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
     cJSON_AddItemToObject(data, "value_name", cJSON_CreateObject());
 
     expect_cJSON_IsNumber_call(true);
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("registry_value");
@@ -487,11 +480,10 @@ static void test_wdb_fim_insert_entry2_registry_item_type_null(void **state) {
     wdb_t * wdb = *state;
     cJSON* data = cJSON_Parse(VALID_ENTRY);
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
     cJSON_ReplaceItemInObject(data, "type", cJSON_CreateObject());
 
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call(NULL);
@@ -513,10 +505,9 @@ static void test_wdb_fim_insert_entry2_invalid_item_type(void **state) {
         fail_msg("Unable to parse base json");
     }
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
 
-    expect_cJSON_IsNumber_call(true);
-    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("invalid");
@@ -538,10 +529,10 @@ static void test_wdb_fim_insert_entry2_registry_invalid_item_type(void **state) 
         fail_msg("Unable to parse base json");
     }
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
 
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
@@ -566,22 +557,21 @@ static void test_wdb_fim_insert_entry2_registry_succesful(void **state) {
         fail_msg("Unable to parse base json");
     }
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
 
     expect_wdb_stmt_cache_call(1);
 
-    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
-    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_GetStringValue_call("[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("registry");
 
-    expect_sqlite3_bind_text_call(1, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+    expect_sqlite3_bind_text_call(1, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
     expect_sqlite3_bind_text_call(2, "registry_key", 1);
     expect_sqlite3_bind_int64_call(3, 10, 0);
     expect_sqlite3_bind_text_call(18, NULL, 1);
     expect_sqlite3_bind_text_call(19, NULL, 1);
-    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
@@ -600,24 +590,24 @@ static void test_wdb_fim_insert_entry2_registry_key_succesful(void **state) {
         fail_msg("Unable to parse base json");
     }
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
 
     expect_wdb_stmt_cache_call(1);
 
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
     expect_cJSON_GetStringValue_call("registry_key");
     expect_cJSON_GetStringValue_call("[x32]");
 
-    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
     expect_sqlite3_bind_text_call(2, "registry_key", 1);
     expect_sqlite3_bind_int64_call(3, 10, 0);
     expect_sqlite3_bind_text_call(18, "[x32]", 1);
     expect_sqlite3_bind_text_call(19, NULL, 1);
-    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave:", 1);
+    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key:", 1);
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
@@ -643,14 +633,14 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
         fail_msg("Unable to retrieve 'attributes'");
     }
 
-    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\clave"));
+    cJSON_ReplaceItemInObject(data, "path", cJSON_CreateString("HKEY_LOCAL_MACHINE\\System\\TEST\\key"));
     cJSON_AddItemToObject(data, "arch", cJSON_CreateString("[x32]"));
     cJSON_AddItemToObject(data, "value_name", cJSON_CreateObject());
     cJSON_AddStringToObject(attributes, "value_type", "REG_SZ");
 
     expect_wdb_stmt_cache_call(1);
 
-    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\clave");
+    expect_cJSON_GetStringValue_call("HKEY_LOCAL_MACHINE\\System\\TEST\\key");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
@@ -658,12 +648,12 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
     expect_cJSON_GetStringValue_call("[x32]");
     expect_cJSON_GetStringValue_call("testname");
 
-    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\clave", 1);
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
     expect_sqlite3_bind_text_call(2, "registry_value", 1);
     expect_sqlite3_bind_int64_call(3, 10, 0);
     expect_sqlite3_bind_text_call(18, "[x32]", 1);
     expect_sqlite3_bind_text_call(19, "testname", 1);
-    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\clave:testname", 1);
+    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key:testname", 1);
     expect_sqlite3_bind_text_call(20, "REG_SZ", 1);
 
     expect_sqlite3_step_call(SQLITE_DONE);

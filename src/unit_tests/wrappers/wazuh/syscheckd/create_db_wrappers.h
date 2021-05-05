@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -13,12 +13,9 @@
 
 #include "syscheckd/syscheck.h"
 
-void __wrap_fim_checker(char *path,
-                        fim_element *item,
-                        whodata_evt *w_evt,
-                        int report);
+void __wrap_fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration);
 
-int __wrap_fim_configuration_directory(const char *path);
+directory_t *__wrap_fim_configuration_directory(const char *path);
 
 cJSON *__wrap_fim_entry_json(const char * path,
                              fim_file_data * data);
@@ -34,12 +31,12 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt);
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_configuration_directory
  */
-void expect_fim_configuration_directory_call(const char *path, int ret);
+void expect_fim_configuration_directory_call(const char *path, directory_t *ret);
 
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_checker
  */
-void expect_fim_checker_call(const char *path, int w_evt, int report);
+void expect_fim_checker_call(const char *path, const directory_t *configuration);
 
 void __wrap_free_entry(fim_entry *entry);
 #endif
