@@ -41,7 +41,7 @@ void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 
-extern oslog_status_t oslog_status;
+extern macos_log_vault_t macos_log_vault;
 
 
 /* setup/teardown */
@@ -268,7 +268,7 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-    strcpy(oslog_status.timestamp,"hi 123");
+    strcpy(macos_log_vault.timestamp,"hi 123");
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -355,7 +355,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-    strcpy(oslog_status.timestamp,"hi 123");
+    strcpy(macos_log_vault.timestamp,"hi 123");
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -431,7 +431,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-    strcpy(oslog_status.timestamp,"hi 123");
+    strcpy(macos_log_vault.timestamp,"hi 123");
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -515,7 +515,7 @@ void test_w_save_file_status_OK(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-    strcpy(oslog_status.timestamp,"hi 123");
+    strcpy(macos_log_vault.timestamp,"hi 123");
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
