@@ -13,7 +13,7 @@
         <description>cisco-ftd rules</description>
     </rule>
 
-    <rule id="150001" level="6">
+    <rule id="150001" level="7">
         <if_sid>150000</if_sid>
         <field name="event.severity">1</field>
         <description>FTD alert message.</description>
