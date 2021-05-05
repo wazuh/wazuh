@@ -204,3 +204,7 @@ int __wrap_sqlite3_changes(__attribute__((unused)) sqlite3 * db){
 int __wrap_sqlite3_get_autocommit(__attribute__((unused)) sqlite3 * db) {
     return mock();
 }
+
+const char*  __wrap_sqlite3_sql(__attribute__((unused)) sqlite3_stmt *pStmt){
+    return mock_ptr_type(char*);
+}
