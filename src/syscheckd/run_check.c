@@ -110,7 +110,7 @@ void send_syscheck_msg(const cJSON *_msg) {
 
     static atomic_int_t n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 
-    if (atomic_int_inc(&n_msg_sent) == syscheck.max_eps) {
+    if (atomic_int_inc(&n_msg_sent) >= syscheck.max_eps) {
         sleep(1);
         atomic_int_set(&n_msg_sent, 0);
     }
@@ -757,7 +757,6 @@ STATIC void fim_delete_realtime_watches(const directory_t *configuration) {
         return;
     }
 
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
     for (hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it); hash_node;
          hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node)) {
         data = hash_node->data;
@@ -781,7 +780,6 @@ STATIC void fim_delete_realtime_watches(const directory_t *configuration) {
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd_str));
         deletion_it--;
     }
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     W_Vector_free(watch_to_delete);
 #endif

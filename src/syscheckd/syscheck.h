@@ -445,7 +445,7 @@ void remove_audit_rule_syscheck(const char *path);
  * @brief Read an audit event from socket
  *
  * @param [out] audit_sock The audit socket to read the events from
- * @param [in] running atomic_int that checks to check the running status of the thread.
+ * @param [in] running atomic_int that holds the status of the running thread.
  */
 void audit_read_events(int *audit_sock, atomic_int_t *running);
 

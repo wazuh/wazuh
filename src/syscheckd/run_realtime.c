@@ -460,6 +460,7 @@ int realtime_start() {
                 dir_it->options |= SCHEDULED_ACTIVE;
             }
         return(-1);
+        }
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
 

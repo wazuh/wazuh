@@ -268,11 +268,11 @@ int main(int argc, char **argv)
                     dir_it->options |= REALTIME_ACTIVE;
                 }
             }
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime == NULL) {
-            realtime_start();
-        }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            if (syscheck.realtime == NULL) {
+                realtime_start();
+            }
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
         }
 #else

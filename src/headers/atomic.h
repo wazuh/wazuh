@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -24,7 +24,7 @@ typedef struct atomic_int_s {
 } atomic_int_t;
 
 /**
- * @brief Thread safe function that gets the the value of an atomic int.
+ * @brief Thread safe function to get the the value of an atomic int.
  *
  * @param atomic atomic_int_t structure to get the data value.
  * @return int A copy of the atomic_int value.
@@ -32,26 +32,26 @@ typedef struct atomic_int_s {
 int atomic_int_get(atomic_int_t *atomic);
 
 /**
- * @brief Thread safe functions that sets the value of an atomic int
+ * @brief Thread safe function to set the value of an atomic int
  *
- * @param atomic atomic_int_t structure that is used.
- * @param value Value that will be used to set the atomic int value.
+ * @param atomic atomic_int_t structure to be updated.
+ * @param value Integer value that will be used to set the atomic int value.
  */
 void atomic_int_set(atomic_int_t *atomic, int value);
 
 /**
- * @brief Thread safe functions that increments the value of an atomic int.
+ * @brief Thread safe function to increment the value of an atomic int by one.
  *
- * @param atomic atomic_int_t structure that is used.
- * @return The value of the atomic int (incremented)
+ * @param atomic atomic_int_t structure to be updated.
+ * @return The final value of the atomic int.
  */
 int atomic_int_inc(atomic_int_t *atomic);
 
 /**
- * @brief Thread safe functions that decrements the value of an atomic int.
+ * @brief Thread safe function to decrement the value of an atomic int by one.
  *
- * @param atomic atomic_int_t structure that is used.
- * @return The value of the atomic int (decremented)
+ * @param atomic atomic_int_t structure to be updated.
+ * @return The final value of the atomic int.
  */
 int atomic_int_dec(atomic_int_t *atomic);
 

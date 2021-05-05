@@ -14,7 +14,7 @@ atomic_int_t audit_health_check_creation = ATOMIC_INT_INITIALIZER(0);
 atomic_int_t hc_thread_active = ATOMIC_INT_INITIALIZER(0);
 
 pthread_mutex_t audit_hc_mutex;
-pthread_cond_t audit_hc_started;
+pthread_cond_t audit_hc_cond;
 
 
 // Audit healthcheck before starting the main thread
@@ -40,14 +40,14 @@ int audit_health_check(int audit_socket) {
 
     mdebug1(FIM_AUDIT_HEALTHCHECK_START);
 
-    w_cond_init(&audit_hc_started, NULL);
+    w_cond_init(&audit_hc_cond, NULL);
 
     // Start reading thread
     w_create_thread(audit_healthcheck_thread, &audit_socket);
 
     w_mutex_lock(&audit_hc_mutex);
     while (atomic_int_get(&hc_thread_active) == 0) {
-        w_cond_wait(&audit_hc_started, &audit_hc_mutex);
+        w_cond_wait(&audit_hc_cond, &audit_hc_mutex);
     }
 
     w_mutex_unlock(&audit_hc_mutex);
@@ -86,7 +86,7 @@ int audit_health_check(int audit_socket) {
     w_mutex_lock(&audit_hc_mutex);
     gettime(&wait_time);
     wait_time.tv_sec += 5;
-    pthread_cond_timedwait(&audit_hc_started, &audit_hc_mutex, &wait_time);
+    pthread_cond_timedwait(&audit_hc_cond, &audit_hc_mutex, &wait_time);
     w_mutex_unlock(&audit_hc_mutex);
 
     return retval;
@@ -96,7 +96,7 @@ int audit_health_check(int audit_socket) {
 void *audit_healthcheck_thread(int *audit_sock) {
     w_mutex_lock(&audit_hc_mutex);
     atomic_int_set(&hc_thread_active, 1);
-    w_cond_signal(&audit_hc_started);
+    w_cond_signal(&audit_hc_cond);
     w_mutex_unlock(&audit_hc_mutex);
 
     mdebug2(FIM_HEALTHCHECK_THREAD_ACTIVE);
@@ -106,7 +106,7 @@ void *audit_healthcheck_thread(int *audit_sock) {
     mdebug2(FIM_HEALTHCHECK_THREAD_FINISHED);
 
     w_mutex_lock(&audit_hc_mutex);
-    w_cond_broadcast(&audit_hc_started);
+    w_cond_signal(&audit_hc_cond);
     w_mutex_unlock(&audit_hc_mutex);
 
     return NULL;

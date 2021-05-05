@@ -38,7 +38,7 @@ extern atomic_int_t audit_health_check_creation;
 extern atomic_int_t hc_thread_active;
 extern atomic_int_t audit_thread_active;
 extern pthread_mutex_t audit_hc_mutex;
-extern pthread_cond_t audit_hc_started;
+extern pthread_cond_t audit_hc_cond;
 
 extern void __real_atomic_int_set(atomic_int_t *atomic, int value);
 extern int __real_atomic_int_get(atomic_int_t *atomic);
@@ -76,7 +76,7 @@ void prepare_audit_healthcheck_thread() {
 
     expect_value(__wrap_atomic_int_get, atomic, &hc_thread_active);
     will_return(__wrap_atomic_int_get, 0);
-    expect_value(__wrap_pthread_cond_wait, cond, &audit_hc_started);
+    expect_value(__wrap_pthread_cond_wait, cond, &audit_hc_cond);
     expect_value(__wrap_pthread_cond_wait, mutex, &audit_hc_mutex);
 
     expect_value(__wrap_atomic_int_get, atomic, &hc_thread_active);

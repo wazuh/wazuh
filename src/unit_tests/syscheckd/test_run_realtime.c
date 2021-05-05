@@ -1386,8 +1386,6 @@ void test_realtime_adddir_max_limit_reached(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 0);
@@ -1405,8 +1403,6 @@ void test_realtime_adddir_duplicate_entry(void **state) {
 
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 1);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
@@ -1428,8 +1424,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(vo
 
     expect_value(wrap_CloseHandle, hObject, 1234);
     will_return(wrap_CloseHandle, 0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
@@ -1473,8 +1467,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     snprintf(debug_msg, OS_SIZE_128, FIM_REALTIME_CALLBACK, "C:\\a\\path");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 1);
@@ -1492,8 +1484,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(
 
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
@@ -1514,8 +1504,6 @@ void test_realtime_adddir_handle_error(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
