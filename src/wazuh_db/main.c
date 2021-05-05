@@ -363,7 +363,7 @@ void * run_worker(__attribute__((unused)) void * args) {
             }
 
             *response = '\0';
-            wdb_parse(buffer, response);
+            wdb_parse(buffer, response, peer);
             if (length = strlen(response), length > 0) {
                 if (terminal && length < OS_MAXSTR - 1) {
                     response[length++] = '\n';
