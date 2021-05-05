@@ -296,11 +296,19 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
         // Run osquery
 
-        if (wfd = wpopenl(osqueryd_path, W_BIND_STDERR | W_APPEND_POOL, osqueryd_path, config_path, NULL), !wfd) {
+        if (wfd = wpopenl(osqueryd_path, W_BIND_STDERR, osqueryd_path, config_path, NULL), !wfd) {
             mwarn("Couldn't execute osquery (%s). Sleeping for 10 minutes.", osqueryd_path);
             sleep(600);
             continue;
         }
+
+#ifdef WIN32
+        wm_append_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_append_sid(wfd->pid);
+        }
+#endif
 
         time_started = time(NULL);
 
@@ -350,6 +358,14 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
                 }
             }
         }
+
+#ifdef WIN32
+        wm_remove_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_remove_sid(wfd->pid);
+        }
+#endif
 
         // If this point is reached, osquery exited
         int wp_closefd = wpclose(wfd);
