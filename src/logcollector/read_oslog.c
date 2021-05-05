@@ -11,7 +11,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
-#include "oslog.h"
+#include "macos_log.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -24,16 +24,16 @@
 #define LOG_ERROR_LENGHT 4
 
 /**
- * @brief Gets a log from `log stream`
+ * @brief Gets a log from macOS log's output
  *
  * @param [out] buffer Contains the read log
  * @param length Buffer's max length
  * @param stream File pointer to log stream's output pipe
- * @param oslog_cfg oslog configuration structure
+ * @param macos_log_cfg macOS log configuration structure
  * @return  true if a new log was collected,
  *          false otherwise
  */
-STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_config_t * oslog_cfg);
+STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
 
 /**
  * @brief Restores the context from backup
@@ -44,7 +44,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
  * @param ctxt Backup context
  * @return true if the context was restored, otherwise returns false
  */
-STATIC bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt);
+STATIC bool macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Generates a backup of the reading context
@@ -52,7 +52,7 @@ STATIC bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt);
  * @param buffer Context to backup
  * @param ctxt Context's backup destination
  */
-STATIC void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt);
+STATIC void macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Cleans the backup context
@@ -60,7 +60,7 @@ STATIC void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt);
  * @warning Notice that this function does not release the context memory
  * @param ctxt context backup to clean
  */
-STATIC void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt);
+STATIC void macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Checks if a backup context has expired
@@ -70,7 +70,7 @@ STATIC void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt);
  * @param ctxt Context to check
  * @return true if the context has expired, otherwise returns false
  */
-STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
+STATIC bool macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Gets the pointer to the beginning of the last line contained in the string
@@ -80,17 +80,17 @@ STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
  * @param str String to be analyzed
  * @return Pointer to the beginning of the last line, NULL otherwise
  */
-STATIC char * oslog_get_valid_lastline(char * str);
+STATIC char * macos_log_get_last_valid_line(char * str);
 
 /**
  * @brief Checks whether the `log stream` cli command returns a header or a log.
  * 
  * Detects predicate errors and discards filtering headers and columun descriptions.
- * @param oslog_cfg oslog configuration structure
+ * @param macos_log_cfg macOS log configuration structure
  * @param buffer line to check
  * @return Returns false if the read line is a log, otherwise returns true 
  */
-STATIC bool oslog_is_header(w_oslog_config_t * oslog_cfg, char * buffer);
+STATIC bool macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 
 /**
  * @brief Trim milliseconds from a macOS ULS full timestamp
@@ -101,7 +101,7 @@ STATIC bool oslog_is_header(w_oslog_config_t * oslog_cfg, char * buffer);
  * @warning return value will be in short format timestamp i.e 2020-11-09 05:45:08-0800
  * @return Allocated short timestamp. NULL on error
  */
-STATIC char * w_oslog_trim_full_timestamp(const char * full_timestamp) {
+STATIC char * w_macos_trim_full_timestamp(const char * full_timestamp) {
     char * short_timestamp = NULL;
 
     if (full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN-1] == '\0' &&
@@ -117,7 +117,7 @@ STATIC char * w_oslog_trim_full_timestamp(const char * full_timestamp) {
     return short_timestamp;
 }
 
-void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it) {
+void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
     char full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN + 1] = {'\0'};
     char * short_timestamp = NULL;
@@ -128,7 +128,8 @@ void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     int retval = 0;
     const int MAX_LINE_LEN = OS_MAXSTR - OS_LOG_HEADER;
 
-    wfd_t * active_mode_wfd = (lf->oslog->ctxt.state == LOG_RUNNING_SHOW) ? lf->oslog->show_wfd : lf->oslog->stream_wfd;
+    wfd_t * log_mode_wfd = (lf->macos_log->state == LOG_RUNNING_SHOW) ? 
+                            lf->macos_log->show_wfd : lf->macos_log->stream_wfd;
 
     if (can_read() == 0) {
         return NULL;
@@ -137,12 +138,12 @@ void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (oslog_getlog(read_buffer, MAX_LINE_LEN, active_mode_wfd->file, lf->oslog)
+    while (macos_log_getlog(read_buffer, MAX_LINE_LEN, log_mode_wfd->file, lf->macos_log)
            && (maximum_lines == 0 || count_logs < maximum_lines)) {
 
         size = strlen(read_buffer);
         if (size > 0) {
-            w_msg_hash_queues_push(read_buffer, OSLOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
+            w_msg_hash_queues_push(read_buffer, MACOS_LOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
             memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN);
         } else {
             mdebug2("ULS: Discarding empty message...");
@@ -151,28 +152,28 @@ void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
         count_logs++;
     }
 
-    short_timestamp = w_oslog_trim_full_timestamp(full_timestamp);
+    short_timestamp = w_macos_trim_full_timestamp(full_timestamp);
     if (short_timestamp != NULL) {
-        w_oslog_set_timestamp(short_timestamp);
+        w_macos_set_last_log_timestamp(short_timestamp);
         os_free(short_timestamp);
     }
 
     if (count_logs < maximum_lines) {
-        /* Checks whether the OSLog's process is still alive or exited */
-        retval = waitpid(active_mode_wfd->pid, &status, WNOHANG);    // Tries to get the child' "soul"
-        if (retval == active_mode_wfd->pid) {                        // This is true in the case that the child exited
-            merror(LOGCOLLECTOR_OSLOG_CHILD_ERROR, active_mode_wfd->pid, status);
-            if(lf->oslog->ctxt.state == LOG_RUNNING_SHOW) {
-                w_oslog_release_show();
-                if (lf->oslog->stream_wfd != NULL) {
-                    lf->oslog->is_header_processed = false;
-                    lf->oslog->ctxt.state = LOG_RUNNING_STREAM;
+        /* Checks whether the macOS' log process is still alive or exited */
+        retval = waitpid(log_mode_wfd->pid, &status, WNOHANG);    // Tries to get the child' "soul"
+        if (retval == log_mode_wfd->pid) {                        // This is true in the case that the child exited
+            merror(LOGCOLLECTOR_MACOS_LOG_CHILD_ERROR, log_mode_wfd->pid, status);
+            if(lf->macos_log->state == LOG_RUNNING_SHOW) {
+                w_macos_release_log_show();
+                if (lf->macos_log->stream_wfd != NULL) {
+                    lf->macos_log->is_header_processed = false;
+                    lf->macos_log->state = LOG_RUNNING_STREAM;
                 } else {
-                    lf->oslog->ctxt.state = LOG_NOT_RUNNING;
+                    lf->macos_log->state = LOG_NOT_RUNNING;
                 }
             } else {
-                w_oslog_release_stream();
-                lf->oslog->ctxt.state = LOG_NOT_RUNNING;
+                w_macos_release_log_stream();
+                lf->macos_log->state = LOG_NOT_RUNNING;
             }
         } else if (retval != 0) {
             merror(WAITPID_ERROR, errno, strerror(errno));
@@ -182,7 +183,7 @@ void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     return NULL;
 }
 
-STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_config_t * oslog_cfg) {
+STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg) {
 
     bool retval = false; // This variable will be set to true if there is a buffered log
 
@@ -197,12 +198,12 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
     *str = '\0';
 
     /* Checks if a context recover is needed for incomplete logs */
-    if (oslog_ctxt_restore(str, &oslog_cfg->ctxt)) {
+    if (macos_log_ctxt_restore(str, &macos_log_cfg->ctxt)) {
         offset = strlen(str);
 
         /* If the context is expired then frees it and returns the log */
-        if (oslog_ctxt_is_expired((time_t) OSLOG_TIMEOUT, &oslog_cfg->ctxt)) {
-            oslog_ctxt_clean(&oslog_cfg->ctxt);
+        if (macos_is_log_ctxt_expired((time_t) MACOS_LOG_TIMEOUT, &macos_log_cfg->ctxt)) {
+            macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             /* delete last end-of-line character */
             if (buffer[offset - 1] == '\n') {
                 buffer[offset - 1] = '\0';
@@ -229,19 +230,19 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
          */
         if (offset + 1 == length) {
             // Cleans the context and forces to send a log
-            oslog_ctxt_clean(&oslog_cfg->ctxt);
+            macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             is_buffer_full = true;
         } else if (!is_endline) {
             mdebug2("ULS: Inclomplete message...");
             // Saves the context
-            oslog_ctxt_backup(buffer, &oslog_cfg->ctxt);
+            macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
             continue;
         }
 
         /* Checks if the first line is the header or an error in the predicate. */
-        if (!oslog_cfg->is_header_processed) {
+        if (!macos_log_cfg->is_header_processed) {
             /* Processes and discards lines up to the first log */
-            if (oslog_is_header(oslog_cfg, buffer)) {
+            if (macos_is_log_header(macos_log_cfg, buffer)) {
                 // Forces to continue reading
                 retval = true;
                 *buffer = '\0';
@@ -251,11 +252,11 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
 
         /* If this point has been reached, there is something to process in the buffer. */
 
-        last_line = oslog_get_valid_lastline(buffer);
+        last_line = macos_log_get_last_valid_line(buffer);
 
         /* If there are 2 logs, they should be splited before sending them */
         if (is_endline && last_line != NULL) {
-            do_split = w_expression_match(oslog_cfg->start_log_regex, last_line + 1, NULL, NULL);
+            do_split = w_expression_match(macos_log_cfg->log_start_regex, last_line + 1, NULL, NULL);
         }
 
         if (!do_split && is_buffer_full) {
@@ -269,10 +270,10 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
                     do {
                         c = fgetc(stream);
                     } while (c != '\n' && c != '\0' && c != EOF);
-                    mdebug2("Max oslog message length reached... The rest of the message was discarded");
+                    mdebug2("Max macOS log message length reached... The rest of the message was discarded");
                 } else {
                     do_split = true;
-                    mdebug2("Max oslog message length reached... The rest of the message will be send separately");
+                    mdebug2("Max macOS log message length reached... The rest of the message will be send separately");
                 }
             }
         }
@@ -280,12 +281,12 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
         /* splits the logs */
         /* If a new log is received, we store it in the context and send the previous one. */
         if (do_split) {
-            oslog_ctxt_clean(&oslog_cfg->ctxt);
+            macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             *last_line = '\0';
-            strncpy(oslog_cfg->ctxt.buffer, last_line + 1, offset - (last_line - buffer) + 1);
-            oslog_cfg->ctxt.timestamp = time(NULL);
+            strncpy(macos_log_cfg->ctxt.buffer, last_line + 1, offset - (last_line - buffer) + 1);
+            macos_log_cfg->ctxt.timestamp = time(NULL);
         } else if (!is_buffer_full) {
-            oslog_ctxt_backup(buffer, &oslog_cfg->ctxt);
+            macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
         }
 
         if (do_split || is_buffer_full) {
@@ -301,7 +302,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
     return retval;
 }
 
-STATIC bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt) {
+STATIC bool macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt) {
 
     if (ctxt->buffer[0] == '\0') {
         return false;
@@ -311,7 +312,7 @@ STATIC bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt) {
     return true;
 }
 
-STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt) {
+STATIC bool macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt) {
 
     if (time(NULL) - ctxt->timestamp > timeout) {
         return true;
@@ -320,20 +321,20 @@ STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt) {
     return false;
 }
 
-STATIC void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt) {
+STATIC void macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt) {
 
     ctxt->buffer[0] = '\0';
     ctxt->timestamp = 0;
 }
 
-STATIC void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt) {
+STATIC void macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt) {
 
     /* Backup */
     strcpy(ctxt->buffer, buffer);
     ctxt->timestamp = time(NULL);
 }
 
-STATIC char * oslog_get_valid_lastline(char * str) {
+STATIC char * macos_log_get_last_valid_line(char * str) {
 
     char * retval = NULL;
     char ignored_char = '\0';
@@ -355,14 +356,14 @@ STATIC char * oslog_get_valid_lastline(char * str) {
     return retval;
 }
 
-STATIC bool oslog_is_header(w_oslog_config_t * oslog_cfg, char * buffer) {
+STATIC bool macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer) {
 
     bool retval = true;
     const ssize_t buffer_size = strlen(buffer);
 
     /* if the buffer contains a log, then there won't be headers anymore */
-    if (w_expression_match(oslog_cfg->start_log_regex, buffer, NULL, NULL)) {
-        oslog_cfg->is_header_processed = true;
+    if (w_expression_match(macos_log_cfg->log_start_regex, buffer, NULL, NULL)) {
+        macos_log_cfg->is_header_processed = true;
         retval = false;
     }
     /* Error in the execution of the `log stream` cli command, probably there is an error in the predicate. */
@@ -374,7 +375,7 @@ STATIC bool oslog_is_header(w_oslog_config_t * oslog_cfg, char * buffer) {
         } else if (buffer[buffer_size - 1] == '\n') {
             buffer[buffer_size - 1] = '\0';
         }
-        merror(LOGCOLLECTOR_OSLOG_ERROR_AFTER_EXEC, buffer);
+        merror(LOGCOLLECTOR_MACOS_LOG_ERROR_AFTER_EXEC, buffer);
     }
     /* Rows header or remaining error lines */
     else {

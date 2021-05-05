@@ -35,7 +35,7 @@ int LogCollectorConfig(const char *cfgfile)
     log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
-    log_config.oslog_count = 0;
+    log_config.macos_blocks_count = 0;
     accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
     log_config.accept_remote = accept_remote;
 
@@ -125,14 +125,14 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             }
             if (list[i].query_type > 0) {
                 cJSON *type = cJSON_CreateArray();
-                if (list[i].query_type & OSLOG_TYPE_LOG) {
-                    cJSON_AddItemToArray(type, cJSON_CreateString(OSLOG_TYPE_LOG_STR));
+                if (list[i].query_type & MACOS_LOG_TYPE_LOG) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_LOG_STR));
                 }
-                if (list[i].query_type & OSLOG_TYPE_ACTIVITY) {
-                    cJSON_AddItemToArray(type, cJSON_CreateString(OSLOG_TYPE_ACTIVITY_STR));
+                if (list[i].query_type & MACOS_LOG_TYPE_ACTIVITY) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_ACTIVITY_STR));
                 }
-                if (list[i].query_type & OSLOG_TYPE_TRACE) {
-                    cJSON_AddItemToArray(type, cJSON_CreateString(OSLOG_TYPE_TRACE_STR));
+                if (list[i].query_type & MACOS_LOG_TYPE_TRACE) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(MACOS_LOG_TYPE_TRACE_STR));
                 }
                 cJSON_AddItemToObject(query, "type", type);
             }
