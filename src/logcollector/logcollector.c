@@ -2795,41 +2795,49 @@ STATIC void w_load_files_status(cJSON * global_json) {
 }
 
 STATIC char * w_save_files_status_to_cJSON() {
-    OSHashNode * hash_node;
     unsigned int index = 0;
+    cJSON * global_json = NULL;
+    char * global_json_str = NULL;
+    OSHashNode * hash_node = NULL;
 
     w_rwlock_rdlock(&files_status->mutex);
-    if (hash_node = OSHash_Begin(files_status, &index), !hash_node) {
-        w_rwlock_unlock(&files_status->mutex);
-        return NULL;
-    }
-
-    cJSON * global_json = cJSON_CreateObject();
-    cJSON * array = cJSON_AddArrayToObject(global_json, OS_LOGCOLLECTOR_JSON_FILES);
-
-    while (hash_node) {
-        os_file_status_t * data = hash_node->data;
-        char * path = hash_node->key;
+    if (hash_node = OSHash_Begin(files_status, &index), hash_node != NULL) {
+        os_file_status_t * data = NULL;
+        cJSON * array = NULL;
+        cJSON * item = NULL;
+        char * path = NULL;
         char offset[OFFSET_SIZE] = {0};
 
-        snprintf(offset, OFFSET_SIZE, "%" PRIi64, data->offset);
+        global_json = cJSON_CreateObject();
+        array = cJSON_AddArrayToObject(global_json, OS_LOGCOLLECTOR_JSON_FILES);
 
-        cJSON * item = cJSON_CreateObject();
+        while (hash_node != NULL) {
+            data = hash_node->data;
+            path = hash_node->key;
+            bzero(offset, OFFSET_SIZE);
 
-        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
-        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_HASH, data->hash);
-        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_OFFSET, offset);
-        cJSON_AddItemToArray(array, item);
+            snprintf(offset, OFFSET_SIZE, "%" PRIi64, data->offset);
 
-        hash_node = OSHash_Next(files_status, &index, hash_node);
+            item = cJSON_CreateObject();
+
+            cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
+            cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_HASH, data->hash);
+            cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_OFFSET, offset);
+            cJSON_AddItemToArray(array, item);
+
+            hash_node = OSHash_Next(files_status, &index, hash_node);
+        }
     }
     w_rwlock_unlock(&files_status->mutex);
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-    cJSON * macos_log = cJSON_CreateObject();
     char * timestamp = w_macos_get_last_log_timestamp();
     char * settings = w_macos_get_log_settings();
     if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
+        cJSON * macos_log = cJSON_CreateObject();
+        if (global_json == NULL) {
+            global_json = cJSON_CreateObject();
+        }
         cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
         cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS, cJSON_CreateString(settings));
         cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_MACOS, macos_log);
@@ -2838,8 +2846,10 @@ STATIC char * w_save_files_status_to_cJSON() {
     os_free(timestamp);
 #endif
 
-    char * global_json_str = cJSON_PrintUnformatted(global_json);
-    cJSON_Delete(global_json);
+    if (global_json != NULL) {
+        global_json_str = cJSON_PrintUnformatted(global_json);
+        cJSON_Delete(global_json);
+    }
 
     return global_json_str;
 }
