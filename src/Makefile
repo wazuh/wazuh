@@ -290,12 +290,10 @@ ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	OSSEC_CFLAGS+=-g
 else
 	OSSEC_CFLAGS+=-DNDEBUG
-	OFLAGS+=-O2
+	OSSEC_CFLAGS+=-O2 -fdata-sections -ffunction-sections
+	OSSEC_LDFLAGS+=-O2 -s -Wl,--gc-sections
+	AR_LDFLAGS+=-O2 -s -Wl,--gc-sections
 endif #DEBUG
-
-OSSEC_CFLAGS+=${OFLAGS}
-OSSEC_LDFLAGS+=${OFLAGS}
-AR_LDFLAGS+=${OFLAGS}
 
 DBSYNC_LIB+=-ldbsync
 RSYNC_LIB+=-lrsync
@@ -587,7 +585,6 @@ help: failtarget
 	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo "   make DISABLE_SHARED=yes      Not to build the Wazuh shared library (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
