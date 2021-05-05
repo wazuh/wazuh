@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -13,8 +13,7 @@
 #define WM_GCP_H
 
 #define WM_GCP_LOGTAG ARGV0 ":gcp-pubsub"
-#define WM_GCP_DEFAULT_DIR WM_DEFAULT_DIR "/gcloud"
-#define WM_GCP_SCRIPT_PATH WM_GCP_DEFAULT_DIR "/gcloud"
+#define WM_GCP_SCRIPT_PATH "wodles/gcloud/gcloud"
 
 #define WM_GCP_DEF_INTERVAL 3600
 

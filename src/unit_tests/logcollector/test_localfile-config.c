@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -104,7 +104,7 @@ void test_w_get_attr_timeout_empty(void ** state) {
     will_return(__wrap_w_get_attr_val_by_name, "");
     expect_string(__wrap__mwarn, formatted_msg,
                   "(8000): Invalid value '' for attribute 'timeout' in "
-                  "'multiline_regex' option. Default value will be taken");
+                  "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
 
     test_mode = 0;
@@ -120,7 +120,7 @@ void test_w_get_attr_timeout_not_number(void ** state) {
     will_return(__wrap_w_get_attr_val_by_name, "test");
     expect_string(__wrap__mwarn, formatted_msg,
                   "(8000): Invalid value 'test' for attribute 'timeout' in "
-                  "'multiline_regex' option. Default value will be taken");
+                  "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
 
     test_mode = 0;
@@ -136,7 +136,7 @@ void test_w_get_attr_timeout_mixed(void ** state) {
     will_return(__wrap_w_get_attr_val_by_name, "11test11");
     expect_string(__wrap__mwarn, formatted_msg,
                   "(8000): Invalid value '11test11' for attribute 'timeout' in "
-                  "'multiline_regex' option. Default value will be taken");
+                  "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
 
     test_mode = 0;
@@ -152,7 +152,7 @@ void test_w_get_attr_timeout_zero(void ** state) {
     will_return(__wrap_w_get_attr_val_by_name, "0");
     expect_string(__wrap__mwarn, formatted_msg,
                   "(8000): Invalid value '0' for attribute 'timeout' in "
-                  "'multiline_regex' option. Default value will be taken");
+                  "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_timeout(NULL);
 
     test_mode = 0;
@@ -169,7 +169,7 @@ void test_w_get_attr_timeout_out_range(void ** state) {
 
     sprintf(str_timeout, "%i", MULTI_LINE_REGEX_MAX_TIMEOUT + 4);
     sprintf(str_msg, "(8000): Invalid value '%s' for attribute 'timeout' in "
-                  "'multiline_regex' option. Default value will be taken", str_timeout);
+                  "'multiline_regex' option. Default value will be used.", str_timeout);
 
     will_return(__wrap_w_get_attr_val_by_name, str_timeout);
     expect_string(__wrap__mwarn, formatted_msg, str_msg);
@@ -268,7 +268,7 @@ void test_w_get_attr_replace_invalid(void ** state) {
     will_return(__wrap_w_get_attr_val_by_name, "invalid_attr");
     expect_string(__wrap__mwarn, formatted_msg,
                   "(8000): Invalid value 'invalid_attr' for attribute 'replace' in "
-                  "'multiline_regex' option. Default value will be taken");
+                  "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_replace(NULL);
 
     test_mode = 0;
@@ -285,7 +285,7 @@ void test_w_get_attr_match_invalid(void ** state) {
     will_return(__wrap_w_get_attr_val_by_name, "invalid_attr");
     expect_string(__wrap__mwarn, formatted_msg,
                   "(8000): Invalid value 'invalid_attr' for attribute 'match' in "
-                  "'multiline_regex' option. Default value will be taken");
+                  "'multiline_regex' option. Default value will be used.");
     retval = w_get_attr_match(NULL);
 
     test_mode = 0;

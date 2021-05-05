@@ -1,6 +1,6 @@
 
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -19,7 +19,7 @@ if sys.version_info[0] == 3:
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion('3.7.0.0'):
     msg = str(sqlite3.sqlite_version)
     msg += "\nTry to export the internal SQLite library:"
-    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/framework/lib".format(common.ossec_path)
+    msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/lib".format(common.wazuh_path)
     raise WazuhInternalError(2001, extra_message=msg)
 
 

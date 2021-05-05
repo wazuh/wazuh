@@ -2,7 +2,7 @@
   -  OSSEC decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -34,7 +34,16 @@
   <parent>ossec</parent>
   <type>ossec</type>
   <prematch offset="after_parent">^Agent started:</prematch>
-  <regex offset="after_prematch">^ '(\S+\S)'</regex>
+  <regex offset="after_prematch">^ '(\S+)'</regex>
+  <order>extra_data</order>
+  <fts>name, location, extra_data</fts>
+</decoder>
+
+<decoder name="ossec-agent-stop">
+  <parent>ossec</parent>
+  <type>ossec</type>
+  <prematch offset="after_parent">^Agent stopped:</prematch>
+  <regex offset="after_prematch">^ '(\S+)'</regex>
   <order>extra_data</order>
   <fts>name, location, extra_data</fts>
 </decoder>

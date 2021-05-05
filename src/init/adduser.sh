@@ -1,37 +1,27 @@
 #!/bin/sh
 
-#Copyright (C) 2015-2020, Wazuh Inc.
+#Copyright (C) 2015-2021, Wazuh Inc.
 
 set -e
 set -u
 
-if ! [ $# -eq 6 ]; then
-    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME DIRECTORY INSTYPE.";
+if ! [ $# -eq 3 ]; then
+    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME DIRECTORY.";
     exit 1;
 fi
 
 echo "Wait for success..."
 
 USER=$1
-USER_MAIL=$2
-USER_REM=$3
-GROUP=$4
-DIR=$5
-INSTYPE=$6
+GROUP=$2
+DIR=$3
 
 UNAME=$(uname);
 # Thanks Chuck L. for the mac addusers
 if [ "$UNAME" = "Darwin" ]; then
     if ! id -u "${USER}" > /dev/null 2>&1; then
-
-        # Creating for <= 10.4
-        if /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1; then
-            chmod +x ./init/darwin-addusers.pl
-            ./init/darwin-addusers.pl $USER $USER_MAIL $USER_REM $INSTYPE
-        else
-            chmod +x ./init/osx105-addusers.sh
-            ./init/osx105-addusers.sh $USER $USER_MAIL $USER_REM $GROUP $INSTYPE
-        fi
+        chmod +x ./init/darwin-addusers.sh
+        ./init/darwin-addusers.sh $USER $GROUP $DIR
     fi
 
 else
@@ -82,27 +72,17 @@ else
         fi
     fi
 
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        NEWUSERS="${USER} ${USER_MAIL} ${USER_REM}"
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        NEWUSERS="${USER} ${USER_MAIL}"
-    else
-        NEWUSERS=${USER}
-    fi
-
-    for U in ${NEWUSERS}; do
-        if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
-            if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
-                ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
-            elif [ "$UNAME" = "AIX" ]; then
-                GID=$(cat /etc/group | grep ossec| cut -d':' -f 3)
-                uid=$(( $GID + 1 ))
-                echo "ossec:x:$uid:$GID::/var/ossec:/bin/false" >> /etc/passwd
-            else
-                ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
-            fi
+    if ! grep "^${USER}" /etc/passwd > /dev/null 2>&1; then
+        if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
+            ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER}"
+        elif [ "$UNAME" = "AIX" ]; then
+            GID=$(cat /etc/group | grep wazuh| cut -d':' -f 3)
+            uid=$(( $GID + 1 ))
+            echo "${USER}:x:$uid:$GID::${DIR}:/bin/false" >> /etc/passwd
+        else
+            ${USERADD} "${USER}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
         fi
-    done
+    fi
 fi
 
 echo "success";

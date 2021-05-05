@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -8,9 +8,11 @@ from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import decoder as decoder_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -107,30 +109,6 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_download_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
-    """Download an specified decoder file.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param filename: Filename to download.
-    :return: Raw xml file
-    """
-    f_kwargs = {'filename': filename}
-
-    dapi = DistributedAPI(f=decoder_framework.get_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
-
-    return response
-
-
 async def get_decoders_parents(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                                limit: int = None, select : list = None, sort: str = None, search: str = None):
     """Get decoders by parents
@@ -159,6 +137,120 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
     dapi = DistributedAPI(f=decoder_framework.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
+                   raw: bool = False):
+    """Get decoder file content.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format. It only works when `raw` is False (JSON format).
+    wait_for_complete : bool
+        Disable response timeout or not.
+    filename : str
+        Filename to download.
+    raw : bool
+        Whether to return the file content in raw or JSON format.
+
+    Returns
+    -------
+    web.json_response or ConnexionResponse
+        Depending on the `raw` parameter, it will return an object or other:
+            raw=True            -> ConnexionResponse (application/xml)
+            raw=False (default) -> web.json_response (application/json)
+        If any exception was raised, it will return a web.json_response with details.
+    """
+    f_kwargs = {'filename': filename, 'raw': raw}
+
+    dapi = DistributedAPI(f=decoder_framework.get_decoder_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+    if isinstance(data, AffectedItemsWazuhResult):
+        response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    else:
+        response = ConnexionResponse(body=data["message"], mimetype='application/xml', content_type='application/xml')
+
+    return response
+
+
+async def put_file(request, body, filename=None, overwrite=False, pretty=False, wait_for_complete=False):
+    """Upload a decoder file.
+
+    Parameters
+    ----------
+    body : dict
+        Body request with the file content to be uploaded.
+    filename : str
+        Name of the file.
+    overwrite : bool
+        If set to false, an exception will be raised when updating contents of an already existing file.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    web.json_response
+    """
+    # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
+
+    f_kwargs = {'filename': filename,
+                'overwrite': overwrite,
+                'content': parsed_body}
+
+    dapi = DistributedAPI(f=decoder_framework.upload_decoder_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def delete_file(request, filename=None, pretty=False, wait_for_complete=False):
+    """Delete a decoder file.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the file.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    web.json_response
+    """
+    f_kwargs = {'filename': filename}
+
+    dapi = DistributedAPI(f=decoder_framework.delete_decoder_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,

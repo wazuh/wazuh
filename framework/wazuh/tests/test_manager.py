@@ -1,18 +1,17 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import json
 import os
 import socket
 import sys
-from unittest.mock import patch, MagicMock, mock_open, ANY
-import json
+from unittest.mock import patch, MagicMock
 
 import pytest
 
-
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
@@ -22,13 +21,14 @@ with patch('wazuh.core.common.ossec_uid'):
 
         from wazuh.manager import *
         from wazuh.core.tests.test_manager import get_logs
+        from wazuh import WazuhInternalError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
 @pytest.fixture(scope='module', autouse=True)
-def mock_ossec_path():
-    with patch('wazuh.core.common.ossec_path', new=test_data_path):
+def mock_wazuh_path():
+    with patch('wazuh.core.common.wazuh_path', new=test_data_path):
         yield
 
 
@@ -146,117 +146,6 @@ def test_ossec_log_summary():
         assert result.render()['data']['total_affected_items'] == 6
         assert all(all(value == expected_result[key] for key, value in item.items())
                    for item in result.render()['data']['affected_items'])
-
-@pytest.mark.parametrize('path, overwrite', [
-    ('test.xml', False),
-    ('test_rules.xml', True),
-    ('etc/lists', False),
-])
-@patch('wazuh.manager.delete_file')
-@patch('wazuh.manager.upload_xml')
-@patch('wazuh.core.manager.check_remote_commands')
-@patch('wazuh.manager.upload_list')
-def test_upload_file(mock_list, mock_remote_commands, mock_xml, mock_delete, path, overwrite):
-    """Tests uploading a file to the manager
-
-    Parameters
-    ----------
-    path : str
-        Path of destination of the new file.
-    overwrite : boolean
-        True for updating existing files, False otherwise.
-    """
-    result = upload_file(path, 'test', overwrite=overwrite)
-
-    # Assert data match what was expected, type of the result and correct parameters in delete() method.
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['affected_items'][0] == path, 'Expected item not found'
-    if re.match(r'^etc/lists', path):
-        mock_list.assert_called_once_with('test', path)
-    else:
-        mock_xml.assert_called_once_with('test', path)
-    if overwrite:
-        mock_delete.assert_called_once_with(path=path), 'delete_file method not called with expected parameter'
-
-
-@patch('wazuh.manager.delete_file')
-@patch('wazuh.manager.upload_xml')
-@patch('wazuh.manager.upload_list')
-def test_upload_file_ko(mock_list, mock_xml, mock_delete):
-    """Tests uploading a file to the manager"""
-    # Error when file exists and overwrite is not True
-    result = upload_file('test_rules.xml', 'test', overwrite=False)
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1905, 'Error code not expected.'
-
-    # Error when content is empty
-    result = upload_file('no_exist.xml', '', overwrite=False)
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['failed_items'][0]['error']['code'] == 1112, 'Error code not expected.'
-
-
-@pytest.mark.parametrize('input_file', [
-    'input_rules_file',
-    'input_decoders_file',
-    'input_lists_file'
-])
-def test_get_file(test_manager, input_file):
-    """Tests get_file function works"""
-
-    input_file = getattr(test_manager, input_file)
-    input_path = os.path.join(test_data_path, input_file)
-    with open(input_path) as f:
-        xml_file = f.read()
-
-    with patch('builtins.open', mock_open(read_data=xml_file)):
-        result = get_file(input_path)
-
-    # Assert xml returned
-    assert result.render()["contents"] == xml_file
-
-
-@patch('wazuh.manager.common.ossec_path', new=os.path.join(test_data_path, 'manager'))
-def test_get_file_ko():
-    """Tests get_file function works"""
-
-    # Bad format CDB list
-    with pytest.raises(WazuhError, match=f'.* 1800 .*'):
-        get_file(['etc/lists/bad_format_file'], True)
-
-    # Xml syntax error
-    with patch('wazuh.manager.validate_cdb_list', return_value=True):
-        with pytest.raises(WazuhError, match=f'.* 1113 .*'):
-            get_file(['etc/lists/bad_format_file'], True)
-
-    # Path does not exist error
-    with pytest.raises(WazuhError, match=f'.* 1906 .*'):
-        get_file(['does_not_exist'])
-
-    # Open function raise IOError
-    with patch('wazuh.manager.exists', return_value=True):
-        with patch('wazuh.manager.open', side_effect=IOError):
-            with pytest.raises(WazuhInternalError, match=f'.* 1005 .*'):
-                get_file(['etc/lists/bad_format_file'])
-
-
-def test_delete_file():
-    """Tests delete_file function and all possible scenarios"""
-    with patch('wazuh.manager.exists', return_value=True):
-        # Assert returned type is AffectedItemsWazuhResult when everything is correct
-        with patch('wazuh.manager.remove'):
-            assert(isinstance(delete_file('/test/file'), AffectedItemsWazuhResult))
-        # Assert error code when remove() method returns IOError
-        with patch('wazuh.manager.remove', side_effect=IOError()):
-            result = delete_file('/test/file')
-            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-            assert result.render()['data']['failed_items'][0]['error']['code'] == 1907, 'Error code not expected.'
-
-    # Assert error code when exists() method returns False
-    with patch('wazuh.manager.exists', return_value=False):
-        result = delete_file('/test/file')
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1906, 'Error code not expected.'
-
 
 def test_get_api_config():
     """Checks that get_api_config method is returning current api_conf dict."""
@@ -408,12 +297,16 @@ def test_get_config_ko():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1307
 
 
-def test_read_ossec_conf():
+@pytest.mark.parametrize('raw', [True, False])
+def test_read_ossec_conf(raw):
     """Tests read_ossec_conf() function works as expected"""
-    result = read_ossec_conf()
+    result = read_ossec_conf(raw=raw)
 
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['total_failed_items'] == 0
+    if raw:
+        assert isinstance(result, str), 'No expected result type'
+    else:
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['total_failed_items'] == 0
 
 
 def test_read_ossec_con_ko():
@@ -430,3 +323,39 @@ def test_get_basic_info(mock_open):
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
+
+
+@patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
+@patch('wazuh.manager.write_ossec_conf')
+@patch('wazuh.manager.validate_wazuh_xml')
+@patch('wazuh.manager.copyfile')
+@patch('wazuh.manager.exists', return_value=True)
+@patch('wazuh.manager.remove')
+@patch('wazuh.manager.safe_move')
+def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock):
+    """Test update_ossec_conf works as expected."""
+    result = update_ossec_conf(new_conf="placeholder config")
+    write_mock.assert_called_once()
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['total_failed_items'] == 0
+    remove_mock.assert_called_once()
+
+
+@pytest.mark.parametrize('new_conf', [
+    None,
+    "invalid configuration"
+])
+@patch('wazuh.manager.validate_ossec_conf')
+@patch('wazuh.manager.write_ossec_conf')
+@patch('wazuh.manager.validate_wazuh_xml')
+@patch('wazuh.manager.copyfile')
+@patch('wazuh.manager.exists', return_value=True)
+@patch('wazuh.manager.remove')
+@patch('wazuh.manager.safe_move')
+def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock, new_conf):
+    """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
+    is not valid."""
+    result = update_ossec_conf(new_conf=new_conf)
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
+    move_mock.assert_called_once()

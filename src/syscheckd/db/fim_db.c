@@ -3,7 +3,7 @@
  * @brief Definition of FIM database library.
  * @date 2019-08-28
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 #include "fim_db.h"
@@ -44,13 +44,14 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_DELETE_PATH] = "DELETE FROM file_entry WHERE path = ?;",
     [FIMDB_STMT_DELETE_DATA] = "DELETE FROM file_data WHERE rowid = ?;",
     [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
-    [FIMDB_STMT_GET_PATHS_INODE_COUNT] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
     [FIMDB_STMT_SET_SCANNED] = "UPDATE file_entry SET scanned = 1 WHERE path = ?;",
     [FIMDB_STMT_GET_INODE_ID] = "SELECT inode_id FROM file_entry WHERE path = ?",
     [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM file_entry",
     [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM file_data",
     [FIMDB_STMT_GET_INODE] = "SELECT inode FROM file_data where rowid=(SELECT inode_id FROM file_entry WHERE path = ?)",
     [FIMDB_STMT_GET_PATH_FROM_PATTERN] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE path LIKE ?",
+    [FIMDB_STMT_DATA_ROW_EXISTS] = "SELECT EXISTS(SELECT 1 FROM file_data WHERE inode=? AND dev=?);",
+    [FIMDB_STMT_PATH_IS_SCANNED] = "SELECT scanned FROM file_entry WHERE path = ?;",
     // Registries
 #ifdef WIN32
     [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -84,6 +85,17 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_REG_COUNT_RANGE] = "SELECT count(*) FROM registry_view WHERE path BETWEEN ? AND ? ORDER BY path;",
     [FIMDB_STMT_COUNT_DB_ENTRIES] = "SELECT (SELECT count(*) FROM file_entry) + (SELECT count(*) FROM registry_key) + (SELECT count(*) FROM registry_data);",
 };
+
+#ifdef WIN32
+/**
+ * @brief Function that looks for the separator `:` between keys and values in synchronization messages.
+ *
+ * @param input string with the path of the synchronization message.
+ * @return char* Pointer to the separator. If the separator wasn't found, returns NULL.
+ */
+static char *find_key_value_limiter(char *input);
+
+#endif
 
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
@@ -297,10 +309,44 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
 }
 // LCOV_EXCL_STOP
 #else
+
+static char *find_key_value_limiter(char *input){
+    size_t limiter_pos = 0;
+    if (input == NULL || *input == '\0') {
+        return NULL;
+    }
+
+    size_t input_len = strlen(input);
+    size_t increment = 0;
+
+    while (limiter_pos = strcspn(input, "\\:"), input[limiter_pos] != '\0') {
+        switch (input[limiter_pos]) {
+        case ':':
+            return input + limiter_pos;
+
+        default: // '\':
+            // Check that the string won't be exceeded.
+            increment += limiter_pos + 2;
+            if (input_len <= increment) {
+                return NULL;
+            }
+
+            input += limiter_pos + 2;
+            break;
+        }
+    }
+
+    return NULL;
+}
+
+
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
-    char *full_path, *key_path, *value_name;
+    char *full_path = NULL;
+    char *key_path = NULL;
+    char *value_name = NULL;
+    char *finder = NULL;
     int arch;
-    fim_entry *entry;
+    fim_entry *entry = NULL;
 
     if (type == FIM_TYPE_FILE) {
         return fim_db_get_path(fim_sql, path);
@@ -311,31 +357,38 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     os_strdup(&path[6], full_path);
     value_name = full_path;
 
-    // Find where the key ends and the value starts
-    while ((value_name = strchr(value_name, ':'))) {
-        if (value_name[1] != ':') {
-            *value_name = '\0';
-            value_name++;
-            break;
-        }
-        value_name += 2;
+    finder = find_key_value_limiter(value_name);
+
+    if (finder == NULL) {
+        mdebug1("Separator ':' was not found in %s", full_path);
+        free(full_path);
+        return NULL;
     }
 
-    key_path = wstr_replace(full_path, "::", ":");
+    *finder = '\0';
 
+    value_name = filter_special_chars(finder + 1);
+    key_path = filter_special_chars(full_path);
     os_calloc(1, sizeof(fim_entry), entry);
     entry->type = FIM_TYPE_REGISTRY;
     entry->registry_entry.key = fim_db_get_registry_key(fim_sql, key_path, arch);
 
+    if (entry->registry_entry.key == NULL) {
+        free(key_path);
+        free(full_path);
+        os_free(value_name);
+        fim_registry_free_entry(entry);
+        return NULL;
+    }
+
     if (value_name == NULL || *value_name == '\0') {
         free(key_path);
         free(full_path);
+        os_free(value_name);
         return entry;
     }
 
     free(key_path);
-
-    value_name = wstr_replace(value_name, "::", ":");
     free(full_path);
 
     entry->registry_entry.value = fim_db_get_registry_data(fim_sql, entry->registry_entry.key->id, value_name);

@@ -1,6 +1,6 @@
 /*
  * Local Authd server
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * May 20, 2017.
  *
  * This program is free software; you can redistribute it
@@ -362,7 +362,6 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
         }
     }
 
-
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
         ierror = EKEY;
         goto fail;
@@ -371,7 +370,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
 
     if(groups) {
         char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             ierror = EINVGROUP;
             goto fail;
         }

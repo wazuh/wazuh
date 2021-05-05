@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -123,7 +123,7 @@ void test_wm_task_manager_init_ok(void **state)
 
     config->enabled = 1;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -139,13 +139,13 @@ void test_wm_task_manager_init_bind_err(void **state)
 
     config->enabled = 1;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, OS_INVALID);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
-    expect_string(__wrap__mterror, formatted_msg, "(8251): Queue '/queue/tasks/task' not accessible: 'Success'. Exiting...");
+    expect_string(__wrap__mterror, formatted_msg, "(8251): Queue 'queue/tasks/task' not accessible: 'Success'. Exiting...");
 
     will_return(__wrap_pthread_exit, OS_INVALID);
 
@@ -166,7 +166,7 @@ void test_wm_task_manager_init_disabled(void **state)
 
     will_return(__wrap_pthread_exit, OS_INVALID);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -623,7 +623,7 @@ void test_wm_task_manager_main_ok(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -695,7 +695,7 @@ void test_wm_task_manager_main_recv_max_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -741,7 +741,7 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -787,7 +787,7 @@ void test_wm_task_manager_main_recv_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -833,7 +833,7 @@ void test_wm_task_manager_main_sockterr_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -879,7 +879,7 @@ void test_wm_task_manager_main_accept_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -932,7 +932,7 @@ void test_wm_task_manager_main_select_empty_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);
@@ -980,7 +980,7 @@ void test_wm_task_manager_main_select_err(void **state)
 
     // wm_task_manager_init
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_BindUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, sock);

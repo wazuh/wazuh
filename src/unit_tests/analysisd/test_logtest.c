@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -159,6 +159,14 @@ int __wrap_OSHash_setSize(OSHash *self, unsigned int new_size) {
     return mock();
 }
 
+void __wrap_w_analysisd_accumulate_free(OSHash **acm_store) {
+    return;
+}
+
+void __wrap_OSList_CleanOnlyNodes(OSList *list) {
+    return;
+}
+
 int __wrap_OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *)) {
     return mock_type(int);
 }
@@ -263,10 +271,6 @@ unsigned int __wrap_sleep (unsigned int __seconds) {
 
 OSHashNode *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i) {
     return mock_type(OSHashNode *);
-}
-
-time_t __wrap_time(time_t *t) {
-    return mock_type(time_t);
 }
 
 double __wrap_difftime (time_t __time1, time_t __time0) {
@@ -550,7 +554,7 @@ void test_w_logtest_init_conection_fail(void **state)
 
     will_return(__wrap_OS_BindUnixDomain, OS_SOCKTERR);
 
-    expect_string(__wrap__merror, formatted_msg, "(7300): Unable to bind to socket '/queue/ossec/logtest'. Errno: (0) Success");
+    expect_string(__wrap__merror, formatted_msg, "(7300): Unable to bind to socket 'queue/sockets/logtest'. Errno: (0) Success");
 
     w_logtest_init();
 
@@ -874,8 +878,6 @@ void test_w_logtest_remove_session_OK(void **state)
 
     will_return(__wrap_OSHash_Free, session);
 
-    will_return(__wrap_OSHash_Free, session);
-
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
@@ -974,8 +976,6 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_OSHash_Free, session);
 
-    will_return(__wrap_OSHash_Free, session);
-
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
@@ -1040,8 +1040,6 @@ void test_w_logtest_remove_old_session_one(void ** state) {
 
     will_return(__wrap_OSHash_Free, old_session);
 
-    will_return(__wrap_OSHash_Free, old_session);
-
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
@@ -1092,8 +1090,6 @@ void test_w_logtest_remove_old_session_many(void ** state) {
     will_return(__wrap_OSHash_Delete, old_session);
 
     will_return(__wrap_OSStore_Free, NULL);
-
-    will_return(__wrap_OSHash_Free, old_session);
 
     will_return(__wrap_OSHash_Free, old_session);
 
@@ -1181,8 +1177,6 @@ void test_w_logtest_register_session_remove_old(void ** state) {
 
     will_return(__wrap_OSHash_Free, old_session);
 
-    will_return(__wrap_OSHash_Free, old_session);
-
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
@@ -1190,7 +1184,7 @@ void test_w_logtest_register_session_remove_old(void ** state) {
     expect_value(__wrap_OSHash_Add, key, session.token);
     expect_value(__wrap_OSHash_Add, data, &session);
     will_return(__wrap_OSHash_Add, 0);
-    
+
 
     w_logtest_register_session(&connection, &session);
     assert_int_equal(connection.active_client, active_session);
@@ -2778,7 +2772,7 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-    
+
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *) 1);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_IsObject, (cJSON *) 1);
@@ -4063,8 +4057,6 @@ void test_w_logtest_process_request_remove_session_ok(void ** state)
     will_return(__wrap_OSHash_Delete, session);
 
     will_return(__wrap_OSStore_Free, session->decoder_store);
-
-    will_return(__wrap_OSHash_Free, session);
 
     will_return(__wrap_OSHash_Free, session);
 

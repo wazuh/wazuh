@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December 12, 2018.
  *
  * This program is free software; you can redistribute it
@@ -37,7 +37,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         schema_upgrade_v4_sql,
         schema_upgrade_v5_sql,
         schema_upgrade_v6_sql,
-        schema_upgrade_v7_sql,
+        schema_upgrade_v7_sql
     };
 
     char db_version[OS_SIZE_256 + 2];

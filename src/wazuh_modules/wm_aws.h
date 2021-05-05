@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for AWS S3 integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January 08, 2018.
  *
  * Updated by Jeremy Phillips <jeremy@uranusbytes.com>
@@ -16,8 +16,7 @@
 
 #define WM_AWS_LOGTAG ARGV0 ":aws-s3"
 #define WM_AWS_DEFAULT_INTERVAL 5
-#define WM_AWS_DEFAULT_DIR WM_DEFAULT_DIR "/aws"
-#define WM_AWS_SCRIPT_PATH WM_AWS_DEFAULT_DIR "/aws-s3"
+#define WM_AWS_SCRIPT_PATH "wodles/aws/aws-s3"
 
 typedef struct wm_aws_state_t {
     time_t next_time;               // Absolute time for next scan
@@ -33,9 +32,12 @@ typedef struct wm_aws_bucket {
     char *aws_account_id;               // AWS account ID(s)
     char *aws_account_alias;            // AWS account alias
     char *trail_prefix;                 // Trail prefix
+    char *trail_suffix;                 // Trail suffix
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
     char *regions;                      // CSV of regions to parse
     char *type;                         // String defining bucket type.
+    char *discard_field;                // Name of the event's field to apply the discard_regex on
+    char *discard_regex;                // REGEX to determine if an event should be skipped
     unsigned int remove_from_bucket:1;  // Remove the logs from the bucket
     struct wm_aws_bucket *next;     // Pointer to next
 } wm_aws_bucket;
@@ -52,6 +54,8 @@ typedef struct wm_aws_service {
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
     char *regions;                      // CSV of regions to parse
     char *aws_log_groups;               // CSV of log groups to parse
+    char *discard_field;                // Name of the event's field to apply the discard_regex on
+    char *discard_regex;                // REGEX to determine if an event should be skipped
     unsigned int remove_log_streams:1;  // Remove the log stream from the log group
     struct wm_aws_service *next;     // Pointer to next
 } wm_aws_service;

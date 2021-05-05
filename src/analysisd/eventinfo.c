@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,6 +12,12 @@
 #include "analysisd.h"
 #include "eventinfo.h"
 #include "os_regex/os_regex.h"
+
+/* Global definitions */
+#ifdef TESTRULE
+int full_output;
+int alert_only;
+#endif
 
 #define OS_COMMENT_MAX 1024
 
@@ -116,6 +122,10 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *
 
     do {
         lf = (Eventinfo *)lf_node->data;
+
+#ifdef TESTRULE
+        time(&current_time);
+ #endif
 
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
@@ -291,6 +301,10 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, __attribute__((unused)) EventList
     do {
         lf = (Eventinfo *)lf_node->data;
 
+#ifdef TESTRULE
+        time(&current_time);
+#endif
+
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
@@ -460,6 +474,10 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo 
     /* Search all previous events */
     while (eventnode_pt) {
         lf = eventnode_pt->event;
+
+#ifdef TESTRULE
+        time(&current_time);
+#endif
 
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {

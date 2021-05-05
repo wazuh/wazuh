@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ static void stop_wmodules()
 int local_start()
 {
     int rc;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;
@@ -105,13 +105,17 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+    if (agt->force_reconnect_interval) {
+        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", \
+               w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
+    }
 
     // Resolve hostnames
     rc = 0;
     while (rc < agt->server_count) {
         if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolveHostname(&agt->server[rc].rip, 5);
+            resolve_hostname(&agt->server[rc].rip, 5);
             mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
         }
         rc++;
@@ -183,7 +187,21 @@ int local_start()
     // Initialize children pool
     wm_children_pool_init();
 
+    /* Start buffer thread */
+    if (agt->buffer){
+        buffer_init();
+        w_create_thread(NULL,
+                         0,
+                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
+                         NULL,
+                         0,
+                         (LPDWORD)&threadID);
+    }else{
+        minfo(DISABLED_BUFFER);
+    }
+
     /* state_main thread */
+    w_agentd_state_init();
     w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)state_main,
@@ -199,18 +217,6 @@ int local_start()
     hMutex = CreateMutex(NULL, FALSE, NULL);
     if (hMutex == NULL) {
         merror_exit("Error creating mutex.");
-    }
-    /* Start buffer thread */
-    if (agt->buffer){
-        buffer_init();
-        w_create_thread(NULL,
-                         0,
-                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
-    }else{
-        minfo(DISABLED_BUFFER);
     }
     /* Start syscheck thread */
     w_create_thread(NULL,
@@ -235,7 +241,7 @@ int local_start()
     os_setwait();
     start_agent(1);
     os_delwait();
-    update_status(GA_STATUS_ACTIVE);
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
     req_init();
 
@@ -271,6 +277,9 @@ int local_start()
     }
 
     atexit(stop_wmodules);
+
+    /* Send agent stopped message at exit */
+    atexit(send_agent_stopped_message);
 
     /* Start logcollector -- main process here */
     LogCollectorStart();
@@ -330,7 +339,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
-        agent_state.msg_count++;
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
         if (send_msg(tmpstr, -1) >= 0) {
             retval = 0;
         }
@@ -352,39 +361,58 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 
 char *get_agent_ip()
 {
-    char *agent_ip = NULL;
-
+    static char agent_ip[IPSIZE + 1] = { '\0' };
+    static time_t last_update = 0;
+    time_t now = time(NULL);
     cJSON *object;
+
+    if ((now - last_update) < agt->main_ip_update_interval) {
+        return strdup(agent_ip);
+    }
+
+    last_update = now;
+    agent_ip[0] = '\0';
+
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
-        sysinfo_network_ptr(&object);
-        if (object) {
-            const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-            if (iface) {
-                const int size_ids = cJSON_GetArraySize(iface);
-                for (int i = 0; i < size_ids; i++){
-                    const cJSON *element = cJSON_GetArrayItem(iface, i);
-                    if(!element) {
-                        continue;
-                    }
-                    cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                    if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
-                        const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
-                        if (!ipv4) {
+        const int error_code = sysinfo_network_ptr(&object);
+        if (error_code == 0) {
+            if (object) {
+                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+                if (iface) {
+                    const int size_ids = cJSON_GetArraySize(iface);
+                    for (int i = 0; i < size_ids; i++){
+                        const cJSON *element = cJSON_GetArrayItem(iface, i);
+                        if(!element) {
                             continue;
                         }
-                        cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                        if (address && cJSON_GetStringValue(address))
-                        {
-                            os_strdup(address->valuestring, agent_ip);
-                            break;
+                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                            const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
+                            if (!ipv4) {
+                                continue;
+                            }
+                            cJSON *address = cJSON_GetObjectItem(ipv4, "address");
+                            if (address && cJSON_GetStringValue(address))
+                            {
+                                strncpy(agent_ip, address->valuestring, IPSIZE);
+                                break;
+                            }
                         }
                     }
                 }
+                sysinfo_free_result_ptr(&object);
             }
-            sysinfo_free_result_ptr(&object);
+        }
+        else {
+            merror("Unable to get system network information. Error code: %d.", error_code);
         }
     }
-    return agent_ip;
+
+    if (agent_ip[0] == '\0') {
+        last_update = 0;
+    }
+
+    return strdup(agent_ip);
 }
 
 #endif

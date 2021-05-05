@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 15, 2020.
  *
  * This program is free software; you can redistribute it
@@ -27,12 +27,20 @@
 
 #include <functional>
 #include "json.hpp"
+#include "commonDefs.h"
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
 
 class EXPORTED RemoteSync 
 {
 public:
+    /**
+    * @brief Initializes the shared library.
+    *
+    * @param logFunction pointer to log function to be used by the rsync.
+    */
+    static void initialize(std::function<void(const std::string&)> logFunction);
+
     /**
      * @brief Remote sync initializes the instance. 
      */

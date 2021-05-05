@@ -3,7 +3,7 @@
  * @brief Definition of FIM database for files library.
  * @date 2020-09-9
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 #ifndef FIM_DB_FILES_H
@@ -44,6 +44,23 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
 char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
 /**
+ * @brief Get all the paths asociated to an inode
+ *
+ * @param fim_sql FIM databse struct.
+ * @param inode Inode.
+ * @param dev Device.
+ * @param list A list to which the paths retrieved from the DB will be added to.
+ * @param tree A tree which helps avoid the operation from appending paths that already exist in the list.
+ *
+ * @return The number of paths retrieved from the DB
+ */
+int fim_db_append_paths_from_inode(fdb_t *fim_sql,
+                                   unsigned long int inode,
+                                   unsigned long int dev,
+                                   OSList *list,
+                                   rb_tree *tree);
+
+/**
  * @brief Insert or update entry data.
  *
  * @param fim_sql FIM database struct.
@@ -52,7 +69,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id);
+int fim_db_insert_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id);
 
 /**
  * @brief Insert or update entry path.
@@ -64,7 +81,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *entry, int inode_id);
+int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry, int inode_id);
 
 /**
  * @brief Insert an entry in the needed tables.
@@ -76,24 +93,17 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved);
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, const fim_file_data *saved);
 
 /**
- * @brief Delete entry using file path.
+ * @brief Delete entry from the DB using file path.
  *
  * @param fim_sql FIM database struct.
- * @param entry Entry data to be removed.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param alert False don't send alert, True send delete alert.
- * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
- * @param w_evt Whodata information.
+ * @param path Path of the entry to be removed.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                        __attribute__((unused))void *alert,
-                        __attribute__((unused))void *fim_ev_mode,
-                        __attribute__((unused))void *w_evt);
+int fim_db_remove_path(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Set all entries from database to unscanned.
@@ -147,13 +157,17 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_
  * @param file Structure of the file which contains all the paths.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param storage 1 Store database in memory, disk otherwise.
- * @param mode FIM mode (scheduled, realtime or whodata)
+ * @param evt_data Information on how the event was triggered.
  * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
-                        pthread_mutex_t *mutex, int storage, fim_event_mode mode, int *configuration);
+int fim_db_delete_range(fdb_t *fim_sql,
+                        fim_tmp_file *file,
+                        pthread_mutex_t *mutex,
+                        int storage,
+                        event_data_t *evt_data,
+                        directory_t *configuration);
 
 /**
  * @brief Remove a range of paths from database if they have a specific monitoring mode.
@@ -162,13 +176,15 @@ int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
  * @param file Structure of the file which contains all the paths.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param storage 1 Store database in memory, disk otherwise.
- * @param mode FIM mode (scheduled, realtime or whodata)
- * @param w_evt Whodata information
+ * @param evt_data Information on how the event was triggered.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
-                                 fim_event_mode mode, whodata_evt * w_evt);
+int fim_db_process_missing_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data);
 
 /**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.
@@ -206,5 +222,31 @@ int fim_db_get_count_file_entry(fdb_t * fim_sql);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage);
+
+/**
+ * @brief Verifies if the data row identified by a given device and inode exists in file_data.
+ *
+ * @param fim_sql FIM database struct.
+ * @param inode The inode to look for.
+ * @param dev The device that must be associated with the desired inode.
+ *
+ * @return An integer signaling wheter the row exists or not.
+ * @retval 1 if the row exists.
+ * @retval 0 if the row does not exist.
+ * @retval FIMDB_ERR if an error occurs when executing the query.
+ */
+int fim_db_data_exists(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
+
+/**
+ * @brief Checks the DB to see if a given file has already been scanned.
+ *
+ * @param fim_sql FIM database struct.
+ * @param path Path to the file we want to verify.
+ * @return An integer signaling if the files was scanned or not.
+ * @retval 1 if the files was scanned already.
+ * @retval 0 if tha file has not been scanned or no entry was found on the DB.
+ * @retval FIMDB_ERR if an error happened during the query.
+ */
+int fim_db_file_is_scanned(fdb_t *fim_sql, const char *path);
 
 #endif /* FIM_DB_FILES_H */

@@ -43,9 +43,9 @@ int AR_ReadConfig(const char *cfgfile)
     modules |= CAR;
 
     /* Clean ar file */
-    fp = fopen(DEFAULTARPATH, "w");
+    fp = fopen(DEFAULTAR, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (OS_INVALID);
     }
     fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n"
@@ -60,15 +60,15 @@ int AR_ReadConfig(const char *cfgfile)
         return (OS_INVALID);
     }
 
-    if ((chown(DEFAULTARPATH, (uid_t) - 1, gr_gid)) == -1) {
+    if ((chown(DEFAULTAR, (uid_t) - 1, gr_gid)) == -1) {
         merror("Could not change the group to '%s': %d", GROUPGLOBAL, errno);
         return (OS_INVALID);
     }
 #endif
 
     /* Set right permission */
-    if (chmod(DEFAULTARPATH, 0640) == -1) {
-        merror(CHMOD_ERROR, DEFAULTARPATH, errno, strerror(errno));
+    if (chmod(DEFAULTAR, 0640) == -1) {
+        merror(CHMOD_ERROR, DEFAULTAR, errno, strerror(errno));
         return (OS_INVALID);
     }
 

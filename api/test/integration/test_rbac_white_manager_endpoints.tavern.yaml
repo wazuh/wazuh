@@ -49,82 +49,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: DELETE /manager/files
-
-stages:
-
-  - name: Delete a file (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: 'etc/decoders/local_decoder.xml'
-    response:
-      <<: *permission_denied
-
-  - name: Delete a file (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: 'etc/rules/local_rules.xml'
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /manager/files
-
-stages:
-
-  - name: Read a file (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: 'etc/decoders/local_decoder.xml'
-    response:
-      <<: *permission_denied
-
-  - name: Read a file (Denied, Does not exist)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: 'etc/rules/local_rules.xml'
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /manager/files
-
-stages:
-
-  - name: Upload a file (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
-      params:
-        path: 'etc/decoders/test_decoders.xml'
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /manager/info
 
 stages:
@@ -273,6 +197,23 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
+test_name: PUT /manager/configuration
+
+stages:
+
+  - name: Upload a valid configuration (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
     response:
       status_code: 200
 

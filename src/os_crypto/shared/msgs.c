@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -86,13 +86,9 @@ void OS_StartCounter(keystore *keys)
     for (i = 0; i <= keys->keysize; i++) {
         /* On i == keysize, we deal with the sender counter */
         if (i == keys->keysize) {
-            snprintf(rids_file, OS_FLSIZE, "%s/%s",
-                     isChroot() ? RIDS_DIR : RIDS_DIR_PATH,
-                     SENDER_COUNTER);
+            snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, SENDER_COUNTER);
         } else {
-            snprintf(rids_file, OS_FLSIZE, "%s/%s",
-                     isChroot() ? RIDS_DIR : RIDS_DIR_PATH,
-                     keys->keyentries[i]->id);
+            snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[i]->id);
         }
 
         keys->keyentries[i]->fp = fopen(rids_file, "r+");
@@ -184,7 +180,7 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
 {
     if (!keys->keyentries[id]->fp) {
         char rids_file[OS_FLSIZE + 1];
-        snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, keys->keyentries[id]->id);
+        snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
         keys->keyentries[id]->fp = fopen(rids_file, "r+");
         if (!keys->keyentries[id]->fp) {
             keys->keyentries[id]->fp = fopen(rids_file, "w");
@@ -219,7 +215,7 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     ino_t new_inode;
     char rids_file[OS_FLSIZE + 1];
 
-    snprintf(rids_file, OS_FLSIZE, "%s/%s", isChroot() ? RIDS_DIR : RIDS_DIR_PATH, cid);
+    snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, cid);
     new_inode = File_Inode(rids_file);
 
     if (keys->keyentries[id]->inode != new_inode) {

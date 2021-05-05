@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 23, 2020.
  *
  * This program is free software; you can redistribute it
@@ -23,25 +23,19 @@ extern "C" {
 
 using namespace RSync;
 
-static log_fnc_t gs_logFunction{ nullptr };
+static std::function<void(const std::string&)> gs_logFunction;
 
 static void log_message(const std::string& msg)
 {
-    if (!msg.empty())
+    if (!msg.empty() && gs_logFunction)
     {
-        if (gs_logFunction)
-        {
-            gs_logFunction(msg.c_str());
-        }
+        gs_logFunction(msg);
     }
 }
 
 EXPORTED void rsync_initialize(log_fnc_t log_function)
 {
-    if (!gs_logFunction)
-    {
-        gs_logFunction = log_function;
-    }
+    RemoteSync::initialize([log_function](const std::string& msg){log_function(msg.c_str());});
 }
 
 EXPORTED void rsync_teardown(void)
@@ -63,7 +57,7 @@ EXPORTED RSYNC_HANDLE rsync_create()
         errorMessage += "Unrecognized error.";
     }
     // LCOV_EXCL_STOP
-    
+
     log_message(errorMessage);
     return retVal;
 }
@@ -105,8 +99,8 @@ EXPORTED int rsync_start_sync(const RSYNC_HANDLE handle,
     return retVal;
 }
 
-EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle, 
-                                    const char* message_header_id, 
+EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
+                                    const char* message_header_id,
                                     const DBSYNC_HANDLE dbsync_handle,
                                     const cJSON* sync_configuration,
                                     sync_callback_data_t callback_data)
@@ -139,9 +133,9 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
         }
         // LCOV_EXCL_STOP
     }
-    
+
     log_message(errorMessage);
-    return retVal; 
+    return retVal;
 }
 
 EXPORTED int rsync_push_message(const RSYNC_HANDLE handle,
@@ -179,7 +173,7 @@ EXPORTED int rsync_close(const RSYNC_HANDLE handle)
 {
     std::string message;
     auto retVal { 0 };
-    
+
     try
     {
         RSyncImplementation::instance().releaseContext(handle);
@@ -199,6 +193,14 @@ EXPORTED int rsync_close(const RSYNC_HANDLE handle)
 #ifdef __cplusplus
 }
 #endif
+
+void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
+{
+    if (!gs_logFunction)
+    {
+        gs_logFunction = logFunction;
+    }
+}
 
 void RemoteSync::teardown()
 {
@@ -245,10 +247,10 @@ void RemoteSync::startSync(const DBSYNC_HANDLE   dbsyncHandle,
         }
     };
     RSyncImplementation::instance().startRSync(m_handle, std::make_shared<DBSyncWrapper>(dbsyncHandle), startConfiguration, callbackWrapper);
-            
+
 }
 
-void RemoteSync::registerSyncID(const std::string&    messageHeaderID, 
+void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
                                 const DBSYNC_HANDLE   dbsyncHandle,
                                 const nlohmann::json& syncConfiguration,
                                 SyncCallbackData      callbackData)
@@ -260,10 +262,10 @@ void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
             callbackData(payload);
         }
     };
-    RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackWrapper);       
+    RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackWrapper);
 }
 
 void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
 {
-    RSyncImplementation::instance().push(m_handle, payload);       
+    RSyncImplementation::instance().push(m_handle, payload);
 }

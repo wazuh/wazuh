@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -12,8 +12,8 @@ import pytest
 from api.util import parse_api_param
 from wazuh.core.exception import WazuhError
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -52,9 +52,9 @@ test_result = [
     (['001', '002', '003'], [{'status': status} for status in ['active', 'disconnected', 'disconnected']],
      test_result[2]),
 ])
-@patch('wazuh.syscheck.OssecQueue._connect')
-@patch('wazuh.syscheck.OssecQueue.send_msg_to_agent', side_effect=set_callable_list)
-@patch('wazuh.syscheck.OssecQueue.close')
+@patch('wazuh.syscheck.WazuhQueue._connect')
+@patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
+@patch('wazuh.syscheck.WazuhQueue.close')
 def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
     """Test function `run` from rootcheck module.
 

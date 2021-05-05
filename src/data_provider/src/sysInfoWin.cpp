@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -31,16 +31,16 @@
 #include "debug_op.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
+#include "encodingWindowsHelper.h"
 #include "network/networkWindowsWrapper.h"
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portWindowsWrapper.h"
 #include "ports/portImpl.h"
+#include "packages/packagesWindowsParserHelper.h"
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
-constexpr auto WIN_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
-constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
 constexpr auto SYSTEM_IDLE_PROCESS_NAME{"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME{"System"};
 
@@ -68,7 +68,7 @@ public:
 
     std::string cmd()
     {
-        std::string ret { UNKNOWN_VALUE };
+        std::string ret;
         const auto spReadBuff { std::make_unique<char[]>(OS_MAXSTR) };
         // Get full Windows kernel path for the process
         if (spReadBuff && GetProcessImageFileName(m_hProcess, spReadBuff.get(), OS_MAXSTR))
@@ -344,12 +344,12 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
             nlohmann::json packageJson;
             Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
 
-            std::string name         { UNKNOWN_VALUE };
-            std::string version      { UNKNOWN_VALUE };
-            std::string vendor       { UNKNOWN_VALUE };
-            std::string install_time { UNKNOWN_VALUE };
-            std::string location     { UNKNOWN_VALUE };
-            std::string architecture { UNKNOWN_VALUE };
+            std::string name;
+            std::string version;
+            std::string vendor;
+            std::string install_time;
+            std::string location;
+            std::string architecture;
 
             if (packageReg.string("DisplayName", value))
             {
@@ -371,7 +371,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
             {
                 location = value;
             }
-            if (UNKNOWN_VALUE != name)
+            if (!name.empty())
             {
                 if (access & KEY_WOW64_32KEY)
                 {
@@ -380,6 +380,10 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 else if (access & KEY_WOW64_64KEY)
                 {
                     architecture = "x86_64";
+                }
+                else
+                {
+                    architecture = UNKNOWN_VALUE;
                 }
 
                 packageJson["name"]         = name;
@@ -392,74 +396,6 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
 
                 data.push_back(packageJson);
             }
-        }
-    }
-    catch(...)
-    {
-    }
-}
-
-static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data)
-{
-    try
-    {
-        std::set<std::string> hotfixes;
-        Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-        for (const auto& package : packages)
-        {
-            if (Utils::startsWith(package, "Package_"))
-            {
-                std::string value;
-                Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
-                if (packageReg.string("InstallLocation", value))
-                {
-                    value = Utils::toUpperCase(value);
-                    const auto start{value.find("KB")};
-                    if (start != std::string::npos)
-                    {
-                        value = value.substr(start);
-                        const auto end{value.find("-")};
-                        value = value.substr(0, end);
-                        hotfixes.insert(value);
-                    }
-                }
-            }
-        }
-        for (const auto& hotfix : hotfixes)
-        {
-            nlohmann::json hotfixValue;
-            hotfixValue["hotfix"] = hotfix;
-            data.push_back(hotfixValue);
-        }
-    }
-    catch(...)
-    {
-    }
-}
-
-static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohmann::json& data)
-{
-    static const std::string KB_PREFIX{"KB"};
-    static const auto KB_PREFIX_SIZE{KB_PREFIX.size()};
-    try
-    {
-        std::set<std::string> hotfixes;
-        Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-        for (const auto& package : packages)
-        {
-            auto value{Utils::toUpperCase(package)};
-            if (Utils::startsWith(value, KB_PREFIX))
-            {
-                value = value.substr(KB_PREFIX_SIZE);
-                value = Utils::trim(value.substr(0, value.find_first_not_of("1234567890")));
-                hotfixes.insert(KB_PREFIX + value);
-            }
-        }
-        for (const auto& hotfix : hotfixes)
-        {
-            data.push_back({{"hotfix", hotfix}});
         }
     }
     catch(...)
@@ -548,7 +484,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
     }
 }
 
-static void fillProcessesData(std::function<void(PROCESSENTRY32)> func) 
+static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
 {
     PROCESSENTRY32 processEntry{};
     processEntry.dwSize = sizeof(PROCESSENTRY32);
@@ -582,7 +518,7 @@ static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
             static_cast<int>(GetLastError()),
             std::system_category(),
             "Unable to create process snapshot."
-        };      
+        };
     }
 }
 
@@ -593,7 +529,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
         {
             jsProcessesList.push_back(getProcessInfo(processEntry));
         });
-          
+
     return jsProcessesList;
 }
 
@@ -606,8 +542,8 @@ nlohmann::json SysInfo::getPackages() const
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, ret);
     }
-    getHotFixFromReg(HKEY_LOCAL_MACHINE, WIN_REG_HOTFIX, ret);
-    getHotFixFromRegNT(HKEY_LOCAL_MACHINE, VISTA_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
     return ret;
 }
 
@@ -635,7 +571,7 @@ nlohmann::json SysInfo::getNetworks() const
         Utils::NetworkWindowsHelper::getAdapterInfo(adapterInfo);
     }
 
-    auto rawAdapterAddresses { adaptersAddresses.get() }; 
+    auto rawAdapterAddresses { adaptersAddresses.get() };
 
     while(rawAdapterAddresses)
     {
@@ -660,14 +596,14 @@ nlohmann::json SysInfo::getNetworks() const
                     }
                     else if (AF_INET6 == unicastAddressFamily)
                     {
-                        // IPv6 data                    
+                        // IPv6 data
                         FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV6, rawAdapterAddresses, unicastAddress, adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
                     }
                 }
                 unicastAddress = unicastAddress->Next;
             }
 
-            // Common data                
+            // Common data
             FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::COMMON_DATA, rawAdapterAddresses, unicastAddress, adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
 
             networks["iface"].push_back(netInterfaceInfo);
@@ -684,7 +620,7 @@ void getTablePorts(TableClass ownerId, int32_t tcpipVersion, std::unique_ptr<T [
 {
     TableClass classId { ownerId };
     DWORD size { 0 };
-    
+
     if (ERROR_INSUFFICIENT_BUFFER == GetTable(nullptr, &size, true, tcpipVersion, classId))
     {
         tableList = std::make_unique<T []>(size);
@@ -722,10 +658,10 @@ nlohmann::json SysInfo::getPorts() const
         {
             processDataList[processEntry.th32ProcessID] = processEntry.szExeFile;
         });
-    
+
     getTablePorts<MIB_TCPTABLE_OWNER_PID, TCP_TABLE_CLASS>(
         TCP_TABLE_OWNER_PID_ALL,
-        AF_INET, 
+        AF_INET,
         portTable.tcp,
         [](MIB_TCPTABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
         {
@@ -735,7 +671,7 @@ nlohmann::json SysInfo::getPorts() const
 
     getTablePorts<MIB_TCP6TABLE_OWNER_PID, TCP_TABLE_CLASS>(
         TCP_TABLE_OWNER_PID_ALL,
-        AF_INET6, 
+        AF_INET6,
         portTable.tcp6,
         [](MIB_TCP6TABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
         {
@@ -745,23 +681,23 @@ nlohmann::json SysInfo::getPorts() const
 
     getTablePorts<MIB_UDPTABLE_OWNER_PID, UDP_TABLE_CLASS>(
         UDP_TABLE_OWNER_PID,
-        AF_INET, 
+        AF_INET,
         portTable.udp,
         [](MIB_UDPTABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
         {
             return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
     expandPortData(portTable.udp.get(), processDataList, ports);
-   
+
     getTablePorts<MIB_UDP6TABLE_OWNER_PID, UDP_TABLE_CLASS>(
         UDP_TABLE_OWNER_PID,
-        AF_INET6, 
+        AF_INET6,
         portTable.udp6,
         [](MIB_UDP6TABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
         {
             return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
     expandPortData(portTable.udp6.get(), processDataList, ports);
-    
+
     return ports;
 }

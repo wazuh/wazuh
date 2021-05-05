@@ -1,17 +1,22 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+from os import remove
+from os.path import join, exists
+from typing import Union
+from xml.parsers.expat import ExpatError
 
-import os
+import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
 from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS
-from wazuh.core.rule import format_rule_decoder_file
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array
+from wazuh.core.rule import format_rule_decoder_file
+from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
+    delete_file_with_backup, upload_file, to_relative_path
+from wazuh.rbac.decorators import expose_resources
 
 
 def get_decoders(names=None, status=None, filename=None, relative_dirname=None, parents=False, offset=0,
@@ -130,24 +135,127 @@ def get_decoders_files(status=None, relative_dirname=None, filename=None, offset
     return result
 
 
-def get_file(filename=None):
-    """Reads content of specified file
+def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
+    """Read content of specified file.
 
-    :param filename: Filename to read content from
-    :return: File contents
+    Parameters
+    ----------
+    filename : str
+        Name of the decoder file.
+    raw : bool
+        Whether to return the content in raw format (str->XML) or JSON.
+
+    Returns
+    -------
+    str or dict
+        Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
+    result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
+                                      all_msg='Selected decoder was returned')
     decoders = get_decoders_files(filename=filename).affected_items
 
     if len(decoders) > 0:
         decoder_path = decoders[0]['relative_dirname']
         try:
-            full_path = os.path.join(common.ossec_path, decoder_path, filename)
+            full_path = join(common.wazuh_path, decoder_path, filename)
             with open(full_path) as f:
                 file_content = f.read()
-            return file_content
+            if raw:
+                result = file_content
+            else:
+                # Missing root tag in decoder file
+                result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
+                result.total_affected_items = 1
+        except ExpatError as e:
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1501, extra_message=f"{join('WAZUH_HOME', decoder_path, filename)}:"     
+                                                                        f" {str(e)}"))
         except OSError:
-            raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, filename))
-        except Exception:
-            raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, filename))
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1502, extra_message=join('WAZUH_HOME', decoder_path, filename)))
+
     else:
-        raise WazuhError(1503)
+        result.add_failed_item(id_=filename, error=WazuhError(1503))
+
+    return result
+
+
+@expose_resources(actions=['decoders:update'], resources=['*:*:*'])
+def upload_decoder_file(filename: str, content: str, overwrite: bool = False) -> AffectedItemsWazuhResult:
+    """Upload a new decoder file or update an existing one.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the decoder file.
+    content : str
+        Content of the file. It must be a valid XML file.
+    overwrite : bool
+        True for updating existing files. False otherwise.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
+                                      none_msg='Could not upload decoder'
+                                      )
+    full_path = join(common.user_decoders_path, filename)
+    backup_file = ''
+    try:
+        if len(content) == 0:
+            raise WazuhError(1112)
+
+        validate_wazuh_xml(content)
+        # If file already exists and overwrite is False, raise exception
+        if not overwrite and exists(full_path):
+            raise WazuhError(1905)
+        elif overwrite and exists(full_path):
+            backup_file = f'{full_path}.backup'
+            delete_file_with_backup(backup_file, full_path, delete_decoder_file)
+
+        upload_file(content, to_relative_path(full_path))
+        result.affected_items.append(to_relative_path(full_path))
+        result.total_affected_items = len(result.affected_items)
+        backup_file and exists(backup_file) and remove(backup_file)
+    except WazuhError as e:
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    finally:
+        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o0660)
+
+    return result
+
+
+@expose_resources(actions=['decoders:delete'], resources=['decoder:file:{filename}'])
+def delete_decoder_file(filename: str) -> AffectedItemsWazuhResult:
+    """Delete a decoder file.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the decoder file.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
+                                      none_msg='Could not delete decoder file'
+                                      )
+
+    full_path = join(common.user_decoders_path, filename[0])
+
+    try:
+        if exists(full_path):
+            try:
+                remove(full_path)
+                result.affected_items.append(to_relative_path(full_path))
+            except IOError:
+                raise WazuhError(1907)
+        else:
+            raise WazuhError(1906)
+    except WazuhError as e:
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result

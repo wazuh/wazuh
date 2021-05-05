@@ -17,7 +17,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -44,7 +44,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - items: !anything
@@ -71,7 +71,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - items: !anything
@@ -100,7 +100,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - items: !anything
@@ -125,7 +125,7 @@ stages:
           select_key: 'filename,relative_dirname' # required_fields={'filename', 'relative_dirname'}
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
           failed_items: []
@@ -163,7 +163,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -181,7 +181,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - items: !anything
@@ -200,7 +200,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - items: !anything
@@ -219,7 +219,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -237,7 +237,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - items: !anything
@@ -283,7 +283,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -306,7 +306,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
            # We get totalItems number of arrays in items, using !anything to check items key is in the response
           affected_items: !anything
@@ -334,7 +334,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &full_items_array_files
             - relative_dirname: !anystr
@@ -360,7 +360,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -385,7 +385,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
               # Check offset matches with previous request
@@ -406,7 +406,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array_files
@@ -425,7 +425,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -443,9 +443,309 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
+
+---
+test_name: GET /lists/files/{filename}
+
+stages:
+
+  # GET /lists/files/{filename}
+  - name: Get content of audit-keys
+    request: &get_audit_keys_list
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - audit-wazuh-w: write
+              audit-wazuh-r: read
+              audit-wazuh-a: attribute
+              audit-wazuh-x: execute
+              audit-wazuh-c: command
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  # GET /lists/files/{filename}
+  - name: Get content of audit-keys (raw)
+    request:
+      verify: False
+      <<: *get_audit_keys_list
+      params:
+        raw: True
+    response:
+      status_code: 200
+      headers:
+        content-type: "text/plain; charset=utf-8"
+
+  # GET /lists/files/{filename}
+  - name: Get content of amazon/aws-eventnames (search file recursively)
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/aws-eventnames"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # GET /lists/files/{filename}
+  - name: Try to find list which does not exist
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/unknown"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          failed_items:
+            - error:
+                code: 1802
+              id:
+                - 'unknown'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # GET /lists/files/{filename}
+  - name: Try to get CDB list (invalid file)
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/..%2F..%2Faudit-keys"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
+  # GET /lists/files/{filename}
+  - name: Try to get CDB list (invalid file 2)
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
+---
+test_name: PUT /lists/files/{filename}
+
+stages:
+
+  # PUT /lists/files/{filename}
+  - name: Upload a new list file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      method: PUT
+      data: "{new_cdb_list:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - 'etc/lists/new_list'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # PUT /lists/files/{filename}
+  - name: Try to upload same list file (overwrite=False)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      method: PUT
+      data: "{new_cdb_list:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          failed_items:
+            - error:
+                code: 1905
+              id:
+                - 'etc/lists/new_list'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /lists/files/{filename}
+  - name: Upload same list file (overwrite=True)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      method: PUT
+      data: "{new_cdb_list:s}"
+      params:
+        overwrite: True
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - 'etc/lists/new_list'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # PUT /lists/files/{filename}
+  - name: Try to upload list file with repeated name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/aws-eventnames"
+      method: PUT
+      data: "{new_cdb_list:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          failed_items:
+            - error:
+                code: 1805
+              id:
+                - 'etc/lists/aws-eventnames'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /lists/files/{filename}
+  - name: Try to upload invalid list file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      method: PUT
+      data: "{new_cdb_list_with_syntax_error:s}"
+      params:
+        overwrite: True
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          failed_items:
+            - error:
+                code: 1800
+              id:
+                - 'etc/lists/new_list'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /lists/files/{filename}
+  - name: Try to upload list with invalid name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/invalid.txt"
+      method: PUT
+      data: "{new_cdb_list:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: !anystr
+        detail: !anystr
+
+  # PUT /lists/files/{filename}
+  - name: Try to upload CDB list (invalid file 2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/..%2F..%2Faudit-keys"
+      method: PUT
+      data: "{new_cdb_list:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
+---
+test_name: DELETE /lists/files/{filename}
+
+stages:
+
+  # DELETE /lists/files/{filename}
+  - name: Delete an existent list file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - 'etc/lists/new_list'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # DELETE /lists/files/{filename}
+  - name: Try to delete same file (it does not exist now)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          failed_items:
+            - error:
+                code: 1906
+              id:
+                - 'etc/lists/new_list'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # DELETE /lists/files/{filename}
+  - name: Try to delete CDB list (invalid file)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/..%2F..%2Faudit-keys"
+      method: DELETE
+      data: "{new_cdb_list:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -11,6 +11,7 @@
 
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
+#include "sharedDefs.h"
 #include <regex>
 
 static bool parseUnixFile(const std::map<std::string, std::string>& keyMap,
@@ -147,10 +148,11 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
         {"NAME",             "os_name"},
         {"VERSION",          "os_version"},
         {"ID",               "os_platform"},
+        {"BUILD_ID",         "os_build"},
         {"VERSION_CODENAME", "os_codename"}
     };
     const auto ret {parseUnixFile(KEY_MAP, SEPARATOR, in, info)};
-    if (ret)
+    if (ret && info.find("os_version") != info.end())
     {
         findMajorMinorVersionInString(info["os_version"], info);
     }
@@ -391,7 +393,7 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
     if (ret)
     {
         const auto it{MAC_CODENAME_MAP.find(match)};
-        output["os_codename"] = it != MAC_CODENAME_MAP.end() ? it->second : "unknown";
+        output["os_codename"] = it != MAC_CODENAME_MAP.end() ? it->second : "";
     }
     return ret;
 }

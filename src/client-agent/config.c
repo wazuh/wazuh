@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,6 +16,7 @@
 
 /* Global variables */
 time_t available_server;
+time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
@@ -67,7 +68,7 @@ int ClientConf(const char *cfgfile)
         mwarn("Client buffer throughput too low: set to %d eps", min_eps);
         agt->events_persec = min_eps;
     }
-    
+
     return (1);
 }
 
@@ -85,6 +86,8 @@ cJSON *getClientConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
     cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
+    cJSON_AddNumberToObject(client,"force_reconnect_interval",agt->force_reconnect_interval);
+    cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
     if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
@@ -100,7 +103,7 @@ cJSON *getClientConfig(void) {
             cJSON_AddNumberToObject(server,"port",agt->server[i].port);
             cJSON_AddNumberToObject(server,"max_retries", agt->server[i].max_retries);
             cJSON_AddNumberToObject(server,"retry_interval", agt->server[i].retry_interval);
-    
+
             if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
         }
@@ -114,25 +117,25 @@ cJSON *getClientConfig(void) {
 
         if (agt->enrollment_cfg->target_cfg->manager_name)
             cJSON_AddStringToObject(enrollment_cfg, "manager_address", agt->enrollment_cfg->target_cfg->manager_name);
-        
+
         cJSON_AddNumberToObject(enrollment_cfg, "port", agt->enrollment_cfg->target_cfg->port);
-        
+
         if (agt->enrollment_cfg->target_cfg->agent_name)
             cJSON_AddStringToObject(enrollment_cfg, "agent_name", agt->enrollment_cfg->target_cfg->agent_name);
-        if (agt->enrollment_cfg->target_cfg->centralized_group)   
+        if (agt->enrollment_cfg->target_cfg->centralized_group)
             cJSON_AddStringToObject(enrollment_cfg, "group", agt->enrollment_cfg->target_cfg->centralized_group);
-        
+
         cJSON_AddStringToObject(enrollment_cfg, "ssl_cipher", agt->enrollment_cfg->cert_cfg->ciphers);
-        
+
         if (agt->enrollment_cfg->cert_cfg->ca_cert)
             cJSON_AddStringToObject(enrollment_cfg, "server_certificate_path", agt->enrollment_cfg->cert_cfg->ca_cert);
         if (agt->enrollment_cfg->cert_cfg->agent_cert)
             cJSON_AddStringToObject(enrollment_cfg, "agent_certificate_path", agt->enrollment_cfg->cert_cfg->agent_cert);
-        if (agt->enrollment_cfg->cert_cfg->agent_key)    
+        if (agt->enrollment_cfg->cert_cfg->agent_key)
             cJSON_AddStringToObject(enrollment_cfg, "agent_key_path", agt->enrollment_cfg->cert_cfg->agent_key);
         if(agt->enrollment_cfg->cert_cfg->authpass)
             cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment_cfg->cert_cfg->authpass_file);
-        
+
         cJSON_AddStringToObject(enrollment_cfg,"auto_method",agt->enrollment_cfg->cert_cfg->auto_method ? "yes": "no");
         cJSON_AddItemToObject(client,"enrollment",enrollment_cfg);
     }
@@ -236,34 +239,4 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
-}
-
-
-void resolveHostname(char **hostname, int attempts) {
-
-    char *tmp_str;
-    char *f_ip;
-
-    if (OS_IsValidIP(*hostname, NULL) == 1) {
-        return;
-    }
-
-    tmp_str = strchr(*hostname, '/');
-    if (tmp_str) {
-        *tmp_str = '\0';
-    }
-
-    f_ip = OS_GetHost(*hostname, attempts);
-    if (f_ip) {
-        char ip_str[128] = {0};
-        snprintf(ip_str, 127, "%s/%s", *hostname, f_ip);
-        free(f_ip);
-        free(*hostname);
-        os_strdup(ip_str, *hostname);
-    } else {
-        char ip_str[128] = {0};
-        snprintf(ip_str, 127, "%s/", *hostname);
-        free(*hostname);
-        os_strdup(ip_str, *hostname);
-    }
 }

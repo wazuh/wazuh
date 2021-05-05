@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -73,14 +73,6 @@ void OS_AddList( ListNode *new_listnode, ListNode **cdblists);
 int Lists_OP_LoadList(char *listfile, ListNode **cdblists, OSList* log_msg);
 
 /**
- * @brief Search a key in a cdb list
- * @param lrule list of rules and cdb lists associated
- * @param key word which search in cdb list
- * @return 1 if find it, otherwise 0
- */
-int OS_DBSearchKey(ListRule *lrule, char *key);
-
-/**
  * @brief Search a word in a cdb list
  * @param lrule list of rules and cdb lists associated
  * @param key word which search in cdb list
@@ -110,14 +102,6 @@ void OS_ListLoadRules(ListNode **l_node, ListRule **lrule);
 ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field,
                          const char *dfield, char *listname, OSMatch *matcher,
                          ListNode **l_node);
-
-/**
- * @brief Get first listnode
- *
- * Only used for Analysisd
- * @return cdb list
- */
-ListNode *OS_GetFirstList(void);
 
 /**
  * @brief Find a cdb list

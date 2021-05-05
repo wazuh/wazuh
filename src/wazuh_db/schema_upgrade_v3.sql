@@ -1,6 +1,6 @@
 /*
  * SQL Schema for upgrading databases
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS vuln_metadata (
     WAZUH_VERSION TEXT,
     HOTFIX_SCAN_ID TEXT
 );
-INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION, WAZUH_VERSION)
+INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION, HOTFIX_SCAN_ID)
     SELECT '0', '0', '0' WHERE NOT EXISTS (
         SELECT * FROM vuln_metadata
     );

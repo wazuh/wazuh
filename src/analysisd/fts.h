@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,8 +14,8 @@
 #include "eventinfo.h"
 
 /* FTS queues */
-#define FTS_QUEUE "/queue/fts/fts-queue"
-#define IG_QUEUE  "/queue/fts/ig-queue"
+#define FTS_QUEUE "queue/fts/fts-queue"
+#define IG_QUEUE  "queue/fts/ig-queue"
 
 /**
  * @brief Structure to save previous fts events

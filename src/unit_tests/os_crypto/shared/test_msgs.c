@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -174,9 +174,7 @@ void test_StoreCounter_pushing_rids_fp_null(void **state)
     key->rids_node = NULL;
     keys.keyentries[0] = key;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/queue/rids/001");
+    expect_string(__wrap_fopen, path, "queue/rids/001");
     expect_string(__wrap_fopen, mode, "r+");
     will_return(__wrap_fopen, 1234);
 
@@ -235,13 +233,11 @@ void test_StoreCounter_fail_first_open(void **state)
     key->rids_node = NULL;
     keys.keyentries[0] = key;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/queue/rids/001");
+    expect_string(__wrap_fopen, path, "queue/rids/001");
     expect_string(__wrap_fopen, mode, "r+");
     will_return(__wrap_fopen, NULL);
     errno = EACCES;
-    expect_string(__wrap_fopen, path, "/queue/rids/001");
+    expect_string(__wrap_fopen, path, "queue/rids/001");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1234);
 

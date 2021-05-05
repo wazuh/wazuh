@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 28, 2018.
  *
  * This program is free software; you can redistribute it
@@ -76,7 +76,7 @@ void * lessdcom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR LESSD_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(LESSD_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", LESSD_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }

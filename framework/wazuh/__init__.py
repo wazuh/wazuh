@@ -1,6 +1,6 @@
 
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -18,7 +18,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '4.2.0'
+__version__ = '4.3.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -48,7 +48,7 @@ class Wazuh:
         self.version = common.wazuh_version
         self.installation_date = common.installation_date
         self.type = common.install_type
-        self.path = common.ossec_path
+        self.path = common.wazuh_path
         self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
         self.tz_offset = None

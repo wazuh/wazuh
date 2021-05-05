@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -36,6 +36,12 @@ static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 w_queue_t * writer_queue_log_fts;
 
 EventList *os_analysisd_last_events;
+
+/* Change path for test rule */
+#ifdef TESTRULE
+#undef RULEPATH
+#define RULEPATH "ruleset/rules/"
+#endif
 
 /* Prototypes */
 STATIC int getattributes(char **attributes,
@@ -86,7 +92,7 @@ void Rules_OP_CreateRules() {
 
 }
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node,
                        EventList **last_event_list, OSStore **decoder_list, OSList* log_msg)
 {
     OS_XML xml;
@@ -307,8 +313,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 goto cleanup;
             }
             if ((!node[i]->attributes) || (!node[i]->values)
-                || (!node[i]->values[0]) || (!node[i]->attributes[0]) 
-                || (strcasecmp(node[i]->attributes[0], "name") != 0) 
+                || (!node[i]->values[0]) || (!node[i]->attributes[0])
+                || (strcasecmp(node[i]->attributes[0], "name") != 0)
                 || (node[i]->attributes[1])) {
                 smerror(log_msg, "rules_op: Invalid root element '%s'."
                        "Only the group name is allowed", node[i]->element);
@@ -583,7 +589,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_group) == 0) {
                         config_ruleinfo->group = loadmemory(config_ruleinfo->group, rule_opt[k]->content, log_msg);
- 
+
                     } else if (strcasecmp(rule_opt[k]->element, xml_comment) == 0) {
 
                         char *newline;
@@ -817,7 +823,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                         lookup_type = LR_ADDRESS_MATCH_VALUE;
                                     } else {
                                         smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.", 
+                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.",
                                                 rule_opt[k]->values[list_att_num]);
                                         goto cleanup;
                                     }
@@ -864,7 +870,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                     os_calloc(1, sizeof(OSMatch), matcher);
                                     if (!OSMatch_Compile(rule_opt[k]->values[list_att_num], matcher, 0)) {
                                         smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, REGEX_COMPILE, rule_opt[k]->values[list_att_num], 
+                                        smerror(log_msg, REGEX_COMPILE, rule_opt[k]->values[list_att_num],
                                             matcher->error);
                                         goto cleanup;
                                     }
@@ -1495,9 +1501,17 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     goto cleanup;
                 }
 
+                /* Check for valid overwrite */
+                if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
+                    && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
+                    smerror(log_msg, "Invalid use of overwrite option. "
+                            "Could not overwrite parent rule at rule '%d'.", config_ruleinfo->sigid);
+                    goto cleanup;
+                }
+
                 /* Check for valid use of frequency */
-                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field 
-                    || config_ruleinfo->different_field || config_ruleinfo->frequency) 
+                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field
+                    || config_ruleinfo->different_field || config_ruleinfo->frequency)
                     && !config_ruleinfo->context) {
                     smerror(log_msg, "Invalid use of frequency/context options. "
                            "Missing if_matched on rule '%d'.", config_ruleinfo->sigid);
@@ -1715,7 +1729,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     os_free(location);
                 }
-                
+
                 /* Add location */
                 if (action) {
                     w_calloc_expression_t(&config_ruleinfo->action, action_type);
@@ -1871,6 +1885,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
     /* Done over here */
     retval = 0;
+    config_ruleinfo = NULL;
 
 cleanup:
 
@@ -1897,8 +1912,8 @@ cleanup:
     os_free(action)
     OS_ClearNode(rule);
     OS_ClearNode(rule_opt);
-    
-    if (retval) {
+
+    if (config_ruleinfo != NULL) {
         os_remove_ruleinfo(config_ruleinfo);
     }
 
@@ -2492,6 +2507,13 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         return (NULL);
     }
 
+#ifdef TESTRULE
+    if (full_output && !alert_only) {
+        print_out("    Trying rule: %d - %s", rule->sigid,
+                  rule->comment);
+    }
+#endif
+
     /* Check if any decoder pre-matched here for syscheck event */
     if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
             rule->decoded_as != lf->decoder_syscheck_id)){
@@ -2509,7 +2531,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->program_name, lf->program_name, NULL, NULL)
+        if (w_expression_match(rule->program_name, lf->program_name, NULL, rule_match)
             == rule->program_name->negate) {
             return (NULL);
         }
@@ -2521,7 +2543,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->id, lf->id, NULL, NULL) == rule->id->negate) {
+        if (w_expression_match(rule->id, lf->id, NULL, rule_match) == rule->id->negate) {
             return (NULL);
         }
     }
@@ -2532,7 +2554,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->system_name, lf->systemname, NULL, NULL)
+        if (w_expression_match(rule->system_name, lf->systemname, NULL, rule_match)
             == rule->system_name->negate) {
             return (NULL);
         }
@@ -2543,21 +2565,21 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         if (!lf->protocol) {
             return (NULL);
         }
-        if (w_expression_match(rule->protocol, lf->protocol, NULL, NULL) == rule->protocol->negate) {
+        if (w_expression_match(rule->protocol, lf->protocol, NULL, rule_match) == rule->protocol->negate) {
             return (NULL);
         }
     }
 
     /* Check if any word to match exists */
     if (rule->match) {
-        if (w_expression_match(rule->match, lf->log, NULL, NULL) == rule->match->negate) {
+        if (w_expression_match(rule->match, lf->log, NULL, rule_match) == rule->match->negate) {
             return (NULL);
         }
     }
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        bool matches = w_expression_match(rule->regex, lf->log, NULL, NULL);
+        bool matches = w_expression_match(rule->regex, lf->log, NULL, rule_match);
         if (matches == rule->regex->negate) {
             return NULL;
         }
@@ -2569,7 +2591,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->action, lf->action, NULL, NULL) == rule->action->negate) {
+        if (w_expression_match(rule->action, lf->action, NULL, rule_match) == rule->action->negate) {
             return (NULL);
         }
     }
@@ -2580,7 +2602,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->url, lf->url, NULL, NULL) == rule->url->negate) {
+        if (w_expression_match(rule->url, lf->url, NULL, rule_match) == rule->url->negate) {
             return (NULL);
         }
     }
@@ -2591,7 +2613,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->location, lf->location, NULL, NULL) == rule->location->negate) {
+        if (w_expression_match(rule->location, lf->location, NULL, rule_match) == rule->location->negate) {
             return (NULL);
         }
     }
@@ -2603,7 +2625,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return NULL;
         }
 
-        bool matches = w_expression_match(rule->fields[i]->regex, field, NULL, NULL);
+        bool matches = w_expression_match(rule->fields[i]->regex, field, NULL, rule_match);
         if (matches == rule->fields[i]->regex->negate) {
             return NULL;
         }
@@ -2617,7 +2639,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->srcip, lf->srcip, NULL, NULL) == rule->srcip->negate) {
+            if (w_expression_match(rule->srcip, lf->srcip, NULL, rule_match) == rule->srcip->negate) {
                 return (NULL);
             }
         }
@@ -2628,7 +2650,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->dstip, lf->dstip, NULL, NULL) == rule->dstip->negate) {
+            if (w_expression_match(rule->dstip, lf->dstip, NULL, rule_match) == rule->dstip->negate) {
                 return (NULL);
             }
         }
@@ -2638,7 +2660,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->srcport, lf->srcport, NULL, NULL) == rule->srcport->negate) {
+            if (w_expression_match(rule->srcport, lf->srcport, NULL, rule_match) == rule->srcport->negate) {
                 return (NULL);
             }
         }
@@ -2647,7 +2669,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->dstport, lf->dstport, NULL, NULL) == rule->dstport->negate) {
+            if (w_expression_match(rule->dstport, lf->dstport, NULL, rule_match) == rule->dstport->negate) {
                 return (NULL);
             }
         }
@@ -2665,11 +2687,11 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         /* Checking if exist any user to match */
         if (rule->user) {
             if (lf->dstuser) {
-                if (w_expression_match(rule->user, lf->dstuser, NULL, NULL) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->dstuser, NULL, rule_match) == rule->user->negate) {
                     return (NULL);
                 }
             } else if (lf->srcuser) {
-                if (w_expression_match(rule->user, lf->srcuser, NULL, NULL) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->srcuser, NULL, rule_match) == rule->user->negate) {
                     return (NULL);
                 }
             } else {
@@ -2684,7 +2706,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return NULL;
             }
 
-            if (w_expression_match(rule->srcgeoip, lf->srcgeoip, NULL, NULL) == rule->srcgeoip->negate) {
+            if (w_expression_match(rule->srcgeoip, lf->srcgeoip, NULL, rule_match) == rule->srcgeoip->negate) {
                 return NULL;
             }
         }
@@ -2695,7 +2717,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return NULL;
             }
 
-            if (w_expression_match(rule->dstgeoip, lf->dstgeoip, NULL, NULL) == rule->dstgeoip->negate) {
+            if (w_expression_match(rule->dstgeoip, lf->dstgeoip, NULL, rule_match) == rule->dstgeoip->negate) {
                 return NULL;
             }
         }
@@ -2727,7 +2749,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             if (!lf->data) {
                 return (NULL);
             }
-            if (w_expression_match(rule->data, lf->data, NULL, NULL) == rule->data->negate) {
+            if (w_expression_match(rule->data, lf->data, NULL, rule_match) == rule->data->negate) {
                 return (NULL);
             }
         }
@@ -2738,7 +2760,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return(NULL);
             }
 
-            if (w_expression_match(rule->extra_data, lf->extra_data, NULL, NULL)
+            if (w_expression_match(rule->extra_data, lf->extra_data, NULL, rule_match)
                 == rule->extra_data->negate) {
                 return (NULL);
             }
@@ -2750,7 +2772,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->hostname, lf->hostname, NULL, NULL) == rule->hostname->negate) {
+            if (w_expression_match(rule->hostname, lf->hostname, NULL, rule_match) == rule->hostname->negate) {
                 return (NULL);
             }
         }
@@ -2761,7 +2783,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->status, lf->status, NULL, NULL) == rule->status->negate) {
+            if (w_expression_match(rule->status, lf->status, NULL, rule_match) == rule->status->negate) {
                 return (NULL);
             }
         }
@@ -2964,11 +2986,21 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         }
     }
 
+#ifdef TESTRULE
+    if (full_output && !alert_only) {
+        print_out("       *Rule %d matched.", rule->sigid);
+    }
+#endif
+
     /* Search for dependent rules */
     if (curr_node->child) {
         RuleNode *child_node = curr_node->child;
         RuleInfo *child_rule = NULL;
-
+#ifdef TESTRULE
+        if (full_output && !alert_only) {
+            print_out("       *Trying child rules.");
+        }
+#endif
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match,
                                              fts_list, fts_store, save_fts_value);
@@ -3066,7 +3098,7 @@ w_exp_type_t w_check_attr_type(xml_node * node, w_exp_type_t default_type, int r
     const char * xml_type = "type";
     const char * str_type = w_get_attr_val_by_name(node, xml_type);
 
-    if (!str_type) { 
+    if (!str_type) {
         return default_type;
     }
 

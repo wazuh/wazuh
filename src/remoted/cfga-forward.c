@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -20,7 +20,7 @@ void *SCFGA_Forward(__attribute__((unused)) void *arg)
 {
     int cfgarq = 0;
     char *agent_id;
-    const char * path = isChroot() ? CFGARQUEUE : DEFAULTDIR CFGARQUEUE;
+    const char * path = CFGARQUEUE;
 
     char msg[OS_SIZE_4096 + 1];
 

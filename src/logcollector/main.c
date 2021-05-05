@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -25,11 +25,11 @@
 #include "logcollector.h"
 
 /* Prototypes */
-static void help_logcollector(void) __attribute__((noreturn));
+static void help_logcollector(char * home_path) __attribute__((noreturn));
 
 
 /* Print help statement */
-static void help_logcollector()
+static void help_logcollector(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -40,8 +40,9 @@ static void help_logcollector()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -50,7 +51,17 @@ int main(int argc, char **argv)
     int c;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    const char *cfg = DEFAULTCPATH;
+
+    /* Set the name */
+    OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    const char *cfg = OSSECCONF;
     gid_t gid;
     const char *group = GROUPGLOBAL;
     lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
@@ -58,16 +69,13 @@ int main(int argc, char **argv)
     /* Setup random */
     srandom_init();
 
-    /* Set the name */
-    OS_SetName(ARGV0);
-
     while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help_logcollector();
+                help_logcollector(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -86,7 +94,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_logcollector();
+                help_logcollector(home_path);
                 break;
         }
 
@@ -114,6 +122,9 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Init message queue */
     w_msg_hash_queues_init();
@@ -175,13 +186,15 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-    mdebug1(STARTED_MSG);
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* Start the queue */
-    if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+    if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     /* Main loop */
     LogCollectorStart();
+
+    return (0);
 }

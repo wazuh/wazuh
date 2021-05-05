@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,7 +12,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
 #ifndef CLIENT
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #endif
 
@@ -86,7 +86,7 @@ int OS_RemoveAgent(const char *u_id) {
     if (!id_exist)
         return 0;
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp)
         return 0;
@@ -144,7 +144,7 @@ int OS_RemoveAgent(const char *u_id) {
 
     fclose(fp);
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
+    if (TempFile(&file, KEYS_FILE, 0) < 0) {
         free(buffer);
         return 0;
     }
@@ -153,7 +153,7 @@ int OS_RemoveAgent(const char *u_id) {
     fclose(file.fp);
     full_name = getFullnameById(u_id);
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
         free(file.name);
         free(buffer);
         free(full_name);
@@ -235,7 +235,7 @@ char *getFullnameById(const char *id)
         return (NULL);
     }
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (NULL);
     }
@@ -306,11 +306,7 @@ int IDExist(const char *id, int discard_removed)
         return (0);
     }
 
-    if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
-    } else {
-        fp = fopen(KEYSFILE_PATH, "r");
-    }
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -394,11 +390,7 @@ int NameExist(const char *u_name)
         return (0);
     }
 
-    if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
-    } else {
-        fp = fopen(KEYSFILE_PATH, "r");
-    }
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -450,10 +442,7 @@ char *IPExist(const char *u_ip)
     if (!(u_ip && strncmp(u_ip, "any", 3)) || strchr(u_ip, '/'))
         return NULL;
 
-    if (isChroot())
-        fp = fopen(AUTH_FILE, "r");
-    else
-        fp = fopen(KEYSFILE_PATH, "r");
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp)
         return NULL;
@@ -519,7 +508,7 @@ double OS_AgentAntiquity_ID(const char *id) {
 
 /**
  * @brief Returns the number of seconds since last agent connection
- * 
+ *
  * @param name The name of the agent
  * @param ip The IP address of the agent (unused). Kept only for compatibility
  * @retval On success, it returns the difference between the current time and the last keepalive
@@ -544,7 +533,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     char line_read[FILE_SIZE + 1];
     line_read[FILE_SIZE] = '\0';
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (0);
     }

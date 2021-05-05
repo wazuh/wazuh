@@ -77,27 +77,27 @@ The Wazuh WUI provides a powerful user interface for data visualization and anal
 
 **Security events**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app2.png)
+![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app2.png)
 
 **Integrity monitoring**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app3.png)
+![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app3.png)
 
 **Vulnerability detection**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app4.png)
+![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app4.png)
 
 **Regulatory compliance**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app5.png)
+![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app5.png)
 
 **Agents overview**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app6.png)
+![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app6.png)
 
 **Agent summary**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/img/app7.png)
+![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/public/assets/app7.png)
 
 ## Orchestration
 
@@ -165,6 +165,6 @@ Stay up to date on news, releases, engineering articles and more.
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2020 Wazuh Inc. (License GPLv2)
+Wazuh Copyright (C) 2015-2021 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -105,7 +105,7 @@ int w_analysisd_write_state(){
 
     mdebug2("Updating state file.");
 
-    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+    snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -246,8 +246,8 @@ static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_
     OS_XML xml2;
 
     /* Read XML file */
-    if (OS_ReadXML(DEFAULTCPATH, &xml2) < 0) {
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml2.err, xml2.err_line);
+    if (OS_ReadXML(OSSECCONF, &xml2) < 0) {
+        merror_exit(XML_ERROR, OSSECCONF, xml2.err, xml2.err_line);
     }
 
     if (ca_verification = OS_GetContents(&xml2, caverify), ca_verification) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -56,36 +56,27 @@ char *os_read_agent_profile(void);
 int os_write_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id,
                         const char *cfg_profile_name) __attribute__((nonnull(1, 3)));
 
+#ifndef CLIENT
 /* Read agent group. Returns 0 on success or -1 on failure. */
 int get_agent_group(const char *id, char *group, size_t size);
-
-#ifndef CLIENT
 
 /* Set agent group. Returns 0 on success or -1 on failure. */
 int set_agent_group(const char * id, const char * group);
 
-#endif
-
 /* Create multigroup dir. Returns 0 on success or -1 on failure. */
 int create_multigroup_dir(const char * multigroup);
 
-/*
- * Parse manager hostname from agent-info file.
- * If no such file, returns NULL.
- */
+int set_agent_multigroup(char * group);
 
-char* hostname_parse(const char *path);
+void w_remove_multigroup(const char *group);
+
+#endif
 
 /* Validates the group name
  * @params response must be a 2048 buffer or NULL
  * Returns 0 on success or  -x on failure
  */
-
 int w_validate_group_name(const char *group, char *response);
-
-int set_agent_multigroup(char * group);
-
-void w_remove_multigroup(const char *group);
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect();

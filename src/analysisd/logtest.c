@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -554,10 +554,11 @@ void w_logtest_remove_session(char *token) {
 
     /* Remove fts list and hash */
     OSHash_Free(session->fts_store);
+    OSList_CleanOnlyNodes(session->fts_list);
     os_free(session->fts_list);
 
     /* Remove accumulator hash */
-    OSHash_Free(session->acm_store);
+    w_analysisd_accumulate_free(&session->acm_store);
 
     /* Free memory allocated in OSRegex execution */
     OSRegex_free_regex_matching(&session->decoder_match);

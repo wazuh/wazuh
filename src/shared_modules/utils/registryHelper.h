@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -19,7 +19,8 @@
 #include <winreg.h>
 #include <cstdio>
 #include <memory>
-	
+#include "encodingWindowsHelper.h"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -153,7 +154,7 @@ namespace Utils
             bool ret{true};
             try
             {
-                value = this->string(valueName);
+                value = EncodingWindowsHelper::stringAnsiToStringUTF8(this->string(valueName));
             }
             catch(...)
             {

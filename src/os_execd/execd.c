@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -29,7 +29,7 @@ time_t pending_upg = 0;
 #ifndef WIN32
 
 /* Prototypes */
-static void help_execd(void) __attribute__((noreturn));
+static void help_execd(char * home_path) __attribute__((noreturn));
 STATIC void execd_shutdown(int sig) __attribute__((noreturn));
 #ifdef WAZUH_UNIT_TESTING
 STATIC void ExecdStart(int q);
@@ -45,7 +45,7 @@ STATIC OSHash *repeated_hash;
 
 
 /* Print help statement */
-static void help_execd()
+static void help_execd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-g group] [-c config]", ARGV0);
@@ -57,8 +57,9 @@ static void help_execd()
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -106,11 +107,18 @@ int main(int argc, char **argv)
     int debug_level = 0;
     pthread_t wcom_thread;
 
-    const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
-
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    const char *group = GROUPGLOBAL;
+    const char *cfg = OSSECCONF;
+
 
     while ((c = getopt(argc, argv, "Vtdhfg:c:")) != -1) {
         switch (c) {
@@ -118,7 +126,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_execd();
+                help_execd(home_path);
                 break;
             case 'd':
                 debug_level = 1;
@@ -143,7 +151,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_execd();
+                help_execd(home_path);
                 break;
         }
     }
@@ -156,6 +164,9 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
@@ -212,8 +223,8 @@ int main(int argc, char **argv)
     }
 
     /* Start exec queue */
-    if ((m_queue = StartMQ(EXECQUEUEPATH, READ, 0)) < 0) {
-        merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+    if ((m_queue = StartMQ(EXECQUEUE, READ, 0)) < 0) {
+        merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
 
     /* The real daemon Now */
@@ -377,7 +388,7 @@ STATIC void ExecdStart(int q)
 
         /* Receive the message */
         if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0) {
-            merror(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+            merror(QUEUE_ERROR, EXECQUEUE, strerror(errno));
             continue;
         }
 
@@ -430,8 +441,8 @@ STATIC void ExecdStart(int q)
             int rc;
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE, 1)) < 0) {
-                merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+            if ((api_sock = StartMQ(EXECQUEUEA, WRITE, 1)) < 0) {
+                merror(QUEUE_ERROR, EXECQUEUEA, strerror(errno));
                 os_free(output);
                 continue;
             }
@@ -459,7 +470,7 @@ STATIC void ExecdStart(int q)
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
-                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
+                snprintf(script_path, PATH_MAX, "%s", "active-response/bin/restart.sh");
                 os_strdup(script_path, cmd_api[0]);
             }
 
@@ -674,7 +685,7 @@ STATIC int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         output_msg = NULL;
-        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
+        snprintf(command_in, PATH_MAX, "%s %s", daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
             if (result_code == EXECVE_ERROR) {

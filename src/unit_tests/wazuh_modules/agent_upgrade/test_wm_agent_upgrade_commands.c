@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,7 +16,7 @@
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
-#include "../../wrappers/wazuh/wazuh_db/wdb_agent_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
 #include "../../wazuh_modules/wmodules.h"

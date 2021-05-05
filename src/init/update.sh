@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Shell script update functions for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -115,7 +115,7 @@ getPreinstalledDirByType()
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
-            PREINSTALLEDDIR=`sed -n 's/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
+            PREINSTALLEDDIR=`sed -n 's/^ *//; s/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -322,7 +322,7 @@ getPreinstalledName()
     if [ -f "${OSSEC_INIT}" ]; then
         . ${OSSEC_INIT}
     else
-        NAME="wazuh"
+        NAME="Wazuh"
     fi
 
     echo $NAME
@@ -469,7 +469,7 @@ UpdateOldVersions()
         BACKUP_RULESET="$PREINSTALLEDDIR/etc/backup_ruleset"
         mkdir $BACKUP_RULESET > /dev/null 2>&1
         chmod 750 $BACKUP_RULESET > /dev/null 2>&1
-        chown root:ossec $BACKUP_RULESET > /dev/null 2>&1
+        chown root:wazuh $BACKUP_RULESET > /dev/null 2>&1
 
         # Backup decoders: Wazuh v1.0.1 to v1.1.1
         old_decoders="ossec_decoders wazuh_decoders"

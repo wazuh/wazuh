@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -23,17 +23,17 @@ namespace Utils
     //  * @brief Minimal Dispatcher interface
     //  * @details Handle dispatching of messages of type Type
     //  * to be processed by calling Functor.
-    //  * 
+    //  *
     //  * @tparam Type Messages types.
     //  * @tparam Functor Entity that processes the messages.
-     
+
     // template <typename Type, typename Functor>
     // class DispatcherInterface
     // {
     // public:
     //  /**
     //   * @brief Ctor
-    //   * 
+    //   *
     //   * @param functor Callable entity.
     //   * @param int Maximun number of threads to be used by the dispatcher.
     //   */
@@ -41,14 +41,14 @@ namespace Utils
     //  *
     //   * @brief Pushes a message to be processed by the functor.
     //   * @details The implementation decides whether the processing is sync or async.
-    //   * 
+    //   *
     //   * @param data Message value.
-         
+
     //  void push(const Type& data);
     //  /**
     //   * @brief Rundowns the pending messages until reaches 0.
     //   * @details It should be a blocking call.
-    //   */     
+    //   */
     //  void rundown();
     //  /**
     //   * @brief Cancels the dispatching.

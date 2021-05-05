@@ -1,6 +1,6 @@
 /*
  * SQL Schema for global database
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 30, 2016.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -158,7 +158,7 @@ CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
 CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
+    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg')),
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -327,7 +327,7 @@ CREATE TABLE IF NOT EXISTS vuln_metadata (
     WAZUH_VERSION TEXT,
     HOTFIX_SCAN_ID TEXT
 );
-INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION, WAZUH_VERSION)
+INSERT INTO vuln_metadata (LAST_SCAN, WAZUH_VERSION, HOTFIX_SCAN_ID)
     SELECT '0', '0', '0' WHERE NOT EXISTS (
         SELECT * FROM vuln_metadata
     );
@@ -339,6 +339,16 @@ CREATE TABLE IF NOT EXISTS sync_info (
     n_attempts INTEGER DEFAULT 0,
     n_completions INTEGER DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS vuln_cves (
+    name TEXT,
+    version TEXT,
+    architecture TEXT,
+    cve TEXT,
+    PRIMARY KEY (name, version, architecture, cve)
+);
+CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);
+CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
 
 BEGIN;
 

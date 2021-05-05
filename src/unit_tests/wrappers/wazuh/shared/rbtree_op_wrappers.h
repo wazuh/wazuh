@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -16,5 +16,7 @@
 void * __wrap_rbtree_insert(rb_tree * tree, const char * key, void * value);
 
 char **__wrap_rbtree_keys(const rb_tree *tree);
+
+void *__wrap_rbtree_get(const rb_tree *tree, const char * key);
 
 #endif

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,6 +16,7 @@
 #include "sysOsInfoWin.h"
 #include "stringHelper.h"
 #include "registryHelper.h"
+#include "sharedDefs.h"
 
 static std::string getVersion(const bool isMinor = false)
 {
@@ -208,7 +209,7 @@ static std::string getMachine()
         {"ARM64",   "x86_64"},
         {"x86",     "i686"},
     };
-    std::string machine{"unknown"};
+    std::string machine { UNKNOWN_VALUE };
     Utils::Registry environment{HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\Session Manager\Environment)"};
     const auto arch{environment.string("PROCESSOR_ARCHITECTURE")};
     const auto it{ARCH_MAP.find(arch)};
@@ -225,7 +226,7 @@ static std::string getNodeName()
     Utils::Registry activeComputerName{HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\ComputerName\ActiveComputerName)"};
     if (!activeComputerName.string("ComputerName", nodeName))
     {
-        nodeName = "unknown";
+        nodeName = UNKNOWN_VALUE;
     }
     return nodeName;
 }
@@ -239,7 +240,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
 , m_name{getName()}
 , m_machine{getMachine()}
 , m_nodeName{getNodeName()}
-{ 
+{
 }
 std::string SysOsInfoProviderWindows::name() const
 {

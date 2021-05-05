@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
@@ -14,6 +14,10 @@ from api.authentication import change_secret
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.rbac.orm import RolesManager, TokenManager
+
+REQUIRED_FIELDS = ['id']
+SORT_FIELDS = ['id', 'name']
+SORT_FIELDS_GET_USERS = ['id', 'username']
 
 
 @lru_cache(maxsize=None)

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 23, 2020.
  *
  * This program is free software; you can redistribute it
@@ -60,7 +60,7 @@ int SysInfo::getCpuCores() const
 }
 void SysInfo::getMemory(nlohmann::json& /*info*/) const
 {
-    
+
 }
 nlohmann::json SysInfo::getPackages() const
 {
@@ -74,7 +74,7 @@ nlohmann::json SysInfo::getOsInfo() const
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
-        ret["host_name"] = uts.nodename;
+        ret["hostname"] = uts.nodename;
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;

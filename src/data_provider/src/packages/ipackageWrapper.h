@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -26,5 +26,7 @@ public:
     virtual std::string architecture() const = 0;
     virtual std::string format() const = 0;
     virtual std::string osPatch() const = 0;
+    virtual std::string source() const = 0;
+    virtual std::string location() const = 0;
 };
 #endif // _PACKAGE_INTERFACE_WRAPPER_H

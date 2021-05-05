@@ -39,7 +39,7 @@ stages:
             error: !anystr
 
 ---
-test_name: GET /syscheck/000/last_scan
+test_name: GET /syscheck/{agent_id}/last_scan
 
 stages:
 
@@ -135,7 +135,7 @@ test_name: DELETE /syscheck
 
 stages:
 
-  - name: Try to delete syscheck scans in agent 000
+  - name: Try to delete syscheck scans in agent 001 (Allow)
     request:
       verify: False
       method: DELETE
@@ -152,7 +152,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try to check the answer is empty after deleting the scans for agent 000
+  - name: Try to delete syscheck scans in agent 002 (Deny)
     request:
       verify: False
       method: DELETE

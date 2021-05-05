@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January 17, 2018.
  *
  * This program is free software; you can redistribute it
@@ -92,6 +92,7 @@
 #define VU_METADATA_CLEAN     "(5484): Cleaning metadata for target '%s'"
 #define VU_UNS_OS             "(5485): Agent '%.3d' has an unsupported OS: '%s'"
 #define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
+#define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -158,6 +159,7 @@
 #define FIM_HEALTHCHECK_SUCCESS             "(6261): Whodata health-check: Success."
 #define FIM_HEALTHCHECK_CHECK_RULE          "(6262): Couldn't delete audit health check rule."
 #define FIM_SACL_CHECK_CONFIGURE            "(6263): Setting up SACL for '%s'"
+#define FIM_REACHED_MAX_FPS                 "(6264): Maximum number of files read per second reached, sleeping."
 #define FIM_SACL_RESTORED                   "(6265): The SACL of '%s' has been restored correctly."
 #define FIM_SACL_CONFIGURE                  "(6266): The SACL of '%s' will be configured."
 #define FIM_SACL_NOT_FOUND                  "(6267): No SACL found on target. A new one will be created."
@@ -215,7 +217,7 @@
 #define FIM_CONFIGURATION_NOTFOUND          "(6319): No configuration found for (%s):'%s'"
 #define FIM_PROCESS_PRIORITY                "(6320): Setting process priority to: '%d'"
 #define FIM_SEND                            "(6321): Sending FIM event: %s"
-#define FIM_AUDIT_RELOADED                  "(6322): Reloaded audit rule for monitoring directory: '%s'"
+#define FIM_AUDIT_ALREADY_ADDED             "(6322): Already added audit rule for monitoring directory: '%s'"
 #define FIM_REALTIME_DIRECTORYCHANGES       "(6323): Unable to set 'ReadDirectoryChangesW' for directory: '%s'"
 #define FIM_HASHES_FAIL                     "(6324): Couldn't generate hashes for '%s'"
 #define FIM_EXTRACT_PERM_FAIL               "(6325): It was not possible to extract the permissions of '%s'. Error: %d"
@@ -253,6 +255,7 @@
 #define FIM_DISK_QUOTA_LIMIT                "(6357): Maximum disk quota size limit configured to '%d KB'."
 #define FIM_DIFF_FOLDER_DELETED             "(6358): Folder '%s' has been deleted."
 #define GLOB_NO_MATCH                       "(6359): No matches found for the glob pattern: '%s'"
+#define FIM_DB_FAIL_TO_GET_SCANNED_FILE     "(6360): Failed to get scanned value of '%s' - %s"
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
@@ -283,5 +286,8 @@
 #define MOD_TASK_DISABLED_WORKER            "(8207): Module Task Manager only runs on Master nodes in cluster configuration."
 #define MOD_TASK_TASKS_DB_ERROR_IN_QUERY    "(8208): Tasks DB Error reported in the result of the query, message: '%s'"
 #define MOD_TASK_TASKS_DB_ERROR_EXECUTE     "(8209): Tasks DB Cannot execute SQL query: err database '%s/%s.db'"
+
+/* Generic messages */
+#define SUCCESSFULLY_RECONNECTED_SOCKET     "(8300): Successfully reconnected to '%s'"
 
 #endif /* DEBUG_MESSAGES_H */

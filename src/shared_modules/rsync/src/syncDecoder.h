@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -19,11 +19,11 @@
 
 namespace RSync
 {
-    class SyncDecoder 
+    class SyncDecoder
     {
         std::map<std::string, std::shared_ptr<IMessageDecoder>> m_decodersRegistered;
         std::mutex m_mutex;
-         
+
     public:
         std::pair<std::string, SyncInputData> decode (const std::vector<unsigned char>& rawData)
         {
@@ -50,7 +50,7 @@ namespace RSync
             return {};
         }
 
-        void setMessageDecoderType(const std::string& messageHeaderId, 
+        void setMessageDecoderType(const std::string& messageHeaderId,
                                    const SyncMsgBodyType syncMessageType)
         {
             std::lock_guard<std::mutex> lock{ m_mutex };

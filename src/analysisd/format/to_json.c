@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2015 Trend Micro Inc.
  * All rights reserved.
  *
@@ -492,7 +492,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                if (lf->fields[i].value && *lf->fields[i].value) {
+                if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
                 }
             }

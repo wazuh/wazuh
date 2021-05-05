@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 12, 2018.
  *
  * This program is free software; you can redistribute it
@@ -33,6 +33,9 @@ size_t agcom_dispatch(char * command, char ** output){
         }
         return agcom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "getstate") == 0) {
+        *output = w_agentd_state_get();
+        return strlen(*output);
     } else {
         mdebug1("AGCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);

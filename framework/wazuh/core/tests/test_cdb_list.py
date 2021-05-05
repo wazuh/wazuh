@@ -1,19 +1,20 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
 from unittest.mock import mock_open, patch
+import shutil
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import common
-        from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists, \
-            split_key_value_with_quotes
-        from wazuh.core.exception import WazuhError
+        from wazuh.core.cdb_list import check_path, get_list_from_file, iterate_lists, \
+            split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths
+        from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
 
 # Variables
@@ -27,34 +28,18 @@ ABSOLUTE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data"
 RELATIVE_PATH = os.path.join("framework", "wazuh", "core", "tests", "data", "test_cdb_list")
 PATH_FILE = os.path.join(RELATIVE_PATH, "test_lists")
 
-CONTENT_FILE = [{'key': 'test-wazuh-w', 'value': 'write'},
-                {'key': 'test-wazuh-r', 'value': 'read'},
-                {'key': 'test-wazuh-a', 'value': 'attribute'},
-                {'key': 'test-wazuh-x', 'value': 'execute'},
-                {'key': 'test-wazuh-c', 'value': 'command'},
-                {'key': 'test-key', 'value': 'value:1'},
-                {'key': 'test-key:1', 'value': 'value'},
-                {'key': 'test-key:2', 'value': 'value:2'},
-                {'key': 'test-key::::::3', 'value': 'value3'},
-                {'key': 'test-key4', 'value': 'value:::4'}]
-
+CONTENT_FILE = {'test-wazuh-w': 'write',
+                'test-wazuh-r': 'read',
+                'test-wazuh-a': 'attribute',
+                'test-wazuh-x': 'execute',
+                'test-wazuh-c': 'command',
+                'test-key': 'value:1',
+                'test-key:1': 'value',
+                'test-key:2': 'value:2',
+                'test-key::::::3': 'value3',
+                'test-key4': 'value:::4'}
 
 # Tests
-
-@pytest.mark.parametrize("relative_path", ["testpath", "complex test path/with/sub/dir"])
-def test_get_relative_path(relative_path):
-    """Test `get_relative_path` core functionality.
-
-    This will create a full path from the relative path provided and then pass it to `get_relative_path`. The result
-    must be the same as the original `relative_path` provided.
-
-    Parameters
-    ----------
-    relative_path : str
-        Relative path to create a full path and pass it to `get_relative_path`.
-    """
-    full_path = os.path.join(common.ossec_path, relative_path)
-    assert relative_path == get_relative_path(full_path)
 
 
 @pytest.mark.parametrize('path, error_expected', [
@@ -149,12 +134,20 @@ def test_split_key_value_with_quotes(line, expected_key, expected_value):
         assert e.value.code == 1800
 
 
-def test_get_list_from_file():
+@pytest.mark.parametrize('raw', [
+    False, True
+])
+def test_get_list_from_file(raw):
     """Test basic `get_list_from_file` core functionality.
 
     `get_list_from_file` must retrieve the content of a CDB file.
     """
-    assert get_list_from_file(PATH_FILE) == CONTENT_FILE
+    full_path = os.path.join(common.wazuh_path, PATH_FILE)
+    if raw:
+        with open(full_path) as f:
+            assert get_list_from_file(full_path, raw) == f.read()
+    else:
+        assert get_list_from_file(full_path, raw) == CONTENT_FILE
 
 
 @pytest.mark.parametrize("error_to_raise, wazuh_error_code", [
@@ -186,3 +179,73 @@ def test_get_list_from_file_with_errors(error_to_raise, wazuh_error_code):
             assert e.code == wazuh_error_code
         except Exception as e:
             assert e.args == (1, "Random")
+
+
+def test_validate_cdb_list():
+    """Test validate_cdb function"""
+    with open(os.path.join(common.wazuh_path, PATH_FILE)) as f:
+        wazuh_cdb_list = f.read()
+
+    try:
+        validate_cdb_list(wazuh_cdb_list)
+    except WazuhError:
+        pytest.fail('validate_cdb_list raised an exception but no exception was expected')
+
+
+def test_validate_cdb_list_ko():
+    """Test that validate_cdb_list raises expected exceptions."""
+    # Exception when content is empty
+    with pytest.raises(WazuhError, match=r'\b1112\b'):
+        validate_cdb_list('')
+
+    # Raise exeption when using invalid CDB list
+    with pytest.raises(WazuhError, match=r'\b1800\b'):
+        validate_cdb_list("test:key:testvalue\n")
+
+
+@patch('wazuh.core.cdb_list.chmod')
+@patch('wazuh.core.cdb_list.delete_wazuh_file')
+def test_create_list_file(mock_delete, mock_chmod):
+    """Test that create_list_file function works as expected"""
+
+    with open(os.path.join(common.wazuh_path, PATH_FILE)) as f:
+        with patch('wazuh.core.cdb_list.common.wazuh_path', new='/var/ossec'):
+            with patch('builtins.open') as mock_open:
+                wazuh_cdb_list = f.read()
+                result = create_list_file('/test/path', wazuh_cdb_list, permissions=0o660)
+                assert mock_open.return_value.__enter__().write.call_count == len(wazuh_cdb_list.split('\n'))-1
+
+    mock_chmod.assert_called_once_with('/test/path', 0o660)
+
+
+def test_create_list_file_ko():
+    """Test that create_list_file function works and methods inside are called with expected parameters."""
+    with pytest.raises(WazuhError, match=r'\b1806\b'):
+        create_list_file(full_path='/test/path', content=' ')
+
+
+@patch('wazuh.core.cdb_list.remove')
+@patch('wazuh.core.cdb_list.delete_wazuh_file')
+def test_delete_list(mock_delete_wazuh_file, mock_remove):
+    """Check that delete_list function uses expected params."""
+    path = 'etc/list/test_list'
+    delete_list(path)
+    mock_delete_wazuh_file.assert_called_once_with(os.path.join(common.wazuh_path, path))
+    mock_remove.assert_called_once_with(os.path.join(common.wazuh_path, path + '.cdb'))
+
+
+def test_get_filenames_paths():
+    """Check that full file path is found using only the filename."""
+    try:
+        # Create directory for the test
+        test_dir = os.path.join(ABSOLUTE_PATH, 'test_dir')
+        test_file = os.path.join(test_dir, 'test_file')
+        shutil.rmtree(test_dir, ignore_errors=True)
+        os.makedirs(test_dir)
+        with open(test_file, 'a') as f:
+            f.write('key:value\n"ke:y2":value2\n')
+
+        assert [test_file] == get_filenames_paths(['test_file'], root_directory=ABSOLUTE_PATH)
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)

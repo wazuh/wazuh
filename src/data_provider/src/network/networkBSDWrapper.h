@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 26, 2020.
  *
  * This program is free software; you can redistribute it
@@ -42,11 +42,11 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
     ifaddrs* m_interfaceAddress;
     const std::string m_scanTime;
- 
+
     public:
     explicit NetworkBSDInterface(ifaddrs* addrs)
     : m_interfaceAddress{addrs}
-    { 
+    {
         if (!addrs)
         {
             throw std::runtime_error { "Nullptr instances of network interface" };
@@ -55,12 +55,12 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string name() const override
     {
-        return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : UNKNOWN_VALUE;
+        return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
     }
 
     std::string adapter() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     int family() const override
@@ -70,25 +70,25 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string address() const override
     {
-        return m_interfaceAddress->ifa_addr ? 
+        return m_interfaceAddress->ifa_addr ?
             Utils::NetworkHelper::IAddressToBinary(
-                this->family(), 
+                this->family(),
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_addr))->sin_addr) : "";
     }
 
     std::string netmask() const override
     {
-        return m_interfaceAddress->ifa_netmask ? 
+        return m_interfaceAddress->ifa_netmask ?
             Utils::NetworkHelper::IAddressToBinary(
-                m_interfaceAddress->ifa_netmask->sa_family, 
+                m_interfaceAddress->ifa_netmask->sa_family,
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_netmask))->sin_addr) : "";
     }
 
     std::string broadcast() const override
     {
-        return m_interfaceAddress->ifa_dstaddr ? 
+        return m_interfaceAddress->ifa_dstaddr ?
             Utils::NetworkHelper::IAddressToBinary(
-                m_interfaceAddress->ifa_dstaddr->sa_family, 
+                m_interfaceAddress->ifa_dstaddr->sa_family,
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_dstaddr))->sin_addr) : "";
     }
 
@@ -96,7 +96,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_addr ?
             Utils::NetworkHelper::IAddressToBinary(
-                m_interfaceAddress->ifa_addr->sa_family, 
+                m_interfaceAddress->ifa_addr->sa_family,
                 &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_addr))->sin6_addr) : "";
     }
 
@@ -104,7 +104,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_netmask ?
             Utils::NetworkHelper::IAddressToBinary(
-                    m_interfaceAddress->ifa_netmask->sa_family, 
+                    m_interfaceAddress->ifa_netmask->sa_family,
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_netmask))->sin6_addr) : "";
     }
 
@@ -112,13 +112,13 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_dstaddr ?
             Utils::NetworkHelper::IAddressToBinary(
-                    m_interfaceAddress->ifa_dstaddr->sa_family, 
+                    m_interfaceAddress->ifa_dstaddr->sa_family,
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_dstaddr))->sin6_addr) : "";
     }
 
     std::string gateway() const override
     {
-        std::string retVal = UNKNOWN_VALUE;
+        std::string retVal;
         size_t tableSize { 0 };
         int mib[] = { CTL_NET, PF_ROUTE, 0, PF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
 
@@ -155,22 +155,22 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string metrics() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     std::string metricsV6() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     std::string dhcp() const override
     {
-        return UNKNOWN_VALUE;
+        return "unknown";
     }
 
-    std::string mtu() const override
+    uint32_t mtu() const override
     {
-        return m_interfaceAddress ? std::to_string(reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu) : "";
+        return m_interfaceAddress ? reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu : 0;
     }
 
     LinkStats stats() const override
@@ -190,14 +190,15 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         }
         return retVal;
     }
-    
+
     std::string type() const override
     {
-        std::string retVal;
+        std::string retVal { UNKNOWN_VALUE };
         if (m_interfaceAddress->ifa_addr)
         {
             auto sdl { reinterpret_cast<struct sockaddr_dl *>(m_interfaceAddress->ifa_addr) };
-            retVal = Utils::NetworkHelper::getNetworkTypeStringCode(sdl->sdl_type, NETWORK_INTERFACE_TYPE);
+            const auto type { Utils::NetworkHelper::getNetworkTypeStringCode(sdl->sdl_type, NETWORK_INTERFACE_TYPE) };
+            retVal = type.empty() ? UNKNOWN_VALUE : type;
         }
         return retVal;
     }

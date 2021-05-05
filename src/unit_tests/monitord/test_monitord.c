@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November, 2020.
  *
  * This program is free software; you can redistribute it
@@ -30,10 +30,6 @@
 #include "os_err.h"
 
 /* redefinitons/wrapping */
-
-time_t __wrap_time(__attribute__((unused)) time_t *t) {
-    return mock_type(time_t);
-}
 
 int __wrap_ReadConfig(int modules, const char *cfgfile, __attribute__((unused)) void *d1, __attribute__((unused)) void *d2) {
     check_expected(modules);
@@ -479,8 +475,8 @@ void test_MonitordConfig_success(void **state) {
     result = MonitordConfig(cfg, &mond, no_agents, day_wait);
 
     assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(mond.global.agents_disconnection_time, 20);
-    assert_int_equal(mond.global.agents_disconnection_alert_time, 100);
+    assert_int_equal(mond.global.agents_disconnection_time, 600);
+    assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
 
     assert_null(mond.agents);
     assert_null(mond.smtpserver);

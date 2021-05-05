@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -71,11 +71,7 @@ int setup_jailfile_long_name(void **state) {
 
 int setup_jailfile_long_name2(void **state) {
     char *filename = malloc(sizeof(char) * OS_MAXSTR);
-    #ifdef TEST_WINAGENT
     const unsigned int length = PATH_MAX - strlen(TMP_DIR) - 2;
-    #else
-    const unsigned int length = PATH_MAX - strlen(DEFAULTDIR) - strlen(TMP_DIR) - 2;
-    #endif
     for(int i=0; i < length; i++) {
         sprintf(&filename[i], "a");
     }
@@ -122,7 +118,7 @@ void test_jailfile_valid_path(void **state) {
 #ifdef TEST_WINAGENT
     assert_string_equal(finalpath, "tmp\\test_filename");
 #else
-    assert_string_equal(finalpath, "/var/ossec/tmp/test_filename");
+    assert_string_equal(finalpath, "tmp/test_filename");
 #endif
 }
 
@@ -209,13 +205,13 @@ void test_unsign_wpk_using_fail(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file 'incoming\\test_filename'");
 #else
-    expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_filename");
+    expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_filename");
     will_return(__wrap_mkstemp, 8);
     expect_any(__wrap_chmod, path);
     will_return(__wrap_chmod, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file '/var/ossec//var/incoming/test_filename'");
+    expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file 'var/incoming/test_filename'");
 #endif
     will_return(__wrap_w_wpk_unsign, -1);
     expect_any_count(__wrap_unlink, file, 2);
@@ -242,7 +238,7 @@ void test_unsign_temp_chmod_fail(void **state) {
     will_return_count(__wrap_unlink, 0, 2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8134): At unsign(): Could not chmod '/var/ossec/tmp/test_filename.gz.XXXXXX'");
+    expect_string(__wrap__mterror, formatted_msg, "(8134): At unsign(): Could not chmod 'tmp/test_filename.gz.XXXXXX'");
 
     int ret = _unsign(source, finalpath);
     assert_int_equal(ret, -1);
@@ -261,7 +257,7 @@ void test_unsign_success(void **state) {
     will_return(wrap_mktemp_s,  NULL);
     expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_filename");
 #else
-    expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_filename");
+    expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_filename");
 
     will_return(__wrap_mkstemp, 8);
     expect_any(__wrap_chmod, path);
@@ -337,7 +333,7 @@ void test_uncompress_fopen_fail(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open 'tmp\\test_filename.mg.XXXXXX'");
 #else
-    expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open '/var/ossec/tmp/test_filename.mg.XXXXXX'");
+    expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open 'tmp/test_filename.mg.XXXXXX'");
 #endif
     expect_any(__wrap_fopen, path);
     expect_string(__wrap_fopen, mode, "wb");
@@ -642,7 +638,7 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
 #ifdef TEST_WINAGENT
     sprintf(file.path, "incoming\\test_file");
 #else
-    sprintf(file.path, "/var/ossec//var/incoming/test_file");
+    sprintf(file.path, "var/incoming/test_file");
 #endif
 
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -654,7 +650,7 @@ void test_wm_agent_upgrade_com_write_error(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'incoming\\test_file'");
 #else
-    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on '/var/ossec//var/incoming/test_file'");
+    expect_string(__wrap__mterror, formatted_msg, "(8129): At write: Cannot write on 'var/incoming/test_file'");
 #endif
 
     char *response = wm_agent_upgrade_com_write(command);
@@ -669,7 +665,7 @@ void test_wm_agent_upgrade_com_write_success(void **state) {
 #ifdef TEST_WINAGENT
     sprintf(file.path, "incoming\\test_file");
 #else
-    sprintf(file.path, "/var/ossec//var/incoming/test_file");
+    sprintf(file.path, "var/incoming/test_file");
 #endif
 
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -741,7 +737,7 @@ void test_wm_agent_upgrade_com_close_failed(void **state) {
     #ifdef TEST_WINAGENT
     sprintf(file.path, "incoming\\test_file");
     #else
-    sprintf(file.path, "/var/ossec//var/incoming/test_file");
+    sprintf(file.path, "var/incoming/test_file");
     #endif
 
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -767,7 +763,7 @@ void test_wm_agent_upgrade_com_close_success(void **state) {
     #ifdef TEST_WINAGENT
     sprintf(file.path, "incoming\\test_file");
     #else
-    sprintf(file.path, "/var/ossec//var/incoming/test_file");
+    sprintf(file.path, "var/incoming/test_file");
     #endif
 
     expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -876,7 +872,7 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
             will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
             expect_any(__wrap_chmod, path);
@@ -925,7 +921,7 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
             will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
             expect_any(__wrap_chmod, path);
@@ -996,7 +992,7 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
             will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
             expect_any(__wrap_chmod, path);
@@ -1074,7 +1070,7 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
             will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
             expect_any(__wrap_chmod, path);
@@ -1155,7 +1151,7 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
             will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
             expect_any(__wrap_chmod, path);
@@ -1213,11 +1209,11 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
         will_return(__wrap_w_ref_parent_folder, 0);
     }
 
-    expect_string(__wrap_chmod, path, "/var/ossec//var/upgrade/install.sh");
+    expect_string(__wrap_chmod, path, "var/upgrade/install.sh");
     will_return(__wrap_chmod, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8134): At upgrade: Could not chmod '/var/ossec//var/upgrade/install.sh'");
+    expect_string(__wrap__mterror, formatted_msg, "(8134): At upgrade: Could not chmod 'var/upgrade/install.sh'");
 
     char *response = wm_agent_upgrade_com_upgrade(command);
     cJSON *response_object = cJSON_Parse(response);
@@ -1242,7 +1238,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
             will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
             expect_any(__wrap_chmod, path);
@@ -1301,9 +1297,9 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     }
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_chmod, path, "/var/ossec//var/upgrade/install.sh");
+    expect_string(__wrap_chmod, path, "var/upgrade/install.sh");
     will_return(__wrap_chmod, 0);
-    expect_string(__wrap_wm_exec, command, "/var/ossec//var/upgrade/install.sh");
+    expect_string(__wrap_wm_exec, command, "var/upgrade/install.sh");
 
     #else
     expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
@@ -1319,7 +1315,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [/var/ossec//var/upgrade/install.sh]");
+    expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [var/upgrade/install.sh]");
     #else
     expect_string(__wrap__mterror, formatted_msg, "(8135): At upgrade: Error executing command [upgrade\\install.sh]");
     #endif
@@ -1346,7 +1342,7 @@ void test_wm_agent_upgrade_com_success(void **state) {
             will_return(wrap_mktemp_s,  NULL);
             expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
         #else
-            expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+            expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
             will_return(__wrap_mkstemp, 8);
             expect_any(__wrap_chmod, path);
@@ -1405,9 +1401,9 @@ void test_wm_agent_upgrade_com_success(void **state) {
     }
 
     #ifndef TEST_WINAGENT
-    expect_string(__wrap_chmod, path, "/var/ossec//var/upgrade/install.sh");
+    expect_string(__wrap_chmod, path, "var/upgrade/install.sh");
     will_return(__wrap_chmod, 0);
-    expect_string(__wrap_wm_exec, command, "/var/ossec//var/upgrade/install.sh");
+    expect_string(__wrap_wm_exec, command, "var/upgrade/install.sh");
 
     #else
     expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
@@ -1431,7 +1427,7 @@ void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
     allow_upgrades = false;
 
     #ifndef TEST_WINAGENT
-        expect_string(__wrap_remove, filename, "/var/ossec/var/upgrade/upgrade_result");
+        expect_string(__wrap_remove, filename, "var/upgrade/upgrade_result");
     #else
         expect_string(__wrap_remove, filename, "upgrade\\upgrade_result");
     #endif
@@ -1439,7 +1435,7 @@ void test_wm_agent_upgrade_com_clear_result_failed(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     #ifndef TEST_WINAGENT
-        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file '/var/ossec/var/upgrade/upgrade_result'");
+        expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file 'var/upgrade/upgrade_result'");
     #else
         expect_string(__wrap__mtdebug1, formatted_msg,  "(8136): At clear_upgrade_result: Could not erase file 'upgrade\\upgrade_result'");
     #endif
@@ -1459,7 +1455,7 @@ void test_wm_agent_upgrade_com_clear_result_success(void **state) {
     allow_upgrades = false;
 
     #ifndef TEST_WINAGENT
-        expect_string(__wrap_remove, filename, "/var/ossec/var/upgrade/upgrade_result");
+        expect_string(__wrap_remove, filename, "var/upgrade/upgrade_result");
     #else
         expect_string(__wrap_remove, filename, "upgrade\\upgrade_result");
     #endif
@@ -1604,7 +1600,7 @@ void test_wm_agent_upgrade_process_clear_command(void **state) {
 
     {
         #ifndef TEST_WINAGENT
-            expect_string(__wrap_remove, filename, "/var/ossec/var/upgrade/upgrade_result");
+            expect_string(__wrap_remove, filename, "var/upgrade/upgrade_result");
         #else
             expect_string(__wrap_remove, filename, "upgrade\\upgrade_result");
         #endif
@@ -1662,7 +1658,7 @@ void test_wm_agent_upgrade_process_write_command(void **state) {
         #ifdef TEST_WINAGENT
             sprintf(file.path, "incoming\\test_file");
         #else
-            sprintf(file.path, "/var/ossec//var/incoming/test_file");
+            sprintf(file.path, "var/incoming/test_file");
         #endif
 
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1688,7 +1684,7 @@ void test_wm_agent_upgrade_process_close_command(void **state) {
         #ifdef TEST_WINAGENT
         sprintf(file.path, "incoming\\test_file");
         #else
-        sprintf(file.path, "/var/ossec//var/incoming/test_file");
+        sprintf(file.path, "var/incoming/test_file");
         #endif
 
         expect_string(__wrap_w_ref_parent_folder, path, "test_file");
@@ -1747,7 +1743,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
                 will_return(wrap_mktemp_s,  NULL);
                 expect_string(__wrap_w_wpk_unsign, source, "incoming\\test_file");
             #else
-                expect_string(__wrap_w_wpk_unsign, source, "/var/ossec//var/incoming/test_file");
+                expect_string(__wrap_w_wpk_unsign, source, "var/incoming/test_file");
 
                 will_return(__wrap_mkstemp, 8);
                 expect_any(__wrap_chmod, path);
@@ -1806,9 +1802,9 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
         }
 
         #ifndef TEST_WINAGENT
-        expect_string(__wrap_chmod, path, "/var/ossec//var/upgrade/install.sh");
+        expect_string(__wrap_chmod, path, "var/upgrade/install.sh");
         will_return(__wrap_chmod, 0);
-        expect_string(__wrap_wm_exec, command, "/var/ossec//var/upgrade/install.sh");
+        expect_string(__wrap_wm_exec, command, "var/upgrade/install.sh");
 
         #else
         expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");

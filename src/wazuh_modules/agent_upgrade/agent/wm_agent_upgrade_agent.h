@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent Upgrading
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 30, 2020.
  *
  * This program is free software; you can redistribute it
@@ -15,7 +15,7 @@
 #ifdef WIN32
     #define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "\\upgrade_result"
 #else
-    #define WM_AGENT_UPGRADE_RESULT_FILE DEFAULTDIR UPGRADE_DIR "/upgrade_result"
+    #define WM_AGENT_UPGRADE_RESULT_FILE UPGRADE_DIR "/upgrade_result"
 #endif
 
 #define WM_AGENT_UPGRADE_RESULT_WAIT_TIME 30

@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -63,7 +63,7 @@ void normalize_path(char * path) {
 int remove_empty_folders(const char *path) {
     assert(path != NULL);
 
-    char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
+    char DIFF_PATH[PATH_MAX] = DIFF_DIR;
     const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
@@ -595,14 +595,40 @@ char *get_user(int uid) {
     return user_name;
 }
 
-const char *get_group(int gid) {
-    struct group *group = getgrgid(gid);
-    return group ? group->gr_name : "";
+char *get_group(int gid) {
+    struct group grp;
+    struct group *result;
+    char *group_name = NULL;
+    char *buf;
+    int bufsize;
+
+    bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+    if (bufsize == -1) {
+        bufsize = 16384;
+    }
+
+    os_calloc(bufsize, sizeof(char), buf);
+
+    result = w_getgrgid(gid, &grp, buf, bufsize);
+
+    if (result == NULL) {
+        if (errno == 0) {
+            mdebug2("Group with gid '%d' not found.\n", gid);
+        } else {
+            mdebug2("Failed getting group_name (%d): '%s'\n", errno, strerror(errno));
+        }
+    } else {
+        os_strdup(grp.gr_name, group_name);
+    }
+
+    os_free(buf);
+
+    return group_name;
 }
 
 /* Send a one-way message to Syscheck */
 void ag_send_syscheck(char * message) {
-    int sock = OS_ConnectUnixDomain(DEFAULTDIR SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+    int sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
         mwarn("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
@@ -923,8 +949,11 @@ unsigned int w_get_file_attrs(const char *file_path) {
     return attrs;
 }
 
-const char *get_group(__attribute__((unused)) int gid) {
-    return "";
+char *get_group(__attribute__((unused)) int gid) {
+    char *result;
+
+    os_strdup("", result);
+    return result;
 }
 
 char *get_registry_group(char **sid, HANDLE hndl) {
@@ -1356,7 +1385,7 @@ cJSON *win_perm_to_json(char *perms) {
             }
         }
         if (next_it) {
-            break;
+            continue;
         }
 
         if (!user_obj) {

@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * May 31, 2017.
  *
  * This program is free software; you can redistribute it
@@ -50,7 +50,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     unsigned int counter = (unsigned int)os_random();
     char counter_s[COUNTER_LENGTH];
     req_node_t * node;
-    const char * path = isChroot() ? REMOTE_REQ_SOCK : DEFAULTDIR REMOTE_REQ_SOCK;
+    const char * path = REMOTE_REQ_SOCK;
 
     mdebug1("Running request listener thread.");
 
@@ -197,6 +197,7 @@ void * req_dispatch(req_node_t * node) {
     char *output = NULL;
     struct timespec timeout;
     struct timeval now = { 0, 0 };
+    int protocol = -1;
 
     mdebug2("Running request dispatcher thread. Counter=%s", node->counter);
 
@@ -238,6 +239,15 @@ void * req_dispatch(req_node_t * node) {
 
         mdebug2("Sending request: '%s'", payload);
 
+        /* The following code is used to get the protocol that the client is using in order to answer accordingly */
+        key_lock_read();
+        protocol = w_get_agent_net_protocol_from_keystore(&keys, agentid);
+        key_unlock();
+        if (protocol < 0) {
+            merror(AR_NOAGENT_ERROR, agentid);
+            goto cleanup;
+        }
+
         for (attempts = 0; attempts < max_attempts; attempts++) {
 
             // Try to send message
@@ -253,7 +263,7 @@ void * req_dispatch(req_node_t * node) {
 
             // Wait for ACK or response, only in UDP mode
 
-            if (logr.proto[logr.position] == IPPROTO_UDP) {
+            if (protocol == REMOTED_NET_PROTOCOL_UDP) {
                 gettimeofday(&now, NULL);
                 nsec = now.tv_usec * 1000 + rto_msec * 1000000;
                 timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
@@ -303,8 +313,7 @@ void * req_dispatch(req_node_t * node) {
         }
 
         // Send ACK, only in UDP mode
-
-        if (logr.proto[logr.position] == IPPROTO_UDP) {
+        if (protocol == REMOTED_NET_PROTOCOL_UDP) {
             // Example: #!-req 16 ack
             mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);

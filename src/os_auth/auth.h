@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -39,12 +39,12 @@
 #include <openssl/bio.h>
 
 extern BIO *bio_err;
-#define KEYFILE  "/etc/sslmanager.key"
-#define CERTFILE "/etc/sslmanager.cert"
+#define KEYFILE  "etc/sslmanager.key"
+#define CERTFILE "etc/sslmanager.cert"
 #define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
-#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file " DEFAULTCPATH "."
+#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
 #define MAX_SSL_PACKET_SIZE 16384
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)

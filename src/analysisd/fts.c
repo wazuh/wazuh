@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -171,6 +171,10 @@ void AddtoIGnore(Eventinfo *lf, int pos)
 {
     w_rwlock_wrlock(&file_update_rwlock);
     fseek(fp_ignore[pos], 0, SEEK_END);
+
+#ifdef TESTRULE
+    return;
+#endif
 
     /* Assign the values to the FTS */
     fprintf(fp_ignore[pos], "\n%s %s %s %s %s %s %s %s",

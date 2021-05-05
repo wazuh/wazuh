@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -43,6 +43,5 @@ void _getRulesListJSON(RuleNode *list, cJSON *array);
 cJSON *getAnalysisInternalOptions(void);
 cJSON *getManagerLabelsConfig(void);
 void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg);
-char *get_node_name();
 
 #endif /* CONFIG_H */

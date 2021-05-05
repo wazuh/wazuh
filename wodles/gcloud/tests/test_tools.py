@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 #
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
@@ -23,4 +23,4 @@ def test_get_wazuh_queue():
     with patch(f'tools.common.find_wazuh_path', return_value=wazuh_installation_path):
         wazuh_queue = get_wazuh_queue()
 
-    assert "/var/ossec/queue/ossec/queue" == wazuh_queue
+    assert "/var/ossec/queue/sockets/queue" == wazuh_queue

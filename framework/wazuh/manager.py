@@ -1,26 +1,23 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import re
 from os import remove
-from os.path import exists, join
+from os.path import exists
+from shutil import copyfile
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
-from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
-    get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, prettify_xml
-
-from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import process_array
+from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
+from wazuh.core.exception import WazuhError
+from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml
 from wazuh.rbac.decorators import expose_resources
 
-allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
-cluster_enabled = not read_cluster_config()['disabled']
+cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
@@ -104,113 +101,6 @@ def ossec_log_summary():
     for k, v in logs_summary.items():
         result.affected_items.append({k: v})
     result.affected_items = sorted(result.affected_items, key=lambda i: list(i.keys())[0])
-    result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:upload_file"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def upload_file(path=None, content=None, overwrite=False):
-    """Upload a new file
-
-    :param path: Path of destination of the new file
-    :param content: Content of file to be uploaded
-    :param overwrite: True for updating existing files, False otherwise
-    :return: AffectedItemsWazuhResult
-    """
-    result = AffectedItemsWazuhResult(all_msg='File was successfully uploaded',
-                                      none_msg='Could not upload file'
-                                      )
-    try:
-        if len(content) == 0:
-            raise WazuhError(1112)
-
-        # If file already exists and overwrite is False, raise exception
-        if not overwrite and exists(join(common.ossec_path, path)):
-            raise WazuhError(1905)
-        elif overwrite and exists(join(common.ossec_path, path)):
-            # Check if the content is valid
-            not re.match(r'^etc/lists', path) and prettify_xml(content)
-            delete_file(path=path)
-
-        # For CDB lists
-        if re.match(r'^etc/lists', path):
-            upload_list(content, path)
-        else:
-            upload_xml(content, path)
-        result.affected_items.append(path)
-    except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read_file"],
-                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'],
-                  post_proc_func=None)
-def get_file(path, validate=False):
-    """Returns the content of a file.
-
-    :param path: Relative path of file from origin
-    :param validate: Whether to validate file content or not
-    :return: WazuhResult
-    """
-    full_path = join(common.ossec_path, path[0])
-
-    # check if file exists
-    if not exists(full_path):
-        raise WazuhError(1906)
-
-    # validate CDB lists files
-    if validate and re.match(r'^etc/lists', path[0]) and not validate_cdb_list(path[0]):
-        raise WazuhError(1800, {'path': path[0]})
-
-    # validate XML files
-    if validate and not validate_xml(path[0]):
-        raise WazuhError(1113)
-
-    try:
-        with open(full_path) as f:
-            output = f.read()
-    except IOError:
-        raise WazuhInternalError(1005)
-
-    return WazuhResult({'contents': output})
-
-
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:delete_file"],
-                  resources=[f'node:id:{node_id}&file:path:{{path}}'] if cluster_enabled else ['file:path:{path}'])
-def delete_file(path):
-    """Deletes a file.
-
-    :param path: Relative path of the file to be deleted
-    :return: AffectedItemsWazuhResult
-    """
-    result = AffectedItemsWazuhResult(all_msg='File was successfully deleted',
-                                      none_msg='Could not delete file'
-                                      )
-
-    full_path = join(common.ossec_path, path[0])
-
-    try:
-        if exists(full_path):
-            try:
-                remove(full_path)
-                result.affected_items.append(path[0])
-            except IOError:
-                raise WazuhError(1907)
-        else:
-            raise WazuhError(1906)
-    except WazuhError as e:
-        result.add_failed_item(id_=path[0], error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -340,7 +230,7 @@ def get_config(component=None, config=None):
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def read_ossec_conf(section=None, field=None):
+def read_ossec_conf(section=None, field=None, raw=False):
     """ Wrapper for get_ossec_conf
 
     :param section: Filters by section (i.e. rules).
@@ -355,6 +245,9 @@ def read_ossec_conf(section=None, field=None):
                                       )
 
     try:
+        if raw:
+            with open(common.ossec_conf) as f:
+                return f.read()
         result.affected_items.append(get_ossec_conf(section=section, field=field))
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
@@ -383,4 +276,54 @@ def get_basic_info():
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
 
+    return result
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def update_ossec_conf(new_conf=None):
+    """
+    Replace wazuh configuration (ossec.conf) with the provided configuration.
+
+    Parameters
+    ----------
+    new_conf: str
+        The new configuration to be applied.
+    """
+    result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully updated"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not update configuration in some nodes',
+                                      none_msg=f"Could not update configuration"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
+    backup_file = f'{common.ossec_conf}.backup'
+    try:
+        # Check a configuration has been provided
+        if not new_conf:
+            raise WazuhError(1125)
+
+        # Check if the configuration is valid
+        validate_wazuh_xml(new_conf, config_file=True)
+
+        # Create a backup of the current configuration before attempting to replace it
+        try:
+            copyfile(common.ossec_conf, backup_file)
+        except IOError:
+            raise WazuhError(1019)
+
+        # Write the new configuration and validate it
+        write_ossec_conf(new_conf)
+        is_valid = validate_ossec_conf()
+
+        if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
+            raise WazuhError(1125)
+        else:
+            result.affected_items.append(node_id)
+        exists(backup_file) and remove(backup_file)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    finally:
+        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
+
+    result.total_affected_items = len(result.affected_items)
     return result

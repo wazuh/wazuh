@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -428,42 +428,6 @@ int Start_Hour(int t_id, int threads_number)
     os_strdup(" ", _pprevlast[t_id]);
 
     return (0);
-}
-
-/* Check if the message received is repeated to avoid
- * floods of the same message
- */
-int LastMsg_Stats(const char *log, int t_id)
-{
-    if (strcmp(log, _lastmsg[t_id]) == 0) {
-        return (1);
-    }
-
-    else if (strcmp(log, _prevlast[t_id]) == 0) {
-        return (1);
-    }
-
-    else if (strcmp(log, _pprevlast[t_id]) == 0) {
-        return (1);
-    }
-
-    return (0);
-}
-
-/* If the message is not repeated, rearrange the last
- * received messages
- */
-void LastMsg_Change(const char *log, int t_id)
-{
-    /* Remove the last one */
-    free(_pprevlast[t_id]);
-
-    /* Move the second to third and the last to second */
-    _pprevlast[t_id] = _prevlast[t_id];
-    _prevlast[t_id] = _lastmsg[t_id];
-
-    os_strdup(log, _lastmsg[t_id]);
-    return;
 }
 
 void Start_Time(){

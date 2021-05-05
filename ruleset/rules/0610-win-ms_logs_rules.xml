@@ -1,7 +1,7 @@
 <!--
   -  Windows Event Channel ruleset for the Eventlog channel
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
   -  ID range: 63100 - 63599
 -->
@@ -87,7 +87,7 @@
     <field name="win.system.eventID">^6005$</field>
     <description>The Event log service was started</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1050</id>
     </mitre>
     <options>no_full_log</options>
     <group>windows_log_service_started,gpg13_10.1,</group>

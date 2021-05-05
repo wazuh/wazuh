@@ -13,6 +13,7 @@ import struct
 import traceback
 from importlib import import_module
 from typing import Tuple, Dict, Callable
+from uuid import uuid4
 
 import cryptography.fernet
 
@@ -110,28 +111,28 @@ class InBuffer:
         return data[len_data:]
 
 
-class ReceiveFileTask:
+class ReceiveStringTask:
     """
-    Implement an asyncio task but including a name or ID for it.
+    Create an asyncio task that can be identified by a task_id specified in advance.
     """
 
-    def __init__(self, wazuh_common, logger):
+    def __init__(self, wazuh_common, logger, task_id):
         """Class constructor.
 
         Parameters
         ----------
         wazuh_common : WazuhCommon object
-            The WazuhCommon object that creates this one.
+            Instance of WazuhCommon.
         logger : Logger object
-            Logger to use during the receiving process.
+            Logger to use during the receive process.
+        task_id : bytes
+            Pre-defined task_id to identify this object.
         """
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
-        self.name = str(random.randint(0, 2 ** 32))
-        self.received_information = asyncio.Event()
-        self.task = asyncio.create_task(self.coro(self.name, self.received_information))
+        self.task_id = task_id
+        self.task = asyncio.create_task(self.coro(self.task_id))
         self.task.add_done_callback(self.done_callback)
-        self.filename = ''
         self.logger = logger
 
     def __str__(self) -> str:
@@ -140,9 +141,9 @@ class ReceiveFileTask:
         Returns
         -------
         str
-            Task name (random numeric string).
+            Task id of this object.
         """
-        return self.name
+        return self.task_id.decode()
 
     def set_up_coro(self) -> Callable:
         """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
@@ -157,10 +158,72 @@ class ReceiveFileTask:
     def done_callback(self, future=None):
         """Function to call when the task is finished.
 
-        Remove task_name (if exists) from sync_tasks dict. If task was not cancelled, raise stored exception.
+        Remove string and task_id (if exist) from sync_tasks dict. If task was not cancelled, raise stored exception.
         """
-        if self.name in self.wazuh_common.sync_tasks:
-            del self.wazuh_common.sync_tasks[self.name]
+        if self.task_id in self.wazuh_common.in_str:
+            # pop() is used instead of 'del' so an exception is never raised here
+            self.wazuh_common.in_str.pop(self.task_id, None)
+        if self.task_id in self.wazuh_common.sync_tasks:
+            del self.wazuh_common.sync_tasks[self.task_id]
+        if not self.task.cancelled():
+            task_exc = self.task.exception()
+            if task_exc:
+                self.logger.error(task_exc)
+
+
+class ReceiveFileTask:
+    """
+    Create an asyncio task that can be identified by a task_id.
+    """
+
+    def __init__(self, wazuh_common, logger, task_id: bytes = b''):
+        """Class constructor.
+
+        Parameters
+        ----------
+        wazuh_common : WazuhCommon object
+            Instance of WazuhCommon.
+        logger : Logger object
+            Logger to use during the receive process.
+        task_id : bytes
+            Pre-defined task_id to identify this object. If not specified, a random task_id will be used.
+        """
+        self.wazuh_common = wazuh_common
+        self.coro = self.set_up_coro()
+        self.task_id = task_id.decode() if task_id else str(uuid4())
+        self.received_information = asyncio.Event()
+        self.task = asyncio.create_task(self.coro(self.task_id, self.received_information))
+        self.task.add_done_callback(self.done_callback)
+        self.filename = ''
+        self.logger = logger
+
+    def __str__(self) -> str:
+        """Magic method str.
+
+        Returns
+        -------
+        str
+            Task id of this object.
+        """
+        return self.task_id
+
+    def set_up_coro(self) -> Callable:
+        """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
+        """
+        raise NotImplementedError
+
+    def done_callback(self, future=None):
+        """Function to call when the task is finished.
+
+        Remove task_id (if exists) from sync_tasks dict. If task was not cancelled, raise stored exception.
+        """
+        if self.task_id in self.wazuh_common.sync_tasks:
+            del self.wazuh_common.sync_tasks[self.task_id]
         if not self.task.cancelled():
             task_exc = self.task.exception()
             if task_exc:
@@ -216,7 +279,6 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         # Modify filter tags with context vars.
         wazuh.core.cluster.utils.context_tag.set(self.tag)
-        wazuh.core.cluster.utils.context_subtag.set("Main")
         self.cluster_items = cluster_items
         # Transports in asyncio are an abstraction of sockets.
         self.transport = None
@@ -284,16 +346,19 @@ class Handler(asyncio.Protocol):
             Whether a message was parsed or not.
         """
         if self.in_buffer:
-            if self.in_msg.received == 0:
+            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len:
                 # A new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
-            else:
+                return True
+            elif self.in_msg.received != 0:
                 # The previous message has not been completely received yet. No header to parse, just payload.
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
-            return True
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -385,8 +450,8 @@ class Handler(asyncio.Protocol):
             raise exception.WazuhClusterError(3034, extra_message=filename)
 
         filename = filename.encode()
-        relative_path = filename.replace(common.ossec_path.encode(), b'')
-        # Tell to the destination node where (inside ossec_path) the file has to be written.
+        relative_path = filename.replace(common.wazuh_path.encode(), b'')
+        # Tell to the destination node where (inside wazuh_path) the file has to be written.
         await self.send_request(command=b'new_file', data=relative_path)
 
         # Send each chunk so it is updated in the destination.
@@ -489,7 +554,7 @@ class Handler(asyncio.Protocol):
         message : bytes
             Received data.
         """
-        self.in_buffer = message
+        self.in_buffer += message
         for command, counter, payload in self.get_messages():
             # If the message is the response of a previously sent request.
             if counter in self.box:
@@ -616,7 +681,7 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        self.in_file[data] = {'fd': open(common.ossec_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
+        self.in_file[data] = {'fd': open(common.wazuh_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -781,8 +846,15 @@ class WazuhCommon:
         """
         raise NotImplementedError
 
-    def setup_receive_file(self, ReceiveTaskClass: Callable):
+    def setup_receive_file(self, ReceiveTaskClass: Callable, data: bytes = b''):
         """Create ReceiveTaskClass object and add it to sync_tasks dict.
+
+        Parameters
+        ----------
+        ReceiveTaskClass : Callable
+            Class used to create an object.
+        data : bytes
+            Information used to create the object.
 
         Returns
         -------
@@ -791,12 +863,12 @@ class WazuhCommon:
         bytes
             Task ID.
         """
-        my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag))
-        self.sync_tasks[my_task.name] = my_task
+        my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag), data)
+        self.sync_tasks[my_task.task_id] = my_task
         return b'ok', str(my_task).encode()
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
-        """Store full path to the received file in task_name and notify its availability.
+        """Store full path to the received file in task_id and notify its availability.
 
         Parameters
         ----------
@@ -810,23 +882,23 @@ class WazuhCommon:
         bytes
             Response message.
         """
-        task_name, filename = task_and_file_names.split(' ', 1)
-        if task_name not in self.sync_tasks:
-            # Remove filename if task_name does not exists, before raising exception.
-            if os.path.exists(os.path.join(common.ossec_path, filename)):
+        task_id, filename = task_and_file_names.split(' ', 1)
+        if task_id not in self.sync_tasks:
+            # Remove filename if task_id does not exists, before raising exception.
+            if os.path.exists(os.path.join(common.wazuh_path, filename)):
                 try:
-                    os.remove(os.path.join(common.ossec_path, filename))
+                    os.remove(os.path.join(common.wazuh_path, filename))
                 except Exception as e:
                     self.get_logger(self.logger_tag).error(
-                        f"Attempt to delete file {os.path.join(common.ossec_path, filename)} failed: {e}")
-            raise exception.WazuhClusterError(3027, extra_message=task_name)
+                        f"Attempt to delete file {os.path.join(common.wazuh_path, filename)} failed: {e}")
+            raise exception.WazuhClusterError(3027, extra_message=task_id)
 
-        # Set full path to file for task 'task_name' and notify it is ready to be read, so the lock is released.
-        self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
-        self.sync_tasks[task_name].received_information.set()
+        # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
+        self.sync_tasks[task_id].filename = os.path.join(common.wazuh_path, filename)
+        self.sync_tasks[task_id].received_information.set()
         return b'ok', b'File correctly received'
 
-    def error_receiving_file(self, taskname_and_error_details: str) -> Tuple[bytes, bytes]:
+    def error_receiving_file(self, task_id_and_error_details: str) -> Tuple[bytes, bytes]:
         """Handle reported error by peer in the send file process.
 
         Remove received file if taskname was specified. Replace filepath with the received error details and notify
@@ -834,7 +906,7 @@ class WazuhCommon:
 
         Parameters
         ----------
-        taskname_and_error_details : str
+        task_id_and_error_details : str
              WazuhJSONEncoded object with the exception details.
 
         Returns
@@ -844,18 +916,18 @@ class WazuhCommon:
         bytes
             Response message.
         """
-        taskname, error_details = taskname_and_error_details.split(' ', 1)
+        task_id, error_details = task_id_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
-        if taskname != 'None':
+        if task_id != 'None':
             # Remove filename if exists
-            if os.path.exists(self.sync_tasks[taskname].filename):
+            if os.path.exists(self.sync_tasks[task_id].filename):
                 try:
-                    os.remove(self.sync_tasks[taskname].filename)
+                    os.remove(self.sync_tasks[task_id].filename)
                 except Exception as e:
-                    self.get_logger(self.logger_tag).error(f"Attempt to delete file {self.sync_tasks[taskname].filename}"
+                    self.get_logger(self.logger_tag).error(f"Attempt to delete file {self.sync_tasks[task_id].filename}"
                                                            f" failed: {e}")
-            self.sync_tasks[taskname].filename = error_details_json
-            self.sync_tasks[taskname].received_information.set()
+            self.sync_tasks[task_id].filename = error_details_json
+            self.sync_tasks[task_id].received_information.set()
         else:
             self.get_logger(self.logger_tag).error(f"Error in synchronization process: {error_details_json}")
         return b'ok', b'Error received'

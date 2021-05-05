@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2015 Trend Micro Inc.
  * All rights reserved.
  *
@@ -21,9 +21,6 @@ void jsonout_output_event(const Eventinfo *lf)
             json_alert);
     if (strstr(json_alert,"gcp")) {
         mdebug2("Sending gcp event: %s", json_alert);
-    }
-    if (strstr(json_alert,"mitre")) {
-        mdebug2("Sending mitre event: %s", json_alert);
     }
     free(json_alert);
     return;

@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -60,8 +60,8 @@ int main(int argc, const char* argv[])
                     "Invalid inputs file."
                 };
             }
-            const auto jsonConfigFile { nlohmann::json::parse(configFile) };
-            const auto jsonInputFile { nlohmann::json::parse(inputData) };
+            const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
+            const auto& jsonInputFile { nlohmann::json::parse(inputData) };
             OneTimeSync otSync(jsonConfigFile,
                                jsonInputFile,
                                args.outputFolder());

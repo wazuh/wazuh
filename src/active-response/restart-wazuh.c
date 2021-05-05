@@ -13,7 +13,20 @@ int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
 	char *action = NULL;
-	cJSON *input_json = NULL;
+    cJSON *input_json = NULL;
+
+#ifndef WIN32
+    char *home_path = w_homedir(argv[0]);  
+
+    /* Trim absolute path to get Wazuh's installation directory */
+    home_path = w_strtok_r_str_delim("/active-response", &home_path);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
+#endif
 
     write_debug_file(argv[0], "Starting");
 
@@ -47,12 +60,8 @@ int main (int argc, char **argv) {
 	if (strcmp("add", action) == 0) {
 #ifndef WIN32
 	    char log_msg[LOGSIZE];
-		char *exec_cmd[3] = { DEFAULTDIR "/bin/wazuh-control", "restart", NULL};
+		char *exec_cmd[3] = { "bin/wazuh-control", "restart", NULL};
         wfd_t *wfd = NULL;
-
-		if (isChroot()) {
-			strcpy(exec_cmd[0], "/bin/wazuh-control");
-		}
 
         if (wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR), !wfd) {
             memset(log_msg, '\0', LOGSIZE);

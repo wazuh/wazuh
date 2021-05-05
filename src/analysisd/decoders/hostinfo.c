@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,7 +16,7 @@
 #include "eventinfo.h"
 #include "alerts/alerts.h"
 
-#define HOSTINFO_FILE   "/queue/fts/hostinfo"
+#define HOSTINFO_FILE   "queue/fts/hostinfo"
 #define HOST_HOST       "Host: "
 /*#define HOST_PORT       " open ports: "
 #define HOST_CHANGED    "Host information changed."

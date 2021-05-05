@@ -4,23 +4,24 @@ import time
 
 import yaml
 
-output_file = '/configuration_files/agent_info_output'
+output_file = '/tmp/configuration_files/agent_info_output'
 ADDR = '/var/ossec/queue/db/wdb'
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.connect(ADDR)
 
 
 def send_msg(msg):
-    '''Send message to wazuh-db socket
+    """Send message to wazuh-db socket
 
     Parameters
     ----------
     msg : str
         Message to be formatted and sent
-    '''
-    msg = struct.pack('<I', len(msg)) + msg.encode()
+    """
+    encoded_msg = msg.encode(encoding='utf-8')
+    packed_msg = struct.pack('<I', len(encoded_msg)) + encoded_msg
     # Send msg
-    sock.send(msg)
+    sock.send(packed_msg)
     # Receive response
     data = sock.recv(4)
     data_size = struct.unpack('<I', data[0:4])[0]
@@ -66,4 +67,4 @@ def create_and_send_query(agent_info_file):
 
 
 if __name__ == "__main__":
-    create_and_send_query('/configuration_files/master_only/agent_info.yaml')
+    create_and_send_query('/tmp/configuration_files/master_only/agent_info.yaml')

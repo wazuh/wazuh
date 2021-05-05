@@ -1,6 +1,6 @@
 /*
  * Shared functions for Rootcheck events decoding
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "rootcheck_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 /* Get rootcheck title from log */
 char* rk_get_title(const char *log) {

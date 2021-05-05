@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -39,7 +39,6 @@ extern int max_restart_lock;
 void WinExecdRun(char *exec_msg);
 int ReadExecConfig(void);
 cJSON *getARConfig(void);
-cJSON *getARInternalOptions(void);
 cJSON *getExecdInternalOptions(void);
 cJSON *getClusterConfig(void);
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));

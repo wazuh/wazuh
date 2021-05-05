@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -23,11 +23,6 @@ ListRule *os_analysisd_cdbrules;
 void OS_CreateListsList() {
     os_analysisd_cdblists = NULL;
     os_analysisd_cdbrules = NULL;
-}
-
-/* Get first listnode  */
-ListNode *OS_GetFirstList() {
-    return os_analysisd_cdblists;
 }
 
 void OS_ListLoadRules(ListNode **l_node, ListRule **lrule) {

@@ -1,6 +1,6 @@
 /*
  * Label data cache
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * February 27, 2017.
  *
  * This program is free software; you can redistribute it
@@ -10,7 +10,7 @@
  */
 
 #include "headers/shared.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "eventinfo.h"
 #include "config.h"
 #include "labels.h"

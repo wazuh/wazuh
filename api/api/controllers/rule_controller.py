@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -10,9 +10,11 @@ from connexion.lifecycle import ConnexionResponse
 
 from api.configuration import api_conf
 from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -188,25 +190,115 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_download_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
-    """Download an specified decoder file.
+async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
+                   raw: bool = False):
+    """Get rule file content.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param filename: Filename to download.
-    :return: Raw XML file
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+    wait_for_complete : bool, optional
+        Disable response timeout or not. Default `False`
+    filename : str
+        Filename to download.
+    raw : bool, optional
+        Whether to return the file content in raw or JSON format. Default `False`
+
+    Returns
+    -------
+    web.json_response or ConnexionResponse
+        Depending on the `raw` parameter, it will return an object or other:
+            raw=True            -> ConnexionResponse (application/xml)
+            raw=False (default) -> web.json_response (application/json)
+        If any exception was raised, it will return a web.json_response with details.
     """
-    f_kwargs = {'filename': filename}
+    f_kwargs = {'filename': filename, 'raw': raw}
 
-    dapi = DistributedAPI(f=rule_framework.get_file,
+    dapi = DistributedAPI(f=rule_framework.get_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
+    if isinstance(data, AffectedItemsWazuhResult):
+        response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    else:
+        response = ConnexionResponse(body=data["message"], mimetype='application/xml', content_type='application/xml')
 
     return response
+
+
+async def put_file(request, body, filename=None, overwrite=False, pretty=False, wait_for_complete=False):
+    """Upload a rule file.
+    
+    Parameters
+    ----------
+    body : dict
+        Body request with the file content to be uploaded.
+    filename : str, optional
+        Name of the file. Default `None`
+    overwrite : bool, optional
+        If set to false, an exception will be raised when updating contents of an already existing file. Default `False`
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    web.json_response
+    """
+    # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
+
+    f_kwargs = {'filename': filename,
+                'overwrite': overwrite,
+                'content': parsed_body}
+
+    dapi = DistributedAPI(f=rule_framework.upload_rule_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def delete_file(request, filename=None, pretty=False, wait_for_complete=False):
+    """Delete a rule file.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the file. Default `None`
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    web.json_response
+    """
+    f_kwargs = {'filename': filename}
+
+    dapi = DistributedAPI(f=rule_framework.delete_rule_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

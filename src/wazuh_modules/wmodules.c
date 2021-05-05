@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 27, 2016.
  *
  * This program is free software; you can redistribute it
@@ -62,7 +62,7 @@ int wm_config() {
 
     // Read configuration: ossec.conf
 
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0) {
+    if (ReadConfig(CWMODULE, OSSECCONF, &wmodules, &agent_cfg) < 0) {
         return -1;
     }
 

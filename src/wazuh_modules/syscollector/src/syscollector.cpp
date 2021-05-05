@@ -1,6 +1,6 @@
 /*
  * Wazuh SysCollector
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 15, 2020.
  *
  * This program is free software; you can redistribute it
@@ -8,11 +8,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
-#include "syscollector.h"
 #include "syscollector.hpp"
 #include "sysInfo.hpp"
-#include "dbsync.h"
+#include "dbsync.hpp"
 #include <iostream>
 
 #ifdef __cplusplus
@@ -21,9 +19,7 @@ extern "C" {
 void syscollector_start(const unsigned int inverval,
                         send_data_callback_t callbackDiff,
                         send_data_callback_t callbackSync,
-                        log_callback_t callbackLogError,
-                        log_callback_t callbackLogInfo,
-                        log_callback_t callbackLogDebug,
+                        log_callback_t callbackLog,
                         const char* dbPath,
                         const char* normalizerConfigPath,
                         const char* normalizerType,
@@ -37,7 +33,6 @@ void syscollector_start(const unsigned int inverval,
                         const bool processes,
                         const bool hotfixes)
 {
-    dbsync_initialize(callbackLogError);
     std::function<void(const std::string&)> callbackDiffWrapper
     {
         [callbackDiff](const std::string& data)
@@ -54,37 +49,29 @@ void syscollector_start(const unsigned int inverval,
         }
     };
 
-    std::function<void(const std::string&)> callbackLogErrorWrapper
+    std::function<void(const syscollector_log_level_t, const std::string&)> callbackLogWrapper
     {
-        [callbackLogError](const std::string& data)
+        [callbackLog](const syscollector_log_level_t level, const std::string& data)
         {
-            callbackLogError(data.c_str());
+            callbackLog(level, data.c_str());
         }
     };
 
-    std::function<void(const std::string&)> callbackLogInfoWrapper
+    std::function<void(const std::string&)> callbackErrorLogWrapper
     {
-        [callbackLogInfo](const std::string& data)
+        [callbackLog](const std::string& data)
         {
-            callbackLogInfo(data.c_str());
+            callbackLog(SYS_LOG_ERROR, data.c_str());
         }
     };
 
-    std::function<void(const std::string&)> callbackLogDebugWrapper
-    {
-        [callbackLogDebug](const std::string& data)
-        {
-            callbackLogDebug(data.c_str());
-        }
-    };
+    DBSync::initialize(callbackErrorLogWrapper);
     try
     {
         Syscollector::instance().init(std::make_shared<SysInfo>(),
                                       callbackDiffWrapper,
                                       callbackSyncWrapper,
-                                      callbackLogErrorWrapper,
-                                      callbackLogInfoWrapper,
-                                      callbackLogDebugWrapper,
+                                      callbackLogWrapper,
                                       dbPath,
                                       normalizerConfigPath,
                                       normalizerType,
@@ -101,7 +88,7 @@ void syscollector_start(const unsigned int inverval,
     }
     catch(const std::exception& ex)
     {
-        callbackLogErrorWrapper(ex.what());
+        callbackErrorLogWrapper(ex.what());
     }
 }
 void syscollector_stop()

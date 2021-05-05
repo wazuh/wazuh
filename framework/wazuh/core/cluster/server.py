@@ -4,17 +4,17 @@ import asyncio
 import itertools
 import logging
 import os
-import random
 import ssl
 import time
 import traceback
 from typing import Tuple, Dict
+from uuid import uuid4
 
 import uvloop
 
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
-from wazuh.core.cluster.utils import ClusterFilter, context_tag, context_subtag
+from wazuh.core.cluster.utils import ClusterFilter, context_tag
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -41,7 +41,7 @@ class AbstractServerHandler(c_common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {random.randint(0, 1000)}",
+        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
                          cluster_items=cluster_items)
         self.server = server
         self.loop = loop
@@ -226,7 +226,6 @@ class AbstractServer:
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
         context_tag.set(self.tag)
-        context_subtag.set("Main")
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
@@ -386,8 +385,8 @@ class AbstractServer:
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile=os.path.join(common.ossec_path, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.ossec_path, 'etc', 'sslmanager.key'))
+            ssl_context.load_cert_chain(certfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.cert'),
+                                        keyfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.key'))
         else:
             ssl_context = None
 

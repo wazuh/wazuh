@@ -17,6 +17,7 @@ include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
+include_directories(${SRC_FOLDER}/external/nlohmann/)
 
 file(GLOB UTIL_CXX_UNITTEST_SRC
     "*.cpp")
@@ -24,7 +25,7 @@ file(GLOB UTIL_CXX_UNITTEST_SRC
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 
-add_executable(utils_unit_test 
+add_executable(utils_unit_test
     ${UTIL_CXX_UNITTEST_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

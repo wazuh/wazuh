@@ -11,7 +11,7 @@
 
 #define PYTHON2             "/usr/bin/python"
 #define PYTHON3             "/usr/bin/python3"
-#define PATH_TO_KASPERSKY   DEFAULTDIR "/active-response/bin/kaspersky.py"
+#define PATH_TO_KASPERSKY   "active-response/bin/kaspersky.py"
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -20,7 +20,17 @@ int main (int argc, char **argv) {
     char *extra_args;
     cJSON *input_json = NULL;
     struct stat file_status;
+    char *home_path = w_homedir(argv[0]);
 
+    /* Trim absolute path to get Wazuh's installation directory */
+    home_path = w_strtok_r_str_delim("/active-response", &home_path);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
+    
     write_debug_file(argv[0], "Starting");
 
     memset(input, '\0', BUFFERSIZE);

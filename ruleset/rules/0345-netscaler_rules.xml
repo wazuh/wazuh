@@ -1,7 +1,7 @@
 <!--
   -  Netscaler rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -74,7 +74,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <regex>Command "(\.*delete\.*)"</regex>
         <description>Netscaler: UI/API dangerous command</description>
         <mitre>
-            <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
+            <id>T1107</id>
         </mitre>
         <group>netscaler-cmd,gdpr_IV_35.7.d,</group>
     </rule>

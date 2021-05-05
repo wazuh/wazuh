@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent Upgrading
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -412,7 +412,7 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
 
     const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
 
-    if (OS_ReadXML(DEFAULTCPATH, &xml) >= 0) {
+    if (OS_ReadXML(OSSECCONF, &xml) >= 0) {
         node_name = OS_GetOneContentforElement(&xml, xml_node);
     }
 

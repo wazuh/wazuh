@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -230,7 +230,6 @@ extern const char *__local_name;
 #include "regex_op.h"
 #include "sig_op.h"
 #include "list_op.h"
-#include "dirtree_op.h"
 #include "hash_op.h"
 #include "rbtree_op.h"
 #include "queue_op.h"
@@ -273,6 +272,5 @@ extern const char *__local_name;
 #include "bzip2_op.h"
 #include "enrollment_op.h"
 #include "buffer_op.h"
-
 
 #endif /* SHARED_H */

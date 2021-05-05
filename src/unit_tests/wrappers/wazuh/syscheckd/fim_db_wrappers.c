@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -186,21 +186,18 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         __attribute__((unused)) pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode,
-                                        __attribute__((unused)) whodata_evt * w_evt) {
+                                        __attribute__((unused)) event_data_t *evt_data) {
     check_expected_ptr(fim_sql);
     check_expected_ptr(file);
     check_expected_ptr(storage);
-    check_expected_ptr(mode);
 
     return mock();
 }
 
-void __wrap_fim_db_remove_path(fdb_t *fim_sql,
-                               fim_entry *entry,
-                               __attribute__((unused)) void *arg) {
+int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path) {
     check_expected_ptr(fim_sql);
-    check_expected_ptr(entry);
+    check_expected(path);
+    return mock_type(int);
 }
 
 int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql) {
@@ -325,4 +322,48 @@ void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
 
     will_return(__wrap_fim_db_get_path_from_pattern, file);
     will_return(__wrap_fim_db_get_path_from_pattern, ret);
+}
+
+void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val) {
+    expect_value(__wrap_fim_db_remove_path, fim_sql, fim_sql);
+    expect_string(__wrap_fim_db_remove_path, path, path);
+    will_return(__wrap_fim_db_remove_path, ret_val);
+}
+
+int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path) {
+    check_expected(path);
+    return mock();
+}
+
+int __wrap_fim_db_data_exists(__attribute__((unused)) fdb_t *fim_sql, unsigned long int inode, unsigned long int dev) {
+    check_expected(inode);
+    check_expected(dev);
+    return mock();
+}
+
+int __wrap_fim_db_append_paths_from_inode(__attribute__((unused)) fdb_t *fim_sql,
+                                          unsigned long int inode,
+                                          unsigned long int dev,
+                                          OSList *list,
+                                          rb_tree *tree) {
+    char **paths;
+    int i;
+
+    check_expected(inode);
+    check_expected(dev);
+    assert_non_null(list);
+    assert_non_null(tree);
+
+    paths = mock_type(char **);
+    if (paths == NULL) {
+        return 0;
+    }
+
+    for (i = 0; paths[i]; i++) {
+        rb_node *leaf = rbtree_insert(tree, paths[i], NULL);
+
+        OSList_AddData(list, leaf->key);
+    }
+
+    return i;
 }

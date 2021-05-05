@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -157,11 +157,11 @@ static void test_wm_gcp_run_success_log_disabled(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -191,11 +191,11 @@ static void test_wm_gcp_run_error_running_command(void **state)  {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -225,11 +225,11 @@ static void test_wm_gcp_run_unknown_error(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -266,11 +266,11 @@ static void test_wm_gcp_run_unknown_error_no_description(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -307,11 +307,11 @@ static void test_wm_gcp_run_error_parsing_args(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -348,11 +348,11 @@ static void test_wm_gcp_run_error_parsing_args_no_description(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -389,11 +389,11 @@ static void test_wm_gcp_run_generic_error(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -430,11 +430,11 @@ static void test_wm_gcp_run_generic_error_no_description(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -471,11 +471,11 @@ static void test_wm_gcp_run_logging_debug_message_debug(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -505,11 +505,11 @@ static void test_wm_gcp_run_logging_debug_message_not_debug(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -540,11 +540,11 @@ static void test_wm_gcp_run_logging_debug_message_not_debug_discarded(void **sta
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 1");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -571,11 +571,11 @@ static void test_wm_gcp_run_logging_info_message_info(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -605,11 +605,11 @@ static void test_wm_gcp_run_logging_info_message_debug(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -636,11 +636,11 @@ static void test_wm_gcp_run_logging_info_message_warning(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 2");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -667,11 +667,11 @@ static void test_wm_gcp_run_logging_warning_message_warning(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -701,11 +701,11 @@ static void test_wm_gcp_run_logging_warning_message_debug(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -732,11 +732,11 @@ static void test_wm_gcp_run_logging_warning_message_error(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 3");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -763,11 +763,11 @@ static void test_wm_gcp_run_logging_error_message_error(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -797,11 +797,11 @@ static void test_wm_gcp_run_logging_error_message_info(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -828,11 +828,11 @@ static void test_wm_gcp_run_logging_error_message_critical(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 4");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -859,11 +859,11 @@ static void test_wm_gcp_run_logging_critical_message_critical(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -893,11 +893,11 @@ static void test_wm_gcp_run_logging_critical_message_debug(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10 --log_level 5");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -1337,11 +1337,11 @@ static void test_wm_gcp_main_pull_on_start(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, WM_GCP_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
 
     expect_string(__wrap_wm_exec, command,
-        "/var/ossec/wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "wodles/gcloud/gcloud --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
         "--credentials_file /wazuh/credentials/test.json --max_messages 10");
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);

@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January 16, 2018.
  *
  * This program is free software; you can redistribute it
@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
 
 const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
@@ -161,7 +162,7 @@ static struct column_list const TABLE_OS[] = {
 
 static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
-    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HARDWARE[2] }, 
+    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HARDWARE[2] },
     { .value = { FIELD_TEXT, 3, false, true, "board_serial" }, .next = &TABLE_HARDWARE[3] },
     { .value = { FIELD_TEXT, 4, false, false, "cpu_name" }, .next = &TABLE_HARDWARE[4] },
     { .value = { FIELD_INTEGER, 5, false, false, "cpu_cores" }, .next = &TABLE_HARDWARE[5] },
@@ -419,7 +420,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 if (wdb_parse_dbsync(wdb, next, output)){
                     mdebug2("Updated based on table deltas for agent '%s'", sagent_id);
-                } 
+                }
             }
         } else if (strcmp(query, "ciscat") == 0) {
             if (!next) {
@@ -442,6 +443,15 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 result = wdb_parse_rootcheck(wdb, next, output);
+            }
+        } else if (strcmp(query, "vuln_cve") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid vuln_cve query syntax.", sagent_id);
+                mdebug2("DB(%s) vuln_cve query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_vuln_cve(wdb, next, output);
             }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
@@ -5416,7 +5426,7 @@ int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) 
     }
 
     wdbc_result status = wdb_global_sync_agent_info_get(wdb, &last_id, &agent_info_sync);
-    snprintf(output, WDB_MAX_RESPONSE_SIZE, "%s %s",  WDBC_RESULT[status], agent_info_sync);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], agent_info_sync);
     os_free(agent_info_sync)
     if (status != WDBC_DUE) {
         last_id = 0;
@@ -5692,7 +5702,7 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
             }
         }
     }
-   
+
     return ret_val;
 }
 
@@ -5727,7 +5737,7 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     }
 
     char *data = curr;
-    
+
     struct kv_list const *head = TABLE_MAP;
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
@@ -6030,4 +6040,80 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
     cJSON_Delete(response);
 
     return result;
+}
+
+// 'agents' DB command parsing
+
+int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
+    int result = OS_INVALID;
+    char * next;
+    const char delim[] = " ";
+    char *tail = NULL;
+
+    next = strtok_r(input, delim, &tail);
+
+    if (!next){
+        snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cve action");
+    }
+    else if (strcmp(next, "insert") == 0) {
+        result = wdb_parse_agents_insert_vuln_cve(wdb, tail, output);
+    }
+    else if (strcmp(next, "clear") == 0) {
+        result = wdb_parse_agents_clear_vuln_cve(wdb, output);
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve action: %s", next);
+    }
+
+    return result;
+}
+
+int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
+    cJSON *data = NULL;
+    const char *error = NULL;
+    int ret = OS_INVALID;
+
+    data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!data) {
+        mdebug1("Invalid vuln_cve JSON syntax when inserting vulnerable package.");
+        mdebug2("JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+    }
+    else {
+        cJSON* j_name = cJSON_GetObjectItem(data, "name");
+        cJSON* j_version = cJSON_GetObjectItem(data, "version");
+        cJSON* j_architecture = cJSON_GetObjectItem(data, "architecture");
+        cJSON* j_cve = cJSON_GetObjectItem(data, "cve");
+        // Required fields
+        if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve)) {
+            mdebug1("Invalid vuln_cve JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
+        }
+
+        else {
+            ret = wdb_agents_insert_vuln_cve(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring);
+            if (OS_SUCCESS != ret) {
+                mdebug1("DB(%s) Cannot execute vuln_cve insert command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve insert command; SQL err: %s", sqlite3_errmsg(wdb->db));
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+        }
+    }
+
+    cJSON_Delete(data);
+    return ret;
+}
+
+int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
+    int ret = wdb_agents_clear_vuln_cve(wdb);
+    if (OS_SUCCESS != ret) {
+        mdebug1("DB(%s) Cannot execute vuln_cve clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+    return ret;
 }

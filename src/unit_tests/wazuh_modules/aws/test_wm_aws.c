@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -124,7 +124,7 @@ void test_interval_execution(void **state) {
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
 

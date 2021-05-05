@@ -3,7 +3,7 @@
  * @brief Definition of FIM data synchronization library
  * @date 2019-08-28
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -65,9 +65,9 @@ void * fim_run_integrity(void * args) {
 #endif
         gettime(&end);
 
-        mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
-
         struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
+
+        mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
 
         // Get messages until timeout
         char * msg;
@@ -148,7 +148,7 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
         attributes = fim_registry_value_attributes_json(entry->registry_entry.value, configuration);
     }
 #endif
-
+    cJSON_AddNumberToObject(root, "version", 2.0);
     cJSON_AddItemToObject(root, "attributes", attributes);
 
     return root;

@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -33,7 +33,7 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     return ret;
 }
 
-BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper) 
+BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
 : m_packageWrapper(packageWrapper)
 { }
 
@@ -45,4 +45,6 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["description"] = m_packageWrapper->description();
     package["architecture"] = m_packageWrapper->architecture();
     package["format"] = m_packageWrapper->format();
+    package["source"] = m_packageWrapper->source();
+    package["location"] = m_packageWrapper->location();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -23,7 +23,11 @@
 #include <windows.h>
 #endif
 
-#define OS_PIDFILE  "/var/run"
+#ifdef __MACH__
+#include <libproc.h>
+#endif
+
+#define OS_PIDFILE  "var/run"
 #define UCS2_LE 1
 #define UCS2_BE 2
 
@@ -625,4 +629,14 @@ int w_is_compressed_bz2_file(const char * path);
  */
 int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 #endif /* CLIENT */
+
+/**
+ * @brief Get the Wazuh installation directory
+ *
+ * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ * 
+ * @param arg ARGV0 - Program name
+ * @return Pointer to the Wazuh installation path on success
+ */
+char *w_homedir(char *arg);
 #endif /* FILE_OP_H */

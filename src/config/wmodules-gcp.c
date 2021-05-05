@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All right reserved.
  *
  * This program is free software; you can redistribute it
@@ -96,11 +96,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             if(nodes[i]->content[0] == '/') {
                 sprintf(realpath_buffer, "%s", nodes[i]->content);
             } else {
-                char relative_path[PATH_MAX] = {0};
-
-                sprintf(relative_path, "%s/", DEFAULTDIR);
-                strcat(relative_path, nodes[i]->content);
-                const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
+                const char * const realpath_buffer_ref = realpath(nodes[i]->content, realpath_buffer);
                 if (!realpath_buffer_ref) {
                     mwarn("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
                     return OS_INVALID;

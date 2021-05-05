@@ -21,6 +21,11 @@ login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['
 basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+environment_status = None
+
+
+def pytest_addoption(parser):
+    parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
 
 
 def get_token_login_api():
@@ -44,13 +49,15 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(interval: int = 10):
+def build_and_up(interval: int = 10, build: bool = True):
     """Build all Docker environments needed for the current test.
 
     Parameters
     ----------
     interval : int
         Time interval between every healthcheck
+    build : bool
+        Flag to indicate if images need to be built
 
     Returns
     -------
@@ -61,11 +68,15 @@ def build_and_up(interval: int = 10):
     os.chdir(pwd)
     values = {
         'interval': interval,
-        'max_retries': 30,
+        'max_retries': 60,
         'retries': 0
     }
-    current_process = subprocess.Popen(["docker-compose", "build"])
-    current_process.wait()
+    # Get current branch
+    current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
+    if build:
+        current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
+                                            f"WAZUH_BRANCH={current_branch}"])
+        current_process.wait()
     current_process = subprocess.Popen(["docker-compose", "up", "-d"])
     current_process.wait()
 
@@ -115,12 +126,6 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
         return True
 
 
-def create_tmp_folders():
-    """Create basic temporal structure for integration tests."""
-    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager'), exist_ok=True)
-    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'agent'), exist_ok=True)
-
-
 def general_procedure(module: str):
     """Copy the configurations files of the specified module to temporal folder.
     The temporal folder will be processed in the environments's entrypoints
@@ -130,36 +135,12 @@ def general_procedure(module: str):
     module : str
         Name of the tested module
     """
-    folder_content = os.path.join(current_path, 'env', 'configurations', module, '*')
+    base_content = os.path.join(current_path, 'env', 'configurations', 'base', '*')
+    module_content = os.path.join(current_path, 'env', 'configurations', module, '*')
     tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
     os.makedirs(tmp_content, exist_ok=True)
-    os.popen(f'cp -rf {folder_content} {tmp_content}')
-    healthcheck_procedure(module)
-
-
-def healthcheck_procedure(module: str):
-    """Copy base healthchecks for managers and agents.
-    If the environment need a specific one, the base healthcheck will be replaced.
-
-    Parameters
-    ----------
-    module : str
-        Name of the tested module
-    """
-    manager_folder = os.path.join(current_path, 'env', 'configurations', module, 'manager', 'healthcheck')
-    agent_folder = os.path.join(current_path, 'env', 'configurations', module, 'agent', 'healthcheck')
-    master_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'healthcheck')
-    agent_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'agent', 'healthcheck')
-    tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
-
-    os.popen(f'cp -rf {master_base_folder} {os.path.join(tmp_content, "manager")}')
-    os.popen(f'cp -rf {agent_base_folder} {os.path.join(tmp_content, "agent")}')
-    # Avoid race condition
-    time.sleep(2)
-    if os.path.exists(manager_folder):
-        os.popen(f'cp -rf {manager_folder} {os.path.join(tmp_content, "manager")}')
-    if os.path.exists(agent_folder):
-        os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
+    os.popen(f'cp -rf {base_content} {tmp_content}').close()
+    os.popen(f'cp -rf {module_content} {tmp_content}').close()
 
 
 def change_rbac_mode(rbac_mode: str = 'white'):
@@ -190,7 +171,8 @@ def enable_white_mode():
 def clean_tmp_folder():
     """Remove temporal folder used te configure the environment and set RBAC mode to Black.
     """
-    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp'), ignore_errors=True)
+    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager'), ignore_errors=True)
+    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp', 'agent'), ignore_errors=True)
 
 
 def generate_rbac_pair(index: int, permission: dict):
@@ -228,7 +210,8 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager', 'custom_rbac_schema.sql')
+    custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager',
+                                    'configuration_files', 'custom_rbac_schema.sql')
 
     try:
         with open(os.path.join(current_path, 'env', 'configurations', 'rbac', module,
@@ -290,8 +273,7 @@ def api_test(request):
     else:
         rbac_mode = None
         module = test_filename[1]
-    create_tmp_folders()
-    general_procedure(module)
+    clean_tmp_folder()
 
     if rbac_mode:
         change_rbac_mode(rbac_mode)
@@ -299,7 +281,8 @@ def api_test(request):
     else:
         enable_white_mode()
 
-    values = build_and_up(interval=10)
+    general_procedure(module)
+    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'))
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'])
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
@@ -312,7 +295,28 @@ def api_test(request):
     clean_tmp_folder()
     if request.session.testsfailed > 0:
         save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
+
+    # Get the environment current status
+    global environment_status
+    environment_status = get_health()
     down_env()
+
+
+def get_health():
+    """Get the current status of the integration environment
+
+    Returns
+    -------
+    str
+        Current status
+    """
+    health = "\nEnvironment final status\n"
+    health += subprocess.check_output(
+        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}' --filter name=^env_wazuh",
+        shell=True).decode()
+    health += '\n'
+
+    return health
 
 
 # HTML report
@@ -400,6 +404,11 @@ def pytest_runtest_makereport(item, call):
 
     elif report.outcome == 'failed':
         results[report.location[0]]['error'] += 1
+
+    if report.when == 'setup' and \
+            report.longrepr and ('api_test did not yield a value' in report.longrepr.reprcrash.message or
+                                 'StopIteration' in report.longrepr.reprcrash.message):
+        report.sections.append(('Environment section', environment_status))
 
 
 def pytest_html_results_summary(prefix, summary, postfix):

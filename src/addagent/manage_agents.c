@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -113,18 +113,18 @@ int add_agent(int json_output)
     if (sock = auth_connect(), sock < 0) {
         authd_running = 0;
         /* Check if we can open the auth_file */
-        fp = fopen(AUTH_FILE, "a");
+        fp = fopen(KEYS_FILE, "a");
         if (!fp) {
             if (json_output) {
                 char buffer[1024];
                 cJSON *json_root = cJSON_CreateObject();
-                snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
                 cJSON_AddNumberToObject(json_root, "error", 71);
                 cJSON_AddStringToObject(json_root, "message", buffer);
                 printf("%s", cJSON_PrintUnformatted(json_root));
                 exit(1);
             } else
-                merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+                merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
         }
         fclose(fp);
 
@@ -314,7 +314,7 @@ int add_agent(int json_output)
                 time3 = time(0);
                 rand2 = os_random();
 
-                if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
+                if (TempFile(&file, KEYS_FILE, 1) < 0 ) {
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
@@ -348,17 +348,17 @@ int add_agent(int json_output)
                 fprintf(file.fp, "%s %s %s %s\n", id, name, c_ip.ip, key);
                 fclose(file.fp);
 
-                if (OS_MoveFile(file.name, AUTH_FILE) < 0) {
+                if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
-                        snprintf(buffer, 1023, "Could not write file '%s'", AUTH_FILE);
+                        snprintf(buffer, 1023, "Could not write file '%s'", KEYS_FILE);
                         cJSON_AddNumberToObject(json_root, "error", 71);
                         cJSON_AddStringToObject(json_root, "message", buffer);
                         printf("%s", cJSON_PrintUnformatted(json_root));
                         exit(1);
                     } else
-                        merror_exit("Could not write file '%s'", AUTH_FILE);
+                        merror_exit("Could not write file '%s'", KEYS_FILE);
                 }
 
                 free(file.name);
@@ -511,13 +511,13 @@ int remove_agent(int json_output)
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
-                        snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+                        snprintf(buffer, 1023, "Could not open object '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
                         cJSON_AddNumberToObject(json_root, "error", 71);
                         cJSON_AddStringToObject(json_root, "message", buffer);
                         printf("%s", cJSON_PrintUnformatted(json_root));
                         exit(1);
                     } else
-                        merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+                        merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
                 }
 
                 free(full_name);
@@ -574,76 +574,4 @@ int list_agents(int cmdlist)
     }
 
     return (0);
-}
-
-int limitReached() {
-    FILE *fp;
-    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
-    char buffer[OS_BUFFER_SIZE + 1];
-    int counter = 0;
-
-    fp = fopen(keys_file, "r");
-    if (!fp) {
-        /* We can leave from here */
-        merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
-        merror_exit(NO_CLIENT_KEYS);
-    }
-
-    /* Read each line. Lines are divided as "id name ip key" */
-    while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
-        char *tmp_str;
-
-        if ((buffer[0] == '#') || (buffer[0] == ' ')) {
-            continue;
-        }
-
-        /* Get ID */
-        tmp_str = strchr(buffer, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-
-        /* Removed entry */
-        if (*tmp_str == '#' || *tmp_str == '!') {
-            continue;
-        }
-
-        /* Get name */
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-
-        /* Get IP address */
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-
-        /* Get key */
-        tmp_str = strchr(tmp_str, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        }
-
-        counter++;
-        continue;
-    }
-
-    fclose(fp);
-
-    return 0;
-
 }

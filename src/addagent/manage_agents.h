@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -56,9 +56,6 @@ int list_agents(int cmdlist);
 
 /* Clear a line */
 char *chomp(char *str);
-
-/* Checks if the agent limit has been reached */
-int limitReached();
 
 /* Shared variables */
 extern time_t time1;

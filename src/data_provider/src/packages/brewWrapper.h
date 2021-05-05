@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -23,11 +23,9 @@ public:
     explicit BrewWrapper(const PackageContext& ctx)
       : m_name{ctx.package}
       , m_version{Utils::splitIndex(ctx.version, '_', 0)}
-      , m_groups{UNKNOWN_VALUE}
-      , m_description{UNKNOWN_VALUE}
-      , m_architecture{UNKNOWN_VALUE}
       , m_format{"pkg"}
-      , m_osPatch{UNKNOWN_VALUE}
+      , m_source{"homebrew"}
+      , m_location{ctx.filePath}
     {
         const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
         for (const auto& row : rows)
@@ -74,6 +72,15 @@ public:
     {
         return m_osPatch;
     }
+    std::string source() const override
+    {
+        return m_source;
+    }
+    std::string location() const override
+    {
+        return m_location;
+    }
+
 private:
     std::string m_name;
     std::string m_version;
@@ -82,6 +89,8 @@ private:
     std::string m_architecture;
     const std::string m_format;
     std::string m_osPatch;
+    const std::string m_source;
+    const std::string m_location;
 };
 
 

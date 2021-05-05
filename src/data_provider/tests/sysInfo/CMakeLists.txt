@@ -11,7 +11,7 @@ file(GLOB SYSINFO_SRC
     "${CMAKE_SOURCE_DIR}/src/sysInfo.cpp"
     "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 
-add_executable(sysinfo_unit_test 
+add_executable(sysinfo_unit_test
     ${sysinfo_UNIT_TEST_SRC}
     ${SYSINFO_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,6 +9,7 @@ import pytest
 
 from wazuh.core import exception
 from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
 
 
 def format_msg(msg):
@@ -77,6 +78,11 @@ def test_failed_send_private(send_mock, connect_mock):
         with pytest.raises(exception.WazuhException, match=".* 2003 .*"):
             mywdb._send('test_msg')
 
+    with patch('socket.socket.recv', return_value=b'a' * (MAX_SOCKET_BUFFER_SIZE + 1)):
+        mywdb = WazuhDBConnection()
+        with pytest.raises(exception.WazuhException, match=".* 2009 .*"):
+            mywdb._send('test_msg')
+
 
 @pytest.mark.parametrize('content', [
     b'ok {"agents": {"001": "Ok"}}',
@@ -98,6 +104,7 @@ def test_remove_agents_database(send_mock, connect_mock, content):
         received = mywdb.delete_agents_db(['001', '002'])
         assert(isinstance(received, dict))
         assert("agents" in received)
+
 
 @pytest.mark.parametrize('error_query', [
     'Agent sql select test',
@@ -151,6 +158,23 @@ def test_execute(send_mock, socket_send_mock, connect_mock):
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1", count=True)
         mywdb.execute("agent 000 sql select test from test offset 1 count")
+
+
+@patch("socket.socket.connect")
+@patch("socket.socket.send")
+def test_execute_pagination(socket_send_mock, connect_mock):
+    mywdb = WazuhDBConnection()
+
+    # Test pagination
+    with patch("wazuh.core.wdb.WazuhDBConnection._send",
+               side_effect=[[{'total': 5}], exception.WazuhInternalError(2009), [{'total': 5}], [{'total': 5}]]):
+        mywdb.execute("agent 000 sql select test from test offset 1 limit 500")
+
+    # Test pagination error
+    with patch("wazuh.core.wdb.WazuhDBConnection._send",
+               side_effect=[[{'total': 5}], exception.WazuhInternalError(2009)]):
+        with pytest.raises(exception.WazuhInternalError, match=".* 2009 .*"):
+            mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
 
 
 @pytest.mark.parametrize('error_query, error_type, expected_exception, delete, update', [

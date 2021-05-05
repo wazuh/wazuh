@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -27,10 +27,16 @@ int __wrap_atexit(void (*callback)(void)) {
 
 char *__wrap_realpath(const char *path, char *resolved_path) {
     check_expected(path);
+    if (resolved_path != NULL) {
+        char *aux = mock_type(char *);
+        if (aux == NULL) {
+            return NULL;
+        }
+        snprintf(resolved_path, PATH_MAX, "%s", aux);
+        return resolved_path;
+    }
 
-    snprintf(resolved_path, PATH_MAX, "%s", mock_type(char*));
-
-    return mock_type(char*);
+    return mock_type(char *);
 }
 
 int __wrap_system(__attribute__((unused))const char *__command) {

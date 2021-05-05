@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent Upgrading
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -22,7 +22,7 @@
 #include "wm_agent_upgrade_tasks.h"
 #include "wm_agent_upgrade_validate.h"
 #include "wm_agent_upgrade_upgrades.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 /**
  * Analyze agent information and returns a JSON to be sent to the task manager

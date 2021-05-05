@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 24, 2020.
  *
  * This program is free software; you can redistribute it
@@ -17,7 +17,7 @@
 #include <memory>
 #include <netdb.h>
 #include "makeUnique.h"
-	
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -28,10 +28,10 @@ namespace Utils
     public:
         static std::string getNetworkTypeStringCode(const int value, const std::map<std::pair<int, int>, std::string>& interfaceTypeData)
         {
-            std::string retVal { "unknown" };
+            std::string retVal;
 
-            const auto it 
-            { 
+            const auto it
+            {
                 std::find_if(interfaceTypeData.begin(), interfaceTypeData.end(),
                 [value](const std::pair<std::pair<int, int>, std::string>& paramValue)
                 {
@@ -59,12 +59,12 @@ namespace Utils
         }
 
         static std::string getBroadcast(const std::string& ipAddress, const std::string& netmask)
-        {    
+        {
             struct in_addr host;
             struct in_addr mask;
             struct in_addr broadcast;
 
-            std::string broadcastAddr { "unknown" };
+            std::string broadcastAddr;
 
             if (inet_pton(AF_INET, ipAddress.c_str(), &host) == 1 && inet_pton(AF_INET, netmask.c_str(), &mask) == 1){
 

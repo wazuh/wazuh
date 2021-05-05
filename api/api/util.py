@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -10,7 +10,7 @@ import six
 from connexion import ProblemException
 
 from api.api_exception import APIError
-from wazuh.core.common import ossec_path as WAZUH_PATH
+from wazuh.core.common import wazuh_path as WAZUH_PATH
 from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
     WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
 

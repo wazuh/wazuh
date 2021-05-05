@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 19, 2020.
  *
  * This program is free software; you can redistribute it
@@ -28,7 +28,7 @@ public:
     virtual ~SysInfoNetworkWindowsWrapperMock() = default;
     MOCK_METHOD(int, family, (), (const override));
     MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, adapter, (), (const override)); 
+    MOCK_METHOD(std::string, adapter, (), (const override));
     MOCK_METHOD(std::string, address, (), (const override));
     MOCK_METHOD(std::string, netmask, (), (const override));
     MOCK_METHOD(std::string, broadcast, (), (const override));
@@ -39,7 +39,7 @@ public:
     MOCK_METHOD(std::string, metrics, (), (const override));
     MOCK_METHOD(std::string, metricsV6, (), (const override));
     MOCK_METHOD(std::string, dhcp, (), (const override));
-    MOCK_METHOD(std::string, mtu, (), (const override));
+    MOCK_METHOD(uint32_t, mtu, (), (const override));
     MOCK_METHOD(LinkStats, stats, (), (const override));
     MOCK_METHOD(std::string, type, (), (const override));
     MOCK_METHOD(std::string, state, (), (const override));
@@ -92,13 +92,13 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV4)
     EXPECT_CALL(*mock, netmask()).Times(1).WillOnce(Return(netmask));
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return(broadcast));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(dhcp));
-    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(metrics));   
+    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(metrics));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
     EXPECT_EQ(address, networkInfo.at("IPv4").at("address").get_ref<const std::string&>());
     EXPECT_EQ(netmask, networkInfo.at("IPv4").at("netmask").get_ref<const std::string&>());
     EXPECT_EQ(broadcast, networkInfo.at("IPv4").at("broadcast").get_ref<const std::string&>());
     EXPECT_EQ(dhcp, networkInfo.at("IPv4").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ(metrics, networkInfo.at("IPv4").at("metric").get_ref<const std::string&>()); 
+    EXPECT_EQ(metrics, networkInfo.at("IPv4").at("metric").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkWindowsTest, Test_IPV6)
@@ -132,7 +132,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     const std::string type      { "2001:db8:abcd:0012:ffff:ffff:ffff:ffff" };
     const std::string state     { "up" };
     const std::string MAC       { "00:A0:C9:14:C8:29" };
-    const std::string mtu       { "1500" };
+    const uint32_t mtu          { 1500 };
     const std::string gateway   { "10.2.2.50" };
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::COMMON_DATA));
     EXPECT_CALL(*mock, name()).Times(1).WillOnce(Return(name));
@@ -149,7 +149,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_EQ(type, networkInfo.at("type").get_ref<const std::string&>());
     EXPECT_EQ(state, networkInfo.at("state").get_ref<const std::string&>());
     EXPECT_EQ(MAC, networkInfo.at("mac").get_ref<const std::string&>());
-    
+
     EXPECT_EQ(1, networkInfo.at("tx_packets").get<int32_t>());
     EXPECT_EQ(0, networkInfo.at("rx_packets").get<int32_t>());
     EXPECT_EQ(3, networkInfo.at("tx_bytes").get<int32_t>());
@@ -159,6 +159,6 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_EQ(7, networkInfo.at("tx_dropped").get<int32_t>());
     EXPECT_EQ(6, networkInfo.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ(mtu, networkInfo.at("mtu").get_ref<const std::string&>());
+    EXPECT_EQ(mtu, networkInfo.at("mtu").get<uint32_t>());
     EXPECT_EQ(gateway, networkInfo.at("gateway").get_ref<const std::string&>());
 }

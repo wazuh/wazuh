@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -25,10 +25,9 @@
 
 ///< JSON path wich contains the files position of last read
 #ifdef WIN32
-#define LOCALFILE_STATUS_PATH   "queue\\logcollector\\file_status.json"
+#define LOCALFILE_STATUS   "queue\\logcollector\\file_status.json"
 #else
-#define LOCALFILE_STATUS        "/queue/logcollector/file_status.json"
-#define LOCALFILE_STATUS_PATH   DEFAULTDIR LOCALFILE_STATUS
+#define LOCALFILE_STATUS        "queue/logcollector/file_status.json"
 #endif
 
 ///< JSON fields for file_status
@@ -206,9 +205,6 @@ int w_msg_hash_queues_add_entry(const char *key);
 
 /* Push message into the hash queue */
 int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq);
-
-/* Pop message from the hash queue */
-w_message_t * w_msg_hash_queues_pop(const char *key);
 
 /* Push message into the queue */
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq);

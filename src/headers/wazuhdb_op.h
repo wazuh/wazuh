@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 15, 2019.
  *
  * This program is free software; you can redistribute it
@@ -12,6 +12,9 @@
 
 #include "shared.h"
 #include "os_net/os_net.h"
+
+#define WDBQUERY_SIZE OS_BUFFER_SIZE
+#define WDBOUTPUT_SIZE OS_MAXSTR
 
 #define FIELD_SEPARATOR_DBSYNC "|"
 

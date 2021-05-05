@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -15,6 +15,7 @@
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 #include <sys/utsname.h>
+#include "sharedDefs.h"
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
@@ -85,7 +86,7 @@ int SysInfo::getCpuMHz() const
 
 std::string SysInfo::getSerialNumber() const
 {
-    return "unknown";
+    return UNKNOWN_VALUE;
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -126,12 +127,12 @@ nlohmann::json SysInfo::getOsInfo() const
     {
         ret["os_name"] = "BSD";
         ret["os_platform"] = "bsd";
-        ret["os_version"] = "unknown";
+        ret["os_version"] = UNKNOWN_VALUE;
     }
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
-        ret["host_name"] = uts.nodename;
+        ret["hostname"] = uts.nodename;
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;

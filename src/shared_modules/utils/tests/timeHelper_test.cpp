@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -27,7 +27,7 @@ TEST_F(TimeUtilsTest, CheckTimestamp)
 
 TEST_F(TimeUtilsTest, CheckTimestampValidFormat)
 {
-    constexpr auto DATE_FORMAT_REGEX_STR { "[0-9]{4}/([1-9]|1[0-2])/([1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|1[0-9]|[0-9]):([0-9]|[1-5][0-9]):([1-5][0-9]|[0-9])" };
+    constexpr auto DATE_FORMAT_REGEX_STR { "[0-9]{4}/([0-9]|1[0-2]){2}/(([0-9]|1[0-2]){2}) (([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2})" };
     const auto currentTimestamp { Utils::getCurrentTimestamp() };
     const auto timestamp { Utils::getTimestamp(std::time(nullptr)) };
     EXPECT_TRUE(std::regex_match(currentTimestamp, std::regex(DATE_FORMAT_REGEX_STR)));

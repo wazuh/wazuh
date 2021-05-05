@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 13, 2020.
  *
  * This program is free software; you can redistribute it
@@ -20,7 +20,7 @@ namespace RSync
     {
         DBSYNC_HANDLE m_dbsync_handle;
     public:
-   
+
         explicit DBSyncWrapper(DBSYNC_HANDLE dbsync_handle)
         : m_dbsync_handle(dbsync_handle) { }
         virtual void select(const cJSON*    s_data_input,

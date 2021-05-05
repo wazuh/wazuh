@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ int send_msg(const char *msg, ssize_t msg_length)
     }
 
     if (!retval) {
-        agent_state.msg_sent++;
+        w_agentd_state_update(INCREMENT_MSG_SEND, NULL);
     } else {
 #ifdef WIN32
         error = WSAGetLastError();

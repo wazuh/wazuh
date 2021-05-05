@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -27,14 +27,14 @@ class MultiOrderedDict(OrderedDict):
             super(MultiOrderedDict, self).__setitem__(key, value)
 
 
-def getWazuhInfo(wazuh_home):   
-    wazuh_control = os.path.join(wazuh_home, "bin", "wazuh-control") 
+def getWazuhInfo(wazuh_home):
+    wazuh_control = os.path.join(wazuh_home, "bin", "wazuh-control")
     wazuh_env_vars = {}
     try:
         proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
-        (stdout, stderr) = proc.communicate() 
+        (stdout, stderr) = proc.communicate()
     except:
-        print "Seems like there is no Wazuh installation."
+        print("Seems like there is no Wazuh installation.")
         return None
 
     env_variables = stdout.rsplit("\n")
@@ -42,13 +42,13 @@ def getWazuhInfo(wazuh_home):
     for env_variable in env_variables:
         key, value = env_variable.split("=")
         wazuh_env_vars[key] = value.replace("\"", "")
-    
+
     return wazuh_env_vars
 
 def provisionDR():
     base_dir = os.path.dirname(os.path.realpath(__file__))
     rules_dir = os.path.join(base_dir, "ruleset")
-    decoders_dir = os.path.join(base_dir, "ruleset") 
+    decoders_dir = os.path.join(base_dir, "ruleset")
 
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
@@ -75,7 +75,7 @@ def cleanDR():
             os.remove(file_fullpath)
 
 def restart_analysisd():
-    print "Restarting wazuh-manager..."
+    print("Restarting wazuh-manager...")
     ret = os.system('systemctl restart wazuh-manager')
 
 class OssecTester(object):
@@ -102,19 +102,19 @@ class OssecTester(object):
         std_out = p.communicate(log)[0]
         if (p.returncode != 0 and not negate) or (p.returncode == 0 and negate):
             self._error = True
-            print ""
-            print "-" * 60
-            print "Failed: Exit code = %s" % (p.returncode)
-            print "        Alert     = %s" % (alert)
-            print "        Rule      = %s" % (rule)
-            print "        Decoder   = %s" % (decoder)
-            print "        Section   = %s" % (section)
-            print "        line name = %s" % (name)
-            print " "
-            print std_out
+            print("")
+            print("-" * 60)
+            print("Failed: Exit code = %s" % (p.returncode))
+            print("        Alert     = %s" % (alert))
+            print("        Rule      = %s" % (rule))
+            print("        Decoder   = %s" % (decoder))
+            print("        Section   = %s" % (section))
+            print("        line name = %s" % (name))
+            print(" ")
+            print(std_out)
         elif self._debug:
-            print "Exit code= %s" % (p.returncode)
-            print std_out
+            print("Exit code= %s" % (p.returncode))
+            print(std_out)
         else:
             sys.stdout.write(".")
             sys.stdout.flush()
@@ -129,7 +129,7 @@ class OssecTester(object):
                     continue
                 if geoip is False and aFile.endswith("geoip.ini"):
                     continue
-                print "- [ File = %s ] ---------" % (aFile)
+                print("- [ File = %s ] ---------" % (aFile))
                 tGroup = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
                 tGroup.read([aFile])
                 tSections = tGroup.sections()
@@ -140,7 +140,7 @@ class OssecTester(object):
                     for (name, value) in tGroup.items(t):
                         if name.startswith("log "):
                             if self._debug:
-                                print "-" * 60
+                                print("-" * 60)
                             if name.endswith("pass"):
                                 neg = False
                             elif name.endswith("fail"):
@@ -149,8 +149,8 @@ class OssecTester(object):
                                 neg = False
                             self.runTest(value, rule, alert, decoder,
                                          t, name, negate=neg)
-                print ""
-                print ""
+                print("")
+                print("")
         return self._error
 
 def cleanup(*args):
@@ -173,7 +173,7 @@ if __name__ == "__main__":
         selective_test = args.testfile
         if not selective_test.endswith('.ini'):
             selective_test += '.ini'
-    
+
     wazuh_info = getWazuhInfo(args.wazuh_home)
     if wazuh_info is None:
         sys.exit(1)

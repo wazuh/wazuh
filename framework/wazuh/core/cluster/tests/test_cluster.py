@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -11,8 +11,8 @@ import pytest
 
 from wazuh.core import common
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -135,9 +135,9 @@ def test_merge_info(stat_mock, listdir_mock):
 
     with patch('builtins.open', mock_open(read_data=agent_groups)) as m:
         wazuh.core.cluster.cluster.merge_info('agent-groups', 'worker1', file_type='-shared')
-        m.assert_any_call(common.ossec_path + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
-        m.assert_any_call(common.ossec_path + '/queue/agent-groups/005', 'rb')
-        m.assert_any_call(common.ossec_path + '/queue/agent-groups/006', 'rb')
+        m.assert_any_call(common.wazuh_path + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
+        m.assert_any_call(common.wazuh_path + '/queue/agent-groups/005', 'rb')
+        m.assert_any_call(common.wazuh_path + '/queue/agent-groups/006', 'rb')
         handle = m()
         expected = f'{len(agent_groups)} 005 ' \
                    f'{datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_groups

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -154,6 +154,11 @@ struct EventList {
     pthread_mutex_t event_mutex;
 };
 
+#ifdef TESTRULE
+extern int full_output;
+extern int alert_only;
+#endif
+
 /* Types of events (from decoders) */
 #define UNKNOWN         0   /* Unknown */
 #define SYSLOG          1   /* syslog messages */
@@ -261,7 +266,6 @@ void *Extra_Data_FP(Eventinfo *lf, char *field, const char *order);
 void *Status_FP(Eventinfo *lf, char *field, const char *order);
 void *SystemName_FP(Eventinfo *lf, char *field, const char *order);
 void *DynamicField_FP(Eventinfo *lf, char *field, const char *order);
-void *None_FP(Eventinfo *lf, char *field, const char *order);
 
 /* Copy Eventinfo for writing log */
 void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);

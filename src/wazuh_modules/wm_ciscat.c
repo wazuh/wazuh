@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for CIS-CAT
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December, 2017.
  *
  * This program is free software; you can redistribute it
@@ -93,7 +93,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     skip_java = 1;
                 }
             #else
-                snprintf(java_fullpath, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->java_path);
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s", ciscat->java_path);
             #endif
                 break;
             default:
@@ -127,7 +127,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
                 }
             #else
-                snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR, ciscat->ciscat_path);
+                snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
             #endif
                 break;
             default:
@@ -237,7 +237,7 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
 
 #ifndef WIN32
 
-    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_CISCAT_LOGTAG, "Can't connect to queue.");

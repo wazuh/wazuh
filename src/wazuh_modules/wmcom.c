@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 14, 2018.
  *
  * This program is free software; you can redistribute it
@@ -94,14 +94,14 @@ void wmcom_send(char * message)
 void wmcom_send(char * message)
 {
     int sock;
-    if (sock = OS_ConnectUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
             case ECONNREFUSED:
-                mwarn("At wmcom_send(): Target wmodules refused connection. The component might be disabled");
+                mdebug1("Target wmodules refused connection. The component might be disabled");
                 break;
 
             default:
-                mwarn("At wmcom_send(): Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
+                mdebug1("Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
         }
     }
     else
@@ -121,7 +121,7 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
@@ -174,14 +174,13 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         default:
             length = wmcom_dispatch(buffer, &response);
-            if (length)
-            {
+            if (length) {
                 OS_SendSecureTCP(peer, length, response);
             }
-            free(response);
+            os_free(response);
             close(peer);
         }
-        free(buffer);
+        os_free(buffer);
     }
 
     mdebug1("Local server thread finished.");

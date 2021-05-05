@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,10 +10,6 @@
 
 #include "shared.h"
 #include "syscheck.h"
-
-volatile int audit_thread_active;
-volatile int whodata_alerts;
-volatile int audit_db_consistency_flag;
 
 #include "fs_op.h"
 #include "hash_op.h"
@@ -58,73 +54,60 @@ int realtime_start() {
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, int whodata, int followsl) {
-    if (whodata && audit_thread_active) {
-        // Save dir into saved rules list
-        w_mutex_lock(&audit_mutex);
-
-        if(!W_Vector_insert_unique(audit_added_dirs, dir)){
-            mdebug1(FIM_WHODATA_NEWDIRECTORY, dir);
-        }
-
-        w_mutex_unlock(&audit_mutex);
-
-    }
-    else {
-        if (!syscheck.realtime) {
-            if (realtime_start() < 0 ) {
-                return (-1);
-            }
-        }
-
-        /* Check if it is ready to use */
-        if (syscheck.realtime->fd < 0) {
+int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *configuration, int followsl) {
+    if (!syscheck.realtime) {
+        if (realtime_start() < 0 ) {
             return (-1);
         }
-        else {
-            int wd = 0;
+    }
 
-            wd = inotify_add_watch(syscheck.realtime->fd,
-                                   dir,
-                                   (0 == followsl) ? (REALTIME_MONITOR_FLAGS|IN_DONT_FOLLOW) : REALTIME_MONITOR_FLAGS);
-            if (wd < 0) {
-                if (errno == 28) {
-                    merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
-                }
-                else {
-                    mdebug1(FIM_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
-                }
+    /* Check if it is ready to use */
+    if (syscheck.realtime->fd < 0) {
+        return (-1);
+    }
+    else {
+        int wd = 0;
+
+        wd = inotify_add_watch(syscheck.realtime->fd,
+                                dir,
+                                (0 == followsl) ? (REALTIME_MONITOR_FLAGS|IN_DONT_FOLLOW) : REALTIME_MONITOR_FLAGS);
+        if (wd < 0) {
+            if (errno == 28) {
+                merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
             }
             else {
-                char wdchar[33];
-                char *data;
-                int retval;
-                snprintf(wdchar, 33, "%d", wd);
-                os_strdup(dir, data);
-
-                w_mutex_lock(&syscheck.fim_realtime_mutex);
-                if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-                    if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
-                        os_free(data);
-                        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
-                    }
-                    else if (retval == 1) {
-                        mdebug2(FIM_REALTIME_HASH_DUP, data);
-                        os_free(data);
-                    }
-
-                    mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
-                }
-                else {
-                    if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
-                        merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
-                        os_free(data);
-                        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-                        return (-1);
-                    }
-                }
-                w_mutex_unlock(&syscheck.fim_realtime_mutex);
+                mdebug1(FIM_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
             }
+        }
+        else {
+            char wdchar[33];
+            char *data;
+            int retval;
+            snprintf(wdchar, 33, "%d", wd);
+            os_strdup(dir, data);
+
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+                if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+                    os_free(data);
+                    merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+                }
+                else if (retval == 1) {
+                    mdebug2(FIM_REALTIME_HASH_DUP, data);
+                    os_free(data);
+                }
+
+                mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+            }
+            else {
+                if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+                    merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
+                    os_free(data);
+                    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+                    return (-1);
+                }
+            }
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
         }
     }
 
@@ -187,7 +170,7 @@ void realtime_process() {
                         }
                     }
 
-                    if (rbtree_insert(tree, final_name, (void *)1) == NULL) {
+                    if (rbtree_insert(tree, final_name, NULL) == NULL) {
                         mdebug2("Duplicate event in real-time buffer: %s", final_name);
                     }
 
@@ -218,28 +201,29 @@ void realtime_process() {
 }
 
 int realtime_update_watch(const char *wd, const char *dir) {
-    int old_wd, new_wd, index;
+    int old_wd, new_wd;
     char wdchar[33];
     char *data;
     int retval;
+    const directory_t *configuration;
 
     if (syscheck.realtime->fd < 0) {
         return -1;
     }
 
-    index = fim_configuration_directory(dir, "file");
+    configuration = fim_configuration_directory(dir);
 
-    if (index < 0) {
+    if (configuration == NULL) {
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
         return 0;
     }
 
     old_wd = atoi(wd);
-
-    new_wd = inotify_add_watch(syscheck.realtime->fd, dir,
-                               (syscheck.opts[index] & CHECK_FOLLOW) == 0 ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
-                                                                            REALTIME_MONITOR_FLAGS);
+    new_wd =
+    inotify_add_watch(syscheck.realtime->fd, dir,
+                      (configuration->options & CHECK_FOLLOW) == 0 ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
+                                                                     REALTIME_MONITOR_FLAGS);
 
     if (new_wd < 0) {
         if (errno == ENOSPC) {
@@ -373,7 +357,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 {
     int lcount;
     size_t offset = 0;
-    char wdchar[260 + 1];
+    char wdchar[260 + 1] = {0};
     char final_path[MAX_LINE + 1];
     win32rtfim *rtlocald;
     PFILE_NOTIFY_INFORMATION pinfo;
@@ -398,7 +382,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     }
 
     /* Get hash to parse the data */
-    wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", (char*)overlap->hEvent);
     rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
     if (rtlocald == NULL) {
@@ -441,8 +424,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             }
             str_lowercase(final_path);
 
-            int index = fim_configuration_directory(wdchar, "file");
-            int file_index = fim_configuration_directory(final_path, "file");
+            directory_t *index = fim_configuration_directory(wdchar);
+            directory_t *file_index = fim_configuration_directory(final_path);
 
             if (index == file_index) {
                 /* Check the change */
@@ -499,13 +482,13 @@ int realtime_win32read(win32rtfim *rtlocald)
     return rc;
 }
 
-// In Windows the whodata parameter contains the directory position + 1 to be able to reference it
-int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl)
-{
+int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((unused)) int followsl) {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
-    if (whodata) {
+    assert(configuration != NULL);
+
+    if (FIM_MODE(configuration->options) == FIM_WHODATA) {
 #ifdef WIN_WHODATA
 
         int type;
@@ -516,26 +499,26 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
 
         // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
         // regardless of it was checked in the initial configuration (WHODATA_ACTIVE in opts)
-        syscheck.wdata.dirs_status[whodata - 1].status |= WD_CHECK_WHODATA;
-        syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
+        configuration->dirs_status.status |= WD_CHECK_WHODATA;
+        configuration->dirs_status.status &= ~WD_CHECK_REALTIME;
 
         // Check if the file or directory exists
         if (type = check_path_type(dir), type == 2) {
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_DIR_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
+            configuration->dirs_status.object_type = WD_STATUS_DIR_TYPE;
+            configuration->dirs_status.status |= WD_STATUS_EXISTS;
         } else if (type == 1) {
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
+            configuration->dirs_status.object_type = WD_STATUS_FILE_TYPE;
+            configuration->dirs_status.status |= WD_STATUS_EXISTS;
         } else {
             mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
 
-            syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
-            syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
+            configuration->dirs_status.object_type = WD_STATUS_UNK_TYPE;
+            configuration->dirs_status.status &= ~WD_STATUS_EXISTS;
             return 0;
         }
 
-        GetSystemTime(&syscheck.wdata.dirs_status[whodata - 1].last_check);
-        if (set_winsacl(dir, whodata - 1)) {
+        GetSystemTime(&configuration->dirs_status.last_check);
+        if (set_winsacl(dir, configuration)) {
             merror(FIM_ERROR_WHODATA_ADD_DIRECTORY, dir);
             return -2;
         }
@@ -653,8 +636,9 @@ int realtime_start()
     return (0);
 }
 
-int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata, __attribute__((unused))int followsl)
-{
+int realtime_adddir(__attribute__((unused)) const char *dir,
+                    __attribute__((unused)) directory_t *configuration,
+                    __attribute__((unused)) int followsl) {
     return (0);
 }
 

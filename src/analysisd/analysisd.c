@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -97,9 +97,6 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
-
-/* Output threads */
-void * w_main_output_thread(__attribute__((unused)) void * args);
 
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
@@ -248,7 +245,7 @@ static int cpu_cores;
 
 /* Print help statement */
 __attribute__((noreturn))
-static void help_analysisd(void)
+static void help_analysisd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -261,29 +258,37 @@ static void help_analysisd(void)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
+#ifndef TESTRULE
 #ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
 int main(int argc, char **argv)
+#else
+__attribute__((noreturn))
+int main_analysisd(int argc, char **argv)
+#endif
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
-    const char *dir = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
 
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
 
     thishour = 0;
     today = 0;
@@ -293,7 +298,6 @@ int main(int argc, char **argv)
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
-    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
 #ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
@@ -306,7 +310,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -331,7 +335,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                snprintf(home_path, PATH_MAX, "%s", optarg);
                 break;
             case 'c':
                 if (!optarg) {
@@ -343,11 +347,18 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
         }
 
     }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -361,8 +372,9 @@ int main(int argc, char **argv)
         }
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     /* Start daemon */
-    mdebug1(STARTED_MSG);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     srandom_init();
@@ -481,8 +493,8 @@ int main(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
 
@@ -513,7 +525,7 @@ int main(int argc, char **argv)
             OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
             OSListNode * node_log_msg;
             int error_exit = 0;
-            
+
 
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
@@ -533,9 +545,9 @@ int main(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, 
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn,
                                         &os_analysisd_decoderlist_nopn, &os_analysisd_decoder_store, list_msg)) {
-                        error_exit = 1; 
+                        error_exit = 1;
                     }
                     node_log_msg = OSList_GetFirstNode(list_msg);
 
@@ -735,7 +747,8 @@ int main(int argc, char **argv)
     }
 
     /* Verbose message */
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -811,8 +824,13 @@ int main(int argc, char **argv)
 }
 
 /* Main function. Receives the messages(events) and analyze them all */
+#ifndef TESTRULE
 __attribute__((noreturn))
 void OS_ReadMSG(int m_queue)
+#else
+__attribute__((noreturn))
+void OS_ReadMSG_analysisd(int m_queue)
+#endif
 {
     Eventinfo *lf = NULL;
     int i;
@@ -856,26 +874,8 @@ void OS_ReadMSG(int m_queue)
         if (Config.ar & REMOTE_AR) {
             if ((arq = StartMQ(ARQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If LOCAL_AR is set, keep it there */
-                if (Config.ar & LOCAL_AR) {
-                    Config.ar = 0;
-                    Config.ar |= LOCAL_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, ARQUEUE, "active-response");
-            }
-        }
-#else
-        /* Only for LOCAL_ONLY installs */
-        if (Config.ar & REMOTE_AR) {
-            if (Config.ar & LOCAL_AR) {
-                Config.ar = 0;
-                Config.ar |= LOCAL_AR;
-            } else {
-                Config.ar = 0;
             }
         }
 #endif
@@ -883,14 +883,6 @@ void OS_ReadMSG(int m_queue)
         if (Config.ar & LOCAL_AR) {
             if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If REMOTE_AR is set, keep it there */
-                if (Config.ar & REMOTE_AR) {
-                    Config.ar = 0;
-                    Config.ar |= REMOTE_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, EXECQUEUE, "exec");
             }
@@ -1361,7 +1353,7 @@ void * ad_input_main(void * args) {
                         reported_dbsync = TRUE;
                     }
                 }
-            } else if (msg[0] == UPGRADE_MQ) { 
+            } else if (msg[0] == UPGRADE_MQ) {
                 result = -1;
 
                 if (!queue_full(upgrade_module_input)) {
@@ -1382,7 +1374,7 @@ void * ad_input_main(void * args) {
                         reported_upgrade_module = TRUE;
                     }
                 }
-                
+
             } else {
 
                 os_strdup(buffer, copy);
@@ -2070,10 +2062,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 AddtoIGnore(lf, t_id);
             }
 
+            lf->comment = ParseRuleComment(lf);
+
             /* Log the alert if configured to */
             if (t_currently_rule->alert_opts & DO_LOGALERT) {
-                lf->comment = ParseRuleComment(lf);
-
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf, lf_cpy);
                 if (queue_push_ex_block(writer_queue_log, lf_cpy) < 0) {
@@ -2099,8 +2091,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                         do_ar = 0;
                     }
 
-                    if (do_ar && execdq >= 0) {
-                        OS_Exec(execdq, &arq, lf, *rule_ar);
+                    if (do_ar) {
+                        OS_Exec(&execdq, &arq, lf, *rule_ar);
                     }
                     rule_ar++;
                 }

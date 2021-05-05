@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -38,6 +38,8 @@ typedef struct _agent {
     char *lip;
     int notify_time;
     int max_time_reconnect_try;
+    long force_reconnect_interval;
+    int main_ip_update_interval;
     char *profile;
     int buffer;
     int buflength;

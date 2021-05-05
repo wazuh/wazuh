@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 26, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,7 +16,7 @@
 #include "gmock/gmock.h"
 #include "commonDefs.h"
 
-class RSyncTest : public ::testing::Test 
+class RSyncTest : public ::testing::Test
 {
 protected:
 

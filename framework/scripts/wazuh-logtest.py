@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
-import subprocess
-import sys
-import socket
-import logging
-import json
 import argparse
 import atexit
+import json
+import logging
+import os
+import socket
 import struct
+import subprocess
+import sys
 import textwrap
-from wazuh.core.common import LOGTEST_SOCKET
 
 from wazuh.core import common
+from wazuh.core.common import LOGTEST_SOCKET
+
 
 def init_argparse():
     """Setup argpase for handle command line parameters
@@ -39,9 +40,14 @@ def init_argparse():
     )
     parser.add_argument(
         "-U", help='Unit test. Refer to ruleset/testing/runtests.py',
-        nargs=1,
         metavar='rule:alert:decoder',
         dest='ut'
+    )
+    parser.add_argument(
+        "-l", help='Use custom location. Default "stdin"',
+        default='stdin',
+        metavar='location',
+        dest='location'
     )
     parser.add_argument(
         "-q", help='Quiet execution',
@@ -67,13 +73,13 @@ def main():
 
     # Handle unit test request
     if args.ut:
-        ut = args.ut[0].split(":")
+        ut = args.ut.split(":")
         if len(ut) != 3:
-            logging.error('Unit test configuration wrong syntax: %s', args.ut[0])
+            logging.error('Unit test configuration wrong syntax: %s', args.ut)
             sys.exit(1)
 
     # Initialize wazuh-logtest component
-    w_logtest = WazuhLogtest()
+    w_logtest = WazuhLogtest(location=args.location)
     logging.info('Starting wazuh-logtest %s', Wazuh.get_version_str())
     logging.info('Type one log per line')
 
@@ -81,7 +87,7 @@ def main():
     atexit.register(w_logtest.remove_last_session)
 
     # Main processing loop
-    session_token = ''
+    session_token = str()
     while True:
         # Get user input
         try:
@@ -175,9 +181,9 @@ class WazuhDeamonProtocol:
         json_msg = json.loads(msg)
         # Get only the payload
         if json_msg['error']:
-            error_msg = ['\n\t{0}'.format(i) for i in json_msg['message']]
+            error_msg = json_msg['message']
             error_n = json_msg['error']
-            raise ValueError(str(error_n) + ''.join(error_msg))
+            raise ValueError(f'{error_n}: {error_msg}')
         data = json_msg['data']
         return data
 
@@ -203,7 +209,8 @@ class WazuhSocket:
         try:
             wlogtest_conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             wlogtest_conn.connect(self.file)
-            wlogtest_conn.send(struct.pack("<I", len(msg)) + msg.encode())
+            encoded_msg = msg.encode('utf-8')
+            wlogtest_conn.send(struct.pack("<I", len(encoded_msg)) + encoded_msg)
             size = struct.unpack("<I", wlogtest_conn.recv(4, socket.MSG_WAITALL))[0]
             recv_msg = wlogtest_conn.recv(size, socket.MSG_WAITALL)
             wlogtest_conn.close()
@@ -253,13 +260,13 @@ class WazuhLogtest:
         recv_packet = self.socket.send(request)
 
         # Get logtest reply
+        logging.debug(f'Reply: %s\n', str(recv_packet,'utf-8'))
         reply = self.protocol.unwrap(recv_packet)
-        logging.debug('Reply: %s\n', reply)
 
         if reply['codemsg'] < 0:
             error_msg = ['\n\t{0}'.format(i) for i in reply['messages']]
             error_n = reply['codemsg']
-            raise ValueError(str(error_n) + ''.join(error_msg))
+            raise ValueError(f'{error_n}: {"".join(error_msg)}')
 
         # Save the token
         self.last_token = reply['token']

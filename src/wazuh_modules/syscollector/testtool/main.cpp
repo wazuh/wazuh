@@ -1,6 +1,6 @@
 /*
  * Wazuh SysCollector Test tool
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -13,19 +13,37 @@
 #include <iostream>
 #include <stdio.h>
 #include <memory>
+#include <chrono>
 #include "defs.h"
-#include "dbsync.h"
-#include "rsync.h"
+#include "dbsync.hpp"
+#include "rsync.hpp"
 #include "sysInfo.hpp"
 #include "syscollector.hpp"
+
+constexpr auto DEFAULT_SLEEP_TIME { 60 };
 
 static void logFunction(const char* msg)
 {
     std::cout << msg << std::endl;
 }
 
-int main(int /*argc*/, const char** /*argv[]*/)
+int main(int argc, const char* argv[])
 {
+    auto timedMainLoop { false };
+    auto sleepTime { DEFAULT_SLEEP_TIME };
+    if (2 == argc)
+    {
+        timedMainLoop = true;
+        std::string firstArgument { argv[1] };
+
+        sleepTime = firstArgument.find_first_not_of("0123456789") == std::string::npos ? std::stoi(firstArgument) : DEFAULT_SLEEP_TIME;
+
+    }
+    else if (2 < argc)
+    {
+        return -1;
+    }
+
     const auto reportDiffFunction
     {
         [](const std::string& payload)
@@ -43,41 +61,46 @@ int main(int /*argc*/, const char** /*argv[]*/)
         }
     };
 
-    const auto errorLogFunction
+    const auto logFunction
+    {
+        [](const syscollector_log_level_t level, const std::string& log)
+        {
+            static const std::map<syscollector_log_level_t, std::string> s_logStringMap
+            {
+                {SYS_LOG_ERROR, "ERROR"},
+                {SYS_LOG_INFO, "INFO"},
+                {SYS_LOG_DEBUG, "DEBUG"},
+                {SYS_LOG_DEBUG_VERBOSE, "DEBUG2"}
+            };
+            std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
+        }
+    };
+
+    const auto logErrorFunction
     {
         [](const std::string& log)
         {
-            std::cout << "Error Log:" << std::endl;
-            std::cout << log << std::endl;
+            std::cout << "ERROR: " << log << std::endl;
         }
     };
-    const auto infoLogFunction
-    {
-        [](const std::string& log)
-        {
-            std::cout << "Info Log:" << std::endl;
-            std::cout << log << std::endl;
-        }
-    };
-    const auto debugLogFunction
-    {
-        [](const std::string& log)
-        {
-            std::cout << "Debug Log:" << std::endl;
-            std::cout << log << std::endl;
-        }
-    };
-    const std::chrono::milliseconds timeout{5000};
+
     const auto spInfo{ std::make_shared<SysInfo>() };
-    rsync_initialize(logFunction);
-    dbsync_initialize(logFunction);
+    RemoteSync::initialize(logErrorFunction);
+    DBSync::initialize(logErrorFunction);
     try
     {
         std::thread thread
         {
-            []
+            [timedMainLoop, sleepTime]
             {
-                while(std::cin.get() != 'q');
+                if (!timedMainLoop)
+                {
+                    while(std::cin.get() != 'q');
+                }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
+                }
                 Syscollector::instance().destroy();
             }
         };
@@ -85,9 +108,7 @@ int main(int /*argc*/, const char** /*argv[]*/)
         Syscollector::instance().init(spInfo,
                                       reportDiffFunction,
                                       reportSyncFunction,
-                                      errorLogFunction,
-                                      infoLogFunction,
-                                      debugLogFunction,
+                                      logFunction,
                                       SYSCOLLECTOR_DB_DISK_PATH,
                                       SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                       SYSCOLLECTOR_NORM_TYPE,
@@ -111,7 +132,7 @@ int main(int /*argc*/, const char** /*argv[]*/)
     {
         std::cout << ex.what() << std::endl;
     }
-    rsync_teardown();
-    dbsync_teardown();
+    RemoteSync::teardown();
+    DBSync::teardown();
     return 0;
 }

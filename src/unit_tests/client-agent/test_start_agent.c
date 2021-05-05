@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
-#include "../wrappers/client-agent/start_agent.h"
+#include "../wrappers/wazuh/client-agent/start_agent.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
@@ -30,6 +30,7 @@
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern bool agent_ping_to_server(int server_id);
+extern void send_agent_stopped_message();
 extern int _s_verify_counter;
 
 #ifndef TEST_WINAGENT
@@ -39,7 +40,7 @@ int __wrap_close(int fd) {
 }
 #endif
 
-void __wrap_resolveHostname(char **hostname, int attempts) {
+void __wrap_resolve_hostname(char **hostname, int attempts) {
     if (strcmp(*hostname, "VALID_HOSTNAME/") == 0) {
         free(*hostname);
         os_strdup("VALID_HOSTNAME/127.0.0.3", *hostname);
@@ -96,17 +97,13 @@ void add_server_config(char* address, int protocol) {
 }
 
 void keys_init(keystore *keys) {
-    /* Initialize hashes */
+    /* Initialize trees */
 
-#ifdef TEST_WINAGENT
-    will_return_count(__wrap_os_random, 12345, 6);
-#endif
+    keys->keytree_id = rbtree_init();
+    keys->keytree_ip = rbtree_init();
+    keys->keytree_sock = rbtree_init();
 
-    keys->keyhash_id = OSHash_Create();
-    keys->keyhash_ip = OSHash_Create();
-    keys->keyhash_sock = OSHash_Create();
-
-    if (!(keys->keyhash_id && keys->keyhash_ip && keys->keyhash_sock)) {
+    if (!(keys->keytree_id && keys->keytree_ip && keys->keytree_sock)) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
@@ -500,6 +497,14 @@ static void test_agent_ping_to_server_udp_ok(void **state) {
     assert_true(agent_ping_to_server(0));
 }
 
+/* send_agent_stopped_message */
+static void test_send_agent_stopped_message(void **state) {
+
+    /* Sending the shutdown message */
+    expect_string(__wrap_send_msg, msg, "#!-agent shutdown ");
+
+    send_agent_stopped_message();
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -513,6 +518,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_receive_invalid, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_ok, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_ok, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

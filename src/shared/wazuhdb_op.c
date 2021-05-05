@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 15, 2019.
  *
  * This program is free software; you can redistribute it
@@ -9,6 +9,8 @@
  */
 
 #include "wazuhdb_op.h"
+
+#ifndef WIN32
 
 /**
  * @brief Connects to Wazuh-DB socket
@@ -21,11 +23,8 @@ int wdbc_connect() {
     int wdb_socket = -1;
     char sockname[PATH_MAX + 1];
 
-    if (isChroot()) {
-        strcpy(sockname, WDB_LOCAL_SOCK);
-    } else {
-        strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
-    }
+    strcpy(sockname, WDB_LOCAL_SOCK);
+
 
     for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
         switch (errno) {
@@ -274,3 +273,4 @@ int wdbc_close(int* sock) {
     }
     return ret;
 }
+#endif

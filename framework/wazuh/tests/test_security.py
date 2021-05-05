@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -23,6 +23,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 security_cases = list()
 rbac_cases = list()
+default_orm_engine = create_engine("sqlite:///:memory:")
 os.chdir(test_data_path)
 
 for file in glob.glob('*.yml'):
@@ -46,9 +47,23 @@ def create_memory_db(sql_file, session):
                 session.commit()
 
 
+def reload_default_rbac_resources():
+    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
+        with patch('sqlalchemy.create_engine', return_value=default_orm_engine):
+            with patch('shutil.chown'), patch('os.chmod'):
+                import wazuh.rbac.orm as orm
+                reload(orm)
+                import wazuh.rbac.decorators as decorators
+                from wazuh.tests.util import RBAC_bypasser
+
+                decorators.expose_resources = RBAC_bypasser
+                from wazuh import security
+    return security, orm
+
+
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
+    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
@@ -67,6 +82,23 @@ def db_setup():
         pass
 
     yield security, WazuhResult, core_security
+
+
+@pytest.fixture(scope='function')
+def new_default_resources():
+    global default_orm_engine
+    default_orm_engine = create_engine("sqlite:///:memory:")
+
+    security, orm = reload_default_rbac_resources()
+
+    with open(os.path.join(test_data_path, 'default', 'default_cases.yml')) as f:
+        new_resources = safe_load(f)
+
+    for function_, cases in new_resources.items():
+        for case in cases:
+            getattr(security, function_)(**case['params']).to_dict()
+
+    return security, orm
 
 
 def affected_are_equal(target_dict, expected_dict):
@@ -205,3 +237,103 @@ def test_invalid_roles_tokens(db_setup, role_list, expected_roles):
         _, _, core_security = db_setup
         core_security.invalid_roles_tokens(roles=[role_id for role_id in role_list])
         assert set(TM_mock.call_args.kwargs['roles']) == expected_roles
+
+
+def test_add_new_default_policies(new_default_resources):
+    """Check that new default policies are set in the correct range and that the migration proccess moves any possible
+    default policy in the user range to the default range."""
+
+    def mock_open_default_resources(*args, **kwargs):
+        args = list(args)
+        file_path = args[0]
+
+        if file_path.endswith('policies.yaml'):
+            new_args = [os.path.join(test_data_path, 'default', 'new_default_policies.yml')]
+        elif file_path.endswith('relationships.yaml'):
+            new_args = [os.path.join(test_data_path, 'default', 'mock_relationships.yml')]
+        else:
+            new_args = [file_path]
+
+        new_args += args[1:]
+
+        return open(*new_args, **kwargs)
+
+    security, orm = new_default_resources
+    with orm.PoliciesManager() as pm:
+        policies = sorted([p.id for p in pm.get_policies()]) or [1]
+        max_default_policy_id = max(filter(lambda x: not (x > orm.cloud_reserved_range), policies))
+
+    with patch('wazuh.rbac.orm.open', side_effect=mock_open_default_resources):
+        security, orm = reload_default_rbac_resources()
+
+    with orm.PoliciesManager() as pm:
+        new_policies = sorted([p.id for p in pm.get_policies()]) or [1]
+        new_max_default_policy_id = max(filter(lambda x: not (x > orm.cloud_reserved_range), new_policies))
+
+    assert len(policies) + 1 == len(new_policies)
+    assert max(policies) == max(new_policies)
+    assert max_default_policy_id + 2 == new_max_default_policy_id
+
+
+def test_migrate_default_policies(new_default_resources):
+    """Check that the migration process overwrites default policies in the user range including their relationships
+    and positions."""
+    def mock_open_default_resources(*args, **kwargs):
+        args = list(args)
+        file_path = args[0]
+
+        if file_path.endswith('policies.yaml'):
+            new_args = [os.path.join(test_data_path, 'default', 'migration_policies.yml')]
+        elif file_path.endswith('relationships.yaml'):
+            new_args = [os.path.join(test_data_path, 'default', 'mock_relationships.yml')]
+        else:
+            new_args = [file_path]
+
+        new_args += args[1:]
+
+        return open(*new_args, **kwargs)
+
+    security, orm = new_default_resources
+    with orm.RolesManager() as rm:
+        role1, role2 = rm.get_role('new_role1')['id'], rm.get_role('new_role2')['id']
+    policy1, policy2 = 'new_policy1', 'new_policy2'
+    user_policy = 'user_policy'
+    with orm.PoliciesManager() as pm:
+        policies = sorted([p.id for p in pm.get_policies()]) or [1]
+        max_default_policy_id = max(filter(lambda x: not (x > orm.cloud_reserved_range), policies))
+
+    with orm.RolesPoliciesManager() as rpm:
+        role1_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role1)]
+        role2_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role2)]
+
+    # Assert these new policies are in the user range
+    with orm.PoliciesManager() as pm:
+        policy1_id = pm.get_policy(policy1)['id']
+        policy2_id = pm.get_policy(policy2)['id']
+        user_policy_id = pm.get_policy(user_policy)['id']
+        assert policy1_id > orm.max_id_reserved
+        assert policy2_id > orm.max_id_reserved
+        assert user_policy_id > orm.max_id_reserved
+        assert {policy1_id, policy2_id, user_policy_id} == set(role1_policies)
+        assert {policy1_id, policy2_id, user_policy_id} == set(role2_policies)
+
+    with patch('wazuh.rbac.orm.open', side_effect=mock_open_default_resources):
+        security, orm = reload_default_rbac_resources()
+
+    with orm.RolesPoliciesManager() as rpm:
+        new_role1_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role1)]
+        new_role2_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role2)]
+
+    new_policy1_id, new_policy2_id = max_default_policy_id + 1, max_default_policy_id + 2
+    with orm.PoliciesManager() as pm:
+        assert new_policy1_id == pm.get_policy(policy1)['id']
+        assert new_policy2_id == pm.get_policy(policy2)['id']
+
+    assert role1_policies.index(policy1_id) == new_role1_policies.index(new_policy1_id)
+    assert role1_policies.index(policy2_id) == new_role1_policies.index(new_policy2_id)
+
+    assert role2_policies.index(policy1_id) == new_role2_policies.index(new_policy1_id)
+    assert role2_policies.index(policy2_id) == new_role2_policies.index(new_policy2_id)
+
+    assert role1_policies.index(user_policy_id) == new_role1_policies.index(user_policy_id)
+    assert role2_policies.index(user_policy_id) == new_role2_policies.index(user_policy_id)

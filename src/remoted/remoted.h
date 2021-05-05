@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -21,6 +21,8 @@
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024
+#define REMOTED_MSG_HEADER "1:" ARGV0 ":"
+#define AG_STOP_MSG REMOTED_MSG_HEADER OS_AG_STOPPED
 
 /* Pending data structure */
 
@@ -97,9 +99,6 @@ void *wait_for_msgs(void *none);
 
 /* Update shared files */
 void *update_shared_files(void *none);
-
-/* Parse control messages */
-void parse_agent_controlmsg(const keyentry * key, char *msg, size_t msg_length);
 
 /* Save control messages */
 void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);

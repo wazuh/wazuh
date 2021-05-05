@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -29,10 +29,12 @@ int __wrap_mkdir(const char *__path, mode_t __mode);
 int __wrap_mkdir(const char *__path, __mode_t __mode);
 #endif
 
-#ifndef WIN32
-void expect_mkdir(const char *__path, __mode_t __mode, int ret);
-#else
+#ifdef WIN32
 void expect_mkdir(const char *__path, int ret);
+#elif defined(__MACH__)
+void expect_mkdir(const char *__path, mode_t __mode, int ret);
+#else
+void expect_mkdir(const char *__path, __mode_t __mode, int ret);
 #endif
 
 int __wrap_stat(const char * __file, struct stat * __buf);

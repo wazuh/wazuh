@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -465,6 +465,7 @@ void SQLiteDBEngine::initialize(const std::string& path,
                     m_sqliteConnection = m_sqliteFactory->createConnection(dbPath);
                     const auto createDBQueryList { Utils::split(tableStmtCreation,';') };
                     m_sqliteConnection->execute("PRAGMA temp_store = memory;");
+                    m_sqliteConnection->execute("PRAGMA journal_mode = memory;");
                     m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
                     for (const auto& query : createDBQueryList)
                     {
@@ -1431,6 +1432,7 @@ bool SQLiteDBEngine::getRowsToModify(const std::string& table,
 
         while (SQLITE_ROW == stmt->step())
         {
+            bool dataModified{false};
             const auto tableFields { m_tableFields[table] };
             Row registerFields;
             int32_t index {0l};
@@ -1460,13 +1462,17 @@ bool SQLiteDBEngine::getRowsToModify(const std::string& table,
                 {
                     if (stmt->column(index)->hasValue())
                     {
+                        dataModified = true;
                         getTableData(stmt, index, std::get<TableHeader::Type>(field), 
                                      std::get<TableHeader::Name>(field), registerFields);
                     }
                 }
                 ++index;
             }
-            rowKeysValue.push_back(std::move(registerFields));
+            if (dataModified)
+            {
+                rowKeysValue.push_back(std::move(registerFields));
+            }
         }
         ret = true;
     }

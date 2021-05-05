@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -236,7 +236,7 @@ int test_setup_ports_valid_msg(void **state)
             \"inode\" : \"54\",\
             \"state\" : \"55\",\
             \"pid\" : \"56\",\
-            \"process_name\" : \"57\",\
+            \"process\" : \"57\",\
             \"checksum\" : \"58\",\
             \"item_id\" : \"59\"\
         }}"), lf->log == NULL)
@@ -372,7 +372,7 @@ int test_setup_os_valid_msg(void **state)
         \"type\":\"dbsync_osinfo\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{\
-            \"host_name\" : \"93\",\
+            \"hostname\" : \"93\",\
             \"architecture\" : \"94\",\
             \"os_name\" : \"95\",\
             \"os_version\" : \"96\",\

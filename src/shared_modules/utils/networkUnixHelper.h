@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 24, 2020.
  *
  * This program is free software; you can redistribute it
@@ -18,7 +18,7 @@
 #include <memory>
 #include <system_error>
 #include <net/if.h>
-	
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -53,7 +53,7 @@ namespace Utils
             else
             {
                 throw std::system_error
-                {   
+                {
                     ret,
                     std::system_category(),
                     "Error reading networks"

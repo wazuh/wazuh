@@ -18,16 +18,17 @@ relationships:
         - security_all
         - cluster_all
         - ciscat_read
-        - decoders_read
-        - lists_read
+        - decoders_all
+        - lists_all
         - rootcheck_all
-        - rules_read
+        - rules_all
         - mitre_read
         - sca_read
         - syscheck_all
         - syscollector_read
         - logtest_all
         - task_status
+        - vulnerability_read
       rule_ids:
         - wui_elastic_admin
         - wui_opendistro_admin
@@ -45,6 +46,7 @@ relationships:
         - sca_read
         - syscheck_read
         - syscollector_read
+        - vulnerability_read
       rule_ids: []
 
     users_admin:

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Azure
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September, 2018.
  *
  * This program is free software; you can redistribute it
@@ -14,8 +14,7 @@
 #define WM_AZURE
 
 #define WM_AZURE_LOGTAG ARGV0 ":" AZ_WM_NAME
-#define AZURE_PATH WM_DEFAULT_DIR "/azure"
-#define WM_AZURE_SCRIPT_PATH AZURE_PATH "/azure-logs"
+#define WM_AZURE_SCRIPT_PATH "wodles/azure/azure-logs"
 
 #define LOG_ANALYTICS   0
 #define GRAPHS          1

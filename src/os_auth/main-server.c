@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -29,12 +29,12 @@
 #include <sys/wait.h>
 #include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
 
 /* Prototypes */
-static void help_authd(void) __attribute((noreturn));
+static void help_authd(char * home_path) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
@@ -70,7 +70,7 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 
 /* Print help statement */
-static void help_authd()
+static void help_authd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
@@ -80,17 +80,18 @@ static void help_authd()
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHDPASS_PATH);
+    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
-    print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
-    print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
+    print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
+    print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -154,7 +155,6 @@ int main(int argc, char **argv)
     int run_foreground = 0;
     gid_t gid;
     int client_sock = 0;
-    const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
     struct sockaddr_in _nc;
@@ -165,11 +165,14 @@ int main(int argc, char **argv)
     pthread_t thread_local_server = 0;
     fd_set fdset;
 
-    /* Initialize some variables */
-    bio_err = 0;
-
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+
+    /* Initialize some variables */
+    bio_err = 0;
 
     // Get options
 
@@ -191,7 +194,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'h':
-                    help_authd();
+                    help_authd(home_path);
                     break;
 
                 case 'd':
@@ -200,7 +203,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'i':
-                    mwarn(DEPRECATED_OPTION_WARN,"-i");
+                    mwarn(DEPRECATED_OPTION_WARN, "-i", OSSECCONF);
                     break;
 
                 case 'g':
@@ -214,7 +217,7 @@ int main(int argc, char **argv)
                     if (!optarg) {
                         merror_exit("-D needs an argument");
                     }
-                    dir = optarg;
+                    snprintf(home_path, PATH_MAX, "%s", optarg);
                     break;
 
                 case 't':
@@ -272,11 +275,11 @@ int main(int argc, char **argv)
                     break;
 
                 case 'F':
-                    mwarn(DEPRECATED_OPTION_WARN,"-F");
+                    mwarn(DEPRECATED_OPTION_WARN, "-F", OSSECCONF);
                     break;
 
                 case 'r':
-                    mwarn(DEPRECATED_OPTION_WARN,"-r");
+                    mwarn(DEPRECATED_OPTION_WARN, "-r", OSSECCONF);
                     break;
 
                 case 'a':
@@ -288,14 +291,19 @@ int main(int argc, char **argv)
                     break;
 
                 default:
-                    help_authd();
+                    help_authd(home_path);
                     break;
             }
         }
 
+        /* Change working directory */
+        if (chdir(home_path) == -1) {
+            merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+        }
+
         // Return -1 if not configured
-        if (authd_read_config(DEFAULTCPATH) < 0) {
-            merror_exit(CONFIG_ERROR, DEFAULTCPATH);
+        if (authd_read_config(OSSECCONF) < 0) {
+            merror_exit(CONFIG_ERROR, OSSECCONF);
         }
 
         // Overwrite arguments
@@ -361,6 +369,8 @@ int main(int argc, char **argv)
         }
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     switch(w_is_worker()){
     case -1:
         merror("Invalid option at cluster configuration");
@@ -372,9 +382,6 @@ int main(int argc, char **argv)
         config.worker_node = FALSE;
         break;
     }
-
-    /* Start daemon -- NB: need to double fork and setsid */
-    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
@@ -392,13 +399,6 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* chroot -- TODO: this isn't a chroot. Should also close
-     * unneeded open file descriptors (like stdin/stdout)
-     */
-    if (chdir(dir) == -1) {
-        merror_exit(CHDIR_ERROR, dir, errno, strerror(errno));
-    }
-
     /* Signal manipulation */
 
     {
@@ -414,7 +414,7 @@ int main(int argc, char **argv)
     if (config.flags.use_password) {
 
         /* Checking if there is a custom password file */
-        fp = fopen(AUTHDPASS_PATH, "r");
+        fp = fopen(AUTHD_PASS, "r");
         buf[0] = '\0';
         if (fp) {
             buf[4096] = '\0';
@@ -432,7 +432,7 @@ int main(int argc, char **argv)
         }
 
         if (buf[0] != '\0')
-            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHDPASS_PATH);
+            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
         else {
             /* Getting temporary pass. */
             authpass = __generatetmppass();
@@ -443,15 +443,15 @@ int main(int argc, char **argv)
 
     /* Getting SSL cert. */
 
-    fp = fopen(KEYSFILE_PATH, "a");
+    fp = fopen(KEYS_FILE, "a");
     if (!fp) {
-        merror("Unable to open %s (key file)", KEYSFILE_PATH);
+        merror("Unable to open %s (key file)", KEYS_FILE);
         exit(1);
     }
     fclose(fp);
 
     /* Start SSL */
-    ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
+    ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
         merror("SSL error. Exiting.");
         exit(1);
@@ -474,10 +474,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0)
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0)
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
 
     nowChroot();
+    os_free(home_path);
 
     if (config.timeout_sec || config.timeout_usec) {
         minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);

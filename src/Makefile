@@ -1,7 +1,7 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # TODO: mysql and postgresql?
 #
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,9 +13,12 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
+uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
+CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release > /dev/null && echo YES || echo not')
+
 ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
@@ -36,16 +39,15 @@ EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
+EXTERNAL_PACMAN=external/pacman/
+EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
 # XXX Becareful NO EXTRA Spaces here
-PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
-OSSEC_GROUP?=ossec
-OSSEC_USER?=ossec
-OSSEC_USER_MAIL?=ossecm
-OSSEC_USER_REM?=ossecr
+WAZUH_GROUP?=wazuh
+WAZUH_USER?=wazuh
 SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
@@ -63,7 +65,6 @@ USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
-USE_FRAMEWORK_LIB=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
 
@@ -72,16 +73,16 @@ DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 
 ifeq (${TARGET},winagent)
-WIN_CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=/usr/bin/${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=/usr/bin/${MING_BASE}g++-posix
+WIN_CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
 WIN_CMAKE_RULES+=win32/sysinfo
 WIN_CMAKE_RULES+=win32/shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 WIN_CMAKE_RULES+=win32/syscollector
 endif
-else
-ifeq (${uname_S},AIX)
-WIN_CMAKE_OPTS=-DINSTALL_PREFIX=${PREFIX}
 endif
+
+ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
+WIN_CMAKE_OPTS+=-DDISABLE_SHARED=1
 endif
 
 
@@ -121,17 +122,19 @@ ONEWAY?=no
 CLEANFULL?=no
 
 DEFINES=-DOSSECHIDS
-DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
-DEFINES+=-DUSER=\"${OSSEC_USER}\"
-DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
-DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
-DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
+DEFINES+=-DUSER=\"${WAZUH_USER}\"
+DEFINES+=-DGROUPGLOBAL=\"${WAZUH_GROUP}\"
 
 ifneq (${TARGET},winagent)
 		DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
+		PRECOMPILED_OS:=linux
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
+ifeq (${CHECK_CENTOS5},YES)
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
+else
+		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB} -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
+endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 		OSSEC_LIBS+=-lrt -ldl -lm
@@ -152,13 +155,15 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX -D__unix
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread -L${PREFIX}/lib/
+		OSSEC_LDFLAGS+=-pthread -L./lib
 		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/vac/bin
 		CC=gcc
+		PRECOMPILED_OS:=aix
 else
 ifeq (${uname_S},SunOS)
 SOLARIS_CMAKE_OPTS=-DSOLARIS=ON
+PRECOMPILED_OS:=solaris
 ifneq ($(uname_R),5.10)
 		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
@@ -196,6 +201,7 @@ ifeq (${uname_S},Darwin)
 		AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
 		SHARED=dylib
 		OSSEC_LIBS+=-framework Security
+		PRECOMPILED_OS:=darwin
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
@@ -206,6 +212,7 @@ ifeq (${uname_S},FreeBSD)
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+=-L/usr/local/lib
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+		PRECOMPILED_OS:=freebsd
 else
 ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
@@ -214,6 +221,7 @@ ifeq (${uname_S},NetBSD)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+		PRECOMPILED_OS:=netbsd
 else
 ifeq (${uname_S},OpenBSD)
 		DEFINES+=-DOpenBSD
@@ -224,6 +232,7 @@ ifeq (${uname_S},OpenBSD)
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+=-L/usr/local/lib
 		AR_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../../lib'
+		PRECOMPILED_OS:=openbsd
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -243,6 +252,7 @@ endif
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
+		PRECOMPILED_OS:=hpux
 else
 	    # Unknow platform
 endif # HPUX
@@ -259,6 +269,7 @@ else
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		AR_LDFLAGS+=-pthread
+		PRECOMPILED_OS:=windows
 endif # winagent
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -292,10 +303,10 @@ DBSYNC_LIB+=-ldbsync
 RSYNC_LIB+=-lrsync
 
 ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin 
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
 	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
 else
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib 
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
 endif
 
@@ -439,7 +450,7 @@ ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
 else
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib 
+	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
 endif
 
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
@@ -566,23 +577,24 @@ help: failtarget
 	@echo "   make V=yes                   Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes             Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
+	@echo "   make INSTALLDIR=/path        Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE.
 	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
+	@echo "   make EXTERNAL_SRC_ONLY=yes   Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building.
 	@echo "   make USE_ZEROMQ=yes          Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_PRELUDE=yes         Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_INOTIFY=yes         Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_FRAMEWORK_LIB=yes   Use external SQLite library for the framework. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo "   make DISABLE_SHARED=yes      Not to build the Wazuh shared library (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make OPTIMIZE_CPYTHON=yes    When PREFIX points to other directory than default, the python interpreter is rebuilt, enable this flag to optimize the process. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make OPTIMIZE_CPYTHON=yes    Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make PYTHON_SOURCE=yes       Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -594,10 +606,8 @@ help: failtarget
 	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "User options: "
-	@echo "   make OSSEC_GROUP=ossec       Set ossec group"
-	@echo "   make OSSEC_USER=ossec        Set ossec user"
-	@echo "   make OSSEC_USER_MAIL=ossecm  Set ossec user mail"
-	@echo "   make OSSEC_USER_REM=ossecr   Set ossec user rem"
+	@echo "   make WAZUH_GROUP=wazuh       Set wazuh group"
+	@echo "   make WAZUH_USER=wazuh        Set wazuh user"
 	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=yes"
@@ -610,17 +620,16 @@ settings:
 	@echo "    V:                  ${V}"
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    DEBUGAD             ${DEBUGAD}"
-	@echo "    PREFIX:             ${PREFIX}"
+	@echo "    INSTALLDIR:         ${INSTALLDIR}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    EXTERNAL_SRC_ONLY:  ${EXTERNAL_SRC_ONLY}"
 	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "User settings:"
-	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
-	@echo "    OSSEC_USER:         ${OSSEC_USER}"
-	@echo "    OSSEC_USER_MAIL:    ${OSSEC_USER_MAIL}"
-	@echo "    OSSEC_USER_REM:     ${OSSEC_USER_REM}"
+	@echo "    WAZUH_GROUP:        ${WAZUH_GROUP}"
+	@echo "    WAZUH_USER:         ${WAZUH_USER}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:          ${USE_GEOIP}"
@@ -629,7 +638,6 @@ settings:
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
-	@echo "    USE_FRAMEWORK_LIB:  ${USE_FRAMEWORK_LIB}"
 	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
 	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
@@ -663,13 +671,11 @@ BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-analysisd
+BUILD_SERVER+=wazuh-logtest-legacy
 BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
-BUILD_SERVER+=wazuh-framework
-endif
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
@@ -737,15 +743,13 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = tap_wazuhdb_op tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
-
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe win32/syscollector
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external ${WIN_CMAKE_RULES} win32/libwinpthread-1.dll
+winagent: external win32/libwinpthread-1.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
@@ -758,7 +762,7 @@ winagent: external ${WIN_CMAKE_RULES} win32/libwinpthread-1.dll
 	cd win32/ && makensis wazuh-installer.nsi
 
 
-win32/shared_modules: external
+win32/shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -769,7 +773,7 @@ endif
 
 #### Sysinfo ##
 
-win32/sysinfo: external
+win32/sysinfo: $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Syscollector ##
@@ -791,6 +795,8 @@ SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
+LIBALPM_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB 	= $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
@@ -811,7 +817,11 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
 
+ifeq ($(CHECK_CENTOS5),YES)
 EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
+else
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
+endif
 endif
 endif
 ifeq (${uname_S},Darwin)
@@ -827,7 +837,9 @@ endif
 
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
+ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
 external: build_python
+endif
 endif
 endif
 
@@ -981,6 +993,41 @@ $(EXTERNAL_LIBDB)Makefile:
 	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics
 endif
 
+#### libarchive ######
+
+ifeq (${uname_S},Linux)
+${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
+	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
+
+$(EXTERNAL_LIBARCHIVE)Makefile:
+	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
+endif
+
+#### libalpm ######
+
+ifeq (${uname_S},Linux)
+
+# we compile libalpm manually because pacman has a lot of dependencies and we only want to compile a few files
+LIBALPM_LDCONFIG=`which ldconfig`
+LIBALPM_CFLAGS=-DSYSHOOKDIR=\"/usr/share/libalpm/hooks\" \
+			    -DLDCONFIG=\"${LIBALPM_LDCONFIG}\" \
+			    -DFSSTATSTYPE="struct statvfs" \
+			    -DSCRIPTLET_SHELL=\"/bin/sh\" \
+			    -DHAVE_SYS_STATVFS_H \
+			    -DLIB_VERSION=\"\" \
+			    -DPATH_MAX=4096 \
+			    -DHAVE_STRNLEN \
+			    -DHAVE_LIBSSL \
+			    -I${ROUTE_PATH}/${EXTERNAL_LIBARCHIVE}libarchive \
+				-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
+			    -I. \
+			    -fPIC
+${LIBALPM_LIB}: $(EXTERNAL_PACMAN)configure
+	cd ${EXTERNAL_PACMAN}lib/libalpm && \
+	$(CC) -c *.c ${LIBALPM_CFLAGS} && \
+	ar rcs libalpm.a *.o
+endif
+
 #### Audit lib ####
 
 ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
@@ -1024,61 +1071,114 @@ endif
 
 TAR := tar -xf
 GUNZIP := gunzip
+GZIP := gzip
 CURL := curl -so
-VERSION = $(subst $() $(),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
-RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+DEPS_VERSION = 14
+RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
-ifeq (${PREFIX},/var/ossec)
-	# Download the Python sources if we are building for any other OS.
-ifeq (${uname_S},Linux)
+PYTHON_SOURCE := no
+
+ifneq (${TARGET}, winagent)
 cpu_arch := ${uname_P}
-ifneq (,$(filter ${cpu_arch},unknown Unknown))
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
 endif
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
+	cpu_arch := ${uname_M}
+endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
-PRECOMPILED_RES := linux/amd64
+PRECOMPILED_ARCH := /amd64
 else
 ifneq (,$(filter ${cpu_arch},i386 i686))
-PRECOMPILED_RES := linux/i386
+PRECOMPILED_ARCH := /i386
 else
 ifneq (,$(filter ${cpu_arch},aarch64 arm64))
-PRECOMPILED_RES := linux/aarch64
+PRECOMPILED_ARCH := /aarch64
 else
 ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
-PRECOMPILED_RES := linux/arm32
-endif
+PRECOMPILED_ARCH := /arm32
+else
+PRECOMPILED_ARCH := /${cpu_arch}
 endif
 endif
 endif
 endif
 endif
 
+ifeq ($(CHECK_CENTOS5),YES)
+PRECOMPILED_OS := el5
+# Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
+SYSINFO_OS+=-DCMAKE_CHECK_CENTOS5=1
+endif
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist
+ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
+# If EXTERNAL_SRC_ONLY=YES is not defined, lets look for the precompiled lib
+PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
+endif
+
+# Agent dependencies
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive
+ifneq (${TARGET},agent)
+ifneq (${TARGET},winagent)
+	# Manager extra dependency
+	EXTERNAL_RES += $(CPYTHON)
+endif
+endif
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
-
-VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
 
 .PHONY: deps
 deps: $(EXTERNAL_TAR)
 
 external/$(CPYTHON).tar.gz:
+# Python interpreter
+ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifneq (,$(PRECOMPILED_RES))
-	$(CURL) $@ $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external/%,%,$@)
+external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
+	test -e $(patsubst %.gz,%,$@) ||\
+	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
+	test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
+
+external-precompiled/$(CPYTHON).tar.gz:
+	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
+external/$(CPYTHON).tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-endif
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
+endif
+else
+external/$(CPYTHON).tar.gz:
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
+endif
 
+# Remaining dependencies
+ifneq (,$(PRECOMPILED_RES))
+external/%.tar.gz: external-precompiled/%.tar.gz
+	test -d $(patsubst %.tar.gz,%,$@) ||\
+	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
+else
 external/%.tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
+endif
 
+ifneq (,$(PRECOMPILED_RES))
+external-precompiled/%.tar.gz:
+	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
+	-cd external && test -e $(patsubst external-precompiled/%.gz,%,$@) && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
+	-test -e external/$(patsubst external-precompiled/%.gz,%,$@) && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
+endif
 
 
 ####################
@@ -1091,7 +1191,7 @@ WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
 
-$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS) $(test_programs): $(BUILD_LIBS)
+$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
 #### os_xml ########
 
@@ -1119,9 +1219,6 @@ os_net/%.o: os_net/%.c
 
 #### Shared ##########
 # Unit tests wrappers
-
-wrappers_client_agent_c := $(wildcard unit_tests/wrappers/client-agent/*.c)
-wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
 
 wrappers_common_c := $(wildcard unit_tests/wrappers/*.c)
 wrappers_common_o := $(wrappers_common_c:.c=.o)
@@ -1210,6 +1307,9 @@ wrappers_wazuh_os_auth_o := $(wrappers_wazuh_os_auth_c:.c=.o)
 wrappers_wazuh_addagent_c := $(wildcard unit_tests/wrappers/wazuh/addagent/*.c)
 wrappers_wazuh_addagent_o := $(wrappers_wazuh_addagent_c:.c=.o)
 
+wrappers_client_agent_c := $(wildcard unit_tests/wrappers/wazuh/client-agent/*.c)
+wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
+
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
@@ -1248,9 +1348,9 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 
 	ifeq (${TARGET},winagent)
-		UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
@@ -1275,6 +1375,7 @@ shared/%.o: shared/%.c
 
 wdb_sql := $(wildcard wazuh_db/*.sql)
 wdblib_c := $(wildcard wazuh_db/wdb*.c)
+wdblib_c += $(wildcard wazuh_db/helpers/*.c)
 wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
 wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o)
 
@@ -1295,7 +1396,7 @@ config_o := $(config_c:.c=.o)
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-build_shared_modules:
+build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -1305,7 +1406,7 @@ endif
 endif
 
 #### Sysinfo ##
-build_sysinfo:
+build_sysinfo: $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Syscollector ##
@@ -1669,7 +1770,7 @@ syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
 
 syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
-	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
+	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | sed s/\\\\\\\/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\/g | tr -d \\\n`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@
@@ -1766,14 +1867,13 @@ all_analysisd_libs += decoders.a decoders-test.a decoders-live.a
 
 
 analysisd/decoders/%-test.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/decoders/%-live.o: analysisd/decoders/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
@@ -1783,7 +1883,7 @@ analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_li
 	./analysisd/compiled_rules/register_rule.sh build
 
 analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/compiled_rules/%-live.o: analysisd/compiled_rules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
@@ -1810,19 +1910,22 @@ analysisd/output/%.o: analysisd/output/%.c
 
 
 
-analysisd_c := ${filter-out analysisd/analysisd.c, ${wildcard analysisd/*.c}}
+analysisd_c := ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}
 analysisd_o := ${analysisd_c:.c=.o}
 all_analysisd_o += ${analysisd_o}
 
 analysisd_test_o := $(analysisd_o:.o=-test.o)
 analysisd_live_o := $(analysisd_o:.o=-live.o)
-all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/analysisd-live.o analysisd/analysisd-test.o
+all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o analysisd/makelists-live.o
 
 analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
 
 analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
+
+wazuh-logtest-legacy: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -1835,12 +1938,6 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-### wazuh-framework ##
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
-wazuh-framework: ${shared_o} ${wdblib_o}
-	${MAKE} -C ../framework build PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${USE_FRAMEWORK_LIB}
-endif
-
 ### wazuh-gtest-gmock ###
 
 build_gtest:
@@ -1848,8 +1945,10 @@ build_gtest:
 
 ### wazuh-python ###
 
-WPYTHON_DIR := ${PREFIX}/framework/python
+WPYTHON_DIR := ${INSTALLDIR}/framework/python
 OPTIMIZE_CPYTHON?=no
+WPYTHON_TAR=cpython.tar.gz
+WLIBPYTHON=libpython3.9.so.1.0
 
 ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
@@ -1857,30 +1956,13 @@ endif
 
 wpython: install_dependencies install_framework install_api install_mitre
 
-ifeq (${uname_S},Darwin)
-WLIBPYTHON=libpython3.8.dylib
-else
-WLIBPYTHON=libpython3.8.so.1.0
+build_python:
+ifeq (,${INSTALLDIR})
+	$(error INSTALLDIR undefined. Run "${MAKE} TARGET=server INSTALLDIR=/path" to build python from sources)
 endif
 
-build_python:
-ifeq (${uname_S},Darwin)
-ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
-	export WPATH_LIB="@executable_path/../../../lib"
-	export SOURCE_PATH=${ROUTE_PATH}
-	export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI}
-	export INSTALL_NAME_DIR=${ROUTE_PATH}
-	export DYLD_LIBRARY_PATH=${ROUTE_PATH}
-	mkdir -p ${ROUTE_PATH}/../lib && cp ${WAZUHEXT_LIB} ${ROUTE_PATH}/../lib
-	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Xlinker -rpath -Xlinker @executable_path/../../../lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
-	install_name_tool -change ${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
-	install_name_tool -change ${WPYTHON_DIR}/lib/${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
-	rm -rf ${ROUTE_PATH}/../lib
-endif
-else
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
-endif
 endif
 
 ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
@@ -1888,25 +1970,32 @@ build_python: $(WAZUHEXT_LIB)
 endif
 
 install_python:
-	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
-	find ${WPYTHON_DIR} -name "*${WLIBPYTHON}" -exec ln -f {} ${PREFIX}/lib/${WLIBPYTHON} \;
+ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
+	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${INSTALLDIR}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
+else
+	mkdir -p ${WPYTHON_DIR}
+	cp external/${WPYTHON_TAR} ${WPYTHON_DIR}/${WPYTHON_TAR} && ${TAR} ${WPYTHON_DIR}/${WPYTHON_TAR} -C ${WPYTHON_DIR} && rm -rf ${WPYTHON_DIR}/${WPYTHON_TAR}
+endif
+	find ${WPYTHON_DIR} -name "*${WLIBPYTHON}" -exec ln -f {} ${INSTALLDIR}/lib/${WLIBPYTHON} \;
 
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	${WPYTHON_DIR}/bin/pip3 install --upgrade pip --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
-	LD_LIBRARY_PATH="${PREFIX}/lib" LDFLAGS="-L${PREFIX}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
+ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
+	${WPYTHON_DIR}/bin/python3 -m pip install --upgrade pip --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
+	LD_LIBRARY_PATH="${INSTALLDIR}/lib" LDFLAGS="-L${INSTALLDIR}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
+endif
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
-	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
+	chown -R root:${WAZUH_GROUP} ${WPYTHON_DIR}
 	chmod -R o=- ${WPYTHON_DIR}
 
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR}
 
 install_mitre: install_python
-	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${PREFIX}/var/db/mitre.db
+	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
 
 
 ####################
@@ -1997,66 +2086,7 @@ unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
 unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-.PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
-
-test: build_tests
-	${MAKE} run_tests
-
-run_valgrind_tests:
-	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
-
-run_tests:
-	@$(foreach bin,${test_programs},./${bin} || exit 1;)
-
-build_tests: external
-	${MAKE} DEBUG=yes TEST=yes ${test_programs}
-
-test_c := $(wildcard tests/*.c)
-test_o := $(test_c:.c=.o)
-
-tests/%.o: tests/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-tap_os_crypto: tests/tap_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_net: tests/tap_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_regex: tests/tap_os_regex.c ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_shared: tests/tap_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
-	${OSSEC_CCBIN} $(OSSEC_CFLAGS) ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_zlib: tests/tap_os_zlib.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_fluentd_forwarder: tests/tap_fluentd_forwarder.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_wazuhdb_op: tests/tap_wazuhdb_op.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_valgrind: build_tests
-	${MAKE} run_valgrind_tests
-
-
-test_coverage: build_tests
-	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
-	@echo "Running tests\n"
-
-	${MAKE} run_valgrind_tests
-
-	@echo "\nTests finished."
-
-	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
-
-	rm -rf coverage-report/
-	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
+.PHONY: test
 
 ###################
 #### Rule Tests ###
@@ -2064,7 +2094,6 @@ test_coverage: build_tests
 
 test-rules:
 	( cd ../ruleset/testing && sudo python runtests.py)
-
 
 ####################
 #### windows #######
@@ -2089,10 +2118,10 @@ win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
 win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -2105,9 +2134,6 @@ win32/setup-syscheck.exe: win32/setup-syscheck.o win32/setup-shared.o
 
 win32/setup-iis.exe: win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-win32/add-localfile.exe: win32/add-localfile.o
-	${OSSEC_CCBIN} -DARGV0=\"add-localfile\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
@@ -2137,7 +2163,6 @@ win32/netsh.exe: win32/win_service_rk.o active-response/netsh.o active-response/
 clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
-	rm -f ${test_o} ${test_programs} ossec.test
 	rm -Rf coverage-report/
 	find . -name "*.gcno" -exec rm {} \;
 	find . -name "*.gcda" -exec rm {} \;
@@ -2165,6 +2190,14 @@ ifneq ($(wildcard external/*/*),)
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
 endif
+
+ifneq ($(wildcard external/libarchive/Makefile),)
+	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
+endif
+
+ifneq ($(wildcard external/pacman/lib/libalpm/libalpm.a),)
+	rm $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+endif
 endif
 
 clean-wpython:
@@ -2173,7 +2206,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR)
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)

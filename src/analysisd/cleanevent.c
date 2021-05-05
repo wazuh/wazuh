@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -581,6 +581,17 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
              p.tm_hour,
              p.tm_min,
              p.tm_sec);
-             
+
+#ifdef TESTRULE
+    if (!alert_only) {
+        print_out("**Phase 1: Completed pre-decoding.");
+        print_out("       full event: '%s'", lf->full_log);
+        print_out("       timestamp: '%s'", lf->dec_timestamp);
+        print_out("       hostname: '%s'", lf->hostname);
+        print_out("       program_name: '%s'", lf->program_name);
+        print_out("       log: '%s'", lf->log);
+    }
+#endif
+    
     return (0);
 }

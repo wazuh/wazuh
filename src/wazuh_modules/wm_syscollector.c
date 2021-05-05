@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSCOLLECTOR
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 11, 2021.
  *
  * This program is free software; you can redistribute it
@@ -50,16 +50,36 @@ static void wm_sys_send_dbsync_message(const void* data) {
     wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
 }
 
-static void wm_sys_log_error(const char* log) {
-    mterror(WM_SYS_LOGTAG, "%s", log);
+static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
+
+    switch(level) {
+        case SYS_LOG_ERROR:
+            mterror(WM_SYS_LOGTAG, "%s", log);
+            break;
+        case SYS_LOG_INFO:
+            mtinfo(WM_SYS_LOGTAG, "%s", log);
+            break;
+        case SYS_LOG_DEBUG:
+            mtdebug1(WM_SYS_LOGTAG, "%s", log);
+            break;
+        case SYS_LOG_DEBUG_VERBOSE:
+            mtdebug2(WM_SYS_LOGTAG, "%s", log);
+            break;
+        default:;
+    }
 }
 
-static void wm_sys_log_info(const char* log) {
-    mtinfo(WM_SYS_LOGTAG, "%s", log);
-}
-
-static void wm_sys_log_debug(const char* log) {
-    mtdebug1(WM_SYS_LOGTAG, "%s", log);
+static void wm_sys_log_config(wm_sys_t *sys)
+{
+    cJSON * config_json = wm_sys_dump(sys);
+    if (config_json) {
+        char * config_str = cJSON_PrintUnformatted(config_json);
+        if (config_str) {
+            mtdebug1(WM_SYS_LOGTAG, "%s", config_str);
+            cJSON_free(config_str);
+        }
+        cJSON_Delete(config_json);
+    }
 }
 
 void* wm_sys_main(wm_sys_t *sys) {
@@ -70,7 +90,7 @@ void* wm_sys_main(wm_sys_t *sys) {
 
     #ifndef WIN32
     // Connect to socket
-    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_SYS_LOGTAG, "Can't connect to queue.");
@@ -92,20 +112,18 @@ void* wm_sys_main(wm_sys_t *sys) {
         pthread_exit(NULL);
     }
     if (syscollector_start_ptr) {
-        mtinfo(WM_SYS_LOGTAG, "Starting Syscollector.");
+        mtdebug1(WM_SYS_LOGTAG, "Starting Syscollector.");
 
         const long max_eps = sys->sync.sync_max_eps;
         if (0 != max_eps) {
             syscollector_sync_max_eps = max_eps;
         }
         // else: if max_eps is 0 (from configuration) let's use the default max_eps value (10)
-
+        wm_sys_log_config(sys);
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
-                               wm_sys_log_error,
-                               wm_sys_log_info,
-                               wm_sys_log_debug,
+                               wm_sys_log,
                                SYSCOLLECTOR_DB_DISK_PATH,
                                SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                SYSCOLLECTOR_NORM_TYPE,
@@ -132,7 +150,7 @@ void* wm_sys_main(wm_sys_t *sys) {
     }
     so_free_library(syscollector_module);
     syscollector_module = NULL;
-    mtinfo(WM_SYS_LOGTAG, "Syscollector Stopped.");
+    mtinfo(WM_SYS_LOGTAG, "Module finished.");
 
     return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../wrappers/wazuh/wazuh_db/wdb_agent_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 
 #include "../analysisd/config.h"
 #include "../analysisd/labels.h"

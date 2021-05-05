@@ -3,7 +3,7 @@
  * @brief RB tree data structure declaration
  * @date 2019-08-21
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 /*
@@ -78,11 +78,11 @@ void rbtree_set_dispose(rb_tree * tree, void (*dispose)(void *));
  * @param tree Pointer to a red-black tree.
  * @param key Data key, used for ordering.
  * @param value Data value.
- * @return Pointer to value, on success.
+ * @return Pointer to the inserted node, on success.
  * @retval NULL Key already exists in the tree.
  */
 
-void * rbtree_insert(rb_tree * tree, const char * key, void * value);
+rb_node * rbtree_insert(rb_tree * tree, const char * key, void * value);
 
 /**
  * @brief Update the value of an existing key

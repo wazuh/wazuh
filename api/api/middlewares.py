@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -79,10 +79,11 @@ async def request_logging(request, handler):
     """Add request info to logging."""
     logger.debug2(f'Receiving headers {dict(request.headers)}')
     try:
-        body = f' and body {await request.json()}'
+        body = await request.json()
+        request['body'] = body
     except JSONDecodeError:
-        body = ''
-    logger.debug(f'Receiving request "{request.method} {request.path}" with parameters {dict(request.query)}{body}')
+        pass
+
     return await handler(request)
 
 
@@ -107,7 +108,8 @@ async def prevent_denial_of_service(request, max_requests=300):
 @web.middleware
 async def security_middleware(request, handler):
     access_conf = api_conf['access']
-    await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+    if access_conf['max_request_per_minute'] > 0:
+        await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
     await unlock_ip(request=request, block_time=access_conf['block_time'])
 
     return await handler(request)

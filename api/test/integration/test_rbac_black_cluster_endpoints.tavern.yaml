@@ -504,154 +504,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /cluster/{node_id}/files
-
-stages:
-
-  - name: Get file {worker1} (Allow) (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: ruleset/decoders/0005-wazuh_decoders.xml
-    response:
-      status_code: 200
-      json:
-        contents: !anystr
-
-  - name: Get file {worker1} (Allow) (Deny)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      status_code: 200
-
-  - name: Get file {worker2} (Deny) (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: ruleset/decoders/0005-wazuh_decoders.xml
-    response:
-      <<: *permission_denied
-
-  - name: Get file {worker2} (Deny) (Deny)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /cluster/{node_id}/files
-
-stages:
-
-  - name: Get ossec.conf {node_id}
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      save:
-        json:
-          ossec_conf: contents
-      status_code: 200
-      json:
-        contents: !anystr
-
-  - name: Upload ossec.conf {worker1} (Allow) (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: PUT
-      data: "{ossec_conf}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-      params:
-        overwrite: True
-        path: etc/ossec.conf
-    response:
-      status_code: 200
-
-  - name: Upload ossec.conf {worker2} (Deny) (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
-      method: PUT
-      data: "{ossec_conf}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-      params:
-        overwrite: True
-        path: etc/ossec.conf
-    response:
-      <<: *permission_denied
-
----
-test_name: DELETE /cluster/{node_id}/files
-
-stages:
-
-  - name: Delete rules file (Deny) (Deny)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/decoders/0005-wazuh_decoders.xml
-    response:
-      <<: *permission_denied
-
-  - name: Delete ossec.conf file worker1 (Allow) (Denied regex)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      status_code: 400
-
-  - name: Delete ossec.conf file worker2 (Deny) (Denied regex)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      status_code: 400
-
----
 test_name: GET /cluster/api/config
 
 stages:
@@ -679,6 +531,43 @@ stages:
                 - worker2
           total_affected_items: 1
           total_failed_items: 1
+
+---
+test_name: PUT /cluster/{node_id}/configuration
+
+stages:
+
+  - name: Upload a valid configuration (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'worker1'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Try to upload a valid configuration (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      <<: *permission_denied
 
 ---
 test_name: PUT /cluster/restart

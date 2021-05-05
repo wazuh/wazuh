@@ -1,5 +1,5 @@
 /* Remote request manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 2, 2017.
  *
  * This program is free software; you can redistribute it
@@ -149,7 +149,7 @@ int req_push(char * buffer, size_t length) {
 
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
-            snprintf(sockname, PATH_MAX, DEFAULTDIR "/queue/ossec/%s", target);
+            snprintf(sockname, PATH_MAX, "queue/sockets/%s", target);
 
             if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
                 switch (errno) {

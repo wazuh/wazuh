@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015-2020, Wazuh Inc.
+* Copyright (C) 2015-2021, Wazuh Inc.
 * August 30, 2017.
 *
 * This program is free software; you can redistribute it
@@ -41,11 +41,11 @@ static int decode_dbsync( char const *agent_id, char *msg_type, cJSON * logJSON,
 
 static OSDecoderInfo *sysc_decoder = NULL;
 
-static const char* HOTFIXES_FIELDS[] = { 
+static const char* HOTFIXES_FIELDS[] = {
     "scan_time",
     "hotfix",
     "checksum",
-    NULL 
+    NULL
 };
 
 static const char* PACKAGES_FIELDS[] = {
@@ -68,10 +68,10 @@ static const char* PACKAGES_FIELDS[] = {
     "msu_name",
     "checksum",
     "item_id",
-    NULL 
+    NULL
 };
 
-    
+
 static const char* PROCESSES_FIELDS[] = {
     "scan_time",
     "pid",
@@ -118,10 +118,10 @@ static const char* PORTS_FIELDS[] = {
     "inode",
     "state",
     "pid",
-    "process_name",
+    "process",
     "checksum",
     "item_id",
-    NULL 
+    NULL
 };
 
 static const char* NETWORK_IFACE_FIELDS[] = {
@@ -142,10 +142,10 @@ static const char* NETWORK_IFACE_FIELDS[] = {
     "rx_dropped",
     "checksum",
     "item_id",
-    NULL 
+    NULL
 };
 
-static const char* NETWORK_PROTOCOL_FIELDS[] = { 
+static const char* NETWORK_PROTOCOL_FIELDS[] = {
     "iface",
     "type",
     "gateway",
@@ -153,10 +153,10 @@ static const char* NETWORK_PROTOCOL_FIELDS[] = {
     "metric",
     "checksum",
     "item_id",
-    NULL 
+    NULL
 };
 
-static const char* NETWORK_ADDRESS_FIELDS[] = { 
+static const char* NETWORK_ADDRESS_FIELDS[] = {
     "iface",
     "proto",
     "address",
@@ -164,7 +164,7 @@ static const char* NETWORK_ADDRESS_FIELDS[] = {
     "broadcast",
     "checksum",
     "item_id",
-    NULL 
+    NULL
 };
 
 static const char* HARDWARE_FIELDS[] = {
@@ -182,7 +182,7 @@ static const char* HARDWARE_FIELDS[] = {
 
 static const char* OS_FIELDS[] = {
     "scan_time",
-    "host_name",
+    "hostname",
     "architecture",
     "os_name",
     "os_version",
@@ -192,12 +192,12 @@ static const char* OS_FIELDS[] = {
     "os_patch",
     "os_build",
     "os_platform",
-    "sysname", 
+    "sysname",
     "release",
     "version",
     "os_release",
     "checksum",
-    NULL 
+    NULL
 };
 
 void SyscollectorInit(){
@@ -2006,13 +2006,13 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
             cJSON * data = cJSON_GetObjectItem(logJSON, "data");
             if (NULL != operation_object && NULL != data && cJSON_IsString(operation_object) && cJSON_IsObject(data)) {
                 const char **field_list = get_field_list(type);
-                
+
                 if (NULL != field_list) {
                     char *response = NULL;
                     char header[OS_SIZE_256] = { 0 };
                     os_calloc(OS_SIZE_128, sizeof(char), response);
                     int header_size = snprintf(header, OS_SIZE_256 - 1, "agent %s dbsync %s %s ", agent_id, type, cJSON_GetStringValue(operation_object));
-                    
+
                     buffer_t *msg = buffer_initialize(OS_SIZE_6144);
                     buffer_push(msg, header, header_size);
                     if (fill_data_dbsync(data, field_list, msg) && TRUE == msg->status) {

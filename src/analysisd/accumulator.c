@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -316,15 +316,22 @@ void FreeACMStore(OS_ACM_Store *obj)
 {
     if ( obj != NULL ) {
         mdebug2("accumulator: DEBUG: Freeing an accumulator struct.");
-        free(obj->dstuser);
-        free(obj->srcuser);
-        free(obj->dstip);
-        free(obj->srcip);
-        free(obj->dstport);
-        free(obj->srcport);
-        free(obj->data);
-        free(obj);
+        os_free(obj->dstuser);
+        os_free(obj->srcuser);
+        os_free(obj->dstip);
+        os_free(obj->srcip);
+        os_free(obj->dstport);
+        os_free(obj->srcport);
+        os_free(obj->data);
+        os_free(obj);
     }
+}
+
+/* Free accumulate */
+void w_analysisd_accumulate_free(OSHash **acm_store) {
+    (*acm_store)->free_data_function = (void (*)(void *)) FreeACMStore;
+    OSHash_Free(*acm_store);
+    *acm_store = NULL;
 }
 
 int acm_str_replace(char **dst, const char *src)

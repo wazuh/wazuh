@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscollector
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 15, 2020.
  *
  * This program is free software; you can redistribute it
@@ -31,17 +31,21 @@
 extern "C" {
 #endif
 
+typedef enum syscollector_log_level_t {
+   SYS_LOG_ERROR,
+   SYS_LOG_INFO,
+   SYS_LOG_DEBUG,
+   SYS_LOG_DEBUG_VERBOSE
+}syscollector_log_level_t;
 
-typedef void((*log_callback_t)(const char* log));
+typedef void((*log_callback_t)(const syscollector_log_level_t level, const char* log));
 
 typedef void((*send_data_callback_t)(const void* buffer));
 
 EXPORTED void syscollector_start(const unsigned int inverval,
                                  send_data_callback_t callbackDiff,
                                  send_data_callback_t callbackSync,
-                                 log_callback_t callbackLogError,
-                                 log_callback_t callbackLogInfo,
-                                 log_callback_t callbackLogDebug,
+                                 log_callback_t callbackLog,
                                  const char* dbPath,
                                  const char* normalizerConfigPath,
                                  const char* normalizerType,
@@ -68,9 +72,7 @@ EXPORTED int syscollector_sync_message(const char* data);
 typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        send_data_callback_t callbackDiff,
                                        send_data_callback_t callbackSync,
-                                       log_callback_t callbackLogError,
-                                       log_callback_t callbackLogInfo,
-                                       log_callback_t callbackLogDebug,
+                                       log_callback_t callbackLog,
                                        const char* dbPath,
                                        const char* normalizerConfigPath,
                                        const char* normalizerType,

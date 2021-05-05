@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -204,11 +204,10 @@ static void test_wm_gcp_read_full_configuration(void **state) {
     wm_gcp *gcp;
     int ret;
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -226,7 +225,7 @@ static void test_wm_gcp_read_full_configuration(void **state) {
     assert_int_equal(gcp->pull_on_start, 0);
     assert_string_equal(gcp->project_id, "wazuh-gcp-pubsub-tests");
     assert_string_equal(gcp->subscription_name, "testing-id");
-    assert_string_equal(gcp->credentials_file, "/var/ossec/credentials.json");
+    assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 0);
     assert_int_equal(gcp->max_messages, 100);
 
@@ -266,11 +265,10 @@ static void test_wm_gcp_read_no_project_id_tag(void **state) {
     group_data_t *data = *state;
     int ret;
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -302,11 +300,10 @@ static void test_wm_gcp_read_no_subscription_name_tag(void **state) {
     group_data_t *data = *state;
     int ret;
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -391,11 +388,11 @@ static void test_wm_gcp_read_credentials_file_tag_realpath_error(void **state) {
     group_data_t *data = *state;
     int ret;
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
+    expect_string(__wrap_realpath, path, "credentials.json");
+
     will_return(__wrap_realpath, (char *) NULL);   //  realpath failed
 
-    expect_string(__wrap__mwarn, formatted_msg, "File '/var/ossec/credentials.json' from tag 'credentials_file' not found.");
+    expect_string(__wrap__mwarn, formatted_msg, "File '' from tag 'credentials_file' not found.");
 
     ret = wm_gcp_read(data->nodes, data->module);
 
@@ -406,14 +403,13 @@ static void test_wm_gcp_read_credentials_file_tag_file_not_found(void **state) {
     group_data_t *data = *state;
     int ret;
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "File '/var/ossec/credentials.json' not found. Check your configuration.");
+    expect_string(__wrap__mwarn, formatted_msg, "File 'credentials.json' not found. Check your configuration.");
 
     ret = wm_gcp_read(data->nodes, data->module);
 
@@ -442,11 +438,10 @@ static void test_wm_gcp_read_max_messages_tag_empty(void **state) {
     if(replace_configuration_value(data->nodes, XML_MAX_MESSAGES, "") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'max_messages'");
@@ -463,11 +458,10 @@ static void test_wm_gcp_read_max_messages_tag_not_digit(void **state) {
     if(replace_configuration_value(data->nodes, XML_MAX_MESSAGES, "invalid") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Tag 'max_messages' from the 'gcp-pubsub' module should not have an alphabetic character.");
@@ -476,6 +470,7 @@ static void test_wm_gcp_read_max_messages_tag_not_digit(void **state) {
 
     assert_int_equal(ret, OS_INVALID);
 }
+
 static void test_wm_gcp_read_pull_on_start_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
@@ -498,11 +493,10 @@ static void test_wm_gcp_read_logging_tag_debug(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "debug") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -520,7 +514,7 @@ static void test_wm_gcp_read_logging_tag_debug(void **state) {
     assert_int_equal(gcp->pull_on_start, 0);
     assert_string_equal(gcp->project_id, "wazuh-gcp-pubsub-tests");
     assert_string_equal(gcp->subscription_name, "testing-id");
-    assert_string_equal(gcp->credentials_file, "/var/ossec/credentials.json");
+    assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 1);
     assert_int_equal(gcp->max_messages, 100);
 
@@ -536,11 +530,10 @@ static void test_wm_gcp_read_logging_tag_info(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "info") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -558,7 +551,7 @@ static void test_wm_gcp_read_logging_tag_info(void **state) {
     assert_int_equal(gcp->pull_on_start, 0);
     assert_string_equal(gcp->project_id, "wazuh-gcp-pubsub-tests");
     assert_string_equal(gcp->subscription_name, "testing-id");
-    assert_string_equal(gcp->credentials_file, "/var/ossec/credentials.json");
+    assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 2);
     assert_int_equal(gcp->max_messages, 100);
 
@@ -574,11 +567,10 @@ static void test_wm_gcp_read_logging_tag_warning(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "warning") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -596,7 +588,7 @@ static void test_wm_gcp_read_logging_tag_warning(void **state) {
     assert_int_equal(gcp->pull_on_start, 0);
     assert_string_equal(gcp->project_id, "wazuh-gcp-pubsub-tests");
     assert_string_equal(gcp->subscription_name, "testing-id");
-    assert_string_equal(gcp->credentials_file, "/var/ossec/credentials.json");
+    assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 3);
     assert_int_equal(gcp->max_messages, 100);
 
@@ -612,11 +604,10 @@ static void test_wm_gcp_read_logging_tag_error(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "error") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -634,7 +625,7 @@ static void test_wm_gcp_read_logging_tag_error(void **state) {
     assert_int_equal(gcp->pull_on_start, 0);
     assert_string_equal(gcp->project_id, "wazuh-gcp-pubsub-tests");
     assert_string_equal(gcp->subscription_name, "testing-id");
-    assert_string_equal(gcp->credentials_file, "/var/ossec/credentials.json");
+    assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 4);
     assert_int_equal(gcp->max_messages, 100);
 
@@ -650,11 +641,10 @@ static void test_wm_gcp_read_logging_tag_critical(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "critical") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_value(__wrap_sched_scan_read, nodes, data->nodes);
@@ -672,7 +662,7 @@ static void test_wm_gcp_read_logging_tag_critical(void **state) {
     assert_int_equal(gcp->pull_on_start, 0);
     assert_string_equal(gcp->project_id, "wazuh-gcp-pubsub-tests");
     assert_string_equal(gcp->subscription_name, "testing-id");
-    assert_string_equal(gcp->credentials_file, "/var/ossec/credentials.json");
+    assert_string_equal(gcp->credentials_file, "credentials.json");
     assert_int_equal(gcp->logging, 5);
     assert_int_equal(gcp->max_messages, 100);
 
@@ -687,11 +677,10 @@ static void test_wm_gcp_read_logging_tag_invalid(void **state) {
     if(replace_configuration_value(data->nodes, XML_LOGGING, "invalid") != 0)
         fail();
 
-    expect_string(__wrap_realpath, path, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, "/var/ossec/credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
+    expect_string(__wrap_realpath, path, "credentials.json");
+    will_return(__wrap_realpath, "credentials.json");
 
-    expect_string(__wrap_IsFile, file, "/var/ossec/credentials.json");
+    expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'logging'");

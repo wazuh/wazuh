@@ -3,9 +3,6 @@
 # host: 0.0.0.0
 # port: 55000
 
-# Set this option to "yes" in case the API is running behind a proxy server. Values: yes, no
-# behind_proxy_server: no
-
 # Advanced configuration
 
 # https:
@@ -45,7 +42,7 @@
 # Force the use of authd when adding and removing agents. Values: yes, no
 # use_only_authd: no
 
-# Drop privileges (Run as ossec user)
+# Drop privileges (Run as wazuh user)
 # drop_privileges: yes
 
 # Enable features under development

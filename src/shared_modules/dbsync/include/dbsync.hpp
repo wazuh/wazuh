@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 13, 2020.
  *
  * This program is free software; you can redistribute it
@@ -28,12 +28,20 @@
 #include <functional>
 #include "json.hpp"
 #include "db_exception.h"
+#include "commonDefs.h"
 
 using ResultCallbackData = const std::function<void(ReturnTypeCallback, const nlohmann::json&) >;
 
 class EXPORTED DBSync 
 {
 public:
+    /**
+    * @brief Initializes the shared library.
+    *
+    * @param logFunction pointer to log function to be used by the dbsync.
+    */
+    static void initialize(std::function<void(const std::string&)> logFunction);
+
     /**
      * @brief Explicit DBSync Constructor.
      *

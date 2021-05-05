@@ -1,17 +1,27 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
+from os import remove
+from os.path import exists, join
+from xml.parsers.expat import ExpatError
+
+import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
-from wazuh.core.exception import WazuhError
+from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, upload_file, delete_file_with_backup, \
+    to_relative_path
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array
+
+cluster_enabled = not read_cluster_config(from_import=True)['disabled']
+node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
@@ -203,21 +213,129 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     return result
 
 
-def get_file(filename=None):
-    """Reads content of specified file
+def get_rule_file(filename=None, raw=False):
+    """Read content of specified file.
 
-    :param filename: File name to read content from
-    :return: File contents
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the rule file. Default `None`
+    raw : bool, optional
+        Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format)
+
+    Returns
+    -------
+    str or dict
+        Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
+    result = AffectedItemsWazuhResult(none_msg='No rule was returned',
+                                      all_msg='Selected rule was returned')
     files = get_rules_files(filename=filename).affected_items
 
     if len(files) > 0:
         rules_path = files[0]['relative_dirname']
         try:
-            full_path = os.path.join(common.ossec_path, rules_path, filename)
+            full_path = join(common.wazuh_path, rules_path, filename)
             with open(full_path) as f:
-                return f.read()
+                content = f.read()
+            if raw:
+                result = content
+            else:
+                # Missing root tag in rule file
+                result.affected_items.append(xmltodict.parse(f'<root>{content}</root>')['root'])
+                result.total_affected_items = 1
+        except ExpatError as e:
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"     
+                                                                        f" {str(e)}"))
         except OSError:
-            raise WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1414, extra_message=join('WAZUH_HOME', rules_path, filename)))
+
     else:
-        raise WazuhError(1415)
+        result.add_failed_item(id_=filename, error=WazuhError(1415))
+
+    return result
+
+
+@expose_resources(actions=['rules:update'], resources=['*:*:*'])
+def upload_rule_file(filename=None, content=None, overwrite=False):
+    """Upload a new rule file or update an existing one.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the rule file. Default `None`
+    content : str, optional
+        Content of the file. It must be a valid XML file. Default `None`
+    overwrite : bool, optional
+        True for updating existing files. False otherwise. Default `False`
+
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
+                                      none_msg='Could not upload rule'
+                                      )
+    full_path = join(common.user_rules_path, filename)
+    backup_file = ''
+    try:
+        if len(content) == 0:
+            raise WazuhError(1112)
+
+        validate_wazuh_xml(content)
+
+        # If file already exists and overwrite is False, raise exception
+        if not overwrite and exists(full_path):
+            raise WazuhError(1905)
+        elif overwrite and exists(full_path):
+            backup_file = f'{full_path}.backup'
+            delete_file_with_backup(backup_file, full_path, delete_rule_file)
+
+        upload_file(content, to_relative_path(full_path))
+        result.affected_items.append(to_relative_path(full_path))
+        result.total_affected_items = len(result.affected_items)
+        backup_file and exists(backup_file) and remove(backup_file)
+    except WazuhError as e:
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    finally:
+        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o660)
+
+    return result
+
+
+@expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
+def delete_rule_file(filename=None):
+    """Delete a rule file.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the rule file. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(all_msg='Rule was successfully deleted',
+                                      none_msg='Could not delete rule'
+                                      )
+
+    full_path = join(common.user_rules_path, filename[0])
+
+    try:
+        if exists(full_path):
+            try:
+                remove(full_path)
+                result.affected_items.append(to_relative_path(full_path))
+            except IOError:
+                raise WazuhError(1907)
+        else:
+            raise WazuhError(1906)
+    except WazuhError as e:
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result

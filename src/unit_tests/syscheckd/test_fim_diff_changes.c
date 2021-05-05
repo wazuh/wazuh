@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -55,20 +55,20 @@ static const char GENERIC_PATH [OS_SIZE_256] =        "c:\\file\\path";
 static const char COMPRESS_FOLDER_REG [OS_SIZE_256] = "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED;
 static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/c\\file\\path";
 static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/c\\file\\path/last-entry.gz";
-static const char TMP_FOLDER [OS_SIZE_256] =          "queue/diff/tmp";
 static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
 static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
 #else
 
 static const char GENERIC_PATH [OS_SIZE_256] =        "/path/to/file";
-static const char COMPRESS_FOLDER [OS_SIZE_256] =     "/var/ossec/queue/diff/local/path/to/file";
-static const char COMPRESS_FILE [OS_SIZE_256] =       "/var/ossec/queue/diff/local/path/to/file/last-entry.gz";
-static const char TMP_FOLDER [OS_SIZE_256] =          "/var/ossec/queue/diff/tmp";
-static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "/var/ossec/queue/diff/tmp/tmp-entry";
-static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "/var/ossec/queue/diff/tmp/tmp-entry.gz";
+static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/path/to/file";
+static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/path/to/file/last-entry.gz";
+static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
+static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
 #endif
+
+static const char TMP_FOLDER [OS_SIZE_256] =          "queue/diff/tmp";
 
 static char *syscheck_nodiff[] = {"c:\\file\\nodiff", "/path/to/ignore", NULL};
 
@@ -77,42 +77,20 @@ static OSMatch *syscheck_nodiff_regex[] = { NULL, NULL };
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
-static char *dir_config[] = {
-    "c:\\file\\path",
-    "/path/to/file",
-    "C:\\path\\to\\file",
-    "c:\\file\\nodiff",
-    "/path/to/ignore",
-    NULL,
-};
-
-static char *symbolic_links_config[] = {
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-};
-
-static int diff_size_limit_config[] = {
-    1024,
-    1024,
-    1024,
-    1024,
-    1024,
-};
-
 #define DEFAULT_OPTIONS                                                                                    \
     CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
     CHECK_MTIME | CHECK_INODE
-static int opts_config[] = {
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS
+
+static directory_t DIRECTORIES[] = {
+    [0] = { .path = "c:\\file\\path", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [1] = { .path = "/path/to/file", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [2] = { .path = "C:\\path\\to\\file", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [3] = { .path = "c:\\file\\nodiff", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [4] = { .path = "/path/to/ignore", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
 };
+
+static directory_t *GLOBAL_CONFIG[] = { [0] = &DIRECTORIES[0], [1] = &DIRECTORIES[1], [2] = &DIRECTORIES[2],
+                                              [3] = &DIRECTORIES[3], [4] = &DIRECTORIES[4], [5] = NULL };
 
 typedef struct gen_diff_struct {
     diff_data *diff;
@@ -278,10 +256,7 @@ static int setup_group(void **state) {
     syscheck.nodiff = syscheck_nodiff;
     syscheck.nodiff_regex = syscheck_nodiff_regex;
 
-    syscheck.dir = dir_config;
-    syscheck.symbolic_links = symbolic_links_config;
-    syscheck.diff_size_limit = diff_size_limit_config;
-    syscheck.opts = opts_config;
+    syscheck.directories = GLOBAL_CONFIG;
 
 #ifdef TEST_WINAGENT
     syscheck.registry = default_reg_config;
@@ -607,7 +582,7 @@ void test_initialize_file_diff_data(void **state) {
     assert_string_equal(diff->file_origin, GENERIC_PATH);
     assert_string_equal(diff->uncompress_file, UNCOMPRESS_FILE);
     assert_string_equal(diff->compress_tmp_file, COMPRESS_TMP_FILE);
-    assert_string_equal(diff->diff_file, "/var/ossec/queue/diff/tmp/diff-file");
+    assert_string_equal(diff->diff_file, "queue/diff/tmp/diff-file");
 }
 
 #endif // END TEST_AGENT and TEST_SERVER
@@ -625,7 +600,7 @@ void test_initialize_file_diff_data_too_long_path(void **state) {
     expect_abspath("queue/diff", 1);
 #else
     char path[PATH_MAX] = "/aa";
-    for (int i = 0; i < PATH_MAX - 37; i++) {
+    for (int i = 0; i < PATH_MAX - 26; i++) {
         strcat (path, "a");
     }
 
@@ -1741,9 +1716,9 @@ void test_fim_file_diff_nodiff(void **state) {
 
     expect_fim_diff_check_limits("/path/to/ignore", "aaa", 0);
 
-    expect_w_uncompress_gzfile("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
+    expect_w_uncompress_gzfile("queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
 
-    expect_FileSize("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
+    expect_FileSize("queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
 
     expect_fim_diff_create_compress_file("/path/to/ignore", COMPRESS_TMP_FILE, 0);
 
@@ -1768,7 +1743,7 @@ void test_fim_file_diff_generate_fail(void **state) {
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
     gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED);
@@ -1815,7 +1790,7 @@ void test_fim_file_diff_generate_diff_str(void **state) {
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
     gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED);
@@ -1866,7 +1841,7 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
 
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     strcpy(gen_diff_data_container->strarray[0], "Comparing files start.txt and end.txt\r\n"
                                                  "Error diffs\r\n"
@@ -1932,7 +1907,7 @@ void test_fim_diff_process_delete_file_delete_error(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/c\\file\\path'");
 #else
-    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: '/var/ossec/queue/diff/local/path/to/file'");
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/path/to/file'");
 #endif
 
     int ret = fim_diff_process_delete_file(filename);
@@ -1947,7 +1922,7 @@ void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', it does not exist.");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder '/var/ossec/queue/diff/local/path/to/file', it does not exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/path/to/file', it does not exist.");
 #endif
 
     int ret = fim_diff_process_delete_file(filename);

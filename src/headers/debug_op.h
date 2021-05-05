@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -27,8 +27,8 @@
 /* For internal logs */
 #ifndef LOGFILE
 #ifndef WIN32
-#define LOGFILE   "/logs/ossec.log"
-#define LOGJSONFILE "/logs/ossec.json"
+#define LOGFILE   "logs/ossec.log"
+#define LOGJSONFILE "logs/ossec.json"
 #define _PRINTF_FORMAT printf
 #else
 #define LOGFILE "ossec.log"

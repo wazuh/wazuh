@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -358,6 +358,45 @@ void test_w_string_split_max_array_size(void ** state) {
     }
 }
 
+
+void test_strnspn_escaped(void ** state)
+{
+    assert_int_equal(strcspn_escaped("ABC\\D ", ' '), 5);
+    assert_int_equal(strcspn_escaped("ABC\\ D", ' '), 6);
+    assert_int_equal(strcspn_escaped("ABCD\\", ' '), 5);
+    assert_int_equal(strcspn_escaped("ABCDE \\ ", ' '), 5);
+    assert_int_equal(strcspn_escaped("ABCDE\\\\ F", ' '), 7);
+    assert_int_equal(strcspn_escaped("ABCDE\\\\", ' '), 7);
+    assert_int_equal(strcspn_escaped("ABC\\ D E", ' '), 6);
+    assert_int_equal(strcspn_escaped("ABCDE", ' '), 5);
+}
+
+void test_json_escape(void ** state)
+{
+    const char * INPUTS[] = { "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", NULL };
+    const char * EXPECTED_OUTPUTS[] = { "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", NULL };
+    int i;
+
+    for (i = 0; INPUTS[i] != NULL; i++) {
+        char * output = wstr_escape_json(INPUTS[i]);
+        assert_string_equal(output, EXPECTED_OUTPUTS[i]);
+        free(output);
+    }
+}
+
+void test_json_unescape(void ** state)
+{
+    const char * INPUTS[] = { "\\b\\tHello \\n\\f\\r \\\"World\\\".\\\\", "Hello\\b\\t \\n\\f\\r \\\"World\\\"\\\\.", "Hello \\World", "Hello World\\", NULL };
+    const char * EXPECTED_OUTPUTS[] = { "\b\tHello \n\f\r \"World\".\\", "Hello\b\t \n\f\r \"World\"\\.", "Hello \\World", "Hello World\\", NULL };
+    int i;
+
+    for (i = 0; INPUTS[i] != NULL; i++) {
+        char * output = wstr_unescape_json(INPUTS[i]);
+        assert_string_equal(output, EXPECTED_OUTPUTS[i]);
+        free(output);
+    }
+}
+
 /* Tests */
 
 int main(void) {
@@ -398,6 +437,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_w_string_split_delim_null, teardown_free_paths),
         cmocka_unit_test_teardown(test_w_string_split_normal, teardown_free_paths),
         cmocka_unit_test_teardown(test_w_string_split_max_array_size, teardown_free_paths),
+        // Tests escape/unescape
+        cmocka_unit_test(test_strnspn_escaped),
+        cmocka_unit_test(test_json_escape),
+        cmocka_unit_test(test_json_unescape),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

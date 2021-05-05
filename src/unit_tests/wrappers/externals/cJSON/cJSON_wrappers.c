@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -143,4 +143,10 @@ cJSON * __wrap_cJSON_GetArrayItem(__attribute__ ((__unused__)) const cJSON *arra
 
 cJSON* __wrap_cJSON_Duplicate(__attribute__ ((__unused__)) const cJSON *item, __attribute__ ((__unused__)) int recurse) {
     return mock_type(cJSON*);
+}
+
+cJSON* __wrap_cJSON_AddBoolToObject(__attribute__ ((__unused__)) cJSON * const object, 
+                                    __attribute__ ((__unused__))const char * const name, 
+                                    __attribute__ ((__unused__))const cJSON_bool boolean) {
+    return mock_type(cJSON *);
 }

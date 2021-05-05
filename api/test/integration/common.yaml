@@ -14,14 +14,14 @@ variables:
   pass: wazuh
   basic_auth: dGVzdGluZzp3YXp1aA== # b64 encoded user:pass, update if user or pass changes
   basic_auth_context: d2F6dWgtd3VpOndhenVoLXd1aQ== # b64 encoded user:pass, update if user or pass changes
-  login_endpoint: /security/user/authenticate
+  login_endpoint: security/user/authenticate
 
   # delays
-  restart_delay: 30
-  restart_delay_cluster: 120
-  upgrade_delay: 45
-  global_db_delay: 20
-  active_reponse_delay: 5
+  reconnect_delay: 30
+  restart_delay: 45
+  restart_delay_cluster: 150
+  upgrade_delay: 60
+  global_db_delay: 30
 
   custom_wpk_path: "/var/ossec/test_custom_upgrade_3.12.2.wpk"
 
@@ -152,3 +152,52 @@ variables:
     </query>
     </localfile>
     </agent_config>
+
+  valid_ossec_conf:
+    <ossec_config>
+      <global>
+        <jsonout_output>yes</jsonout_output>
+        <alerts_log>yes</alerts_log>
+        <logall>no</logall>
+        <logall_json>no</logall_json>
+        <email_notification>no</email_notification>
+        <agents_disconnection_time>20s</agents_disconnection_time>
+        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+      </global>
+
+      <logging>
+        <log_format>plain</log_format>
+      </logging>
+
+      <alerts>
+        <log_alert_level>300</log_alert_level>
+        <email_alert_level>12</email_alert_level>
+      </alerts>
+
+      <remote>
+        <connection>secure</connection>
+        <port>1514</port>
+        <protocol>tcp</protocol>
+      </remote>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
+    </ossec_config>
+
+  invalid_ossec_conf:
+    <ossec_config>
+      <global>
+        <jsonout_output>yes</jsonout_output>
+        <alerts_log>yes</alerts_log>
+        <logall>no</logall>
+        <logall_json>no</logall_json>
+      </global>
+
+      <alerts>
+        <log_alert_level>3</log_alert_level>
+        <email_alert_level>12</email_alert_level>
+      </alerts>
+
+      <remote>
+    </ossec_config>

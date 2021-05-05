@@ -764,14 +764,12 @@ stages:
   - name: Upload corrupted configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
       method: PUT
       data: "{corrupted_rules_file}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
-      params:
-        path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
 
@@ -804,12 +802,10 @@ stages:
   - name: Delete rules file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
     delay_after: 5
@@ -881,7 +877,6 @@ stages:
               node_api_config: &default_api_config
                 host: !anystr
                 port: !anyint
-                behind_proxy_server: !anybool
                 https:
                   enabled: !anybool
                   key: !anystr
@@ -1233,7 +1228,7 @@ stages:
               - connection: !anystr
                 ipv6: !anystr
                 port: !anystr
-                protocol: !anystr
+                protocol: !anylist
                 queue_size: !anystr
           failed_items: []
           total_affected_items: 1
@@ -1376,979 +1371,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-
----
-test_name: GET /cluster/{node_id}/files
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node
-        - worker1
-        - worker2
-
-stages:
-
-  - name: Get ossec.conf {node_id}
-    request: &get_cluster_files
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      status_code: 200
-      json:
-        contents: !anything
-
-  - name: Get local rules {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/rules/local_rules.xml
-    response:
-      status_code: 200
-      json:
-        contents: !anything
-
-  - name: Get rules {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: ruleset/rules/0350-amazon_rules.xml
-    response:
-      status_code: 200
-      json:
-        contents: !anything
-
-  - name: Get local decoder {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/decoders/local_decoder.xml
-    response:
-      status_code: 200
-      json:
-        contents: !anything
-
-  - name: Get decoder {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: ruleset/decoders/0005-wazuh_decoders.xml
-    response:
-      status_code: 200
-      json:
-        contents: !anything
-
-  - name: Get CDB list {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/lists/audit-keys
-    response:
-      status_code: 200
-      json:
-        contents: !anything
-
-  - name: Try to get file with wrong path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: wrong_path/file.xml
-    response:
-      <<: *connexion_error
-
-  - name: Try to get file with empty path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: ''
-    response:
-      <<: *connexion_error
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through lists path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/lists/../../../../../../var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through custom decoders path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/decoders/../../../../../../var/ossec/api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through custom rules path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/rules/../../../../../var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through ossec.conf path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/ossec.conf/../../../../../var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through ruleset rules path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: ruleset/rules/../../../../../var/ossec/api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through ruleset rules path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: ruleset/decoders/../../../../../var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through shared groups path {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/shared/../../../../../var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through relative path (client.keys) {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: etc/client.keys
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through relative path (jwt_secret) {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through relative path (wazuh-apid script) {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through absolute path (client.keys) {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: /var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through absolute path (jwt_secret) {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: /var/ossec/api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # GET /cluster/{node_id}/files
-  - name: Try to get invalid file through absolute path (wazuh-apid script) {node_id}
-    request:
-      verify: False
-      <<: *get_cluster_files
-      params:
-        path: /var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
----
-test_name: DELETE /cluster/{node_id}/files
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node # We only use master-node because the cluster will synchronize the deleted files and may cause errors
-
-stages:
-
-  - name: Delete rules file {node_id}
-    request: &delete_cluster_files
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/rules/local_rules.xml
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/rules/local_rules.xml'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Delete unexisting rules file {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/rules/local-rules.xml
-    response: &non_existing_file
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1906
-              id: !anything
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Delete decoder file {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/decoders/local_decoder.xml
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/decoders/local_decoder.xml'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Delete unexisting decoder file {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/decoders/local-decoder.xml
-    response:
-      <<: *non_existing_file
-
-  - name: Delete CDB list file {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/lists/audit-keys
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/lists/audit-keys'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to delete unexisting CDB list file {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/lists/wrong_list
-    response:
-      <<: *non_existing_file
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete ossec.conf {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/ossec.conf
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete ruleset rules file {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: ruleset/rules/0015-ossec_rules.xml
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete ruleset decoders file {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: ruleset/decoders/0006-json_decoders.xml
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file through custom rules path {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/rules/../../../../../../var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file through custom decoders path {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/decoders/../../../../../../var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file through lists path {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/lists/../../../../../../var/ossec/api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file through shared groups path {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/shared/../../../../../../var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file through ossec.conf path {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/ossec.conf/../../../../../../var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file using relative path (client.keys) {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: etc/client.keys
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file using relative path (jwt_secret) {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file using relative path (wazuh-apid script) {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file using absolute path (client.keys) {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: /var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file using absolute path (jwt_secret) {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: /var/ossec/api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # DELETE /cluster/{node_id}/files
-  - name: Try to delete invalid file using absolute path (wazuh-apid script) {node_id}
-    request:
-      verify: False
-      <<: *delete_cluster_files
-      params:
-        path: /var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
----
-test_name: PUT /cluster/{node_id}/files (ossec.conf)
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node
-        - worker1
-        - worker2
-
-stages:
-
-  #### Save ossec.conf
-  - name: Get ossec.conf {node_id}
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      save:
-        json:
-          ossec_conf: contents
-      status_code: 200
-      json:
-        error: 0
-        contents: !anystr
-
-  - name: Upload ossec.conf {node_id}
-    request: &upload_cluster_files
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
-      method: PUT
-      data: "{ossec_conf}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-      params:
-        overwrite: True
-        path: etc/ossec.conf
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/ossec.conf'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
----
-test_name: PUT /cluster/{node_id}/files (not ossec.conf)
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node
-
-stages:
-
-  - name: Upload new rules {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_rules:s}"
-      params:
-        path: etc/rules/new-rules.xml
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/rules/new-rules.xml'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Upload rules (overwrite=false) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_rules:s}"
-      params:
-        path: etc/rules/new-rules.xml
-        overwrite: False
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1905
-              id:
-                - 'etc/rules/new-rules.xml'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Upload rules (overwrite=true) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_rules:s}"
-      params:
-        path: etc/rules/new-rules.xml
-        overwrite: True
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/rules/new-rules.xml'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to upload rules with XML syntax error (overwrite=true) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_rules_with_syntax_error:s}"
-      params:
-        path: etc/rules/new-rules.xml
-        overwrite: True
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1113
-              id:
-                - 'etc/rules/new-rules.xml'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Upload new decoder {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_decoder:s}"
-      params:
-        path: etc/decoders/new-decoder.xml
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/decoders/new-decoder.xml'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Upload decoder (overwrite=false) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_decoder:s}"
-      params:
-        path: etc/decoders/new-decoder.xml
-        overwrite: False
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1905
-              id:
-                - 'etc/decoders/new-decoder.xml'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Upload decoder (overwrite=true) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_decoder:s}"
-      params:
-        path: etc/decoders/new-decoder.xml
-        overwrite: True
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/decoders/new-decoder.xml'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to upload decoder with XML syntax error (overwrite=true) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_decoder_with_syntax_error:s}"
-      params:
-        path: etc/decoders/new-decoder.xml
-        overwrite: True
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1113
-              id:
-                - 'etc/decoders/new-decoder.xml'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Upload new CDB list {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_cdb_list:s}"
-      params:
-        path: etc/lists/new-list
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/lists/new-list'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Upload CDB list (overwrite=false) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_cdb_list:s}"
-      params:
-        path: etc/lists/new-list
-        overwrite: False
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1905
-              id:
-                - 'etc/lists/new-list'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Upload CDB list (overwrite=true) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_cdb_list:s}"
-      params:
-        path: etc/lists/new-list
-        overwrite: True
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - 'etc/lists/new-list'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Try to upload CDB list with a syntax error (overwrite=true) {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{new_cdb_list_with_syntax_error:s}"
-      params:
-        path: etc/lists/new-list
-        overwrite: True
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1800
-              id:
-                - 'etc/lists/new-list'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload CDB list with a whitespace in the keys (overwrite=true)
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "import os #:l\nos.system('our custom payload') #:l\n"
-      params:
-        path: etc/lists/new-list2
-        overwrite: True
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1800
-              id:
-                - 'etc/lists/new-list2'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload valid rule to default ruleset {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
-      params:
-        path: ruleset/rules/0010-rules_config.xml
-        overwrite: True
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload valid decoder to default ruleset {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
-      params:
-        path: ruleset/decoders/0005-wazuh_decoders.xml
-        overwrite: True
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload invalid file to invalid path through ossec.conf path {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{invalid_file}"
-      params:
-        overwrite: True
-        path: etc/ossec.conf/../../../../../var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload invalid file to invalid path through custom rules path {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{invalid_file}"
-      params:
-        overwrite: True
-        path: etc/rules/../../../../../var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload invalid file to invalid path through custom decoders path {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{invalid_file}"
-      params:
-        overwrite: True
-        path: etc/decoders/../../../../../var/ossec/api/configuration/security/jwt_secret
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload invalid file to invalid path through lists path {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{invalid_file}"
-      params:
-        overwrite: True
-        path: etc/lists/../../../../../var/ossec/etc/client.keys
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload invalid file to invalid path through shared groups path {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{invalid_file}"
-      params:
-        overwrite: True
-        path: etc/shared/../../../../../var/ossec/api/scripts/wazuh-apid.py
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload invalid file to ruleset rules {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{invalid_file}"
-      params:
-        overwrite: True
-        path: ruleset/rules/invalid.xml
-    response:
-      status_code: 400
-
-  # PUT /cluster/{node_id}/files
-  - name: Try to upload invalid file to ruleset decoders {node_id}
-    request:
-      verify: False
-      <<: *upload_cluster_files
-      data: "{invalid_file}"
-      params:
-        overwrite: True
-        path: ruleset/decoders/invalid.xml
-    response:
-      status_code: 400
-
----
-test_name: PUT /cluster/wrong_node/files
-
-stages:
-
-  - name: Upload rules to unexisting node (overwrite=false)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
-      method: PUT
-      data: "{new_rules:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-      params:
-        path: etc/rules/new-rules.xml
-        overwrite: True
-    response: &unexisting_node
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 1
-          failed_items:
-            - error:
-                code: 1730
-              id:
-                - "unexisting-node"
-
-  - name: Upload decoder to unexisting node
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
-      method: PUT
-      data: "{new_decoder:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-      params:
-        path: etc/decoders/new-decoder.xml
-        overwrite: True
-    response:
-      <<: *unexisting_node
-
-  - name: Upload CDB list to unexisting node
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/unexisting-node/files"
-      method: PUT
-      data: "{new_cdb_list:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-      params:
-        path: etc/lists/new-list
-        overwrite: False
-    response:
-      <<: *unexisting_node
 
 ---
 test_name: GET /cluster/{node_id}/info
@@ -2704,7 +1726,17 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *unexisting_node
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "unexisting-node"
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd
@@ -2978,4 +2010,126 @@ stages:
             - 'worker2'
           failed_items: []
           total_affected_items: 3
+          total_failed_items: 0
+    delay_after: !float "{restart_delay_cluster}"
+
+---
+test_name: PUT /cluster/{node_id}/configuration
+
+stages:
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Upload a valid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'worker1'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  # GET /cluster/{node_id}/configuration
+  - name: Ensure the new config has been applied by checking a field
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an invalid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an empty configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # GET /cluster/{node_id}/configuration
+  - name: Ensure the config didn't change
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
           total_failed_items: 0

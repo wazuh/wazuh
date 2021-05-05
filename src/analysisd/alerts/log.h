@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -18,7 +18,6 @@
 #define FWDROP "drop"
 #define FWALLOW "accept"
 
-void OS_LogOutput(Eventinfo *lf);
 void OS_Log(Eventinfo *lf);
 void OS_CustomLog(const Eventinfo *lf, const char *format);
 void OS_Store(const Eventinfo *lf);

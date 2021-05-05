@@ -1,8 +1,0 @@
-**Phase 1: Completed pre-decoding.
-       full event: 'Jun 8 09:01:01 niban su(pam_unix)[1313]: session opened for user root by (uid=1342)'
-       hostname: 'melancia'
-       program_name: '(null)'
-       log: 'Jun 8 09:01:01 niban su(pam_unix)[1313]: session opened for user root by (uid=1342)'
-
-**Phase 2: Completed decoding.
-       No decoder matched.

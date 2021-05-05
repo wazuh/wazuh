@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -57,7 +57,7 @@ static const std::map<PortType, IPVersion> IPVERSION_TYPE =
     { TCP_IPV6,                            IPV6             }
 };
 
-static const std::map<int32_t, std::string> STATE_TYPE = 
+static const std::map<int32_t, std::string> STATE_TYPE =
 {
     { TCP_ESTABLISHED,                     "established"    },
     { TCP_SYN_SENT,                        "syn_sent"       },
@@ -80,7 +80,8 @@ class LinuxPortWrapper final : public IPortWrapper
     std::vector<std::string> m_remoteAddresses;
     std::vector<std::string> m_localAddresses;
     std::vector<std::string> m_queue;
-    static std::string IPv4Address(const std::string& hexRawAddress) 
+
+    static std::string IPv4Address(const std::string& hexRawAddress)
     {
         std::stringstream ss;
         in_addr addr;
@@ -91,7 +92,7 @@ class LinuxPortWrapper final : public IPortWrapper
 
     static std::string IPv6Address(const std::string& hexRawAddress)
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
 
         const auto hexAddressLength { hexRawAddress.length() };
         if (hexAddressLength == IPv6AddressHexSize)
@@ -123,7 +124,7 @@ class LinuxPortWrapper final : public IPortWrapper
     ~LinuxPortWrapper() = default;
     std::string protocol() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
 
         const auto it { PORTS_TYPE.find(m_type) };
         if (PORTS_TYPE.end() != it)
@@ -135,7 +136,7 @@ class LinuxPortWrapper final : public IPortWrapper
 
     std::string localIp() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
         if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             if (IPVERSION_TYPE.at(m_type) == IPV4)
@@ -144,7 +145,7 @@ class LinuxPortWrapper final : public IPortWrapper
             }
             else if (IPVERSION_TYPE.at(m_type) == IPV6)
             {
-                retVal = IPv6Address(m_localAddresses.at(AddressField::IP)); 
+                retVal = IPv6Address(m_localAddresses.at(AddressField::IP));
             }
         }
         return retVal;
@@ -162,7 +163,7 @@ class LinuxPortWrapper final : public IPortWrapper
     }
     std::string remoteIP() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
         if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             if (IPVERSION_TYPE.at(m_type) == IPV4)
@@ -171,7 +172,7 @@ class LinuxPortWrapper final : public IPortWrapper
             }
             else if (IPVERSION_TYPE.at(m_type) == IPV6)
             {
-                retVal = IPv6Address(m_remoteAddresses.at(AddressField::IP)); 
+                retVal = IPv6Address(m_remoteAddresses.at(AddressField::IP));
             }
         }
         return retVal;
@@ -215,7 +216,7 @@ class LinuxPortWrapper final : public IPortWrapper
     }
     std::string state() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
         const auto it { PROTOCOL_TYPE.find(m_type) };
 
         if (PROTOCOL_TYPE.end() != it && TCP == it->second)

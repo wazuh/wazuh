@@ -1,6 +1,6 @@
 /*
  * Anti-flooding mechanism
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 4, 2017
  *
  * This program is free software; you can redistribute it
@@ -18,8 +18,15 @@
 #include <windows.h>
 #endif
 
-static volatile int i = 0;
-static volatile int j = 0;
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+STATIC volatile int i = 0;
+STATIC volatile int j = 0;
 static volatile int state = NORMAL;
 
 int warn_level;
@@ -107,7 +114,7 @@ int buffer_append(const char *msg){
             break;
     }
 
-    agent_state.msg_count++;
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
 
     /* When buffer is full, event is dropped */
 
@@ -234,4 +241,19 @@ void delay(struct timespec * ts_loop) {
     struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
     time_sub(&ts_timeout, ts_loop);
     nanosleep(&ts_timeout, NULL);
+}
+
+int w_agentd_get_buffer_lenght() {
+
+    int retval = -1;
+
+    if (agt->buffer > 0) {
+        w_mutex_lock(&mutex_lock);
+        retval = (i - j) % (agt->buflength + 1);
+        w_mutex_unlock(&mutex_lock);
+
+        retval = (retval < 0) ? (retval + agt->buflength + 1) : retval;
+    }
+
+    return retval;
 }

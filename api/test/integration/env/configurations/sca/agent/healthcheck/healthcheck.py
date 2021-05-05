@@ -1,8 +1,11 @@
 import os
+import sys
+sys.path.append('/tools')
 
-output = os.system("grep -q 'sca: INFO: Security Configuration Assessment scan finished.' /var/ossec/logs/ossec.log")
+from healthcheck_utils import get_agent_health_base
 
-if output == 0:
-    exit(0)
-else:
-    exit(1)
+
+if __name__ == "__main__":
+    exit(os.system(
+        "grep -q 'sca: INFO: Security Configuration Assessment scan finished.' /var/ossec/logs/ossec.log")
+         or get_agent_health_base())

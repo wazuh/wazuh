@@ -59,12 +59,6 @@ static int test_teardown_file(void **state) {
     return 0;
 }
 
-/* Wrappers */
-
-time_t __wrap_time(time_t *t) {
-    return mock_type(time_t);
-}
-
 /* Tests */
 
 static void test_ExecdStart_ok(void **state) {

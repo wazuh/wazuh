@@ -1,5 +1,5 @@
 ** Wazuh Windows Agent **
-** Copyright (C) 2015-2020, Wazuh Inc. **
+** Copyright (C) 2015-2021, Wazuh Inc. **
 
 
 Thanks for installing the 'Wazuh Windows Agent'. Before you continue,
@@ -23,9 +23,8 @@ https://documentation.wazuh.com
 
 1- How to obtain more information
 
-You can obtain more information about OSSEC on the following links:
+You can obtain more information about WAZUH on the following links:
 https://documentation.wazuh.com
-https://www.ossec.net (OSSEC site)
 
 
 2- What this agent does
@@ -44,6 +43,6 @@ The Windows agent does the following tasks:
 3- Questions/Support
 
 Visit the following link for information on how to get help or
-support for OSSEC:
+support for WAZUH:
 
 https://wazuh.com/

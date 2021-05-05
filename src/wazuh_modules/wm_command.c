@@ -154,7 +154,7 @@ void * wm_command_main(wm_command_t * command) {
 #ifndef WIN32
     if (!command->ignore_output) {
 
-        command->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+        command->queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
         if (command->queue_fd < 0) {
             mterror(WM_COMMAND_LOGTAG, "Can't connect to queue.");

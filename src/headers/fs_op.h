@@ -1,7 +1,4 @@
-/* @(#) $Id: ./src/headers/dirtree_op.h, 2011/09/08 dcid Exp $
- */
-
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *

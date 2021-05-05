@@ -8,6 +8,7 @@
 */
 
 #include "config.h"
+#include "shared.h"
 #include "format/to_json.h"
 
 #define VERSION 1
@@ -22,6 +23,7 @@
  * @param[in] ar Active Response information.
  * @param[in] extra_args Extra arguments escaped.
  * @param[out] temp_msg Message in JSON format.
+ * @pre temp_msg is OS_MAXSTR + 1 or more bytes long.
  */
 void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg)
 {
@@ -72,25 +74,10 @@ void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, cha
     cJSON_AddItemToObject(_object, "alert", json_alert);
 
     msg = cJSON_PrintUnformatted(message);
-    strcpy(temp_msg, msg);
+    strncpy(temp_msg, msg, OS_MAXSTR);
+    temp_msg[OS_MAXSTR] = '\0';
     os_free(msg);
 
     // Clean up Memory
     cJSON_Delete(message);
-}
-
-/**
- * @return char*, remember to free memory after return.
- */
-char *get_node_name()
-{
-    char* node_name = NULL;
-    OS_XML xml;
-
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
-    if (OS_ReadXML(DEFAULTCPATH, &xml) >= 0) {
-        node_name = OS_GetOneContentforElement(&xml, xml_node);
-    }
-    OS_ClearXML(&xml);
-    return node_name;
 }

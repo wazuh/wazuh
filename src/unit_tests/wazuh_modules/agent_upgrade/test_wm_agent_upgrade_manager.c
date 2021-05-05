@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -88,7 +88,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
                       "    \"message\":\"Success\""
                       "}");
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -186,7 +186,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
                       "    \"message\":\"Success\""
                       "}");
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -285,7 +285,7 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
                       "    \"message\":\"Success\""
                       "}");
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -386,7 +386,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_result_command(void **state)
                       "    \"message\":\"Success\""
                       "}");
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -462,7 +462,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
 
     char *response = "{\"error\":25,\"message\":\"Upgrade procedure could not start\",\"data\":[{\"error\":25,\"message\":\"Upgrade procedure could not start\"}]}";
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -516,7 +516,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state
 
     sprintf(response, "{\"error\":1,\"data\":[{\"error\":1,\"message\":\"Could not parse message JSON\"}],\"message\":\"Could not parse message JSON\"}");
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -561,7 +561,7 @@ void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
     int peer = 1111;
     char *input = "Bad JSON";
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -592,7 +592,7 @@ void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
     int peer = 1111;
     char *input = "Bad JSON";
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -623,7 +623,7 @@ void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
     int peer = 1111;
     char *input = "Bad JSON";
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -655,7 +655,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
     char *input = "Bad JSON";
     errno = EINTR;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -691,7 +691,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
     char *input = "Bad JSON";
     errno = 1;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -729,7 +729,7 @@ void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
     int peer = 1111;
     char *input = "Bad JSON";
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -763,7 +763,7 @@ void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
     char *input = "Bad JSON";
     errno = EINTR;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -795,7 +795,7 @@ void test_wm_agent_upgrade_listen_messages_select_error(void **state)
     int socket = 0;
     errno = 1;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -816,13 +816,13 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
 {
     wm_manager_configs *config = *state;
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_listen_messages(config);
 }
@@ -834,13 +834,13 @@ void test_wm_agent_upgrade_start_manager_module_enabled(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_start_manager_module(config, 1);
 }
@@ -857,13 +857,13 @@ void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
 
-    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK_PATH);
+    expect_string(__wrap_OS_BindUnixDomain, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_start_manager_module(config, 0);
 }

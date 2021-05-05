@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -8,8 +8,8 @@ from unittest.mock import patch, mock_open, MagicMock
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         del sys.modules['wazuh.rbac.orm']
@@ -62,8 +62,8 @@ rule_contents = '''
 
 
 @pytest.fixture(scope='module', autouse=True)
-def mock_ossec_path():
-    with patch('wazuh.core.common.ossec_path', new=parent_directory):
+def mock_wazuh_path():
+    with patch('wazuh.core.common.wazuh_path', new=parent_directory):
         yield
 
 
@@ -85,7 +85,7 @@ def mock_rules_path():
     'random'
 ])
 @patch("wazuh.rule.configuration.get_ossec_conf", return_value=rule_ossec_conf)
-def test_get_rules_file_status_include(mock_ossec, status, func):
+def test_get_rules_files_status_include(mock_ossec, status, func):
     """Test getting rules using status filter."""
     m = mock_open(read_data=rule_contents)
     if status == 'random':
@@ -115,7 +115,7 @@ def test_get_rules_file_status_include(mock_ossec, status, func):
     ['0015-ossec_rules.xml']
 ])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_file_param(mock_config, file_, func):
+def test_get_rules_files_file_param(mock_config, file_, func):
     """Test getting rules using param filter."""
     d_files = func(filename=file_)
     assert [d_files.affected_items[0]['filename']] == file_
@@ -227,32 +227,119 @@ def test_get_requirement_invalid(mocked_config, requirement):
     assert result.total_affected_items == 0
 
 
-@pytest.mark.parametrize('file_', [
-    {'0010-rules_config.xml': str},
-    {'0015-ossec_rules.xml': str},
-    {'no_exists.xml': 1415}
+@pytest.mark.parametrize('file_, raw', [
+    ('0010-rules_config.xml', True),
+    ('0015-ossec_rules.xml', False)
 ])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_download(mock_config, file_):
-    """Test download a specified rule filter."""
-    try:
-        d_files = rule.get_file(list(file_.keys())[0])
+def test_get_rules_file(mock_config, file_, raw):
+    """Test downloading a specified rule filter."""
+    d_files = rule.get_rule_file(filename=file_, raw=raw)
+    if raw:
         assert isinstance(d_files, str)
-    except WazuhError as e:
-        assert e.code == file_[list(file_.keys())[0]]
+    else:
+        assert isinstance(d_files, AffectedItemsWazuhResult)
+        assert d_files.affected_items
+        assert not d_files.failed_items
 
 
-@pytest.mark.parametrize('file_', [
-    {'ruleset/rules/no_exists_os_error.xml': 1414},
-    {'no_exists_unk_error.xml': 1414}
+@pytest.mark.parametrize('item, file_, error_code', [
+    ([{'relative_dirname': 'ruleset/rules'}], 'no_exists_os_error.xml', 1414),
+    ([], 'no_exists_unk_error.xml', 1415)
 ])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_download_failed(mock_config, file_):
-    """Test download a specified rule filter."""
+def test_get_rules_file_failed(mock_config, item, file_, error_code):
+    """Test downloading a specified rule filter."""
     with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
-            all_msg='test', affected_items=[{'relative_dirname': list(file_.keys())[0]}])):
-        try:
-            rule.get_file(list(file_.keys())[0])
-            assert False
-        except WazuhError as e:
-            assert e.code == file_[list(file_.keys())[0]]
+            all_msg='test', affected_items=item)):
+        result = rule.get_rule_file(filename=file_)
+        assert not result.affected_items
+        assert result.render()['data']['failed_items'][0]['error']['code'] == error_code
+
+
+@patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
+    affected_items=[{'relative_dirname': 'tests/data'}]))
+def test_get_rules_file_invalid_xml(get_rules_mock):
+    """Test downloading a rule with invalid XML."""
+    result = rule.get_rule_file(filename='test_invalid_rules.xml')
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1413
+
+
+@pytest.mark.parametrize('file, overwrite', [
+    ('test.xml', False),
+    ('test_rules.xml', True),
+])
+@patch('wazuh.rule.delete_rule_file')
+@patch('wazuh.rule.upload_file')
+@patch('wazuh.core.utils.copyfile')
+@patch('wazuh.rule.remove')
+@patch('wazuh.rule.safe_move')
+@patch('wazuh.core.utils.check_remote_commands')
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file,
+                     overwrite):
+    """Test uploading a rule file.
+
+    Parameters
+    ----------
+    file : str
+        Rule filename.
+    overwrite : boolean
+        True for updating existing files, False otherwise.
+    """
+    with patch('wazuh.rule.exists', return_value=overwrite):
+        result = rule.upload_rule_file(filename=file, content='test', overwrite=overwrite)
+
+        # Assert data match what was expected, type of the result and correct parameters in delete() method.
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        rule_path = os.path.join('etc', 'rules', file)
+        assert result.affected_items[0] == rule_path, 'Expected item not found'
+        mock_xml.assert_called_once_with('test', rule_path)
+        if overwrite:
+            mock_delete.assert_called_once_with(filename=file), 'delete_rule_file method not called with expected ' \
+                                                                'parameter'
+            mock_remove.assert_called_once()
+            mock_safe_move.assert_called_once()
+
+
+@patch('wazuh.rule.delete_rule_file')
+@patch('wazuh.rule.upload_file')
+@patch('wazuh.rule.safe_move')
+@patch('wazuh.core.utils.check_remote_commands')
+def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_delete):
+    """Test exceptions on upload function."""
+    # Error when file exists and overwrite is not True
+    with patch('wazuh.rule.exists'):
+        result = rule.upload_rule_file(filename='test_rules.xml', content='test', overwrite=False)
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1905, 'Error code not expected.'
+
+    # Error when content is empty
+    result = rule.upload_rule_file(filename='no_exist.xml', content='', overwrite=False)
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1112, 'Error code not expected.'
+
+    # Error doing backup
+    with patch('wazuh.rule.exists'):
+        result = rule.upload_rule_file(filename='test_rules.xml', content='test', overwrite=True)
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1019, 'Error code not expected.'
+
+
+def test_delete_rule_file():
+    """Test deleting a rule file."""
+    with patch('wazuh.rule.exists', return_value=True):
+        # Assert returned type is AffectedItemsWazuhResult when everything is correct
+        with patch('wazuh.rule.remove'):
+            assert(isinstance(rule.delete_rule_file(filename='file'), AffectedItemsWazuhResult))
+        # Assert error code when remove() method returns IOError
+        with patch('wazuh.manager.remove', side_effect=IOError()):
+            result = rule.delete_rule_file(filename='file')
+            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1907, 'Error code not expected.'
+
+    # Assert error code when exists() method returns False
+    with patch('wazuh.manager.exists', return_value=False):
+        result = rule.delete_rule_file(filename='file')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1906, 'Error code not expected.'

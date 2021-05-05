@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -38,7 +38,7 @@ public:
         port["inode"] = m_spPortRawData->inode();
         port["state"] = m_spPortRawData->state();
         port["pid"] = m_spPortRawData->pid();
-        port["process_name"] = m_spPortRawData->processName();
+        port["process"] = m_spPortRawData->processName();
     }
 };
 #endif // _PORT_IMPL_H

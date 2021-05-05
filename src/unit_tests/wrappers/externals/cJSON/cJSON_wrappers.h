@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -96,5 +96,7 @@ cJSON * __wrap_cJSON_GetArrayItem(const cJSON *array, int index);
 extern cJSON * __real_cJSON_GetArrayItem(const cJSON *array, int index);
 
 cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse);
+
+cJSON* __wrap_cJSON_AddBoolToObject(cJSON * const object, const char * const name, const cJSON_bool boolean);
 
 #endif

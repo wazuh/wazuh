@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for remote key requests
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -87,8 +87,8 @@ void * wm_key_request_main(wm_krequest_t * data) {
     /* Init the queue input */
     request_queue = queue_init(data->queue_size);
 
-    if ((sock = StartMQ(WM_KEY_REQUEST_SOCK_PATH, READ, 0)) < 0) {
-        merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK_PATH, strerror(errno));
+    if ((sock = StartMQ(WM_KEY_REQUEST_SOCK, READ, 0)) < 0) {
+        merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK, strerror(errno));
         pthread_exit(NULL);
     }
 

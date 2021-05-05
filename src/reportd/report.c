@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,11 +11,11 @@
 #include "shared.h"
 
 /* Prototypes */
-static void help_reportd(void) __attribute__((noreturn));
+static void help_reportd(char * home_path) __attribute__((noreturn));
 
 
 /* Print help statement */
-static void help_reportd()
+static void help_reportd(char * home_path)
 {
     print_header();
     print_out("  Generate reports (via stdin)");
@@ -30,7 +30,7 @@ static void help_reportd()
     print_out("    -s          Show the alert dump");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out("    -f <filter> <value> Filter the results");
     print_out("    -r <filter> <value> Show related entries");
     print_out("    Filters allowed: group, rule, level, location,");
@@ -40,6 +40,7 @@ static void help_reportd()
     print_out("     -f level 10 (to filter on level >= 10)");
     print_out("     -f group authentication -r user srcip (to show srcip for all users)");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -48,7 +49,6 @@ int main(int argc, char **argv)
     int c, test_config = 0;
     uid_t uid;
     gid_t gid;
-    const char *dir  = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
 
@@ -61,6 +61,8 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    char * home_path = w_homedir(argv[0]);
 
     r_filter.group = NULL;
     r_filter.rule = NULL;
@@ -88,7 +90,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_reportd();
+                help_reportd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -141,7 +143,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 't':
                 test_config = 1;
@@ -150,14 +153,13 @@ int main(int argc, char **argv)
                 r_filter.show_alerts = 1;
                 break;
             default:
-                help_reportd();
+                help_reportd(home_path);
                 break;
         }
 
     }
 
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
@@ -177,8 +179,8 @@ int main(int argc, char **argv)
     }
 
     /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
 
@@ -187,7 +189,9 @@ int main(int argc, char **argv)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

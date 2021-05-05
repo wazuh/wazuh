@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -76,21 +76,12 @@ char *os_read_agent_name()
 
     mdebug2("Calling os_read_agent_name().");
 
-    if (isChroot()) {
-        fp = fopen(AGENT_INFO_FILE, "r");
-    } else {
-        fp = fopen(AGENT_INFO_FILEP, "r");
-    }
+    fp = fopen(AGENT_INFO_FILE, "r");
 
     /* We give 1 second for the file to be created */
     if (!fp) {
         sleep(1);
-
-        if (isChroot()) {
-            fp = fopen(AGENT_INFO_FILE, "r");
-        } else {
-            fp = fopen(AGENT_INFO_FILEP, "r");
-        }
+        fp = fopen(AGENT_INFO_FILE, "r");
     }
 
     if (!fp) {
@@ -200,15 +191,9 @@ char *os_read_agent_profile()
     FILE *fp;
 
     mdebug2("Calling os_read_agent_profile().");
-
-    if (isChroot()) {
-        fp = fopen(AGENT_INFO_FILE, "r");
-    } else {
-        fp = fopen(AGENT_INFO_FILEP, "r");
-    }
+    fp = fopen(AGENT_INFO_FILE, "r");
 
     if (!fp) {
-        mdebug2("Failed to open file. Errno=%d.", errno);
         merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
@@ -243,9 +228,9 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 {
     FILE *fp;
 
-    fp = fopen(isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, "w");
+    fp = fopen(AGENT_INFO_FILE, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, isChroot() ? AGENT_INFO_FILE : AGENT_INFO_FILEP, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (0);
     }
 
@@ -260,13 +245,14 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     return (1);
 }
 
+#ifndef CLIENT
 /* Read group. Returns 0 on success or -1 on failure. */
 int get_agent_group(const char *id, char *group, size_t size) {
     char path[PATH_MAX];
     int result = 0;
     FILE *fp;
 
-    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
+    if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", id) >= PATH_MAX) {
         merror("At get_agent_group(): file path too large for agent '%s'.", id);
         return -1;
     }
@@ -291,15 +277,13 @@ int get_agent_group(const char *id, char *group, size_t size) {
     return result;
 }
 
-#ifndef CLIENT
-
 /* Set agent group. Returns 0 on success or -1 on failure. */
 int set_agent_group(const char * id, const char * group) {
     char path[PATH_MAX];
     FILE *fp;
     mode_t oldmask;
 
-    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", id) >= PATH_MAX) {
+    if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", id) >= PATH_MAX) {
         merror("At set_agent_group(): file path too large for agent '%s'.", id);
         return -1;
     }
@@ -325,8 +309,6 @@ int set_agent_group(const char * id, const char * group) {
     return 0;
 }
 
-#endif
-
 int set_agent_multigroup(char * group){
     int oldmask;
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
@@ -351,18 +333,14 @@ int set_agent_multigroup(char * group){
     char _hash[9] = {0};
 
     strncpy(_hash,multi_group_hash,8);
-    snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR,_hash);
+    snprintf(multigroup_path, PATH_MAX, "%s/%s" , MULTIGROUPS_DIR, _hash);
     DIR *dp;
     dp = opendir(multigroup_path);
 
     if(!dp){
         if (errno == ENOENT) {
             oldmask = umask(0002);
-#ifndef WIN32
             int retval = mkdir(multigroup_path, 0770);
-#else
-            int retval = mkdir(multigroup_path);
-#endif
             umask(oldmask);
 
             if (retval == -1) {
@@ -379,7 +357,6 @@ int set_agent_multigroup(char * group){
     return 0;
 }
 
-#ifndef WIN32
 /* Create multigroup dir. Returns 0 on success or -1 on failure. */
 int create_multigroup_dir(const char * multigroup) {
     char path[PATH_MAX];
@@ -391,7 +368,7 @@ int create_multigroup_dir(const char * multigroup) {
     }
     mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
 
-    if (snprintf(path, PATH_MAX, isChroot() ? MULTIGROUPS_DIR "/%s" : DEFAULTDIR MULTIGROUPS_DIR "/%s", multigroup) >= PATH_MAX) {
+    if (snprintf(path, PATH_MAX, MULTIGROUPS_DIR "/%s", multigroup) >= PATH_MAX) {
         merror("At create_multigroup_dir(): path too large for multigroup '%s'.", multigroup);
         return -1;
     }
@@ -426,65 +403,7 @@ int create_multigroup_dir(const char * multigroup) {
 }
 #endif
 
-/*
- * Parse manager hostname from agent-info file.
- * If no such file, returns NULL.
- */
-
-char* hostname_parse(const char *path) {
-    char buffer[OS_MAXSTR];
-    char *key;
-    char *value;
-    char *end;
-    char *manager_hostname;
-    FILE *fp;
-
-    if (!(fp = fopen(path, "r"))) {
-        if (errno == ENOENT) {
-            mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
-        } else {
-            merror(FOPEN_ERROR, path, errno, strerror(errno));
-        }
-
-        return NULL;
-    }
-
-    os_calloc(OS_MAXSTR, sizeof(char), manager_hostname);
-
-    while (fgets(buffer, OS_MAXSTR, fp)) {
-        switch (*buffer) {
-        case '#':
-            if (buffer[1] == '\"') {
-                key = buffer + 2;
-            } else {
-                continue;
-            }
-
-            break;
-        default:
-            continue;
-        }
-
-        if (!(value = strstr(key, "\":"))) {
-            continue;
-        }
-
-        *value = '\0';
-        value += 2;
-
-        if (end = strchr(value, '\n'), !end) {
-            continue;
-        }
-
-        snprintf(manager_hostname, OS_MAXSTR - 1, "%s", value);
-    }
-
-    fclose(fp);
-    return manager_hostname;
-}
-
-
-int w_validate_group_name(const char *group, char *response){
+int w_validate_group_name(const char *group, char *response) {
 
     unsigned int i = 0;
     char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";
@@ -606,12 +525,13 @@ int w_validate_group_name(const char *group, char *response){
     return 0;
 }
 
+#ifndef CLIENT
 void w_remove_multigroup(const char *group){
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
 
     if(multigroup){
-        sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
+        sprintf(path, "%s", GROUPS_DIR);
 
         if(wstr_find_in_folder(path,group,1) < 0){
             /* Remove the DIR */
@@ -624,7 +544,7 @@ void w_remove_multigroup(const char *group){
 
             strncpy(_hash,multi_group_hash,8);
 
-            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : DEFAULTDIR MULTIGROUPS_DIR,_hash);
+            sprintf(path, "%s/%s", MULTIGROUPS_DIR, _hash);
 
             if (rmdir_ex(path) != 0) {
                 mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
@@ -632,11 +552,12 @@ void w_remove_multigroup(const char *group){
         }
     }
 }
+#endif
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect() {
 #ifndef WIN32
-    return OS_ConnectUnixDomain(isChroot() ? AUTH_LOCAL_SOCK : AUTH_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+    return OS_ConnectUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 #else
     return -1;
 #endif
@@ -846,11 +767,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
     int result = 0;
     int response_length = 0;
 
-    if (isChroot()) {
-        strcpy(sockname, CLUSTER_SOCK);
-    } else {
-        strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
-    }
+    strcpy(sockname, CLUSTER_SOCK);
 
     if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
         if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
@@ -991,12 +908,12 @@ char * get_agent_id_from_name(const char *agent_name) {
     os_calloc(PATH_MAX,sizeof(char),path);
     os_calloc(OS_SIZE_65536 + 1,sizeof(char),buffer);
 
-    snprintf(path,PATH_MAX,"%s",isChroot() ? KEYS_FILE : KEYSFILE_PATH);
+    snprintf(path,PATH_MAX,"%s", KEYS_FILE);
 
-    fp = fopen(path,"r");
+    fp = fopen(path, "r");
 
     if(!fp) {
-        mdebug1("Couldnt open file '%s'",path);
+        mdebug1("Couldnt open file '%s'", KEYS_FILE);
         os_free(path);
         os_free(buffer);
         return NULL;
@@ -1049,7 +966,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 /* Connect to the control socket if available */
 #if defined (__linux__) || defined (__MACH__) || defined(sun)
 int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(CONTROL_SOCK_PATH, SOCK_STREAM, OS_SIZE_128);
+    int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
 
     if (sock < 0) {
         return -1;

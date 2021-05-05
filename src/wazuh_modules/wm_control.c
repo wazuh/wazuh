@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent control
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January, 2019
  *
  * This program is free software; you can redistribute it
@@ -80,32 +80,37 @@ char* getPrimaryIP(){
 #if defined __linux__ || defined __MACH__
     cJSON *object;
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
-        sysinfo_network_ptr(&object);
-        if (object) {
-            const cJSON *iface = cJSON_GetObjectItem(object, "iface");
-            if (iface) {
-                const int size_ids = cJSON_GetArraySize(iface);
-                for (int i = 0; i < size_ids; i++){
-                    const cJSON *element = cJSON_GetArrayItem(iface, i);
-                    if(!element) {
-                        continue;
-                    }
-                    cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                    if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
-                        const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
-                        if (!ipv4) {
+        const int error_code = sysinfo_network_ptr(&object);
+        if (error_code == 0) {
+            if (object) {
+                const cJSON *iface = cJSON_GetObjectItem(object, "iface");
+                if (iface) {
+                    const int size_ids = cJSON_GetArraySize(iface);
+                    for (int i = 0; i < size_ids; i++){
+                        const cJSON *element = cJSON_GetArrayItem(iface, i);
+                        if(!element) {
                             continue;
                         }
-                        cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                        if (address && cJSON_GetStringValue(address))
-                        {
-                            os_strdup(address->valuestring, agent_ip);
-                            break;
+                        cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
+                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                            const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
+                            if (!ipv4) {
+                                continue;
+                            }
+                            cJSON *address = cJSON_GetObjectItem(ipv4, "address");
+                            if (address && cJSON_GetStringValue(address))
+                            {
+                                os_strdup(address->valuestring, agent_ip);
+                                break;
+                            }
                         }
                     }
                 }
+                sysinfo_free_result_ptr(&object);
             }
-            sysinfo_free_result_ptr(&object);
+        }
+        else {
+            mterror(WM_CONTROL_LOGTAG, "Unable to get system network information. Error code: %d.", error_code);
         }
     }
 #elif defined sun
@@ -186,7 +191,7 @@ void *wm_control_main(){
         sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
         sysinfo_network_ptr = so_get_function_sym(sysinfo_module, "sysinfo_networks");
     }
-    
+
     send_ip();
 
     return NULL;
@@ -224,7 +229,7 @@ void *send_ip(){
     ssize_t length;
     fd_set fdset;
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
         return NULL;
     }

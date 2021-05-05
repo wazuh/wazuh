@@ -474,7 +474,7 @@ stages:
       status_code: 200
 
 ---
-test_name: PUT /security/users/{username}
+test_name: PUT /security/users/{user_id}
 
 stages:
 
@@ -494,7 +494,6 @@ stages:
       <<: *put_users_request
       json:
         password: "new_user"
-        allow_run_as: true
     response:
       status_code: 400
 
@@ -504,7 +503,6 @@ stages:
       <<: *put_users_request
       json:
         password: "new_user2A!"
-        allow_run_as: true
     response:
       status_code: 200
       json:
@@ -513,7 +511,7 @@ stages:
           affected_items:
             - id: 103
               username: python
-              allow_run_as: true
+              allow_run_as: false
           total_affected_items: 1
 
   - name: Update an non-existent user
@@ -525,7 +523,6 @@ stages:
       method: PUT
       json:
         password: "new_user1A"
-        allow_run_as: false
     response:
       status_code: 200
       json:
@@ -554,7 +551,7 @@ stages:
       verify: False
       <<: *put_users_request
       json:
-        allow_run_as: false
+        password: "new_pa55worD!"
     response:
       status_code: 200
       json:
@@ -564,6 +561,67 @@ stages:
             - username: python
               allow_run_as: false
           total_affected_items: 1
+
+
+---
+test_name: PUT /security/users/{user_id}/run_as
+
+stages:
+
+  - name: Update user's allow_run_as flag
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/103/run_as"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      params:
+        allow_run_as: True
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: 103
+              username: python
+              allow_run_as: true
+          total_affected_items: 1
+
+  - name: Update user's allow_run_as flag (invalid_user)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/INVALID/run_as"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      params:
+        allow_run_as: True
+    response:
+      status_code: 400
+
+  - name: Update user's allow_run_as flag (nonexistent user)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/999/run_as"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      params:
+        allow_run_as: True
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: [ ]
+          failed_items:
+            - error:
+                code: 5001
+              id:
+                - 999
+          total_affected_items: 0
+          total_failed_items: 1
 
 ---
 test_name: PUT /security/config

@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 26, 2018.
  *
  * This program is free software; you can redistribute it
@@ -97,11 +97,7 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
     fd_set fdset;
     char socket_path[PATH_MAX + 1] = {0};
 
-    snprintf(socket_path,PATH_MAX,"%s",DEFAULTDIR MAIL_LOCAL_SOCK);
-
-    if(isChroot()){
-        snprintf(socket_path,PATH_MAX,"%s",MAIL_LOCAL_SOCK);
-    }
+    snprintf(socket_path,PATH_MAX,"%s", MAIL_LOCAL_SOCK);
 
     mdebug1("Local requests thread ready");
 

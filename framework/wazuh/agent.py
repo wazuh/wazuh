@@ -1,27 +1,26 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import hashlib
-import logging
 import operator
 from os import chmod, path, listdir
 from shutil import copyfile
+from typing import Union
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, \
-    Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding
+from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
+    WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
-logger = logging.getLogger('wazuh')
-
-cluster_enabled = not read_cluster_config()['disabled']
+cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
@@ -115,6 +114,45 @@ def get_agents_summary_os(agent_list=None):
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
         result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1757]})
+def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
+    """Force reconnect a list of agents.
+
+    Parameters
+    ----------
+    agent_list : Union[list, str]
+        List of agent IDs. All possible values from 000 onwards. Default `*`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(all_msg='Force reconnect command was sent to all agents',
+                                      some_msg='Force reconnect command was not sent to some agents',
+                                      none_msg='Force reconnect command was not sent to any agent'
+                                      )
+
+    system_agents = get_agents_info()
+    wq = WazuhQueue(common.ARQUEUE)
+    for agent_id in agent_list:
+        try:
+            if agent_id not in system_agents:
+                raise WazuhResourceNotFound(1701)
+            if agent_id == "000":
+                raise WazuhError(1703)
+            Agent(agent_id).reconnect(wq)
+            result.affected_items.append(agent_id)
+        except WazuhException as e:
+            result.add_failed_item(id_=agent_id, error=e)
+    wq.close()
+
+    result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=int)
 
     return result
 
@@ -260,19 +298,29 @@ def get_agents_keys(agent_list=None):
 
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def delete_agents(agent_list=None, backup=False, purge=False, status=None, older_than="7d", use_only_authd=False):
-    """Deletes a list of agents.
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
+def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=False, filters=None, q=None):
+    """Delete a list of agents.
 
-    :param agent_list: List of agents ID's.
-    :param backup: Create backup before removing the agent.
-    :param purge: Delete definitely from key store.
-    :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
-    "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
-    :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
-    by commas.
-    :param use_only_authd: Force the use of authd when adding and removing agents.
-    :return: AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's to be deleted.
+    backup : bool
+        Create backup before removing the agent.
+    purge : bool
+        Delete definitely from key store.
+    use_only_authd : bool
+        Force the use of authd when adding and removing agents.
+    filters : dict
+        Define required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    q : str
+        Define query to filter in DB.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Result with affected agents.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected agents were deleted',
                                       some_msg='Some agents were not deleted',
@@ -280,11 +328,10 @@ def delete_agents(agent_list=None, backup=False, purge=False, status=None, older
                                       )
     if agent_list:
         system_agents = get_agents_info()
-        filters = {'older_than': older_than, 'status': status}
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
                                         filters=filters)
 
-        db_query = WazuhDBQueryAgents(limit=None, select=["id"], **rbac_filters)
+        db_query = WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters)
         data = db_query.run()
         can_purge_agents = list(map(operator.itemgetter('id'), data['items']))
         for agent_id in agent_list:
@@ -293,22 +340,23 @@ def delete_agents(agent_list=None, backup=False, purge=False, status=None, older
                     raise WazuhError(1703)
                 elif agent_id not in system_agents:
                     raise WazuhResourceNotFound(1701)
+                elif agent_id not in can_purge_agents:
+                    raise WazuhError(
+                        1731,
+                        extra_message="some of the requirements are not met -> {}".format(
+                            ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                            (f', q: {q}' if q else '')
+                        )
+                    )
                 else:
                     my_agent = Agent(agent_id)
                     my_agent.load_info_from_db()
-                    if agent_id not in can_purge_agents:
-                        raise WazuhError(
-                            1731,
-                            extra_message="The agent has a status different to '{0}' or the specified time "
-                                          "frame 'older_than {1}' does not apply".format(status, older_than)
-                        )
                     my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
                     result.affected_items.append(agent_id)
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
-        result['older_than'] = older_than
 
     return result
 
@@ -463,7 +511,7 @@ def create_group(group_id):
     try:
         mkdir_with_mode(group_path)
         copyfile(group_def_path, path.join(group_path, 'agent.conf'))
-        chown_r(group_path, common.ossec_uid(), common.ossec_gid())
+        chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)
         msg = f"Group '{group_id}' created."
@@ -721,9 +769,9 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     -------
     ID of created tasks
     """
-    result = AffectedItemsWazuhResult(all_msg='All upgrade tasks have been created',
-                                      some_msg='Some upgrade tasks have been created',
-                                      none_msg='No upgrade task has been created',
+    result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were created',
+                                      some_msg='Some upgrade tasks were not created',
+                                      none_msg='No upgrade task was created',
                                       sort_fields=['agent'], sort_ascending='True')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
@@ -771,9 +819,9 @@ def get_upgrade_result(agent_list=None):
     -------
     Upgrade result.
     """
-    result = AffectedItemsWazuhResult(all_msg='All agents have been updated',
-                                      some_msg='Some agents have not been updated',
-                                      none_msg='No agent has been updated')
+    result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were returned',
+                                      some_msg='Some upgrade tasks were not returned',
+                                      none_msg='No upgrade task was returned')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
     agents_result_chunks = [agent_list[x:x + 100] for x in range(0, len(agent_list), 100)]

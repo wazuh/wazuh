@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -51,7 +51,7 @@ def load_decoders_from_file(decoder_file, decoder_path, decoder_status):
     try:
         decoders = list()
         position = 0
-        root = load_wazuh_xml(os.path.join(common.ossec_path, decoder_path, decoder_file))
+        root = load_wazuh_xml(os.path.join(common.wazuh_path, decoder_path, decoder_file))
 
         for xml_decoder in list(root):
             # New decoder

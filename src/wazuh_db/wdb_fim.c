@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "helpers/wdb_global_helpers.h"
 
 static const char *SQL_INSERT_EVENT = "INSERT INTO fim_event (id_file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes) VALUES (?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'), ?, ?, ?);";
 static const char *SQL_INSERT_FILE = "INSERT INTO fim_file (path, type) VALUES (?, ?);";
@@ -200,6 +201,11 @@ int wdb_delete_fim(int id) {
 
     if (!name)
         return -1;
+
+    if (*name == '\0') {
+        free(name);
+        return -1;
+    }
 
     db = wdb_open_agent(id, name);
     free(name);
@@ -509,6 +515,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         return -1;
     }
 
+    cJSON * version = cJSON_GetObjectItem(data, "version");
+
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
@@ -532,8 +540,18 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         item_type = "registry_key";
     } else if (strncmp(item_type, "registry_", 9) == 0) {
         int full_path_length;
-        char *path_escaped = wstr_replace(path, ":", "::");
+        char *path_escaped_slahes;
+        char *path_escaped;
 
+        if (!cJSON_IsNumber(version)) {
+            // Synchronization messages without the "version" attribute are ignored, but won't trigger any error
+            // message.
+            return 0;
+        }
+
+        path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
+        path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
+        os_free(path_escaped_slahes);
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
 
         if (arch == NULL) {
@@ -550,6 +568,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
             snprintf(full_path, full_path_length + 1, "%s %s:", arch, path_escaped);
         } else if (strcmp(item_type + 9, "value") == 0) {
+            char *value_name_escaped_slashes;
             char *value_name_escaped;
             value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
 
@@ -559,7 +578,9 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 return -1;
             }
 
-            value_name_escaped = wstr_replace(value_name, ":", "::");
+            value_name_escaped_slashes = wstr_replace(value_name, "\\", "\\\\");
+            value_name_escaped = wstr_replace(value_name_escaped_slashes, ":", "\\:");
+            os_free(value_name_escaped_slashes);
 
             full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
 

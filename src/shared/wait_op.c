@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -22,12 +22,7 @@ void os_setwait()
 
     /* For same threads */
     __wait_lock = 1;
-
-    if (isChroot()) {
-        fp = fopen(WAIT_FILE, "w");
-    } else {
-        fp = fopen(WAIT_FILE_PATH, "w");
-    }
+    fp = fopen(WAIT_FILE, "w");
 
     if (fp) {
         fprintf(fp, "l");
@@ -41,12 +36,8 @@ void os_setwait()
 void os_delwait()
 {
     __wait_lock = 0;
+    unlink(WAIT_FILE);
 
-    if (isChroot()) {
-        unlink(WAIT_FILE);
-    } else {
-        unlink(WAIT_FILE_PATH);
-    }
     return;
 }
 
@@ -100,16 +91,9 @@ void os_wait()
     static int just_unlocked = 0;
 
     /* If the wait file is not present, keep going */
-    if (isChroot()) {
-        if (stat(WAIT_FILE, &file_status) == -1) {
-            just_unlocked = 1;
-            return;
-        }
-    } else {
-        if (stat(WAIT_FILE_PATH, &file_status) == -1) {
-            just_unlocked = 1;
-            return;
-        }
+    if (stat(WAIT_FILE, &file_status) == -1) {
+        just_unlocked = 1;
+        return;
     }
 
     /* Wait until the lock is gone */
@@ -120,14 +104,8 @@ void os_wait()
     }
 
     while (1) {
-        if (isChroot()) {
-            if (stat(WAIT_FILE, &file_status) == -1) {
-                break;
-            }
-        } else {
-            if (stat(WAIT_FILE_PATH, &file_status) == -1) {
-                break;
-            }
+        if (stat(WAIT_FILE, &file_status) == -1) {
+            break;
         }
 
         /* Sleep LOCK_LOOP seconds and check if lock is gone */
@@ -151,7 +129,7 @@ void os_wait()
 
 bool os_iswait() {
 #ifndef WIN32
-    return IsFile(isChroot() ? WAIT_FILE : WAIT_FILE_PATH) == 0;
+    return IsFile(WAIT_FILE) == 0;
 #else
     return __wait_lock;
 #endif

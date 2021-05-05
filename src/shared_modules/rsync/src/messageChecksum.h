@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 10, 2020.
  *
  * This program is free software; you can redistribute it
@@ -34,7 +34,7 @@ namespace RSync
         // LCOV_EXCL_STOP
         void send(const ResultCallback callback, const nlohmann::json& config, const SplitContext& data) override
         {
-            
+
             const auto& it { IntegrityCommands.find(data.type)};
             if (IntegrityCommands.end() != it)
             {

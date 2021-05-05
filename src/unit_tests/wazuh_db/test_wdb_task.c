@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November, 2020.
  *
  * This program is free software; you can redistribute it
@@ -47,12 +47,6 @@ static int test_teardown(void **state){
     os_free(data->wdb);
     os_free(data);
     return 0;
-}
-
-// Wrappers
-
-time_t __wrap_time(time_t *__timer) {
-    return mock();
 }
 
 

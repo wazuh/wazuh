@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -533,19 +533,12 @@ float DirSize(const char *path) {
     return folder_size;
 }
 
-#endif
-
 int CreatePID(const char *name, int pid)
 {
     char file[256];
     FILE *fp;
 
-    if (isChroot()) {
-        snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
-    } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
-                 OS_PIDFILE, name, pid);
-    }
+    snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
 
     fp = fopen(file, "a");
     if (!fp) {
@@ -592,17 +585,11 @@ char *GetRandomNoise()
     }
 }
 
-
 int DeletePID(const char *name)
 {
-    char file[256];
+    char file[256] = {'\0'};
 
-    if (isChroot()) {
-        snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, (int)getpid());
-    } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
-                 OS_PIDFILE, name, (int)getpid());
-    }
+    snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, (int)getpid());
 
     if (File_DateofChange(file) < 0) {
         return (-1);
@@ -615,7 +602,7 @@ int DeletePID(const char *name)
 
     return (0);
 }
-
+#endif
 
 void DeleteState() {
     char path[PATH_MAX + 1];
@@ -624,7 +611,7 @@ void DeleteState() {
 #ifdef WIN32
         snprintf(path, sizeof(path), "%s.state", __local_name);
 #else
-        snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+        snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
 #endif
         unlink(path);
     } else {
@@ -1174,11 +1161,6 @@ void goDaemonLight()
 
     dup2(1, 2);
 
-    /* Go to / */
-    if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, "/", errno, strerror(errno));
-    }
-
     nowDaemon();
 }
 
@@ -1218,11 +1200,6 @@ void goDaemon()
         dup2(fd, 2);
 
         close(fd);
-    }
-
-    /* Go to / */
-    if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, "/", errno, strerror(errno));
     }
 
     nowDaemon();
@@ -1278,7 +1255,7 @@ end:
 time_t get_UTC_modification_time(const char *file){
     HANDLE hdle;
     FILETIME modification_date;
-    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
+    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
         hdle == INVALID_HANDLE_VALUE) {
         mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
         return 0;
@@ -3357,5 +3334,58 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
     }
 
     return result;
+}
+#endif
+
+#ifndef WIN32
+/**
+ * @brief Get the Wazuh installation directory
+ *
+ * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ *
+ * @param arg ARGV0 - Program name
+ * @return Pointer to the Wazuh installation path on success
+ */
+char *w_homedir(char *arg) {
+    char *buff = NULL;
+    struct stat buff_stat;
+    char * delim = "/bin";
+    os_calloc(PATH_MAX, sizeof(char), buff);
+#ifdef __MACH__
+    pid_t pid = getpid();
+    if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+#else
+    if (realpath("/proc/self/exe", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+    else if (realpath("/proc/curproc/file", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+    else if (realpath("/proc/self/path/a.out", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+#endif
+    else if (realpath(arg, buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
+    } else {
+        // The path was not found so read WAZUH_HOME env var
+        char * home_env = NULL;
+        if (home_env = getenv(WAZUH_HOME_ENV), home_env) {
+            snprintf(buff, PATH_MAX, "%s", home_env);
+        }
+    }
+
+    if ((stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
+        os_free(buff);
+        merror_exit(HOME_ERROR);
+    }
+
+    return buff;
 }
 #endif

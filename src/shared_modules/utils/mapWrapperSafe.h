@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 18, 2020.
  *
  * This program is free software; you can redistribute it
@@ -17,7 +17,7 @@
 namespace Utils
 {
     template<typename Key, typename Value>
-    class MapWrapperSafe final 
+    class MapWrapperSafe final
     {
         std::map<Key, Value> m_map;
         std::mutex m_mutex;
@@ -29,7 +29,7 @@ namespace Utils
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_map.emplace(key, value);
-        } 
+        }
 
         Value operator[](const Key& key)
         {

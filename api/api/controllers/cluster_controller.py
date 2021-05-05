@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -6,18 +6,18 @@ import datetime
 import logging
 
 from aiohttp import web
+from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
 import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api import configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.models.configuration_model import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -210,18 +210,37 @@ async def get_info_node(request, node_id, pretty=False, wait_for_complete=False)
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_configuration_node(request, node_id, pretty=False, wait_for_complete=False, section=None, field=None):
+async def get_configuration_node(request, node_id, pretty=False, wait_for_complete=False, section=None, field=None,
+                                 raw: bool = False):
     """Get a specified node's configuration (ossec.conf)
 
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param section: Indicates the wazuh configuration section
-    :param field: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name
+    pretty : bool
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+    wait_for_complete : bool, optional
+        Disable response timeout or not. Default `False`
+    section : str
+        Indicates the wazuh configuration section
+    field : str
+        Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+    raw : bool, optional
+        Whether to return the file content in raw or JSON format. Default `True`
+
+    Returns
+    -------
+    web.json_response or ConnexionResponse
+        Depending on the `raw` parameter, it will return an object or other:
+            raw=True            -> ConnexionResponse (application/xml)
+            raw=False (default) -> web.json_response (application/json)
+        If any exception was raised, it will return a web.json_response with details.
     """
     f_kwargs = {'node_id': node_id,
                 'section': section,
-                'field': field}
+                'field': field,
+                'raw': raw}
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=manager.read_ossec_conf,
@@ -235,7 +254,11 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    if isinstance(data, AffectedItemsWazuhResult):
+        response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    else:
+        response = ConnexionResponse(body=data["message"], mimetype='application/xml', content_type='application/xml')
+    return response
 
 
 async def get_stats_node(request, node_id, pretty=False, wait_for_complete=False, date=None):
@@ -442,93 +465,6 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
-    """Get file contents from a specified node in the cluster.
-
-    :param node_id: Cluster node name.
-    :param path: Filepath to return.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'node_id': node_id,
-                'path': path}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.get_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def put_files_node(request, body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
-    """Upload file contents in a specified cluster node.
-
-    :param body: Body request with the content of the file to be uploaded
-    :param node_id: Cluster node name
-    :param path: Filepath to upload the new file
-    :param overwrite: If set to false, an exception will be raised when uploading an already existing filename.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-
-    # parse body to utf-8
-    Body.validate_content_type(request, expected_content_type='application/octet-stream')
-    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
-
-    f_kwargs = {'node_id': node_id,
-                'path': path,
-                'overwrite': overwrite,
-                'content': parsed_body}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.upload_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def delete_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
-    """Removes a file in a specified cluster node.
-
-    :param node_id: Cluster node name.
-    :param path: Filepath to delete.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'node_id': node_id,
-                'path': path}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.delete_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
 async def get_api_config(request, pretty=False, wait_for_complete=False, nodes_list='*'):
     """Get active API configuration in manager or local_node.
 
@@ -620,6 +556,38 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=manager.get_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def update_configuration(request, node_id, body,  pretty=False, wait_for_complete=False):
+    """Update Wazuh configuration (ossec.conf) in node node_id.
+
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+    wait_for_complete : bool, optional
+        Disable response timeout or not. Default `False`
+    """
+    # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
+
+    f_kwargs = {'node_id': node_id,
+                'new_conf': parsed_body}
+
+    nodes = raise_if_exc(await get_system_nodes())
+    dapi = DistributedAPI(f=manager.update_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

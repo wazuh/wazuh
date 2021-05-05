@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 5, 2020.
  *
  * This program is free software; you can redistribute it
@@ -24,7 +24,7 @@ namespace RSync
         CHECKSUM,
         ROW_DATA
     };
-    
+
     template <class Type, MessageType mType>
     class FactoryMessageCreator final
     {
@@ -56,7 +56,7 @@ namespace RSync
         {
             return std::make_shared<MessageRowData<Type>>();
         }
-    };    
+    };
 }// namespace RSync
 
 #endif // _MESSAGE_CREATOR_FACTORY_H

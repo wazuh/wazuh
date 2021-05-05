@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 8, 2020.
  *
  * This program is free software; you can redistribute it
@@ -21,7 +21,7 @@ namespace RSync
         int32_t id;
     };
 
-    class IMessageDecoder 
+    class IMessageDecoder
     {
     public:
         // LCOV_EXCL_START

@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -278,7 +278,7 @@ char *get_user(int uid);
  * @param gid The group ID
  * @return The group name on success, an empty string on failure
  */
-const char *get_group(int gid);
+char *get_group(int gid);
 
 
 #else
@@ -356,7 +356,7 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
  *
  * @return The group name on success, an empty string on failure
  */
-const char *get_group(__attribute__((unused)) int gid);
+char *get_group(__attribute__((unused)) int gid);
 
 /**
  * @brief Retrieves the group name and gid of a registry key.

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -9,6 +9,12 @@
  */
 
 #include "rules_op.h"
+
+/* Change path for test rule */
+#ifdef TESTRULE
+#undef RULEPATH
+#define RULEPATH "ruleset/rules/"
+#endif
 
 /* Prototypes */
 static int _OS_GetRulesAttributes(char **attributes,
@@ -703,7 +709,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
-                } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 || 
+                } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 ||
                            strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                     config_ruleinfo->different_field |= FIELD_ID;
 
@@ -771,7 +777,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_different_user) == 0 ||
-                           strcasecmp(rule_opt[k]->element, 
+                           strcasecmp(rule_opt[k]->element,
                                       xml_notsame_user) == 0) {
                     config_ruleinfo->different_field |= FIELD_USER;
 
@@ -787,7 +793,7 @@ int OS_ReadXMLRules(const char *rulefile,
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                    } 
+                    }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_global_frequency) == 0) {
                     config_ruleinfo->context_opts |= FIELD_GFREQUENCY;
@@ -1000,8 +1006,16 @@ int OS_ReadXMLRules(const char *rulefile,
                 k++;
             }
 
+            /* Check for valid overwrite */
+            if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
+                && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
+                merror("Invalid use of overwrite option. "
+                       "Could not overwrite parent rule at rule '%d'.", config_ruleinfo->sigid);
+                goto cleanup;
+            }
+
             /* Check for a valid use of frequency */
-            if ((config_ruleinfo->context_opts || config_ruleinfo->same_field || 
+            if ((config_ruleinfo->context_opts || config_ruleinfo->same_field ||
                     config_ruleinfo->different_field ||
                     config_ruleinfo->frequency) &&
                     !config_ruleinfo->context) {

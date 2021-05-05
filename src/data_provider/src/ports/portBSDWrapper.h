@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -65,7 +65,7 @@ class BSDPortWrapper final : public IPortWrapper
 
     std::string protocol() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
         const auto it { PORTS_TYPE.find(m_spSocketInfo->psi.soi_kind) };
         if (it != PORTS_TYPE.end())
         {
@@ -133,7 +133,7 @@ class BSDPortWrapper final : public IPortWrapper
     }
     std::string state() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
 
         const auto itProtocol { PORTS_TYPE.find(m_spSocketInfo->psi.soi_kind) };
 

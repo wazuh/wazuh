@@ -1,6 +1,6 @@
 /*
  * Wazuh SysCollector
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 8, 2020.
  *
  * This program is free software; you can redistribute it
@@ -20,6 +20,7 @@
 #include "dbsync.hpp"
 #include "rsync.hpp"
 #include "syscollectorNormalizer.h"
+#include "syscollector.h"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -46,9 +47,7 @@ public:
     void init(const std::shared_ptr<ISysInfo>& spInfo,
               const std::function<void(const std::string&)> reportDiffFunction,
               const std::function<void(const std::string&)> reportSyncFunction,
-              const std::function<void(const std::string&)> logErrorFunction,
-              const std::function<void(const std::string&)> logInfoFunction,
-              const std::function<void(const std::string&)> logDebugFunction,
+              const std::function<void(const syscollector_log_level_t, const std::string&)> logFunction,
               const std::string& dbPath,
               const std::string& normalizerConfigPath,
               const std::string& normalizerType,
@@ -61,7 +60,8 @@ public:
               const bool ports = true,
               const bool portsAll = true,
               const bool processes = true,
-              const bool hotfixes = true);
+              const bool hotfixes = true,
+              const bool notifyOnFirstScan = false);
 
     void destroy();
     void push(const std::string& data);
@@ -70,7 +70,7 @@ private:
     ~Syscollector() = default;
     Syscollector(const Syscollector&) = delete;
     Syscollector& operator=(const Syscollector&) = delete;
-    
+
     std::string getCreateStatement() const;
     nlohmann::json getOSData();
     nlohmann::json getHardwareData();
@@ -97,30 +97,28 @@ private:
     void scan();
     void sync();
     void syncLoop(std::unique_lock<std::mutex>& lock);
-    std::shared_ptr<ISysInfo>                      m_spInfo;
-    std::function<void(const std::string&)>        m_reportDiffFunction;
-    std::function<void(const std::string&)>        m_reportSyncFunction;
-    std::function<void(const std::string&)>        m_logErrorFunction;
-    std::function<void(const std::string&)>        m_logInfoFunction;
-    std::function<void(const std::string&)>        m_logDebugFunction;
-    unsigned int                                   m_intervalValue;
-    bool                                           m_scanOnStart;
-    bool                                           m_hardware;
-    bool                                           m_os;
-    bool                                           m_network;
-    bool                                           m_packages;
-    bool                                           m_ports;
-    bool                                           m_portsAll;
-    bool                                           m_processes;
-    bool                                           m_hotfixes;
-    bool                                           m_stopping;
-    bool                                           m_notify;
-    std::unique_ptr<DBSync>                        m_spDBSync;
-    std::unique_ptr<RemoteSync>                    m_spRsync;
-    std::condition_variable                        m_cv;
-    std::mutex                                     m_mutex;
-    std::unique_ptr<SysNormalizer>                 m_spNormalizer;
-    std::string                                    m_scanTime;
+    std::shared_ptr<ISysInfo>                                               m_spInfo;
+    std::function<void(const std::string&)>                                 m_reportDiffFunction;
+    std::function<void(const std::string&)>                                 m_reportSyncFunction;
+    std::function<void(const syscollector_log_level_t, const std::string&)> m_logFunction;
+    unsigned int                                                            m_intervalValue;
+    bool                                                                    m_scanOnStart;
+    bool                                                                    m_hardware;
+    bool                                                                    m_os;
+    bool                                                                    m_network;
+    bool                                                                    m_packages;
+    bool                                                                    m_ports;
+    bool                                                                    m_portsAll;
+    bool                                                                    m_processes;
+    bool                                                                    m_hotfixes;
+    bool                                                                    m_stopping;
+    bool                                                                    m_notify;
+    std::unique_ptr<DBSync>                                                 m_spDBSync;
+    std::unique_ptr<RemoteSync>                                             m_spRsync;
+    std::condition_variable                                                 m_cv;
+    std::mutex                                                              m_mutex;
+    std::unique_ptr<SysNormalizer>                                          m_spNormalizer;
+    std::string                                                             m_scanTime;
 };
 
 

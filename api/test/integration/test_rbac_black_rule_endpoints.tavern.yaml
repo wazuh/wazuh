@@ -195,31 +195,92 @@ stages:
         error: 4000
 
 ---
-test_name: GET RULES FILES RBAC (Download)
+test_name: GET RULES FILES RBAC (CONTENT)
 
 stages:
 
-  - name: Try get one rule file
+  - name: Get one rule file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
+      method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      method: GET
+      params:
+        raw: True
     response:
       status_code: 200
       headers:
         content-type: 'application/xml; charset=utf-8'
 
-  - name: Try get one rule file (no permissions)
+  - name: Try to get one rule file (no permissions)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0015-ossec_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0010-rules_config.xml"
+      method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      method: GET
+    response: &permission_denied
+      status_code: 403
+      json:
+        error: 4000
+        dapi_errors:
+          master-node:
+            error: !anystr
+---
+test_name: PUT RULES FILES RBAC
+
+stages:
+
+  - name: Try to update one rule file (denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      data: "{new_rules:s}"
     response:
-      <<: *permissions_denied
+      <<: *permission_denied
+
+
+  - name: Try to update one rule file (denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        overwrite: True
+      data: "{new_rules:s}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE RULES FILES RBAC
+
+stages:
+
+  - name: Delete a rule file (allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule_file.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+  - name: Try to delete a rule file (denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET RULES GROUPS RBAC

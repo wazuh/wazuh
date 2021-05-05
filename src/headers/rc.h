@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -28,6 +28,7 @@
 #define FILE_UPDATE_HEADER  "up file "
 #define FILE_CLOSE_HEADER   "close file "
 #define HC_STARTUP          "agent startup "
+#define HC_SHUTDOWN         "agent shutdown "
 #define HC_ACK              "agent ack "
 #define HC_SK_DB_COMPLETED  "syscheck-db-completed"
 #define HC_SK_RESTART       "syscheck restart"
@@ -41,5 +42,6 @@
 #define HC_SYSCOLLECTOR     "syscollector_"
 #define HC_FIM_FILE         "fim_file "
 #define HC_FIM_REGISTRY     "fim_registry "
+#define HC_FORCE_RECONNECT  "force_reconnect"
 
 #endif /* RC_H */

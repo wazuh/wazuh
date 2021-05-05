@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ###
-#  Copyright (C) 2015-2020, Wazuh Inc.All rights reserved.
+#  Copyright (C) 2015-2021, Wazuh Inc.All rights reserved.
 #  Wazuh.com
 #
 #  This program is free software; you can redistribute it

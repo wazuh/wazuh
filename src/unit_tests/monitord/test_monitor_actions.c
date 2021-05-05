@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November, 2020.
  *
  * This program is free software; you can redistribute it
@@ -34,11 +34,6 @@
 #include "config/config.h"
 
 /* redefinitons/wrapping */
-
-time_t __wrap_time(__attribute__((unused)) time_t *t) {
-    return mock_type(time_t);
-}
-
 extern monitor_time_control mond_time_control;
 
 /* setup/teardown */
@@ -508,17 +503,18 @@ void test_monitor_agents_deletion_agent_id_fail() {
     bool check_logs_size = TRUE;
     char path[PATH_MAX] = "/path";
     char path_json[PATH_MAX] = "/path_json";
+    struct stat stat_load = { .st_mode = 100 };
 
     mond.day_wait = 0;
     mond.rotate_log = 1;
     mond.size_rotate = 10;
 
     expect_string(__wrap_stat, __file, path);
-    will_return(__wrap_stat, 100);
+    will_return(__wrap_stat, &stat_load);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_stat, __file, path_json);
-    will_return(__wrap_stat, 100);
+    will_return(__wrap_stat, &stat_load);
     will_return(__wrap_stat, 0);
 
     monitor_logs(check_logs_size, path, path_json);

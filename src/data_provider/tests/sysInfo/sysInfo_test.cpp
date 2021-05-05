@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 19, 2020.
  *
  * This program is free software; you can redistribute it
@@ -74,7 +74,7 @@ TEST_F(SysInfoTest, processes)
     SysInfoWrapper info;
     EXPECT_CALL(info, getProcessesInfo()).WillOnce(Return("processes"));
     const auto result {info.processes()};
-    EXPECT_FALSE(result.empty());    
+    EXPECT_FALSE(result.empty());
 }
 
 TEST_F(SysInfoTest, network)
@@ -82,7 +82,7 @@ TEST_F(SysInfoTest, network)
     SysInfoWrapper info;
     EXPECT_CALL(info, getNetworks()).WillOnce(Return("networks"));
     const auto result {info.networks()};
-    EXPECT_FALSE(result.empty());    
+    EXPECT_FALSE(result.empty());
 }
 
 TEST_F(SysInfoTest, ports)
@@ -102,9 +102,9 @@ TEST_F(SysInfoTest, os)
 }
 
 TEST_F(SysInfoTest, hardware_c_interface)
-{   
+{
     cJSON *object = NULL;
-    sysinfo_hardware(&object);
+    EXPECT_EQ(0, sysinfo_hardware(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
@@ -112,7 +112,7 @@ TEST_F(SysInfoTest, hardware_c_interface)
 TEST_F(SysInfoTest, packages_c_interface)
 {
     cJSON *object = NULL;
-    sysinfo_packages(&object);
+    EXPECT_EQ(0, sysinfo_packages(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
@@ -120,15 +120,15 @@ TEST_F(SysInfoTest, packages_c_interface)
 TEST_F(SysInfoTest, processes_c_interface)
 {
     cJSON *object = NULL;
-    sysinfo_processes(&object);
+    EXPECT_EQ(0, sysinfo_processes(&object));
     EXPECT_TRUE(object);
-    EXPECT_NO_THROW(sysinfo_free_result(&object));  
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
 
 TEST_F(SysInfoTest, network_c_interface)
 {
     cJSON *object = NULL;
-    sysinfo_networks(&object);
+    EXPECT_EQ(0, sysinfo_networks(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
@@ -136,7 +136,7 @@ TEST_F(SysInfoTest, network_c_interface)
 TEST_F(SysInfoTest, ports_c_interface)
 {
     cJSON *object = NULL;
-    sysinfo_ports(&object);
+    EXPECT_EQ(0, sysinfo_ports(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
@@ -144,7 +144,16 @@ TEST_F(SysInfoTest, ports_c_interface)
 TEST_F(SysInfoTest, os_c_interface)
 {
     cJSON *object = NULL;
-    sysinfo_os(&object);
+    EXPECT_EQ(0, sysinfo_os(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
+}
+
+TEST_F(SysInfoTest, c_interfaces_bad_params)
+{
+    EXPECT_EQ(-1, sysinfo_hardware(NULL));
+    EXPECT_EQ(-1, sysinfo_packages(NULL));
+    EXPECT_EQ(-1, sysinfo_processes(NULL));
+    EXPECT_EQ(-1, sysinfo_ports(NULL));
+    EXPECT_EQ(-1, sysinfo_os(NULL));
 }

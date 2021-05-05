@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "4.2.0"
-!define REVISION "40200"
+!define VERSION "4.3.0"
+!define REVISION "40301"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -33,13 +33,13 @@
 Var is_upgrade
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2015-2020, Wazuh Inc."
+BrandingText "Copyright (C) 2015-2021, Wazuh Inc."
 OutFile "${OutFile}"
 
 VIProductVersion "4.0.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
-VIAddVersionKey LegalCopyright "2020 - Wazuh Inc."
+VIAddVersionKey LegalCopyright "2021 - Wazuh Inc."
 VIAddVersionKey FileDescription "Wazuh Agent installer"
 VIAddVersionKey FileVersion "${VERSION}"
 VIAddVersionKey ProductVersion "${VERSION}"
@@ -200,7 +200,6 @@ Section "Wazuh Agent (required)" MainSec
     File favicon.ico
     File /oname=shared\rootkit_trojans.txt ..\..\ruleset\rootcheck\db\rootkit_trojans.txt
     File /oname=shared\rootkit_files.txt ..\..\ruleset\rootcheck\db\rootkit_files.txt
-    File add-localfile.exe
     File LICENSE.txt
     File /oname=shared\win_applications_rcl.txt ..\..\ruleset\rootcheck\db\win_applications_rcl.txt
     File /oname=shared\win_malware_rcl.txt ..\..\ruleset\rootcheck\db\win_malware_rcl.txt

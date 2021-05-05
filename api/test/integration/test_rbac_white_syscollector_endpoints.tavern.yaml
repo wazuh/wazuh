@@ -71,8 +71,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything
@@ -382,7 +381,7 @@ stages:
   - name: Get all hotfixes from an agent (Allow)
     request: &hotfix_request_allow
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

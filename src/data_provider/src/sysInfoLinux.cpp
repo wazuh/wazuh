@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -24,7 +24,8 @@
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
-#include "packages/packagesLinuxParserHelper.h"
+#include "packages/berkeleyRpmDbHelper.h"
+#include "packages/packageLinuxDataRetriever.h"
 
 struct ProcTableDeleter
 {
@@ -207,69 +208,11 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100*memFree/ramTotal);
 }
 
-static nlohmann::json getRpmInfo()
-{
-    nlohmann::json ret;
-    auto rawData{ Utils::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'")};
-    if (!rawData.empty())
-    {
-        const auto rows { Utils::split(rawData,'\n') };
-        for (auto row : rows)
-        {
-            const auto& package{ PackageLinuxHelper::parseRpm(row) };
-            if (!package.empty())
-            {
-                ret.push_back(package);
-            }
-        }
-    }
-    return ret;
-}
-
-static nlohmann::json getDpkgInfo(const std::string& fileName)
-{
-    nlohmann::json ret;
-    std::fstream file{fileName, std::ios_base::in};
-    if (file.is_open())
-    {
-        while(file.good())
-        {
-            std::string line;
-            std::vector<std::string> data;
-            do
-            {
-                std::getline(file, line);
-                if(line.front() == ' ')//additional info
-                {
-                    data.back() = data.back() + line + "\n";
-                }
-                else
-                {
-                    data.push_back(line + "\n");
-                }
-            }
-            while(!line.empty());//end of package item info
-            const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
-            if (!packageInfo.empty())
-            {
-                ret.push_back(packageInfo);
-            }
-        }
-    }
-    return ret;
-}
 
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    if (Utils::existsDir(DPKG_PATH))
-    {
-        packages = getDpkgInfo(DPKG_STATUS_PATH);
-    }
-    else
-    {
-        packages = getRpmInfo();
-    }
+    FactoryPackagesCreator<LINUX_TYPE>::getPackages(packages);
     return packages;
 }
 
@@ -334,7 +277,7 @@ nlohmann::json SysInfo::getOsInfo() const
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
-        ret["host_name"] = uts.nodename;
+        ret["hostname"] = uts.nodename;
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
@@ -348,7 +291,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 
     const SysInfoProcessesTable spProcTable
     {
-        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV) 
+        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
     };
 
     SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
@@ -364,7 +307,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getNetworks() const
 {
     nlohmann::json networks;
-    
+
     std::unique_ptr<ifaddrs, Utils::IfAddressSmartDeleter> interfacesAddress;
     std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
@@ -379,7 +322,7 @@ nlohmann::json SysInfo::getNetworks() const
         }
         networks["iface"].push_back(ifaddr);
     }
-    
+
     return networks;
 }
 

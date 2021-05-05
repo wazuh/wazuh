@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
-add_executable(sysInfoPackagesLinuxHelper_unit_test 
+add_executable(sysInfoPackagesLinuxHelper_unit_test
     ${sysinfo_UNIT_TEST_SRC})
 
 target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
@@ -21,6 +21,10 @@ target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
     optimized gmock_main
     pthread
     sqlite3
+    alpm
+    archive
+    ssl
+    crypto
     cjson
     proc
     dl

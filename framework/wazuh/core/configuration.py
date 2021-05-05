@@ -1,27 +1,25 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import logging
 import os
-import random
 import re
 import subprocess
-import time
+import sys
+import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
 
-from xml.dom.minidom import parseString
+from defusedxml.minidom import parseString
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.wazuh_socket import OssecSocket
-from wazuh.core.results import WazuhResult
-from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
-
 from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
+from wazuh.core.wazuh_socket import WazuhSocket
 
 logger = logging.getLogger('wazuh')
 
@@ -206,6 +204,8 @@ def _read_option(section_name, opt):
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
         opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
+    elif section_name == 'remote' and opt_name == 'protocol':
+        opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
         if opt.attrib:
             opt_value = {}
@@ -247,7 +247,7 @@ def _conf2json(src_xml, dst_json):
 
         for option in list(section):
             option_name, option_value = _read_option(section_name, option)
-            if type(option_value) is list:
+            if type(option_value) is list and not (section_name == 'remote' and option_name == 'protocol'):
                 for ov in option_value:
                     _insert(section_json, section_name, option_name, ov)
             else:
@@ -463,14 +463,24 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
-    """
-    Returns ossec.conf (manager) as dictionary.
+def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, from_import=False):
+    """Returns ossec.conf (manager) as dictionary.
 
-    :param section: Filters by section (i.e. rules).
-    :param field: Filters by field in section (i.e. included).
-    :param conf_file: Path of the configuration file to read.
-    :return: ossec.conf (manager) as dictionary.
+    Parameters
+    ----------
+    section : str
+        Filters by section (i.e. rules).
+    field : str
+        Filters by field in section (i.e. included).
+    conf_file : str
+        Path of the configuration file to read.
+    from_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
+
+    Returns
+    -------
+    dict
+        ossec.conf (manager) as dictionary.
     """
     try:
         # Read XML
@@ -479,7 +489,11 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-        raise WazuhError(1101, extra_message=str(e))
+        if not from_import:
+            raise WazuhError(1101, extra_message=str(e))
+        else:
+            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
+            sys.exit(0)
 
     if section:
         try:
@@ -655,10 +669,10 @@ def upload_group_configuration(group_id, file_content):
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    tmp_file_path = os_path.join(common.ossec_path, "tmp", f"api_tmp_file_{time.time()}_{random.randint(0, 1000)}.xml")
+    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".xml")
     # create temporary file for parsing xml input and validate XML format
     try:
-        with open(tmp_file_path, 'w') as tmp_file:
+        with open(handle, 'w') as tmp_file:
             custom_entities = {
                 '_custom_open_tag_': '\\<',
                 '_custom_close_tag_': '\\>',
@@ -670,7 +684,7 @@ def upload_group_configuration(group_id, file_content):
             for character, replacement in custom_entities.items():
                 file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
 
-            # Beautify xml file using a minidom.Document
+            # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
 
             # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
@@ -692,7 +706,7 @@ def upload_group_configuration(group_id, file_content):
     try:
         # check Wazuh xml format
         try:
-            subprocess.check_output([os_path.join(common.ossec_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],
+            subprocess.check_output([os_path.join(common.wazuh_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # extract error message from output.
@@ -763,7 +777,7 @@ def get_active_configuration(agent_id, component, configuration):
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.ossec_path, "queue", "ossec")
+    sockets_path = os_path.join(common.wazuh_path, "queue", "sockets")
 
     if agent_id == '000':
         dest_socket = os_path.join(sockets_path, component)
@@ -774,7 +788,7 @@ def get_active_configuration(agent_id, component, configuration):
 
     # Socket connection
     try:
-        s = OssecSocket(dest_socket)
+        s = WazuhSocket(dest_socket)
     except Exception:
         raise WazuhInternalError(1121)
 
@@ -796,7 +810,7 @@ def get_active_configuration(agent_id, component, configuration):
         # Include password if auth->use_password enabled and authd.pass file exists
         if msg.get('auth', {}).get('use_password') == 'yes':
             try:
-                with open(os_path.join(common.ossec_path, "etc", "authd.pass"), 'r') as f:
+                with open(os_path.join(common.wazuh_path, "etc", "authd.pass"), 'r') as f:
                     msg['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass
@@ -805,3 +819,19 @@ def get_active_configuration(agent_id, component, configuration):
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
                          extra_message='{0}:{1}'.format(component, configuration))
+
+
+def write_ossec_conf(new_conf: str):
+    """
+    Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+
+    Parameters
+    ----------
+    new_conf: str
+        The new configuration to be applied.
+    """
+    try:
+        with open(common.ossec_conf, 'w') as f:
+            f.writelines(new_conf)
+    except Exception:
+        raise WazuhError(1126)

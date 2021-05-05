@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -92,7 +92,7 @@ int __wrap_Read_Syscheck_Config(const char * file)
     return mock();
 }
 
-int __wrap_rootcheck_init(int value)
+int __wrap_rootcheck_init(int value, char * home_path)
 {
     return mock();
 }
@@ -112,17 +112,14 @@ void __wrap_read_internal(int debug_level)
     function_called();
 }
 
-void test_Start_win32_Syscheck_no_config_file(void **state)
-{
-    (void) state;
-
-    char *SYSCHECK_EMPTY[] = { NULL };
+void test_Start_win32_Syscheck_no_config_file(void **state) {
+    directory_t EMPTY = { 0 };
+    directory_t *SYSCHECK_EMPTY[] = { &EMPTY };
     registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
-    syscheck.dir = SYSCHECK_EMPTY;
+
+    syscheck.directories = SYSCHECK_EMPTY;
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
     expect_string(__wrap__minfo, formatted_msg, "(6001): File integrity monitoring disabled.");
@@ -149,17 +146,14 @@ void test_Start_win32_Syscheck_no_config_file(void **state)
     Start_win32_Syscheck();
 }
 
-void test_Start_win32_Syscheck_corrupted_config_file(void **state)
-{
-    (void) state;
-
-    char *SYSCHECK_EMPTY[] = { NULL };
+void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
+    directory_t EMPTY = { 0 };
+    directory_t *SYSCHECK_EMPTY[] = { &EMPTY };
     registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
-    syscheck.dir = SYSCHECK_EMPTY;
+
+    syscheck.directories = SYSCHECK_EMPTY;
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     will_return_always(__wrap_getDefine_Int, 1);
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
@@ -179,17 +173,12 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state)
     Start_win32_Syscheck();
 }
 
-void test_Start_win32_Syscheck_syscheck_disabled_1(void **state)
-{
-    (void) state;
-
-    syscheck.dir = NULL;
+void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
+    syscheck.directories = NULL;
     syscheck.registry = NULL;
     syscheck.disabled = 0;
     char info_msg[OS_MAXSTR];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
-
     will_return_always(__wrap_getDefine_Int, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
@@ -223,17 +212,12 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state)
     Start_win32_Syscheck();
 }
 
-void test_Start_win32_Syscheck_syscheck_disabled_2(void **state)
-{
-    (void) state;
-
-    char *SYSCHECK_EMPTY[] = { NULL };
-
-    syscheck.dir = SYSCHECK_EMPTY;
-
+void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
+    directory_t EMPTY = { 0 };
+    directory_t *SYSCHECK_EMPTY[] = { &EMPTY };
     char info_msg[OS_MAXSTR];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
+    syscheck.directories = SYSCHECK_EMPTY;
 
     will_return_always(__wrap_getDefine_Int, 1);
 
@@ -268,17 +252,15 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state)
     Start_win32_Syscheck();
 }
 
-void test_Start_win32_Syscheck_dirs_and_registry(void **state)
-{
-    (void) state;
-
-    syscheck.disabled = 0;
-
-    char *syscheck_dirs[] = {"Dir1", NULL};
-    syscheck.dir = syscheck_dirs;
-
+void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
+    directory_t BASE_DIRECTORY = { .path = "Dir1", .options = 0 };
+    directory_t *CONFIG[] = { [0] = &BASE_DIRECTORY, [1] = NULL };
     registry syscheck_registry[] = { { "Entry1", 1, 0, 0, 0, NULL, NULL, "Tag1" },
                                      { NULL, 0, 0, 0, 0, NULL, NULL, NULL } };
+    syscheck.disabled = 0;
+
+    syscheck.directories = CONFIG;
+
     syscheck.registry = syscheck_registry;
 
     char *syscheck_ignore[] = {"Dir1", NULL};
@@ -296,8 +278,6 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
     syscheck.nodiff = syscheck_nodiff;
 
     char info_msg[OS_MAXSTR];
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     will_return_always(__wrap_getDefine_Int, 1);
 
@@ -340,17 +320,14 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
     Start_win32_Syscheck();
 }
 
-void test_Start_win32_Syscheck_whodata_active(void **state)
-{
-    (void) state;
+void test_Start_win32_Syscheck_whodata_active(void **state) {
+    directory_t BASE_DIRECTORY = { .path = "Dir1", .options = WHODATA_ACTIVE };
+    directory_t *CONFIG[] = { [0] = &BASE_DIRECTORY, [1] = NULL };
+    registry syscheck_registry[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
 
     syscheck.disabled = 0;
-    syscheck.opts[0] = WHODATA_ACTIVE;
+    syscheck.directories = CONFIG;
 
-    char *syscheck_dirs[] = { "Dir1", NULL };
-    syscheck.dir = syscheck_dirs;
-
-    registry syscheck_registry[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
     syscheck.registry = syscheck_registry;
 
     syscheck.ignore = NULL;
@@ -359,8 +336,6 @@ void test_Start_win32_Syscheck_whodata_active(void **state)
     syscheck.nodiff = NULL;
 
     char info_msg[OS_MAXSTR];
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     will_return_always(__wrap_getDefine_Int, 1);
 

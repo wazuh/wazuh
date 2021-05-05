@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * June 13, 2017.
  *
  * This program is free software; you can redistribute it
@@ -49,9 +49,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
     // /var/ossec/logs/ossec.log
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(path, PATH_MAX, "%s", LOGFILE);
     // /var/ossec/logs/ossec.json
-    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
     while (1) {

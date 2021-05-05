@@ -1,10 +1,9 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
 import re
-from json import JSONDecodeError
 
 from aiohttp import web
 
@@ -28,28 +27,23 @@ logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(request, user: str, raw=False):
+async def login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
     Parameters
     ----------
-    request : connexion.request
     user : str
-        Name of the user who wants to be authenticated
+        Name of the user who wants to be authenticated.
     raw : bool, optional
-        Respond in raw format
+        Respond in raw format. Default `False`
 
     Returns
     -------
-    TokenResponseModel
+    web.Response
+        Raw or JSON response with the generated access token.
     """
     f_kwargs = {'user_id': user}
-    try:
-        # Add authorization context in case there is body in request
-        f_kwargs['auth_context'] = await request.json()
-    except JSONDecodeError:
-        pass
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -61,14 +55,49 @@ async def login_user(request, user: str, raw=False):
 
     token = None
     try:
-        token = generate_token(user_id=user, data=data.dikt, run_as='auth_context' in f_kwargs.keys())
+        token = generate_token(user_id=user, data=data.dikt)
     except WazuhException as e:
         raise_if_exc(e)
 
-    if raw:
-        return web.Response(text=token, content_type='text/plain', status=200)
-    else:
-        return web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+        else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
+
+
+async def run_as_login(request, user: str, raw: bool = False) -> web.Response:
+    """User/password authentication to get an access token.
+    This method should be called to get an API token using an authorization context body. This token will expire at some time. # noqa: E501
+
+    Parameters
+    ----------
+    request : connexion.request
+    user : str
+        Name of the user who wants to be authenticated.
+    raw : bool, optional
+        Respond in raw format. Default `False`
+
+    Returns
+    -------
+    web.Response
+        Raw or JSON response with the generated access token.
+    """
+    f_kwargs = {'user_id': user, 'auth_context': await request.json()}
+
+    dapi = DistributedAPI(f=preprocessor.get_permissions,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    token = None
+    try:
+        token = generate_token(user_id=user, data=data.dikt, run_as=True)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+        else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):
@@ -117,7 +146,7 @@ async def get_user_me_policies(request, pretty=False, wait_for_complete=False):
     Users information
     """
     data = WazuhResult({'data': request['token_info']['rbac_policies'],
-                       'message': "Current user processed policies information was returned"})
+                        'message': "Current user processed policies information was returned"})
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
@@ -150,7 +179,7 @@ async def logout_user(request, pretty=False, wait_for_complete=False):
 
 
 async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
-                    offset=0, limit=None, search=None, sort=None):
+                    offset=0, limit=None, search=None, select=None, sort=None):
     """Returns information from all system roles.
 
     Parameters
@@ -168,6 +197,8 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
         Maximum number of items to return
     search : str
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -176,7 +207,7 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
     -------
     Users information
     """
-    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'user_ids': user_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -189,6 +220,41 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
                           logger=logger,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def edit_run_as(request, user_id: str, allow_run_as: bool, pretty=False, wait_for_complete=False):
+    """Modify the specified user' allow_run_as flag.
+
+    Parameters
+    ----------
+    request : connexion.request
+    user_id : str
+        User ID of the user to be updated
+    allow_run_as : bool
+        Enable or disable authorization context login method for the specified user
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+
+    Returns
+    -------
+    User data
+    """
+    f_kwargs = {'user_id': user_id, 'allow_run_as': allow_run_as}
+
+    dapi = DistributedAPI(f=security.edit_run_as,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          current_user=request['token_info']['sub'],
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          wait_for_complete=wait_for_complete
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -295,7 +361,7 @@ async def delete_users(request, user_ids: list = None, pretty=False, wait_for_co
 
 
 async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                    offset: int = 0, limit: int = None, search: str = None, select: str = None, sort: str = None):
     """
 
     Parameters
@@ -313,6 +379,8 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
         Maximum number of items to return
     search : str, optional
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -321,7 +389,7 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
     -------
     Roles information
     """
-    f_kwargs = {'role_ids': role_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'role_ids': role_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -442,7 +510,7 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
 
 
 async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                    offset: int = 0, limit: int = None, search: str = None, select: str = None, sort: str = None):
     """Get information about the security rules in the system.
 
     Parameters
@@ -460,6 +528,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
         Maximum number of items to return
     search : str, optional
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -468,7 +538,7 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
     -------
     Rules information
     """
-    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -589,7 +659,7 @@ async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wai
 
 
 async def get_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                       offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                       offset: int = 0, limit: int = None, search: str = None, select: str = None, sort: str = None):
     """Returns information from all system policies.
 
     Parameters
@@ -607,6 +677,8 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
         Maximum number of items to return
     search : str, optional
         Looks for elements with the specified string
+    select : str
+        Select which fields to return (separated by comma)
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
@@ -615,7 +687,7 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
     -------
     Policies information
     """
-    f_kwargs = {'policy_ids': policy_ids, 'offset': offset, 'limit': limit,
+    f_kwargs = {'policy_ids': policy_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,

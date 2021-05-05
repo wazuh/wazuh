@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 30, 2017.
  *
  * This program is free software; you can redistribute it
@@ -1107,8 +1107,6 @@ int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
     const int tty = cJSON_GetObjectItem(attributes, "tty") ? cJSON_GetObjectItem(attributes, "tty")->valueint : 0;
     const int processor = cJSON_GetObjectItem(attributes, "processor") ? cJSON_GetObjectItem(attributes, "processor")->valueint : 0;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    //this is needed to remove old entries in the db with a scan_id != 0: https://github.com/wazuh/wazuh/issues/7356
-    wdb_process_delete(wdb, scan_id);
     return wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, checksum, TRUE);
 }
 
@@ -1120,7 +1118,7 @@ int wdb_syscollector_package_save2(wdb_t * wdb, const cJSON * attributes)
     const char * format = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "format"));
     const char * name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "name"));
     const char * priority = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "priority"));
-    const char * section = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "section"));
+    const char * section = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "groups"));
     const int size = cJSON_GetObjectItem(attributes, "size") ? cJSON_GetObjectItem(attributes, "size")->valueint : 0;
     const char * vendor = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "vendor"));
     const char * install_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "install_time"));
@@ -1132,8 +1130,6 @@ int wdb_syscollector_package_save2(wdb_t * wdb, const cJSON * attributes)
     const char * location = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "location"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
-    //this is needed to remove old entries in the db with a scan_id != 0: https://github.com/wazuh/wazuh/issues/7356
-    wdb_package_delete(wdb, scan_id);
     return wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, item_id, TRUE);
 }
 
@@ -1143,8 +1139,6 @@ int wdb_syscollector_hotfix_save2(wdb_t * wdb, const cJSON * attributes)
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
     const char * hotfix = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hotfix"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    //this is needed to remove old entries in the db with a scan_id != 0: https://github.com/wazuh/wazuh/issues/7356
-    wdb_hotfix_delete(wdb, scan_id);
     return wdb_hotfix_save(wdb, scan_id, scan_time, hotfix, checksum, TRUE);
 }
 
@@ -1214,8 +1208,6 @@ int wdb_syscollector_netinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const long rx_dropped = cJSON_GetObjectItem(attributes, "rx_dropped") ? cJSON_GetObjectItem(attributes, "rx_dropped")->valueint : 0;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
-    //this is needed to remove old entries in the db with a scan_id != 0: https://github.com/wazuh/wazuh/issues/7356
-    wdb_netinfo_delete(wdb, scan_id);
     return wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, item_id, TRUE);
 }
 

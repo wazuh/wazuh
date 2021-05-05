@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -59,8 +59,7 @@ void HandleSyslog()
     /* Infinite loop */
     while (1) {
         /* Receive message */
-        recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0,
-                          (struct sockaddr *)&peer_info, &peer_size);
+        recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &peer_size);
 
         /* Nothing received */
         if (recv_b <= 0) {

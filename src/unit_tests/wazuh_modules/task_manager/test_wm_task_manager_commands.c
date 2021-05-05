@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -127,12 +127,6 @@ static int teardown_json_upgrade_cancel_tasks_task(void **state) {
         wm_task_manager_free_upgrade_cancel_tasks_parameters(task);
     }
     return 0;
-}
-
-// Wrappers
-
-time_t __wrap_time(time_t *__timer) {
-    return mock();
 }
 
 // Tests

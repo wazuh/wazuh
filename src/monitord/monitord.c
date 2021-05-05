@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -16,7 +16,7 @@
 #include "monitord.h"
 #include "config/config.h"
 #include "string_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "time.h"
 
 /* Global variables */
@@ -41,9 +41,9 @@ void Monitord()
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
     /* /var/ossec/logs/ossec.log */
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(path, PATH_MAX, "%s", LOGFILE);
     /* /var/ossec/logs/ossec.json */
-    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
     /* Connect to the message queue or exit */
@@ -186,8 +186,8 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->emailidsname = NULL;
 
     /* Setting default agent's global configuration */
-    mond->global.agents_disconnection_time = 20;
-    mond->global.agents_disconnection_alert_time = 100;
+    mond->global.agents_disconnection_time = 600;
+    mond->global.agents_disconnection_alert_time = 0;
 
     modules |= CREPORTS;
 

@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 24, 2020.
  *
  * This program is free software; you can redistribute it
@@ -125,7 +125,7 @@ static const std::map<std::string, std::string> DHCP_STATUS =
 
 namespace GatewayFileFields
 {
-    enum 
+    enum
     {
         Iface,
         Destination,
@@ -179,7 +179,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                 socketLen,
                 retVal.get(), NI_MAXHOST,
                 NULL, 0, NI_NUMERICHOST) };
-            
+
             if (result != 0)
             {
                 throw std::runtime_error
@@ -190,10 +190,10 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         }
         return retVal.get();
     }
- 
+
     static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal { "enabled" };
         const auto value { fields.at(RHInterfaceConfig::Value) };
 
         const auto it { DHCP_STATUS.find(value) };
@@ -227,8 +227,7 @@ public:
     explicit NetworkLinuxInterface(ifaddrs* addrs)
     : m_interfaceAddress{ addrs }
     , m_gateway{UNKNOWN_VALUE}
-    , m_metrics{UNKNOWN_VALUE}
-    { 
+    {
         if (!addrs)
         {
             throw std::runtime_error { "Nullptr instances of network interface" };
@@ -250,7 +249,7 @@ public:
                     if (GatewayFileFields::Size == fields.size() &&
                         fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
                     {
-                        const auto address { static_cast<uint32_t>(std::stoi(fields.at(GatewayFileFields::Gateway), 0, 16)) };
+                        const auto address { static_cast<uint32_t>(std::stol(fields.at(GatewayFileFields::Gateway), 0, 16)) };
                         m_metrics = fields.at(GatewayFileFields::Metric);
 
                         if (address)
@@ -271,7 +270,7 @@ public:
 
     std::string adapter() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     int family() const override
@@ -283,7 +282,7 @@ public:
     {
         return m_interfaceAddress->ifa_addr ? getNameInfo(m_interfaceAddress->ifa_addr, sizeof(struct sockaddr_in)) : "";
     }
-    
+
     std::string netmask() const override
     {
         return m_interfaceAddress->ifa_netmask ? getNameInfo(m_interfaceAddress->ifa_netmask, sizeof(struct sockaddr_in)) : "";
@@ -291,18 +290,19 @@ public:
 
     std::string broadcast() const override
     {
-        std::string retVal;
+        std::string retVal { UNKNOWN_VALUE };
         if (m_interfaceAddress->ifa_ifu.ifu_broadaddr)
         {
             retVal = getNameInfo(m_interfaceAddress->ifa_ifu.ifu_broadaddr, sizeof(struct sockaddr_in));
         }
-        else 
+        else
         {
             const auto netmask { this->netmask() };
             const auto address { this->address() };
             if (address.size() && netmask.size())
             {
-                retVal = Utils::NetworkHelper::getBroadcast(address, netmask);
+                const auto broadcast { Utils::NetworkHelper::getBroadcast(address, netmask) };
+                retVal =  broadcast.empty() ? UNKNOWN_VALUE : broadcast;
             }
         }
         return retVal;
@@ -335,13 +335,13 @@ public:
 
     std::string metricsV6() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     std::string dhcp() const override
     {
         auto fileData { Utils::getFileContent(WM_SYS_IF_FILE) };
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal { "unknown" };
         const auto family { this->family() };
         const auto ifName { this->name() };
         if (!fileData.empty())
@@ -406,7 +406,7 @@ public:
         return retVal;
     }
 
-    std::string mtu() const override
+    uint32_t mtu() const override
     {
         std::string retVal;
         const auto name { this->name() };
@@ -415,7 +415,7 @@ public:
             const auto mtuFileContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + name + "/mtu") };
             retVal = Utils::splitIndex(mtuFileContent, '\n', 0);
         }
-        return retVal;
+        return std::stol(retVal);
     }
 
     LinkStats stats() const override
@@ -426,7 +426,8 @@ public:
     std::string type() const override
     {
         const auto networkTypeCode { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/type") };
-        return Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE);
+        const auto type { Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE) };
+        return type.empty() ? UNKNOWN_VALUE : type;
     }
 
     std::string state() const override

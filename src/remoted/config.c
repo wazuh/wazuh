@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -40,8 +40,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
 
     /* Setting default values for global parameters */
-    cfg->global.agents_disconnection_time = 20;
-    cfg->global.agents_disconnection_alert_time = 100;
+    cfg->global.agents_disconnection_time = 600;
+    cfg->global.agents_disconnection_alert_time = 0;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
         ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
@@ -57,17 +57,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
         mwarn("Queue size is very high. The application may run out of memory.");
     }
 
-    const char *(xmlf[]) = {"ossec_config", "cluster", "node_name", NULL};
-
-    OS_XML xml;
-
-    if (OS_ReadXML(cfgfile, &xml) < 0){
-        merror_exit(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    }
-
-    node_name = OS_GetOneContentforElement(&xml, xmlf);
-
-    OS_ClearXML(&xml);
+    /* Get node name of the manager in cluster */
+    node_name = get_node_name();
 
     return (1);
 }
@@ -88,8 +79,21 @@ cJSON *getRemoteConfig(void) {
             else if (logr.conn[i] == SECURE_CONN) cJSON_AddStringToObject(conn,"connection","secure");
             if (logr.ipv6 && logr.ipv6[i]) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
             if (logr.lip && logr.lip[i]) cJSON_AddStringToObject(conn,"local_ip",logr.lip[i]);
-            if (logr.proto && logr.proto[i] == IPPROTO_UDP) cJSON_AddStringToObject(conn,"protocol","udp");
-            else if (logr.proto && logr.proto[i] == IPPROTO_TCP) cJSON_AddStringToObject(conn,"protocol","tcp");
+
+            if (logr.proto) {
+                cJSON * proto_array = cJSON_CreateArray();
+
+                /* If TCP is enabled */
+                if (logr.proto[i] & REMOTED_NET_PROTOCOL_TCP) {
+                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
+                }
+                /* If UDP is enabled */
+                if (logr.proto[i] & REMOTED_NET_PROTOCOL_UDP) {
+                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
+                }
+                cJSON_AddItemToObject(conn, "protocol", proto_array);
+            }
+
             if (logr.port && logr.port[i]){
                 sprintf(port,"%d",logr.port[i]);
                 cJSON_AddStringToObject(conn,"port",port);

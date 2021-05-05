@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -43,7 +43,6 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
-    const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     const char *agent_id = NULL;
@@ -75,6 +74,13 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    char * home_path = w_homedir(argv[0]);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 
     int is_worker = w_is_worker();
     char *master;
@@ -174,6 +180,8 @@ int main(int argc, char **argv)
 
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     /* Prepare JSON Structure */
     if(json_output)
         root = cJSON_CreateObject();
@@ -193,9 +201,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot to the default directory */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
+
+    os_free(home_path);
 
     /* Inside chroot now */
     nowChroot();

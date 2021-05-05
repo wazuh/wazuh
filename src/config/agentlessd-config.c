@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -104,7 +104,7 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
             char script_path[1024 + 1];
 
             script_path[1024] = '\0';
-            snprintf(script_path, 1024, "%s/%s", AGENTLESSDIRPATH,
+            snprintf(script_path, 1024, "%s/%s", AGENTLESSDIR,
                      node[i]->content);
 
             if (w_ref_parent_folder(script_path)) {
@@ -114,7 +114,7 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
 
             if (File_DateofChange(script_path) <= 0) {
                 merror("Unable to find '%s' at '%s'.",
-                       node[i]->content, AGENTLESSDIRPATH);
+                       node[i]->content, AGENTLESSDIR);
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

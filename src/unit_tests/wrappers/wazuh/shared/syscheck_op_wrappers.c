@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -25,9 +25,9 @@ int __wrap_delete_target_file(const char *path) {
     return mock();
 }
 
-const char *__wrap_get_group(int gid) {
+char *__wrap_get_group(int gid) {
     check_expected(gid);
-    return mock_type(const char*);
+    return mock_type(char*);
 }
 
 #ifndef WIN32

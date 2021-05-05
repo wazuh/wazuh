@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,7 +12,7 @@
 #include "read-agents.h"
 #include "os_net/os_net.h"
 #include "wazuhdb_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifndef WIN32
 static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output, cJSON *json_output,
@@ -825,13 +825,13 @@ void delete_sqlite(const char *id, const char *name)
     char path[512] = { '\0' };
 
     /* Delete related files */
-    snprintf(path, 511, "%s%s/agents/%s-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, 511, "%s/agents/%s-%s.db", WDB_DIR, id, name);
     unlink(path);
 
-    snprintf(path, 511, "%s%s/agents/%s-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, 511, "%s/agents/%s-%s.db-wal", WDB_DIR, id, name);
     unlink(path);
 
-    snprintf(path, 511, "%s%s/agents/%s-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, 511, "%s/agents/%s-%s.db-shm", WDB_DIR, id, name);
     unlink(path);
 }
 
@@ -959,7 +959,7 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
             if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                 agt_version = json_agt_version->valuestring;
             } else {
-                merror("Failed to get agent '%d' version.", id_array[i]);
+                mdebug2("Failed to get agent '%d' version.", id_array[i]);
                 cJSON_Delete(json_agt_info);
                 continue;
             }

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -13,6 +13,7 @@
 #include "timeHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
+#include "sharedDefs.h"
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
 
@@ -117,7 +118,7 @@ nlohmann::json SysInfo::getOsInfo() const
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
-        ret["host_name"] = uts.nodename;
+        ret["hostname"] = uts.nodename;
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;

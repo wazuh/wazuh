@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "monitord.h"
 #include "read-agents.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 static int mon_send_agent_msg(char *agent, char *msg);
 int sock = -1;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -20,7 +20,7 @@ char *__wrap_decode_win_permissions(char *raw_perm);
 
 int __wrap_delete_target_file(const char *path);
 
-const char *__wrap_get_group(int gid);
+char *__wrap_get_group(int gid);
 
 #ifndef WIN32
 char *__wrap_get_user(int uid);

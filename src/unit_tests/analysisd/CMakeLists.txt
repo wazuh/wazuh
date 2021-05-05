@@ -42,7 +42,7 @@ list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain 
 
 list(APPEND analysisd_names "test_exec")
 list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_SendUnix -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,Eventinfo_to_jsonstr \
-                             -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML \
+                             -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML -Wl,--wrap,StartMQ \
                              -Wl,--wrap,wdb_get_agents_by_connection_status -Wl,--wrap,labels_find -Wl,--wrap,labels_get -Wl,--wrap,labels_free")
 
 list(APPEND analysisd_names "test_labels")
@@ -91,7 +91,8 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,OSHash_SetFreeDataPointer -Wl,--wrap,OSHash_Delete \
                              -Wl,--wrap,pthread_rwlock_init -Wl,--wrap,pthread_rwlock_rdlock \
                              -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
-                             -Wl,--wrap,pthread_mutex_trylock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add")
+                             -Wl,--wrap,pthread_mutex_trylock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add \
+                             -Wl,--wrap,OSList_CleanOnlyNodes -Wl,--wrap,w_analysisd_accumulate_free")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \

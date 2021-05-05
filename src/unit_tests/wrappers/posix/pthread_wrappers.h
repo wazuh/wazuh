@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -16,6 +16,12 @@
 int __wrap_pthread_mutex_lock(pthread_mutex_t *x);
 
 int __wrap_pthread_mutex_unlock(pthread_mutex_t *x);
+
+int __wrap_pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
+
+int __wrap_pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
+
+int __wrap_pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
 
 int __wrap_pthread_exit();
 

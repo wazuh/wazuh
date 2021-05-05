@@ -11,8 +11,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # Installation info
-VERSION="v4.2.0"
-REVISION="40200"
+VERSION="v4.3.0"
+REVISION="40301"
 TYPE="agent"
 
 ###  Do not modify below here ###
@@ -129,7 +129,7 @@ testconfig()
 # Start function
 start_service()
 {
-    echo "Starting $NAME $VERSION..."
+    echo "Starting Wazuh $VERSION..."
     checkpid;
 
     # Delete all files in temporary folder
@@ -246,7 +246,7 @@ stop_service()
         rm -f ${DIR}/var/run/${i}*.pid
      done
 
-    echo "$NAME $VERSION Stopped"
+    echo "Wazuh $VERSION Stopped"
 }
 
 info()

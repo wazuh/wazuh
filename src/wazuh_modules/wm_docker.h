@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Docker
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October, 2018.
  *
  * This program is free software; you can redistribute it
@@ -14,7 +14,7 @@
 #ifndef WIN32
 
 #define WM_DOCKER_LOGTAG ARGV0 ":docker-listener"
-#define WM_DOCKER_SCRIPT_PATH WM_DEFAULT_DIR "/docker/DockerListener"
+#define WM_DOCKER_SCRIPT_PATH  "wodles/docker/DockerListener"
 
 #define WM_DOCKER_DEF_INTERVAL 60
 

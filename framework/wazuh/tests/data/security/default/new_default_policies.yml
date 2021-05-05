@@ -1,0 +1,20 @@
+default_policies:
+  new:
+    description: Already existing policy
+    policies:
+      policy1:
+        actions:
+          - agent:read
+        resources:
+          - agent:id:888
+        effect: allow
+
+  another:
+    description: New default policy
+    policies:
+      policy:
+        actions:
+          - agent:read
+        resources:
+          - agent:id:578
+        effect: allow

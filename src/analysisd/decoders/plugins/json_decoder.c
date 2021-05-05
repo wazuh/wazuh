@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015-2020, Wazuh Inc.
+* Copyright (C) 2015-2021, Wazuh Inc.
 * April 18, 2017.
 *
 * This program is free software; you can redistribute it
@@ -23,10 +23,20 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
 
     if (strcmp(key, "srcip") == 0){
         os_strdup(value, lf->srcip);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       srcip: '%s'", lf->srcip);
+        }
+#endif
 
 #ifdef LIBGEOIP_ENABLED
     if (!lf->srcgeoip) {
         lf->srcgeoip = GetGeoInfobyIP(lf->srcip);
+#ifdef TESTRULE
+        if (lf->srcgeoip && !alert_only) {
+            print_out("       srcgeoip: '%s'", lf->srcgeoip);
+        }
+#endif
     }
 #endif
         return;
@@ -34,10 +44,19 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
 
     if (strcmp(key, "dstip") == 0){
         os_strdup(value, lf->dstip);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       dstip: '%s'", lf->dstip);
+        }
+#endif
 
 #ifdef LIBGEOIP_ENABLED
     if(!lf->dstgeoip) {
         lf->dstgeoip = GetGeoInfobyIP(lf->dstip);
+#ifdef TESTRULE
+            if (lf->dstgeoip && !alert_only)
+                print_out("       dstgeoip: '%s'", lf->dstgeoip);
+#endif
     }
 #endif
     return;
@@ -45,61 +64,121 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
 
     if (strcmp(key, "dstport") == 0){
         os_strdup(value, lf->dstport);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       dstport: '%s'", lf->dstport);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "srcport") == 0){
         os_strdup(value, lf->srcport);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       srcport: '%s'", lf->srcport);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "protocol") == 0){
         os_strdup(value, lf->protocol);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       protocol: '%s'", lf->protocol);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "action") == 0){
         os_strdup(value, lf->action);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       action: '%s'", lf->action);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "srcuser") == 0){
         os_strdup(value, lf->srcuser);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       srcuser: '%s'", lf->srcuser);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "dstuser") == 0){
         os_strdup(value, lf->dstuser);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       dstuser: '%s'", lf->dstuser);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "id") == 0){
         os_strdup(value, lf->id);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       id: '%s'", lf->id);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "status") == 0){
         os_strdup(value, lf->status);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       status: '%s'", lf->status);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "url") == 0){
         os_strdup(value, lf->url);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       url: '%s'", lf->url);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "data") == 0){
         os_strdup(value, lf->data);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       data: '%s'", lf->data);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "extra_data") == 0){
         os_strdup(value, lf->extra_data);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       extra_data: '%s'", lf->extra_data);
+        }
+#endif
         return;
     }
 
     if (strcmp(key, "systemname") == 0){
         os_strdup(value, lf->systemname);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       systemname: '%s'", lf->systemname);
+        }
+#endif
         return;
     }
 
@@ -108,6 +187,11 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         merror("Too many fields for JSON decoder.");
         return;
     }
+#ifdef TESTRULE
+    if (!alert_only) {
+        print_out("       %s: '%s'", key, value);
+    }
+#endif
 
     os_strdup(key, lf->fields[lf->nfields].key);
     os_strdup(value, lf->fields[lf->nfields].value);
@@ -121,7 +205,6 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
     static const char * VALUE_TRUE = "true";
     static const char * VALUE_FALSE = "false";
     static const char * VALUE_COMMA = ",";
-    static const char * VALUE_EMPTY = "";
 
     cJSON *next, *array;
     char *key = NULL;
@@ -163,7 +246,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_Array:
-                if (lf->decoder_info->flags & CSV_STRING) {
+                if (lf->decoder_info->flags & JSON_TREAT_ARRAY_AS_CSV_STRING) {
                     os_malloc(OS_MAXSTR, value);
                     *value = '\0';
                     size_t n = 0;
@@ -229,15 +312,15 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
 
                         z = strlen(VALUE_COMMA);
 
-                        if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, VALUE_COMMA);
-                            n += z;
-                        } else {
+                        if (n + z >= OS_MAXSTR) {
                             *value = '\0';
                             break;
+                        } else if (array->next != NULL) {
+                            strcpy(value + n, VALUE_COMMA);
+                            n += z;
                         }
                     }
-                } else if (lf->decoder_info->flags & JSON_ARRAY) {
+                } else if (lf->decoder_info->flags & JSON_TREAT_ARRAY_AS_ARRAY) {
                     value = cJSON_Print(logJSON);
                 }
 
@@ -249,9 +332,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_NULL:
-                if (lf->decoder_info->flags & EMPTY) {
-                    fillData(lf, key, VALUE_EMPTY);
-                } else if (lf->decoder_info->flags & SHOW_STRING) {
+                if (lf->decoder_info->flags & JSON_TREAT_NULL_AS_STRING) {
                     fillData(lf, key, VALUE_NULL);
                 }
                 break;

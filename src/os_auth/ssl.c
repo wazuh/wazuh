@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -59,12 +59,12 @@ SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, con
         char default_key[PATH_MAX + 1];
 
         if (!cert) {
-            snprintf(default_cert, PATH_MAX + 1, "%s%s", os_dir, CERTFILE);
+            snprintf(default_cert, PATH_MAX + 1, "%s/%s", os_dir, CERTFILE);
             cert = default_cert;
         }
 
         if (!key) {
-            snprintf(default_key, PATH_MAX + 1, "%s%s", os_dir, KEYFILE);
+            snprintf(default_key, PATH_MAX + 1, "%s/%s", os_dir, KEYFILE);
             key = default_key;
         }
 

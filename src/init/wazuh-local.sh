@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.2.0"
-REVISION="40200"
+VERSION="v4.3.0"
+REVISION="40301"
 TYPE="local"
 
 ###  Do not modify below here ###
@@ -217,8 +217,8 @@ testconfig()
 
 start_service()
 {
-    echo "Starting $NAME $VERSION..."
-    TEST=$(${DIR}/bin/wazuh-analysisd -t  2>&1)
+    echo "Starting Wazuh $VERSION..."
+    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1)
     echo $TEST
 
     if [ ! -z "$TEST" ]; then
@@ -346,7 +346,7 @@ stop_service()
         echo "Stopping sub agent directory (for hybrid mode)"
         ${DIR}/ossec-agent/bin/wazuh-control stop
     fi
-    echo "$NAME $VERSION Stopped"
+    echo "Wazuh $VERSION Stopped"
 }
 
 info()

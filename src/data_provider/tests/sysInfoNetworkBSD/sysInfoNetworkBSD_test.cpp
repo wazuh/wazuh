@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 19, 2020.
  *
  * This program is free software; you can redistribute it
@@ -15,9 +15,7 @@
 
 void SysInfoNetworkBSDTest::SetUp() {};
 
-void SysInfoNetworkBSDTest::TearDown()
-{
-};
+void SysInfoNetworkBSDTest::TearDown() {};
 
 using ::testing::_;
 using ::testing::Return;
@@ -39,7 +37,7 @@ public:
     MOCK_METHOD(std::string, metricsV6, (), (const override));
     MOCK_METHOD(std::string, gateway, (), (const override));
     MOCK_METHOD(std::string, dhcp, (), (const override));
-    MOCK_METHOD(std::string, mtu, (), (const override));
+    MOCK_METHOD(uint32_t, mtu, (), (const override));
     MOCK_METHOD(LinkStats, stats, (), (const override));
     MOCK_METHOD(std::string, type, (), (const override));
     MOCK_METHOD(std::string, state, (), (const override));
@@ -64,14 +62,14 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return("192.168.0.1"));
     EXPECT_CALL(*mock, netmask()).Times(1).WillOnce(Return("255.255.255.0"));
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return("192.168.0.255"));
-    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return("unknown"));
-    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("unknown"));
+    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(" "));
+    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
     EXPECT_EQ("192.168.0.1",ifaddr.at("IPv4").at("address").get_ref<const std::string&>());
     EXPECT_EQ("255.255.255.0",ifaddr.at("IPv4").at("netmask").get_ref<const std::string&>());
     EXPECT_EQ("192.168.0.255",ifaddr.at("IPv4").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv4").at("metric").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv4").at("metric").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6_THROW)
@@ -91,16 +89,15 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:7348"));
     EXPECT_CALL(*mock, netmaskV6()).Times(1).WillOnce(Return("2001:db8:abcd:0012:ffff:ffff:ffff:ffff"));
     EXPECT_CALL(*mock, broadcastV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:0000"));
-    EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return("unknown"));
-    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("unknown"));
+    EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return(" "));
+    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
     EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348",ifaddr.at("IPv6").at("address").get_ref<const std::string&>());
     EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff",ifaddr.at("IPv6").at("netmask").get_ref<const std::string&>());
     EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000",ifaddr.at("IPv6").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv6").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv6").at("metric").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv6").at("dhcp").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv6").at("metric").get_ref<const std::string&>());
 }
-
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
 {
@@ -112,7 +109,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
-    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return("1500"));
+    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("8.8.4.4"));
     EXPECT_CALL(*mock, adapter()).Times(1).WillOnce(Return(""));
 
@@ -122,7 +119,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_EQ("ethernet",ifaddr.at("type").get_ref<const std::string&>());
     EXPECT_EQ("up",ifaddr.at("state").get_ref<const std::string&>());
     EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("mac").get_ref<const std::string&>());
-    
+
     EXPECT_EQ(1,ifaddr.at("tx_packets").get<int32_t>());
     EXPECT_EQ(0,ifaddr.at("rx_packets").get<int32_t>());
     EXPECT_EQ(3,ifaddr.at("tx_bytes").get<int32_t>());
@@ -131,7 +128,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_EQ(4,ifaddr.at("rx_errors").get<int32_t>());
     EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ("1500",ifaddr.at("mtu").get_ref<const std::string&>());
+    EXPECT_EQ(1500,ifaddr.at("mtu").get<int32_t>());
 
     EXPECT_EQ("8.8.4.4",ifaddr.at("gateway").get_ref<const std::string&>());
 }

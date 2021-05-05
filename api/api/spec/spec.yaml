@@ -14,9 +14,13 @@ info:
     information between parties as a JSON object. Perform a call with `basicAuth` to `GET /security/user/authenticate`
     and obtain a JWT token in order to run any endpoint.
 
+    JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid
+    JWT token to `PUT /security/config`. After this change, you will need to get a new JWT token as all previously
+    issued tokens are revoked when any change is performed on security configuration.
+
     Login with USER and PASSWORD:
 
-    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate`
+    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate"`
     ```json
     {
         "data": {
@@ -29,14 +33,19 @@ info:
 
     `curl -k -X <METHOD> "https://<HOST_IP>:55000/<ENDPOINT>" -H  "Authorization: Bearer <YOUR_JWT_TOKEN>"`
 
+    Change the token base duration:
+
+    `curl -k -X PUT "https://<HOST_IP>:55000/security/config" -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+    -d '{"auth_token_exp_timeout":<NEW_EXPIRE_TIME_IN_SECONDS>}'`
+
     <SecurityDefinitions />
 
-  version: '4.2.0'
-  x-revision: '40200'
+  version: '4.3.0'
+  x-revision: '40301'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.2/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/4.3/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -64,12 +73,10 @@ x-rbac-catalog:
       description: "Reference agent groups via group ID (i.e. group:id:default)"
     'node:id':
       description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
-    'file:path':
-      description: "Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)"
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-    'list:path':
-      description: "Reference list files via its path (i.e. list:path:etc/lists/audit-keys)"
+    'list:file':
+      description: "Reference list files via its filename (i.e. list:file:audit-keys)"
     'rule:file':
       description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
@@ -142,6 +149,15 @@ x-rbac-catalog:
         actions: ['agent:upgrade']
         resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
+    'agent:reconnect':
+      description: "Force reconnect agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'agent:reconnect' ]
+        resources: [ 'agent:id:050', 'agent:id:049' ]
+        effect: "deny"
     'agent:restart':
       description: "Restart agents"
       resources:
@@ -162,10 +178,10 @@ x-rbac-catalog:
     'group:read':
       description: "Access agent groups information (id, name, agents, etc)"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/group:id'
       example:
         actions: ['group:create']
-        resources: ['*:*:*']
+        resources: ['group:id:*']
         effect: "allow"
     'group:update_config':
       description: "Change the configuration of agent groups"
@@ -200,6 +216,14 @@ x-rbac-catalog:
         actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
+    'cluster:update_config':
+      description: "Change the Wazuh's cluster node configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: [ 'cluster:update_config' ]
+        resources: ['node:id:worker1']
+        effect: "allow"
     'cluster:read_api_config':
       description: "Check Wazuh's cluster nodes API configuration"
       resources:
@@ -207,32 +231,6 @@ x-rbac-catalog:
       example:
         actions: ['cluster:read_api_config']
         resources: ['node:id:worker1', 'node:id:worker3']
-        effect: "allow"
-    'cluster:read_file':
-      description: "Read Wazuh's cluster nodes files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['cluster:read_file']
-        resources: ['node:id:worker1', 'file:path:etc/rules/new-rules.xml']
-        effect: "allow"
-    'cluster:delete_file':
-      description: "Delete Wazuh's cluster nodes files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['cluster:delete_file']
-        resources: ['node:id:worker1', 'file:path:etc/rules/new-rules.xml']
-        effect: "deny"
-    'cluster:upload_file':
-      description: "Upload files to Wazuh's cluster nodes"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-      example:
-        actions: ['cluster:upload_file']
-        resources: ['node:id:worker1']
         effect: "allow"
     'cluster:restart':
       description: "Restart Wazuh's cluster nodes"
@@ -258,6 +256,14 @@ x-rbac-catalog:
         actions: ['manager:read']
         resources: ['*:*:*']
         effect: "allow"
+    'manager:update_config':
+      description: "Update current Wazuh manager configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'manager:update_config' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
     'manager:read_api_config':
       description: "Read Wazuh manager API configuration"
       resources:
@@ -266,30 +272,6 @@ x-rbac-catalog:
         actions: ['manager:read_api_config']
         resources: ['*:*:*']
         effect: "allow"
-    'manager:read_file':
-      description: "Read Wazuh manager files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['manager:read_file']
-        resources: ['file:path:etc/rules/new-rules.xml']
-        effect: "allow"
-    'manager:delete_file':
-      description: "Delete Wazuh manager files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['manager:delete_file']
-        resources: ['file:path:etc/rules/new-rules.xml']
-        effect: "allow"
-    'manager:upload_file':
-      description: "Upload files to Wazuh manager"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['manager:upload_file']
-        resources: ['*:*:*']
-        effect: "deny"
     'manager:restart':
       description: "Restart Wazuh managers"
       resources:
@@ -314,13 +296,45 @@ x-rbac-catalog:
         actions: ['decoders:read']
         resources: ['decoder:file:*']
         effect: "allow"
+    'decoders:update':
+      description: "Update or upload custom decoder files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['decoders:update']
+        resources: ['*:*:*']
+        effect: "allow"
+    'decoders:delete':
+      description: "Delete custom decoder files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+      example:
+        actions: ['decoders:delete']
+        resources: ['decoder:file:local_decoder.xml']
+        effect: "allow"
     'lists:read':
       description: "Read cdb lists files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/list:path'
+        - $ref: '#/x-rbac-catalog/resources/list:file'
       example:
         actions: ['lists:read']
-        resources: ['list:path:etc/lists/audit-keys']
+        resources: ['list:file:audit-keys']
+        effect: "deny"
+    'lists:update':
+      description: "Update or upload cdb lists files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['lists:update']
+        resources: ['*:*:*']
+        effect: "allow"
+    'lists:delete':
+      description: "Delete cdb lists files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/list:file'
+      example:
+        actions: ['lists:delete']
+        resources: ['list:file:audit-keys']
         effect: "deny"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
@@ -365,6 +379,22 @@ x-rbac-catalog:
         actions: ['rules:read']
         resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
+    'rules:update':
+      description: "Update or upload custom rule files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['rules:update']
+        resources: ['*:*:*']
+        effect: "allow"
+    'rules:delete':
+      description: "Delete custom rule files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/rule:file'
+      example:
+        actions: ['rules:delete']
+        resources: ['rule:file:0610-win-ms_logs_rules.xml']
+        effect: "allow"
     'sca:read':
       description: "Access agents security configuration assessment"
       resources:
@@ -400,6 +430,14 @@ x-rbac-catalog:
       example:
         actions: ['security:read']
         resources: ['policy:id:*', 'role:id:2', 'user:id:5', 'rule:id:3']
+        effect: "allow"
+    'security:edit_run_as':
+      description: "Change the value of the allow_run_as flag for a user"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'security:edit_run_as' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
     'security:update':
       description: "Update the information of system security resources"
@@ -483,6 +521,15 @@ x-rbac-catalog:
         actions: ['task:status']
         resources: ['*:*:*']
         effect: "deny"
+    'vulnerability:read':
+      description: "Allow reading agents' vulnerabilities information"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'vulnerability:read' ]
+        resources: [ 'agent:id:011', 'agent:group:us-west' ]
+        effect: "allow"
 
 components:
   responses:
@@ -509,7 +556,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -576,7 +623,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here:
-            https://documentation.wazuh.com/4.2/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -589,7 +636,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1614,7 +1661,7 @@ components:
                       type: string
                     date_end_master:
                       type: string
-                    total_agentinfo:
+                    n_synced_chunks:
                       type: integer
                       format: int32
                 last_sync_integrity:
@@ -1943,7 +1990,7 @@ components:
         tz_name:
           type: string
 
-    WazuhMangerConfiguration:
+    WazuhManagerConfiguration:
       type: object
       properties:
         active-response:
@@ -2165,7 +2212,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.2/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.3/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_edps:
           type: number
@@ -2534,10 +2581,6 @@ components:
               format: int32
               minimum: 1
               example: 300
-        behind_proxy_server:
-          description: "Set this option to 'yes' in case the API is running behind a proxy server"
-          type: boolean
-          default: false
         logs:
           type: object
           additionalProperties: false
@@ -3506,7 +3549,7 @@ components:
       description: "Filter by command"
       schema:
         type: string
-        format: alphanumeric
+        format: symbols_alphanumeric_param
     component:
       in: path
       name: component
@@ -3670,6 +3713,11 @@ components:
         </tr>
         <tr>
         <td>monitor</td>
+        <td>global</td>
+        <td><code>&lt;global&gt;</code></td>
+        </tr>
+        <tr>
+        <td>monitor</td>
         <td>internal</td>
         <td><code>&lt;monitord&gt;</code></td>
         </tr>
@@ -3677,6 +3725,11 @@ components:
         <td>monitor</td>
         <td>internal</td>
         <td><code>&lt;reports&gt;</code></td>
+        </tr>
+        <tr>
+        <td>request</td>
+        <td>global</td>
+        <td><code>&lt;global&gt;</code></td>
         </tr>
         <tr>
         <td>request</td>
@@ -3738,6 +3791,13 @@ components:
         - syscheck
         - rootcheck
         - wmodules
+    cve:
+      in: query
+      name: cve
+      description: "Filter by CVE"
+      schema:
+        type: string
+        format: alphanumeric
     decoder_name:
       in: query
       name: decoder_names
@@ -3879,6 +3939,14 @@ components:
         default: 500
         minimum: 1
         maximum: 500
+    list_filename_path:
+      in: path
+      name: filename
+      description: "Filename (CDB list) to get/edit/delete."
+      required: true
+      schema:
+        type: string
+        format: cdb_filename_path
     agents_list:
       in: query
       name: agents_list
@@ -3955,7 +4023,7 @@ components:
     name:
       in: query
       name: name
-      description: "Filter by agent name"
+      description: "Filter by name"
       schema:
         type: string
         format: alphanumeric
@@ -4102,6 +4170,13 @@ components:
         type: string
         format: alphanumeric_symbols
     raw:
+      in: query
+      name: raw
+      description: "Format response in plain text"
+      required: False
+      schema:
+        type: boolean
+    raw_conf:
       in: query
       name: raw
       description: "Format response in plain text"
@@ -4286,12 +4361,13 @@ components:
     stats_component:
       in: path
       name: component
-      description: "Selected stats component"
+      description: "Selected component stats"
       required: true
       schema:
         type: string
         enum:
           - logcollector
+          - agent
     status:
       in: query
       name: status
@@ -4381,6 +4457,13 @@ components:
       description: "Type of file"
       schema:
         type: string
+    allow_run_as:
+      in: query
+      name: allow_run_as
+      description: "Value for the allow_run_as flag"
+      schema:
+        type: boolean
+        default: false
     user_ids:
       in: query
       name: 'user_ids'
@@ -4419,6 +4502,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    cve_version:
+      in: query
+      name: version
+      description: "Filter by CVE version"
+      schema:
+        type: string
+        format: alphanumeric_symbols
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -4554,30 +4644,6 @@ components:
           - error
           - info
           - warning
-    edit_files_path:
-      in: query
-      name: path
-      description: "Filepath to upload/edit file. (Relative to wazuh installation folder)"
-      required: true
-      schema:
-        type: string
-        format: edit_files_path
-    delete_files_path:
-      in: query
-      name: path
-      description: "Filepath to delete file. (Relative to wazuh installation folder)"
-      required: true
-      schema:
-        type: string
-        format: delete_files_path
-    get_files_path:
-      in: query
-      name: path
-      description: "Filepath to return file. (Relative to wazuh installation folder)"
-      required: true
-      schema:
-        type: string
-        format: get_files_path
     get_dirnames_path:
       in: query
       name: relative_dirname
@@ -5176,9 +5242,8 @@ components:
           - 'agent:id'
           - 'group:id'
           - 'node:id'
-          - 'file:path'
           - 'decoder:file'
-          - 'list:path'
+          - 'list:file'
           - 'rule:file'
           - 'policy:id'
           - 'role:id'
@@ -5197,6 +5262,24 @@ components:
       schema:
         type: string
         format: alphanumeric
+    xml_filename:
+      in: query
+      name: filename
+      description: "Filter by filename of one or more rule or decoder files."
+      schema:
+        type: array
+        items:
+          type: string
+          format: xml_filename
+    xml_filename_path:
+      in: path
+      name: filename
+      description: "Filename (rule or decoder) to download/upload/edit file."
+      required: true
+      schema:
+        type: string
+        format: xml_filename_path
+
 
 tags:
   - name: API Info
@@ -5237,6 +5320,10 @@ tags:
     description: "File integrity monitoring"
   - name: Syscollector
     description: "Syscollector information"
+  - name: Tasks
+    description: "Tasks information"
+  - name: Vulnerability
+    description: "Vulnerabilities information"
 
 security:
   - jwt: []
@@ -5263,10 +5350,10 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.2.0"
+                api_version: "v4.3.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.2/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
 
@@ -5325,8 +5412,7 @@ paths:
       tags:
       - Agents
       summary: "Delete agents"
-      description: "Delete agents with optional criteria based on the status or time of the last
-      connection"
+      description: "Delete all agents or a list of them based on optional criteria"
       operationId: api.controllers.agent_controller.delete_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:delete'
@@ -5337,6 +5423,17 @@ paths:
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Delete agents"
@@ -5350,13 +5447,6 @@ paths:
                     data:
                       allOf:
                         - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                        - type: object
-                          properties:
-                            older_than:
-                              type: string
-                              format: timeframe
-                              description: "Return older than parameter used. It can be the default value or the
-                              parameter sent by the user"
               example:
                 data:
                   affected_items:
@@ -5531,9 +5621,8 @@ paths:
                     type: string
                     format: names
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a
-                    proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is
-                    setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. Allowed values:
+                    IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
                   force_time:
@@ -6277,8 +6366,16 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: "Restart command sent to all agents"
-                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '003'
+                      - '005'
+                    total_affected_items: 3
+                    total_failed_items: 0
+                    failed_items: []
+                    message: "Restart command sent to all agents"
+                    error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6902,9 +6999,8 @@ paths:
                     type: string
                     format: names
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a
-                    proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is
-                    setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. Allowed values:
+                    IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
                   force_time:
@@ -7207,6 +7303,52 @@ paths:
                   total_failed_items: 0
                 message: 'All selected agents information was returned'
                 error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/reconnect:
+    put:
+      tags:
+        - Agents
+      summary: "Force reconnect agents"
+      description: "Force reconnect all agents or a list of them"
+      operationId: api.controllers.agent_controller.reconnect_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:reconnect'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agents reconnected"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  message: 'Force reconnect command was sent to all agents'
+                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '004'
+                    total_affected_items: 2
+                    failed_items: [ ]
+                    total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7676,7 +7818,7 @@ paths:
                         last_sync_agentinfo:
                           date_start_master: "2019-01-11T18:52:57.72Z"
                           date_end_master: "2019-01-11T18:52:57.73Z"
-                          total_agentinfo: 1
+                          n_synced_chunks: 1
                         sync_integrity_free: true
                         last_sync_agentgroups:
                           date_end_master: "2019-01-11T18:52:51.56Z"
@@ -7871,7 +8013,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        behind_proxy_server: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -7900,7 +8041,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        behind_proxy_server: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8056,7 +8196,7 @@ paths:
       tags:
       - Cluster
       summary: "Get node config"
-      description: "Return wazuh configuration used in node {node_id}"
+      description: "Return wazuh configuration used in node {node_id}. The 'section' and 'field' parameters will be ignored if 'raw' parameter is provided."
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8064,6 +8204,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/raw_conf'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -8077,7 +8218,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhMangerConfiguration'
+                      $ref: '#/components/schemas/WazuhManagerConfiguration'
               example:
                 data:
                   affected_items:
@@ -8088,7 +8229,7 @@ paths:
                         logall_json: no
                         email_notification: no
                         smtp_server: smtp.example.wazuh.com
-                        email_from: ossecm@example.wazuh.com
+                        email_from: wazuh@example.wazuh.com
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log
@@ -8127,6 +8268,50 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+      - Cluster
+      summary: "Update node configuration"
+      description: "Replace wazuh configuration for the given node with the data contained in the API request"
+      operationId: api.controllers.cluster_controller.update_configuration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      requestBody:
+        description: "Content of the ossec.conf to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                message: "Configuration was successfully updated"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8764,150 +8949,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /cluster/{node_id}/files:
-    get:
-      tags:
-      - Cluster
-      summary: "Get node file content"
-      description: "Return file contents from any file in the specified node"
-      operationId: api.controllers.cluster_controller.get_files_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/cluster:read_file'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/get_files_path'
-      responses:
-        '200':
-          description: "File contents"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: object
-                      properties:
-                        contents:
-                          description: "File contents"
-                          type: string
-              example:
-                data:
-                  contents: '<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019,
-                  Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02
-                  host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\"
-                  level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd:
-                  authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,
-                  pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags:
-      - Cluster
-      summary: "Update node file content"
-      description: "Replace file contents with the data contained in the API request for the specified node"
-      operationId: api.controllers.cluster_controller.put_files_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
-        - $ref: '#/x-rbac-catalog/actions/cluster:upload_file'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/edit_files_path'
-        - $ref: '#/components/parameters/overwrite'
-      requestBody:
-        description: "Content of the file to be uploaded"
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/ossec.conf"
-                  total_affected_items: 1
-                  failed_items: []
-                  total_failed_items: 0
-                message: "File was successfully updated"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-      - Cluster
-      summary: "Delete node file"
-      description: "Delete a file in the specified node"
-      operationId: api.controllers.cluster_controller.delete_files_node
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/cluster:delete_file'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/delete_files_path'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/rules/custom_rules.xml"
-                  total_affected_items: 1
-                  failed_items: []
-                  total_failed_items: 0
-                message: File was successfully deleted
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /cluster/restart:
     put:
       tags:
@@ -9062,7 +9103,7 @@ paths:
     get:
       tags:
       - Lists
-      summary: "Get CDB lists"
+      summary: "Get CDB lists info"
       description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
       See available parameters for more details"
       operationId: api.controllers.cdb_list_controller.get_lists
@@ -9135,6 +9176,157 @@ paths:
                   failed_items: []
                   total_failed_items: 0
                 message: 'All specified lists were returned'
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /lists/files/{filename}:
+    get:
+      tags:
+        - Lists
+      summary: "Get CDB list file content"
+      description: "Return the content of a CDB list file. Only the filename can be specified. It will be searched
+      recursively if not found"
+      operationId: api.controllers.cdb_list_controller.get_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/lists:read'
+      parameters:
+        - $ref: '#/components/parameters/list_filename_path'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/raw'
+      responses:
+        '200':
+          description: "Successfully got CDB list"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
+              example:
+                data:
+                  affected_items:
+                    - audit-wazuh-w: write
+                      audit-wazuh-r: read
+                      audit-wazuh-a: attribute
+                      audit-wazuh-x: execute
+                      audit-wazuh-c: command
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: CDB list was returned
+                error: 0
+            'text/plain':
+              schema:
+                type: string
+              example: |
+                audit-wazuh-w:write
+                audit-wazuh-r:read
+                audit-wazuh-a:attribute
+                audit-wazuh-x:execute
+                audit-wazuh-c:command
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+        - Lists
+      summary: "Update CDB list file"
+      description: "Replace or upload a CDB list file with the data contained in the API request"
+      operationId: api.controllers.cdb_list_controller.put_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/lists:update'
+        - $ref: '#/x-rbac-catalog/actions/lists:delete'
+      parameters:
+        - $ref: '#/components/parameters/list_filename_path'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: "Content of the file to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                data:
+                  affected_items:
+                    - etc/lists/audit-keys
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "CDB list file uploaded successfully"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+        - Lists
+      summary: "Delete CDB list file"
+      description: "Delete a specified CDB list file. Only the filename can be specified. It will be searched
+      recursively if not found"
+      operationId: api.controllers.cdb_list_controller.delete_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/lists:delete'
+      parameters:
+        - $ref: '#/components/parameters/list_filename_path'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                data:
+                  affected_items:
+                    - etc/lists/test
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "CDB list file was successfully deleted"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9433,13 +9625,14 @@ paths:
       tags:
       - Manager
       summary: "Get configuration"
-      description: "Return wazuh configuration used"
+      description: "Return wazuh configuration used. The 'section' and 'field' parameters will be ignored if 'raw' parameter is provided."
       operationId: api.controllers.manager_controller.get_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/raw_conf'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -9453,7 +9646,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhMangerConfiguration'
+                      $ref: '#/components/schemas/WazuhManagerConfiguration'
               example:
                 data:
                   affected_items:
@@ -9464,7 +9657,7 @@ paths:
                         logall_json: no
                         email_notification: no
                         smtp_server: smtp.example.wazuh.com
-                        email_from: ossecm@example.wazuh.com
+                        email_from: wazuh@example.wazuh.com
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log
@@ -9503,6 +9696,49 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+      - Manager
+      summary: "Update Wazuh configuration"
+      description: "Replace Wazuh configuration with the data contained in the API request"
+      operationId: api.controllers.manager_controller.update_configuration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:update_config'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        description: "Content of the ossec.conf to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                message: "Configuration was successfully updated"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10135,145 +10371,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /manager/files:
-    get:
-      tags:
-      - Manager
-      summary: "Get file content"
-      description: "Return file contents from any file"
-      operationId: api.controllers.manager_controller.get_files
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
-        - $ref: '#/x-rbac-catalog/actions/manager:read_file'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/get_files_path'
-      responses:
-        '200':
-          description: "File contents"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          contents:
-                            description: "File contents"
-                            type: string
-              example:
-                data:
-                  contents: '<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019,
-                  Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02
-                  host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\"
-                  level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n
-                  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n
-                  <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags:
-      - Manager
-      summary: "Update file content"
-      description: "Replace file contents with the data contained in the API request"
-      operationId: api.controllers.manager_controller.put_files
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
-        - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
-        - $ref: '#/x-rbac-catalog/actions/manager:upload_file'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/edit_files_path'
-        - $ref: '#/components/parameters/overwrite'
-      requestBody:
-        description: "Content of the file to be uploaded"
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
-              example:
-                message: "File was uploaded successfully"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-      - Manager
-      summary: "Delete file"
-      description: "Delete a specified file"
-      operationId: api.controllers.manager_controller.delete_files
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:read'
-        - $ref: '#/x-rbac-catalog/actions/manager:delete_file'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/delete_files_path'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
-              example:
-                data:
-                  affected_items:
-                    - "etc/rules/custom_rule.xml"
-                  total_affected_items: 1
-                  failed_items: []
-                  total_failed_items: 0
-                message: File was deleted successfully
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /manager/api/config:
     get:
       tags:
@@ -10300,7 +10397,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        behind_proxy_server: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -10977,7 +11073,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -11022,23 +11118,90 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /rules/files/{filename}/download:
+  /rules/files/{filename}:
     get:
       tags:
         - Rules
-      summary: "Download rule"
-      description: "Download an specified rule file"
-      operationId: api.controllers.rule_controller.get_download_file
+      summary: "Get rules file content"
+      description: "Get the content of a specified rule in the ruleset"
+      operationId: api.controllers.rule_controller.get_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/downloadFile'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/raw'
       responses:
         '200':
-          description: "Rule contents"
+          description: "Rule content"
           content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - group:
+                      - "@name": syslog
+                        rule:
+                          "@id": '1'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: syslog
+                          description: "Generic template for all syslog rules."
+                      - "@name": firewall,
+                        rule:
+                          "@id": '2'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: firewall
+                          description: "Generic template for all firewall rules."
+                      - "@name": ids
+                        rule:
+                          "@id": '3'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: ids
+                          description: "Generic template for all ids rules."
+                      - "@name": web-log
+                        rule:
+                          "@id": '4'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: web-log
+                          description: "Generic template for all web rules."
+                      - "@name": squid
+                        rule:
+                          "@id": '5'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: squid
+                          description: "Generic template for all web proxy rules."
+                      - "@name": windows
+                        rule:
+                          "@id": '6'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: windows
+                          description: "Generic template for all windows rules."
+                      - "@name": ossec
+                        rule:
+                          "@id": '7'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: ossec
+                          description: "Generic template for all ossec rules."
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Selected rule was returned
+                error: 0
             application/xml:
               schema:
                 type: string
@@ -11047,7 +11210,7 @@ paths:
                   -  Rules config
                   -  Author: Daniel Cid.
                   -  Updated by Wazuh, Inc.
-                  -  Copyright (C) 2015-2020, Wazuh Inc.
+                  -  Copyright (C) 2015-2021, Wazuh Inc.
                   -  Copyright (C) 2009 Trend Micro Inc.
                   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
                 -->
@@ -11093,6 +11256,105 @@ paths:
                     <description>Generic template for all ossec rules.</description>
                   </rule>
                 </group>
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - Rules
+      summary: "Update rules file"
+      description: "Upload or replace a user ruleset file content"
+      operationId: api.controllers.rule_controller.put_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:update'
+        - $ref: '#/x-rbac-catalog/actions/rules:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: "Content of the rule to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/rules/new_rule.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Rule was successfully uploaded"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+      - Rules
+      summary: "Delete rules file"
+      description: "Delete a specified rule file"
+      operationId: api.controllers.rule_controller.delete_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/rules/new_rule.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Rule was successfully deleted"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -11604,7 +11866,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
@@ -11647,41 +11909,239 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /decoders/files/{filename}/download:
+  /decoders/files/{filename}:
     get:
       tags:
-      - Decoders
-      summary: "Download decoder"
-      description: "Download an specified decoder file"
-      operationId: api.controllers.decoder_controller.get_download_file
+        - Decoders
+      summary: "Get decoders file content"
+      description: "Get the content of a specified decoder file"
+      operationId: api.controllers.decoder_controller.get_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/downloadFile'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/raw'
       responses:
         '200':
-          description: "Decoder contents"
+          description: "Decoder content"
           content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - decoder:
+                        - "@name": wazuh
+                          prematch: "^wazuh:"
+                        - "@name": agent-buffer
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^Agent buffer:"
+                          regex:
+                            "@offset": after_prematch
+                            "#text": "^ '(\\S+)'."
+                          order: level
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^Upgrade procedure |^Custom installation"
+                          regex:
+                            "@offset": after_prematch
+                            "#text": on agent (\d\d\d)\s\((\S+)\):\s(\w+)
+                          order: agent.id, agent.name, status
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          regex: aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$
+                          order: error
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          regex: started.\sCurrent\sversion:\sWazuh\s(\.+)$
+                          order: agent.cur_version
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          regex: succeeded.\sNew\sversion:\sWazuh\s(\.+)$
+                          order: agent.new_version
+                        - "@name": agent-restart
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^Invalid remote configuration:"
+                          regex:
+                            "@offset": after_prematch
+                            "#text": "^ '(\\S+)'."
+                          order: module
+                        - "@name": fim-state
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^FIM DB:"
+                          plugin_decoder:
+                            "@offset": after_prematch
+                            "#text": JSON_Decoder
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Selected decoder was returned
+                error: 0
             application/xml:
               schema:
                 type: string
               example: |
-                  <!--
-                  - JSON Decoders
-                  - Copyright (C) 2015-2020, Wazuh Inc.
-                  - April 21, 2017.
-                  -
-                  - This program is a free software; you can redistribute it
-                  - and/or modify it under the terms of the GNU General Public
-                  - License (version 2) as published by the FSF - Free Software
-                  - Foundation.
-                  -->
-                  <decoder name="json">
-                    <prematch>^{\s*"</prematch>
-                    <plugin_decoder>JSON_Decoder</plugin_decoder>
-                  </decoder>
+                <!--
+                  -  Wazuh decoders
+                  -  Created by Wazuh, Inc.
+                  -  Copyright (C) 2015-2021, Wazuh Inc.
+                  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+                -->
+                <decoder name="wazuh">
+                  <prematch>^wazuh: </prematch>
+                </decoder>
+                <decoder name="agent-buffer">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^Agent buffer:</prematch>
+                  <regex offset="after_prematch">^ '(\S+)'.</regex>
+                  <order>level</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^Upgrade procedure |^Custom installation </prematch>
+                  <regex offset="after_prematch">on agent (\d\d\d)\s\((\S+)\):\s(\w+)</regex>
+                  <order>agent.id, agent.name, status</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <regex>aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$</regex>
+                  <order>error</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <regex>started.\sCurrent\sversion:\sWazuh\s(\.+)$</regex>
+                  <order>agent.cur_version</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <regex>succeeded.\sNew\sversion:\sWazuh\s(\.+)$</regex>
+                  <order>agent.new_version</order>
+                </decoder>
+                <decoder name="agent-restart">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^Invalid remote configuration:</prematch>
+                  <regex offset="after_prematch">^ '(\S+)'.</regex>
+                  <order>module</order>
+                </decoder>
+                <decoder name="fim-state">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^FIM DB: </prematch>
+                  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
+                </decoder>
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+        - Decoders
+      summary: "Update decoders file"
+      description: "Upload or replace a user decoder file content"
+      operationId: api.controllers.decoder_controller.put_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoders:update'
+        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: "Content of the decoder to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/decoders/new_decoder.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Decoder was successfully uploaded"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+      - Decoders
+      summary: "Delete decoders file"
+      description: "Delete a specified decoder file"
+      operationId: api.controllers.decoder_controller.delete_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/decoders/new_decoder.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Decoder file was successfully deleted"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -13556,7 +14016,7 @@ paths:
       description: "This method should be called to get an API token using an authorization context body. This token
       will expire after auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT
       /security/config"
-      operationId: api.controllers.security_controller.login_user
+      operationId: api.controllers.security_controller.run_as_login
       parameters:
         - $ref: '#/components/parameters/raw'
       security:
@@ -13641,6 +14101,7 @@ paths:
                                     - agent:read
                                     - agent:delete
                                     - agent:modify_group
+                                    - agent:reconnect
                                     - agent:restart
                                     - agent:upgrade
                                   resources:
@@ -13722,6 +14183,56 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /security/users/{user_id}/run_as:
+    put:
+      tags:
+        - Security
+      summary: "Enable/Disable run_as"
+      description: "Modify a user's allow_run_as flag by specifying their ID"
+      operationId: api.controllers.security_controller.edit_run_as
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/security:edit_run_as'
+      parameters:
+        - $ref: '#/components/parameters/user_id_required'
+        - $ref: '#/components/parameters/allow_run_as'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "User's flag changed successfully"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseUsers'
+                example:
+                  data:
+                    affected_items:
+                      - id: 1
+                        username: wazuh
+                        allow_run_as: true
+                        roles:
+                          - 1
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: [ ]
+                  message: Parameter allow_run_as has been enabled for the user
+                  error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13813,12 +14324,10 @@ paths:
                   description: 'Reference agent groups via group ID (i.e. group:id:default)'
                 node:id:
                   description: 'Reference cluster node via node ID (i.e. node:id:worker1)'
-                file:path:
-                  description: 'Reference file via its path (i.e. file:path:etc/rules/new_rule.xml)'
                 decoder:file:
                   description: 'Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)'
-                list:path:
-                  description: 'Reference list file via its path (i.e. list:path:etc/lists/audit-keys)'
+                list:file:
+                  description: 'Reference list file via its path (i.e. list:file:audit-keys)'
                 rule:file:
                   description: 'Reference rule file via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)'
                 policy:id:
@@ -13853,6 +14362,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -13952,9 +14462,6 @@ paths:
                 password:
                   type: string
                   format: password
-                allow_run_as:
-                  type: boolean
-                  default: False
               required:
                 - username
                 - password
@@ -14065,9 +14572,6 @@ paths:
                 password:
                   type: string
                   format: password
-                allow_run_as:
-                  type: boolean
-                  default: False
       responses:
         '200':
           description: "User updated successful"
@@ -14119,6 +14623,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14350,6 +14855,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14580,6 +15086,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -15318,7 +15825,7 @@ paths:
   /tasks/status:
     get:
       tags:
-        - tasks
+        - Tasks
       summary: "List tasks"
       description: "Returns all available information about the specified tasks"
       operationId: api.controllers.task_controller.get_tasks_status
@@ -15363,6 +15870,64 @@ paths:
                   failed_items: [ ]
                 message: All specified task's status were returned
 
+  /vulnerability/{agent_id}:
+    get:
+      tags:
+        - Vulnerability
+      summary: "Get vulnerabilities"
+      description: "Return the vulnerabilities of an agent"
+      operationId: api.controllers.vulnerability_controller.get_vulnerability_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/cve'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/cve_version'
+      responses:
+        '200':
+          description: "Get agent vulnerabilities"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - cve: CVE-2020-27350
+                      architecture: amd64
+                      version: 1.2.32ubuntu0.1
+                      name: apt
+                    - cve: CVE-2019-18276
+                      architecture: amd64
+                      version: 4.3-14ubuntu1.4
+                      name: bash
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: All selected vulnerabilities were returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.2/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.3/user-manual/api/index.html'

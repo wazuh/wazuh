@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Task management.
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 13, 2020.
  *
  * This program is free software; you can redistribute it
@@ -22,9 +22,6 @@
 #include "wm_task_manager_parsing.h"
 #include "defs.h"
 #include "wazuhdb_op.h"
-
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
 
 /**
  * Analyze an upgrade or upgrade_custom command. Update the tasks DB when necessary.

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysCollector
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -27,10 +27,10 @@ do                                                                      \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
-        if(m_logErrorFunction)                                          \
+        if(m_logFunction)                                               \
         {                                                               \
             const std::string error{"task: " + std::string{ex.what()}}; \
-            m_logErrorFunction(error);                                  \
+            m_logFunction(SYS_LOG_ERROR, error);                        \
         }                                                               \
     }                                                                   \
 }while(0)
@@ -66,7 +66,7 @@ constexpr auto OS_SYNC_CONFIG_STATEMENT
         "index":"os_name",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -152,7 +152,7 @@ constexpr auto HW_SYNC_CONFIG_STATEMENT
         "index":"board_serial",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -233,7 +233,7 @@ constexpr auto HOTFIXES_SYNC_CONFIG_STATEMENT
         "index":"hotfix",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE hotfix BETWEEN '?' and '?' ORDER BY hotfix",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -327,7 +327,7 @@ constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -433,7 +433,7 @@ constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
         "index":"pid",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE pid BETWEEN '?' and '?' ORDER BY pid",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -540,7 +540,7 @@ constexpr auto PORTS_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -581,7 +581,7 @@ constexpr auto PORTS_SQL_STATEMENT
        inode BIGINT,
        state TEXT,
        pid BIGINT,
-       process_name TEXT,
+       process TEXT,
        checksum TEXT,
        item_id TEXT,
        PRIMARY KEY (inode, protocol, local_ip, local_port)) WITHOUT ROWID;)"
@@ -632,7 +632,7 @@ constexpr auto NETIFACE_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -667,7 +667,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
        adapter TEXT,
        type TEXT,
        state TEXT,
-       mtu TEXT,
+       mtu INTEGER,
        mac TEXT,
        tx_packets INTEGER,
        rx_packets INTEGER,
@@ -727,7 +727,7 @@ constexpr auto NETPROTO_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -813,7 +813,7 @@ constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -845,7 +845,7 @@ constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
        iface TEXT,
-       proto TEXT,
+       proto INTEGER,
        address TEXT,
        netmask TEXT,
        broadcast TEXT,
@@ -895,6 +895,41 @@ static std::string getItemChecksum(const nlohmann::json& item)
     return Utils::asciiToHex(hash.hash());
 }
 
+static void removeKeysWithEmptyValue(nlohmann::json& input)
+{
+    for (auto &data : input)
+    {
+        for (auto it = data.begin(); it != data.end(); )
+        {
+            if (it.value().type() == nlohmann::detail::value_t::string &&
+                it.value().get_ref<const std::string&>().empty())
+            {
+                it = data.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+}
+
+static bool isElementDuplicated(const nlohmann::json & input, const std::pair<std::string, std::string>& keyValue)
+{
+    const auto it
+    {
+        std::find_if
+        (
+            input.begin(), input.end(),
+            [&keyValue](const auto& elem)
+            {
+                return elem.at(keyValue.first) == keyValue.second;
+            }
+        )
+    };
+    return it != input.end();
+}
+
 void Syscollector::updateAndNotifyChanges(const std::string& table,
                                           const nlohmann::json& values)
 {
@@ -916,7 +951,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
         {
             if(result == DB_ERROR)
             {
-                m_logErrorFunction(data.dump());
+                m_logFunction(SYS_LOG_ERROR, data.dump());
             }
             else if(m_notify && !m_stopping)
             {
@@ -929,7 +964,10 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                         msg["operation"] = operationsMap.at(result);
                         msg["data"] = item;
                         msg["data"]["scan_time"] = m_scanTime;
-                        m_reportDiffFunction(msg.dump());
+                        removeKeysWithEmptyValue(msg["data"]);
+                        const auto msgToSend{msg.dump()};
+                        m_reportDiffFunction(msgToSend);
+                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
                     }
                 }
                 else
@@ -940,7 +978,10 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                     msg["operation"] = operationsMap.at(result);
                     msg["data"] = data;
                     msg["data"]["scan_time"] = m_scanTime;
-                    m_reportDiffFunction(msg.dump());
+                    removeKeysWithEmptyValue(msg["data"]);
+                    const auto msgToSend{msg.dump()};
+                    m_reportDiffFunction(msgToSend);
+                    m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
                     // LCOV_EXCL_STOP
                 }
             }
@@ -1030,18 +1071,24 @@ void Syscollector::registerWithRsync()
                     it = data.find("attributes");
                     if(it != data.end())
                     {
-                        (*it)["scan_time"] = Utils::getCurrentTimestamp();
-                        m_reportSyncFunction(jsonData.dump());
+                        auto &fieldData { *it };
+                        removeKeysWithEmptyValue(fieldData);
+                        fieldData["scan_time"] = Utils::getCurrentTimestamp();
+                        const auto msgToSend{jsonData.dump()};
+                        m_reportSyncFunction(msgToSend);
+                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
                     }
                     else
                     {
                         m_reportSyncFunction(dataString);
+                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
                     }
                 }
                 else
                 {
                     //LCOV_EXCL_START
                     m_reportSyncFunction(dataString);
+                    m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
                     //LCOV_EXCL_STOP
                 }
             }
@@ -1064,7 +1111,7 @@ void Syscollector::registerWithRsync()
     }
     if (m_processes)
     {
-        m_spRsync->registerSyncID("syscollector_processes", 
+        m_spRsync->registerSyncID("syscollector_processes",
                                   m_spDBSync->handle(),
                                   nlohmann::json::parse(PROCESSES_SYNC_CONFIG_STATEMENT),
                                   reportSyncWrapper);
@@ -1109,9 +1156,7 @@ void Syscollector::registerWithRsync()
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
-                        const std::function<void(const std::string&)> logErrorFunction,
-                        const std::function<void(const std::string&)> logInfoFunction,
-                        const std::function<void(const std::string&)> logDebugFunction,
+                        const std::function<void(const syscollector_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
                         const std::string& normalizerType,
@@ -1124,14 +1169,13 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool ports,
                         const bool portsAll,
                         const bool processes,
-                        const bool hotfixes)
+                        const bool hotfixes,
+                        const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = reportDiffFunction;
     m_reportSyncFunction = reportSyncFunction;
-    m_logErrorFunction = logErrorFunction;
-    m_logInfoFunction = logInfoFunction;
-    m_logDebugFunction = logDebugFunction;
+    m_logFunction = logFunction;
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
@@ -1142,6 +1186,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_portsAll = portsAll;
     m_processes = processes;
     m_hotfixes = hotfixes;
+    m_notify = notifyOnFirstScan;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -1172,8 +1217,10 @@ void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting hardware scan");
         const auto& hwData{getHardwareData()};
         updateAndNotifyChanges(HW_TABLE, hwData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending hardware scan");
     }
 }
 
@@ -1197,8 +1244,10 @@ void Syscollector::scanOs()
 {
     if (m_os)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting os scan");
         const auto& osData{getOSData()};
         updateAndNotifyChanges(OS_TABLE, osData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending os scan");
     }
 }
 
@@ -1239,6 +1288,8 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["rx_packets"] = item.at("rx_packets");
                 ifaceTableData["tx_errors"]  = item.at("tx_errors");
                 ifaceTableData["rx_errors"]  = item.at("rx_errors");
+                ifaceTableData["tx_bytes"]   = item.at("tx_bytes");
+                ifaceTableData["rx_bytes"]   = item.at("rx_bytes");
                 ifaceTableData["tx_dropped"] = item.at("tx_dropped");
                 ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                 ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);
@@ -1259,7 +1310,7 @@ nlohmann::json Syscollector::getNetworkData()
 
                     // "dbsync_network_address" table data to update and notify
                     addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = "IPv4";
+                    addressTableData["proto"]     = 0;
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                     addressTableDataList.push_back(addressTableData);
@@ -1273,7 +1324,7 @@ nlohmann::json Syscollector::getNetworkData()
 
                     // "dbsync_network_address" table data to update and notify
                     addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = "IPv6";
+                    addressTableData["proto"]     = 1;
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                     addressTableDataList.push_back(addressTableData);
@@ -1294,6 +1345,7 @@ void Syscollector::scanNetwork()
 {
     if (m_network)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting network scan");
         const auto& networkData{getNetworkData()};
         if (!networkData.is_null())
         {
@@ -1313,6 +1365,7 @@ void Syscollector::scanNetwork()
                 updateAndNotifyChanges(NET_ADDRESS_TABLE, itAddress.value());
             }
         }
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending network scan");
     }
 }
 
@@ -1349,18 +1402,7 @@ nlohmann::json Syscollector::getPackagesData()
             else
             {
                 const auto itemId{ getItemId(item, PACKAGES_ITEM_ID_FIELDS) };
-                const auto it
-                {
-                    std::find_if
-                    (
-                        packagesList.begin(), packagesList.end(),
-                        [&itemId](const auto& elem)
-                        {
-                            return elem.at("item_id") == itemId;
-                        }
-                    )
-                };
-                if(packagesList.end() == it)
+                if(!isElementDuplicated(packagesList, std::make_pair("item_id", itemId)))
                 {
                     item["item_id"] = itemId;
                     packagesList.push_back(item);
@@ -1377,6 +1419,7 @@ void Syscollector::scanPackages()
 {
     if (m_packages)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting packages scan");
         const auto& packagesData { getPackagesData() };
         if (!packagesData.is_null())
         {
@@ -1394,6 +1437,7 @@ void Syscollector::scanPackages()
                 }
             }
         }
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending packages scan");
     }
 }
 
@@ -1414,6 +1458,7 @@ nlohmann::json Syscollector::getPortsData()
     nlohmann::json ret;
     constexpr auto PORT_LISTENING_STATE { "listening" };
     constexpr auto TCP_PROTOCOL { "tcp" };
+    constexpr auto UDP_PROTOCOL { "udp" };
     const auto& data { m_spInfo->ports() };
 
     if (!data.is_null())
@@ -1424,25 +1469,47 @@ nlohmann::json Syscollector::getPortsData()
         {
             for (auto item : itPorts.value())
             {
-                const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-                if(isListeningState)
+                const auto protocol { item.at("protocol").get_ref<const std::string&>() };
+                if (Utils::startsWith(protocol, TCP_PROTOCOL))
                 {
-                    item["checksum"] = getItemChecksum(item);
-                    item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                    // Only update and notify "Listening" state ports
+                    // All ports.
                     if (m_portsAll)
                     {
-                        // TCP and UDP ports
-                        ret.push_back(item);
+                        const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                        if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        {
+                            item["checksum"] = getItemChecksum(item);
+                            item["item_id"] = itemId;
+                            ret.push_back(item);
+                        }
                     }
                     else
                     {
-                        // Only TCP ports
-                        const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
-                        if (isTCPProto)
+                        // Only listening ports.
+                        const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                        if(isListeningState)
                         {
-                            ret.push_back(item);
+                            const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                            if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                            {
+                                item["checksum"] = getItemChecksum(item);
+                                item["item_id"] = itemId;
+                                ret.push_back(item);
+                            }
                         }
+                    }
+                }
+                else if (Utils::startsWith(protocol, UDP_PROTOCOL))
+                {
+                    const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                    if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    {
+                        item["checksum"] = getItemChecksum(item);
+                        item["item_id"] = itemId;
+                        ret.push_back(item);
                     }
                 }
             }
@@ -1455,8 +1522,10 @@ void Syscollector::scanPorts()
 {
     if (m_ports)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting ports scan");
         const auto& portsData { getPortsData() };
         updateAndNotifyChanges(PORTS_TABLE, portsData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending ports scan");
     }
 }
 
@@ -1487,8 +1556,10 @@ void Syscollector::scanProcesses()
 {
     if (m_processes)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting processes scan");
         const auto& processesData{getProcessesData()};
         updateAndNotifyChanges(PROCESSES_TABLE, processesData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
 }
 
@@ -1502,6 +1573,7 @@ void Syscollector::syncProcesses()
 
 void Syscollector::scan()
 {
+    m_logFunction(SYS_LOG_INFO, "Starting evaluation.");
     m_scanTime = Utils::getCurrentTimestamp();
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1510,21 +1582,24 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
     m_notify = true;
+    m_logFunction(SYS_LOG_INFO, "Evaluation finished.");
 }
 
 void Syscollector::sync()
 {
+    m_logFunction(SYS_LOG_DEBUG, "Starting syscollector sync");
     TRY_CATCH_TASK(syncHardware);
     TRY_CATCH_TASK(syncOs);
     TRY_CATCH_TASK(syncNetwork);
     TRY_CATCH_TASK(syncPackages);
     TRY_CATCH_TASK(syncPorts);
     TRY_CATCH_TASK(syncProcesses);
+    m_logFunction(SYS_LOG_DEBUG, "Ending syscollector sync");
 }
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
-    m_logInfoFunction("Syscollector started.");
+    m_logFunction(SYS_LOG_INFO, "Module started.");
     if (m_scanOnStart)
     {
         scan();
@@ -1550,12 +1625,12 @@ void Syscollector::push(const std::string& data)
         try
         {
             m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
-            m_logDebugFunction("Message pushed: " + data);
+            m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Message pushed: " + data);
         }
         // LCOV_EXCL_START
         catch(const std::exception& ex)
         {
-            m_logErrorFunction(ex.what());
+            m_logFunction(SYS_LOG_ERROR, ex.what());
         }
     }
     // LCOV_EXCL_STOP

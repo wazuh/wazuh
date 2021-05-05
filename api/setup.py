@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -15,7 +15,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='api',
-    version='4.2.0',
+    version='4.3.0',
     description="Wazuh API",
     author_email="hello@wazuh.com",
     author="Wazuh",

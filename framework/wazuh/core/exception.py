@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -30,7 +30,7 @@ class WazuhException(Exception):
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
-               'remediation': 'Please, check if path to file/directory is correct and `ossec` '
+               'remediation': 'Please, check if path to file/directory is correct and `wazuh` '
                               'has the appropriate permissions'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
@@ -44,6 +44,7 @@ class WazuhException(Exception):
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
+        1019: 'Error trying to create backup file',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -81,11 +82,7 @@ class WazuhException(Exception):
                },
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
-        1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
-        1120: {
-            'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
-            'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
-        },
+        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
@@ -95,6 +92,12 @@ class WazuhException(Exception):
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
                'remediation': f'To solve this issue please enable the remote commands in the API settings or add an exception: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#remote-commands-configuration'},
+        1125: {'message': 'Invalid ossec configuration',
+               'remediation': 'Please, provide a valid ossec configuration'
+               },
+        1126: {'message': 'Error updating ossec configuration',
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
+               },
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -139,6 +142,8 @@ class WazuhException(Exception):
         1308: {'message': 'Stats file does not exist',
                'remediation': 'Stats files are usually generated at 12 PM on a daily basis'},
         1309: 'Statistics file damaged',
+        1310: {'message': 'Invalid agent ID',
+               'remediation': 'This component only exists in real agents'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -219,9 +224,6 @@ class WazuhException(Exception):
         1701: {'message': 'Agent does not exist',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
                },
-        1702: {'message': 'Unable to restart agent(s)',
-               'remediation': 'Please make sure the agent exists, it is active and it is not the manager (agent 000)'
-               },
         1703: {'message': 'Action not available for Manager (agent 000)',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you select an agent other than 000'
                },
@@ -267,8 +269,8 @@ class WazuhException(Exception):
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1726: {'message': 'Ossec authd is not running',
-               'remediation': f'Please, visit our documentation to get more information: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html#registering-the-wazuh-agent-using-simple-registration-service'
+        1726: {'message': 'Ossec authd is not running and API use_only_authd is enabled',
+               'remediation': f'Please enable authd or change the API use_only_authd configuration'
                },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
@@ -284,7 +286,7 @@ class WazuhException(Exception):
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                               f'`cluster_control -l` (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for removal',
-               'remediation': f"Please check the agent's status official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-life-cycle.html#registered-agent)"
+               'remediation': f"Please, make sure the agent meets the requirements."
                },
         1732: {'message': 'No agents selected',
                'remediation': 'Please select an agent to perform the operation.'
@@ -331,10 +333,15 @@ class WazuhException(Exception):
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
         1754: {'message': 'Agent does not exist or you do not have permissions to access it',
                'remediation': 'Try listing all agents with GET /agents endpoint'},
-        1755: {'message': 'The group does not have any agent assigned',
-               'remediation': 'Please select another group or assign any agent to it'},
         1756: {'message': 'Upgrade procedure could not start. Agent already upgrading',
                'remediation': 'You can check the status of this task with the /agents/:agent_id/upgrade_result endpoint'
+               },
+        1757: {'message': 'Error deleting an agent',
+               'remediation': 'Please check all data fields and try again'
+               },
+        1758: {'message': 'Tried to release an already unlocked client.keys thread lock',
+               },
+        1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
                },
 
         # CDB List: 1800 - 1899
@@ -349,7 +356,11 @@ class WazuhException(Exception):
         1804: {'message': 'Error reading lists file',
                'remediation': 'Please, make sure you provide a correct filepath'
                },
-
+        1805: {'message': 'File with the same name already exists in a subdirectory.',
+               'remediation': 'Please, make sure to use a name which is not repeated. '
+               },
+        1806: {'message': 'Error trying to create CDB list file.'
+               },
         1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},
 
@@ -396,6 +407,7 @@ class WazuhException(Exception):
         2007: {'message': 'Error retrieving data from Wazuh DB'},
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
+        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
 
         # Cluster
         3000: 'Cluster',
@@ -455,6 +467,8 @@ class WazuhException(Exception):
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found.",
+        3035: "String couldn't be found",
+        3036: "JSON couldn't be loaded",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -528,6 +542,8 @@ class WazuhException(Exception):
                               'any other user with the necessary permissions'},
         5009: {'message': 'Insecure user password provided',
                'remediation': 'The password must contain a length between 8 and 64 characters.'},
+        5010: {'message': 'The value of the parameter allow_run_as is invalid',
+               'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through authorization context) or false (disabled authentication through authorization context).'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
@@ -538,7 +554,7 @@ class WazuhException(Exception):
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
         6004: {'message': 'The current user does not have authentication enabled through authorization context',
-               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#operation/api.controllers.security_controller.edit_run_as'},
 
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},
