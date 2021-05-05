@@ -185,6 +185,7 @@ endif
 		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
+		export LD_ALTEXEC = $(shell which ld)
 #		This is necessary in order to compile libcurl
 		NM=gnm
 		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
