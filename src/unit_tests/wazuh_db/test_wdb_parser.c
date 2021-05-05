@@ -758,7 +758,7 @@ void test_osinfo_syntax_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "DB(000) query error near: osinfo");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'osinfo'");
     assert_int_equal(ret, OS_INVALID);
@@ -776,7 +776,7 @@ void test_osinfo_invalid_action(void **state) {
     will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: osinfo invalid");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid osinfo action: invalid");
     assert_int_equal(ret, OS_INVALID);
@@ -1249,7 +1249,7 @@ void test_vuln_cves_syntax_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid vuln_cves query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "DB(000) vuln_cves query error near: vuln_cves");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid vuln_cves query syntax, near 'vuln_cves'");
     assert_int_equal(ret, OS_INVALID);
@@ -1267,7 +1267,7 @@ void test_vuln_cves_invalid_action(void **state) {
     will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cves invalid");
 
-    ret = wdb_parse(query, data->output);
+    ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid vuln_cves action: invalid");
     assert_int_equal(ret, OS_INVALID);
