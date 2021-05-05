@@ -9,7 +9,7 @@
 
 <!-- General decoder -->
 <decoder name="cisco-ftd">
-    <prematch type="pcre2">[(?:[^%])?%FTD-[0-7]-[^:]+:\s.+</prematch>
+    <prematch type="pcre2">(?:[^%])?%FTD-[0-7]-[^:\s]+[:\s].+</prematch>
     <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:]+):\s(.+)</regex>
     <order>header, product.name, event.severity, event.id, message</order>
 </decoder>
