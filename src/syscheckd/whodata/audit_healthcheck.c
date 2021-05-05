@@ -26,7 +26,6 @@ int audit_health_check(int audit_socket) {
     FILE *fp = NULL;
     struct timespec wait_time = {0, 0};
 
-
     w_mutex_init(&audit_hc_mutex, NULL);
 
     // Audit needs an absolute path to add rules

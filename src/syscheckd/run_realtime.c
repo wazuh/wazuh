@@ -34,12 +34,13 @@
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
 int realtime_start() {
+    directory_t *dir_it;
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
         merror(MEM_ERROR, errno, strerror(errno));
-        return (-1);
+        goto error;
     }
 
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free);
@@ -47,25 +48,27 @@ int realtime_start() {
     syscheck.realtime->fd = inotify_init();
     if (syscheck.realtime->fd < 0) {
         merror(FIM_ERROR_INOTIFY_INITIALIZE);
-        return (-1);
+        goto error;
     }
 
     return (0);
+
+error:
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it->options & REALTIME_ACTIVE) {
+            dir_it->options &= ~ REALTIME_ACTIVE;
+            dir_it->options |= SCHEDULED_ACTIVE;
+        }
+    }
+    return -1;
 }
 
 /* Add a directory to real time checking */
 int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *configuration, int followsl) {
-    if (!syscheck.realtime) {
-        if (realtime_start() < 0 ) {
-            return (-1);
-        }
-    }
-
     /* Check if it is ready to use */
     if (syscheck.realtime->fd < 0) {
         return (-1);
-    }
-    else {
+    } else {
         int wd = 0;
 
         wd = inotify_add_watch(syscheck.realtime->fd,
@@ -85,8 +88,6 @@ int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *config
             int retval;
             snprintf(wdchar, 33, "%d", wd);
             os_strdup(dir, data);
-
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
             if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                 if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                     os_free(data);
@@ -103,11 +104,9 @@ int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *config
                 if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                     merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
                     os_free(data);
-                    w_mutex_unlock(&syscheck.fim_realtime_mutex);
                     return (-1);
                 }
             }
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
         }
     }
 
@@ -121,6 +120,8 @@ void realtime_process() {
     struct inotify_event *event;
 
     buf[REALTIME_EVENT_BUFFER] = '\0';
+
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
 
     len = read(syscheck.realtime->fd, buf, REALTIME_EVENT_BUFFER);
 
@@ -147,7 +148,6 @@ void realtime_process() {
 
                 snprintf(wdchar, 33, "%d", event->wd);
 
-                w_mutex_lock(&syscheck.fim_realtime_mutex);
                 // The configured paths can end at / or not, we must check it.
                 entry = (char *)OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
 
@@ -185,10 +185,10 @@ void realtime_process() {
                         break;
                     }
                 }
-                w_mutex_unlock(&syscheck.fim_realtime_mutex);
             }
         }
 
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         char ** paths = rbtree_keys(tree);
 
         for (int i = 0; paths[i] != NULL; i++) {
@@ -321,7 +321,6 @@ void realtime_sanitize_watch_map() {
     struct timespec end;
 
     gettime(&start);
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
     hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it);
 
     while (hash_node) {
@@ -333,7 +332,6 @@ void realtime_sanitize_watch_map() {
         hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node);
     }
 
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
     gettime(&end);
     mdebug2("Time spent sanitizing wd hashmap: %.3f seconds", time_diff(&start, &end));
 }
@@ -455,6 +453,12 @@ int realtime_start() {
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
         merror(MEM_ERROR, errno, strerror(errno));
+        directory_t *dir_it;
+        foreach_array(dir_it, syscheck.directories) {
+            if (dir_it->options & REALTIME_ACTIVE) {
+                dir_it->options &= ~ REALTIME_ACTIVE;
+                dir_it->options |= SCHEDULED_ACTIVE;
+            }
         return(-1);
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
@@ -526,19 +530,9 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
         return 1;
 #endif
     }
-
-    if (!syscheck.realtime) {
-        if (realtime_start() < 0 ) {
-            return (-1);
-        }
-    }
-
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
-
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
         merror(FIM_ERROR_REALTIME_MAXNUM_WATCHES, dir);
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return (0);
     }
 
@@ -565,7 +559,6 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
             free(rtlocald);
             rtlocald = NULL;
             mdebug2(FIM_REALTIME_ADD, dir);
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
             return (0);
         }
         syscheck.realtime->fd++;
@@ -579,7 +572,6 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
         if(realtime_win32read(rtlocald) == 0) {
             mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
             free_win32rtfim_data(rtlocald);
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
             return 0;
         }
 
@@ -589,8 +581,6 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
 
         mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
     }
-
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     return 1;
 }
@@ -629,8 +619,7 @@ void realtime_sanitize_watch_map() {
 
 #else /* !WIN32 */
 
-int realtime_start()
-{
+int realtime_start() {
     merror(FIM_ERROR_REALTIME_INITIALIZE);
 
     return (0);

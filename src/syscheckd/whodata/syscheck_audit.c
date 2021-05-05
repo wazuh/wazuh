@@ -341,6 +341,11 @@ void *audit_main(audit_data_t *audit_data) {
         dir_it->options &= ~ WHODATA_ACTIVE;
         dir_it->options |= REALTIME_ACTIVE;
 
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        if (syscheck.realtime == NULL) {
+            realtime_start();
+        }
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         realtime_adddir(path, 0, (dir_it->options & CHECK_FOLLOW) ? 1 : 0);
         free(path);
     }

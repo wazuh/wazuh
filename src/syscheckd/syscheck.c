@@ -99,6 +99,7 @@ int Start_win32_Syscheck()
     int debug_level = 0;
     int r = 0;
     char *cfg = OSSECCONF;
+    directory_t *dir_it;
     /* Read internal options */
     read_internal(debug_level);
 
@@ -253,6 +254,12 @@ int Start_win32_Syscheck()
 
         /* Start up message */
         minfo(STARTUP_MSG, getpid());
+        foreach_array(dir_it, syscheck.directories) {
+            if (dir_it->options & REALTIME_ACTIVE) {
+                realtime_start();
+                break;
+            }
+        }
     }
 
     /* Some sync time */
