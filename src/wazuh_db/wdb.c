@@ -1051,6 +1051,43 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* stat
     return result;
 }
 
+int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
+    int status = SQLITE_ERROR;
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
+        return status;
+    }
+    cJSON * row = NULL;
+    char* response = NULL;
+    char* header = "due ";
+    int header_size = strlen(header);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+    memcpy(response, header, header_size);
+    char* payload = response+header_size;
+    int payload_size = OS_MAXSTR-header_size;
+
+    while ((row = wdb_exec_row_stmt(stmt, &status))) {
+        bool row_fits = cJSON_PrintPreallocated(row, payload, payload_size, FALSE);
+        cJSON_Delete(row);
+        if (row_fits) {
+            if (OS_SendSecureTCP(peer, strlen(response), response) < 0) {
+                merror("Socket %d error: %s (%d)", peer, strerror(errno), errno);
+                status = SQLITE_ERROR;
+                break;
+            }
+        }
+        else {
+            merror("SQL row response for statement %s is too big to be sent", sqlite3_sql(stmt));
+            status = SQLITE_ERROR;
+            break;
+        }
+    }
+
+    os_free(response);
+
+    return status;
+}
+
 cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     cJSON * result;
     cJSON * row;
