@@ -1,0 +1,15 @@
+<!--
+  -  Cisco FTD rules
+  -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+<group name="cisco, cisco-ftd,">
+    <!-- General rule -->
+    <rule id="150000" level="0">
+        <decoded_as>cisco-ftd</decoded_as>
+        <description>cisco-ftd rules</description>
+    </rule>
+</group>
