@@ -694,8 +694,7 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(result.encode())
             except Exception as e:
-                self.logger.error(f"Error in SendSync: {e}", exc_info=True)
-                task_id = b'Error in SendSync: ' + str(e).encode()
+                task_id = f'Error in SendSync (parameters {request}): {str(e)}'.encode()
 
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id.decode())
