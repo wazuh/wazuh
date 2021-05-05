@@ -1203,10 +1203,13 @@ class WazuhDBQuery(object):
 
     def _check_allowed_sort_fields(self, allowed_sort_fields):
 
+        fields_allowed = True
+
         for field in self.sort['fields']:
             if field not in allowed_sort_fields:
-                return False
-        return True
+                fields_allowed = False
+
+        return fields_allowed
 
     def _add_sort_to_query(self):
         if self.sort:
