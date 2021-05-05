@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
@@ -25,7 +25,7 @@ class WazuhDBQueryTask(WazuhDBQuery):
         if filters is None:
             filters = {}
         if min_select_fields is None:
-            min_select_fields = {'task_id', 'agent_id', 'status', 'command', 'create_time'}
+            min_select_fields = {'task_id'}
         if fields is None:
             fields = tasks_fields
 

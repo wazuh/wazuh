@@ -1,6 +1,6 @@
 #!/bin/sh
 # Restarts Wazuh.
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 
 
 PARAM_TYPE=$1

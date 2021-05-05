@@ -1,6 +1,6 @@
 /*
  * SQL Schema agent tests
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * February 13, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
