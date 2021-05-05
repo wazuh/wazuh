@@ -18,12 +18,13 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#ifndef WAZUH_UNIT_TESTING
-#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
-                                (mode == HEALTHCHECK_MODE && hc_thread_active))
-#else
-#define audit_thread_status() FOREVER()
-#endif
+#define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
+#define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
+#define PLUGINS_DIR_AUDIT_2         "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT_3         "/etc/audit/plugins.d"
+#define AUDIT_CONF_LINK             "af_wazuh.conf"
+#define BUF_SIZE OS_MAXSTR
+#define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -207,7 +208,6 @@ void audit_create_rules_file() {
     char *real_path = NULL;
     directory_t *dir_it = NULL;
     OSListNode *node_it;
-    int i;
     FILE *fp;
 
     fp = fopen(AUDIT_RULES_FILE, "w");
@@ -260,7 +260,10 @@ void audit_create_rules_file() {
 
 void audit_rules_to_realtime() {
     char *real_path = NULL;
+    directory_t *dir_it = NULL;
+    OSListNode *node_it;
     int found;
+    int realtime_check = 0;
 
     // Initialize audit_rule_list
     int auditd_fd = audit_open();
@@ -271,13 +274,16 @@ void audit_rules_to_realtime() {
         merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
     }
 
-    for (int i = 0; syscheck.dir[i] != NULL; i++) {
-        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }
 
         found = 0;
-        real_path = fim_get_real_path(i);
+        real_path = fim_get_real_path(dir_it);
 
         if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
             free(real_path);
@@ -292,12 +298,22 @@ void audit_rules_to_realtime() {
         }
 
         if (!found){
+            realtime_check = 1;
             mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
-            syscheck.opts[i] &= ~WHODATA_ACTIVE;
-            syscheck.opts[i] |= REALTIME_ACTIVE;
+            dir_it->options &= ~WHODATA_ACTIVE;
+            dir_it->options |= REALTIME_ACTIVE;
         }
 
         free(real_path);
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    if (realtime_check) {
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        if (syscheck.realtime == NULL) {
+            realtime_start();
+        }
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
 }
 
