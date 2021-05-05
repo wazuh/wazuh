@@ -28,7 +28,7 @@ int total_files;
  * @param content type attribute string
  * @return returns the configuration flags: activity, trace and/or log
  */
-STATIC int w_logcollector_get_oslog_type(const char * content);
+STATIC int w_logcollector_get_macos_log_type(const char * content);
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -139,14 +139,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
             if (type_attr) {
-                logf[pl].query_type = w_logcollector_get_oslog_type(type_attr);
+                logf[pl].query_type = w_logcollector_get_macos_log_type(type_attr);
             }
 
             const char * level_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_level_attr);
             if (level_attr) {
-                if ((strcmp(level_attr, OSLOG_LEVEL_DEFAULT_STR) != 0) &&
-                    (strcmp(level_attr, OSLOG_LEVEL_INFO_STR) != 0) &&
-                    (strcmp(level_attr, OSLOG_LEVEL_DEBUG_STR) != 0)) {
+                if ((strcmp(level_attr, MACOS_LOG_LEVEL_DEFAULT_STR) != 0) &&
+                    (strcmp(level_attr, MACOS_LOG_LEVEL_INFO_STR) != 0) &&
+                    (strcmp(level_attr, MACOS_LOG_LEVEL_DEBUG_STR) != 0)) {
                     /* Invalid level query */
                     mwarn(LOGCOLLECTOR_INV_VALUE_IGNORE, level_attr,
                         xml_localfile_query_level_attr, xml_localfile_query);
@@ -357,14 +357,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-            } else if (strcmp(logf[pl].logformat, OSLOG) == 0) {
-                log_config->oslog_count++;
-                os_calloc(1, sizeof(w_oslog_config_t), logf[pl].oslog);
-                w_calloc_expression_t(&logf[pl].oslog->start_log_regex, EXP_TYPE_OSREGEX);
-                if (!w_expression_compile(logf[pl].oslog->start_log_regex, OSLOG_START_REGEX, 0)) {
-                    merror(LOGCOLLECTOR_OSLOG_IREGEX_ERROR);
-                    w_free_expression_t(&logf[pl].oslog->start_log_regex);
-                    os_free(logf[pl].oslog);
+            } else if (strcmp(logf[pl].logformat, MACOS) == 0) {
+                log_config->macos_blocks_count++;
+                os_calloc(1, sizeof(w_macos_log_config_t), logf[pl].macos_log);
+                w_calloc_expression_t(&logf[pl].macos_log->log_start_regex, EXP_TYPE_OSREGEX);
+                if (!w_expression_compile(logf[pl].macos_log->log_start_regex, MACOS_LOG_START_REGEX, 0)) {
+                    merror(LOGCOLLECTOR_MACOS_LOG_IREGEX_ERROR);
+                    w_free_expression_t(&logf[pl].macos_log->log_start_regex);
+                    os_free(logf[pl].macos_log);
                     return (OS_INVALID);
                 }
 
@@ -477,15 +477,15 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         return (OS_INVALID);
     }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-    /* Verify oslog config*/
-    if (log_config->oslog_count > 1) {
-        merror(DUP_OSLOG);
+    /* Verify macos log config*/
+    if (log_config->macos_blocks_count > 1) {
+        merror(DUP_MACOS);
         return (OS_INVALID);
     }
 
-    if (strcmp(logf[pl].logformat, OSLOG) == 0 && strcmp(logf[pl].file, OSLOG) != 0) {
-        /* Invalid oslog */
-        merror(INV_OSLOG);
+    if (strcmp(logf[pl].logformat, MACOS) == 0 && strcmp(logf[pl].file, MACOS) != 0) {
+        /* Invalid macos log configuration */
+        merror(INV_MACOS);
         return (OS_INVALID);
     }
 #endif
@@ -871,7 +871,7 @@ const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     return match_str[match_type];
 }
 
-STATIC int w_logcollector_get_oslog_type(const char * content) {
+STATIC int w_logcollector_get_macos_log_type(const char * content) {
 
     const size_t MAX_ARRAY_SIZE = 64;
     const char * XML_LOCALFILE_QUERY_TYPE_ATTR = "type";
@@ -890,12 +890,12 @@ STATIC int w_logcollector_get_oslog_type(const char * content) {
                 config_str[strcspn(config_str, " ")] = '\0';
             }
 
-            if (strcasecmp(config_str, OSLOG_TYPE_ACTIVITY_STR) == 0) {
-                retval |= OSLOG_TYPE_ACTIVITY;
-            } else if (strcasecmp(config_str, OSLOG_TYPE_LOG_STR) == 0) {
-                retval |= OSLOG_TYPE_LOG;
-            } else if (strcasecmp(config_str, OSLOG_TYPE_TRACE_STR) == 0) {
-                retval |= OSLOG_TYPE_TRACE;
+            if (strcasecmp(config_str, MACOS_LOG_TYPE_ACTIVITY_STR) == 0) {
+                retval |= MACOS_LOG_TYPE_ACTIVITY;
+            } else if (strcasecmp(config_str, MACOS_LOG_TYPE_LOG_STR) == 0) {
+                retval |= MACOS_LOG_TYPE_LOG;
+            } else if (strcasecmp(config_str, MACOS_LOG_TYPE_TRACE_STR) == 0) {
+                retval |= MACOS_LOG_TYPE_TRACE;
             } else if (strcasecmp(config_str, "") != 0) {
                 mwarn(LOGCOLLECTOR_INV_VALUE_IGNORE, config_str, XML_LOCALFILE_QUERY_TYPE_ATTR, XML_LOCALFILE_QUERY);
             }
