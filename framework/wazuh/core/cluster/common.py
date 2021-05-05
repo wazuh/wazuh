@@ -92,7 +92,7 @@ class InBuffer:
         self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
         cmd_split = cmd.split(b' ')
         self.cmd = cmd_split[0]
-        self.flag_divided = cmd_split[2] if len(cmd_split) == 3 and cmd_split[2] in [b'd', b'e'] else b''
+        self.flag_divided = cmd_split[len(cmd_split)-1] if cmd_split[len(cmd_split)-1] in [b'd', b'e'] else b''
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -398,7 +398,7 @@ class Handler(asyncio.Protocol):
             return False
 
     def get_messages(self) -> Tuple[bytes, int, bytes, bytes]:
-        """Get received command, counter and payload.
+        """Get received command, counter, payload and flag_divided.
 
         Called when data is received in the transport. It decrypts the received data and returns it using generators.
         If the data received in the transport contains multiple separated messages, it will return all of them in
@@ -412,15 +412,17 @@ class Handler(asyncio.Protocol):
             Counter.
         bytes
             Payload.
+        bytes
+            Flag_divided.
         """
         parsed = self.msg_parse()
 
         while parsed:
             if self.in_msg.received == self.in_msg.total:
-                # Decrypt received message
+                # Decrypt received message if it is not a divided one
                 try:
-                    decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
-                        else bytes(self.in_msg.payload)
+                    decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not \
+                        None and not self.in_msg.flag_divided else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     raise exception.WazuhClusterError(3025)
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
@@ -601,6 +603,12 @@ class Handler(asyncio.Protocol):
                 payload = self.div_msg_box[counter] + payload
                 del self.div_msg_box[counter]
                 flag_divided = b''
+                # Decrypt the joined payload
+                try:
+                    payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
+                        None else bytes(payload)
+                except cryptography.fernet.InvalidToken:
+                    raise exception.WazuhClusterError(3025)
 
             # If the message is not a divided one or it has been already joint
             if not flag_divided:
