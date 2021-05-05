@@ -249,13 +249,24 @@ STATIC char *get_audit_field(const char *buffer, const char *key) {
     char *ascii_value = NULL;
     int is_hex_buffer = 1;
     int end = 0;
+    int key_length = strlen(key);
 
     // Find the key
-    if (start = strstr(buffer, key), start == NULL) {
+    for (start = strstr(buffer, key); start != NULL; start = strstr(start + 1, key)) {
+        if (start[key_length] != '=') {
+            continue;
+        }
+        // Check if the there is a field that matches `key` argument.
+        if (start == buffer || *(start - 1) == ' ' || *(start - 1) == '\n') {
+            break;
+        }
+    }
+
+    if (start == NULL) {
         return NULL;
     }
 
-    start += strlen(key);
+    start += key_length + 1;
 
     if (*start == '"') {
         is_hex_buffer = 0;
@@ -297,7 +308,7 @@ STATIC audit_key_type filterkey_audit_events(char *buffer) {
     int i;
 
     // Find the key
-    if (full_key = get_audit_field(buffer, "key="), full_key == NULL) {
+    if (full_key = get_audit_field(buffer, "key"), full_key == NULL) {
         return retval;
     }
 

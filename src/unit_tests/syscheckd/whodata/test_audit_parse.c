@@ -104,17 +104,12 @@ void test_filterkey_audit_events_custom(void **state) {
     char *key = "test_key";
     char buff[OS_SIZE_128] = {0};
 
-    syscheck.audit_key = calloc(2, sizeof(char *));
-    syscheck.audit_key[0] = calloc(strlen(key) + 2, sizeof(char));
     snprintf(syscheck.audit_key[0], strlen(key) + 1, "%s", key);
 
     snprintf(buff, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, key);
     expect_string(__wrap__mdebug2, formatted_msg, buff);
 
     ret = filterkey_audit_events(event);
-
-    free(syscheck.audit_key[0]);
-    free(syscheck.audit_key);
 
     assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
 }
@@ -169,6 +164,137 @@ void test_filterkey_audit_events_fim(void **state) {
     ret = filterkey_audit_events(event);
 
     assert_int_equal(ret, FIM_AUDIT_KEY);
+}
+
+void test_filterkey_audit_events_missing_whitespace(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57key=\"wazuh_fim\"";
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_UNKNOWN_KEY);
+}
+
+void test_filterkey_audit_events_missing_equal_sign(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key\"wazuh_fim\"";
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_UNKNOWN_KEY);
+}
+
+void test_filterkey_audit_events_no_key(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57";
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_UNKNOWN_KEY);
+}
+
+void test_filterkey_audit_events_key_at_the_beggining(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    char * event = "key=\"wazuh_fim\" type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57";
+
+    char audit_key_msg[OS_SIZE_128] = {0};
+    snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
+    expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_KEY);
+}
+
+void test_filterkey_audit_events_key_end_line(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 \nkey=\"wazuh_fim\"";
+
+    char audit_key_msg[OS_SIZE_128] = {0};
+    snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
+    expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_KEY);
+}
+
+void test_filterkey_audit_events_hex_coded_key_no_fim(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    snprintf(syscheck.audit_key[0], OS_SIZE_64, "key_1");
+
+    // The decoded key in the event is "key_1\001key_2"
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
+
+    char audit_key_msg[OS_SIZE_128] = {0};
+    snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "key_1");
+    expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
+}
+
+void test_filterkey_audit_events_hex_coded_key_no_fim_second_key(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    snprintf(syscheck.audit_key[0], OS_SIZE_64, "key_2");
+    // The decoded key in the event is "key_1\001key_2"
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
+
+    char audit_key_msg[OS_SIZE_128] = {0};
+    snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "key_2");
+    expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
+}
+
+void test_filterkey_audit_events_hex_coded_key_fim(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    // The decoded key of the event is "wazuh_fim\001key_2\001key_1"
+    char * event = "type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=77617A75685F66696D016B65795F32016B65795F31 ";
+
+    char audit_key_msg[OS_SIZE_128] = {0};
+    snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "wazuh_fim");
+    expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_KEY);
+}
+
+void test_filterkey_audit_events_path_named_key(void **state) {
+    (void) state;
+
+    audit_key_type ret;
+    snprintf(syscheck.audit_key[0], OS_SIZE_64, "key_1");
+    // The decoded key in the event is "key_1\001key_2"
+    char * event = "path=\"key\" type=LOGIN msg=audit(1571145421.379:659): pid=16455 uid=0 old-auid=4294967295 auid=0 tty=(none) old-ses=4294967295 ses=57 key=6B65795F31016B65795F32";
+
+    char audit_key_msg[OS_SIZE_128] = {0};
+    snprintf(audit_key_msg, OS_SIZE_128, FIM_AUDIT_MATCH_KEY, "key_1");
+    expect_string(__wrap__mdebug2, formatted_msg, audit_key_msg);
+
+    ret = filterkey_audit_events(event);
+
+    assert_int_equal(ret, FIM_AUDIT_CUSTOM_KEY);
 }
 
 void test_gen_audit_path(void **state) {
@@ -1137,10 +1263,19 @@ void test_audit_parse_delete_folder_hex5_error(void **state) {
 }
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_filterkey_audit_events_custom),
+        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_custom, setup_custom_key, teardown_custom_key),
         cmocka_unit_test(test_filterkey_audit_events_discard),
         cmocka_unit_test(test_filterkey_audit_events_fim),
         cmocka_unit_test(test_filterkey_audit_events_hc),
+        cmocka_unit_test(test_filterkey_audit_events_missing_whitespace),
+        cmocka_unit_test(test_filterkey_audit_events_missing_equal_sign),
+        cmocka_unit_test(test_filterkey_audit_events_no_key),
+        cmocka_unit_test(test_filterkey_audit_events_key_at_the_beggining),
+        cmocka_unit_test(test_filterkey_audit_events_key_end_line),
+        cmocka_unit_test(test_filterkey_audit_events_hex_coded_key_fim),
+        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_hex_coded_key_no_fim, setup_custom_key, teardown_custom_key),
+        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_hex_coded_key_no_fim_second_key, setup_custom_key, teardown_custom_key),
+        cmocka_unit_test_setup_teardown(test_filterkey_audit_events_path_named_key, setup_custom_key, teardown_custom_key),
         cmocka_unit_test_teardown(test_gen_audit_path, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path2, free_string),
         cmocka_unit_test_teardown(test_gen_audit_path3, free_string),
