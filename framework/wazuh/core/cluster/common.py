@@ -92,7 +92,7 @@ class InBuffer:
         self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
         cmd_split = cmd.split(b' ')
         self.cmd = cmd_split[0]
-        self.flag_divided = cmd_split[2] if len(cmd_split) == 3 and cmd_split[2] in [b'd', b'e'] else b''
+        self.flag_divided = cmd_split[len(cmd_split)-1] if cmd_split[len(cmd_split)-1] in [b'd', b'e'] else b''
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -324,8 +324,8 @@ class Handler(asyncio.Protocol):
 
         Returns
         -------
-        bytes
-            Built message.
+        list
+            List of Bytes, built messages.
         """
         cmd_len = len(command)
         # 2 B reserved for the divided msg case
@@ -395,7 +395,7 @@ class Handler(asyncio.Protocol):
         else:
             return False
 
-    def get_messages(self) -> Tuple[bytes, int, bytes, bytes]:
+    def get_messages(self) -> Tuple[bytes, int, bytes]:
         """Get received command, counter and payload.
 
         Called when data is received in the transport. It decrypts the received data and returns it using generators.
@@ -421,7 +421,7 @@ class Handler(asyncio.Protocol):
                         else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     raise exception.WazuhClusterError(3025)
-                yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
+                yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
                 self.in_msg = InBuffer()
             else:
                 break
