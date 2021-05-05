@@ -1144,7 +1144,8 @@ ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
 else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
-BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
+WAZUH_LIB = libwazuh.$(SHARED)
+BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB) $(WAZUH_LIB)
 endif
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
@@ -1325,7 +1326,7 @@ shared_c := $(wildcard shared/*.c)
 shared_o := $(shared_c:.c=.o)
 
 shared/%.o: shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 #### Wazuh DB ####
 
@@ -1617,7 +1618,15 @@ manage_agents: ${addagent_o}
 
 active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account host-deny ip-customblock restart-wazuh route-null kaspersky wazuh-slack
 
-$(active_response_programs): $(BUILD_LIBS)
+$(active_response_programs): ${WAZUHEXT_LIB}
+
+# Minimal dependencies for building active responses programs
+AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op.o shared/debug_op.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
+
+ifeq (${TARGET}, winagent)
+AR_PROGRAMS_DEPS += win32/win_service.o win32/win_utils.o wazuh_modules/wm_exec.o wazuh_modules/wmodules.o
+endif
+
 
 .PHONY: active-responses
 active-responses: ${active_response_programs}
@@ -1629,41 +1638,67 @@ active_response_o := $(active_response_c:.c=.o)
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
-default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
+default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-pf: active-response/firewalls/pf.o  active-response/active_responses.o
+pf: active-response/firewalls/pf.o  active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-npf: active-response/firewalls/npf.o  active-response/active_responses.o
+npf: active-response/firewalls/npf.o  active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o
+ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o
+firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-disable-account: active-response/disable-account.o active-response/active_responses.o
+disable-account: active-response/disable-account.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-host-deny: active-response/host-deny.o active-response/active_responses.o
+host-deny: active-response/host-deny.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-ip-customblock: active-response/ip-customblock.o active-response/active_responses.o
+ip-customblock: active-response/ip-customblock.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o
+restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-route-null: active-response/route-null.o active-response/active_responses.o
+route-null: active-response/route-null.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-kaspersky: active-response/kaspersky.o active-response/active_responses.o
+kaspersky: active-response/kaspersky.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
+wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+
+### libwazuh.so #########
+
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
+ifeq (${uname_S},Darwin)
+WAZUH_SHFLAGS=-install_name @rpath/libwazuh.$(SHARED)
+
+$(WAZUH_LIB): $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
+else
+ifeq (${TARGET}, winagent)
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(AR_LDFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+ifeq (${uname_P},sparc)
+$(WAZUH_LIB): $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+$(WAZUH_LIB): $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
+endif
+endif
+endif
+
 
 #### Util ##########
 
