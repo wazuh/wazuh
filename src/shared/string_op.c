@@ -1155,7 +1155,7 @@ char** w_strtok(const char *string) {
 
 char* w_strcat_list(char ** list, char sep){
     char * concatenation = NULL;
-    char * index = *list;
+    char ** index = list;
     while (*index) {
         wm_strcat(&concatenation, *index, sep);
         index++;

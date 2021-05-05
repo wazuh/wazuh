@@ -307,14 +307,16 @@ void w_oslog_create_env(logreader * current) {
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
         if (!current->future) {
             char ** current_settings_list = w_oslog_create_stream_array(current->query, current->query_level, current->query_type);
-            char * current_settings = w_strcat_list(current_settings_list,0);
+            char * current_settings = w_strcat_list(current_settings_list, ' ');
             char * last_settings = w_oslog_get_settings();
 
-            if (last_settings != NULL && strcmp(current_settings, last_settings) == 0){
-                w_oslog_create_show_env(current);
-            } else {
-                mwarn("Current predicate differs from last one. Discarding old events");
+            if (last_settings == NULL) {
                 w_oslog_set_settings(current_settings);
+            } else if (strcmp(current_settings, last_settings) != 0) {
+                mdebug1("Current predicate differs from last one used. Discarding old events");
+                w_oslog_set_settings(current_settings);
+            } else {
+                w_oslog_create_show_env(current);
             }
             os_free(last_settings);
             os_free(current_settings);
