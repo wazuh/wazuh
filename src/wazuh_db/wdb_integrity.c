@@ -210,7 +210,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 checksum) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 last_global_checksum) {
 
     assert(wdb != NULL);
 
@@ -221,7 +221,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
     sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 2, last_global_checksum, -1, NULL);
     sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
