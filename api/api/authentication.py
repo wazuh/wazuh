@@ -182,7 +182,7 @@ def check_token(username, roles, token_nbf_time, run_as):
         user_id = user['id']
 
         with UserRolesManager() as urm:
-            user_roles = [role['id'] for role in map(Roles.to_dict, urm.get_all_roles_from_user(user_id=user_id))]
+            user_roles = [role.id for role in urm.get_all_roles_from_user(user_id=user_id)]
             if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
                 return {'valid': False}
             with TokenManager() as tm:
