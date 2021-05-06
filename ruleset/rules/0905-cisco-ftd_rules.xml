@@ -113,7 +113,7 @@
       -->
     <rule id="150015" level="8">
         <if_sid>150013, 150014</if_sid>
-        <description>ASA: Attack in progress detected</description>
+        <description>FTD: Attack in progress detected</description>
         <group>ids,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
