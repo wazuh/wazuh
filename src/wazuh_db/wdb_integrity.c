@@ -489,8 +489,8 @@ int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component) {
         return OS_INVALID;
     }
 
-    cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info, "last_attempt");
-    cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info, "last_completion");
+    cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info->child, "last_attempt");
+    cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info->child, "last_completion");
 
     if (!j_last_attempt || !j_last_completion) {
         mdebug1("Failed to get agent's sync status data");
