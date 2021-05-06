@@ -143,6 +143,7 @@ typedef struct {
     wfd_t * stream_wfd;                 ///< `log stream` IPC connector
     wfd_t * show_wfd;                   ///< `log show` IPC connector
     char * current_settings;            ///< Stores `log stream` full command.
+    bool store_current_settings;        ///< True if current_settings is stored in vault
 } w_macos_log_config_t;
 
 /* Logreader config */

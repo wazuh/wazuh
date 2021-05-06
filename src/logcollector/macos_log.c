@@ -366,13 +366,4 @@ char * w_macos_get_log_settings(void) {
     return settings;
 }
 
-bool w_macos_are_settings_stored(void) {
-
-    bool are_settings_stored = false;
-    w_rwlock_rdlock(&macos_log_vault.mutex);
-    are_settings_stored = macos_log_vault.settings != NULL ? true : false;
-    w_rwlock_unlock(&macos_log_vault.mutex);
-    return are_settings_stored;
-}
-
 #endif
