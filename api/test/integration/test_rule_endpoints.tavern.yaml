@@ -362,6 +362,7 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+
 ---
 test_name: GET /rules filters
 
