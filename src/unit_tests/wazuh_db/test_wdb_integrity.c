@@ -476,11 +476,7 @@ static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 
     wdbi_update_attempt(data, 0, 0, agent_checksum, "", FALSE);
 }
-
 static void test_wdbi_update_attempt_no_sql_done(void **state)
-{
-    wdb_t * data = *state;
-    data->id = strdup("000");
     const char *component = "fim";
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
