@@ -304,23 +304,25 @@ void w_macos_create_log_env(logreader * current) {
 
     if (w_macos_is_log_executable()) {
 
+        /* `log stream` command parameters are stored to keep track of the settings changes that may occur,
+            and to determine whether past events should be retrieved or not */
+        char ** current_settings_list = w_macos_create_log_stream_array(current->query, current->query_level,
+                                                                        current->query_type);
+        current->macos_log->current_settings = w_strcat_list(current_settings_list, ' ');
+        free_strarray(current_settings_list);
+
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
         if (!current->future) {
-            char ** current_settings_list = w_macos_create_log_stream_array(current->query, current->query_level, current->query_type);
-            char * current_settings = w_strcat_list(current_settings_list, ' ');
-            char * last_settings = w_macos_get_log_settings();
+            char * previous_settings = w_macos_get_log_settings();
 
-            if (last_settings == NULL) {
-                w_macos_set_log_settings(current_settings);
-            } else if (strcmp(current_settings, last_settings) != 0) {
-                mdebug1("Current predicate differs from last one used. Discarding old events");
-                w_macos_set_log_settings(current_settings);
-            } else {
-                w_macos_create_log_show_env(current);
+            if (previous_settings != NULL) {
+                if (strcmp(current->macos_log->current_settings, previous_settings) == 0) {
+                    w_macos_create_log_show_env(current);
+                } else {
+                    mdebug1("Current predicate differs from last one used. Discarding old events");
+                }
+                os_free(previous_settings);
             }
-            os_free(last_settings);
-            os_free(current_settings);
-            free_strarray(current_settings_list);
         }
 
         w_macos_create_log_stream_env(current);
@@ -360,6 +362,15 @@ char * w_macos_get_log_settings(void) {
     w_strdup(macos_log_vault.settings, settings);
     w_rwlock_unlock(&macos_log_vault.mutex);
     return settings;
+}
+
+bool w_macos_are_settings_stored(void) {
+
+    bool are_settings_stored = false;
+    w_rwlock_rdlock(&macos_log_vault.mutex);
+    are_settings_stored = macos_log_vault.settings != NULL ? true : false;
+    w_rwlock_unlock(&macos_log_vault.mutex);
+    return are_settings_stored;
 }
 
 #endif
