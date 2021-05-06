@@ -115,13 +115,4 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
  */
 int wdb_agents_clear_vuln_cves(wdb_t *wdb);
 
-/**
- * @brief Returns the syncronization status of a component from sync_info table.
- *
- * @param [in] wdb The 'agents' struct database.
- * @param [in] component An enumeration member that was previously added to the table.
- * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
- */
-int wdb_agents_check_sync_status (wdb_t *wdb, wdb_component_t component);
-
 #endif
