@@ -1687,7 +1687,7 @@ def test_expand_rules():
 def test_expand_decoders():
     decoders = expand_decoders()
     assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                    f'*{common.DECODERS_EXTENSION}'))))
+                                                                        f'*{common.DECODERS_EXTENSION}'))))
 
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
