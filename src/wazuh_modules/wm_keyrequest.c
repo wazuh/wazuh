@@ -486,11 +486,19 @@ void * w_socket_launcher(void * args) {
 
         // Run integration
 
-        if (wfd = wpopenv(argv[0], argv, W_BIND_STDERR | W_APPEND_POOL), !wfd) {
+        if (wfd = wpopenv(argv[0], argv, W_BIND_STDERR), !wfd) {
             mwarn("Couldn not execute '%s'. Trying again in %d seconds.", exec_path, RELAUNCH_TIME);
             sleep(RELAUNCH_TIME);
             continue;
         }
+
+#ifdef WIN32
+        wm_append_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_append_sid(wfd->pid);
+        }
+#endif
 
         time_started = time(NULL);
 
@@ -507,10 +515,16 @@ void * w_socket_launcher(void * args) {
             // Dump into the log
             mdebug1("Integration STDERR: %s", buffer);
         }
-
+#ifdef WIN32
+        wm_remove_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_remove_sid(wfd->pid);
+        }
+#endif
         // At this point, the process exited
-
         wstatus = wpclose(wfd);
+
         wstatus = WEXITSTATUS(wstatus);
 
         if (wstatus == EXECVE_ERROR) {
