@@ -10,7 +10,8 @@
 
 ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL DEFAULT '';
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
-ALTER TABLE sync_info ADD COLUMN checksum TEXT NOT NULL DEFAULT '';
+ALTER TABLE sync_info ADD COLUMN last_global_checksum TEXT NOT NULL DEFAULT 'legacy';
+
 
 DROP TABLE IF EXISTS vuln_cves;
 

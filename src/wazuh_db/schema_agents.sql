@@ -367,7 +367,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
     last_completion INTEGER DEFAULT 0,
     n_attempts INTEGER DEFAULT 0,
     n_completions INTEGER DEFAULT 0,
-    checksum TEXT NOT NULL CHECK (checksum <> '')
+    last_global_checksum TEXT NOT NULL DEFAULT 'legacy'
 );
 
 CREATE TABLE IF NOT EXISTS vuln_cves (
