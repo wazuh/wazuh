@@ -107,6 +107,8 @@ STATIC char ** w_macos_create_log_show_array(char * start_date, char * query, ch
                 const int PREDICATE_SIZE = strlen(query) + strlen(type_predicate) + strlen(QUERY_AND_TYPE_PREDICATE);
                 os_calloc(PREDICATE_SIZE, sizeof(char), predicate);
                 snprintf(predicate, PREDICATE_SIZE, QUERY_AND_TYPE_PREDICATE, query, type_predicate);
+            } else {
+                w_strdup(query, predicate);
             }
             w_strdup(predicate, log_cmd_array[log_cmd_array_idx++]);
 
