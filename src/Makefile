@@ -1144,6 +1144,7 @@ ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
 else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
+WAZUH_LIB = libwazuhshared.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
 
@@ -1155,7 +1156,7 @@ os_xml_c := $(wildcard os_xml/*.c)
 os_xml_o := $(os_xml_c:.c=.o)
 
 os_xml/%.o: os_xml/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 #### os_regex ######
 
@@ -1163,7 +1164,7 @@ os_regex_c := $(wildcard os_regex/*.c)
 os_regex_o := $(os_regex_c:.c=.o)
 
 os_regex/%.o: os_regex/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 #### os_net ##########
 
@@ -1325,7 +1326,10 @@ shared_c := $(wildcard shared/*.c)
 shared_o := $(shared_c:.c=.o)
 
 shared/%.o: shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+
+shared/debug_op_proc.o: shared/debug_op.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DMA -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 #### Wazuh DB ####
 
@@ -1617,7 +1621,10 @@ manage_agents: ${addagent_o}
 
 active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account host-deny ip-customblock restart-wazuh route-null kaspersky wazuh-slack
 
-$(active_response_programs): $(BUILD_LIBS)
+$(active_response_programs): ${BUILD_LIBS} ${WAZUH_LIB}
+
+# Minimal dependencies for building active responses programs
+AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
 
 .PHONY: active-responses
 active-responses: ${active_response_programs}
@@ -1664,6 +1671,32 @@ kaspersky: active-response/kaspersky.o active-response/active_responses.o
 
 wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+
+### libwazuh.so #########
+
+ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
+ifeq (${uname_S},Darwin)
+WAZUH_SHARED_SHFLAGS=-install_name @rpath/libwazuhshared.$(SHARED)
+
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHARED_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
+else
+ifeq (${TARGET}, winagent)
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+ifeq (${uname_P},sparc)
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
+endif
+endif
+endif
+
 
 #### Util ##########
 
@@ -2164,7 +2197,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_xml_o}
 	rm -f ${os_regex_o}
 	rm -f ${os_net_o}
-	rm -f ${shared_o}
+	rm -f ${shared_o} shared/debug_op_proc.o
 	rm -f ${config_o}
 	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
@@ -2237,6 +2270,7 @@ clean-framework:
 
 clean-windows:
 	rm -f libwazuh.a
+	rm -f libwazuhshared.dll
 	rm -f libwazuhext.dll
 	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
 	rm -f win32/LICENSE.txt
