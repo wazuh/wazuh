@@ -1260,7 +1260,14 @@ def get_agents_info():
     with open(common.client_keys, 'r') as f:
         file_content = f.readlines()
 
-    result = {line.split(' ')[0] for line in file_content}
+    result = set()
+    for line in file_content:
+        split_line = line.split(' ')
+        try:
+            not split_line[1].startswith('!') and result.add(split_line[0])
+        except IndexError:
+            continue
+
     result.add('000')
 
     return result
