@@ -1636,40 +1636,40 @@ active_response_o := $(active_response_c:.c=.o)
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
-default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-pf: active-response/firewalls/pf.o  active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+pf: active-response/firewalls/pf.o  active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-npf: active-response/firewalls/npf.o  active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+npf: active-response/firewalls/npf.o  active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-disable-account: active-response/disable-account.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+disable-account: active-response/disable-account.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-host-deny: active-response/host-deny.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+host-deny: active-response/host-deny.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-ip-customblock: active-response/ip-customblock.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+ip-customblock: active-response/ip-customblock.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-route-null: active-response/route-null.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+route-null: active-response/route-null.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-kaspersky: active-response/kaspersky.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+kaspersky: active-response/kaspersky.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o ${AR_PROGRAMS_DEPS}
+wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
