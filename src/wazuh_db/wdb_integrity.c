@@ -470,3 +470,41 @@ end:
 
     return ret_val;
  }
+
+int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component) {
+    cJSON* j_sync_info = NULL;
+    int result = 1;
+
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_SYNC_GET_INFO);
+
+    if (stmt == NULL) {
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
+    j_sync_info = wdb_exec_stmt(stmt);
+
+    if (!j_sync_info) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info, "last_attempt");
+    cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info, "last_completion");
+
+    if (!j_last_attempt || !j_last_completion) {
+        mdebug1("Failed to get agent's sync status data");
+        cJSON_Delete(j_sync_info);
+        return OS_INVALID;
+    }
+
+    int last_attempt = j_last_attempt->valueint;
+    int last_completion = j_last_completion->valueint;
+
+    if (last_completion == 0 || last_attempt > last_completion ) {
+        result = 0;
+    }
+
+    cJSON_Delete(j_sync_info);
+    return result;
+}

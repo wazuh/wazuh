@@ -1203,6 +1203,8 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
+// Functions for database integrity
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
@@ -1210,6 +1212,15 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy);
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
+
+/**
+ * @brief Returns the syncronization status of a component from sync_info table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
+ */
+int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
