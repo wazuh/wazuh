@@ -505,7 +505,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_attempt(data, 0, WDB_FIM, "", agent_checksum, "" FALSE);
+    wdbi_update_attempt(data, WDB_FIM, 0, "", agent_checksum, "" FALSE);
 }
 
 static void test_wdbi_update_attempt_success(void **state)
@@ -530,7 +530,7 @@ static void test_wdbi_update_attempt_success(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_attempt(data, 0, 0, agent_checksum, "", FALSE);
+    wdbi_update_attempt(data, WDB_FIM, 0, agent_checksum, "", FALSE);
 }
 
 // Test wdbi_update_completion
