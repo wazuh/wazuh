@@ -18,12 +18,19 @@
 #define WURL_DOWNLOAD_FILE_ERROR "Cannot download file '%s' from URL: '%s'"
 #define WURL_TIMEOUT_ERROR  "Timeout reached when downloading file '%s' from URL: '%s'"
 
+typedef struct curl_response {
+    char *header;               /* Response header */
+    char *body;                 /* Response body */
+    long status_code;           /* Response code (200, 404, 500...) */
+} curl_response;
+
 int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout);
 int w_download_status(int status,const char *url,const char *dest);
 // Request download
 int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
 int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
 char * wurl_http_get(const char * url);
+curl_response *wurl_http_get_with_header(const char *header, const char *url);
 #ifndef CLIENT
 int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
 int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);

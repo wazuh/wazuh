@@ -275,7 +275,7 @@ ID: 91100 - 91449
     -->
     <rule id="91126" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">^^dependency_graph.\.*</action>
+        <action type="osregex">^dependency_graph.\.*</action>
         <description>GitHub Dependency graph.</description>
         <options>no_full_log</options>
         <group>git_dependency_graph</group>

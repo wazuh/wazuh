@@ -27,18 +27,6 @@
 
 #define GITHUB_API_URL "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d"
 
-typedef struct curl_request {
-    char *buffer;
-    size_t len;
-    size_t buflen;
-} curl_request;
-
-typedef struct curl_response {
-    char *header;
-    char *body;
-    long status_code;
-} curl_response;
-
 typedef struct wm_github_auth {
     char *org_name;                         // Organization name
     char *api_token;                        // Personal access token
