@@ -48,44 +48,21 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 /**
- * @brief Run checksum of a data range
+ * @brief Run checksum of the whole result of an already prepared statement
  *
  * @param[in] wdb Database node.
- * @param component[in] Name of the component.
- * @param begin[in] First element.
- * @param end[in] Last element.
+ * @param[in] stmt Statement to be executed already prepared.
+ * @param[in] component Name of the component.
  * @param[out] hexdigest
  * @retval 1 On success.
- * @retval 0 If no files were found in that range.
+ * @retval 0 If no items were found.
  * @retval -1 On error.
  */
-int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
+int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest) {
 
     assert(wdb != NULL);
+    assert(stmt != NULL);
     assert(hexdigest != NULL);
-
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
-                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
-                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE    };
-
-    assert(component < sizeof(INDEXES) / sizeof(int));
-
-    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
-        return -1;
-    }
-
-    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
-    sqlite3_bind_text(stmt, 1, begin, -1, NULL);
-    sqlite3_bind_text(stmt, 2, end, -1, NULL);
 
     int step = sqlite3_step(stmt);
 
@@ -117,6 +94,88 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     OS_SHA1_Hexdigest(digest, hexdigest);
 
     return 1;
+}
+
+/**
+ * @brief Run checksum of a database table
+ *
+ * @param[in] wdb Database node.
+ * @param[in] component Name of the component.
+ * @param[out] hexdigest
+ * @retval 1 On success.
+ * @retval 0 If no items were found.
+ * @retval -1 On error.
+ */
+int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
+
+    assert(wdb != NULL);
+    assert(hexdigest != NULL);
+
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM };
+
+    assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        return -1;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
+
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
+}
+
+/**
+ * @brief Run checksum of a database table range
+ *
+ * @param[in] wdb Database node.
+ * @param[in] component Name of the component.
+ * @param[in] begin First element.
+ * @param[in] end Last element.
+ * @param[out] hexdigest
+ * @retval 1 On success.
+ * @retval 0 If no items were found in that range.
+ * @retval -1 On error.
+ */
+int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
+
+    assert(wdb != NULL);
+    assert(hexdigest != NULL);
+
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE };
+
+    assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        return -1;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
+    sqlite3_bind_text(stmt, 1, begin, -1, NULL);
+    sqlite3_bind_text(stmt, 2, end, -1, NULL);
+
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
 }
 
 /**
@@ -520,14 +579,33 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
 
     cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info->child, "last_attempt");
     cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info->child, "last_completion");
+    cJSON* j_checksum = cJSON_GetObjectItem(j_sync_info->child, "last_global_checksum");
 
-    if ( cJSON_IsNumber(j_last_attempt) && cJSON_IsNumber(j_last_completion)) {
+    if ( cJSON_IsNumber(j_last_attempt) && cJSON_IsNumber(j_last_completion) && cJSON_IsString(j_checksum)) {
         int last_attempt = j_last_attempt->valueint;
         int last_completion = j_last_completion->valueint;
 
-        // Return 0 if there was not at least one successful syncronization or if the syncronization is in process
-        result = (last_completion != 0 && last_attempt <= last_completion );
+        // Return 0 if there was not at least one successful syncronization or
+        // if the syncronization is in process or there was an error iun the syncronization
+        if (result = (last_completion != 0 && last_attempt <= last_completion ), result) {
+            // Verifying the integrity checksum
+            os_sha1 hexdigest;
+            char *checksum;
 
+            switch (wdbi_checksum(wdb, component, hexdigest)) {
+            case -1:
+                result = OS_INVALID;
+                break;
+
+            case 0:
+                result = 0;
+                break;
+
+            case 1:
+                checksum = cJSON_GetStringValue(j_checksum);
+                result = !strcmp(hexdigest, checksum);
+            }
+        }
     } else {
         mdebug1("Failed to get agent's sync status data");
         result = OS_INVALID;
