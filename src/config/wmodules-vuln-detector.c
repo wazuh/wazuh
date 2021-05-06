@@ -254,6 +254,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             upd->dist_ext = vu_feed_ext[FEED_ALAS2];
         }
         upd->dist_ref = FEED_ALAS;
+        upd->json_format = 1;
     } else if (strcasestr(feed, vu_feed_tag[FEED_ARCH])) {
         os_index = CVE_ARCH;
         upd->dist_tag_ref = FEED_ARCH;
