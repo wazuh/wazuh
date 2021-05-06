@@ -159,14 +159,14 @@
         <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
-    <rule id="150020" level="8">
+    <rule id="150021" level="8">
         <if_sid>150005</if_sid>
         <field name="event.id">111003</field>
         <description>FTD: Firewall configuration deleted.</description>
         <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
-    <rule id="150021" level="8">
+    <rule id="150022" level="8">
         <if_sid>150005</if_sid>
         <field name="event.id">111005|111004|111002|111007</field>
         <description>FTD: Firewall configuration changed.</description>
@@ -176,19 +176,19 @@
         <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,gpg13_4.13,gdpr_IV_35.7.d,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
-    <rule id="150022" level="3">
+    <rule id="150023" level="3">
         <if_sid>150005</if_sid>
         <field name="event.id">111008</field>
         <description>FTD: Firewall command executed (for accounting only).</description>
     </rule>
 
-    <rule id="150023" level="3">
+    <rule id="150024" level="3">
         <if_sid>150006</if_sid>
         <field name="event.id">111009</field>
         <description>FTD: Firewall command executed (for accounting only).</description>
     </rule>
 
-    <rule id="150024" level="8">
+    <rule id="150025" level="8">
         <if_sid>150005</if_sid>
         <field name="event.id">502101|502102</field>
         <description>FTD: User created or modified on the Firewall.</description>
@@ -198,25 +198,25 @@
         <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
-    <rule id="150025" level="10" frequency="8" timeframe="360">
+    <rule id="150026" level="10" frequency="8" timeframe="360">
         <if_matched_sid>150001</if_matched_sid>
         <description>Multiple FTD alert messages.</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     </rule>
 
-    <rule id="150025" level="10" frequency="8" timeframe="360">
+    <rule id="150027" level="10" frequency="8" timeframe="360">
         <if_matched_sid>150002</if_matched_sid>
         <description>FTD: Multiple critical messages.</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.1,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     </rule>
 
-    <rule id="150026" level="10" frequency="10" timeframe="120">
+    <rule id="150028" level="10" frequency="10" timeframe="120">
         <if_matched_sid>150003</if_matched_sid>
         <description>FTD: Multiple error messages.</description>
         <group>system_error,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.3,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     </rule>
 
-    <rule id="150027" level="10" frequency="10" timeframe="120">
+    <rule id="150029" level="10" frequency="10" timeframe="120">
         <if_matched_sid>150004</if_matched_sid>
         <description>FTD: Multiple warning messages.</description>
         <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
