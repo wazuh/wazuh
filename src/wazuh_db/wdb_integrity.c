@@ -210,7 +210,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 checksum) {
 
     assert(wdb != NULL);
 
@@ -221,7 +221,8 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
     sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
+    sqlite3_bind_text(stmt, 2, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -331,7 +332,7 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
         switch (retval) {
         case 0: // No data
         case 1: // Checksum failure
-            wdbi_update_attempt(wdb, component, timestamp, FALSE);
+            wdbi_update_attempt(wdb, component, timestamp, FALSE, checksum);
             break;
 
         case 2: // Data is synchronized
