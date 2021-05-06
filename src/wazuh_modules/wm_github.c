@@ -17,7 +17,6 @@ static void wm_github_auth_destroy(wm_github_auth* github_auth);
 static void wm_github_fail_destroy(wm_github_fail* github_fails);
 static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
 static int wm_github_execute_scan(wm_github *github_config, int initial_scan);
-static curl_response* wm_github_execute_curl(char *token, const char *url);
 static char* wm_github_get_next_page(char *header);
 static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
 cJSON *wm_github_dump(const wm_github* github_config);
@@ -157,37 +156,22 @@ cJSON *wm_github_dump(const wm_github* github_config) {
     return root;
 }
 
-size_t wm_github_write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
-    size_t realsize = size * nmemb;
-    curl_request *req = (curl_request *) userdata;
-
-    while (req->buflen < req->len + realsize + 1)
-    {
-        os_realloc(req->buffer, req->buflen + CHUNK_SIZE, req->buffer);
-        req->buflen += CHUNK_SIZE;
-    }
-    memcpy(&req->buffer[req->len], ptr, realsize);
-    req->len += realsize;
-    req->buffer[req->len] = '\0';
-
-    return realsize;
-}
-
 static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
-    wm_github_auth* current = github_config->auth;
-    wm_github_auth* next = NULL;
-    curl_response *response;
-    wm_github_fail *org_fail;
-    wm_github_state org_state_struc;
     int scan_finished = 0;
     int fail = 0;
-    char *next_page = NULL;
     char *payload;
+    char *error_msg = NULL;
+    char *next_page = NULL;
     char url[OS_SIZE_8192];
     char org_state_name[OS_SIZE_1024];
+    char auth_header[PATH_MAX];
     time_t last_scan_time;
     time_t new_scan_time;
-    char *error_msg = NULL;
+    curl_response *response;
+    wm_github_auth* next = NULL;
+    wm_github_fail *org_fail;
+    wm_github_state org_state_struc;
+    wm_github_auth* current = github_config->auth;
 
     while (current != NULL)
     {
@@ -231,8 +215,11 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
         mtdebug1(WM_GITHUB_LOGTAG, "GitHub API URL: '%s'", url);
 
+        memset(auth_header, '\0', PATH_MAX);
+        snprintf(auth_header, PATH_MAX -1, "Authorization: token %s", current->api_token);
+
         while (!scan_finished) {
-            response = wm_github_execute_curl(current->api_token, url);
+            response = wurl_http_get_with_header(auth_header, url);
 
             if (response) {
                 if (response->status_code == 200) {
@@ -334,60 +321,6 @@ static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
     }
 
     return current;
-}
-
-static curl_response* wm_github_execute_curl(char *token, const char* url) {
-    char auth_header[PATH_MAX];
-    curl_response *response;
-    struct curl_slist* headers = NULL;
-    CURLcode res;
-    curl_request req = {.buffer = NULL, .len = 0, .buflen = 0};
-    curl_request req_header = {.buffer = NULL, .len = 0, .buflen = 0};
-
-    CURL* curl = curl_easy_init();
-
-    if (!curl) {
-        mtdebug1(WM_GITHUB_LOGTAG, "curl initialization failure");
-        return NULL;
-    }
-
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
-    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-    curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
-
-    headers = curl_slist_append(headers, "User-Agent: curl/7.58.0");
-
-    memset(auth_header, '\0', PATH_MAX);
-    snprintf(auth_header, PATH_MAX -1, "Authorization: token %s", token);
-    headers = curl_slist_append(headers, auth_header);
-
-    os_malloc(CHUNK_SIZE, req.buffer);
-    req.buflen = CHUNK_SIZE;
-
-    os_malloc(CHUNK_SIZE, req_header.buffer);
-    req_header.buflen = CHUNK_SIZE;
-
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, wm_github_write_callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, wm_github_write_callback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-
-    res = curl_easy_perform(curl);
-
-    if (res != CURLE_OK) {
-        mtdebug1(WM_GITHUB_LOGTAG,"curl_easy_perform() failed: %s", curl_easy_strerror(res));
-    }
-
-    os_calloc(1, sizeof(curl_response), response);
-    curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &response->status_code);
-    response->header = req_header.buffer;
-    response->body = req.buffer;
-
-    curl_easy_cleanup(curl);
-
-    return response;
 }
 
 static char* wm_github_get_next_page(char *header) {
