@@ -797,6 +797,57 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile,
     mock_conn_db.assert_called_once_with()
 
 
+@pytest.mark.parametrize('sort, expected_items, fields', [
+    (
+     {'order': 'asc', 'fields': ['os.name', 'os.version']},
+     {'order': 'asc', 'fields': ['os.name', 'os.version']},
+     {'os.name': None, 'os.version': None}
+     ),
+    (
+     {'order': 'desc', 'fields': ['os.name', 'os.version', 'os.major', 'os.minor']},
+     {'order': 'desc', 'fields': ['os.name', 'os.version', 'os.major', 'os.minor']},
+     {'os.name': None, 'os.version': None, 'os.major': None, 'os.minor': None}
+     ),
+    (
+     {'order': 'asc', 'fields': ['id', 'date_first', 'date_last']},
+     {'order': 'asc', 'fields': ['id', 'date_first', 'date_last']},
+     {'id': None, 'date_first': None, 'date_last': None}
+     ),
+    (
+     {'order': 'desc', 'fields': ['username', 'id']},
+     {'order': 'desc', 'fields': ['username', 'id']},
+     {'username': None, 'id': None}
+     ),
+    (
+     {'order': 'asc', 'fields': ['id', 'username']},
+     {'order': 'asc', 'fields': ['id', 'username']},
+     {'id': None, 'username': None}
+     )
+])
+@patch('wazuh.core.utils.glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch("wazuh.core.database.isfile", return_value=True)
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_sort_order_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
+                                                     sort, expected_items, fields):
+    """
+    Test WazuhDBQuery._add_sort_to_query function.
+    Tests if the fields from a sort query are not altered in any way,
+    Tests if the fields to sort_by are a list
+    Tests if the order (asc,desc) of a sort is not altered in any way
+    """
+    query = WazuhDBQuery(
+        offset=0, limit=1, table='agent', sort=sort, search=None, select=None, filters=None,
+        fields=fields, default_sort_field=None, query=None,
+        backend=WazuhDBBackend(agent_id=1), count=5, get_data=None)
+
+    query._add_sort_to_query()
+
+    assert isinstance(query.sort['fields'], list), 'Sort fields is a list'
+    assert query.sort == sort, 'Query sort formed correctly'
+    assert query.sort['order'] == sort['order'], 'Sort order is correct'
+
+
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
@@ -1158,7 +1209,8 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, 
 
 
 @pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}], {'items': [{'id': '099'}], 'totalItems': 1}),
+    (
+    [{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}], {'items': [{'id': '099'}], 'totalItems': 1}),
     ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
      [{'id': i} for i in range(15001, 30000)],
