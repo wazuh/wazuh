@@ -142,6 +142,7 @@ typedef struct {
     w_macos_log_ctxt_t ctxt;            ///< Stores current status when read log is in process
     wfd_t * stream_wfd;                 ///< `log stream` IPC connector
     wfd_t * show_wfd;                   ///< `log show` IPC connector
+    char * current_settings;            ///< Stores `log stream` full command.
 } w_macos_log_config_t;
 
 /* Logreader config */
