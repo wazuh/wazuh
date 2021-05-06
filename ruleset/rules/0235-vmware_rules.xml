@@ -127,7 +127,6 @@
     <match>-> VM_STATE_RECONFIGURING</match>
     <description>Virtual machine being reconfigured.</description>
     <group>config_changed,pci_dss_10.2.7,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <options>alert_by_email</options>
   </rule>
 
 

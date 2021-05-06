@@ -103,7 +103,6 @@
   <rule id="60611" level="3">
     <if_sid>60609</if_sid>
     <field name="win.system.eventID">^11724$|^1034$</field>
-    <options>alert_by_email</options>
     <description>Application Uninstalled $(win.eventdata.data)</description>
     <options>no_full_log</options>
   </rule>
@@ -111,7 +110,6 @@
   <rule id="60612" level="3">
     <if_sid>60609</if_sid>
     <field name="win.system.eventID">^11707$|^1033$</field>
-    <options>alert_by_email</options>
     <description>Application Installed $(win.eventdata.data)</description>
     <options>no_full_log</options>
   </rule>
