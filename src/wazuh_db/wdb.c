@@ -1052,11 +1052,17 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* stat
 }
 
 int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
-    int status = SQLITE_ERROR;
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
-        return status;
+        return OS_INVALID;
     }
+    if (OS_SetSendTimeout(peer, WDB_BLOCK_SEND_TIMEOUT_S) < 0) {
+        merror("Could not set timeout to network socket: %s (%d)", strerror(errno), errno);
+        return OS_SOCKTERR;
+    }
+
+    int status = OS_SUCCESS;
+    int sql_status = SQLITE_ERROR;
     cJSON * row = NULL;
     char* response = NULL;
     char* header = "due ";
@@ -1066,21 +1072,24 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     char* payload = response+header_size;
     int payload_size = OS_MAXSTR-header_size;
 
-    while ((row = wdb_exec_row_stmt(stmt, &status))) {
+    while ((row = wdb_exec_row_stmt(stmt, &sql_status))) {
         bool row_fits = cJSON_PrintPreallocated(row, payload, payload_size, FALSE);
         cJSON_Delete(row);
         if (row_fits) {
             if (OS_SendSecureTCP(peer, strlen(response), response) < 0) {
                 merror("Socket %d error: %s (%d)", peer, strerror(errno), errno);
-                status = SQLITE_ERROR;
+                status = OS_SOCKTERR;
                 break;
             }
         }
         else {
             merror("SQL row response for statement %s is too big to be sent", sqlite3_sql(stmt));
-            status = SQLITE_ERROR;
+            status = OS_SIZELIM;
             break;
         }
+    }
+    if (status == OS_SUCCESS && sql_status != SQLITE_DONE) {
+        status = OS_INVALID;
     }
 
     os_free(response);
