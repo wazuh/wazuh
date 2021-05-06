@@ -1,5 +1,5 @@
 /* adopted from libowfat 0.9 (GPL) */
-/* Copyright (C) 2015-2020, Wazuh Inc. */
+/* Copyright (C) 2015-2021, Wazuh Inc. */
 
 #ifndef UINT32_H
 #define UINT32_H

@@ -165,6 +165,6 @@ Stay up to date on news, releases, engineering articles and more.
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2020 Wazuh Inc. (License GPLv2)
+Wazuh Copyright (C) 2015-2021 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.

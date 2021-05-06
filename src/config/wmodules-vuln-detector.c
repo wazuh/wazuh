@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January, 2018.
  *
  * This program is free software; you can redistribute it
@@ -241,19 +241,25 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         // Amazon Linux 1
-        else if (!strcmp(version, "1") || strcasestr(vu_feed_tag[FEED_AL1], version)) {
-            os_index = CVE_AL1;
-            upd->dist_tag_ref = FEED_AL1;
-            os_strdup(vu_feed_tag[FEED_AL1], upd->version);
-            upd->dist_ext = vu_feed_ext[FEED_AL1];
+        else if (!strcmp(version, "1") || strcasestr(vu_feed_tag[FEED_ALAS1], version)) {
+            os_index = CVE_ALAS1;
+            upd->dist_tag_ref = FEED_ALAS1;
+            os_strdup(vu_feed_tag[FEED_ALAS1], upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALAS1];
         // Amazon Linux 2
-        } else if (!strcmp(version, "2") || strcasestr(vu_feed_tag[FEED_AL2], version)) {
-            os_index = CVE_AL2;
-            upd->dist_tag_ref = FEED_AL2;
-            os_strdup(vu_feed_tag[FEED_AL2], upd->version);
-            upd->dist_ext = vu_feed_ext[FEED_AL2];
+        } else if (!strcmp(version, "2") || strcasestr(vu_feed_tag[FEED_ALAS2], version)) {
+            os_index = CVE_ALAS2;
+            upd->dist_tag_ref = FEED_ALAS2;
+            os_strdup(vu_feed_tag[FEED_ALAS2], upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_ALAS2];
         }
         upd->dist_ref = FEED_ALAS;
+    } else if (strcasestr(feed, vu_feed_tag[FEED_ARCH])) {
+        os_index = CVE_ARCH;
+        upd->dist_tag_ref = FEED_ARCH;
+        upd->dist_ext = vu_feed_ext[FEED_ARCH];
+        upd->dist_ref = FEED_ARCH;
+        upd->json_format = 1;
     } else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
@@ -879,6 +885,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
     int i, j;
     int8_t rhel_enabled = (strcasestr(name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
     int8_t msu_enabled = (strcasestr(name, vu_feed_tag[FEED_MSU])) ? 1 : 0;
+    int8_t arch_enabled = (strcasestr(name, vu_feed_tag[FEED_ARCH])) ? 1 : 0;
 
     memset(options, '\0', sizeof(provider_options));
 
@@ -890,8 +897,8 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             // Deprecated in RHEL
             if (rhel_enabled) {
                 minfo("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
-            // Even though MSU is a multi_provider, it does not use the update_from_year option.
-            } else if (msu_enabled) {
+            // Even though MSU and ArchLinux are multi_provider, they do not use the update_from_year option.
+            } else if (msu_enabled || arch_enabled) {
                 mwarn("'%s' option cannot be used for '%s' provider.", node[i]->element, name);
                 continue;
             }
@@ -970,7 +977,8 @@ char wm_vuldet_provider_type(char *pr_name) {
         strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
         return 0;
     } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||
-        strcasestr(pr_name, vu_feed_tag[FEED_MSU])) {
+        strcasestr(pr_name, vu_feed_tag[FEED_MSU]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_ARCH])) {
         return 1;
     } else {
         return OS_INVALID;
