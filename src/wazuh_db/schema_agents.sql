@@ -366,7 +366,8 @@ CREATE TABLE IF NOT EXISTS sync_info (
     last_attempt INTEGER DEFAULT 0,
     last_completion INTEGER DEFAULT 0,
     n_attempts INTEGER DEFAULT 0,
-    n_completions INTEGER DEFAULT 0
+    n_completions INTEGER DEFAULT 0,
+    checksum TEXT NOT NULL CHECK (checksum <> '')
 );
 
 CREATE TABLE IF NOT EXISTS vuln_cves (
