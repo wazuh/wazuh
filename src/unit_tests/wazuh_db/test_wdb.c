@@ -451,6 +451,8 @@ void test_wdb_exec_stmt_send_single_row_success(void **state) {
     char* command_result = NULL;
     os_calloc(OS_MAXSTR, sizeof(char), command_result);
 
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_call(SQLITE_ROW);
     will_return(__wrap_sqlite3_column_count, 1);
@@ -470,7 +472,7 @@ void test_wdb_exec_stmt_send_single_row_success(void **state) {
 
     int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
 
-    assert_int_equal(result, SQLITE_DONE);
+    assert_int_equal(result, OS_SUCCESS);
 
     cJSON_Delete(j_query_result);
     os_free(str_query_result);
@@ -488,6 +490,8 @@ void test_wdb_exec_stmt_send_multiple_rows_success(void **state) {
     char* str_query_result = cJSON_PrintUnformatted(j_query_result);
     char* command_result = NULL;
     os_calloc(OS_MAXSTR, sizeof(char), command_result);
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
 
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_count(SQLITE_ROW, ROWS_RESPONSE);
@@ -508,7 +512,7 @@ void test_wdb_exec_stmt_send_multiple_rows_success(void **state) {
 
     int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
 
-    assert_int_equal(result, SQLITE_DONE);
+    assert_int_equal(result, OS_SUCCESS);
 
     cJSON_Delete(j_query_result);
     os_free(str_query_result);
@@ -519,12 +523,14 @@ void test_wdb_exec_stmt_send_no_rows_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int peer = 1234;
 
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_call(SQLITE_DONE);
 
     int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
 
-    assert_int_equal(result, SQLITE_DONE);
+    assert_int_equal(result, OS_SUCCESS);
 }
 
 void test_wdb_exec_stmt_send_row_size_limit_err(void **state) {
@@ -537,6 +543,8 @@ void test_wdb_exec_stmt_send_row_size_limit_err(void **state) {
     cJSON* j_query_result = cJSON_CreateObject();
     cJSON_AddStringToObject(j_query_result, json_str, json_value);
     char* str_query_result = cJSON_PrintUnformatted(j_query_result);
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
 
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_call(SQLITE_ROW);
@@ -553,7 +561,7 @@ void test_wdb_exec_stmt_send_row_size_limit_err(void **state) {
 
     int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
 
-    assert_int_equal(result, SQLITE_ERROR);
+    assert_int_equal(result, OS_SIZELIM);
 
     cJSON_Delete(j_query_result);
     os_free(str_query_result);
@@ -570,6 +578,8 @@ void test_wdb_exec_stmt_send_socket_err(void **state) {
     char* str_query_result = cJSON_PrintUnformatted(j_query_result);
     char* command_result = NULL;
     os_calloc(OS_MAXSTR, sizeof(char), command_result);
+
+    will_return(__wrap_OS_SetSendTimeout, 0);
 
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_call(SQLITE_ROW);
@@ -592,11 +602,35 @@ void test_wdb_exec_stmt_send_socket_err(void **state) {
 
     int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
 
-    assert_int_equal(result, SQLITE_ERROR);
+    assert_int_equal(result, OS_SOCKTERR);
 
     cJSON_Delete(j_query_result);
     os_free(str_query_result);
     os_free(command_result);
+}
+
+void test_wdb_exec_stmt_send_timeout_set_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int peer = 1234;
+
+    will_return(__wrap_OS_SetSendTimeout, -1);
+
+    will_return(__wrap_strerror, "error");
+    expect_string(__wrap__merror, formatted_msg, "Socket 1234 error setting timeout: error (0)");
+
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+
+    assert_int_equal(result, OS_SOCKTERR);
+}
+
+void test_wdb_exec_stmt_send_statement_invalid(void **state) {
+    int peer = 1234;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
+
+    int result = wdb_exec_stmt_send(NULL, peer);
+
+    assert_int_equal(result, OS_INVALID);
 }
 
 /* Tests wdb_init_stmt_in_cache */
@@ -688,6 +722,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_no_rows_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_row_size_limit_err, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_socket_err, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_timeout_set_err, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_send_statement_invalid, setup_wdb, teardown_wdb),
         //wdb_init_stmt_in_cache
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_invalid_transaction, setup_wdb, teardown_wdb),
