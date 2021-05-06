@@ -37,7 +37,7 @@
         <description>FTD warning message.</description>
     </rule>
 
-    <rule id="150005" level="0">
+    <rule id="150005" level="2">
         <if_sid>150000</if_sid>
         <field name="event.severity">5|6</field>
         <description>FTD notification/informational message.</description>
