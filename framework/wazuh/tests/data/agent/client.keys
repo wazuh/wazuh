@@ -8,3 +8,4 @@
 008 linux-agent8 any 2e2d2bd1beb9a94a59a2e8fea1d86c61ff4ec04e93728a805bec4c17021e8e4b
 009 linux-agent9 any 2e2d2bd1beb9a94a59a2e8fea1d86c61ff4ec04e93728a805bec4c17021e8e4b
 010 linux-agent10 any 2e2d2bd1beb9a94a59a2e8fea1d86c61ff4ec04e93728a805bec4c17021e8e4b
+011 !purged-agent any 2e2d2bd1beb9a94a59a2e8fea1d86c61ff4ec04e93728a805bec4c17021e8e4b
