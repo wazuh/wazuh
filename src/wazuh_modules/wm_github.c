@@ -266,8 +266,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     }
                 } else {
                     if (response->body) {
-                        os_malloc(strlen(response->body) + 1, error_msg);
-                        strncpy(error_msg, response->body, strlen(response->body));
+                        os_strdup(response->body, error_msg);
                     }
                     scan_finished = 1;
                     fail = 1;
@@ -374,8 +373,7 @@ static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 
         }
 
-        os_malloc(strlen(org_name) + 1, org_fail->org_name);
-        strncpy(org_fail->org_name, org_name, strlen(org_name));
+        os_strdup(org_name, org_fail->org_name);
 
         org_fail->fails = 1;
     } else {
