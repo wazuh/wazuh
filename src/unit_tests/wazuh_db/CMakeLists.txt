@@ -2,7 +2,7 @@
 list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
-                         -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2")
+                         -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
