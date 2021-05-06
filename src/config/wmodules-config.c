@@ -443,6 +443,7 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
 }
 #endif
 
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
 int Read_Github(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
@@ -497,6 +498,7 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1) {
     OS_ClearNode(children);
     return 0;
 }
+#endif
 
 int Test_WModule(const char * path) {
     int fail = 0;

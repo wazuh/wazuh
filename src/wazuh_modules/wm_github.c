@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
 
 #include "wmodules.h"
 
@@ -409,3 +410,4 @@ static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
         }
     }
 }
+#endif

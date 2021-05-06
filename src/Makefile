@@ -805,7 +805,16 @@ MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
 LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB) $(LIBCURL_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
+
+# Adding libcurl only on Windows, Linux and MacOS
+ifeq (${TARGET},winagent)
+	EXTERNAL_LIBS += $(LIBCURL_LIB)
+else ifeq (${uname_S},Linux)
+	EXTERNAL_LIBS += $(LIBCURL_LIB)
+else ifeq (${uname_S},Darwin)
+	EXTERNAL_LIBS += $(LIBCURL_LIB)
+endif
 
 ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(MSGPACK_LIB)
