@@ -139,6 +139,16 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-12 seconds'),'updated','active','group-2,group-1');
 
+-- Connected agent in group-1
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status, connection_status, `group`) VALUES (9,'agent-9','172.17.0.503','any',
+                   'b3650e11eba2f27er4d160c69de533ee7ffd601636a85ba2455d53a90927747f', 'Windows','3.14 XP','3','14',
+                   'XP classic','Windows',
+                   'Windows |agent-9 |3.14-45 |#46-Windows SMP Thu Dec 32 24:45:28 UTC 2022 |x86_64','x86_64',
+                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'node01',strftime('%s','now','-4 days'),
+                    strftime('%s','now','-12 seconds'),'updated','active','group-1');
 
 -- Create group-1 and group-2
 INSERT INTO `group` (id, name) VALUES (1, 'group-1');

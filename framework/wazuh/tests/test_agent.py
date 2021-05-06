@@ -89,18 +89,45 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
      ['os.name', 'os.version'],
      ['asc'],
      [
-        {'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
-        {'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}}
+        {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
+        {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}}
      ]
      ),
     (['000', '002'],
      ['os.name', 'os.version'],
      ['desc'],
      [
-        {'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
-        {'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}}
+        {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
+        {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}}
      ]
-     )
+     ),
+    (['000', '002', '009'],
+     ['os.version', 'os.name'],
+     ['asc'],
+     [
+         {'id': '009', 'os': {'name': 'Windows', 'version': '3.14 XP'}},
+         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
+         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}}
+     ]
+     ),
+    (['000', '002', '009'],
+     ['os.version', 'os.name'],
+     ['desc'],
+     [
+         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
+         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
+         {'id': '009', 'os': {'name': 'Windows', 'version': '3.14 XP'}},
+     ]
+     ),
+    (['000', '002', '009'],
+     ['os.name', 'os.version'],
+     ['asc'],
+     [
+         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
+         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
+         {'id': '009', 'os': {'name': 'Windows', 'version': '3.14 XP'}},
+     ]
+     ),
 ])
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -115,12 +142,9 @@ def test_agent_sort_order(socket_mock, send_mock, agent_list, order, fields, exp
     expected_items : list
         List of expected values for the provided fields.
     """
-    distinct = get_agents(agent_list=agent_list, sort={'fields': fields, 'order': order[0]})
-
+    distinct = get_agents(agent_list=agent_list, select=fields, sort={'fields': fields, 'order': order[0]})
     assert isinstance(distinct, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert distinct.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
-
-
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
