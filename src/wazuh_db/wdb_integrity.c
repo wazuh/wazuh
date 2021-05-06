@@ -13,6 +13,7 @@
  * Foundation.
  */
 
+#include "os_err.h"
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include <openssl/evp.h>
@@ -475,13 +476,14 @@ int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component) {
     cJSON* j_sync_info = NULL;
     int result = 1;
 
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_SYNC_GET_INFO);
-
-    if (stmt == NULL) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
+        mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
 
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_GET_INFO];
     sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
+
     j_sync_info = wdb_exec_stmt(stmt);
 
     if (!j_sync_info) {
