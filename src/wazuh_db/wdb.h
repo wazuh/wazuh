@@ -1258,8 +1258,6 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 checksum);
 
-void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 checksum);
-
 void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);

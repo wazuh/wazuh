@@ -462,9 +462,7 @@ static void test_wdbi_delete_success(void **state)
 
 static void test_wdbi_update_attempt_wbs_null(void **state)
 {
-    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
-
-    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, FALSE, checksum));
+    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, FALSE, NULL));
 }
 
 static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
@@ -475,7 +473,7 @@ static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    wdbi_update_attempt(data, 0, 0, FALSE, checksum);
+    wdbi_update_attempt(data, 0, 0, FALSE, NULL);
 }
 
 static void test_wdbi_update_attempt_no_sql_done(void **state)
@@ -503,14 +501,13 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_attempt(data, WDB_FIM, 0, FALSE, checksum);
+    wdbi_update_attempt(data, 0, 0, FALSE, NULL);
 }
 
 static void test_wdbi_update_attempt_success(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
-    const char *component = "fim";
     os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, 1);
@@ -528,7 +525,7 @@ static void test_wdbi_update_attempt_success(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_attempt(data, WDB_FIM, 0, FALSE, checksum);
+    wdbi_update_attempt(data, 0, 0, FALSE, checksum);
 }
 
 // Test wdbi_update_completion
