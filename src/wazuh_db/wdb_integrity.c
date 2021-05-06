@@ -192,7 +192,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     return 0;
 }
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum, bool legacy) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum, bool legacy) {
     assert(wdb != NULL);
 
     if (wdb_stmt_cache(wdb, legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
@@ -202,8 +202,9 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
     sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, manager_checksum, -1, NULL);
-    sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
+    sqlite3_bind_text(stmt, 2, last_agent_checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 3, manager_checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 4, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -233,7 +234,7 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
 integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, dbsync_msg action, const char * payload) {
     integrity_sync_status_t status = INTEGRITY_SYNC_ERR;
 
-    // Parse payload
+    // Parse payloadchecksum
     cJSON * data = cJSON_Parse(payload);
     if (data == NULL) {
         mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->id, payload);
@@ -298,7 +299,7 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
         switch (status) {
         case INTEGRITY_SYNC_NO_DATA:
         case INTEGRITY_SYNC_CKS_FAIL:
-            wdbi_update_attempt(wdb, component, timestamp, "", FALSE);
+            wdbi_update_attempt(wdb, component, timestamp, checksum, "", FALSE);
             break;
 
         case INTEGRITY_SYNC_CKS_OK:
