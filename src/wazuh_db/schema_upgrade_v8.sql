@@ -10,6 +10,7 @@
 
 ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL DEFAULT '';
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
+ALTER TABLE sync_info ADD COLUMN checksum TEXT NOT NULL DEFAULT '';
 
 DROP TABLE IF EXISTS vuln_cves;
 
@@ -36,6 +37,8 @@ CREATE TABLE IF NOT EXISTS vuln_metadata (
 );
 
 INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN) VALUES (0, 0);
+INSERT INTO sync_info (component) VALUES ('syscollector-packages');
+INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');
 
 CREATE TRIGGER obsolete_vulnerabilities
     AFTER DELETE ON sys_programs
