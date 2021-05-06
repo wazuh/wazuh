@@ -43,6 +43,8 @@ int __wrap_OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6);
 
 int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds);
 
+int __wrap_OS_SetSendTimeout(int socket, int seconds);
+
 int __wrap_wnet_select(int sock, int timeout);
 
 #endif
