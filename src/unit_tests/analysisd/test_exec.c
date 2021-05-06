@@ -31,12 +31,13 @@ typedef struct test_struct {
 
 static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
-    os_calloc(1,sizeof(test_struct_t),init_data);
-    os_calloc(1,sizeof(Eventinfo),init_data->lf);
-    os_calloc(1,sizeof(DynamicField), init_data->lf->fields);
-    os_calloc(1,sizeof(*init_data->lf->generated_rule),init_data->lf->generated_rule);
-    os_calloc(1,sizeof(active_response),init_data->ar);
-    os_calloc(1,sizeof(*init_data->ar->ar_cmd),init_data->ar->ar_cmd);
+    os_calloc(1, sizeof(test_struct_t), init_data);
+    os_calloc(1, sizeof(Eventinfo), init_data->lf);
+    os_calloc(1, sizeof(DynamicField), init_data->lf->fields);
+    os_calloc(1, sizeof(*init_data->lf->generated_rule), init_data->lf->generated_rule);
+    os_calloc(1, sizeof(OSDecoderInfo), init_data->lf->decoder_info);
+    os_calloc(1, sizeof(active_response), init_data->ar);
+    os_calloc(1, sizeof(*init_data->ar->ar_cmd), init_data->ar->ar_cmd);
 
     init_data->lf->fields[FIM_FILE].value = "/home/vagrant/file/n44.txt";
     init_data->lf->srcip = NULL;
@@ -45,6 +46,7 @@ static int test_setup(void **state) {
     init_data->lf->generated_rule->sigid = 554;
     init_data->lf->location = "(ubuntu) any->syscheck";
     init_data->lf->agent_id = "001";
+    init_data->lf->decoder_info->name = "syscheck_event";
 
     init_data->ar->name = "restart-wazuh0";
     init_data->ar->ar_cmd->extra_args = NULL;
@@ -57,7 +59,8 @@ static int test_setup(void **state) {
 }
 
 static int test_teardown(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+    test_struct_t *data = (test_struct_t *)*state;
+    os_free(data->lf->decoder_info);
     os_free(data->lf->generated_rule);
     os_free(data->ar->ar_cmd);
     os_free(data->lf);

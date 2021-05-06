@@ -511,7 +511,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                              (prelude_client_get_analyzer(prelude_client)),
                              IDMEF_LIST_PREPEND);
     mdebug1("lf->fields[FIM_FILE].value = %s.", lf->fields[FIM_FILE].value);
-    if (strcmp(extract_module_from_location(lf->location), SYSCHECK) == 0) {
+    if (lf->decoder_info->name != NULL && strncmp(lf->decoder_info->name, "syscheck_", 9) == 0) {
         FileAccess_PreludeLog(idmef,
                               "original",
                               lf->fields[FIM_FILE].value,

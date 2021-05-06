@@ -75,15 +75,13 @@ DynamicField df[] = {
 };
 
 
-
-
-
 static int test_setup(void **state) {
     Eventinfo *lf = NULL;
     os_calloc(1, sizeof(Eventinfo), lf);
     os_calloc(2, sizeof(wlabel_t), lf->labels);
     os_calloc(3, sizeof(char *), lf->last_events);
     os_calloc(1, sizeof(RuleInfo), lf->generated_rule);
+    os_calloc(1, sizeof(OSDecoderInfo), lf->decoder_info);
 
     lf->labels[0].key = "key_label";
     lf->labels[0].value = "value_label";
@@ -107,6 +105,8 @@ static int test_setup(void **state) {
     lf->comment = "comment";
     lf->hostname = "hostname";
     lf->fields = df;
+    lf->decoder_info->name = "non_syscheck_event";
+    lf->location = "no-syscheck";
 
     test_mode = 1;
     *state = lf;
@@ -117,6 +117,7 @@ static int test_setup(void **state) {
 static int test_teardown(void **state) {
     Eventinfo *lf = *state;
 
+    os_free(lf->decoder_info);
     os_free(lf->labels);
     os_free(lf->last_events);
     os_free(lf->generated_rule);
@@ -131,7 +132,6 @@ static int test_teardown(void **state) {
 
 void test_OS_Log_no_syscheck_event(void **state) {
     Eventinfo *lf = *state;
-    lf->location = "no-syscheck";
     char buffer[FIM_NFIELDS][40];
 
     expect_fprintf(_aflog, "** Alert 160987966.0: - rule_group\n"
@@ -156,7 +156,6 @@ void test_OS_Log_no_syscheck_event(void **state) {
 
 void test_OS_Log_no_label_event(void **state) {
     Eventinfo *lf = *state;
-    lf->location = "no-syscheck";
     char buffer[FIM_NFIELDS][40];
     lf->labels[0].key = NULL;
     lf->labels[0].value = NULL;
@@ -182,6 +181,7 @@ void test_OS_Log_no_label_event(void **state) {
 
 void test_OS_Log_syscheck_event(void **state) {
     Eventinfo *lf = *state;
+    lf->decoder_info->name = "syscheck_event";
     lf->location = "syscheck";
     lf->labels[0].key = "key_label";
     lf->labels[0].value = "value_label";
