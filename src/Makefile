@@ -1144,7 +1144,7 @@ ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
 else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
-WAZUH_LIB = libwazuh.$(SHARED)
+WAZUH_LIB = libwazuhshared.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
 
@@ -1677,10 +1677,10 @@ wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
 
 ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 ifeq (${uname_S},Darwin)
-WAZUH_SHFLAGS=-install_name @rpath/libwazuh.$(SHARED)
+WAZUH_SHARED_SHFLAGS=-install_name @rpath/libwazuhshared.$(SHARED)
 
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHARED_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
@@ -2270,7 +2270,7 @@ clean-framework:
 
 clean-windows:
 	rm -f libwazuh.a
-	rm -f libwazuh.dll
+	rm -f libwazuhshared.dll
 	rm -f libwazuhext.dll
 	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
 	rm -f win32/LICENSE.txt
