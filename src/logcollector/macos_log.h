@@ -119,13 +119,4 @@ char * w_macos_get_last_log_timestamp(void);
  */
 char * w_macos_get_log_settings(void);
 
-
-/**
- * @brief Get if settings are already set.
- * 
- * @return true if settings are set
- * @return false if settings are unset
- */
-bool w_macos_are_settings_stored(void);
-
 #endif /* MACOS_LOG_H */
