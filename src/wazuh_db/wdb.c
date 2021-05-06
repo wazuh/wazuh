@@ -1057,7 +1057,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
         return OS_INVALID;
     }
     if (OS_SetSendTimeout(peer, WDB_BLOCK_SEND_TIMEOUT_S) < 0) {
-        merror("Could not set timeout to network socket: %s (%d)", strerror(errno), errno);
+        merror("Socket %d error setting timeout: %s (%d)", peer, strerror(errno), errno);
         return OS_SOCKTERR;
     }
 
