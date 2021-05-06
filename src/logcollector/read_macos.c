@@ -104,7 +104,7 @@ STATIC bool macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buf
 STATIC char * w_macos_trim_full_timestamp(const char * full_timestamp) {
     char * short_timestamp = NULL;
 
-    if (full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN-1] == '\0' &&
+    if (full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN] == '\0' &&
         w_strlen(full_timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN) {
 
         os_calloc(OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1, sizeof(char), short_timestamp);
@@ -155,6 +155,9 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     short_timestamp = w_macos_trim_full_timestamp(full_timestamp);
     if (short_timestamp != NULL) {
         w_macos_set_last_log_timestamp(short_timestamp);
+        if (!w_macos_are_settings_stored()) {
+            w_macos_set_log_settings(lf->macos_log->current_settings);
+        }
         os_free(short_timestamp);
     }
 
