@@ -30,7 +30,7 @@
 
 extern OSHash *files_status;
 
-void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position);
+bool w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position);
 void w_initialize_file_status();
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
 char * w_save_files_status_to_cJSON();
@@ -58,7 +58,7 @@ static int teardown_group(void **state) {
 
 /* w_get_hash_context */
 
-void test_w_get_hash_context_NULL(void ** state) {
+void test_w_get_hash_context_NULL_file_exist(void ** state) {
 
     SHA_CTX * context;
     os_calloc(1, sizeof(SHA_CTX), context);
@@ -76,7 +76,34 @@ void test_w_get_hash_context_NULL(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
-    w_get_hash_context (path, context, position);
+    bool ret = w_get_hash_context (path, context, position);
+
+    assert_true(ret);
+
+    os_free(context);
+}
+
+void test_w_get_hash_context_NULL_file_not_exist(void ** state) {
+
+    SHA_CTX * context;
+    os_calloc(1, sizeof(SHA_CTX), context);
+    int64_t position = 10;
+    const char path[] = "/test_path";
+    int mode = OS_BINARY;
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, position);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, -1);
+
+    bool ret = w_get_hash_context (path, context, position);
+
+    assert_false(ret);
 
     os_free(context);
 }
@@ -94,8 +121,10 @@ void test_w_get_hash_context_done(void ** state) {
     expect_string(__wrap_OSHash_Get_ex, key, path);
     will_return(__wrap_OSHash_Get_ex, &data);
 
-    w_get_hash_context (path, context, position);
+    bool ret = w_get_hash_context (path, context, position);
+
     assert_memory_equal(&(data.context), context, sizeof(SHA_CTX));
+    assert_true(ret);
 
     os_free(context);
 }
@@ -1534,7 +1563,8 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
-        cmocka_unit_test(test_w_get_hash_context_NULL),
+        cmocka_unit_test(test_w_get_hash_context_NULL_file_exist),
+        cmocka_unit_test(test_w_get_hash_context_NULL_file_not_exist),
         cmocka_unit_test(test_w_get_hash_context_done),
 
         // Test w_update_file_status
