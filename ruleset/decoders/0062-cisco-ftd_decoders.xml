@@ -26,13 +26,101 @@
 </decoder>
 
 
+<!--
+%ftd-4-313004: Denied ICMP type=0, from laddr 80.241.208.43 on interface outside to 116.6.127.116: no matching session
+-->
+<decoder name="cisco-ftd-denied-icmp">
+    <parent>cisco-ftd</parent>
+    <prematch>4-313004</prematch>
+    <regex>(\.+) type=(\S+), from (\S+) on interface (\S+) to (\S+): (\.+)</regex>
+    <order>description, type, src_ip, interface, dst_ip, reason</order>
+</decoder>
 
+<!--
+%ftd-5-111010: User 'pgskyadm', running 'CLI' from IP 143.16.64.46, executed 'terminal pager 0'
+-->
+<decoder name="cisco-ftd-user-running-executed">
+    <parent>cisco-ftd</parent>
+    <prematch>5-111010</prematch>
+    <regex>User (\S+), running (\S+) from IP (\S+), (\S+) (\.+)</regex>
+    <order>username, running, ip, type, command</order>
+</decoder>
+
+<!--
+%ftd-1-505015: Module ips, application up "IPS", version "7.2(2)E4" Normal Operation
+-->
+<decoder name="cisco-ftd-module-ips">
+    <parent>cisco-ftd</parent>
+    <prematch>1-505015</prematch>
+    <regex>Module (\.+), application up (\S+), version (\S+)</regex>
+    <order>module_id, app_up, version</order>
+</decoder>
+
+<!--
+%ftd-4-419002: Duplicate TCP SYN from WLC-LAN_inside:10.233.209.119/42736 to outside:192.168.0.8/52082 with different initial sequence number
+-->
+<decoder name="cisco-ftd-duplicate-syn">
+    <parent>cisco-ftd</parent>
+    <prematch>4-419002</prematch>
+    <regex>(\.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) with different initial sequence number</regex>
+    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
+</decoder>
+
+<!--
+%FTD-4-405001: Received ARP {request | response} collision from 192.168.1.59/MAC_address on interface interface_name to 192.168.1.59/MAC_address on interface interface_name
+-->
+<decoder name="cisco-ftd-response-collision">
+    <parent>cisco-ftd</parent>
+    <prematch>4-405001</prematch>
+    <regex>(\.+) from (\S+)/(\S+) on interface (\S+) to (\S+)/(\S+) on interface (\S+)</regex>
+    <order>description, src_ip, new_arp, interface, existing_arp</order>
+</decoder>
+
+<!--
+%ftd-2-106020: Deny IP teardrop fragment (size = 1480, offset = 0) from 10.235.224.228 to 10.235.0.1
+-->
+<decoder name="cisco-ftd-deny-teardrop-fragment">
+    <parent>cisco-ftd</parent>
+    <prematch>2-106020</prematch>
+    <regex>(\.+) \(size = (\S+), offset = (\S+)\) from (\S+) to (\S+)</regex>
+    <order>description, size, offset, src, dst</order>
+</decoder>
+
+<!--
+%ftd-5-500003: Bad TCP hdr length (hdrlen=4, pktlen=74) from 123.146.183.231/34160 to 116.6.127.118/443, flags: INVALID, on interface outside
+-->
+<decoder name="cisco-ftd-bad-hdr-length">
+    <parent>cisco-ftd</parent>
+    <prematch>5-500003</prematch>
+    <regex>(\.+) \(hdrlen=(\S+), pktlen=(\S+)\) from (\S+)/(\S+) to (\S+)/(\S+), flags: (\.+), on interface (\S+)</regex>
+    <order>description, hdrlen, pktlen, src_ip, src_port, dst_ip, dst_port, flags, interface</order>
+</decoder>
+
+<!--
+%ftd-3-202010: PAT pool exhausted. Unable to create TCP connection from WLC-LAN_inside:10.237.52.235/40012 to outside:183.240.12.88/443
+-->
+<decoder name="cisco-ftd-pat-pool-exhausted">
+    <parent>cisco-ftd</parent>
+    <prematch>3-202010</prematch>
+    <regex>(\.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+)</regex>
+    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
+</decoder>
+
+<!--
+%FTD-1-105005: (Secondary) Lost Failover communications with mate on interface WLC-LAN_inside
+-->
+<decoder name="cisco-ftd-lost-failover">
+    <parent>cisco-ftd</parent>
+    <prematch>1-105005</prematch>
+    <regex>(\.+) interface (\S+)</regex>
+    <order>description, interface</order>
+</decoder>
 
 
 <!--
 %FTD-1-106101 The number of ACL log deny-flows has reached limit (number).
 -->
-<decoder name="cisco-asa-deny-flows">
+<decoder name="cisco-ftd-deny-flows">
     <parent>cisco-ftd</parent>
     <prematch>1-106101</prematch>
     <regex>The number of (\S+) (\.+) has reached limit \((\S+)\)</regex>
