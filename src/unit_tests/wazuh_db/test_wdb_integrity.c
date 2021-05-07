@@ -753,7 +753,7 @@ void test_wdbi_strings_hash_null(void **state)
 
 void test_wdbi_check_sync_status_cache_failed(void **state)
 {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     wdb_t * data = *state;
 
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -766,7 +766,7 @@ void test_wdbi_check_sync_status_cache_failed(void **state)
 
 void test_wdbi_check_sync_status_exec_failed(void **state)
 {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     wdb_t * data = *state;
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -781,7 +781,7 @@ void test_wdbi_check_sync_status_exec_failed(void **state)
 
 void test_wdbi_check_sync_status_data_failed(void **state)
 {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     wdb_t * data = *state;
     cJSON* j_data = cJSON_CreateArray();
     cJSON* j_object = cJSON_CreateObject();
@@ -801,7 +801,7 @@ void test_wdbi_check_sync_status_data_failed(void **state)
 
 void test_wdbi_check_sync_status_data_never_synced(void **state)
 {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     wdb_t * data = *state;
     cJSON* j_data = cJSON_CreateArray();
     cJSON* j_object = cJSON_CreateObject();
@@ -820,7 +820,7 @@ void test_wdbi_check_sync_status_data_never_synced(void **state)
 
 void test_wdbi_check_sync_status_data_not_synced(void **state)
 {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     wdb_t * data = *state;
     cJSON* j_data = cJSON_CreateArray();
     cJSON* j_object = cJSON_CreateObject();
@@ -839,7 +839,7 @@ void test_wdbi_check_sync_status_data_not_synced(void **state)
 
 void test_wdbi_check_sync_status_data_synced(void **state)
 {
-    int ret_val = -1;
+    int ret_val = OS_INVALID;
     wdb_t * data = *state;
     cJSON* j_data = cJSON_CreateArray();
     cJSON* j_object = cJSON_CreateObject();
