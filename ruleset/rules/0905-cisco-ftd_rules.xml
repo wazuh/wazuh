@@ -225,8 +225,8 @@
 
     <rule id="150030" level="8">
         <if_sid>150002</if_sid>
-        <field name="event.id">106017</field>
-        <description>FTD: IP spoofing  attack detected.</description>
+        <field name="event.id">106016</field>
+        <description>FTD: IP spoofing attack detected.</description>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
 </group>
