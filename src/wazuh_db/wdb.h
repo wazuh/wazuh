@@ -1198,40 +1198,11 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-/**
- * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
- *        the syncronization with the agents is in process, or the checksum sent to the manager is not the same than
- *        the one calculated locally.
- *
- *        The 'legacy' flag calls internally to a different SQL statement, to avoid an overflow in the n_attempts column.
- *        It happens because the old agents call this method once per row, and not once per syncronization cycle.
- *
- * @param [in] wdb The 'agents' struct database.
- * @param [in] component An enumeration member that was previously added to the table.
- * @param [in] legacy This flag is set to TRUE for agents with an old syscollector syncronization process, and FALSE otherwise.
- * @param [in] timestamp The syncronization timestamp to store in the table.
- */
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy);
 
-/**
- * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
- *        the syncronization with the agents is complete, or the checksum sent to the manager is the same than
- *        the one calculated locally.
- *
- * @param [in] wdb The 'agents' struct database.
- * @param [in] component An enumeration member that was previously added to the table.
- * @param [in] timestamp The syncronization timestamp to store in the table.
- */
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
-/**
- * @brief Returns the syncronization status of a component from sync_info table.
- *
- * @param [in] wdb The 'agents' struct database.
- * @param [in] component An enumeration member that was previously added to the table.
- * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
- */
-int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component);
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
