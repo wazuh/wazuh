@@ -1202,37 +1202,30 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
 /**
- * @brief Update sync attempt timestamp
+ * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
+ *        the syncronization with the agents is in process, or the checksum sent to the manager is not the same than
+ *        the one calculated locally.
  *
- * Set the column "last_attempt" with the timestamp argument,
- * and increase "n_attempts" one unit (non legacy agents).
- * Save the last calculated component checksum on the manager.
+ *        The 'legacy' flag calls internally to a different SQL statement, to avoid an overflow in the n_attempts column.
+ *        It happens because the old agents call this method once per row, and not once per syncronization cycle.
  *
- * It should be called when the syncronization with the agents is in process, or the checksum sent
- * to the manager is not the same than the one calculated locally.
- *
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param manager_checksum Checksum of the last calculated component on the manager to be stored.
- * @param legacy Flag to identify if the updated agent works with dbsync or not (legacy)
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @param [in] timestamp The syncronization timestamp to store in the table.
+ * @param [in] manager_checksum Checksum of the last calculated component on the manager to be stored.
+ * @param [in] legacy This flag is set to TRUE for agents with an old syscollector syncronization process, and FALSE otherwise.
  */
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum, bool legacy);
 
 /**
- * @brief Update sync completion timestamp
+ * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
+ *        the syncronization with the agents is complete, or the checksum sent to the manager is the same than
+ *        the one calculated locally.
  *
- * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
- * Increase "n_attempts" and "n_completions" one unit.
- * Save the last calculated component checksum on the manager.
- *
- * It should be called when the syncronization with the agents is complete,
- * or the checksum sent to the manager is the same than the one calculated locally.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp (field "id").
- * @param manager_checksum Checksum of the last calculated component on the manager to be stored.
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @param [in] timestamp The syncronization timestamp to store in the table.
+ * @param [in] manager_checksum Checksum of the last calculated component on the manager to be stored.
  */
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum);
 
