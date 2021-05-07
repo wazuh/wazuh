@@ -17,6 +17,7 @@
 #endif
 
 #include "wmodules.h"
+#include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
 
 STATIC void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
 STATIC void wm_github_destroy(wm_github* github_config);

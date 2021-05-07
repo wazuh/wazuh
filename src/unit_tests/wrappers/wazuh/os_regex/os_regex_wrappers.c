@@ -30,6 +30,16 @@ int __wrap_OSRegex_Compile(const char *pattern, OSRegex *reg, int flags) {
     return __real_OSRegex_Compile(pattern, reg, flags);
 }
 
+void __wrap_OSRegex_FreePattern(OSRegex *reg) {
+    check_expected(reg);
+    if (reg->d_sub_strings) {
+        w_FreeArray(reg->d_sub_strings);
+        os_free(reg->d_sub_strings);
+        reg->d_sub_strings = NULL;
+    }
+    return;
+}
+
 extern const char *__real_OSRegex_Execute(const char *str, OSRegex *reg);
 const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg) {
     if (test_mode) {
@@ -38,12 +48,13 @@ const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg) {
         }
 
         reg->d_sub_strings = NULL;
-        os_calloc(1, 20, reg->d_sub_strings);
+        os_calloc(16, sizeof(char), reg->d_sub_strings);
 
         if(!strcmp(str, "test")) {
             reg->d_sub_strings[0] = NULL;
         } else {
-            reg->d_sub_strings[0] = "https://api.com/";
+            //reg->d_sub_strings[0] = "https://api.com/";
+            os_strdup("https://api.com/", *reg->d_sub_strings);
         }
 
         return mock_type(const char *);

@@ -27,51 +27,58 @@
 #include "../../wrappers/wazuh/os_regex/os_regex_wrappers.c"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
+#include "../../wrappers/wazuh/shared/url_wrappers.h"
 
 void * wm_github_main(wm_github* github_config);
 
-unsigned int __wrap_sleep (unsigned int __seconds) {
+unsigned int __wrap_sleep(unsigned int __seconds) {
     check_expected(__seconds);
     return mock_type(unsigned int);
 }
 
-void __wrap_OSRegex_FreePattern(OSRegex *reg) {
-    check_expected(reg);
-    return;
-}
-
 ////////////////  test wm-github /////////////////
 
+typedef struct test_struct {
+    wm_github *github_config;
+    curl_response* response;
+    char *root_c;
+} test_struct_t;
+
 static int setup_conf(void **state) {
-    wm_github *test;
-    os_calloc(1, sizeof(wm_github), test);
+    test_struct_t *init_data = NULL;
+    os_calloc(1,sizeof(test_struct_t), init_data);
+    os_calloc(1, sizeof(wm_github), init_data->github_config);
     test_mode = 1;
-    *state = test;
+    *state = init_data;
     return 0;
 }
 
 static int teardown_conf(void **state) {
-    wm_github *test = *state;
+    test_struct_t *data  = (test_struct_t *)*state;
     test_mode = 0;
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub finished.");
-    wm_github_destroy(test);
+    wm_github_destroy(data->github_config);
+    os_free(data->root_c);
+    os_free(data->response);
+    os_free(data);
+
     return 0;
 }
 
 void test_github_main_disabled(void **state) {
-    wm_github* github_config = *state;
-    github_config->enabled = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 0;
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub disabled.");
 
-    wm_github_main(github_config);
+    wm_github_main(data->github_config);
 }
 
 void test_github_main_fail_StartMQ(void **state) {
-    wm_github* github_config = *state;
-    github_config->enabled = 1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub started.");
@@ -83,14 +90,14 @@ void test_github_main_fail_StartMQ(void **state) {
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, -1);
 
-    wm_github_main(github_config);
+    wm_github_main(data->github_config);
 }
 
 void test_github_main_enable(void **state) {
-    wm_github* github_config = *state;
-    github_config->enabled = 1;
-    github_config->run_on_start = 1;
-    github_config->interval = 2;
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
+    data->github_config->run_on_start = 1;
+    data->github_config->interval = 2;
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -102,11 +109,10 @@ void test_github_main_enable(void **state) {
     expect_value(__wrap_sleep, __seconds, 2);
     will_return(__wrap_sleep, 0);
 
-    wm_github_main(github_config);
+    wm_github_main(data->github_config);
 }
 
 void test_github_get_next_page_warn(void **state) {
-    wm_github* github_config = *state;
     char *header;
 
     expect_string(__wrap_OSRegex_Compile, pattern,"<(\\S+)>;\\s*rel=\"next\"");
@@ -119,7 +125,6 @@ void test_github_get_next_page_warn(void **state) {
 }
 
 void test_github_get_next_page_execute(void **state) {
-    wm_github* github_config = *state;
     char *header = "test";
 
     expect_string(__wrap_OSRegex_Compile, pattern, "<(\\S+)>;\\s*rel=\"next\"");
@@ -137,7 +142,6 @@ void test_github_get_next_page_execute(void **state) {
 }
 
 void test_github_get_next_page_sub_string(void **state) {
-    wm_github* github_config = *state;
     char *header = "test";
 
     expect_string(__wrap_OSRegex_Compile, pattern, "<(\\S+)>;\\s*rel=\"next\"");
@@ -157,6 +161,7 @@ void test_github_get_next_page_sub_string(void **state) {
 void test_github_get_next_page_complete(void **state) {
     wm_github* github_config = *state;
     char *header = "test_1";
+    char *next_page = NULL;
 
     expect_string(__wrap_OSRegex_Compile, pattern, "<(\\S+)>;\\s*rel=\"next\"");
     will_return(__wrap_OSRegex_Compile, 1);
@@ -166,70 +171,63 @@ void test_github_get_next_page_complete(void **state) {
 
     expect_any(__wrap_OSRegex_FreePattern, reg);
 
-    wm_github_get_next_page(header);
+    next_page = wm_github_get_next_page(header);
+
+    assert_string_equal(next_page, "https://api.com/");
+    os_free(next_page);
 }
 
-void test_github_dump_1(void **state) {
-    wm_github* github_config = *state;
+void test_github_dump_no_options(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
     char *test = "{\"github\":{\"enabled\":\"no\",\"run_on_start\":\"no\",\"only_future_events\":\"no\"}}";
 
-    cJSON *root = wm_github_dump(github_config);
-    char *root_c = cJSON_PrintUnformatted(root);
+    cJSON *root = wm_github_dump(data->github_config);
+    data->root_c = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
 
-    assert_string_equal(root_c, test);
+    assert_string_equal(data->root_c, test);
 }
 
-void test_github_dump_2(void **state) {
-    wm_github* github_config = *state;
-    github_config->enabled = 1;
-    github_config->run_on_start = 1;
-    github_config->only_future_events = 1;
-    github_config->interval = 10;
-    github_config->time_delay = 1;
-    os_calloc(1, sizeof(wm_github_auth), github_config->auth);
-    os_strdup("test_token", github_config->auth->api_token);
-    os_strdup("test_org", github_config->auth->org_name);
-    os_strdup("all", github_config->event_type);
+void test_github_dump_yes_options(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
+    data->github_config->run_on_start = 1;
+    data->github_config->only_future_events = 1;
+    data->github_config->interval = 10;
+    data->github_config->time_delay = 1;
+    os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
+    os_strdup("test_token", data->github_config->auth->api_token);
+    os_strdup("test_org", data->github_config->auth->org_name);
+    os_strdup("all", data->github_config->event_type);
 
     char *test = "{\"github\":{\"enabled\":\"yes\",\"run_on_start\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"time_delay\":1,\"api_auth\":[{\"org_name\":\"test_org\",\"api_token\":\"test_token\"}],\"event_type\":\"all\"}}";
 
-    cJSON *root = wm_github_dump(github_config);
-    char *root_c = cJSON_PrintUnformatted(root);
+    cJSON *root = wm_github_dump(data->github_config);
+    data->root_c = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
 
-    assert_string_equal(root_c, test);
+    assert_string_equal(data->root_c, test);
 }
 
-/*void test_github_write_callback_1(void **state) {
-    wm_github* github_config = *state;
-    char *ptr;
-    size_t size;
-    size_t nmemb;
-    void *userdata;
-
-    wm_github_write_callback(ptr, size, nmemb, userdata);
-}*/
-
 void test_github_scan_failure_action_1(void **state) {
-    wm_github_fail *current_fails;
-    os_calloc(1, sizeof(wm_github_fail), current_fails);
-    current_fails->fails = 1;
-    current_fails->org_name = "test_org";
-    current_fails->next = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
+    data->github_config->fails->fails = 1;
+    os_strdup("test_org", data->github_config->fails->org_name);
+    data->github_config->fails->next = NULL;
     char *org_name = "test_org";
     char *error_msg = "test_error";
     int queue_fd = 1;
 
-    wm_github_scan_failure_action(&current_fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
 }
 
 void test_github_scan_failure_action_2(void **state) {
-    wm_github_fail *current_fails;
-    os_calloc(1, sizeof(wm_github_fail), current_fails);
-    current_fails->fails = 2;
-    current_fails->org_name = "test_org";
-    current_fails->next = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
+    data->github_config->fails->fails = 2;
+    os_strdup("test_org", data->github_config->fails->org_name);
+    data->github_config->fails->next = NULL;
     char *org_name = "test_org";
     char *error_msg = "test_error";
     int queue_fd = 1;
@@ -247,15 +245,15 @@ void test_github_scan_failure_action_2(void **state) {
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}'");
 
-    wm_github_scan_failure_action(&current_fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
 }
 
-void test_github_scan_failure_action_3(void **state) {
-    wm_github_fail *current_fails;
-    os_calloc(1, sizeof(wm_github_fail), current_fails);
-    current_fails->fails = 2;
-    current_fails->org_name = "test_org";
-    current_fails->next = NULL;
+void test_github_scan_failure_action_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
+    data->github_config->fails->fails = 2;
+    os_strdup("test_org", data->github_config->fails->org_name);
+    data->github_config->fails->next = NULL;
     char *org_name = "test_org";
     char *error_msg = "test_error";
     int queue_fd = 1;
@@ -276,13 +274,12 @@ void test_github_scan_failure_action_3(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    wm_github_scan_failure_action(&current_fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
 }
 
 void test_github_scan_failure_action_org_null(void **state) {
-    wm_github_fail *current_fails;
-    os_calloc(1, sizeof(wm_github_fail), current_fails);
-    current_fails = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->fails = NULL;
     char *org_name = "test_org";
     char *error_msg = "test_error";
     int queue_fd = 1;
@@ -291,20 +288,20 @@ void test_github_scan_failure_action_org_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
-    wm_github_scan_failure_action(&current_fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
 }
 
 void test_github_execute_scan(void **state) {
-    wm_github* github_config = *state;
-    github_config->enabled = 1;
-    github_config->run_on_start = 1;
-    github_config->only_future_events = 1;
-    github_config->interval = 10;
-    github_config->time_delay = 1;
-    os_calloc(1, sizeof(wm_github_auth), github_config->auth);
-    os_strdup("test_token", github_config->auth->api_token);
-    os_strdup("test_org", github_config->auth->org_name);
-    os_strdup("all", github_config->event_type);
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
+    data->github_config->run_on_start = 1;
+    data->github_config->only_future_events = 1;
+    data->github_config->interval = 10;
+    data->github_config->time_delay = 1;
+    os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
+    os_strdup("test_token", data->github_config->auth->api_token);
+    os_strdup("test_org", data->github_config->auth->org_name);
+    os_strdup("all", data->github_config->event_type);
 
     int initial_scan = 1;
 
@@ -335,30 +332,32 @@ void test_github_execute_scan(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
-    wm_github_execute_scan(github_config, initial_scan);
+    wm_github_execute_scan(data->github_config, initial_scan);
 }
 
 void test_github_execute_scan_current_null(void **state) {
-    wm_github* github_config = *state;
-    os_calloc(1, sizeof(wm_github_auth), github_config->auth);
-    github_config->auth = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->auth = NULL;
 
     int initial_scan = 1;
 
-    assert_int_equal(wm_github_execute_scan(github_config, initial_scan), 0);
+    assert_int_equal(wm_github_execute_scan(data->github_config, initial_scan), 0);
 }
 
 void test_github_execute_scan_no_initial_scan(void **state) {
-    wm_github* github_config = *state;
-    github_config->enabled = 1;
-    github_config->run_on_start = 1;
-    github_config->only_future_events = 1;
-    github_config->interval = 10;
-    github_config->time_delay = 1;
-    os_calloc(1, sizeof(wm_github_auth), github_config->auth);
-    os_strdup("test_token", github_config->auth->api_token);
-    os_strdup("test_org", github_config->auth->org_name);
-    os_strdup("all", github_config->event_type);
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
+    data->github_config->run_on_start = 1;
+    data->github_config->only_future_events = 1;
+    data->github_config->interval = 10;
+    data->github_config->time_delay = 1;
+    os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
+    os_strdup("test_token", data->github_config->auth->api_token);
+    os_strdup("test_org", data->github_config->auth->org_name);
+    os_strdup("all", data->github_config->event_type);
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 404;
+    data->response->body = NULL;
 
     int initial_scan = 0;
 
@@ -377,7 +376,11 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
-    wm_github_execute_scan(github_config, initial_scan);
+    expect_any(__wrap_wurl_http_get_with_header, header);
+    expect_any(__wrap_wurl_http_get_with_header, url);
+    will_return(__wrap_wurl_http_get_with_header, data->response);
+
+    wm_github_execute_scan(data->github_config, initial_scan);
 }
 
 ////////////////  test wmodules-github /////////////////
@@ -962,12 +965,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_github_get_next_page_execute, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_get_next_page_sub_string, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_get_next_page_complete, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_github_dump_1, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_github_dump_2, setup_conf, teardown_conf),
-        //cmocka_unit_test_setup_teardown(test_github_write_callback_1, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_dump_no_options, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_dump_yes_options, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_1, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_2, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_github_scan_failure_action_3, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_scan_failure_action_error, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_org_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_current_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan, setup_conf, teardown_conf),
