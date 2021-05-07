@@ -221,4 +221,11 @@
         <description>FTD: Multiple warning messages.</description>
         <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
+
+    <rule id="150030" level="8">
+        <if_sid>150002</if_sid>
+        <field name="event.id">106017</field>
+        <description>FTD: IP spoofing  attack detected.</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
 </group>
