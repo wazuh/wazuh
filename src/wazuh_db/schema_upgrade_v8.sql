@@ -40,7 +40,7 @@ CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 ALTER TABLE sys_osinfo ADD COLUMN os_display_version TEXT DEFAULT NULL;
 ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL DEFAULT '';
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
-ALTER TABLE sync_info ADD COLUMN last_global_checksum TEXT NOT NULL DEFAULT 'legacy';
+ALTER TABLE sync_info ADD COLUMN last_agent_checksum TEXT NOT NULL DEFAULT ' ';
 
 
 DROP TABLE IF EXISTS vuln_cves;
