@@ -74,12 +74,12 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,cJSON_AddBoolToObject -Wl,--wrap,cJSON_CreateNumber")
 
 list(APPEND wdb_tests_names "test_wdb")
-list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock \
+list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,strerror -Wl,--wrap,pthread_mutex_lock \
                              -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Delete_ex \
                              -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_close_v2 -Wl,--wrap,sqlite3_step \
                              -Wl,--wrap,sqlite3_column_count -Wl,--wrap,sqlite3_column_type -Wl,--wrap,sqlite3_column_name -Wl,--wrap,sqlite3_column_double \
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_reset \
-                             -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_errmsg")
+                             -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_sql -Wl,--wrap,OS_SendSecureTCP  -Wl,--wrap,OS_SetSendTimeout")
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,wdb_metadata_table_check \

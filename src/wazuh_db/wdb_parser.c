@@ -187,7 +187,7 @@ static struct kv_list const TABLE_MAP[] = {
 };
 
 
-int wdb_parse(char * input, char * output) {
+int wdb_parse(char * input, char * output, int peer) {
     char * actor;
     char * id;
     char * query;

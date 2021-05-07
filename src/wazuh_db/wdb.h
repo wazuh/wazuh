@@ -59,6 +59,8 @@
 #define VULN_CVES_TYPE_OS         "OS"
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
+#define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -778,6 +780,22 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status);
 
 /**
+ * @brief Function to execute a SQL statement and send the result via TCP socket.
+ *        Each row of the SQL response will be sent in a different command.
+ *        This method will continue until SQL_DONE or an error is obtained.
+ *        This method could block if the receiver lasts longer in receiving the information.
+ *        The block will timeout after the time defined in WDB_BLOCK_SEND_TIMEOUT_S.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [in] peer The peer where the result will be sent.
+ * @return OS_SUCCESS on success.
+ *         OS_INVALID on errors executing SQL statement.
+ *         OS_SOCKTERR on errors handling the socket.
+ *         OS_SIZELIM on error trying to fit the row response into the socket buffer.
+ */
+int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
+
+/**
  * @brief Function to execute a SQL statement and save the result in a JSON array.
  *
  * @param [in] stmt The SQL statement to be executed.
@@ -805,7 +823,7 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
-int wdb_parse(char * input, char * output);
+int wdb_parse(char * input, char * output, int peer);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
