@@ -16,12 +16,82 @@
 
 
 <!--
+%ftd-2-106001: Inbound TCP connection denied from 111.93.241.59/54322 to 116.6.127.122/1433 flags SYN on interface outside
+-->
+<decoder name="cisco-ftd-inbound-connection-denied">
+    <parent>cisco-ftd</parent>
+    <prematch>2-106001</prematch>
+    <regex offset="after_prematch">(\.+) from (\S+)/(\S+) to (\S+)/(\S+) flags (\.+) on interface (\S+)</regex>
+    <order>description, src_ip, src_port, dst_ip, dst_port, flags, interface</order>
+</decoder>
+
+<!--
+%ftd-5-718060: Inbound socket select fail: context=21312
+-->
+<decoder name="cisco-ftd-inbound-socket">
+    <parent>cisco-ftd</parent>
+    <prematch>5-718060|5-718061</prematch>
+    <regex offset="after_prematch">(\.+): context=(\d+)</regex>
+    <order>description, context_ID</order>
+</decoder>
+
+<!--
+%ftd-5-718062: Inbound thread is awake (context=21312)
+-->
+<decoder name="cisco-ftd-inbound-thread">
+    <parent>cisco-ftd</parent>
+    <prematch>5-718062</prematch>
+    <regex offset="after_prematch">(\.+) \pcontext=(\d+)</regex>
+    <order>description, context_ID</order>
+</decoder>
+
+<!--
+%ftd-1-106022: Deny protocol connection spoof from 192.168.0.1 to 192.168.0.2 on interface interface_name.
+-->
+<decoder name="cisco-ftd-attacks">
+  <parent>cisco-ftd</parent>
+  <prematch>1-106021|1-106022|4-4000</prematch>
+  <regex offset="after_prematch">\.+ from (\S+)</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--
+%ftd-4-401004 Shunned packet: 192.168.0.1 = 192.168.0.2 on interface interfacename
+-->
+<decoder name="cisco-ftd-shunned">
+  <parent>cisco-ftd</parent>
+  <prematch>^4-401004</prematch>
+  <regex offset="after_prematch">Shunned packet: (\S+) = (\S+) </regex>
+  <order>srcip, dstip</order>
+</decoder>
+
+<!--
+%ftd-2-106017: Deny IP due to Land Attack from 193.17.108.1 to 193.17.108.1
+-->
+<decoder name="cisco-ftd-deny-land-attack">
+    <parent>cisco-ftd</parent>
+    <prematch>2-106017</prematch>
+    <regex offset="after_prematch">(\.+) from (\S+) to (\S+)</regex>
+    <order>description, src_ip, dst_ip</order>
+</decoder>
+
+<!--
+%ftd-2-106006: Deny inbound UDP from 185.158.113.158/53306 to 116.6.127.123/53413 on interface outside
+-->
+<decoder name="cisco-ftd-deny-inbound-udp">
+    <parent>cisco-ftd</parent>
+    <prematch>2-106006|2-106007</prematch>
+    <regex offset="after_prematch">(\.+) from (\S+)/(\S+) to (\S+)/(\S+)</regex>
+    <order>description, src_ip, src_port, dst_ip, dst_port</order>
+</decoder>
+
+<!--
 %ftd-3-710003: TCP access denied by ACL from 192.168.0.1/11 to outside:192.168.0.2/22
 -->
 <decoder name="cisco-ftd-fw2">
   <parent>cisco-ftd</parent>
   <prematch>3-710003|7-710002|7-710005</prematch>
- <regex offset="after_prematch">(\S+) \w+ (\.+) from </regex>
+  <regex offset="after_prematch">(\S+) \w+ (\.+) from </regex>
   <regex>(\S+)/(\S+) to \w+:(\S+)/(\S+)</regex>
   <order>protocol, action, srcip, srcport, dstip, dstport</order>
 </decoder>
