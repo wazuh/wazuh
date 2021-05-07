@@ -269,7 +269,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 last_global_checksum) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 last_agent_checksum) {
 
     assert(wdb != NULL);
 
@@ -280,7 +280,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
     sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, last_global_checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 2, last_agent_checksum, -1, NULL);
     sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -317,33 +317,6 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
     sqlite3_bind_int64(stmt, 2, timestamp);
     sqlite3_bind_text(stmt, 3, last_agent_checksum, -1, NULL);
     sqlite3_bind_text(stmt, 4, COMPONENT_NAMES[component], -1, NULL);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-    }
-}
-
-/**
- * @brief This method updates the "last_completion" value.
- *
- * It should be called after a positive checksum comparison to avoid repeated calculations.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp.
- */
-void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
-
-    assert(wdb != NULL);
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_SET_COMPLETION) == -1) {
-        return;
-    }
-
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_SET_COMPLETION];
-
-    sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -469,6 +442,14 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
         goto end;
     }
 
+    item = cJSON_GetObjectItem(data, "checksum");
+    char * checksum = cJSON_GetStringValue(item);
+
+    if (checksum == NULL) {
+        mdebug1("No such string 'checksum' in JSON payload.");
+        goto end;
+    }
+
     long timestamp = item->valuedouble;
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
@@ -482,7 +463,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
         goto end;
     }
 
-    wdbi_update_completion(wdb, component, timestamp, "");
+    wdbi_update_completion(wdb, component, timestamp, checksum);
     retval = 0;
 
 end:
