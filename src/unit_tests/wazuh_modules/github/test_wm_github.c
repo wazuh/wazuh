@@ -28,11 +28,16 @@
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
+#include "../../wrappers/libc/time_wrappers.h"
 
 void * wm_github_main(wm_github* github_config);
 
 unsigned int __wrap_sleep(unsigned int __seconds) {
     check_expected(__seconds);
+    return mock_type(unsigned int);
+}
+
+unsigned int __wrap_localtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
     return mock_type(unsigned int);
 }
 
@@ -60,7 +65,6 @@ static int teardown_conf(void **state) {
     expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub finished.");
     wm_github_destroy(data->github_config);
     os_free(data->root_c);
-    os_free(data->response);
     os_free(data);
 
     return 0;
@@ -301,6 +305,7 @@ void test_github_execute_scan(void **state) {
     os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
+    data->github_config->auth->next = NULL;
     os_strdup("all", data->github_config->event_type);
 
     int initial_scan = 1;
@@ -313,6 +318,16 @@ void test_github_execute_scan(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
+
+    will_return(__wrap_localtime_r, 1);
+
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+
+    will_return(__wrap_localtime_r, 1);
+
+    will_return(__wrap_strftime,"2021-05-07 12:34:56");
+    will_return(__wrap_strftime, 20);
 
     expect_string(__wrap_wm_state_io, tag, "github-test_org");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -354,6 +369,7 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
+    data->github_config->auth->next = NULL;
     os_strdup("all", data->github_config->event_type);
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 404;
@@ -369,6 +385,16 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
+
+    will_return(__wrap_localtime_r, 1);
+
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+
+    will_return(__wrap_localtime_r, 1);
+
+    will_return(__wrap_strftime,"2021-05-07 12:34:56");
+    will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_any(__wrap__mtdebug1, formatted_msg);

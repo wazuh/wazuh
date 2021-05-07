@@ -204,12 +204,14 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
         last_scan_time = (time_t)org_state_struc.last_log_time + 1;
         char last_scan_time_str[80];
+        memset(last_scan_time_str, '\0', 80);
         struct tm tm_last_scan = { .tm_sec = 0 };
         localtime_r(&last_scan_time, &tm_last_scan);
         strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_last_scan);
 
         new_scan_time = time(0) - github_config->time_delay;
         char new_scan_time_str[80];
+        memset(new_scan_time_str, '\0', 80);
         struct tm tm_new_scan = { .tm_sec = 0 };
         localtime_r(&new_scan_time, &tm_new_scan);
         strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_new_scan);
