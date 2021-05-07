@@ -345,7 +345,7 @@ void LogCollectorStart()
                 if (atexit(w_macos_release_log_execution)) {
                     merror(ATEXIT_ERROR);
                 }
-                // macOS log's resources need to be globally reachable to be released
+                /* macOS log's resources need to be globally reachable to be released */
                 macos_log_wfd.show = current->macos_log->show_wfd;
                 macos_log_wfd.stream = current->macos_log->stream_wfd;
 
@@ -2947,8 +2947,9 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 void w_macos_release_log_show(void) {
+
     if (macos_log_wfd.show != NULL) {
-        mdebug1("Releasing macOS `log show` resources.");
+        mdebug1("macOS ULS: Releasing macOS `log show` resources.");
         if(macos_log_wfd.show->pid > 0) {
             kill(macos_log_wfd.show->pid, SIGTERM);
         }
@@ -2958,8 +2959,9 @@ void w_macos_release_log_show(void) {
 }
 
 void w_macos_release_log_stream(void) {
+
     if (macos_log_wfd.stream != NULL) {
-        mdebug1("Releasing macOS `log stream` resources.");
+        mdebug1("macOS ULS: Releasing macOS `log stream` resources.");
         if(macos_log_wfd.stream->pid > 0) {
             kill(macos_log_wfd.stream->pid, SIGTERM);
         }
@@ -2969,6 +2971,7 @@ void w_macos_release_log_stream(void) {
 }
 
 void w_macos_release_log_execution(void) {
+    
     w_macos_release_log_show();
     w_macos_release_log_stream();
 }

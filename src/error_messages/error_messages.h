@@ -145,7 +145,7 @@
 #define LOGCOLLECTOR_MACOS_LOG_STREAM_INFO          "(1604): Monitoring MacOS logs with: %s %s %s %s %s %s %s %s %s %s %s %s %s %s"
 #define LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR      "(1605): Error while trying to execute `log show` as follows: %s %s %s %s %s %s %s %s %s %s %s %s %s %s"
 #define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s %s %s %s %s %s %s %s %s %s %s %s %s %s"
-#define LOGCOLLECTOR_MACOS_LOG_CHILD_ERROR          "(1607): macOS log process exited, pid: %d, exit value: %d."
+#define LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED         "(1607): macOS 'log %s' process exited, pid: %d, exit value: %d."
 
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
