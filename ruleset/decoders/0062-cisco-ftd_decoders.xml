@@ -17,3 +17,65 @@
 
 
 
+<!--
+%FTD-1-106101 The number of ACL log deny-flows has reached limit (number).
+-->
+<decoder name="cisco-asa-deny-flows">
+    <parent>cisco-ftd</parent>
+    <prematch>1-106101</prematch>
+    <regex>The number of (\S+) (\.+) has reached limit \((\S+)\)</regex>
+    <order>log, description, log, limit</order>
+</decoder>
+
+<!--
+%FTD-4-409023: Attempting AAA Fallback method LOCAL for Authentication request for user impssnagios : Auth-server group IMPSS unreachable
+-->
+<decoder name="cisco-ftd-attempting-fallback">
+    <parent>cisco-ftd</parent>
+    <prematch>4-409023</prematch>
+    <regex>(\.+) for user (\S+) : (\.+)</regex>
+    <order>description, username, message</order>
+</decoder>
+
+
+<!--
+%FTD-4-711004: Task ran for 435 msec, Process = DATAPATH-0-1879, PC = 0, Call stack = 0x090b0155
+-->
+<decoder name="cisco-ftd-task-ran">
+    <parent>cisco-ftd</parent>
+    <prematch type="pcre2">[^%]*%FTD-4-711004[:\s].*</prematch>
+    <regex>(\.+) for (\.+), Process = (\S+), PC = (\S+), Call stack = (\w+)</regex>
+    <order>description, time, process, pc, call_stack</order>
+</decoder>
+
+<!--
+%FTD-4-411001: Line protocol on Interface GigabitEthernet0/0 changed state to up
+-->
+<decoder name="cisco-ftd-line-protocol-interface">
+    <parent>cisco-ftd</parent>
+    <prematch type="pcre2">[^%]*%FTD-4-411001[:\s].*</prematch>
+    <regex>(\.+) on interface (\S+) (\.+)</regex>
+    <order>description, interface, action</order>
+</decoder>
+
+<!--
+%FTD-2-321006: System Memory usage reached 93%
+-->
+<decoder name="cisco-ftd-system-memory">
+    <parent>cisco-ftd</parent>
+    <prematch type="pcre2">[^%]*%FTD-2-321006[:\s].*</prematch>
+    <regex>(System Memory usage) reached (\S+)</regex>
+    <order>description, percentage</order>
+</decoder>
+
+<!--
+%FTD-4-405003: IP address collision detected between host 1.0.0.2 at 00e0.ed27.620f and interface FAILOVER, 00e0.ed22.eb39
+-->
+<decoder name="cisco-ftd-ip-collision">
+    <parent>cisco-ftd</parent>
+    <prematch type="pcre2">[^%]*%FTD-4-405003[:\s].*</prematch>
+    <regex>(IP address collision) detected between host (\S+) at (\S+) and interface (\S+), (\S+)</regex>
+    <order>description, host_ip, src_mac, interface, int_mac_address</order>
+</decoder>
+
+
