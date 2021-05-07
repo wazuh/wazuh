@@ -59,6 +59,9 @@
                                     x[11]?x[11]:"", x[12]?x[12]:"", \
                                     x[13]?x[13]:""
 
+#define MACOS_LOG_SHOW_CHILD_EXITED      LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED,"show"
+#define MACOS_LOG_STREAM_CHILD_EXITED    LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED,"stream"
+
 
 ///< macOS ULS milliseconds lenght i.e .123456
 #define OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN        7
