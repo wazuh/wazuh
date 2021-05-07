@@ -112,7 +112,7 @@
       -  will never be alerted, but this one instead.
       -->
     <rule id="150015" level="8">
-        <if_sid>150001,150002,150003</if_sid>
+        <if_sid>150001,150002,150005</if_sid>
         <field name="event.id">106012|106022|106021|106017|106020</field>
         <description>FTD: Attack in progress detected</description>
         <group>ids,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
