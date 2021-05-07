@@ -6,6 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
 */
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
 
 #include "wazuh_modules/wmodules.h"
 
@@ -204,3 +205,4 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     }
     return OS_SUCCESS;
 }
+#endif

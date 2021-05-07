@@ -162,7 +162,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_alerts.disable -->
-    <rule id="91115" level="9">
+    <rule id="91115" level="12">
         <if_sid>91114</if_sid>
         <action>dependabot_alerts.disable</action>
         <description>GitHub Dependabot alerts disable.</description>
@@ -171,7 +171,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_alerts.enable -->
-    <rule id="91116" level="5">
+    <rule id="91116" level="3">
         <if_sid>91114</if_sid>
         <action>dependabot_alerts.enable</action>
         <description>GitHub Dependabot alerts enable.</description>
@@ -192,7 +192,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_alerts_new_repos.disable -->
-    <rule id="91118" level="9">
+    <rule id="91118" level="12">
         <if_sid>91117</if_sid>
         <action>dependabot_alerts_new_repos.disable</action>
         <description>GitHub Dependabot alerts new repos disable.</description>
@@ -201,7 +201,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_alerts_new_repos.enable -->
-    <rule id="91119" level="5">
+    <rule id="91119" level="3">
         <if_sid>91117</if_sid>
         <action>dependabot_alerts_new_repos.enable</action>
         <description>GitHub Dependabot alerts new repos enable.</description>
@@ -222,7 +222,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_security_updates.disable -->
-    <rule id="91121" level="9">
+    <rule id="91121" level="12">
         <if_sid>91120</if_sid>
         <action>dependabot_security_updates.disable</action>
         <description>GitHub Dependabot security updates disable.</description>
@@ -231,7 +231,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_security_updates.enable -->
-    <rule id="91122" level="5">
+    <rule id="91122" level="3">
         <if_sid>91120</if_sid>
         <action>dependabot_security_updates.enable</action>
         <description>GitHub Dependabot security updates enable.</description>
@@ -252,7 +252,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_security_updates_new_repos.disable -->
-    <rule id="91124" level="9">
+    <rule id="91124" level="12">
         <if_sid>91123</if_sid>
         <action>dependabot_security_updates_new_repos.disable</action>
         <description>GitHub Dependabot security updates new repos disable.</description>
@@ -261,7 +261,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependabot_security_updates_new_repos.enable -->
-    <rule id="91125" level="5">
+    <rule id="91125" level="3">
         <if_sid>91123</if_sid>
         <action>dependabot_security_updates_new_repos.enable</action>
         <description>GitHub Dependabot security updates new repos enable.</description>
@@ -282,7 +282,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependency_graph.disable -->
-    <rule id="91127" level="9">
+    <rule id="91127" level="12">
         <if_sid>91126</if_sid>
         <action>dependency_graph.disable</action>
         <description>GitHub Dependency graph disable.</description>
@@ -291,7 +291,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependency_graph.enable -->
-    <rule id="91128" level="5">
+    <rule id="91128" level="3">
         <if_sid>91126</if_sid>
         <action>dependency_graph.enable</action>
         <description>GitHub Dependency graph enable.</description>
@@ -312,7 +312,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependency_graph_new_repos.disable -->
-    <rule id="91130" level="9">
+    <rule id="91130" level="12">
         <if_sid>91129</if_sid>
         <action>dependency_graph_new_repos.disable</action>
         <description>GitHub Dependency graph new repos disable.</description>
@@ -321,7 +321,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- dependency_graph_new_repos.enable -->
-    <rule id="91131" level="5">
+    <rule id="91131" level="3">
         <if_sid>91129</if_sid>
         <action>dependency_graph_new_repos.enable</action>
         <description>GitHub Dependency graph new repos enable.</description>
@@ -409,7 +409,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- enterprise.remove_self_hosted_runner -->
-    <rule id="91140" level="7">
+    <rule id="91140" level="3">
         <if_sid>91139</if_sid>
         <action>enterprise.remove_self_hosted_runner</action>
         <description>GitHub Enterprise Remove self hosted runner.</description>
@@ -418,7 +418,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- enterprise.register_self_hosted_runner -->
-    <rule id="91141" level="5">
+    <rule id="91141" level="3">
         <if_sid>91139</if_sid>
         <action>enterprise.register_self_hosted_runner</action>
         <description>GitHub Enterprise Register self hosted runner.</description>
@@ -481,7 +481,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- enterprise.self_hosted_runner_updated -->
-    <rule id="91148" level="5">
+    <rule id="91148" level="3">
         <if_sid>91139</if_sid>
         <action>enterprise.self_hosted_runner_updated</action>
         <description>GitHub Enterprise Self hosted runner updated.</description>
@@ -583,7 +583,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- git.clone -->
-    <rule id="91158" level="5">
+    <rule id="91158" level="3">
         <if_sid>91157</if_sid>
         <action>git.clone</action>
         <description>GitHub Git clone.</description>
@@ -592,7 +592,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- git.fetch -->
-    <rule id="91159" level="5">
+    <rule id="91159" level="3">
         <if_sid>91157</if_sid>
         <action>git.fetch</action>
         <description>GitHub Git fetch.</description>
@@ -601,7 +601,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- git.push -->
-    <rule id="91160" level="7">
+    <rule id="91160" level="3">
         <if_sid>91157</if_sid>
         <action>git.push</action>
         <description>GitHub Git push.</description>
@@ -802,7 +802,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- members_can_create_pages.enable -->
-    <rule id="91180" level="5">
+    <rule id="91180" level="3">
         <if_sid>91179</if_sid>
         <action>members_can_create_pages.enable</action>
         <description>GitHub Members can create pages enable.</description>
@@ -811,7 +811,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- members_can_create_pages.disable -->
-    <rule id="91181" level="5">
+    <rule id="91181" level="3">
         <if_sid>91179</if_sid>
         <action>members_can_create_pages.disable</action>
         <description>GitHub Members can create pages disable.</description>
@@ -1029,7 +1029,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- org.disable_oauth_app_restrictions -->
-    <rule id="91199" level="10">
+    <rule id="91199" level="12">
         <if_sid>91188</if_sid>
         <action>org.disable_oauth_app_restrictions</action>
         <description>GitHub Organization disable oauth app restrictions.</description>
@@ -1038,7 +1038,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- org.disable_saml -->
-    <rule id="91200" level="10">
+    <rule id="91200" level="12">
         <if_sid>91188</if_sid>
         <action>org.disable_saml</action>
         <description>GitHub Organization disable saml.</description>
@@ -1047,7 +1047,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- org.disable_two_factor_requirement -->
-    <rule id="91201" level="10">
+    <rule id="91201" level="12">
         <if_sid>91188</if_sid>
         <action>org.disable_two_factor_requirement</action>
         <description>GitHub Organization disable two factor requirement.</description>
@@ -1137,7 +1137,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- org.register_self_hosted_runner -->
-    <rule id="91211" level="5">
+    <rule id="91211" level="3">
         <if_sid>91188</if_sid>
         <action>org.register_self_hosted_runner</action>
         <description>GitHub Organization register self hosted runner.</description>
@@ -1182,7 +1182,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- org.remove_self_hosted_runner -->
-    <rule id="91216" level="7">
+    <rule id="91216" level="3">
         <if_sid>91188</if_sid>
         <action>org.remove_self_hosted_runner</action>
         <description>GitHub Organization remove self hosted runner.</description>
@@ -1272,7 +1272,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- org.self_hosted_runner_updated -->
-    <rule id="91226" level="5">
+    <rule id="91226" level="3">
         <if_sid>91188</if_sid>
         <action>org.self_hosted_runner_updated</action>
         <description>GitHub Organization self hosted runner updated.</description>
@@ -1715,7 +1715,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- private_repository_forking.enable -->
-    <rule id="91273" level="5">
+    <rule id="91273" level="9">
         <if_sid>91272</if_sid>
         <action>private_repository_forking.enable</action>
         <description>GitHub Private repository forking enable.</description>
@@ -1724,7 +1724,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- private_repository_forking.disable -->
-    <rule id="91274" level="7">
+    <rule id="91274" level="5">
         <if_sid>91272</if_sid>
         <action>private_repository_forking.disable</action>
         <description>GitHub Private repository forking disable.</description>
@@ -2148,7 +2148,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- repo.advanced_security_disabled -->
-    <rule id="91315" level="10">
+    <rule id="91315" level="12">
         <if_sid>91310</if_sid>
         <action>repo.advanced_security_disabled</action>
         <description>GitHub Repo advanced security disabled.</description>
@@ -2283,7 +2283,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- repo.register_self_hosted_runner -->
-    <rule id="91330" level="5">
+    <rule id="91330" level="3">
         <if_sid>91310</if_sid>
         <action>repo.register_self_hosted_runner</action>
         <description>GitHub Repo register self hosted runner.</description>
@@ -2292,7 +2292,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- repo.remove_self_hosted_runner -->
-    <rule id="91331" level="7">
+    <rule id="91331" level="3">
         <if_sid>91310</if_sid>
         <action>repo.remove_self_hosted_runner</action>
         <description>GitHub Repo remove self hosted runner.</description>
@@ -2319,7 +2319,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- repo.self_hosted_runner_updated -->
-    <rule id="91334" level="5">
+    <rule id="91334" level="3">
         <if_sid>91310</if_sid>
         <action>repo.self_hosted_runner_updated</action>
         <description>GitHub Repo self hosted runner updated.</description>
@@ -2645,7 +2645,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- repository_vulnerability_alerts.disable -->
-    <rule id="91367" level="10">
+    <rule id="91367" level="12">
         <if_sid>91365</if_sid>
         <action>repository_vulnerability_alerts.disable</action>
         <description>GitHub Repository vulnerability alerts disable.</description>
@@ -3015,7 +3015,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- team_discussions.disable -->
-    <rule id="91404" level="5">
+    <rule id="91404" level="3">
         <if_sid>91403</if_sid>
         <action>team_discussions.disable</action>
         <description>GitHub Team discussions disable.</description>
@@ -3024,7 +3024,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- team_discussions.enable -->
-    <rule id="91405" level="5">
+    <rule id="91405" level="3">
         <if_sid>91403</if_sid>
         <action>team_discussions.enable</action>
         <description>GitHub Team discussions enable.</description>
@@ -3203,7 +3203,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- This rule capture internal event, 3 request fail.
-        {"actor":"wazuh","created_at":"@fecha","request":"@request","response":"@response","source":"github"}
+        {"actor":"wazuh","organization":"wazuh","response":"@response","source":"github"}
     -->
     <rule id="91448" level="3">
         <if_sid>91100</if_sid>
