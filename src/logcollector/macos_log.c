@@ -245,26 +245,26 @@ STATIC INLINE bool w_macos_is_log_executable(void) {
 
 /**
  * @brief Creates the environment for collecting "show" logs on MacOS Systems
- * @param current logreader structure with `log show`'s input arguments and w_macos_log_config_t structure to be set
+ * @param lf localfile's logreader structure with `log show`'s arguments and its configuration structure to be set
  */
-STATIC INLINE void w_macos_create_log_show_env(logreader * current) {
+STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
     char ** log_show_array = NULL;
 
     char * timestamp = w_macos_get_last_log_timestamp();
 
+    lf->macos_log->show_wfd = NULL;
+
     if (timestamp == NULL) {
         return;
     }
 
-    current->macos_log->show_wfd = NULL;
+    log_show_array = w_macos_create_log_show_array(timestamp, lf->query, lf->query_level, lf->query_type);
 
-    log_show_array = w_macos_create_log_show_array(timestamp, current->query, current->query_level, current->query_type);
+    lf->macos_log->show_wfd = w_macos_log_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
 
-    current->macos_log->show_wfd = w_macos_log_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
-
-    if (current->macos_log->show_wfd != NULL) {
-        current->macos_log->state = LOG_RUNNING_SHOW;
+    if (lf->macos_log->show_wfd != NULL) {
+        lf->macos_log->state = LOG_RUNNING_SHOW;
         minfo(LOGCOLLECTOR_MACOS_LOG_SHOW_INFO, MACOS_GET_LOG_PARAMS(log_show_array));
     } else {
         merror(LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR, MACOS_GET_LOG_PARAMS(log_show_array));
@@ -276,21 +276,21 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * current) {
 
 /**
  * @brief Creates the environment for collecting "stream" logs on MacOS Systems
- * @param log_cmd_array logreader structure with `log stream`'s input arguments and w_macos_log_config_t structure to be set
+ * @param lf localfile's logreader structure with `log stream`'s arguments and its configuration structure to be set
  */
-STATIC INLINE void w_macos_create_log_stream_env(logreader * current) {
+STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
 
     char ** log_stream_array = NULL;
 
-    current->macos_log->stream_wfd = NULL;
+    lf->macos_log->stream_wfd = NULL;
 
-    log_stream_array = w_macos_create_log_stream_array(current->query, current->query_level, current->query_type);
+    log_stream_array = w_macos_create_log_stream_array(lf->query, lf->query_level, lf->query_type);
 
-    current->macos_log->stream_wfd = w_macos_log_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+    lf->macos_log->stream_wfd = w_macos_log_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
-    if (current->macos_log->stream_wfd != NULL) {
-        if (current->macos_log->state == LOG_NOT_RUNNING) {
-            current->macos_log->state = LOG_RUNNING_STREAM;
+    if (lf->macos_log->stream_wfd != NULL) {
+        if (lf->macos_log->state == LOG_NOT_RUNNING) {
+            lf->macos_log->state = LOG_RUNNING_STREAM;
         }
         minfo(LOGCOLLECTOR_MACOS_LOG_STREAM_INFO, MACOS_GET_LOG_PARAMS(log_stream_array));
     } else {
@@ -300,37 +300,36 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * current) {
     free_strarray(log_stream_array);
 }
 
-void w_macos_create_log_env(logreader * current) {
+void w_macos_create_log_env(logreader * lf) {
 
-    current->macos_log->state = LOG_NOT_RUNNING;
+    lf->macos_log->state = LOG_NOT_RUNNING;
 
     if (w_macos_is_log_executable()) {
 
         /* `log stream` command parameters are stored to keep track of the settings changes that may occur,
             and to determine whether past events should be retrieved or not */
-        char ** current_settings_list = w_macos_create_log_stream_array(current->query, current->query_level,
-                                                                        current->query_type);
-        current->macos_log->current_settings = w_strcat_list(current_settings_list, ' ');
+        char ** current_settings_list = w_macos_create_log_stream_array(lf->query, lf->query_level, lf->query_type);
+        lf->macos_log->current_settings = w_strcat_list(current_settings_list, ' ');
         free_strarray(current_settings_list);
 
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
-        if (!current->future) {
+        if (!lf->future) {
             char * previous_settings = w_macos_get_log_settings();
 
             if (previous_settings != NULL) {
-                if (strcmp(current->macos_log->current_settings, previous_settings) == 0) {
-                    w_macos_create_log_show_env(current);
+                if (strcmp(lf->macos_log->current_settings, previous_settings) == 0) {
+                    w_macos_create_log_show_env(lf);
                 } else {
-                    mdebug1("Current predicate differs from last one used. Discarding old events");
+                    mdebug1("macOS ULS: Current predicate differs from the stored one. Discarding old events.");
                 }
                 os_free(previous_settings);
             }
         }
 
-        w_macos_create_log_stream_env(current);
+        w_macos_create_log_stream_env(lf);
     }
-    os_free(current->file);
-    current->fp = NULL;
+    os_free(lf->file);
+    lf->fp = NULL;
 }
 
 void w_macos_set_last_log_timestamp(char * timestamp) {
