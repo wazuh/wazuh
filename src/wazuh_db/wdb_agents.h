@@ -115,4 +115,12 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
  */
 int wdb_agents_clear_vuln_cves(wdb_t *wdb);
 
+/* JJP TODO: Doxygen*/
+
+int wdb_agents_set_packages_triaged(wdb_t *wdb);
+
+int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only);
+
+cJSON* wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only);
+
 #endif
