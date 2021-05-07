@@ -15,6 +15,18 @@
 </decoder>
 
 
+<!--
+%FTD-6-305012: Teardown dynamic TCP translation from WLC-LAN_inside:10.233.16.130/6890 to outside:193.17.108.1/6890 duration 0:02:32
+-->
+<decoder name="cisco-ftd-teardown-translation">
+    <parent>cisco-ftd</parent>
+    <prematch>6-305012</prematch>
+    <regex type="pcre2">(\.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) duration (\d+:\d+:\d+)</regex>
+    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port, duration</order>
+</decoder>
+
+
+
 
 
 <!--
