@@ -256,6 +256,10 @@ typedef enum wdb_stmt {
     WDB_STMT_VULN_CVES_FIND_CVE,
     WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
     WDB_STMT_VULN_CVES_DELETE_ENTRY,
+    WDB_STMT_SYS_HOTFIXES_GET,
+    WDB_STMT_SYS_PROGRAMS_GET,
+    WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED,
+    WDB_STMT_SYS_PROGRAMS_SET_TRIAGED,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -274,6 +278,7 @@ typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * id;
+    int peer;
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
