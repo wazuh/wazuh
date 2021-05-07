@@ -3657,24 +3657,18 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
     char* tail = NULL;
     char* action = strtok_r(input, " ", &tail);
 
-    if (!action) {
-        mdebug1("Invalid package info query syntax. Missing action");
-        mdebug2("DB query error. Missing action");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax. Missing action");
-        return result;
-    }
-    else if (strcmp(action, "save") == 0) {
-        /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location|item_id*/
+    if (strcmp(action, "save") == 0) {
+        /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location*/
         #define SAVE_PACKAGE_FIELDS_AMOUNT 16
         char* fields[SAVE_PACKAGE_FIELDS_AMOUNT] = {NULL};
         char* last = tail;
 
         for (int i = 0; i < SAVE_PACKAGE_FIELDS_AMOUNT; i++) {
             if (!(next = strtok_r(NULL, "|", &tail))) {
-                mdebug1("Invalid package info query syntax.");
+                mdebug1("Invalid Package info query syntax.");
                 mdebug2("Package info query: %s", last);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", last);
-                return result;
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", last);
+                return OS_INVALID;
             }
             last = next;
             if (strcmp(next, "NULL"))
@@ -3686,12 +3680,12 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         /* size (field[6]) must be converted and can be represented as NULL with a string longer than "NULL" */
         long size = -1;
         if (fields[6] && strncmp(fields[6], "NULL", 4)) {
-            size = strtol(fields[6], NULL, 10);
+            size = strtol(fields[6],NULL,10);
         }
 
         if (result = wdb_package_save(wdb, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], size, fields[7], fields[8], fields[9], fields[10], fields[11], fields[12], fields[13], fields[14], SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, fields[15], FALSE), result < 0) {
-            mdebug1("Cannot save package information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save package information.");
+            mdebug1("Cannot save Package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
             wdbi_update_attempt(wdb, WDB_SYSCOLLECTOR_PACKAGES, (unsigned)time(NULL), "", "", TRUE);
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3720,6 +3714,32 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         return result;
 
+    }
+    else if (strcmp(action, "get") == 0) {
+        bool not_triaged_only = FALSE;
+        if (!strcmp(tail, "not_triaged")) {
+            not_triaged_only = TRUE;
+        }
+
+        cJSON* status = wdb_agents_get_packages(wdb, not_triaged_only);
+        if (status) {
+            char *out = cJSON_PrintUnformatted(status);
+            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            os_free(out);
+            cJSON_Delete(status);
+            return OS_SUCCESS;
+        }
+        else {
+            mdebug1("Error getting packages from sys_programs");
+            snprintf(output, OS_MAXSTR + 1, "Error getting packages from sys_programs");
+            return OS_INVALID;
+        }
+    }
+    else {
+        mdebug1("Invalid Package info query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", input);
+        return -1;
     }
     else if (strcmp(action, "get") == 0) {
         bool not_triaged_only = FALSE;
