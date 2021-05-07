@@ -1063,12 +1063,16 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     int sql_status = SQLITE_ERROR;
     cJSON * row = NULL;
     char* response = NULL;
-    char* header = "due ";
+    // Every row will be the payload of a message with the format "due {payload}"
+    const char* header = "due ";
     int header_size = strlen(header);
+    // Allocating the memory where all the responses will be dumped, it will contain the header+payload
     os_calloc(OS_MAXSTR, sizeof(char), response);
+    // Coping the "due" header into the response buffer
     memcpy(response, header, header_size);
-    char* payload = response+header_size;
-    int payload_size = OS_MAXSTR-header_size;
+    // Each row is dumped into the payload section of the buffer, so the pointer and the tailing available space for the payload are obtained
+    char* payload = response + header_size;
+    int payload_size = OS_MAXSTR - header_size;
 
     while ((row = wdb_exec_row_stmt(stmt, &sql_status))) {
         bool row_fits = cJSON_PrintPreallocated(row, payload, payload_size, FALSE);
