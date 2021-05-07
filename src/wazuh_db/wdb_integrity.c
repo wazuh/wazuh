@@ -290,33 +290,6 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
     }
 }
 
-/**
- * @brief This method updates the "last_completion" value.
- *
- * It should be called after a positive checksum comparison to avoid repeated calculations.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp.
- */
-void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
-
-    assert(wdb != NULL);
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_SET_COMPLETION) == -1) {
-        return;
-    }
-
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_SET_COMPLETION];
-
-    sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-    }
-}
-
 // Query the checksum of a data range
 integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, dbsync_msg action, const char * payload) {
     integrity_sync_status_t status = INTEGRITY_SYNC_ERR;
@@ -437,6 +410,14 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 
     if (!cJSON_IsNumber(item)) {
         mdebug1("No such string 'id' in JSON payload.");
+        goto end;
+    }
+
+    item = cJSON_GetObjectItem(data, "checksum");
+    char * checksum = cJSON_GetStringValue(item);
+
+    if (checksum == NULL) {
+        mdebug1("No such string 'checksum' in JSON payload.");
         goto end;
     }
 
