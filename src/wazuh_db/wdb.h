@@ -1238,14 +1238,7 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
  */
 int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum);
 
-/**
- * @brief Returns the syncronization status of a component from sync_info table.
- *
- * @param [in] wdb The 'agents' struct database.
- * @param [in] component An enumeration member that was previously added to the table.
- * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
- */
-int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component);
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 

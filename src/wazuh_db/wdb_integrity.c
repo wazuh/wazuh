@@ -481,6 +481,13 @@ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest)
     return ret_val;
  }
 
+/**
+ * @brief Returns the syncronization status of a component from sync_info table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
+ */
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     cJSON* j_sync_info = NULL;
     int result = OS_INVALID;
