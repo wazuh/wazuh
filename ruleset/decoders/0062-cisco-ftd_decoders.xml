@@ -54,6 +54,15 @@
     <prematch>1-505015</prematch>
     <regex>Module (\.+), application up (\S+), version (\S+)</regex>
     <order>module_id, app_up, version</order>
+<!--
+%FTD-6-302014: Teardown TCP connection 4211 for external:171.70.168.183/53 to mgmt:192.168.1.185/1032 duration 0:00:00 bytes 526
+%FTD-6-302016: Teardown UDP connection 4211 for external:171.70.168.183/53 to mgmt:192.168.1.185/1032 duration 0:00:00 bytes 526
+-->
+<decoder name="cisco-ftd-teardown-connection-tcpudp">
+    <parent>cisco-ftd</parent>
+    <prematch>6-302014|6-302016</prematch>
+    <regex type="pcre2">(\.+) (\d+) for (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) duration (\d+:\d+:\d+) bytes (\d+)</regex>
+    <order>description, connection, src, src_ip, src_port, dst, dst_ip, dst_port, duration, bytes</order>
 </decoder>
 
 <!--
