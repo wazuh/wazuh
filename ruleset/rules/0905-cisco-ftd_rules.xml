@@ -103,7 +103,7 @@
 
     <rule id="150014" level="8">
         <if_sid>150002</if_sid>
-        <id>106012|106017|106020</id>
+        <field name="event.id">106012|106017|106020</field>
         <description>FTD: Attack in progress detected.</description>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
