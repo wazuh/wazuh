@@ -780,7 +780,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status);
 
 /**
- * @brief Function to execute a SQL statement and send the result thru a TCP socket.
+ * @brief Function to execute a SQL statement and send the result via TCP socket.
  *        Each row of the SQL response will be sent in a different command.
  *        This method will continue until SQL_DONE or an error is obtained.
  *        This method could block if the receiver lasts longer in receiving the information.
