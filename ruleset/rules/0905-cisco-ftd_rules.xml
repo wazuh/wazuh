@@ -71,7 +71,7 @@
     </rule>
 
     <rule id="150010" level="8">
-        <if_sid>150003</if_sid>
+        <if_sid>150004</if_sid>
         <field name="event.id">405001</field>
         <description>FTD: ARP collision detected.</description>
         <mitre>
@@ -81,7 +81,7 @@
     </rule>
 
     <rule id="150011" level="8">
-        <if_sid>150003</if_sid>
+        <if_sid>150004</if_sid>
         <field name="event.id">401004</field>
         <description>FTD: Attempt to connect from a blocked (shunned) IP.</description>
         <group>access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -94,7 +94,7 @@
         <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
 
-    <rule id="150013" level="8">
+    <!--rule id="150013" level="8">
         <if_sid>150001</if_sid>
         <field name="event.id">106021|106022</field>
         <description>FTD: Attack in progress detected.</description>
@@ -106,13 +106,14 @@
         <field name="event.id">106012|106017|106020</field>
         <description>FTD: Attack in progress detected.</description>
         <group>gdpr_IV_35.7.d,</group>
-    </rule>
+    </rule-->
 
     <!-- Grouping of attack in progress messages. The two above
       -  will never be alerted, but this one instead.
       -->
     <rule id="150015" level="8">
-        <if_sid>150013, 150014</if_sid>
+        <if_sid>150001,150002,150005</if_sid>
+        <field name="event.id">106012|106022|106021|106017|106020</field>
         <description>FTD: Attack in progress detected</description>
         <group>ids,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
