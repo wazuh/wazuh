@@ -143,8 +143,10 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_DELETE_AROUND,
     WDB_STMT_FIM_DELETE_RANGE,
     WDB_STMT_FIM_CLEAR,
+    WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_SYNC_GET_INFO,
     WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_FILE_CLEAR,
@@ -1201,11 +1203,17 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
+// Functions for database integrity
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp);
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy);
+
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
+
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 

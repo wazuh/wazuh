@@ -10,6 +10,8 @@
  */
 
 #include "wdb_agents.h"
+#include "cJSON.h"
+#include "os_err.h"
 
 cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb){
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_OSINFO_GET);

@@ -23,8 +23,8 @@
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
-
-void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
+#include "cJSON.h"
+#include "os_err.h"
 
 /* setup/teardown */
 static int setup_wdb_t(void **state) {
@@ -268,7 +268,7 @@ static void test_wdbi_delete_success(void **state)
 
 static void test_wdbi_update_attempt_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1));
+    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, FALSE));
 }
 
 static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
@@ -278,7 +278,7 @@ static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, FALSE);
 }
 
 static void test_wdbi_update_attempt_no_sql_done(void **state)
@@ -293,7 +293,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, FALSE);
 }
 
 static void test_wdbi_update_attempt_success(void **state)
@@ -305,7 +305,7 @@ static void test_wdbi_update_attempt_success(void **state)
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_attempt(data, 0, 0);
+    wdbi_update_attempt(data, 0, 0, FALSE);
 }
 
 static void test_wdbi_update_completion_wbs_null(void **state)
@@ -749,6 +749,113 @@ void test_wdbi_strings_hash_null(void **state)
     assert_string_equal(hexdigest, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
 }
 
+// Test wdbi_check_sync_status
+
+void test_wdbi_check_sync_status_cache_failed(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    ret_val = wdbi_check_sync_status (data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, OS_INVALID);
+}
+
+void test_wdbi_check_sync_status_exec_failed(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR_MESSAGE");
+
+    ret_val = wdbi_check_sync_status (data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, OS_INVALID);
+}
+
+void test_wdbi_check_sync_status_data_failed(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to get agent's sync status data");
+
+    ret_val = wdbi_check_sync_status (data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, OS_INVALID);
+}
+
+void test_wdbi_check_sync_status_data_never_synced(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 0);
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    ret_val = wdbi_check_sync_status (data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, 0);
+}
+
+void test_wdbi_check_sync_status_data_not_synced(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 123455);
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    ret_val = wdbi_check_sync_status (data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, 0);
+}
+
+void test_wdbi_check_sync_status_data_synced(void **state)
+{
+    int ret_val = OS_INVALID;
+    wdb_t * data = *state;
+    cJSON* j_data = cJSON_CreateArray();
+    cJSON* j_object = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
+    cJSON_AddNumberToObject(j_object, "last_completion", 123456);
+    cJSON_AddItemToArray(j_data, j_object);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_wdb_exec_stmt, j_data);
+
+    ret_val = wdbi_check_sync_status (data, WDB_SYSCOLLECTOR_PACKAGES);
+
+    assert_int_equal (ret_val, 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdbi_checksum_range
@@ -810,6 +917,14 @@ int main(void) {
         //Test wdbi_strings_hash
         cmocka_unit_test_setup_teardown(test_wdbi_strings_hash_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_strings_hash_null, setup_wdb_t, teardown_wdb_t),
+
+        // Test wdbi_check_sync_status
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_cache_failed, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_exec_failed, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_failed, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_never_synced, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_not_synced, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_check_sync_status_data_synced, setup_wdb_t, teardown_wdb_t),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

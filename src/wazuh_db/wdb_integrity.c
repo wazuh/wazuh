@@ -13,6 +13,8 @@
  * Foundation.
  */
 
+#include "cJSON.h"
+#include "os_err.h"
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include <openssl/evp.h>
@@ -194,22 +196,29 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @brief Update sync attempt timestamp
  *
  * Set the column "last_attempt" with the timestamp argument,
- * and increase "n_attempts" one unit.
+ * and increase "n_attempts" one unit (non legacy agents).
+ *
+ * It should be called when the syncronization with the agents is in process, or the checksum sent
+ * to the manager is not the same than the one calculated locally.
+ *
+ * The 'legacy' flag calls internally to a different SQL statement, to avoid an overflow in the n_attempts column.
+ * It happens because the old agents call this method once per row, and not once per syncronization cycle.
  *
  * @param wdb Database node.
  * @param component Name of the component.
+ * @param legacy This flag is set to TRUE for agents with an old syscollector syncronization process, and FALSE otherwise.
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy) {
 
     assert(wdb != NULL);
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
+    if (wdb_stmt_cache(wdb, legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
     }
 
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_UPDATE_ATTEMPT];
+    sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
     sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
@@ -225,12 +234,15 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
  * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
  * Increase "n_attempts" and "n_completions" one unit.
  *
+ * It should be called when the syncronization with the agents is complete,
+ * or the checksum sent to the manager is the same than the one calculated locally.
+ *
  * @param wdb Database node.
  * @param component Name of the component.
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
 
     assert(wdb != NULL);
 
@@ -319,7 +331,7 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
         switch (retval) {
         case 0: // No data
         case 1: // Checksum failure
-            wdbi_update_attempt(wdb, component, timestamp);
+            wdbi_update_attempt(wdb, component, timestamp, FALSE);
             break;
 
         case 2: // Data is synchronized
@@ -469,3 +481,48 @@ end:
 
     return ret_val;
  }
+
+/**
+ * @brief Returns the syncronization status of a component from sync_info table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
+ */
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
+    cJSON* j_sync_info = NULL;
+    int result = OS_INVALID;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_GET_INFO];
+    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
+
+    j_sync_info = wdb_exec_stmt(stmt);
+
+    if (!j_sync_info) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info->child, "last_attempt");
+    cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info->child, "last_completion");
+
+    if ( cJSON_IsNumber(j_last_attempt) && cJSON_IsNumber(j_last_completion)) {
+        int last_attempt = j_last_attempt->valueint;
+        int last_completion = j_last_completion->valueint;
+
+        // Return 0 if there was not at least one successful syncronization or if the syncronization is in process
+        result = (last_completion != 0 && last_attempt <= last_completion );
+
+    } else {
+        mdebug1("Failed to get agent's sync status data");
+        result = OS_INVALID;
+    }
+
+    cJSON_Delete(j_sync_info);
+    return result;
+}
