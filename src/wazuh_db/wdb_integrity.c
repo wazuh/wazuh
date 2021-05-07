@@ -198,9 +198,15 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * Set the column "last_attempt" with the timestamp argument,
  * and increase "n_attempts" one unit (non legacy agents).
  *
+ * It should be called when the syncronization with the agents is in process, or the checksum sent
+ * to the manager is not the same than the one calculated locally.
+ *
+ * The 'legacy' flag calls internally to a different SQL statement, to avoid an overflow in the n_attempts column.
+ * It happens because the old agents call this method once per row, and not once per syncronization cycle.
+ *
  * @param wdb Database node.
  * @param component Name of the component.
- * @param legacy Flag to avoid the n_attempts column overflow in legacy agents.
+ * @param legacy This flag is set to TRUE for agents with an old syscollector syncronization process, and FALSE otherwise.
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
@@ -227,6 +233,9 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
  *
  * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
  * Increase "n_attempts" and "n_completions" one unit.
+ *
+ * It should be called when the syncronization with the agents is complete,
+ * or the checksum sent to the manager is the same than the one calculated locally.
  *
  * @param wdb Database node.
  * @param component Name of the component.
@@ -473,6 +482,13 @@ end:
     return ret_val;
  }
 
+/**
+ * @brief Returns the syncronization status of a component from sync_info table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
+ */
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     cJSON* j_sync_info = NULL;
     int result = OS_INVALID;
