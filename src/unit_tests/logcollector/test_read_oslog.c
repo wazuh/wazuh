@@ -258,7 +258,7 @@ void test_oslog_get_valid_lastline_str_with_three_new_lines_not_end(void ** stat
 
 /* oslog_is_header */
 
-void test_oslog_is_header_success(void ** state) {
+void test_oslog_is_header_false(void ** state) {
 
     w_oslog_ctxt_t ctxt;
     strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
@@ -406,6 +406,304 @@ void test_oslog_is_header_reading_other_log_line_break(void ** state) {
 
 }
 
+/* oslog_getlog */
+void test_oslog_getlog_context_expired(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_true
+    ctxt.timestamp = (time_t) 1;
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = true;
+
+    int length =  OS_MAXSTR - OS_LOG_HEADER;
+
+    FILE * stream = NULL;
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    assert_true(ret);
+
+}
+
+void test_oslog_getlog_context_expired_new_line(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_true
+    ctxt.timestamp = (time_t) 1;
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = true;
+
+    int length =  OS_MAXSTR - OS_LOG_HEADER;
+
+    FILE * stream = NULL;
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    assert_true(ret);
+
+}
+
+void test_oslog_getlog_context_not_expired(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = true;
+
+    int length =  OS_MAXSTR - OS_LOG_HEADER;
+
+    FILE * stream = (FILE*)1;
+
+    will_return(__wrap_can_read, 1);
+
+    expect_value(__wrap_fgets, __stream, (FILE*)1);
+    will_return(__wrap_fgets, NULL);
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    assert_false(ret);
+
+}
+
+void test_oslog_getlog_context_buffer_full(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = true;
+
+    int length =  strlen(ctxt.buffer)+1;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test");
+
+    //test_oslog_ctxt_clean_success
+
+    //test_oslog_get_valid_lastline
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    assert_string_equal(buffer,"test");
+    assert_true(ret);
+
+    os_free(stream);
+
+}
+
+void test_oslog_getlog_context_not_endline(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\0",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = true;
+
+    int length =  strlen(ctxt.buffer)+10;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "ULS: Inclomplete message...");
+
+    //test_oslog_ctxt_backup_success
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    //assert_string_equal(buffer,"test");
+    assert_false(ret);
+
+    os_free(stream);
+
+}
+
+void test_oslog_getlog_context_not_header_processed(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\0",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = false;
+
+    int length =  strlen(ctxt.buffer)+1;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test");
+
+    //test_oslog_ctxt_backup_success
+
+    //test_oslog_is_header_false
+    will_return(__wrap_w_expression_match, true);
+
+    will_return(__wrap_fgetc,'\n');
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Max oslog message length reached... The rest of the message was discarded");
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    //assert_string_equal(buffer,"test");
+    assert_true(ret);
+
+    os_free(stream);
+
+}
+
+void test_oslog_getlog_context_header_processed(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\0",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = false;
+
+    int length =  strlen(ctxt.buffer)+1;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test");
+
+    //test_oslog_ctxt_backup_success
+
+    //test_oslog_is_header_reading_other_log
+    will_return(__wrap_w_expression_match, false);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Reading other log headers or errors: 'test'");
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    //assert_string_equal(buffer,"test");
+    assert_true(ret);
+
+    os_free(stream);
+
+}
+
+void test_oslog_getlog_split_two_logs(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_oslog_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\ntest\n",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_oslog_config_t oslog_cfg;
+    oslog_cfg.ctxt = ctxt;
+    oslog_cfg.is_header_processed = false;
+
+    int length =  strlen(ctxt.buffer)+1;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test");
+
+    //test_oslog_ctxt_backup_success
+
+    //test_oslog_is_header_false
+    will_return(__wrap_w_expression_match, true);
+
+    //will_return(__wrap_fgetc, "\n");
+
+    //test_oslog_get_valid_lastline
+    will_return(__wrap_w_expression_match, true);
+
+    bool ret = oslog_getlog(buffer, length, stream, &oslog_cfg);
+
+    //assert_string_equal(buffer,"test");
+    assert_true(ret);
+
+    os_free(stream);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test oslog_ctxt_restore
@@ -428,12 +726,21 @@ int main(void) {
         cmocka_unit_test(test_oslog_get_valid_lastline_str_with_two_new_lines_not_end),
         cmocka_unit_test(test_oslog_get_valid_lastline_str_with_three_new_lines_not_end),
         // Test oslog_is_header
-        cmocka_unit_test(test_oslog_is_header_success),
+        cmocka_unit_test(test_oslog_is_header_false),
         cmocka_unit_test(test_oslog_is_header_log_stream_execution_error_after_exec),
         cmocka_unit_test(test_oslog_is_header_log_stream_execution_error_colon),
         cmocka_unit_test(test_oslog_is_header_log_stream_execution_error_line_break),
         cmocka_unit_test(test_oslog_is_header_reading_other_log),
         cmocka_unit_test(test_oslog_is_header_reading_other_log_line_break),
+        // Test oslog_getlog
+        cmocka_unit_test(test_oslog_getlog_context_expired),
+        cmocka_unit_test(test_oslog_getlog_context_expired_new_line),
+        cmocka_unit_test(test_oslog_getlog_context_not_expired),
+        cmocka_unit_test(test_oslog_getlog_context_buffer_full),
+        cmocka_unit_test(test_oslog_getlog_context_not_endline),
+        cmocka_unit_test(test_oslog_getlog_context_not_header_processed),
+        cmocka_unit_test(test_oslog_getlog_context_header_processed),
+        cmocka_unit_test(test_oslog_getlog_split_two_logs),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
