@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../../common.h"
 
 int __wrap_wurl_request(const char * url,
                         const char * dest,
@@ -51,4 +52,37 @@ curl_response* __wrap_wurl_http_get_with_header(const char *header, const char* 
     check_expected(header);
     check_expected(url);
     return mock_type(curl_response*);
+}
+
+CURL* __wrap_curl_easy_init() {
+    
+    return mock_type(CURL *);
+}
+
+void __wrap_curl_easy_cleanup(CURL *curl) {
+    check_expected_ptr(curl);
+}
+
+CURLcode __wrap_curl_easy_setopt(CURL *curl, CURLoption option, __attribute__ ((__unused__)) void *parameter) {
+    check_expected(option);
+    check_expected_ptr(curl);
+
+    return mock_type(CURLcode);
+}
+
+struct curl_slist* __wrap_curl_slist_append(struct curl_slist *list, const char *string) {
+    check_expected(string);
+    check_expected_ptr(list);
+
+    return mock_type(struct curl_slist *);
+}
+
+CURLcode __wrap_curl_easy_perform(CURL *curl) {
+    check_expected_ptr(curl);
+
+    return mock_type(CURLcode);
+}
+
+void __wrap_curl_slist_free_all(struct curl_slist *list) {
+    check_expected_ptr(list);
 }
