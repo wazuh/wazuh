@@ -244,3 +244,53 @@ int wdb_agents_clear_vuln_cves(wdb_t *wdb) {
 
     return wdb_exec_stmt_silent(stmt);
 }
+
+/*JJP TODO: Remove this*/
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
+    int ret = 1;
+    return ret;
+}
+
+int wdb_agents_set_packages_triaged(wdb_t *wdb) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_SYS_PROGRAMS_SET_TRIAGED);
+    if (!stmt) {
+        return OS_INVALID;
+    }
+
+    return wdb_exec_stmt_silent(stmt);
+}
+
+int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, not_triaged_only ? WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED :  WDB_STMT_SYS_PROGRAMS_GET);
+    if (!stmt) {
+        return OS_INVALID;
+    }
+
+    return wdb_exec_stmt_send(stmt, wdb->peer);
+}
+
+cJSON* wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only) {
+    cJSON* status_response = cJSON_CreateObject();
+    if (!status_response) {
+        return NULL;
+    }
+
+    if (wdbi_check_sync_status(wdb, WDB_SYSCOLLECTOR_PACKAGES)) {
+        if (OS_SUCCESS == wdb_agents_send_packages(wdb, not_triaged_only)) {
+            if (OS_SUCCESS == wdb_agents_set_packages_triaged(wdb)){
+                cJSON_AddStringToObject(status_response, "status", "SUCCESS");
+            }
+            else {
+                cJSON_AddStringToObject(status_response, "status", "ERROR");
+            }
+        }
+        else{
+            cJSON_AddStringToObject(status_response, "status", "ERROR");
+        }
+    }
+    else {
+        cJSON_AddStringToObject(status_response, "status", "NOT_SYNCED");
+    }
+
+    return status_response;
+}
