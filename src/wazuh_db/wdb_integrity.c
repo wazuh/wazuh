@@ -13,6 +13,7 @@
  * Foundation.
  */
 
+#include "cJSON.h"
 #include "os_err.h"
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
@@ -472,9 +473,9 @@ end:
     return ret_val;
  }
 
-int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component) {
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     cJSON* j_sync_info = NULL;
-    int result = 1;
+    int result = OS_INVALID;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
         mdebug1("Cannot cache statement");
@@ -494,17 +495,16 @@ int wdbi_check_sync_status (wdb_t *wdb, wdb_component_t component) {
     cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info->child, "last_attempt");
     cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info->child, "last_completion");
 
-    if (!j_last_attempt || !j_last_completion) {
+    if ( cJSON_IsNumber(j_last_attempt) && cJSON_IsNumber(j_last_completion)) {
+        int last_attempt = j_last_attempt->valueint;
+        int last_completion = j_last_completion->valueint;
+
+        // Return 0 if there was not at least one successful syncronization or if the syncronization is in process
+        result = (last_completion != 0 && last_attempt <= last_completion );
+
+    } else {
         mdebug1("Failed to get agent's sync status data");
-        cJSON_Delete(j_sync_info);
-        return OS_INVALID;
-    }
-
-    int last_attempt = j_last_attempt->valueint;
-    int last_completion = j_last_completion->valueint;
-
-    if (last_completion == 0 || last_attempt > last_completion ) {
-        result = 0;
+        result = OS_INVALID;
     }
 
     cJSON_Delete(j_sync_info);
