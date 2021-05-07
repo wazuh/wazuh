@@ -252,14 +252,21 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             cJSON * subitem = cJSON_GetArrayItem(array_logs_json, i);
 
                             if (subitem) {
+                                cJSON * github = cJSON_CreateObject();
+
                                 cJSON_AddStringToObject(subitem, "source", WM_GITHUB_CONTEXT.name);
-                                payload = cJSON_PrintUnformatted(subitem);
+                                cJSON_AddItemToObject(github, "github", cJSON_Duplicate(subitem, true));
+
+                                payload = cJSON_PrintUnformatted(github);
+
                                 mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub log: '%s'", payload);
 
                                 if (wm_sendmsg(WM_GITHUB_MSG_DELAY, github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
                                     mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                                 }
+
                                 os_free(payload);
+                                cJSON_Delete(github);
                             }
                         }
 
@@ -397,6 +404,8 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
             // Send fail message
             cJSON *msg_obj = cJSON_Parse(error_msg);
             cJSON *fail_object = cJSON_CreateObject();
+            cJSON *fail_github = cJSON_CreateObject();
+
             cJSON_AddStringToObject(fail_object, "actor", "wazuh");
             cJSON_AddStringToObject(fail_object, "source", WM_GITHUB_CONTEXT.name);
             cJSON_AddStringToObject(fail_object, "organization", org_name);
@@ -409,7 +418,9 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
                 cJSON_AddStringToObject(fail_object, "response", "Unknown error");
             }
 
-            payload = cJSON_PrintUnformatted(fail_object);
+            cJSON_AddItemToObject(fail_github, "github", fail_object);
+
+            payload = cJSON_PrintUnformatted(fail_github);
             mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
 
             if (wm_sendmsg(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
@@ -417,7 +428,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
             }
 
             os_free(payload);
-            cJSON_Delete(fail_object);
+            cJSON_Delete(fail_github);
             cJSON_Delete(msg_obj);
         }
     }

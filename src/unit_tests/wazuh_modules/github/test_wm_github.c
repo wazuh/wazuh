@@ -244,13 +244,13 @@ void test_github_scan_failure_action_2(void **state) {
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"github\":{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "github");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"github\":{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}'");
 
     wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
 
@@ -273,13 +273,13 @@ void test_github_scan_failure_action_error(void **state) {
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"github\":{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "github");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"github\":{\"actor\":\"wazuh\",\"source\":\"github\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}'");
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
@@ -494,7 +494,7 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     os_strdup("all", data->github_config->event_type);
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
-    os_strdup("{\"actor\":\"wazuh\"}", data->response->body);
+    os_strdup("{\"github\":{\"actor\":\"wazuh\"}}", data->response->body);
     os_strdup("test", data->response->header);
 
     int initial_scan = 0;
@@ -530,13 +530,13 @@ void test_github_execute_scan_status_code_200_null(void **state) {
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, 0);
-    expect_string(__wrap_wm_sendmsg, message, "\"wazuh\"");
+    expect_string(__wrap_wm_sendmsg, message, "{\"github\":{\"actor\":\"wazuh\",\"source\":\"github\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "github");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 0);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub log: '\"wazuh\"'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub log: '{\"github\":{\"actor\":\"wazuh\",\"source\":\"github\"}}'");
 
     expect_string(__wrap_wm_state_io, tag, "github-test_org");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
@@ -664,7 +664,7 @@ void test_read_default_configuration(void **state) {
     assert_int_equal(module_data->run_on_start, 1);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
-    assert_int_equal(module_data->only_future_events, 0);
+    assert_int_equal(module_data->only_future_events, 1);
     assert_string_equal(module_data->auth->org_name, "Wazuh");
     assert_string_equal(module_data->auth->api_token, "Wazuh_token");
     assert_string_equal(module_data->event_type, "all");
