@@ -147,7 +147,7 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
         lf->multiline->offset_last_read = w_ftell(lf->fp);
     }
 
-    w_get_hash_context(lf->file, &context, lf->multiline->offset_last_read);
+    bool context_file = w_get_hash_context(lf->file, &context, lf->multiline->offset_last_read);
 
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -169,10 +169,16 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
             continue;
         }
 
-        OS_SHA1_Stream(&context, NULL, raw_data);
+        if (context_file) {
+            OS_SHA1_Stream(&context, NULL, raw_data);
+        }
+
         os_free(raw_data);
     }
-    w_update_file_status(lf->file, lf->multiline->offset_last_read, &context);
+
+    if (context_file) {
+        w_update_file_status(lf->file, lf->multiline->offset_last_read, &context);
+    }
 
     return NULL;
 }

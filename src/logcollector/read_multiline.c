@@ -33,7 +33,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, current_position);
+    bool context_file = w_get_hash_context(lf->file, &context, current_position);
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
@@ -47,7 +47,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
-            OS_SHA1_Stream(&context, NULL, str);
+            if (context_file) {
+                OS_SHA1_Stream(&context, NULL, str);
+            }
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
@@ -62,7 +64,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
          */
         else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
-            OS_SHA1_Stream(&context, NULL, str);
+            if (context_file) {
+                OS_SHA1_Stream(&context, NULL, str);
+            }
             __ms = 1;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
@@ -122,7 +126,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                     break;
                 }
 
-                OS_SHA1_Stream(&context, NULL, str);
+                if (context_file) {
+                    OS_SHA1_Stream(&context, NULL, str);
+                }
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {
@@ -135,7 +141,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         current_position = w_ftell(lf->fp);
     }
 
-    w_update_file_status(lf->file, current_position, &context);
+    if (context_file) {
+        w_update_file_status(lf->file, current_position, &context);
+    }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

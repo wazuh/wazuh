@@ -2836,13 +2836,16 @@ STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
     return w_ftell(lf->fp);
 }
 
-void w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
+bool w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
     os_file_status_t * data;
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
         os_sha1 output;
-        OS_SHA1_File_Nbytes(path, context, output, OS_BINARY, position);
+        if (OS_SHA1_File_Nbytes(path, context, output, OS_BINARY, position) < 0) {
+            return false;
+        }
     } else {
         *context = data->context;
     }
+    return true;
 }

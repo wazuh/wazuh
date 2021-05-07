@@ -95,12 +95,14 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, current_position);
+    bool context_file = w_get_hash_context(lf->file, &context, current_position);
 
     /* Get new entry */
     while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
-        OS_SHA1_Stream(&context, NULL, str);
+        if (context_file) {
+            OS_SHA1_Stream(&context, NULL, str);
+        }
 
         lines++;
         /* Get buffer size */
@@ -179,7 +181,10 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     }
 
     current_position = w_ftell(lf->fp);
-    w_update_file_status(lf->file, current_position, &context);
+
+    if (context_file) {
+        w_update_file_status(lf->file, current_position, &context);
+    }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
