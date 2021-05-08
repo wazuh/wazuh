@@ -1227,9 +1227,9 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy);
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 checksum);
 
-void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 checksum);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 

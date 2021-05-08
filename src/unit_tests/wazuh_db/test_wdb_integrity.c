@@ -26,6 +26,8 @@
 #include "cJSON.h"
 #include "os_err.h"
 
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum);
+
 /* setup/teardown */
 static int setup_wdb_t(void **state) {
     wdb_t *data = calloc(1, sizeof(wdb_t));
@@ -268,23 +270,27 @@ static void test_wdbi_delete_success(void **state)
 
 static void test_wdbi_update_attempt_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, FALSE));
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
+
+    expect_assert_failure(wdbi_update_attempt(NULL, 0, 1, FALSE, checksum));
 }
 
 static void test_wdbi_update_attempt_stmt_cache_fail(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    wdbi_update_attempt(data, 0, 0, FALSE);
+    wdbi_update_attempt(data, 0, 0, FALSE, checksum);
 }
 
 static void test_wdbi_update_attempt_no_sql_done(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
@@ -293,40 +299,45 @@ static void test_wdbi_update_attempt_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_attempt(data, 0, 0, FALSE);
+    wdbi_update_attempt(data, 0, 0, FALSE, checksum);
 }
 
 static void test_wdbi_update_attempt_success(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_attempt(data, 0, 0, FALSE);
+    wdbi_update_attempt(data, 0, 0, FALSE, checksum);
 }
 
 static void test_wdbi_update_completion_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_update_completion(NULL, 0, 0));
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
+
+    expect_assert_failure(wdbi_update_completion(NULL, 0, 0, checksum));
 }
 
 static void test_wdbi_update_completion_stmt_cache_fail(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
-    wdbi_update_completion(data, 0, 0);
+    wdbi_update_completion(data, 0, 0, checksum);
 }
 
 static void test_wdbi_update_completion_no_sql_done(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
@@ -335,19 +346,20 @@ static void test_wdbi_update_completion_no_sql_done(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
 
-    wdbi_update_completion(data, 0, 0);
+    wdbi_update_completion(data, 0, 0, checksum);
 }
 
 static void test_wdbi_update_completion_success(void **state)
 {
     wdb_t * data = *state;
     data->id = strdup("000");
+    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
 
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 101);
 
-    wdbi_update_completion(data, 0, 0);
+    wdbi_update_completion(data, 0, 0, checksum);
 }
 
 void test_wdbi_query_clear_null_payload(void **state)
@@ -392,12 +404,26 @@ void test_wdbi_query_clear_no_id(void **state)
     assert_int_equal(ret, -1);
 }
 
+void test_wdbi_query_clear_no_checksum(void **state)
+{
+    wdb_t *data = *state;
+    int ret;
+    os_strdup("000", data->id);
+    char payload[] = "{\"id\":5678}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "No such string 'checksum' in JSON payload.");
+
+    ret = wdbi_query_clear(data, WDB_FIM, payload);
+
+    assert_int_equal(ret, -1);
+}
+
 void test_wdbi_query_clear_stmt_cache_error(void **state)
 {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
-    const char *payload = "{\"id\":5678}";
+    const char *payload = "{\"id\":5678,\"checksum\":\"ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a\"}";
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -411,7 +437,7 @@ void test_wdbi_query_clear_sql_step_error(void **state)
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
-    const char *payload = "{\"id\":5678}";
+    const char *payload = "{\"id\":5678,\"checksum\":\"ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a\"}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
@@ -430,7 +456,7 @@ void test_wdbi_query_clear_ok(void **state)
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
-    const char *payload = "{\"id\":5678}";
+    const char *payload = "{\"id\":5678,\"checksum\":\"ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a\"}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
@@ -892,6 +918,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_null_payload, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_invalid_payload, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_no_id, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_query_clear_no_checksum, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_stmt_cache_error, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_sql_step_error, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_ok, setup_wdb_t, teardown_wdb_t),
