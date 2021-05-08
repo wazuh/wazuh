@@ -237,12 +237,6 @@ int audit_init(void) {
         return -1;
     }
 
-    int regex_comp = init_regex();
-    if (regex_comp < 0) {
-        merror("Can't init regex in 'init_regex()'");
-        return -1;
-    }
-
     if (fim_audit_rules_init() != 0) {
         return -1;
     }
@@ -279,6 +273,8 @@ int audit_init(void) {
         merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
         return -1;
     }
+
+    auparse_add_callback(audit_data.parser, whodata_callback, NULL, NULL);
 
     // Start audit thread
     w_cond_init(&audit_thread_started, NULL);
@@ -335,8 +331,6 @@ void *audit_main(audit_data_t *audit_data) {
     mdebug1(FIM_AUDIT_THREAD_STOPED);
     close(audit_data->socket);
 
-    // Clean regexes used for parsing events
-    clean_regex();
     // Change Audit monitored folders to Inotify.
     foreach_array(dir_it, syscheck.directories) {
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
@@ -429,7 +423,7 @@ void audit_read_events(audit_data_t *audit_data) {
             break;
         }
 
-        auparse_feed(audit_data->parser, buffer, BUF_SIZE);
+        auparse_feed(audit_data->parser, buffer, byteRead);
     }
 
     free(buffer);

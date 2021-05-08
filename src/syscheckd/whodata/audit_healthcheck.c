@@ -131,7 +131,7 @@ void healthcheck_callback(auparse_state_t *state,
                 const char *field_name = auparse_get_field_name(state);
 
                 if (strcmp(field_name, "key") == 0) {
-                    key = auparse_get_field_str(state);
+                    key = auparse_interpret_field(state);
                     if (key != NULL && strcmp(key, AUDIT_HEALTHCHECK_KEY) != 0) {
                         key = NULL;
                     }

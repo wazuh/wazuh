@@ -416,13 +416,6 @@ int audit_init(void);
 char *audit_get_id(const char * event);
 
 /**
- * @brief Initialize regular expressions
- *
- * @return 0 on success, -1 on error
- */
-int init_regex(void);
-
-/**
  * @brief Adds audit rules to directories
  *
  * @param path Path of the configured rule
@@ -489,28 +482,11 @@ void *audit_reload_thread();
 char *gen_audit_path(char *cwd, char *path0, char *path1);
 
 /**
- * @brief Add cwd and exe of parent process
- *
- * @param ppid ID of parent process
- * @param parent_name String where save the parent name (exe)
- * @param parent_cwd String where save the parent working directory (cwd)
- */
-void get_parent_process_info(char *ppid, char ** const parent_name, char ** const parent_cwd);
-
-/**
  * @brief Reloads audit rules to configured directories
  * This is necessary to include audit rules for hot added directories in the configuration
  *
  */
 void fim_audit_reload_rules(void);
-
-/**
- * @brief Parses an audit event and sends the corresponding alert message
- *
- * @param buffer The audit event to parse
- */
-void audit_parse(char *buffer);
-
 
 /**
  * @brief Deletes all the existing audit rules added by FIM

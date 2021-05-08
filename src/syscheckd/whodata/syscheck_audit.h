@@ -58,9 +58,6 @@ int fim_audit_rules_init();
  */
 int fim_rules_initial_load();
 
-// Public parse functions
-void clean_regex();
-
 void healthcheck_callback(auparse_state_t *state, auparse_cb_event_t cb_event_type, void *);
 
 /**
@@ -78,6 +75,8 @@ void audit_read_events(audit_data_t *audit_data);
  * @return 0 on success, -1 on error
  */
 int audit_health_check(audit_data_t *audit_data);
+
+void whodata_callback(auparse_state_t *state, auparse_cb_event_t cb_event_type, void *_unused);
 
 extern pthread_mutex_t audit_mutex;
 extern volatile int audit_thread_active;
