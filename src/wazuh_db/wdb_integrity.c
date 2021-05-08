@@ -590,7 +590,7 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
         if (result = (last_completion != 0 && last_attempt <= last_completion ), result) {
             // Verifying the integrity checksum
             os_sha1 hexdigest;
-            char *checksum;
+            char *checksum = NULL;
 
             switch (wdbi_checksum(wdb, component, hexdigest)) {
             case -1:
