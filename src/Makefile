@@ -236,15 +236,14 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt
-		AR_LDFLAGS+=-lrt
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
+		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
+ifeq ($(INSTALLDIR),)
+	INSTALLDIR = /var/ossec
 endif
+		OSSEC_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
+		AR_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
@@ -1503,8 +1502,20 @@ ifeq (${uname_P},sparc)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
+ifeq (${uname_S},HP-UX)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	mkdir -p libwazuhext;
+	find external/ -name \*.a -exec cp {} libwazuhext/ \;
+	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
+		ar -x libwazuhext/$$lib; \
+		mv *.o libwazuhext/; \
+	done
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@
+
+else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
 endif
 endif
 endif
@@ -1689,6 +1700,10 @@ else
 ifeq (${uname_P},sparc)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+ifneq (,$(filter ${uname_S},AIX HP-UX))
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $^ ${OSSEC_LIBS} -o $@
 else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
