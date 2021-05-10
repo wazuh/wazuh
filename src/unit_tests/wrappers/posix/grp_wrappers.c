@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -26,7 +26,7 @@ int __wrap_getgrnam_r(const char *name, struct group *grp,__attribute__((unused)
         return ERANGE;
     }
 
-    if (strcmp(name, "ossec") == 0) {
+    if (strcmp(name, "wazuh") == 0) {
         grp->gr_gid = 1000;
         *result = grp;
     }

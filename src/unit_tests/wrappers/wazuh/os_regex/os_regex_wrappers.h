@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -22,5 +22,7 @@ int __wrap_OS_StrIsNum(const char *str);
 int __wrap_OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
 
 const char *__wrap_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match);
+
+void __wrap_OSRegex_FreePattern(OSRegex *reg);
 
 #endif

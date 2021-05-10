@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -465,6 +465,7 @@ void SQLiteDBEngine::initialize(const std::string& path,
                     m_sqliteConnection = m_sqliteFactory->createConnection(dbPath);
                     const auto createDBQueryList { Utils::split(tableStmtCreation,';') };
                     m_sqliteConnection->execute("PRAGMA temp_store = memory;");
+                    m_sqliteConnection->execute("PRAGMA journal_mode = memory;");
                     m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
                     for (const auto& query : createDBQueryList)
                     {

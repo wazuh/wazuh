@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -26,6 +26,7 @@
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
+#include "../wrappers/posix/pthread_wrappers.h"
 
 extern OSHash *files_status;
 
@@ -243,8 +244,10 @@ void test_w_save_files_status_to_cJSON_begin_NULL(void ** state) {
 
     OSHashNode *hash_node = NULL;
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);    
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     char * ret = w_save_files_status_to_cJSON();
     assert_null(ret);
@@ -264,6 +267,7 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);    
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -291,6 +295,7 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
 
@@ -313,8 +318,10 @@ void test_w_save_file_status_str_NULL(void ** state) {
     //test_w_save_files_status_to_cJSON_begin_NULL
     OSHashNode *hash_node = NULL;
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     w_save_file_status();
 
@@ -334,6 +341,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -361,6 +369,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -393,6 +402,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -420,6 +430,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -460,6 +471,7 @@ void test_w_save_file_status_OK(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -487,6 +499,7 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 

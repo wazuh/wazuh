@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -182,7 +182,7 @@ void HandleSecure()
     }
 
     while (1) {
-        
+
         /* It waits for a socket event */
         if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
             if (errno != EINTR) {
@@ -260,7 +260,7 @@ void HandleSecure()
 #if ETIMEDOUT
                     case ETIMEDOUT:
 #endif
-                        mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, 
+                        mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client,
                                 inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                         break;
                     default:
@@ -328,7 +328,7 @@ STATIC void * close_fp_main(void * args) {
 
     while (1) {
         sleep(seconds);
-        key_lock_read();
+        key_lock_write();
         flag = 1;
         while (flag) {
             w_linked_queue_node_t * first_node = keys->opened_fp_queue->first;

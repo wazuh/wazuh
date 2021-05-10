@@ -68,8 +68,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything

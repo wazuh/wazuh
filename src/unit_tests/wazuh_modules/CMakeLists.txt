@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -14,6 +14,7 @@ if(${TARGET} STREQUAL "server")
   add_subdirectory(command)
   add_subdirectory(docker)
   add_subdirectory(gcp)
+  add_subdirectory(github)
   add_subdirectory(oscap)
   add_subdirectory(sca)
   add_subdirectory(scheduling)

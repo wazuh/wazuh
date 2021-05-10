@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -92,16 +92,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define RECONNECT_TIME  60      // Time to reconnect
 
 /* User Configuration */
-#ifndef MAILUSER
-#define MAILUSER        "ossecm"
-#endif
-
 #ifndef USER
-#define USER            "ossec"
-#endif
-
-#ifndef REMUSER
-#define REMUSER         "ossecr"
+#define USER            "wazuh"
 #endif
 
 #ifndef ROOTUSER
@@ -109,7 +101,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 #ifndef GROUPGLOBAL
-#define GROUPGLOBAL     "ossec"
+#define GROUPGLOBAL     "wazuh"
 #endif
 
 // Wazuh home environment variable
@@ -229,9 +221,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SYSCOLLECTOR_DB_DISK_PATH    ".\\local.db"
 #endif // WIN32
 #endif // WAZUH_UNIT_TESTING
-
-/* Rootcheck directory */
-#define ROOTCHECK_DIR    "queue/rootcheck"
 
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
