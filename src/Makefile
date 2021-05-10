@@ -743,7 +743,8 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe win32/syscollector
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe win32/syscollector
+WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -751,6 +752,7 @@ endif
 .PHONY: winagent
 winagent: external win32/libwinpthread-1.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
+	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
@@ -1331,6 +1333,9 @@ shared/%.o: shared/%.c
 shared/debug_op_proc.o: shared/debug_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DMA -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
+shared/file_op_proc.o: shared/file_op.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DCLIENT -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+
 #### Wazuh DB ####
 
 wdb_sql := $(wildcard wazuh_db/*.sql)
@@ -1624,7 +1629,7 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
+AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
 
 .PHONY: active-responses
 active-responses: ${active_response_programs}
@@ -1684,7 +1689,7 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_P},sparc)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
@@ -2136,14 +2141,14 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: win32/win_service_rk.o active-response/restart-wazuh.o active-response/active_responses.o
-	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+win32/restart-wazuh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} win32/win_service_rk.o active-response/restart-wazuh.o active-response/active_responses.o
+	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -s -o $@
 
-win32/route-null.exe: win32/win_service_rk.o active-response/route-null.o active-response/active_responses.o
-	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+win32/route-null.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} win32/win_service_rk.o active-response/route-null.o active-response/active_responses.o
+	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -s -o $@
 
-win32/netsh.exe: win32/win_service_rk.o active-response/netsh.o active-response/active_responses.o
-	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/netsh.o active-response/active_responses.o
+	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -s -o $@
 
 ####################
 #### Clean #########
@@ -2197,7 +2202,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_xml_o}
 	rm -f ${os_regex_o}
 	rm -f ${os_net_o}
-	rm -f ${shared_o} shared/debug_op_proc.o
+	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
 	rm -f ${config_o}
 	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
