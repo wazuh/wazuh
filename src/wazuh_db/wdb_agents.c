@@ -269,15 +269,17 @@ int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only) {
     return wdb_exec_stmt_send(stmt, wdb->peer);
 }
 
-cJSON* wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only) {
+int wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only, cJSON** response) {
     cJSON* status_response = cJSON_CreateObject();
     if (!status_response) {
-        return NULL;
+        return OS_MEMERR;
     }
+    int status = OS_SUCCESS;
 
-    if (wdbi_check_sync_status(wdb, WDB_SYSCOLLECTOR_PACKAGES)) {
-        if (OS_SUCCESS == wdb_agents_send_packages(wdb, not_triaged_only)) {
-            if (OS_SUCCESS == wdb_agents_set_packages_triaged(wdb)){
+    int sync = wdbi_check_sync_status(wdb, WDB_SYSCOLLECTOR_PACKAGES);
+    if (1 == sync) {
+        if (OS_SUCCESS == (status = wdb_agents_send_packages(wdb, not_triaged_only))) {
+            if (OS_SUCCESS == (status = wdb_agents_set_packages_triaged(wdb))){
                 cJSON_AddStringToObject(status_response, "status", "SUCCESS");
             }
             else {
@@ -288,9 +290,14 @@ cJSON* wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only) {
             cJSON_AddStringToObject(status_response, "status", "ERROR");
         }
     }
-    else {
+    else if (0 == sync){
         cJSON_AddStringToObject(status_response, "status", "NOT_SYNCED");
     }
+    else {
+        cJSON_AddStringToObject(status_response, "status", "ERROR");
+        status = OS_INVALID;
+    }
 
-    return status_response;
+    *response = status_response;
+    return status;
 }
