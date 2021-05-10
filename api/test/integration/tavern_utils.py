@@ -125,6 +125,70 @@ def test_sort_response(response, key=None, reverse=True):
     assert affected_items == sorted(affected_items, key=(lambda item: item[key]) if key else None, reverse=reverse)
 
 
+def _sort_items(unordered_items, dict_field, reverse):
+    """
+    Used in test_sort_response_multiple_fields
+    Return a ordered dict. Accept nested fields like os.name
+    """
+    if len(dict_field) == 1:
+        items_ordered = sorted(unordered_items, key=lambda item: item[dict_field[0]], reverse=reverse)
+    else:
+        items_ordered = sorted(unordered_items, key=lambda item: item[dict_field[0]][dict_field[1]], reverse=reverse)
+    return items_ordered
+
+
+def test_sort_response_multiple_fields(response, key=None, reverse=False):
+    """
+    Check that the response's affected items are sorted by one or multiple keys
+    Use _sort_items auxiliary function to sort the elements
+    Parameters
+    ----------
+    response : Request response
+    key : str
+        Keys expected to sort by separate with a , (os.name,os.major)
+    reverse : bool
+        Indicate if the expected order is ascending (False) or descending (True). Default: False
+    Returns
+    -------
+    bool
+        True if the response's items are sorted correctly
+    """
+
+    affected_items = response.json()['data']['affected_items']
+
+    # Split multiple fields
+    if ',' in key:
+        key = key.split(',')
+
+    process_fields = []
+
+    # Split nested fields
+    if not isinstance(key, list):
+        process_fields.append(key.split('.'))
+    else:
+        [process_fields.append(field.split('.')) for field in key if isinstance(key, list)]
+
+    # Create a copy of the affected_items
+    items = list(affected_items)
+
+    # Create a new list with the disconnected agents deleting them from the items list
+    disconnected_agents = [items.pop(items.index(item)) for item in affected_items if item['node_name'] == 'unknown']
+
+    # Order the items list
+    for field in process_fields[::-1]:
+        items = _sort_items(items, field, reverse)
+
+    # Concatenate the two list (items/disconnected). If the order is descending, the disconnected agents will be at top
+    # Otherwise, the disconnected agents will be at the bottom
+    if reverse:
+        items.extend(disconnected_agents)
+        assert affected_items == items
+    else:
+        disconnected_agents.extend(items)
+        assert affected_items == disconnected_agents
+
+
+
 def test_validate_data_dict_field(response, fields_dict):
     assert fields_dict, f'Fields dict is empty'
     for field, dikt in fields_dict.items():
