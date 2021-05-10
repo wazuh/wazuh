@@ -2054,8 +2054,14 @@ char **expand_win32_wildcards(const char *path) {
     os_strdup(path, pending_expand[0]);
     // Loop until there is not any directory to expand.
     while(true) {
-        glob_pos = strcspn(pending_expand[0], "*?");
-        if (glob_pos == strlen(pending_expand[0])) {
+        pattern = pending_expand[0];
+
+        if (pattern == NULL) {
+            break;
+        }
+
+        glob_pos = strcspn(pattern, "*?");
+        if (glob_pos == strlen(pattern)) {
             // If there are no more patterns, exit
             expanded_paths = pending_expand;
             break;
@@ -2063,7 +2069,6 @@ char **expand_win32_wildcards(const char *path) {
 
         os_calloc(2, sizeof(char *), expanded_paths);
 
-        pattern = pending_expand[0];
         for (pending_expand_index = 0; pattern != NULL; pattern = pending_expand[++pending_expand_index]) {
             glob_pos = strcspn(pattern, "*?");
             next_glob = strchr(pattern + glob_pos, PATH_SEP);
@@ -2094,14 +2099,16 @@ char **expand_win32_wildcards(const char *path) {
                 next_glob = NULL;
                 continue;
             }
-
             do {
                 if (strcmp(FindFileData.cFileName, ".") == 0 || strcmp(FindFileData.cFileName, "..") == 0) {
                     continue;
                 }
 
-                if ((FindFileData.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) == 0 &&
-                    next_glob != NULL) {
+                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                    continue;
+                }
+
+                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && next_glob != NULL) {
                     continue;
                 }
 
@@ -2116,7 +2123,7 @@ char **expand_win32_wildcards(const char *path) {
                 expanded_index++;
                 expanded_paths[expanded_index] = NULL;
 
-            } while(FindNextFileA(hFind, &FindFileData));
+            } while(FindNextFile(hFind, &FindFileData));
 
             FindClose(hFind);
             // Now, free the memory, as the path that needed to be expanded is no longer needed and it's expansion is
@@ -2125,6 +2132,7 @@ char **expand_win32_wildcards(const char *path) {
             os_free(parent_path);
             next_glob = NULL;
         }
+
         expanded_index = 0;
         os_free(pending_expand);
         pending_expand = expanded_paths;
