@@ -2268,13 +2268,15 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             continue;
                         }
     #ifdef WIN32
-                        if (current->future == 0) {
-                            w_set_to_last_line_read(current);
-                        } else {
-                            int64_t offset = w_set_to_pos(current, 0, SEEK_END);
-                            w_update_hash_node(current->file, offset);
+                        if (current->fp != NULL) {
+                            if (current->future == 0) {
+                                w_set_to_last_line_read(current);
+                            } else {
+                                int64_t offset = w_set_to_pos(current, 0, SEEK_END);
+                                w_update_hash_node(current->file, offset);
+                            }
                         }
-    #endif
+#endif
                     }
                     /* Increase the error count  */
                     current->ign++;
@@ -2698,7 +2700,11 @@ STATIC void w_load_files_status(cJSON * global_json) {
 
         SHA_CTX context;
         os_sha1 output;
-        OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset);
+
+        if (OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset) < 0) {
+            os_free(data);
+            return;
+        }
         data->context = context;
 
         if (OSHash_Update_ex(files_status, path_str, data) != 1) {
@@ -2771,7 +2777,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     SHA_CTX context;
     os_sha1 output;
 
-    if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) == -1) {
+    if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) < 0) {
         merror("Failure to generate the SHA1 hash from file '%s'", lf->file);
         return -1;
     }
@@ -2806,7 +2812,12 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
 
     SHA_CTX context;
     os_sha1 output;
-    OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos);
+
+    if (OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos) < 0) {
+        merror("Failure to generate the SHA1 hash from file '%s'", path);
+        os_free(data);
+        return -1;
+    }
     memcpy(data->hash, output, sizeof(os_sha1));
     data->context = context;
 
@@ -2836,12 +2847,12 @@ STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
     return w_ftell(lf->fp);
 }
 
-bool w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
+bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
     os_file_status_t * data;
 
-    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
+    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
         os_sha1 output;
-        if (OS_SHA1_File_Nbytes(path, context, output, OS_BINARY, position) < 0) {
+        if (OS_SHA1_File_Nbytes_with_fp_check(lf->file, context, output, OS_BINARY, position, lf->fd) < 0) {
             return false;
         }
     } else {

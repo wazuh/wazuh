@@ -147,7 +147,7 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
         lf->multiline->offset_last_read = w_ftell(lf->fp);
     }
 
-    bool context_file = w_get_hash_context(lf->file, &context, lf->multiline->offset_last_read);
+    bool context_file = w_get_hash_context(lf, &context, lf->multiline->offset_last_read);
 
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;

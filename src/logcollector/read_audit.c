@@ -59,7 +59,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     offset = w_ftell(lf->fp);
-    bool context_file = w_get_hash_context(lf->file, &context, offset);
+    bool context_file = w_get_hash_context(lf, &context, offset);
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;

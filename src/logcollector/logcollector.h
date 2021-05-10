@@ -253,7 +253,7 @@ int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
  * @param context SHA1 context.
  * @param position end file position.
  */
-bool w_get_hash_context(const char * path, SHA_CTX *context, int64_t position);
+bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;

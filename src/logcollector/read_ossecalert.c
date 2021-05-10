@@ -32,7 +32,10 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     os_sha1 output;
     int64_t current_position = w_ftell(lf->fp);
 
-    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, current_position);
+    if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, current_position) < 0) {
+        merror("Failure to generate the SHA1 hash from file '%s'", lf->file);
+    }
+
     w_update_file_status(lf->file, current_position, &context);
 
     memset(syslog_msg, '\0', OS_SIZE_2048 + 1);
