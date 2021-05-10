@@ -123,4 +123,6 @@ int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only);
 
 int wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only, cJSON** response);
 
+int wdb_agents_get_hotfixes(wdb_t *wdb, cJSON** response);
+
 #endif
