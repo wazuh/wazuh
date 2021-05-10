@@ -151,12 +151,14 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 o
             merror(FSTAT_ERROR, fname, errno, strerror(errno));
         } else if (fd_check != tmp_stat.st_ino) {
             mdebug1("The inode does not belong to file '%s'. The hash of the file will be ignored.", fname);
+            fclose(fp);
             return -2;
         }
 
 #else
         if (open_fd != 0 && fd_check != open_fd) {
             mdebug1("The inode does not belong to file '%s'. The hash of the file will be ignored.", fname);
+            fclose(fp);
             return -2;
         }
 
