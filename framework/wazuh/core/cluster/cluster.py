@@ -233,7 +233,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                                            get_cluster_item_key, get_md5))
 
         except Exception as e:
-            logger.error(f"Could not get checksum of file {entry}: {e}")
+            logger.debug(f"Could not get checksum of file {entry}: {e}")
 
     return walk_files
 
