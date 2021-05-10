@@ -128,7 +128,7 @@ def test_sort_response(response, key=None, reverse=True):
 def _sort_items(unordered_items, dict_field, reverse):
     """
     Used in test_sort_response_multiple_fields
-    Return a ordered dict. Accept nested fields like os.name
+    Returns a sorted dictionary. Accept nested fields (os.name...)
     """
     if len(dict_field) == 1:
         items_ordered = sorted(unordered_items, key=lambda item: item[dict_field[0]], reverse=reverse)
@@ -140,7 +140,7 @@ def _sort_items(unordered_items, dict_field, reverse):
 def test_sort_response_multiple_fields(response, key=None, reverse=False):
     """
     Check that the response's affected items are sorted by one or multiple keys
-    Use _sort_items auxiliary function to sort the elements
+    Use the auxiliary function _sort_items to sort the elements
     Parameters
     ----------
     response : Request response
