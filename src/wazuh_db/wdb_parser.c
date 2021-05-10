@@ -3663,19 +3663,30 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             not_triaged_only = TRUE;
         }
 
-        cJSON* status = wdb_agents_get_packages(wdb, not_triaged_only);
-        if (status) {
-            char *out = cJSON_PrintUnformatted(status);
-            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+        cJSON* status_response = NULL;
+        result = wdb_agents_get_packages(wdb, not_triaged_only, &status_response);
+        if (status_response) {
+            char *out = cJSON_PrintUnformatted(status_response);
+            if (OS_SUCCESS == result) {
+                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "err %s", out);
+            }
             os_free(out);
-            cJSON_Delete(status);
-            return OS_SUCCESS;
+            cJSON_Delete(status_response);
         }
         else {
             mdebug1("Error getting packages from sys_programs");
             snprintf(output, OS_MAXSTR + 1, "Error getting packages from sys_programs");
-            return OS_INVALID;
         }
+        if (OS_SOCKTERR == result) {
+            // Close the socket and send nothing as a response
+            close(wdb->peer);
+            *output = '\0';
+        }
+
+        return result;
     }
     else {
         mdebug1("Invalid Package info query syntax.");
