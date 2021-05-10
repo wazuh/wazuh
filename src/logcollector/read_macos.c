@@ -6,7 +6,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-#define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 
 #include "shared.h"
