@@ -9,8 +9,6 @@
 <!-- General decoder -->
 <decoder name="cisco-ftd">
     <prematch type="pcre2">[^%]*%FTD-[0-7]-[^:\s]+[:\s].*</prematch>
-    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(.+)?</regex>
-    <order>header, product.name, event.severity, event.id, message</order>
 </decoder>
 
 
@@ -347,7 +345,7 @@
 <decoder name="cisco-ftd-attempting-fallback">
     <parent>cisco-ftd</parent>
     <prematch>4-409023</prematch>
-   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfor\suser\s(\S+)\s:\s(.+))</regex>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfor\suser\s([^:]+):(.+))</regex>
    <order>header, product.name, event.severity, event.id, message, description, username, message</order>
 </decoder>
 
@@ -378,7 +376,7 @@
 <decoder name="cisco-ftd-system-memory">
     <parent>cisco-ftd</parent>
     <prematch type="pcre2">[^%]*%FTD-2-321006[:\s].*</prematch>
-   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((System\sMemory\susage)\sreached\s(\S+))</regex>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((System\smemory\susage)\sreached\sutilization\s(\S+))</regex>
    <order>header, product.name, event.severity, event.id, message, description, percentage</order>
 </decoder>
 
@@ -390,4 +388,11 @@
     <prematch type="pcre2">[^%]*%FTD-4-405003[:\s].*</prematch>
    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((IP\saddress\scollision)\sdetected\sbetween\shost\s(\S+)\sat\s(\S+)\sand\sinterface\s(\S+),\s(\S+))</regex>
    <order>header, product.name, event.severity, event.id, message, description, host_ip, src_mac, interface, int_mac_address</order>
+</decoder>
+
+<!-- General decoder -->
+<decoder name="cisco-ftd">
+    <parent>cisco-ftd</parent>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(.+)?</regex>
+    <order>header, product.name, event.severity, event.id, message</order>
 </decoder>
