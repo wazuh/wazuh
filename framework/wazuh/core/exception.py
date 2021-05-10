@@ -343,6 +343,8 @@ class WazuhException(Exception):
                },
         1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
                },
+        1760: {'message': 'Select fields have to be a subset of the filter fields',
+               },
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
