@@ -305,6 +305,12 @@ void test_w_save_files_status_to_cJSON_begin_NULL(void ** state) {
     will_return(__wrap_OSHash_Begin, hash_node);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
     char * ret = w_save_files_status_to_cJSON();
     assert_null(ret);
 
@@ -356,6 +362,159 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    char * ret = w_save_files_status_to_cJSON();
+
+    assert_string_equal(ret, "test_1234");
+
+    os_free(data);
+    os_free(hash_node);
+
+}
+
+void test_w_save_files_status_to_cJSON_macos_invalid_vault(void ** state) {
+    test_mode = 1;
+
+    OSHashNode *hash_node = NULL;
+
+    strcpy(macos_log_vault.timestamp,"any timestamp");
+    macos_log_vault.settings = "my settings";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    char * ret = w_save_files_status_to_cJSON();
+    assert_null(ret);
+
+}
+
+void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
+    test_mode = 1;
+
+    OSHashNode *hash_node = NULL;
+
+    strcpy(macos_log_vault.timestamp,"2021-04-27 08:07:20-0700");
+    macos_log_vault.settings = "/usr/bin/log stream --style syslog";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_CreateString, string, "2021-04-27 08:07:20-0700");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_string(__wrap_cJSON_CreateString, string, "/usr/bin/log stream --style syslog");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    char * ret = w_save_files_status_to_cJSON();
+
+    assert_string_equal(ret, "test_1234");
+
+}
+
+void test_w_save_files_status_to_cJSON_data(void ** state) {
+        test_mode = 1;
+
+    os_file_status_t * data;
+    os_calloc(1, sizeof(os_file_status_t), data);
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    OSHashNode *hash_node = NULL;
+    os_calloc(1, sizeof(OSHashNode), hash_node);
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    strcpy(macos_log_vault.timestamp,"2021-04-27 08:07:20-0700");
+    macos_log_vault.settings = "/usr/bin/log stream --style syslog";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_CreateString, string, "2021-04-27 08:07:20-0700");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_string(__wrap_cJSON_CreateString, string, "/usr/bin/log stream --style syslog");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
     will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -376,15 +535,24 @@ void test_w_save_file_status_str_NULL(void ** state) {
 
     //test_w_save_files_status_to_cJSON_begin_NULL
     OSHashNode *hash_node = NULL;
+    strcpy(macos_log_vault.timestamp,"any timestamp");
+    macos_log_vault.settings = "my settings";
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
     w_save_file_status();
 
 }
+
 
 void test_w_save_file_status_wfopen_error(void ** state) {
     test_mode = 1;
@@ -431,6 +599,12 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
@@ -495,6 +669,12 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
@@ -567,6 +747,12 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
@@ -1183,6 +1369,95 @@ void test_w_load_files_status_OK(void ** state) {
 
 }
 
+void test_w_load_files_status_valid_timestamp_only(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 0);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "2021-04-27 08:07:20-0700");
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    w_load_files_status(global_json);
+
+    assert_string_equal(macos_log_vault.settings, "my settings");
+    assert_string_equal(macos_log_vault.timestamp, "hi 123");
+}
+
+void test_w_load_files_status_valid_settings_only(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 0);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "/usr/bin/log stream --style syslog");
+
+    w_load_files_status(global_json);
+
+    assert_string_equal(macos_log_vault.settings, "my settings");
+    assert_string_equal(macos_log_vault.timestamp, "hi 123");
+
+}
+
+void test_w_load_files_status_valid_vault(void ** state) {
+    test_mode = 1;
+
+    cJSON *global_json = (cJSON*)1;
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    os_strdup("my settings", macos_log_vault.settings);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 0);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "2021-04-27 08:07:20-0700");
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "/usr/bin/log stream --style syslog");
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    w_load_files_status(global_json);
+
+    assert_string_equal(macos_log_vault.timestamp, "2021-04-27 08:07:20-0700");
+    assert_string_equal(macos_log_vault.settings, "/usr/bin/log stream --style syslog");
+
+    os_free(macos_log_vault.settings);
+}
 /* w_initialize_file_status */
 
 void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
@@ -1849,8 +2124,14 @@ int main(void) {
         cmocka_unit_test(test_w_set_to_pos_OK),
 
         // Test w_save_files_status_to_cJSON
+        // Related only to files
         cmocka_unit_test(test_w_save_files_status_to_cJSON_begin_NULL),
         cmocka_unit_test(test_w_save_files_status_to_cJSON_OK),
+        // Related only to macos
+        cmocka_unit_test(test_w_save_files_status_to_cJSON_macos_invalid_vault),
+        cmocka_unit_test(test_w_save_files_status_to_cJSON_macos_valid_vault),
+        // Related to files and macos
+        cmocka_unit_test(test_w_save_files_status_to_cJSON_data),
 
         // Test w_save_file_status
         cmocka_unit_test(test_w_save_file_status_str_NULL),
@@ -1872,6 +2153,10 @@ int main(void) {
         cmocka_unit_test(test_w_load_files_status_update_hash_fail),
         cmocka_unit_test(test_w_load_files_status_update_fail),
         cmocka_unit_test(test_w_load_files_status_OK),
+        // Related only to macos
+        cmocka_unit_test(test_w_load_files_status_valid_timestamp_only),
+        cmocka_unit_test(test_w_load_files_status_valid_settings_only),
+        cmocka_unit_test(test_w_load_files_status_valid_vault),
 
         // Test w_initialize_file_status
         cmocka_unit_test(test_w_initialize_file_status_OSHash_Create_fail),

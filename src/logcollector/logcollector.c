@@ -125,7 +125,6 @@ static pthread_rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
-#define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 static struct _macos_log_wfd_t {
     wfd_t * show;
