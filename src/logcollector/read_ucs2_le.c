@@ -31,7 +31,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    bool context_file = w_get_hash_context(lf, &context, current_position);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     for (offset = w_ftell(lf->fp); can_read() && fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
@@ -47,7 +47,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         wchar_t * n;
         /* Get the last occurrence of \n */
         if ((n = wcsrchr(str, L'\n')) != NULL) {
-            if (context_file) {
+            if (is_valid_context_file) {
                 OS_SHA1_Stream(&context, NULL, (char *) str);
             }
             *n = '\0';
@@ -57,7 +57,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
          */
         if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
-            if (context_file) {
+            if (is_valid_context_file) {
                 OS_SHA1_Stream(&context, NULL, (char *) str);
             }
             __ms = 1;
@@ -136,7 +136,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                     break;
                 }
 
-                if (context_file) {
+                if (is_valid_context_file) {
                     OS_SHA1_Stream(&context, NULL, (char *) str);
                 }
 
@@ -151,7 +151,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         current_position = w_ftell(lf->fp);
     }
 
-    if (context_file) {
+    if (is_valid_context_file) {
         w_update_file_status(lf->file, current_position, &context);
     }
 

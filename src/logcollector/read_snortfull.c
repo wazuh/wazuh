@@ -31,13 +31,13 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    bool context_file = w_get_hash_context(lf, &context, current_position);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
 
-        if (context_file) {
+        if (is_valid_context_file) {
             OS_SHA1_Stream(&context, NULL, str);
         }
 
@@ -124,7 +124,7 @@ file_error:
 
     current_position = w_ftell(lf->fp);
 
-    if (context_file) {
+    if (is_valid_context_file) {
         w_update_file_status(lf->file, current_position, &context);
     }
 

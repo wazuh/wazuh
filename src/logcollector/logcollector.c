@@ -2267,7 +2267,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             w_rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
-    #ifdef WIN32
+#ifdef WIN32
                         if (current->fp != NULL) {
                             if (current->future == 0) {
                                 w_set_to_last_line_read(current);
@@ -2702,6 +2702,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
         os_sha1 output;
 
         if (OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset) < 0) {
+            mdebug1(LOGCOLLECTOR_FILE_NOT_EXIST, path_str);
             os_free(data);
             return;
         }
@@ -2756,6 +2757,10 @@ STATIC char * w_save_files_status_to_cJSON() {
 STATIC int w_set_to_last_line_read(logreader * lf) {
 
     os_file_status_t * data;
+
+    if (lf->file == NULL) {
+        return 0;
+    }
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
         w_set_to_pos(lf, 0, SEEK_END);
@@ -2848,9 +2853,10 @@ STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
 }
 
 bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
-    os_file_status_t * data;
 
-    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
+    os_file_status_t * data = (os_file_status_t *) OSHash_Get_ex(files_status, lf->file);
+
+    if (data == NULL) {
         os_sha1 output;
         if (OS_SHA1_File_Nbytes_with_fp_check(lf->file, context, output, OS_BINARY, position, lf->fd) < 0) {
             return false;

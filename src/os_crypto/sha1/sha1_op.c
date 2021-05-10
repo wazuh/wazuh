@@ -128,32 +128,13 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 o
 
     /* It's important to read \r\n instead of \n to generate the correct hash */
 #ifdef WIN32
-    int fd;
-    HANDLE h;
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
-    memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
-
-    h = CreateFile(fname, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
-                   NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (h == INVALID_HANDLE_VALUE) {
+    DWORD open_fd = 0;
+    if (fp = w_fopen_r(fname, mode == OS_BINARY ? "rb" : "r", &lpFileInformation), fp == NULL) {
         return -1;
-    } else if (GetFileInformationByHandle(h, &lpFileInformation) == 0) {
-        merror(FILE_ERROR, fname);
+    } else {
+        open_fd = lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh;
     }
-
-    if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {
-        merror(FOPEN_ERROR, fname, errno, strerror(errno));
-        CloseHandle(h);
-        return -1;
-    }
-
-    if (fp = _fdopen(fd, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
-        merror(FOPEN_ERROR, fname, errno, strerror(errno));
-        CloseHandle(h);
-        return -1;
-    }
-
 #else
     if (fp = fopen(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
         return -1;
@@ -169,11 +150,13 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 o
         if ((fstat(fileno(fp), &tmp_stat)) == -1) {
             merror(FSTAT_ERROR, fname, errno, strerror(errno));
         } else if (fd_check != tmp_stat.st_ino) {
+            mdebug1("The inode does not belong to file '%s'. The hash of the file will be ignored.", fname);
             return -2;
         }
 
 #else
-        if (fd_check != (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh)) {
+        if (open_fd != 0 && fd_check != open_fd) {
+            mdebug1("The inode does not belong to file '%s'. The hash of the file will be ignored.", fname);
             return -2;
         }
 

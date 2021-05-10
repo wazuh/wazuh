@@ -13,6 +13,9 @@
 
 #include <sys/types.h>
 #include <openssl/sha.h>
+#ifdef WIN32
+#include <windef.h>
+#endif
 
 typedef char os_sha1[41];
 
