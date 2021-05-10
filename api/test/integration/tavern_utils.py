@@ -189,7 +189,7 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
 
     # Order the items list
     for field in process_fields[::-1]:
-        items = _sort_items(items, field, reverse)
+        items = sort_items(items, field, reverse)
 
     # Concatenate the two list (items/disconnected). If the order is descending, the disconnected agents will be at top
     # Otherwise, the disconnected agents will be at the bottom
