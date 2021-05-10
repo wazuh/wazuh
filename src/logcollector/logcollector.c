@@ -2778,7 +2778,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     os_sha1 output;
 
     if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) < 0) {
-        merror("Failure to generate the SHA1 hash from file '%s'", lf->file);
+        merror(FAIL_SHA1_GEN, lf->file);
         return -1;
     }
 
@@ -2814,7 +2814,7 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
     os_sha1 output;
 
     if (OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos) < 0) {
-        merror("Failure to generate the SHA1 hash from file '%s'", path);
+        merror(FAIL_SHA1_GEN, path);
         os_free(data);
         return -1;
     }
