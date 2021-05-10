@@ -121,6 +121,6 @@ int wdb_agents_set_packages_triaged(wdb_t *wdb);
 
 int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only);
 
-cJSON* wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only);
+int wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only, cJSON** response);
 
 #endif
