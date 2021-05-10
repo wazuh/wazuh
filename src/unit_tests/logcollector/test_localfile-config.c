@@ -23,7 +23,7 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
 unsigned int w_get_attr_timeout(xml_node * node);
 w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
 w_multiline_match_type_t w_get_attr_match(xml_node * node);
-int w_logcollector_macos_get_log_type(const char * content);
+int w_logcollector_get_macos_log_type(const char * content);
 
 /* setup/teardown */
 
@@ -345,22 +345,22 @@ void test_w_get_attr_match_end(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
-/*  w_logcollector_macos_get_log_type  */
-void test_w_logcollector_macos_get_log_type_content_NULL(void ** state) {
+/*  w_logcollector_get_macos_log_type  */
+void test_w_logcollector_get_macos_log_type_content_NULL(void ** state) {
     const char * content = NULL;
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, 0);
 }
 
-void test_w_logcollector_macos_get_log_type_content_empty(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_empty(void ** state) {
     const char * content = "";
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, 0);
 }
 
-void test_w_logcollector_macos_get_log_type_content_ignore_values(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_ignore_values(void ** state) {
     const char * content = "  hello, ,world  ";
 
     expect_string(__wrap__mwarn, formatted_msg, "(8003): Invalid value 'hello' for attribute 'type' in 'query' option."\
@@ -369,53 +369,53 @@ void test_w_logcollector_macos_get_log_type_content_ignore_values(void ** state)
     expect_string(__wrap__mwarn, formatted_msg, "(8003): Invalid value 'world' for attribute 'type' in 'query' option."\
                   " Attribute will be ignored.");
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, 0);
 }
 
-void test_w_logcollector_macos_get_log_type_content_activity(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_activity(void ** state) {
     const char * content = " activity ";
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_ACTIVITY);
 }
 
-void test_w_logcollector_macos_get_log_type_content_log(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_log(void ** state) {
     const char * content = "log ";
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_LOG);
 }
 
-void test_w_logcollector_macos_get_log_type_content_trace(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_trace(void ** state) {
     const char * content = " trace, ";
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_TRACE);
 }
 
-void test_w_logcollector_macos_get_log_type_content_trace_activity(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_trace_activity(void ** state) {
     const char * content = " trace, activity,,";
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_TRACE | MACOS_LOG_TYPE_ACTIVITY);
 }
 
-void test_w_logcollector_macos_get_log_type_content_trace_log_activity(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_trace_log_activity(void ** state) {
     const char * content = " trace, ,activity,,log ";
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_TRACE | MACOS_LOG_TYPE_ACTIVITY | MACOS_LOG_TYPE_LOG);
 }
 
-void test_w_logcollector_macos_get_log_type_content_log_multiword_invalid(void ** state) {
+void test_w_logcollector_get_macos_log_type_content_log_multiword_invalid(void ** state) {
     const char * content = "log, trace  activity";
 
     expect_string(__wrap__mwarn, formatted_msg,
                   "(8003): Invalid value 'trace  activity' for attribute 'type' in 'query' option."
                   " Attribute will be ignored.");
 
-    int ret = w_logcollector_macos_get_log_type(content);
+    int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_LOG);
 }
 
@@ -451,16 +451,16 @@ int main(void) {
         cmocka_unit_test(test_w_get_attr_match_all),
         cmocka_unit_test(test_w_get_attr_match_end),
         cmocka_unit_test(test_w_get_attr_match_invalid),
-        // Tests w_logcollector_macos_get_log_type
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_NULL),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_empty),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_ignore_values),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_activity),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_log),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_trace),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_trace_activity),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_trace_log_activity),
-        cmocka_unit_test(test_w_logcollector_macos_get_log_type_content_log_multiword_invalid),
+        // Tests w_logcollector_get_macos_log_type
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_NULL),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_empty),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_ignore_values),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_activity),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_log),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_activity),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_log_activity),
+        cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_log_multiword_invalid),
 
     };
 
