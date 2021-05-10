@@ -107,7 +107,6 @@ void *read_multiline(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
-#define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
  * @brief Read macOS log process output
