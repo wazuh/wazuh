@@ -44,7 +44,7 @@ void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 
-extern macos_log_vault_t macos_log_vault;
+extern w_macos_log_vault_t macos_log_vault;
 
 
 /* setup/teardown */
@@ -275,6 +275,7 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);    
     strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -304,21 +305,6 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
-
-    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
-    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
 
     will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
 
@@ -366,6 +352,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -395,21 +382,6 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
-
-    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
-    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -444,6 +416,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -473,21 +446,6 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
-
-    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
-    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -530,6 +488,7 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -560,21 +519,6 @@ void test_w_save_file_status_OK(void ** state) {
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
-    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_AddItemToObject, true);
-
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -601,12 +545,19 @@ void test_w_load_files_status_empty_array(void ** state) {
     test_mode = 1;
 
     cJSON *global_json = (cJSON*)1;
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetArraySize, 0);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -620,6 +571,8 @@ void test_w_load_files_status_path_NULL(void ** state) {
     test_mode = 1;
 
     cJSON *global_json = (cJSON*)1;
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -636,6 +589,10 @@ void test_w_load_files_status_path_NULL(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -644,6 +601,8 @@ void test_w_load_files_status_path_str_NULL(void ** state) {
     test_mode = 1;
 
     cJSON *global_json = (cJSON*)1;
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -662,6 +621,10 @@ void test_w_load_files_status_path_str_NULL(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -673,6 +636,8 @@ void test_w_load_files_status_no_file(void ** state) {
 
     char * file = "test";
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -695,6 +660,10 @@ void test_w_load_files_status_no_file(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -706,6 +675,8 @@ void test_w_load_files_status_hash_NULL(void ** state) {
 
     char * file = "test";
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -726,6 +697,10 @@ void test_w_load_files_status_hash_NULL(void ** state) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -742,6 +717,8 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
 
     char * file = "test";
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -764,6 +741,10 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -780,6 +761,8 @@ void test_w_load_files_status_offset_NULL(void ** state) {
 
     char * file = "test";
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -805,6 +788,10 @@ void test_w_load_files_status_offset_NULL(void ** state) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -821,6 +808,8 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
 
     char * file = "test";
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -853,6 +842,10 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -864,6 +857,8 @@ void test_w_load_files_status_invalid_offset(void ** state) {
 
     char * file = "test";
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -896,6 +891,10 @@ void test_w_load_files_status_invalid_offset(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -909,6 +908,8 @@ void test_w_load_files_status_update_add_fail(void ** state) {
 
     int mode = OS_BINARY;
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -955,6 +956,10 @@ void test_w_load_files_status_update_add_fail(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -968,6 +973,8 @@ void test_w_load_files_status_update_fail(void ** state) {
 
     int mode = OS_BINARY;
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -1012,6 +1019,10 @@ void test_w_load_files_status_update_fail(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -1025,6 +1036,8 @@ void test_w_load_files_status_OK(void ** state) {
 
     int mode = OS_BINARY;
     struct stat stat_buf = { .st_mode = 0040000 };
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -1064,6 +1077,11 @@ void test_w_load_files_status_OK(void ** state) {
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -1225,6 +1243,10 @@ void test_w_initialize_file_status_OK(void ** state) {
     will_return(__wrap_OSHash_Update_ex, 1);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
