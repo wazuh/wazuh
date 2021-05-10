@@ -869,8 +869,28 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a packages command
+ * Commands:
+ * 1. delete: Deletes packages table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every package on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a hotfixes command
+ * Commands:
+ * 1. delete: Deletes hotfixes table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every hotfix on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
