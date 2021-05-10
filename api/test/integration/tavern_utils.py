@@ -125,10 +125,23 @@ def test_sort_response(response, key=None, reverse=True):
     assert affected_items == sorted(affected_items, key=(lambda item: item[key]) if key else None, reverse=reverse)
 
 
-def _sort_items(unordered_items, dict_field, reverse):
-    """
-    Used in test_sort_response_multiple_fields
-    Returns a sorted dictionary. Accept nested fields (os.name...)
+def sort_items(unordered_items, dict_field, reverse):
+    """Used in test_sort_response_multiple_fields.
+    Sort a python dictionary by a certain key.
+
+    Parameters
+    ----------
+    unordered_items : dict
+        Python dictionary with all the items to be ordered
+    dict_field : list
+        List with the keys to obtain the value for which we wish to ordered the items
+    reverse : bool
+        Indicates either the items are going to be ordered in ascending or descending order
+
+    Returns
+    -------
+    items_ordered: dict
+        Shorted dictionary by the key
     """
     if len(dict_field) == 1:
         items_ordered = sorted(unordered_items, key=lambda item: item[dict_field[0]], reverse=reverse)
@@ -138,27 +151,27 @@ def _sort_items(unordered_items, dict_field, reverse):
 
 
 def test_sort_response_multiple_fields(response, key=None, reverse=False):
-    """
-    Check that the response's affected items are sorted by one or multiple keys
-    Use the auxiliary function _sort_items to sort the elements
+    """Check that the response's affected items are sorted by one or multiple keys.
+    Use the auxiliary function _sort_items to sort the elements.
+
     Parameters
     ----------
-    response : Request response
+    response : Request response.
     key : str
-        Keys expected to sort by separate with a , (os.name,os.major)
+        Keys expected to sort by separate with a comma (os.name,os.major).
     reverse : bool
-        Indicate if the expected order is ascending (False) or descending (True). Default: False
+        Indicate if the expected order is ascending (False) or descending (True). Default: False.
+
     Returns
     -------
     bool
-        True if the response's items are sorted correctly
+        True if the response's items are sorted correctly.
     """
 
     affected_items = response.json()['data']['affected_items']
 
     # Split multiple fields
-    if ',' in key:
-        key = key.split(',')
+    key = key.split(',')
 
     process_fields = []
 
@@ -171,7 +184,7 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     # Create a copy of the affected_items
     items = list(affected_items)
 
-    # Create a new list with the disconnected agents deleting them from the items list
+    # Create a new lists with the disconnected agents deleting them from the items list
     disconnected_agents = [items.pop(items.index(item)) for item in affected_items if item['node_name'] == 'unknown']
 
     # Order the items list

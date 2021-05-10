@@ -139,7 +139,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-12 seconds'),'updated','active','group-2,group-1');
 
--- Connected agent in group-1
+-- Connected agent in group-1. Add an agent with a different OS
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
                    last_keepalive, status, connection_status, `group`) VALUES (9,'agent-9','172.17.0.503','any',

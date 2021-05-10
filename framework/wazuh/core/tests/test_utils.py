@@ -828,14 +828,9 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile,
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_sort_order_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
+def test_sorted_order_for_multiple_test_fields(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
                                                      sort, expected_items, fields):
-    """
-    Test WazuhDBQuery._add_sort_to_query function.
-    Tests if the fields from a sort query are not altered in any way,
-    Tests if the fields to sort_by are a list
-    Tests if the order (asc,desc) of a sort is not altered in any way
-    """
+    """Test WazuhDBQuery._add_sort_to_query function for multiple fields"""
     query = WazuhDBQuery(
         offset=0, limit=1, table='agent', sort=sort, search=None, select=None, filters=None,
         fields=fields, default_sort_field=None, query=None,
@@ -1688,7 +1683,6 @@ def test_expand_decoders():
     decoders = expand_decoders()
     assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
                                                                         f'*{common.DECODERS_EXTENSION}'))))
-
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
 @patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)

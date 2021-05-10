@@ -87,7 +87,7 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
 @pytest.mark.parametrize('agent_list, fields, order, expected_items', [
     (['000', '002'],
      ['os.name', 'os.version'],
-     ['asc'],
+     'asc',
      [
         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}}
@@ -95,7 +95,7 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
      ),
     (['000', '002'],
      ['os.name', 'os.version'],
-     ['desc'],
+     'desc',
      [
         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}}
@@ -103,7 +103,7 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
      ),
     (['000', '002', '009'],
      ['os.version', 'os.name'],
-     ['asc'],
+     'asc',
      [
          {'id': '009', 'os': {'name': 'Windows', 'version': '3.14 XP'}},
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
@@ -112,7 +112,7 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
      ),
     (['000', '002', '009'],
      ['os.version', 'os.name'],
-     ['desc'],
+     'desc',
      [
          {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
@@ -121,7 +121,7 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
      ),
     (['000', '002', '009'],
      ['os.name', 'os.version'],
-     ['asc'],
+     'asc',
      [
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
          {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
@@ -133,18 +133,10 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_sort_order(socket_mock, send_mock, agent_list, order, fields, expected_items):
-    """Test `sort` parameter of GET /agents endpoint
-
-    Parameters
-    ----------
-    fields : list
-        List of fields to check their values.
-    expected_items : list
-        List of expected values for the provided fields.
-    """
-    distinct = get_agents(agent_list=agent_list, select=fields, sort={'fields': fields, 'order': order[0]})
-    assert isinstance(distinct, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert distinct.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    """Test `sort` parameter of GET /agents endpoint with multiples fields."""
+    sorted_agents = get_agents(agent_list=agent_list, select=fields, sort={'fields': fields, 'order': order})
+    assert isinstance(sorted_agents, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert sorted_agents.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
