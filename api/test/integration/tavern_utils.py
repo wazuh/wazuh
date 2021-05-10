@@ -1,9 +1,11 @@
 import json
 from base64 import b64decode
 from json import loads
+from functools import reduce  # forward compatibility for Python 3
 
 from box import Box
 
+import operator
 
 def get_values(o):
     strings = []
@@ -126,8 +128,7 @@ def test_sort_response(response, key=None, reverse=True):
 
 
 def sort_items(unordered_items, dict_field, reverse):
-    """Used in test_sort_response_multiple_fields.
-    Sort a python dictionary by a certain key.
+    """Sort a python dictionary by a certain key. Accepts nested Keys
 
     Parameters
     ----------
@@ -143,11 +144,10 @@ def sort_items(unordered_items, dict_field, reverse):
     items_ordered: dict
         Shorted dictionary by the key
     """
-    if len(dict_field) == 1:
-        items_ordered = sorted(unordered_items, key=lambda item: item[dict_field[0]], reverse=reverse)
-    else:
-        items_ordered = sorted(unordered_items, key=lambda item: item[dict_field[0]][dict_field[1]], reverse=reverse)
-    return items_ordered
+    def get_from_dict(dictionary, fields):
+        return reduce(operator.getitem, fields, dictionary)
+
+    return sorted(unordered_items, key=lambda item: get_from_dict(item, dict_field), reverse=reverse)
 
 
 def test_sort_response_multiple_fields(response, key=None, reverse=False):
@@ -199,7 +199,6 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     else:
         disconnected_agents.extend(items)
         assert affected_items == disconnected_agents
-
 
 
 def test_validate_data_dict_field(response, fields_dict):
