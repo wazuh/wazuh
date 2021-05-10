@@ -3846,12 +3846,27 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 2
-        fields: os.platform
         select: invalid
     response:
       status_code: 400
       json:
         error: 1724
+
+  - name: Select is different to filter fields
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        fields: os.platform
+        select: manager
+    response:
+      status_code: 400
+      json:
+        error: 1760
 
   - name: Pagination
     request:
