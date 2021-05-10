@@ -20,8 +20,8 @@
 <decoder name="cisco-ftd-inbound-connection-denied">
     <parent>cisco-ftd</parent>
     <prematch>2-106001</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+)/(\S+) to (\S+)/(\S+) flags (.+) on interface (\S+)</regex>
-    <order>description, src_ip, src_port, dst_ip, dst_port, flags, interface</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+)/(\S+)\sto\s(\S+)/(\S+)\sflags\s(.+)\son\sinterface\s(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, src_ip, src_port, dst_ip, dst_port, flags, interface</order>
 </decoder>
 
 <!--
@@ -30,8 +30,8 @@
 <decoder name="cisco-ftd-inbound-socket">
     <parent>cisco-ftd</parent>
     <prematch>5-718060|5-718061</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+): context=(\d+)</regex>
-    <order>description, context_ID</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+):\scontext=(\d+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, context_ID</order>
 </decoder>
 
 <!--
@@ -40,8 +40,8 @@
 <decoder name="cisco-ftd-inbound-thread">
     <parent>cisco-ftd</parent>
     <prematch>5-718062</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) \pcontext=(\d+)</regex>
-    <order>description, context_ID</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\(context=(\d+)\))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, context_ID</order>
 </decoder>
 
 <!--
@@ -49,9 +49,9 @@
 -->
 <decoder name="cisco-ftd-attacks">
   <parent>cisco-ftd</parent>
-  <prematch>1-106021|1-106022|4-4000</prematch>
-  <regex type="pcre2" offset="after_prematch">\.+ from (\S+)</regex>
-  <order>srcip</order>
+  <prematch>1-106021|1-106022</prematch>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(.+\sfrom\s(\S+))</regex>
+  <order>header, product.name, event.severity, event.id, message, srcip</order>
 </decoder>
 
 <!--
@@ -59,9 +59,9 @@
 -->
 <decoder name="cisco-ftd-shunned">
   <parent>cisco-ftd</parent>
-  <prematch>^4-401004</prematch>
-  <regex type="pcre2" offset="after_prematch">Shunned packet: (\S+) = (\S+) </regex>
-  <order>srcip, dstip</order>
+  <prematch>4-401004</prematch>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(Shunned\spacket:\s(\S+)\s=\s(\S+).+)</regex>
+  <order>header, product.name, event.severity, event.id, message, srcip, dstip</order>
 </decoder>
 
 <!--
@@ -70,8 +70,8 @@
 <decoder name="cisco-ftd-deny-land-attack">
     <parent>cisco-ftd</parent>
     <prematch>2-106017</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+) to (\S+)</regex>
-    <order>description, src_ip, dst_ip</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+)\sto\s(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, srcip, dstip</order>
 </decoder>
 
 <!--
@@ -80,8 +80,8 @@
 <decoder name="cisco-ftd-deny-inbound-udp">
     <parent>cisco-ftd</parent>
     <prematch>2-106006|2-106007</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+)/(\S+) to (\S+)/(\S+)</regex>
-    <order>description, src_ip, src_port, dst_ip, dst_port</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+)/(\S+)\sto\s(\S+)/(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, srcip, srcport, dstip, dstport</order>
 </decoder>
 
 <!--
@@ -90,9 +90,8 @@
 <decoder name="cisco-ftd-fw2">
   <parent>cisco-ftd</parent>
   <prematch>3-710003|7-710002|7-710005</prematch>
-  <regex type="pcre2" offset="after_prematch">(\S+) \w+ (.+) from </regex>
-  <regex>(\S+)/(\S+) to \w+:(\S+)/(\S+)</regex>
-  <order>protocol, action, srcip, srcport, dstip, dstport</order>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((\S+)\s(\w+).+from\s(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+))</regex>
+  <order>header, product.name, event.severity, event.id, message, protocol, action, srcip, srcport, dstinterface, dstip, dstport</order>
 </decoder>
 
 <!--
@@ -101,9 +100,8 @@
 <decoder name="cisco-ftd-fw3">
   <parent>cisco-ftd</parent>
   <prematch>4-106023</prematch>
-  <regex type="pcre2" offset="after_prematch">(\w+) (\w+) src \w+:</regex>
-  <regex>(\S+)/(\S+) dst \w+:(\S+)/(\S+)</regex>
-  <order>action, protocol, srcip, srcport, dstip, dstport</order>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((\w+)\s(\w+)\ssrc\s\w+:(\S+)/(\S+)\sdst\s\w+:(\S+)/(\S+))</regex>
+  <order>header, product.name, event.severity, event.id, message, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
 <!--
@@ -112,8 +110,8 @@
 <decoder name="cisco-ftd-fw6">
   <parent>cisco-ftd</parent>
   <prematch>6-106015</prematch>
-  <regex type="pcre2" offset="after_prematch">(\w+) (\w+) \.+ from (\S+)/(\S+) to (\S+)/(\S+) flags (\S+) on interface (\S+)</regex>
-  <order>action, protocol, srcip, srcport, dstip, dstport, flags, interface</order>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((\w+)\s(\w+)\s.+\sfrom\s(\S+)/(\S+)\sto\s(\S+)/(\S+)\sflags\s(\S+)\son\sinterface\s(\S+))</regex>
+  <order>header, product.name, event.severity, event.id, message, action, protocol, srcip, srcport, dstip, dstport, flags, interface</order>
 </decoder>
 
 <!--
@@ -122,19 +120,19 @@
 <decoder name="cisco-ftd-srcip">
   <parent>cisco-ftd</parent>
   <prematch>6-308001</prematch>
-  <regex type="pcre2" offset="after_prematch">\.+ \pfrom (\d+.\d+.\d+.\d+)</regex>
-  <order>srcip</order>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(.+\(from\s(\d+.\d+.\d+.\d+)\))</regex>
+  <order>header, product.name, event.severity, event.id, message, srcip</order>
 </decoder>
 
 <!--
-%ftd-6-605004: Login denied from 192.168.2.10/32597 to outside:192.168.2.14/ssh for user "root"
-%ftd-6-605005: Login permitted from 192.168.0.1/11 to outside:192.168.0.2/ssh for user "username"
+%FTD-6-605004: Login denied from 192.168.2.10/32597 to outside:192.168.2.14/ssh for user "root"
+%FTD-6-605005: Login permitted from 192.168.0.1/11 to outside:192.168.0.2/ssh for user "username"
 -->
 <decoder name="cisco-ftd-srcip-port">
   <parent>cisco-ftd</parent>
   <prematch>6-605004|6-605005</prematch>
-  <regex type="pcre2" offset="after_prematch">Login (\S+) from (\S+)/(\S+) to (\S+):(\S+)/(\S+) for user "(\w+)"</regex>
-  <order>action, srcip, srcport, interface, dstip, dstport, user</order>
+  <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(Login\s(\S+)\sfrom\s(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+)\sfor\suser\s"(\w+)")</regex>
+  <order>header, product.name, event.severity, event.id, message, action, srcip, srcport, interface, dstip, dstport, user</order>
 </decoder>
 
 <!--
@@ -143,8 +141,8 @@
 <decoder name="cisco-ftd-drop-rate-exceeded">
     <parent>cisco-ftd</parent>
     <prematch>4-733100</prematch>
-    <regex type="pcre2" offset="after_prematch">Object drop rate (\d+) exceeded. Current burst rate is (\S+) per second, max configured rate is (\S+); Current average rate is (\S+) per second, max configured rate is (\S+); Cumulative total count is (\S+)</regex>
-    <order>rate_ID, burst_rate, max_burst_rate, average_rate, max_average_rate, cumulative_count</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(Object\sdrop\srate\s(\d+)\sexceeded.\sCurrent\sburst\srate\sis\s(\S+)\sper\ssecond,\smax\sconfigured\srate\sis\s(\S+);\sCurrent\saverage\srate\sis\s(\S+)\sper\ssecond,\smax\sconfigured\srate\sis\s(\S+);\sCumulative\stotal\scount\sis\s(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, rate_ID, burst_rate, max_burst_rate, average_rate, max_average_rate, cumulative_count</order>
 </decoder>
 
 <!--
@@ -152,9 +150,9 @@
 -->
 <decoder name="cisco-ftd-executed-command">
     <parent>cisco-ftd</parent>
-    <prematch offset="after_parent">5-111008</prematch>
-    <regex type="pcre2" offset="after_prematch">User (\S+) (\S+) the (.+)</regex>
-    <order>username, type, command</order>
+    <prematch>5-111008</prematch>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(User\s(\S+)\s(\S+)\sthe\s(.+))</regex>
+    <order>header, product.name, event.severity, event.id, message, username, type, command</order>
 </decoder>
 
 
@@ -164,8 +162,8 @@
 <decoder name="cisco-ftd-user-privileged-changed">
     <parent>cisco-ftd</parent>
     <prematch>5-502103</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+): Uname: (\S+) From: (\S+) To: (\S+)</regex>
-    <order>id, description, username, from_level, to_level</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+):\sUname:\s(\S+)\sFrom:\s(\S+)\sTo:\s(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, username, from_level, to_level</order>
 </decoder>
 
 <!--
@@ -174,8 +172,8 @@
 <decoder name="cisco-ftd-user-flow-dropped">
     <parent>cisco-ftd</parent>
     <prematch>3-421001</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) is dropped because application has failed</regex>
-    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+):(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+)\sis\sdropped\sbecause\sapplication\shas\sfailed)</regex>
+    <order>header, product.name, event.severity, event.id, message, description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
 </decoder>
 
 
@@ -185,8 +183,8 @@
 <decoder name="cisco-ftd-user-flow-skipped">
     <parent>cisco-ftd</parent>
     <prematch>3-421007</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) is skipped because application has failed</regex>
-    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+):(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+)\sis\sskipped\sbecause\sapplication\shas\sfailed)</regex>
+    <order>header, product.name, event.severity, event.id, message, description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
 </decoder>
 
 <!--
@@ -195,8 +193,8 @@
 <decoder name="cisco-ftd-deny-inbound-icmp">
     <parent>cisco-ftd</parent>
     <prematch>3-106014</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) src (\S+):(\S+) dst (\S+):(\S+) (\(\.+\))</regex>
-    <order>description, src, src_ip, dst, dst_ip, code</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\ssrc\s(\S+):(\S+)\sdst\s(\S+):(\S+)\s(\(.+\)))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, src, src_ip, dst, dst_ip, code</order>
 </decoder>
 
 
@@ -206,8 +204,8 @@
 <decoder name="cisco-ftd-invalid-transport-field">
     <parent>cisco-ftd</parent>
     <prematch>4-500004</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) for protocol=(\S+), from (\S+)/(\S+) to (\S+)/(\S+)</regex>
-    <order>protocol, src_ip, src_port, dst_ip, dst_port</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfor\sprotocol=(\S+),\sfrom\s(\S+)/(\S+)\sto\s(\S+)/(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, protocol, src_ip, src_port, dst_ip, dst_port</order>
 </decoder>
 
 
@@ -217,8 +215,8 @@
 <decoder name="cisco-ftd-denied-invalid-icmp">
     <parent>cisco-ftd</parent>
     <prematch>4-313009</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) code (\S+), for \S+:(\S+)/(\S+) \(\S+\) to (\S+):(\S+)/(\S+) \(\S+\), ICMP id (\S+), ICMP type (\S+)</regex>
-    <order>description, code, src, src_port, dst, dst_ip, dst_port, icmp_id, icmp_type</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\scode\s(\S+),\sfor\s\S+:(\S+)/(\S+)\s\(\S+\)\sto\s(\S+):(\S+)/(\S+)\s\(\S+\),\sICMP\sid\s(\S+),\sICMP\stype\s(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, code, src, src_port, dst, dst_ip, dst_port, icmp_id, icmp_type</order>
 </decoder>
 
 
@@ -228,8 +226,8 @@
 <decoder name="cisco-ftd-discard-ip-fragment">
     <parent>cisco-ftd</parent>
     <prematch>4-209005</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+)  src = (\S+), dest = (\S+), proto = (\S+), id = (\S+)</regex>
-    <order>description, src, dst, protocol, fragment_id</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\s\ssrc\s=\s(\S+),\sdest\s=\s(\S+),\sproto\s=\s(\S+),\sid\s=\s(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, src, dst, protocol, fragment_id</order>
 </decoder>
 
 <!--
@@ -238,19 +236,8 @@
 <decoder name="cisco-ftd-teardown-translation">
     <parent>cisco-ftd</parent>
     <prematch>6-305012</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) duration (\d+:\d+:\d+)</regex>
-    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port, duration</order>
-</decoder>
-
-
-<!--
-%ftd-4-313004: Denied ICMP type=0, from laddr 80.241.208.43 on interface outside to 116.6.127.116: no matching session
--->
-<decoder name="cisco-ftd-denied-icmp">
-    <parent>cisco-ftd</parent>
-    <prematch>4-313004</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) type=(\S+), from (\S+) on interface (\S+) to (\S+): (.+)</regex>
-    <order>description, type, src_ip, interface, dst_ip, reason</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+):(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+)\sduration\s(\d+:\d+:\d+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, src, src_ip, src_port, dst, dst_ip, dst_port, duration</order>
 </decoder>
 
 <!--
@@ -259,8 +246,8 @@
 <decoder name="cisco-ftd-user-running-executed">
     <parent>cisco-ftd</parent>
     <prematch>5-111010</prematch>
-    <regex type="pcre2" offset="after_prematch">User (\S+), running (\S+) from IP (\S+), (\S+) (.+)</regex>
-    <order>username, running, ip, type, command</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(User\s(\S+),\srunning\s(\S+)\sfrom\sIP\s(\S+),\s(\S+)\s(.+))</regex>
+    <order>header, product.name, event.severity, event.id, message, username, running, ip, type, command</order>
 </decoder>
 
 <!--
@@ -269,8 +256,8 @@
 <decoder name="cisco-ftd-module-ips">
     <parent>cisco-ftd</parent>
     <prematch>1-505015</prematch>
-    <regex type="pcre2" offset="after_prematch">Module (.+), application up (\S+), version (\S+)</regex>
-    <order>module_id, app_up, version</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(Module\s(.+),\sapplication\sup\s(\S+),\sversion\s(\S+))</regex>
+    <order>header, product.name, event.severity, event.id, message, module_id, app_up, version</order>
 </decoder>
 <!--
 %FTD-6-302014: Teardown TCP connection 4211 for external:171.70.168.183/53 to mgmt:192.168.1.185/1032 duration 0:00:00 bytes 526
@@ -279,8 +266,8 @@
 <decoder name="cisco-ftd-teardown-connection-tcpudp">
     <parent>cisco-ftd</parent>
     <prematch>6-302014|6-302016</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) (\d+) for (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) duration (\d+:\d+:\d+) bytes (\d+)</regex>
-    <order>description, connection, src, src_ip, src_port, dst, dst_ip, dst_port, duration, bytes</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\s(\d+)\sfor\s(\S+):(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+)\sduration\s(\d+:\d+:\d+)\sbytes\s(\d+))</regex>
+    <order>header, product.name, event.severity, event.id, message, description, connection, src, src_ip, src_port, dst, dst_ip, dst_port, duration, bytes</order>
 </decoder>
 
 <!--
@@ -289,8 +276,8 @@
 <decoder name="cisco-ftd-duplicate-syn">
     <parent>cisco-ftd</parent>
     <prematch>4-419002</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+) with different initial sequence number</regex>
-    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+):(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+)\swith\sdifferent\sinitial\ssequence\snumber)</regex>
+    <order>header, product.name, event.severity, event.id, message, description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
 </decoder>
 
 <!--
@@ -299,8 +286,8 @@
 <decoder name="cisco-ftd-response-collision">
     <parent>cisco-ftd</parent>
     <prematch>4-405001</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+)/(\S+) on interface (\S+) to (\S+)/(\S+) on interface (\S+)</regex>
-    <order>description, src_ip, new_arp, interface, existing_arp</order>
+    <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+)/(\S+)\son\sinterface\s(\S+)\sto\s(\S+)/(\S+)\son\sinterface\s(\S+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, src_ip, new_arp, interface, existing_arp</order>
 </decoder>
 
 <!--
@@ -309,8 +296,8 @@
 <decoder name="cisco-ftd-deny-teardrop-fragment">
     <parent>cisco-ftd</parent>
     <prematch>2-106020</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) \(size = (\S+), offset = (\S+)\) from (\S+) to (\S+)</regex>
-    <order>description, size, offset, src, dst</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\s\(size\s=\s(\S+),\soffset\s=\s(\S+)\)\sfrom\s(\S+)\sto\s(\S+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, size, offset, src, dst</order>
 </decoder>
 
 <!--
@@ -319,8 +306,8 @@
 <decoder name="cisco-ftd-bad-hdr-length">
     <parent>cisco-ftd</parent>
     <prematch>5-500003</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) \(hdrlen=(\S+), pktlen=(\S+)\) from (\S+)/(\S+) to (\S+)/(\S+), flags: (.+), on interface (\S+)</regex>
-    <order>description, hdrlen, pktlen, src_ip, src_port, dst_ip, dst_port, flags, interface</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\s\(hdrlen=(\S+),\spktlen=(\S+)\)\sfrom\s(\S+)/(\S+)\sto\s(\S+)/(\S+),\sflags:\s(.+),\son\sinterface\s(\S+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, hdrlen, pktlen, src_ip, src_port, dst_ip, dst_port, flags, interface</order>
 </decoder>
 
 <!--
@@ -329,8 +316,8 @@
 <decoder name="cisco-ftd-pat-pool-exhausted">
     <parent>cisco-ftd</parent>
     <prematch>3-202010</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) from (\S+):(\S+)/(\S+) to (\S+):(\S+)/(\S+)</regex>
-    <order>description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfrom\s(\S+):(\S+)/(\S+)\sto\s(\S+):(\S+)/(\S+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, src, src_ip, src_port, dst, dst_ip, dst_port</order>
 </decoder>
 
 <!--
@@ -339,8 +326,8 @@
 <decoder name="cisco-ftd-lost-failover">
     <parent>cisco-ftd</parent>
     <prematch>1-105005</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) interface (\S+)</regex>
-    <order>description, interface</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sinterface\s(\S+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, interface</order>
 </decoder>
 
 
@@ -350,8 +337,8 @@
 <decoder name="cisco-ftd-deny-flows">
     <parent>cisco-ftd</parent>
     <prematch>1-106101</prematch>
-    <regex type="pcre2" offset="after_prematch">The number of (\S+) (.+) has reached limit \((\S+)\)</regex>
-    <order>log, description, log, limit</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?(The\snumber\sof\s(\S+)\s(.+)\shas\sreached\slimit\s\((\S+)\))</regex>
+   <order>header, product.name, event.severity, event.id, message, log, description, log, limit</order>
 </decoder>
 
 <!--
@@ -360,8 +347,8 @@
 <decoder name="cisco-ftd-attempting-fallback">
     <parent>cisco-ftd</parent>
     <prematch>4-409023</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) for user (\S+) : (.+)</regex>
-    <order>description, username, message</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfor\suser\s(\S+)\s:\s(.+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, username, message</order>
 </decoder>
 
 
@@ -371,8 +358,8 @@
 <decoder name="cisco-ftd-task-ran">
     <parent>cisco-ftd</parent>
     <prematch type="pcre2">[^%]*%FTD-4-711004[:\s].*</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) for (.+), Process = (\S+), PC = (\S+), Call stack = (\w+)</regex>
-    <order>description, time, process, pc, call_stack</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\sfor\s(.+),\sProcess\s=\s(\S+),\sPC\s=\s(\S+),\sCall\sstack\s=\s(\w+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, time, process, pc, call_stack</order>
 </decoder>
 
 <!--
@@ -381,8 +368,8 @@
 <decoder name="cisco-ftd-line-protocol-interface">
     <parent>cisco-ftd</parent>
     <prematch type="pcre2">[^%]*%FTD-4-411001[:\s].*</prematch>
-    <regex type="pcre2" offset="after_prematch">(.+) on interface (\S+) (.+)</regex>
-    <order>description, interface, action</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((.+)\son\sinterface\s(\S+)\s(.+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, interface, action</order>
 </decoder>
 
 <!--
@@ -391,8 +378,8 @@
 <decoder name="cisco-ftd-system-memory">
     <parent>cisco-ftd</parent>
     <prematch type="pcre2">[^%]*%FTD-2-321006[:\s].*</prematch>
-    <regex type="pcre2" offset="after_prematch">(System Memory usage) reached (\S+)</regex>
-    <order>description, percentage</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((System\sMemory\susage)\sreached\s(\S+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, percentage</order>
 </decoder>
 
 <!--
@@ -401,6 +388,6 @@
 <decoder name="cisco-ftd-ip-collision">
     <parent>cisco-ftd</parent>
     <prematch type="pcre2">[^%]*%FTD-4-405003[:\s].*</prematch>
-    <regex type="pcre2" offset="after_prematch">(IP address collision) detected between host (\S+) at (\S+) and interface (\S+), (\S+)</regex>
-    <order>description, host_ip, src_mac, interface, int_mac_address</order>
+   <regex type="pcre2">([^%]+)?%(FTD)-([0-7])-([^:\s]+):?\s?((IP\saddress\scollision)\sdetected\sbetween\shost\s(\S+)\sat\s(\S+)\sand\sinterface\s(\S+),\s(\S+))</regex>
+   <order>header, product.name, event.severity, event.id, message, description, host_ip, src_mac, interface, int_mac_address</order>
 </decoder>
