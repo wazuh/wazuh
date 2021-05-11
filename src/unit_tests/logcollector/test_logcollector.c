@@ -421,7 +421,6 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
 
     expect_string(__wrap_cJSON_CreateString, string, "2021-04-27 08:07:20-0700");
     will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
@@ -434,6 +433,8 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
 
     expect_function_call(__wrap_cJSON_AddItemToObject);
     will_return(__wrap_cJSON_AddItemToObject, true);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
 
     expect_function_call(__wrap_cJSON_AddItemToObject);
     will_return(__wrap_cJSON_AddItemToObject, true);
@@ -449,7 +450,7 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
 }
 
 void test_w_save_files_status_to_cJSON_data(void ** state) {
-        test_mode = 1;
+    test_mode = 1;
 
     os_file_status_t * data;
     os_calloc(1, sizeof(os_file_status_t), data);

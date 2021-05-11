@@ -2766,13 +2766,9 @@ STATIC void w_load_files_status(cJSON * global_json) {
         }
     }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-    cJSON * macos_log = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_MACOS);
-    char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP));
-    char * settings = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS));
-    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
-        w_macos_set_last_log_timestamp(timestamp);
-        w_macos_set_log_settings(settings);
-    }
+   
+   w_macos_set_status_from_JSON(global_json);
+
 #endif
 
 }
@@ -2815,19 +2811,15 @@ STATIC char * w_save_files_status_to_cJSON() {
     w_rwlock_unlock(&files_status->mutex);
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-    char * timestamp = w_macos_get_last_log_timestamp();
-    char * settings = w_macos_get_log_settings();
-    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
-        cJSON * macos_log = cJSON_CreateObject();
+
+    cJSON * macos_status = w_macos_get_status_as_JSON();
+    if (macos_status != NULL) {
         if (global_json == NULL) {
             global_json = cJSON_CreateObject();
         }
-        cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
-        cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS, cJSON_CreateString(settings));
-        cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_MACOS, macos_log);
+        cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_MACOS, macos_status);
     }
-    os_free(settings);
-    os_free(timestamp);
+
 #endif
 
     if (global_json != NULL) {
