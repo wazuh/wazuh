@@ -442,4 +442,29 @@ char * w_macos_get_log_settings(void) {
     return settings;
 }
 
+cJSON * w_macos_get_status_as_JSON(void) {
+    cJSON * macos_log = NULL;
+    char * timestamp = w_macos_get_last_log_timestamp();
+    char * settings = w_macos_get_log_settings();
+    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
+        macos_log = cJSON_CreateObject();
+        cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
+        cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS, cJSON_CreateString(settings));
+    }
+    os_free(settings);
+    os_free(timestamp);
+
+    return macos_log;
+}
+
+void w_macos_set_status_from_JSON(cJSON * global_json) {
+    cJSON * macos_log = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_MACOS);
+    char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP));
+    char * settings = cJSON_GetStringValue(cJSON_GetObjectItem(macos_log, OS_LOGCOLLECTOR_JSON_SETTINGS));
+    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
+        w_macos_set_last_log_timestamp(timestamp);
+        w_macos_set_log_settings(settings);
+    }
+}
+
 #endif

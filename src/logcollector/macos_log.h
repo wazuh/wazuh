@@ -122,4 +122,18 @@ char * w_macos_get_last_log_timestamp(void);
  */
 char * w_macos_get_log_settings(void);
 
+/**
+ * @brief Get macos vault as JSON
+ * 
+ * @return cJSON* macos vault
+ */
+cJSON * w_macos_get_status_as_JSON(void);
+
+/**
+ * @brief Set macos vault from JSON
+ * 
+ * @param global_json JSON object containing macos vault information
+ */
+void w_macos_set_status_from_JSON(cJSON * global_json);
+
 #endif /* MACOS_LOG_H */
