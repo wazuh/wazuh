@@ -7,6 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
+
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 #include "macos_log.h"
 
