@@ -3678,7 +3678,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         }
         else {
             mdebug1("Error getting packages from sys_programs");
-            snprintf(output, OS_MAXSTR + 1, "Error getting packages from sys_programs");
+            snprintf(output, OS_MAXSTR + 1, "err Error getting packages from sys_programs");
         }
         if (OS_SOCKTERR == result) {
             // Close the socket and send nothing as a response
@@ -3765,7 +3765,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         }
         else {
             mdebug1("Error getting hotfixes from sys_hotfixes");
-            snprintf(output, OS_MAXSTR + 1, "Error getting hotfixes from sys_hotfixes");
+            snprintf(output, OS_MAXSTR + 1, "err Error getting hotfixes from sys_hotfixes");
         }
         if (OS_SOCKTERR == result) {
             // Close the socket and send nothing as a response
