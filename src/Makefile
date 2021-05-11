@@ -1144,7 +1144,7 @@ BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
 else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 WAZUH_LIB = libwazuhshared.$(SHARED)
-BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB) ${WAZUH_LIB}
+BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
