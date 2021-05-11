@@ -1632,6 +1632,12 @@ $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 # Minimal dependencies for building active responses programs
 AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
 
+ifeq (${TARGET}, winagent)
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+AR_PROGRAMS_DEPS += unit_tests/wrappers/common.o unit_tests/wrappers/windows/handleapi_wrappers.o unit_tests/wrappers/windows/fileapi_wrappers.o unit_tests/wrappers/windows/libc/stdio_wrappers.o
+endif
+endif
+
 .PHONY: active-responses
 active-responses: ${active_response_programs}
 
@@ -2148,13 +2154,13 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: win32/win_service_rk.o active-response/restart-wazuh.o active-response/active_responses.o
+win32/restart-wazuh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} win32/win_service_rk.o active-response/restart-wazuh.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/route-null.exe: win32/win_service_rk.o active-response/route-null.o active-response/active_responses.o
+win32/route-null.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} win32/win_service_rk.o active-response/route-null.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/netsh.exe: win32/win_service_rk.o active-response/netsh.o active-response/active_responses.o
+win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} win32/win_service_rk.o active-response/netsh.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ####################
