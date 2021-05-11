@@ -413,6 +413,7 @@ void restore_sacls() {
     PSECURITY_DESCRIPTOR security_descriptor = NULL;
     int privilege_enabled = 0;
     directory_t *dir_it;
+    OSListNode *node_it;
 
     c_process = GetCurrentProcess();
     if (!OpenProcessToken(c_process, TOKEN_ADJUST_PRIVILEGES, &hdle)) {
@@ -427,7 +428,8 @@ void restore_sacls() {
 
     privilege_enabled = 1;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->dirs_status.status & WD_IGNORE_REST) {
             sacl_it = NULL;
 
@@ -915,6 +917,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     OSHashNode *w_dir_node_next;
     whodata_directory *w_dir;
     directory_t *dir_it;
+    OSListNode *node_it;
     unsigned int w_dir_it;
     FILETIME current_time;
     ULARGE_INTEGER stale_time;
@@ -928,7 +931,8 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
     while (FOREVER()) {
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             exists = 0;
             d_status = &dir_it->dirs_status;
 

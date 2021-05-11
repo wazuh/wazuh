@@ -26,7 +26,8 @@ directory_t *fim_create_directory(const char *path,
                                   const char *filerestrict,
                                   int recursion_level,
                                   const char *tag,
-                                  int diff_size_limit) {
+                                  int diff_size_limit,
+                                  unsigned int is_wildcard) {
     directory_t *new_entry;
 
     os_calloc(1, sizeof(directory_t), new_entry);
@@ -35,6 +36,8 @@ directory_t *fim_create_directory(const char *path,
     new_entry->diff_size_limit = diff_size_limit;
     new_entry->recursion_level = recursion_level;
     os_strdup(path, new_entry->path);
+    new_entry->is_wildcard = is_wildcard;
+    new_entry->is_expanded = 0;
 
     if (CHECK_FOLLOW & options) {
         new_entry->symbolic_links = realpath(new_entry->path, NULL);
@@ -55,37 +58,28 @@ directory_t *fim_create_directory(const char *path,
     return new_entry;
 }
 
-void fim_insert_directory(directory_t ***config_array,
-                          directory_t *config_object) {
-    int i = 0;
+void fim_insert_directory(OSList *config_list,
+                          directory_t *new_entry) {
+    OSListNode *node_it;
     directory_t *dir_it;
 
-    // Initialize array if needed
-    if (*config_array == NULL) {
-        os_calloc(2, sizeof(directory_t *), *config_array);
-
-        (*config_array)[0] = config_object;
-        return;
-    }
-
-    for (i = 0, dir_it = (*config_array)[0]; dir_it != NULL; dir_it = (*config_array)[++i]) {
-        int cmp = strcmp(dir_it->path, config_object->path);
+    OSList_foreach (node_it, config_list) {
+        dir_it = node_it->data;
+        int cmp = strcmp(dir_it->path, new_entry->path);
         if (cmp == 0) {
             // Duplicated entry, replace existing with new one
-            free_directory((*config_array)[i]);
-            (*config_array)[i] = config_object;
+            free_directory(dir_it);
+            node_it->data = new_entry;
             return;
         } else if (cmp > 0) {
-            // Replace the current entry and move the one we took next.
-            (*config_array)[i] = config_object;
-            config_object = dir_it;
+            // Insert the new entry before the current node.
+            OSList_InsertData(config_list, node_it, new_entry);
+            return;
         }
     }
 
-    // Add as new entry
-    os_realloc(*config_array, (i + 2) * sizeof(directory_t *), *config_array);
-    (*config_array)[i] = config_object;
-    (*config_array)[i + 1] = NULL;
+    // Add as new entry or last entry
+    OSList_InsertData(config_list, NULL, new_entry);
 }
 
 directory_t *fim_copy_directory(const directory_t *_dir) {
@@ -98,7 +92,60 @@ directory_t *fim_copy_directory(const directory_t *_dir) {
     }
 
     return fim_create_directory(_dir->path, _dir->options, filerestrict, _dir->recursion_level,
-                                _dir->tag, _dir->diff_size_limit);
+                                _dir->tag, _dir->diff_size_limit, _dir->is_wildcard);
+}
+
+void update_wildcards_config(OSList *directories,
+                             OSList *wildcards){
+    if (wildcards == NULL || directories == NULL) {
+        return;
+    }
+
+    OSListNode *node_it;
+    OSListNode *aux_it;
+    directory_t *dir_it;
+    directory_t *new_entry;
+    char **paths;
+
+    OSList_foreach(node_it, directories) {
+        dir_it = node_it->data;
+        dir_it->is_expanded = 0;
+    }
+
+    OSList_foreach(node_it, wildcards) {
+        dir_it = node_it->data;
+        paths = expand_wildcards(dir_it->path);
+        if (paths == NULL) {
+            continue;
+        }
+
+        for (int i = 0; paths[i]; i++) {
+            new_entry = fim_copy_directory(dir_it);
+            os_free(new_entry->path);
+            new_entry->path = paths[i];
+            new_entry->is_expanded = 1;
+
+            if (CHECK_FOLLOW & new_entry->options) {
+                new_entry->symbolic_links = realpath(new_entry->path, NULL);
+            }
+
+            fim_insert_directory(directories, new_entry);
+        }
+        os_free(paths);
+    }
+
+    node_it = OSList_GetFirstNode(directories);
+    while (node_it != NULL) {
+        dir_it = node_it->data;
+        if (dir_it->is_wildcard && !dir_it->is_expanded) {
+            aux_it = OSList_GetNext(directories, node_it);
+            free_directory(dir_it);
+            OSList_DeleteThisNode(directories, node_it);
+            node_it = aux_it;
+        } else {
+            node_it = OSList_GetNext(directories, node_it);
+        }
+    }
 }
 
 #ifdef WIN32
@@ -1021,9 +1068,18 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             // Fill wildcards array
             if (strchr(clean_path, '*') || strchr(clean_path, '?') || strchr(clean_path, '[')) {
                 directory_t *wildcard = fim_create_directory(clean_path, opts, restrictfile, recursion_limit,
-                                                             clean_tag, tmp_diff_size);
-                fim_insert_directory(&syscheck->wildcards, wildcard);
+                                                             clean_tag, tmp_diff_size, 1);
+                if (syscheck->wildcards == NULL) {
+                    syscheck->wildcards = OSList_Create();
+                    if (syscheck->wildcards == NULL) {
+                        // TODO error
+                        continue;
+                    }
+                }
+
+                fim_insert_directory(syscheck->wildcards, wildcard);
                 paths = expand_wildcards(clean_path);
+
                 if (paths == NULL) {
                     os_free(clean_path);
                     continue;
@@ -1032,24 +1088,20 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 for (int j = 0; paths[j]; j++) {
                     new_entry = fim_copy_directory(wildcard);
                     os_free(new_entry->path);
-                    os_strdup(paths[j], new_entry->path);
-                    os_free(paths[j]);
-                    os_free(new_entry->symbolic_links);
+                    new_entry->path = paths[j];
 
                     if (CHECK_FOLLOW & new_entry->options) {
                         new_entry->symbolic_links = realpath(new_entry->path, NULL);
                     }
 
-                    fim_insert_directory(&syscheck->directories, new_entry);
-
-                    // TODO: Connect every wildcard with his expanded configuration object
+                    fim_insert_directory(syscheck->directories, new_entry);
                 }
 
                 os_free(paths);
             } else {
                 new_entry = fim_create_directory(clean_path, opts, restrictfile, recursion_limit,
-                                     clean_tag, tmp_diff_size);
-                fim_insert_directory(&syscheck->directories, new_entry);
+                                     clean_tag, tmp_diff_size, 0);
+                fim_insert_directory(syscheck->directories, new_entry);
             }
 
             os_free(clean_path);
@@ -2102,6 +2154,8 @@ void free_directory(directory_t *dir) {
 }
 
 void Free_Syscheck(syscheck_config * config) {
+    OSListNode *node_it;
+
     if (config) {
         int i;
         if (config->scan_day) {
@@ -2137,16 +2191,20 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->nodiff_regex);
         }
         if (config->directories) {
-            for (i = 0; config->directories[i] != NULL; i++) {
-                free_directory(config->directories[i]);
+            OSList_foreach(node_it, config->directories) {
+                free_directory(node_it->data);
+                node_it->data = NULL;
             }
-            free(config->directories);
+            OSList_Destroy(config->directories);
+            config->directories = NULL;
         }
         if (config->wildcards) {
-            for (i = 0; config->wildcards[i] != NULL; i++) {
-                free_directory(config->wildcards[i]);
+            OSList_foreach(node_it, config->wildcards) {
+                free_directory(node_it->data);
+                node_it->data = NULL;
             }
-            free(config->wildcards);
+            OSList_Destroy(config->wildcards);
+            config->wildcards = NULL;
         }
 
 #ifdef WIN32

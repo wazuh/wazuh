@@ -73,4 +73,21 @@ void OSList_CleanNodes(OSList *list);
  */
 void OSList_CleanOnlyNodes(OSList *list);
 
+/**
+ * @brief Get the next node to a given node
+ *
+ * @param list List where to get the node from
+ * @param node Node reference to get next
+ */
+OSListNode *OSList_GetNext(OSList *list, OSListNode *node);
+
+/**
+ * @brief Insert data in the place of a given node
+ *
+ * @param list List where to get the node from
+ * @param node Node reference to insert new node with data
+ * @param node Data to be insert
+ */
+int OSList_InsertData(OSList *list, OSListNode *node, void *data);
+
 #endif /* OS_LIST */

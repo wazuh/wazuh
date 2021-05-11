@@ -1832,6 +1832,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     struct stat file_buf = { .st_mode = S_IFREG };
     struct dirent *file = *state;
     directory_t *dir_it;
+    OSListNode *node_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -1845,7 +1846,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1933,6 +1935,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 static void test_fim_scan_db_full_not_double_scan(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -1946,7 +1949,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1988,6 +1992,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
     rtfim realtime = { .queue_overflow = true, .dirtb = &dirtb };
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
 
     syscheck.realtime = &realtime;
 
@@ -2003,7 +2008,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2057,6 +2063,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
 static void test_fim_scan_db_free(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2070,7 +2077,8 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2113,6 +2121,7 @@ static void test_fim_scan_db_free(void **state) {
 static void test_fim_scan_no_limit(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2126,7 +2135,8 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);

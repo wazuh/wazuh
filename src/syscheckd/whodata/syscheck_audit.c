@@ -180,8 +180,10 @@ void audit_no_rules_to_realtime() {
     int found;
     char *real_path = NULL;
     directory_t *dir_it = NULL;
+    OSListNode *node_it;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }
@@ -298,6 +300,7 @@ void audit_set_db_consistency(void) {
 void *audit_main(audit_data_t *audit_data) {
     char *path = NULL;
     directory_t *dir_it = NULL;
+    OSListNode *node_it;
     count_reload_retries = 0;
     atomic_int_set(&audit_thread_active,0);
 
@@ -328,7 +331,8 @@ void *audit_main(audit_data_t *audit_data) {
     // Clean regexes used for parsing events
     clean_regex();
     // Change Audit monitored folders to Inotify.
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }

@@ -146,10 +146,12 @@ int Start_win32_Syscheck()
 
     if (!syscheck.disabled) {
         directory_t *dir_it;
+        OSListNode *node_it;
 #ifndef WIN_WHODATA
         int whodata_notification = 0;
         /* Remove whodata attributes */
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             if (dir_it->options & WHODATA_ACTIVE) {
                 if (!whodata_notification) {
                     whodata_notification = 1;
@@ -176,7 +178,8 @@ int Start_win32_Syscheck()
         }
 
         /* Print directories to be monitored */
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             char optstr[ 1024 ];
 
             minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));

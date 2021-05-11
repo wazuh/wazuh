@@ -22,6 +22,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 {
     int modules = 0;
     directory_t *dir_it;
+    OSListNode *node_it;
 
     modules |= CSYSCHECK;
 
@@ -42,7 +43,10 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.scan_time      = NULL;
     syscheck.file_limit_enabled = true;
     syscheck.file_limit     = 100000;
-    syscheck.directories = NULL;
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return (1);
+    }
     syscheck.wildcards = NULL;
     syscheck.enable_synchronization = 1;
     syscheck.restart_audit  = 1;
@@ -99,7 +103,10 @@ int Read_Syscheck_Config(const char *cfgfile)
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
 
-    foreach_array(dir_it, syscheck.directories) {
+    minfo("After ReadConfig");
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->diff_size_limit == -1) {
             dir_it->diff_size_limit = syscheck.file_size_limit;
         }
@@ -120,7 +127,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 
 #ifndef WIN32
     /* We must have at least one directory to check */
-    if (syscheck.directories == NULL || syscheck.directories[0] == NULL) {
+    if (syscheck.directories == NULL || syscheck.directories->first_node == NULL) {
         return (1);
     }
 #else
@@ -218,8 +225,10 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.directories) {
         directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
+        OSListNode *node_it;
 
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             cJSON *pair = cJSON_CreateObject();
             cJSON *opts = cJSON_CreateArray();
             if (dir_it->options & CHECK_MD5SUM) {

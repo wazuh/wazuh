@@ -3480,8 +3480,10 @@ void test_restore_sacls_set_privilege_failed(void **state){
 
 int setup_restore_sacls(void **state) {
     directory_t *dir_it;
+    OSListNode *node_it;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         dir_it->dirs_status.status &= ~WD_IGNORE_REST;
     }
 
@@ -3492,8 +3494,10 @@ int setup_restore_sacls(void **state) {
 
 int teardown_restore_sacls(void **state) {
     directory_t *dir_it;
+    OSListNode *node_it;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
             syscheck.directories[0]->dirs_status.status |= WD_IGNORE_REST;
         }

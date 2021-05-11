@@ -123,10 +123,8 @@ time_t fim_scan() {
     time_t end_of_scan;
     clock_t cputime_start;
     int nodes_count = 0;
+    OSListNode *node_it;
     directory_t *dir_it;
-    directory_t *wild_it;
-    directory_t *new_entry;
-    char **paths;
 
     cputime_start = clock();
     gettime(&start);
@@ -141,36 +139,14 @@ time_t fim_scan() {
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
-    foreach_array(wild_it, syscheck.wildcards) {
-        paths = expand_wildcards(wild_it->path);
-        if (paths == NULL) {
-            continue;
-        }
-
-        for (int i = 0; paths[i]; i++) {
-            new_entry = fim_copy_directory(wild_it);
-            os_free(new_entry->path);
-            os_strdup(paths[i], new_entry->path);
-            os_free(paths[i]);
-            os_free(new_entry->symbolic_links);
-
-            if (CHECK_FOLLOW & new_entry->options) {
-                new_entry->symbolic_links = realpath(new_entry->path, NULL);
-            }
-
-            fim_insert_directory(&syscheck.directories, new_entry);
-
-            // TODO: Check syscheck.wildcards for updates in congiguration
-        }
-
-        os_free(paths);
-    }
+    update_wildcards_config(syscheck.directories, syscheck.wildcards);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     fim_db_set_all_unscanned(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
         char *path = fim_get_real_path(dir_it);
 
@@ -202,7 +178,8 @@ time_t fim_scan() {
     if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
 
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             char *path;
             event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
 
@@ -1016,6 +993,7 @@ directory_t *fim_configuration_directory(const char *path) {
     char full_entry[OS_SIZE_4096 + 1] = {'\0'};
     directory_t *dir_it = NULL;
     directory_t *dir = NULL;
+    OSListNode *node_it;
     int top = 0;
     int match = 0;
 
@@ -1025,7 +1003,8 @@ directory_t *fim_configuration_directory(const char *path) {
 
     trail_path_separator(full_path, path, sizeof(full_path));
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         char *real_path = fim_get_real_path(dir_it);
 
         trail_path_separator(full_entry, real_path, sizeof(full_entry));

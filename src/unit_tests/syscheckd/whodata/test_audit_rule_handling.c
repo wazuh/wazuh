@@ -93,13 +93,15 @@ static int teardown_clean_rules_list(void **state) {
 
 static int setup_add_directories_to_whodata_list(void **state) {
     directory_t *dir_it;
+    OSListNode *node_it;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    foreach_array(dir_it, RELOAD_CONFIG) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;(dir_it, RELOAD_CONFIG) {
         whodata_directory_t *dir = calloc(1, sizeof(whodata_directory_t));
 
         if (dir == NULL) {

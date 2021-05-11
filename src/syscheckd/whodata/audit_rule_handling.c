@@ -82,6 +82,7 @@ int fim_rules_initial_load() {
     int retval;
     char *directory = NULL;
     directory_t *dir_it = NULL;
+    OSListNode *node_it;
     int rules_added = 0;
     int auditd_fd = audit_open();
     int res = audit_get_rule_list(auditd_fd);
@@ -93,7 +94,8 @@ int fim_rules_initial_load() {
     }
 
     w_mutex_lock(&rules_mutex);
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         // Check if dir[i] is set in whodata mode
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue; // LCOV_EXCL_LINE

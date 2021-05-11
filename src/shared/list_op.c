@@ -403,3 +403,75 @@ void OSList_CleanOnlyNodes(OSList *list) {
     w_mutex_unlock((pthread_mutex_t *)&list->mutex);
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 }
+
+OSListNode *OSList_GetNext(OSList *list, OSListNode *node) {
+    OSListNode *next;
+
+    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+    if (node == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+        w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+        return (NULL);
+    }
+
+    next = node->next;
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+
+    return (next);
+}
+
+/* Add data to the list
+ * Returns 1 on success and 0 on failure
+ */
+int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
+    OSListNode *newnode;
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    /* Allocate memory for new node */
+    newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
+    if (newnode == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+        w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+        return 1;
+    }
+
+    newnode->data = data;
+
+    /* If we don't have a first node, assign it */
+    if (!list->first_node) {
+        list->first_node = newnode;
+        list->last_node = newnode;
+        newnode->prev = NULL;
+        newnode->next = NULL;
+    } else if (node == NULL) {
+        newnode->prev = list->last_node;
+        newnode->prev->next = newnode;
+        newnode->next = NULL;
+        list->last_node = newnode;
+    } else {
+        if (node->prev == NULL) {
+            newnode->prev = NULL;
+            list->first_node = newnode;
+        } else {
+            node->prev->next = newnode;
+            newnode->prev = node->prev;
+        }
+        newnode->next = node;
+        node->prev = newnode;
+    }
+
+    /* Increment list size */
+    list->currently_size++;
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+
+    return 0;
+}

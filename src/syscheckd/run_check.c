@@ -366,6 +366,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 
 #ifdef WIN32
     directory_t *dir_it;
+    OSListNode *node_it;
 
     set_priority_windows_thread();
 #endif
@@ -373,7 +374,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     while (1) {
 #ifdef WIN32
         // Directories in Windows configured with real-time add recursive watches
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
                 w_mutex_lock(&syscheck.fim_realtime_mutex);
                 realtime_adddir(dir_it->path, dir_it, 0);
@@ -447,8 +449,10 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 
 #else
     directory_t *dir_it;
+    OSListNode *node_it;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->options & REALTIME_ACTIVE) {
             mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
             break;
@@ -486,8 +490,10 @@ int fim_whodata_initialize() {
     long unsigned int t_id;
     HANDLE t_hdle;
     directory_t *dir_it;
+    OSListNode *node_it;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }
@@ -516,7 +522,8 @@ int fim_whodata_initialize() {
         audit_restore();
 
         // Add proper flags for the realtime thread monitors the directories/files.
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
             dir_it->dirs_status.status |= WD_CHECK_REALTIME;
             dir_it->options &= ~WHODATA_ACTIVE;
@@ -582,6 +589,7 @@ void log_realtime_status(int next) {
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
     directory_t *dir_it;
+    OSListNode *node_it;
 
     mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
@@ -590,7 +598,8 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
         mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             if ((dir_it->options & CHECK_FOLLOW) == 0) {
                 continue;
             }
@@ -641,10 +650,12 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
     int in_configuration = false;
     int is_new_link = true;
     directory_t *dir_it;
+    OSListNode *node_it;
 
     // Check if the previously pointed folder is in the configuration
     // and delete its database entries if it isn't
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it == configuration) {
             // This is the link being changed
             continue;
@@ -667,7 +678,8 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
     }
 
     // Check if the updated path of the link is already in the configuration
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it == configuration) {
             if (strcmp(new_path, dir_it->path) == 0) {
                 // We were monitoring a link, now we are monitoring the actual directory
@@ -830,8 +842,10 @@ STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {
 
 STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration) {
     directory_t *dir_it;
+    OSListNode *node_it;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (strcmp(path, dir_it->path) == 0) {
             // If a configuration directory exists don't reload
             mdebug1(FIM_LINK_ALREADY_ADDED, dir_it->path);
@@ -853,6 +867,7 @@ STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration) 
 #ifdef WIN_WHODATA
 void set_whodata_mode_changes() {
     directory_t *dir_it;
+    OSListNode *node_it;
 
     if (syscheck.realtime == NULL) {
         realtime_start();
@@ -860,7 +875,8 @@ void set_whodata_mode_changes() {
 
     syscheck.realtime_change = 0;
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->dirs_status.status & WD_CHECK_REALTIME) {
             // At this point the directories in whodata mode that have been deconfigured are added to realtime
             dir_it->dirs_status.status &= ~WD_CHECK_REALTIME;
