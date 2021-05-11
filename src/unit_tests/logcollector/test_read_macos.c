@@ -22,11 +22,11 @@
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/wazuh/shared/expression_wrappers.h"
 
-bool macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt);
-void macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt);
-void macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt);
-bool macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt);
-char * macos_log_get_last_valid_line(char * str);
+bool w_macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt);
+void w_macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt);
+void w_macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt);
+bool w_macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt);
+char * w_macos_log_get_last_valid_line(char * str);
 bool MACOS_LOG_Header_check(w_macos_log_config_t * macos_log_cfg, char * buffer);
 
 /* setup/teardown */
@@ -57,7 +57,7 @@ void test_macos_log_ctxt_restore_false(void ** state) {
 
     char * buffer = NULL;
 
-    bool ret = macos_log_ctxt_restore(buffer, &ctxt);
+    bool ret = w_macos_log_ctxt_restore(buffer, &ctxt);
     assert_false(ret);
 
 }
@@ -70,7 +70,7 @@ void test_macos_log_ctxt_restore_true(void ** state) {
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    bool ret = macos_log_ctxt_restore(buffer, &ctxt);
+    bool ret = w_macos_log_ctxt_restore(buffer, &ctxt);
     assert_true(ret);
 
 }
@@ -86,7 +86,7 @@ void test_macos_log_ctxt_backup_success(void ** state) {
 
     strncpy(buffer,"test",OS_MAXSTR);
 
-    macos_log_ctxt_backup(buffer, &ctxt);
+    w_macos_log_ctxt_backup(buffer, &ctxt);
 
     assert_non_null(ctxt.buffer);
     assert_non_null(ctxt.timestamp);
@@ -103,10 +103,10 @@ void test_macos_log_ctxt_clean_success(void ** state) {
     ctxt.timestamp = time(NULL);
 
 
-    macos_log_ctxt_clean(&ctxt);
+    w_macos_log_ctxt_clean(&ctxt);
 
     assert_int_equal(ctxt.timestamp, 0);
-    assert_string_equal(ctxt.buffer,"\0");
+    assert_string_equal(ctxt.buffer, "\0");
 
 }
 
@@ -119,7 +119,7 @@ void test_macos_is_log_ctxt_expired_true(void ** state) {
 
     ctxt.timestamp = (time_t) 1;
 
-    bool ret = macos_is_log_ctxt_expired(timeout, &ctxt);
+    bool ret = w_macos_is_log_ctxt_expired(timeout, &ctxt);
 
     assert_true(ret);
 
@@ -132,7 +132,7 @@ void test_macos_is_log_ctxt_expired_false(void ** state) {
 
     ctxt.timestamp = time(NULL);
 
-    bool ret = macos_is_log_ctxt_expired(timeout, &ctxt);
+    bool ret = w_macos_is_log_ctxt_expired(timeout, &ctxt);
 
     assert_false(ret);
 
@@ -144,7 +144,7 @@ void test_macos_log_get_last_valid_line_str_null(void ** state) {
 
     char * str = NULL;
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_null(ret);
 
@@ -154,7 +154,7 @@ void test_macos_log_get_last_valid_line_str_empty(void ** state) {
 
     char * str = '\0';
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_null(ret);
 
@@ -166,7 +166,7 @@ void test_macos_log_get_last_valid_line_str_without_new_line(void ** state) {
 
     os_strdup("2021-04-22 12:00:00.230270-0700 test", str);
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_null(ret);
     os_free(str);
@@ -179,7 +179,7 @@ void test_macos_log_get_last_valid_line_str_with_new_line_end(void ** state) {
 
     os_strdup("2021-04-22 12:00:00.230270-0700 test\n", str);
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_null(ret);
     os_free(str);
@@ -192,7 +192,7 @@ void test_macos_log_get_last_valid_line_str_with_new_line_not_end(void ** state)
 
     os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2", str);
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test2");
     os_free(str);
@@ -205,7 +205,7 @@ void test_macos_log_get_last_valid_line_str_with_two_new_lines_end(void ** state
 
     os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n", str);
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test2\n");
     os_free(str);
@@ -218,7 +218,7 @@ void test_macos_log_get_last_valid_line_str_with_two_new_lines_not_end(void ** s
 
     os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n2021-04-22 12:00:00.230270-0700 test3", str);
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test3");
     os_free(str);
@@ -231,7 +231,7 @@ void test_macos_log_get_last_valid_line_str_with_three_new_lines_end(void ** sta
 
     os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n2021-04-22 12:00:00.230270-0700 test3\n", str);
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test3\n");
     os_free(str);
@@ -244,7 +244,7 @@ void test_macos_log_get_last_valid_line_str_with_three_new_lines_not_end(void **
 
     os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n2021-04-22 12:00:00.230270-0700 test3\n2021-04-22 12:00:00.230270-0700 test4", str);
 
-    char * ret =macos_log_get_last_valid_line(str);
+    char * ret = w_macos_log_get_last_valid_line(str);
 
     assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test4");
     os_free(str);

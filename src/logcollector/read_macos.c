@@ -6,6 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
+
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 
 #include "shared.h"
@@ -34,7 +35,7 @@
  * @return  true if a new log was collected,
  *          false otherwise
  */
-STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
+STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
 
 /**
  * @brief Restores the context from backup
@@ -45,7 +46,7 @@ STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_l
  * @param ctxt Backup context
  * @return true if the context was restored, otherwise returns false
  */
-STATIC bool macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt);
+STATIC bool w_macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Generates a backup of the reading context
@@ -53,7 +54,7 @@ STATIC bool macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt);
  * @param buffer Context to backup
  * @param ctxt Context's backup destination
  */
-STATIC INLINE void macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt);
+STATIC INLINE void w_macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Cleans the backup context
@@ -61,7 +62,7 @@ STATIC INLINE void macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctx
  * @warning Notice that this function does not release the context memory
  * @param ctxt context backup to clean
  */
-STATIC INLINE void macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt);
+STATIC INLINE void w_macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Checks if a backup context has expired
@@ -71,7 +72,7 @@ STATIC INLINE void macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt);
  * @param ctxt Context to check
  * @return true if the context has expired, otherwise returns false
  */
-STATIC bool macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt);
+STATIC bool w_macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt);
 
 /**
  * @brief Gets the pointer to the beginning of the last line contained in the string
@@ -81,7 +82,7 @@ STATIC bool macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt)
  * @param str String to be analyzed
  * @return Pointer to the beginning of the last line, NULL otherwise
  */
-STATIC char * macos_log_get_last_valid_line(char * str);
+STATIC char * w_macos_log_get_last_valid_line(char * str);
 
 /**
  * @brief Checks whether the `log stream` cli command returns a header or a log.
@@ -91,7 +92,7 @@ STATIC char * macos_log_get_last_valid_line(char * str);
  * @param buffer line to check
  * @return Returns false if the read line is a log, otherwise returns true 
  */
-STATIC bool macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
+STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 
 /**
  * @brief Trim milliseconds from a macOS ULS full timestamp
@@ -102,21 +103,7 @@ STATIC bool macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buf
  * @warning return value will be in short format timestamp i.e 2020-11-09 05:45:08-0800
  * @return Allocated short timestamp. NULL on error
  */
-STATIC char * w_macos_trim_full_timestamp(const char * full_timestamp) {
-    
-    char * short_timestamp = NULL;
-
-    if (w_strlen(full_timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN) {
-
-        os_calloc(OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1, sizeof(char), short_timestamp);
-        memcpy(short_timestamp, full_timestamp, OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN);
-        memcpy(short_timestamp + OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN,
-                full_timestamp + OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN + OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN,
-                OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN);
-    }
-
-    return short_timestamp;
-}
+STATIC char * w_macos_trim_full_timestamp(const char * full_timestamp);
 
 void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it) {
 
@@ -137,7 +124,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (macos_log_getlog(read_buffer, MAX_LINE_LEN, log_mode_wfd->file, lf->macos_log)
+    while (w_macos_log_getlog(read_buffer, MAX_LINE_LEN, log_mode_wfd->file, lf->macos_log)
            && (maximum_lines == 0 || count_logs < maximum_lines)) {
 
         size = strlen(read_buffer);
@@ -198,7 +185,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     return NULL;
 }
 
-STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg) {
+STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg) {
 
     bool retval = false; // This variable will be set to true if there is a buffered log
 
@@ -213,12 +200,12 @@ STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_l
     *str = '\0';
 
     /* Checks if a context recover is needed for incomplete logs */
-    if (macos_log_ctxt_restore(str, &macos_log_cfg->ctxt)) {
+    if (w_macos_log_ctxt_restore(str, &macos_log_cfg->ctxt)) {
         offset = strlen(str);
 
         /* If the context is expired then frees it and returns the log */
-        if (macos_is_log_ctxt_expired((time_t) MACOS_LOG_TIMEOUT, &macos_log_cfg->ctxt)) {
-            macos_log_ctxt_clean(&macos_log_cfg->ctxt);
+        if (w_macos_is_log_ctxt_expired((time_t) MACOS_LOG_TIMEOUT, &macos_log_cfg->ctxt)) {
+            w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             /* delete last end-of-line character */
             if (buffer[offset - 1] == '\n') {
                 buffer[offset - 1] = '\0';
@@ -245,19 +232,19 @@ STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_l
          */
         if (offset + 1 == length) {
             // Cleans the context and forces to send a log
-            macos_log_ctxt_clean(&macos_log_cfg->ctxt);
+            w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             is_buffer_full = true;
         } else if (!is_endline) {
             mdebug2("macOS ULS: Incomplete message...");
             // Saves the context
-            macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
+            w_macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
             continue;
         }
 
         /* Checks if the first line is the header or an error in the predicate. */
         if (!macos_log_cfg->is_header_processed) {
             /* Processes and discards lines up to the first log */
-            if (macos_is_log_header(macos_log_cfg, buffer)) {
+            if (w_macos_is_log_header(macos_log_cfg, buffer)) {
                 // Forces to continue reading
                 retval = true;
                 *buffer = '\0';
@@ -267,7 +254,7 @@ STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_l
 
         /* If this point has been reached, there is something to process in the buffer. */
 
-        last_line = macos_log_get_last_valid_line(buffer);
+        last_line = w_macos_log_get_last_valid_line(buffer);
 
         /* If there are 2 logs, they should be splited before sending them */
         if (is_endline && last_line != NULL) {
@@ -296,12 +283,12 @@ STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_l
         /* splits the logs */
         /* If a new log is received, we store it in the context and send the previous one. */
         if (do_split) {
-            macos_log_ctxt_clean(&macos_log_cfg->ctxt);
+            w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             *last_line = '\0';
             strncpy(macos_log_cfg->ctxt.buffer, last_line + 1, offset - (last_line - buffer) + 1);
             macos_log_cfg->ctxt.timestamp = time(NULL);
         } else if (!is_buffer_full) {
-            macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
+            w_macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
         }
 
         if (do_split || is_buffer_full) {
@@ -317,7 +304,7 @@ STATIC bool macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_l
     return retval;
 }
 
-STATIC bool macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt) {
+STATIC bool w_macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt) {
 
     if (ctxt->buffer[0] == '\0') {
         return false;
@@ -327,7 +314,7 @@ STATIC bool macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt) {
     return true;
 }
 
-STATIC bool macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt) {
+STATIC bool w_macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt) {
 
     if (time(NULL) - ctxt->timestamp > timeout) {
         return true;
@@ -336,20 +323,20 @@ STATIC bool macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt)
     return false;
 }
 
-STATIC INLINE void macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt) {
+STATIC INLINE void w_macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt) {
 
     ctxt->buffer[0] = '\0';
     ctxt->timestamp = 0;
 }
 
-STATIC INLINE void macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt) {
+STATIC INLINE void w_macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt) {
 
     /* Backup */
     strcpy(ctxt->buffer, buffer);
     ctxt->timestamp = time(NULL);
 }
 
-STATIC char * macos_log_get_last_valid_line(char * str) {
+STATIC char * w_macos_log_get_last_valid_line(char * str) {
 
     char * retval = NULL;
     char ignored_char = '\0';
@@ -371,7 +358,7 @@ STATIC char * macos_log_get_last_valid_line(char * str) {
     return retval;
 }
 
-STATIC bool macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer) {
+STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer) {
 
     bool retval = true;
     const ssize_t buffer_size = strlen(buffer);
@@ -401,6 +388,22 @@ STATIC bool macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buf
     }
 
     return retval;
+}
+
+STATIC char * w_macos_trim_full_timestamp(const char * full_timestamp) {
+    
+    char * short_timestamp = NULL;
+
+    if (w_strlen(full_timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN) {
+
+        os_calloc(OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1, sizeof(char), short_timestamp);
+        memcpy(short_timestamp, full_timestamp, OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN);
+        memcpy(short_timestamp + OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN,
+                full_timestamp + OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN + OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN,
+                OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN);
+    }
+
+    return short_timestamp;
 }
 
 #endif
