@@ -292,8 +292,8 @@
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
                     <Component Id="LIBWAZUHSHARED_DLL" DiskId="1" Guid="A40D7FB4-8D7B-440E-B7CB-1D8CB1E277E6">
-                        <File Id=H"LIBWAZUHSHARED_DLL" Name="libwazuhshared.dll" Source="..\libwazuhshared.dll" />
-                    </ComponentH>
+                        <File Id="LIBWAZUHSHARED_DLL" Name="libwazuhshared.dll" Source="..\libwazuhshared.dll" />
+                    </Component>
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
                         <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
                     </Component>
