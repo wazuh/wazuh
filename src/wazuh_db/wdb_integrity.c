@@ -560,7 +560,7 @@ end:
  */
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     cJSON* j_sync_info = NULL;
-    int result = OS_INVALID;
+    int result = 0;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
         mdebug1("Cannot cache statement");
@@ -584,13 +584,16 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     if ( cJSON_IsNumber(j_last_attempt) && cJSON_IsNumber(j_last_completion) && cJSON_IsString(j_checksum)) {
         int last_attempt = j_last_attempt->valueint;
         int last_completion = j_last_completion->valueint;
+        char *checksum = cJSON_GetStringValue(j_checksum);
 
         // Return 0 if there was not at least one successful syncronization or
-        // if the syncronization is in process or there was an error iun the syncronization
-        if (result = (last_completion != 0 && last_attempt <= last_completion ), result) {
+        // if the syncronization is in process or there was an error in the syncronization
+        if (last_completion != 0 && last_attempt <= last_completion) {
+            result = 1;
+        }
+        else if (checksum && strcmp("", checksum)) {
             // Verifying the integrity checksum
             os_sha1 hexdigest;
-            char *checksum = NULL;
 
             switch (wdbi_checksum(wdb, component, hexdigest)) {
             case -1:
@@ -602,7 +605,6 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
                 break;
 
             case 1:
-                checksum = cJSON_GetStringValue(j_checksum);
                 result = !strcmp(hexdigest, checksum);
             }
         }
