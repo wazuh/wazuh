@@ -171,6 +171,8 @@ ifneq ($(uname_R),5.10)
 		AR_LDFLAGS+=-z relax=secadj
 else
 		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
+		OSSEC_LDFLAGS+=-static-libgcc
+		AR_LDFLAGS+=-static-libgcc
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
@@ -179,7 +181,6 @@ endif
 		CC=gcc
 #		This is necessary in order to compile libcurl
 		NM=gnm
-		AR_LDFLAGS+=-L. -lwazuhext -lwazuhshared
 		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 else
 ifeq (${uname_S},Darwin)
