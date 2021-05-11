@@ -74,3 +74,23 @@ bool __wrap_wdb_agents_find_cve(__attribute__((unused)) wdb_t *wdb, const char* 
     check_expected(reference);
     return mock();
 }
+
+int __wrap_wdb_agents_set_packages_triaged(__attribute__((unused)) wdb_t *wdb) {
+    return mock();
+}
+
+int __wrap_wdb_agents_send_packages(__attribute__((unused)) wdb_t *wdb, bool not_triaged_only) {
+    check_expected(not_triaged_only);
+    return mock();
+}
+
+int __wrap_wdb_agents_get_packages(__attribute__((unused)) wdb_t *wdb, bool not_triaged_only, cJSON** response) {
+    check_expected(not_triaged_only);
+    *response = mock_ptr_type(cJSON*);
+    return mock();
+}
+
+int __wrap_wdb_agents_get_hotfixes(__attribute__((unused)) wdb_t *wdb, cJSON** response) {
+    *response = mock_ptr_type(cJSON*);
+    return mock();
+}
