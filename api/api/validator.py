@@ -89,8 +89,18 @@ api_config_schema = {
             "properties": {
                 "enabled": {"type": "boolean"},
                 "source_route": {"type": "string"},
-                "expose_headers": {"type": "string"},
-                "allow_headers": {"type": "string"},
+                "expose_headers": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "array", "items": {"type": "string"}}
+                    ]
+                },
+                "allow_headers": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "array", "items": {"type": "string"}}
+                    ]
+                },
                 "allow_credentials": {"type": "boolean"},
             },
         },
