@@ -1,7 +1,7 @@
 /*
  * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
- * November 11, 2021.
+ * November 11, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -46,8 +46,10 @@ static void wm_sys_send_diff_message(/*const void* data*/) {
  }
 
 static void wm_sys_send_dbsync_message(const void* data) {
-    const int eps = 1000000/syscollector_sync_max_eps;
-    wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
+    if(!os_iswait()) {
+        const int eps = 1000000/syscollector_sync_max_eps;
+        wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
+    }
 }
 
 static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
