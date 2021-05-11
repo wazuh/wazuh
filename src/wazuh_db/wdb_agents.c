@@ -245,12 +245,6 @@ int wdb_agents_clear_vuln_cves(wdb_t *wdb) {
     return wdb_exec_stmt_silent(stmt);
 }
 
-/*JJP TODO: Remove this*/
-int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
-    int ret = 1;
-    return ret;
-}
-
 int wdb_agents_set_packages_triaged(wdb_t *wdb) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_SYS_PROGRAMS_SET_TRIAGED);
     if (!stmt) {

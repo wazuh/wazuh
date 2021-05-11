@@ -34,6 +34,7 @@ static int test_setup(void **state) {
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
     os_strdup("000",init_data->wdb->id);
+    init_data->wdb->peer = 1234;
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;
     return 0;
@@ -907,7 +908,6 @@ void test_wdb_agents_set_packages_triaged_stmt_err(void **state) {
 
 void test_wdb_agents_send_packages_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer = 1234;
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
@@ -921,7 +921,6 @@ void test_wdb_agents_send_packages_success(void **state) {
 
 void test_wdb_agents_send_packages_not_triaged_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer = 1234;
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
@@ -948,7 +947,6 @@ void test_wdb_agents_send_packages_stmt_err(void **state) {
 
 void test_wdb_agents_send_hotfixes_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer = 1234;
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_HOTFIXES_GET);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
@@ -975,7 +973,6 @@ void test_wdb_agents_send_hotfixes_stmt_err(void **state) {
 
 void test_wdb_agents_get_packages_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1007,7 +1004,6 @@ void test_wdb_agents_get_packages_success(void **state) {
 
 void test_wdb_agents_get_packages_not_synced(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1028,7 +1024,6 @@ void test_wdb_agents_get_packages_not_synced(void **state) {
 
 void test_wdb_agents_get_packages_sync_err(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1049,7 +1044,6 @@ void test_wdb_agents_get_packages_sync_err(void **state) {
 
 void test_wdb_agents_get_packages_send_err(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1077,7 +1071,6 @@ void test_wdb_agents_get_packages_send_err(void **state) {
 
 void test_wdb_agents_get_packages_set_triaged_err(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1111,7 +1104,6 @@ void test_wdb_agents_get_packages_set_triaged_err(void **state) {
 
 void test_wdb_agents_get_hotfixes_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1138,7 +1130,6 @@ void test_wdb_agents_get_hotfixes_success(void **state) {
 
 void test_wdb_agents_get_hotfixes_not_synced(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1159,7 +1150,6 @@ void test_wdb_agents_get_hotfixes_not_synced(void **state) {
 
 void test_wdb_agents_get_hotfixes_sync_err(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -1180,7 +1170,6 @@ void test_wdb_agents_get_hotfixes_sync_err(void **state) {
 
 void test_wdb_agents_get_hotfixes_send_err(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    data->wdb->peer=1234;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
