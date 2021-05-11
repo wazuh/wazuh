@@ -99,7 +99,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     memset(log_config->globs + gl, 0, sizeof(logreader_glob));
     memset(logf + pl, 0, sizeof(logreader));
 
-    logf[pl].ign = 360;
+    logf[pl].ign = DEFAULT_FREQUENCY_SECS;
     logf[pl].exists = 1;
     logf[pl].future = 1;
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
@@ -511,7 +511,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         if (logf[pl].labels != NULL) {
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_label);
         }
-        if (logf[pl].ign != 360) {
+        if (logf[pl].ign != DEFAULT_FREQUENCY_SECS) {
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_frequency);
         }
         if (logf[pl].alias != NULL) {
