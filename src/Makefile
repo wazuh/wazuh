@@ -68,7 +68,6 @@ USE_AUDIT=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
 
-DISABLE_SHARED?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 
@@ -80,11 +79,6 @@ ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 WIN_CMAKE_RULES+=win32/syscollector
 endif
 endif
-
-ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
-WIN_CMAKE_OPTS+=-DDISABLE_SHARED=1
-endif
-
 
 ifeq (${uname_S},Darwin)
 SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
@@ -236,15 +230,14 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt
-		AR_LDFLAGS+=-lrt
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
+		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
+ifeq ($(INSTALLDIR),)
+	INSTALLDIR = /var/ossec
 endif
+		OSSEC_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
+		AR_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
@@ -274,10 +267,6 @@ endif
 
 ifeq (,$(filter ${DISABLE_CISCAT},YES yes y Y 1))
 	DEFINES+=-DENABLE_CISCAT
-endif
-
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
-	DEFINES+=-DENABLE_SHARED
 endif
 
 ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
@@ -586,7 +575,6 @@ help: failtarget
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
-	@echo "   make DISABLE_SHARED=yes      Not to build the Wazuh shared library (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OPTIMIZE_CPYTHON=yes    Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -624,7 +612,6 @@ settings:
 	@echo "    CLEANFULL:          ${CLEANFULL}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
 	@echo "    EXTERNAL_SRC_ONLY:  ${EXTERNAL_SRC_ONLY}"
-	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:         ${OSSEC_USER}"
@@ -638,7 +625,6 @@ settings:
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
-	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
 	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
 	@echo "Mysql settings:"
@@ -1140,13 +1126,9 @@ endif
 ####################
 #### OSSEC Libs ####
 ####################
-ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
-BUILD_LIBS = libwazuh.a $(EXTERNAL_LIBS)
-else
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 WAZUH_LIB = libwazuhshared.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
-endif
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
@@ -1331,6 +1313,9 @@ shared/%.o: shared/%.c
 shared/debug_op_proc.o: shared/debug_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DMA -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
+shared/file_op_proc.o: shared/file_op.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DCLIENT -DARGV0=\"wazuh-remoted\" -c $^ -o $@
+
 #### Wazuh DB ####
 
 wdb_sql := $(wildcard wazuh_db/*.sql)
@@ -1488,7 +1473,6 @@ libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os
 
 ### libwazuhext #########
 
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
@@ -1499,9 +1483,25 @@ ifeq (${TARGET}, winagent)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
+ifeq (${uname_S},SunOS)
 ifeq (${uname_P},sparc)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
+else
+ifeq (${uname_S},HP-UX)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	mkdir -p libwazuhext;
+	find external/ -name \*.a -exec cp {} libwazuhext/ \;
+	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
+		ar -x libwazuhext/$$lib; \
+		mv *.o libwazuhext/; \
+	done
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@
+
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
@@ -1624,7 +1624,7 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
+AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
 
 .PHONY: active-responses
 active-responses: ${active_response_programs}
@@ -1673,9 +1673,8 @@ wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
-### libwazuh.so #########
+### libwazuhshared.so #########
 
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 ifeq (${uname_S},Darwin)
 WAZUH_SHARED_SHFLAGS=-install_name @rpath/libwazuhshared.$(SHARED)
 
@@ -1686,9 +1685,18 @@ ifeq (${TARGET}, winagent)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
+ifeq (${uname_S},SunOS)
 ifeq (${uname_P},sparc)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+else
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
+else
+ifneq (,$(filter ${uname_S},AIX HP-UX))
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $^ ${OSSEC_LIBS} -o $@
 else
 ifeq (${uname_S},AIX)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
@@ -1959,9 +1967,7 @@ ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 
-ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 build_python: $(WAZUHEXT_LIB)
-endif
 
 install_python:
 ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
@@ -2202,7 +2208,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_xml_o}
 	rm -f ${os_regex_o}
 	rm -f ${os_net_o}
-	rm -f ${shared_o} shared/debug_op_proc.o
+	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
 	rm -f ${config_o}
 	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
@@ -2232,6 +2238,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SHARED_UTILS_TEST)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
+	rm -rf libwazuhext
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
