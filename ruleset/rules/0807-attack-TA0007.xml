@@ -20,4 +20,14 @@
             <id>T1018</id>
         </mitre>
     </rule>
+    <rule id="92061" level="6">
+        <if_sid>60018</if_sid>
+        <field name="win.system.eventID">^5857$</field>
+        <field name="win.operation_StartedOperational.providerName">^CIMWin32$</field>
+        <description>WMI query for System Information Discovery</description>
+        <mitre>
+            <id>T1082</id>
+            <id>T1047</id>
+        </mitre>
+    </rule>
 </group>
