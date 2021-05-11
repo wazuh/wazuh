@@ -23,12 +23,14 @@ int maximum_files;
 int current_files;
 int total_files;
 
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
  * @brief gets the type filter from the type attribute
  * @param content type attribute string
  * @return returns the configuration flags: activity, trace and/or log
  */
 STATIC int w_logcollector_get_macos_log_type(const char * content);
+#endif
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -45,8 +47,10 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_future = "only-future-events";
     const char *xml_localfile_max_size_attr = "max-size";
     const char *xml_localfile_query = "query";
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     const char *xml_localfile_query_type_attr = "type";
     const char *xml_localfile_query_level_attr = "level";
+#endif
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
@@ -487,6 +491,33 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         merror(INV_MACOS);
         return (OS_INVALID);
     }
+    
+    if (strcmp(logf[pl].logformat, MACOS) == 0) {
+        if (logf[pl].reconnect_time != DEFAULT_EVENTCHANNEL_REC_TIME) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_reconnect_time);
+        }
+        if (logf[pl].age != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_age);
+        }
+        if (logf[pl].filter_binary != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_binaries);
+        }
+        if (logf[pl].exclude != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_exclude);
+        }
+        if (logf[pl].multiline != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_multiline_regex);
+        }
+        if (logf[pl].labels != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_label);
+        }
+        if (logf[pl].ign != 360) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_frequency);
+        }
+        if (logf[pl].alias != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_alias);
+        }
+    }
 #endif
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
@@ -870,6 +901,8 @@ const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     return match_str[match_type];
 }
 
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+
 STATIC int w_logcollector_get_macos_log_type(const char * content) {
 
     const size_t MAX_ARRAY_SIZE = 64;
@@ -909,3 +942,5 @@ STATIC int w_logcollector_get_macos_log_type(const char * content) {
 
     return retval;
 }
+
+#endif
