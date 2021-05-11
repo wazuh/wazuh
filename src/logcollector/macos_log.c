@@ -29,7 +29,6 @@ STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZ
  */
 STATIC INLINE bool w_macos_is_log_predicate_valid(char * predicate) {
 
-    // todo : improve this function? or remove it?
     if (strlen(predicate) > 0) {
         return true;
     }
@@ -77,7 +76,7 @@ STATIC char ** w_macos_create_log_show_array(char * start_date, char * query, ch
         }
     }
 
-    // Log Stream's Type section
+    // Log Show's Type section
     if (type != 0) {
         if (type & MACOS_LOG_TYPE_ACTIVITY) {
             w_strdup(SHOW_TYPE_ACTIVITY_STR, type_predicate);
@@ -98,7 +97,7 @@ STATIC char ** w_macos_create_log_show_array(char * start_date, char * query, ch
         }
     }
 
-    // Log Stream's (full) Predicate section
+    // Log Show's (full) Predicate section
     if (query != NULL) {
         if (w_macos_is_log_predicate_valid(query)) {
             w_strdup(PREDICATE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);

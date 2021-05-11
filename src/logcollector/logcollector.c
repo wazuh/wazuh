@@ -348,7 +348,7 @@ void LogCollectorStart()
                 macos_log_wfd.show = current->macos_log->show_wfd;
                 macos_log_wfd.stream = current->macos_log->stream_wfd;
 
-                for(int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
+                for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
                     mdebug1("Socket target for '%s' -> %s", MACOS_LOG_NAME, current->target[tg_idx]);
                     w_logcollector_state_add_target(MACOS_LOG_NAME, current->target[tg_idx]);
                 }
@@ -2371,6 +2371,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 }
 
 void w_create_input_threads(){
+
     int i;
 
     N_INPUT_THREADS = getDefine_Int("logcollector", "input_threads", N_MIN_INPUT_THREADS, 128);
@@ -2412,6 +2413,7 @@ void files_lock_init()
 }
 
 static void check_text_only() {
+
     int i, j;
 
     IT_control f_control = 0;
@@ -2481,6 +2483,7 @@ static void check_text_only() {
 
 #ifdef WIN32
 static void check_pattern_expand_excluded() {
+
     int found;
     int j;
 
@@ -2609,12 +2612,14 @@ static void check_pattern_expand_excluded() {
 
 
 static void set_can_read(int value){
+
     w_rwlock_wrlock(&can_read_rwlock);
     _can_read = value;
     w_rwlock_unlock(&can_read_rwlock);
 }
 
 int can_read() {
+
     int ret;
     w_rwlock_rdlock(&can_read_rwlock);
     ret = _can_read;
@@ -2680,6 +2685,7 @@ STATIC void w_initialize_file_status() {
 }
 
 STATIC void w_save_file_status() {
+
     char * str = w_save_files_status_to_cJSON();
 
     if (str == NULL) {
@@ -2794,6 +2800,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
 }
 
 STATIC char * w_save_files_status_to_cJSON() {
+
     unsigned int index = 0;
     cJSON * global_json = NULL;
     char * global_json_str = NULL;
@@ -2904,6 +2911,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
 }
 
 STATIC int w_update_hash_node(char * path, int64_t pos) {
+
     os_file_status_t * data;
 
     if (path == NULL) {
@@ -2971,7 +2979,7 @@ void w_macos_release_log_show(void) {
 
     if (macos_log_wfd.show != NULL) {
         mdebug1("macOS ULS: Releasing macOS `log show` resources.");
-        if(macos_log_wfd.show->pid > 0) {
+        if (macos_log_wfd.show->pid > 0) {
             kill(macos_log_wfd.show->pid, SIGTERM);
         }
         wpclose(macos_log_wfd.show);
@@ -2983,7 +2991,7 @@ void w_macos_release_log_stream(void) {
 
     if (macos_log_wfd.stream != NULL) {
         mdebug1("macOS ULS: Releasing macOS `log stream` resources.");
-        if(macos_log_wfd.stream->pid > 0) {
+        if (macos_log_wfd.stream->pid > 0) {
             kill(macos_log_wfd.stream->pid, SIGTERM);
         }
         wpclose(macos_log_wfd.stream);
