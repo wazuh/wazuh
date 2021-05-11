@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -11,6 +11,7 @@ from secrets import token_urlsafe
 from shutil import chown
 from time import time
 
+from cachetools import cached, TTLCache
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
@@ -156,6 +157,7 @@ def generate_token(user_id=None, data=None, run_as=False):
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
+@cached(cache=TTLCache(maxsize=4500, ttl=conf.security_conf['auth_token_exp_timeout']))
 def check_token(username, roles, token_nbf_time, run_as):
     """Check the validity of a token with the current time and the generation time of the token.
 
@@ -197,7 +199,8 @@ def check_token(username, roles, token_nbf_time, run_as):
 
 
 def decode_token(token):
-    """Decode a jwt formatted token and add processed policies. Raise an Unauthorized exception in case validation fails.
+    """Decode a jwt formatted token and add processed policies.
+    Raise an Unauthorized exception in case validation fails.
 
     Parameters
     ----------
@@ -215,7 +218,7 @@ def decode_token(token):
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
-                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf'],
+                                        'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf'],
                                         'run_as': payload['run_as']},
                               request_type='local_master',
                               is_async=False,
