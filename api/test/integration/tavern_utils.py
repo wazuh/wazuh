@@ -5,7 +5,6 @@ from functools import reduce  # forward compatibility for Python 3
 
 from box import Box
 
-import operator
 
 def get_values(o):
     strings = []
@@ -128,22 +127,23 @@ def test_sort_response(response, key=None, reverse=True):
 
 
 def sort_items(unordered_items, dict_field, reverse):
-    """Sort a python dictionary by a certain key. Accepts nested Keys
+    """Sort a python dictionary by a certain key. Accepts nested Keys.
 
     Parameters
     ----------
     unordered_items : dict
-        Python dictionary with all the items to be ordered
+        Python dictionary with all the items to be ordered.
     dict_field : list
-        List with the keys to obtain the value for which we wish to ordered the items
+        List with the keys to obtain the value for which we wish to ordered the items.
     reverse : bool
-        Indicates either the items are going to be ordered in ascending or descending order
+        Indicates either the items are going to be ordered in ascending or descending order.
 
     Returns
     -------
-    items_ordered: dict
-        Shorted dictionary by the key
+    dict
+        Dictionary shorted by the key.
     """
+    # Given a list of keys return the dict value.
     def get_from_dict(dictionary, fields):
         return reduce(operator.getitem, fields, dictionary)
 
@@ -165,21 +165,17 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     Returns
     -------
     bool
-        True if the response's items are sorted correctly.
+        True if the items are sorted correctly.
     """
 
     affected_items = response.json()['data']['affected_items']
 
-    # Split multiple fields
+    # Split sort fields if there is any
     key = key.split(',')
 
-    process_fields = []
-
     # Split nested fields
-    if not isinstance(key, list):
-        process_fields.append(key.split('.'))
-    else:
-        [process_fields.append(field.split('.')) for field in key if isinstance(key, list)]
+    process_fields = []
+    [process_fields.append(field.split('.')) for field in key if isinstance(key, list)]
 
     # Create a copy of the affected_items
     items = list(affected_items)
@@ -191,8 +187,9 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     for field in process_fields[::-1]:
         items = sort_items(items, field, reverse)
 
-    # Concatenate the two list (items/disconnected). If the order is descending, the disconnected agents will be at top
-    # Otherwise, the disconnected agents will be at the bottom
+    # Concatenate the two list (items/disconnected_agents).
+    # If the order is descending, the disconnected agents will be at top
+    # If the order is ascending, the disconnected agents will be at the bottom
     if reverse:
         items.extend(disconnected_agents)
         assert affected_items == items
