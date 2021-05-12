@@ -67,15 +67,6 @@ list(APPEND logcollector_flags "-Wl,--wrap,w_logcollector_state_get -Wl,--wrap,c
                                 -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_PrintUnformatted \
                                 -Wl,--wrap,cJSON_Delete")
 
-list(APPEND logcollector_names "test_macos_log_stream")
-list(APPEND logcollector_flags "-Wl,--wrap,wpopenv -Wl,--wrap,fileno -Wl,--wrap,fcntl -Wl,--wrap,_merror \
-                                -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
-                                -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
-                                -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,wpclose")
-
-list(APPEND logcollector_names "test_read_macos")
-list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match")
-
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
