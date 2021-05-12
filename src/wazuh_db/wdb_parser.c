@@ -574,6 +574,8 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
             return -1;
         }
+        // Add the current peer to wdb structure
+        wdb->peer = peer;
 
         if (next = wstr_chr(query, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
@@ -623,6 +625,8 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             return OS_INVALID;
         }
+        // Add the current peer to wdb structure
+        wdb->peer = peer;
 
         if (next = wstr_chr(query, ' '), next) {
             *next++ = '\0';
@@ -902,6 +906,8 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB task");
             return OS_INVALID;
         }
+        // Add the current peer to wdb structure
+        wdb->peer = peer;
 
         if (next = wstr_chr(query, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
