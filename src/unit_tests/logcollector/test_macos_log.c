@@ -22,11 +22,12 @@
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 
-bool w_logcollector_validate_oslog_stream_predicate(char * predicate);
-char ** w_create_oslog_stream_array(char * predicate, char * level, int type);
-wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t flags);
-bool w_is_log_cmd_executable(void);
-void w_logcollector_create_oslog_env(logreader * current);
+bool w_macos_is_log_predicate_valid(char * predicate);
+char ** w_macos_create_log_stream_array(char * predicate, char * level, int type);
+wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags);
+void w_macos_create_log_env(logreader * current);
+bool w_macos_is_log_executable(void);
+void w_macos_create_log_stream_env(logreader * lf);
 
 /* setup/teardown */
 
@@ -61,35 +62,33 @@ static int teardown_file(void **state) {
 /* wraps */
 
 
-/* tests */
-
-/* w_logcollector_validate_oslog_stream_predicate */
-void test_w_logcollector_validate_oslog_stream_predicate_empty(void ** state) {
+/* w_macos_is_log_predicate_valid */
+void test_w_macos_is_log_predicate_valid_empty(void ** state) {
 
     char predicate[] = "";
 
-    bool ret = w_logcollector_validate_oslog_stream_predicate(predicate);
+    bool ret = w_macos_is_log_predicate_valid(predicate);
     assert_false(ret);
 
 }
 
-void test_w_logcollector_validate_oslog_stream_predicate_existing(void ** state) {
+void test_w_macos_is_log_predicate_valid_existing(void ** state) {
 
     char predicate[] = "test";
 
-    bool ret = w_logcollector_validate_oslog_stream_predicate(predicate);
+    bool ret = w_macos_is_log_predicate_valid(predicate);
     assert_true(ret);
 
 }
 
-/* w_create_oslog_stream_array */
-void test_w_create_oslog_stream_array_NULL(void ** state) {
+/* w_macos_create_log_stream_array */
+void test_w_macos_create_log_stream_array_NULL(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 0;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -101,7 +100,7 @@ void test_w_create_oslog_stream_array_NULL(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_default(void ** state) {
+void test_w_macos_create_log_stream_array_level_default(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -109,7 +108,7 @@ void test_w_create_oslog_stream_array_level_default(void ** state) {
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -124,7 +123,7 @@ void test_w_create_oslog_stream_array_level_default(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_info(void ** state) {
+void test_w_macos_create_log_stream_array_level_info(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -132,7 +131,7 @@ void test_w_create_oslog_stream_array_level_info(void ** state) {
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -147,7 +146,7 @@ void test_w_create_oslog_stream_array_level_info(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_debug(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -155,7 +154,7 @@ void test_w_create_oslog_stream_array_level_debug(void ** state) {
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -170,13 +169,13 @@ void test_w_create_oslog_stream_array_level_debug(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_activity(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 1;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -190,13 +189,13 @@ void test_w_create_oslog_stream_array_type_activity(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_log(void ** state) {
+void test_w_macos_create_log_stream_array_type_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 2;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -210,13 +209,13 @@ void test_w_create_oslog_stream_array_type_log(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_trace(void ** state) {
+void test_w_macos_create_log_stream_array_type_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 4;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -230,13 +229,13 @@ void test_w_create_oslog_stream_array_type_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_activity_log(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 3;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -252,13 +251,13 @@ void test_w_create_oslog_stream_array_type_activity_log(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_activity_trace(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 5;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -274,13 +273,13 @@ void test_w_create_oslog_stream_array_type_activity_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_type_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 6;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -296,13 +295,13 @@ void test_w_create_oslog_stream_array_type_log_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_activity_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
     int type = 7;
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -320,7 +319,7 @@ void test_w_create_oslog_stream_array_type_activity_log_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -328,7 +327,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity(void ** state)
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -345,7 +344,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity(void ** state)
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_log(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -353,7 +352,7 @@ void test_w_create_oslog_stream_array_level_default_type_log(void ** state) {
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -370,7 +369,7 @@ void test_w_create_oslog_stream_array_level_default_type_log(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -378,7 +377,7 @@ void test_w_create_oslog_stream_array_level_default_type_trace(void ** state) {
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -395,7 +394,7 @@ void test_w_create_oslog_stream_array_level_default_type_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity_log(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -403,7 +402,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log(void ** st
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -422,7 +421,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log(void ** st
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -430,7 +429,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_trace(void ** 
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -449,7 +448,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_trace(void ** 
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -457,7 +456,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_trace(void ** state
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -476,7 +475,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_trace(void ** state
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -484,7 +483,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_trace(void
 
     os_strdup("default", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -505,7 +504,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_trace(void
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -513,7 +512,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity(void ** state) {
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -530,7 +529,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_log(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -538,7 +537,7 @@ void test_w_create_oslog_stream_array_level_info_type_log(void ** state) {
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -555,7 +554,7 @@ void test_w_create_oslog_stream_array_level_info_type_log(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -563,7 +562,7 @@ void test_w_create_oslog_stream_array_level_info_type_trace(void ** state) {
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -580,7 +579,7 @@ void test_w_create_oslog_stream_array_level_info_type_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity_log(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -588,7 +587,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log(void ** state
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -607,7 +606,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log(void ** state
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -615,7 +614,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_trace(void ** sta
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -634,7 +633,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_trace(void ** sta
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -642,7 +641,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_trace(void ** state) {
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -661,7 +660,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -669,7 +668,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_trace(void **
 
     os_strdup("info", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -690,7 +689,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_trace(void **
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -698,7 +697,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity(void ** state) {
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -715,7 +714,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_log(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -723,7 +722,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log(void ** state) {
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -740,7 +739,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -748,7 +747,7 @@ void test_w_create_oslog_stream_array_level_debug_type_trace(void ** state) {
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -765,7 +764,7 @@ void test_w_create_oslog_stream_array_level_debug_type_trace(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity_log(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity_log(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -773,7 +772,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log(void ** stat
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -792,7 +791,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log(void ** stat
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -800,7 +799,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_trace(void ** st
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -819,7 +818,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_trace(void ** st
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -827,7 +826,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_trace(void ** state) 
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -846,7 +845,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_trace(void ** state) 
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -854,7 +853,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace(void *
 
     os_strdup("debug", level);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -878,7 +877,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace(void *
 
 //PREDICADO
 
-void test_w_create_oslog_stream_array_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -886,7 +885,7 @@ void test_w_create_oslog_stream_array_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -901,7 +900,7 @@ void test_w_create_oslog_stream_array_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_default_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -911,7 +910,7 @@ void test_w_create_oslog_stream_array_level_default_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -929,7 +928,7 @@ void test_w_create_oslog_stream_array_level_default_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_info_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -939,7 +938,7 @@ void test_w_create_oslog_stream_array_level_info_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -957,7 +956,7 @@ void test_w_create_oslog_stream_array_level_info_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -967,7 +966,7 @@ void test_w_create_oslog_stream_array_level_debug_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -985,7 +984,7 @@ void test_w_create_oslog_stream_array_level_debug_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_activity_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -993,7 +992,7 @@ void test_w_create_oslog_stream_array_type_activity_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1010,7 +1009,7 @@ void test_w_create_oslog_stream_array_type_activity_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_type_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1018,7 +1017,7 @@ void test_w_create_oslog_stream_array_type_log_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1035,7 +1034,7 @@ void test_w_create_oslog_stream_array_type_log_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_type_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1043,7 +1042,7 @@ void test_w_create_oslog_stream_array_type_trace_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1060,7 +1059,7 @@ void test_w_create_oslog_stream_array_type_trace_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_activity_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1068,7 +1067,7 @@ void test_w_create_oslog_stream_array_type_activity_log_predicate(void ** state)
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1087,7 +1086,7 @@ void test_w_create_oslog_stream_array_type_activity_log_predicate(void ** state)
 
 }
 
-void test_w_create_oslog_stream_array_type_activity_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1095,7 +1094,7 @@ void test_w_create_oslog_stream_array_type_activity_trace_predicate(void ** stat
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1114,7 +1113,7 @@ void test_w_create_oslog_stream_array_type_activity_trace_predicate(void ** stat
 
 }
 
-void test_w_create_oslog_stream_array_type_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_type_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1122,7 +1121,7 @@ void test_w_create_oslog_stream_array_type_log_trace_predicate(void ** state) {
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1141,7 +1140,7 @@ void test_w_create_oslog_stream_array_type_log_trace_predicate(void ** state) {
 
 }
 
-void test_w_create_oslog_stream_array_type_activity_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_type_activity_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1149,7 +1148,7 @@ void test_w_create_oslog_stream_array_type_activity_log_trace_predicate(void ** 
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1170,7 +1169,7 @@ void test_w_create_oslog_stream_array_type_activity_log_trace_predicate(void ** 
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1180,7 +1179,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_predicate(void
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1200,7 +1199,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_predicate(void
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1210,7 +1209,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_predicate(void ** s
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1230,7 +1229,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_predicate(void ** s
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1240,7 +1239,7 @@ void test_w_create_oslog_stream_array_level_default_type_trace_predicate(void **
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1260,7 +1259,7 @@ void test_w_create_oslog_stream_array_level_default_type_trace_predicate(void **
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1270,7 +1269,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_predicate(
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1292,7 +1291,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_predicate(
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1302,7 +1301,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_trace_predicat
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1324,7 +1323,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_trace_predicat
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1334,7 +1333,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_trace_predicate(voi
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1356,7 +1355,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_trace_predicate(voi
 
 }
 
-void test_w_create_oslog_stream_array_level_default_type_activity_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_default_type_activity_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1366,7 +1365,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_trace_pred
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1390,7 +1389,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_trace_pred
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1400,7 +1399,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_predicate(void **
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1420,7 +1419,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_predicate(void **
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1430,7 +1429,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_predicate(void ** stat
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1450,7 +1449,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_predicate(void ** stat
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1460,7 +1459,7 @@ void test_w_create_oslog_stream_array_level_info_type_trace_predicate(void ** st
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1480,7 +1479,7 @@ void test_w_create_oslog_stream_array_level_info_type_trace_predicate(void ** st
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1490,7 +1489,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_predicate(voi
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1512,7 +1511,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_predicate(voi
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1522,7 +1521,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_trace_predicate(v
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1544,7 +1543,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_trace_predicate(v
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1554,7 +1553,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_trace_predicate(void *
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1576,7 +1575,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_trace_predicate(void *
 
 }
 
-void test_w_create_oslog_stream_array_level_info_type_activity_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_info_type_activity_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1586,7 +1585,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_trace_predica
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1610,7 +1609,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_trace_predica
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1620,7 +1619,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_predicate(void *
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1640,7 +1639,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_predicate(void *
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1650,7 +1649,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_predicate(void ** sta
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1670,7 +1669,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_predicate(void ** sta
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1680,7 +1679,7 @@ void test_w_create_oslog_stream_array_level_debug_type_trace_predicate(void ** s
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1700,7 +1699,7 @@ void test_w_create_oslog_stream_array_level_debug_type_trace_predicate(void ** s
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity_log_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity_log_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1710,7 +1709,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_predicate(vo
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1732,7 +1731,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_predicate(vo
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1742,7 +1741,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate(
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1764,7 +1763,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate(
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1774,7 +1773,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate(void 
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1796,7 +1795,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate(void 
 
 }
 
-void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate(void ** state) {
+void test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace_predicate(void ** state) {
 
     char * predicate = NULL;
     char * level = NULL;
@@ -1806,7 +1805,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predic
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", predicate);
 
-    char ** ret = w_create_oslog_stream_array(predicate, level, type);
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
 
     assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
@@ -1830,30 +1829,29 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predic
 
 }
 
-/* w_logcollector_exec_oslog_stream */
-void test_w_logcollector_exec_oslog_stream_wpopenv_error(void ** state) {
-    char * oslog_array = NULL;
-    os_strdup("log stream", oslog_array);
+/* w_macos_log_exec */
+void test_w_macos_log_exec_wpopenv_error(void ** state) {
+    char * log_cmd_array = NULL;
+    os_strdup("log stream", log_cmd_array);
     u_int32_t flags = 0;
 
     will_return(__wrap_wpopenv, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
     assert_null(ret);
-
-    os_free(oslog_array);
+    os_free(log_cmd_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_fileno_error(void ** state) {
+void test_w_macos_log_exec_fileno_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
-    char * oslog_array = NULL;
-    os_strdup("log stream", oslog_array);
+    char * log_cmd_array = NULL;
+    os_strdup("log stream", log_cmd_array);
     u_int32_t flags = 0;
 
     will_return(__wrap_wpopenv, wfd);
@@ -1866,20 +1864,19 @@ void test_w_logcollector_exec_oslog_stream_fileno_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
     assert_ptr_equal(ret, 0);
-
-    os_free(oslog_array);
+    os_free(log_cmd_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_fp_to_fd_error(void ** state) {
+void test_w_macos_log_exec_fp_to_fd_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
-    char * oslog_array = NULL;
-    os_strdup("log stream", oslog_array);
+    char * log_cmd_array = NULL;
+    os_strdup("log stream", log_cmd_array);
     u_int32_t flags = 0;
 
     will_return(__wrap_wpopenv, wfd);
@@ -1892,20 +1889,19 @@ void test_w_logcollector_exec_oslog_stream_fp_to_fd_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
     assert_ptr_equal(ret, 0);
-
-    os_free(oslog_array);
+    os_free(log_cmd_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_get_flags_error(void ** state) {
+void test_w_macos_log_exec_get_flags_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
-    char * oslog_array = NULL;
-    os_strdup("log stream", oslog_array);
+    char * log_cmd_array = NULL;
+    os_strdup("log stream", log_cmd_array);
     u_int32_t flags = 0;
 
     will_return(__wrap_wpopenv, wfd);
@@ -1920,20 +1916,19 @@ void test_w_logcollector_exec_oslog_stream_get_flags_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
     assert_ptr_equal(ret, 0);
-
-    os_free(oslog_array);
+    os_free(log_cmd_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_set_flags_error(void ** state) {
+void test_w_macos_log_exec_set_flags_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
-    char * oslog_array = NULL;
-    os_strdup("log stream", oslog_array);
+    char * log_cmd_array = NULL;
+    os_strdup("log stream", log_cmd_array);
     u_int32_t flags = 0;
 
     will_return(__wrap_wpopenv, wfd);
@@ -1950,20 +1945,20 @@ void test_w_logcollector_exec_oslog_stream_set_flags_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
     assert_ptr_equal(ret, 0);
 
-    os_free(oslog_array);
+    os_free(log_cmd_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_success(void ** state) {
+void test_w_macos_log_exec_success(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
-    char * oslog_array = NULL;
-    os_strdup("log stream", oslog_array);
+    char * log_cmd_array = NULL;
+    os_strdup("log stream", log_cmd_array);
     u_int32_t flags = 0;
 
     will_return(__wrap_wpopenv, wfd);
@@ -1975,30 +1970,30 @@ void test_w_logcollector_exec_oslog_stream_success(void ** state) {
 
     will_return(__wrap_fcntl, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
     assert_ptr_equal(ret->file,  wfd->file);
     assert_int_equal(ret->append_pool,0);
     assert_int_equal(ret->pid,0);
 
-    os_free(oslog_array);
+    os_free(log_cmd_array);
 
 }
 
-/* w_is_log_cmd_executable */
-void test_w_is_log_cmd_executable_success(void ** state) {
+/* w_macos_is_log_executable */
+void test_w_macos_is_log_executable_success(void ** state) {
 
     expect_string(__wrap_access, __name, "/usr/bin/log");
     expect_value(__wrap_access, __type, 1);
     will_return(__wrap_access, 0);
 
-    bool ret = w_is_log_cmd_executable();
+    bool ret = w_macos_is_log_executable();
 
     assert_true(ret);
 
 }
 
-void test_w_is_log_cmd_executable_error(void ** state) {
+void test_w_macos_is_log_executable_error(void ** state) {
 
     expect_string(__wrap_access, __name, "/usr/bin/log");
     expect_value(__wrap_access, __type, 1);
@@ -2006,14 +2001,14 @@ void test_w_is_log_cmd_executable_error(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/log\": Success (0).");
 
-    bool ret = w_is_log_cmd_executable();
+    bool ret = w_macos_is_log_executable();
 
     assert_false(ret);
 
 }
 
-/* w_logcollector_create_oslog_env */
-void test_w_logcollector_create_oslog_env_not_executable(void ** state) {
+/* w_macos_create_log_stream_env */
+void test_w_macos_create_log_stream_env_not_executable(void ** state) {
 
     logreader *current = NULL;
     os_calloc(1, sizeof(logreader), current);
@@ -2021,35 +2016,35 @@ void test_w_logcollector_create_oslog_env_not_executable(void ** state) {
     os_strdup("test", current->file);
     current->diff_max_size = 0;
 
-    os_calloc(1, sizeof(w_oslog_config_t), current->oslog);
-    current->oslog->is_oslog_running = false;
+    os_calloc(1, sizeof(w_macos_log_config_t), current->macos_log);
+    current->macos_log->state = LOG_NOT_RUNNING;
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", current->query);
     os_strdup("debug", current->query_level);
     current->query_type = 7;
 
-    os_calloc(1, sizeof(wfd_t), current->oslog->log_wfd);
-    current->oslog->log_wfd->file = (FILE*)1;
+    os_calloc(1, sizeof(wfd_t), current->macos_log->stream_wfd);
+    current->macos_log->stream_wfd->file = (FILE*)1;
 
-    // test_w_is_log_cmd_executable_error
+    // test_w_macos_is_log_executable_error
     expect_string(__wrap_access, __name, "/usr/bin/log");
     expect_value(__wrap_access, __type, 1);
     will_return(__wrap_access, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/log\": Success (0).");
 
-    w_logcollector_create_oslog_env(current);
+    w_macos_create_log_stream_env(current);
 
     os_free(current->file);
     os_free(current->query);
     os_free(current->query_level);
-    os_free(current->oslog->log_wfd);
-    os_free(current->oslog);
+    os_free(current->macos_log->stream_wfd);
+    os_free(current->macos_log);
     os_free(current);
 
 }
 
-void test_w_logcollector_create_oslog_env_log_wfd_NULL(void ** state) {
+void test_w_macos_create_log_stream_env_log_wfd_NULL(void ** state) {
 
     logreader *current = NULL;
     os_calloc(1, sizeof(logreader), current);
@@ -2057,37 +2052,37 @@ void test_w_logcollector_create_oslog_env_log_wfd_NULL(void ** state) {
     os_strdup("test", current->file);
     current->diff_max_size = 0;
 
-    os_calloc(1, sizeof(w_oslog_config_t), current->oslog);
-    current->oslog->is_oslog_running = false;
+    os_calloc(1, sizeof(w_macos_log_config_t), current->macos_log);
+    current->macos_log->state = LOG_NOT_RUNNING;
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", current->query);
     os_strdup("debug", current->query_level);
     current->query_type = 7;
 
-    // test_w_is_log_cmd_executable_error
+    // test_w_macos_is_log_executable_error
     expect_string(__wrap_access, __name, "/usr/bin/log");
     expect_value(__wrap_access, __type, 1);
     will_return(__wrap_access, 0);
 
-    // test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate
+    // test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace_predicate
 
-    // test_w_logcollector_exec_oslog_stream_wpopenv_error
+    // test_w_macos_log_exec_wpopenv_error
     will_return(__wrap_wpopenv, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
 
-    w_logcollector_create_oslog_env(current);
+    w_macos_create_log_stream_env(current);
 
     os_free(current->file);
     os_free(current->query);
     os_free(current->query_level);
-    os_free(current->oslog->log_wfd);
-    os_free(current->oslog);
+    os_free(current->macos_log->stream_wfd);
+    os_free(current->macos_log);
     os_free(current);
 
 }
 
-void test_w_logcollector_create_oslog_env_success(void ** state) {
+void test_w_macos_create_log_stream_env_success(void ** state) {
 
     logreader *current = NULL;
     os_calloc(1, sizeof(logreader), current);
@@ -2095,21 +2090,21 @@ void test_w_logcollector_create_oslog_env_success(void ** state) {
     os_strdup("test", current->file);
     current->diff_max_size = 0;
 
-    os_calloc(1, sizeof(w_oslog_config_t), current->oslog);
-    current->oslog->is_oslog_running = false;
+    os_calloc(1, sizeof(w_macos_log_config_t), current->macos_log);
+    current->macos_log->state = LOG_NOT_RUNNING;
 
     os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", current->query);
     os_strdup("debug", current->query_level);
     current->query_type = 7;
 
-    // test_w_is_log_cmd_executable_success
+    // test_w_macos_is_log_executable_success
     expect_string(__wrap_access, __name, "/usr/bin/log");
     expect_value(__wrap_access, __type, 1);
     will_return(__wrap_access, 0);
 
-    // test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate
+    // test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace_predicate
 
-    // test_w_logcollector_exec_oslog_stream_success
+    // test_w_macos_log_exec_success
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
@@ -2122,102 +2117,98 @@ void test_w_logcollector_create_oslog_env_success(void ** state) {
 
     will_return(__wrap_fcntl, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(1971): Monitoring MacOS logs with: /usr/bin/log stream --style syslog --type activity --type log --type trace --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'");
+    expect_string(__wrap__minfo, formatted_msg, "(1604): Monitoring MacOS logs with: /usr/bin/log stream --style syslog --type activity --type log --type trace --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'");
 
-    w_logcollector_create_oslog_env(current);
+    w_macos_create_log_stream_env(current);
 
     os_free(current->file);
     os_free(current->query);
     os_free(current->query_level);
-    os_free(current->oslog);
+    os_free(current->macos_log);
     os_free(current);
 
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        // Test w_logcollector_validate_oslog_stream_predicate
-        cmocka_unit_test(test_w_logcollector_validate_oslog_stream_predicate_empty),
-        cmocka_unit_test(test_w_logcollector_validate_oslog_stream_predicate_existing),
-        // Test w_create_oslog_stream_array
-        cmocka_unit_test(test_w_create_oslog_stream_array_NULL),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_log),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_log_trace),
-        cmocka_unit_test(test_w_create_oslog_stream_array_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_log_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_type_activity_log_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_log_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_default_type_activity_log_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_log_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_info_type_activity_log_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_log_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate),
-        cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate),
-        // Test w_logcollector_exec_oslog_stream
-        cmocka_unit_test(test_w_logcollector_exec_oslog_stream_wpopenv_error),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_fileno_error, setup_file, teardown_file),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_fp_to_fd_error, setup_file, teardown_file),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_get_flags_error, setup_file, teardown_file),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_set_flags_error, setup_file, teardown_file),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_success, setup_file, teardown_file),
-        // Test w_is_log_cmd_executable
-        cmocka_unit_test(test_w_is_log_cmd_executable_success),
-        cmocka_unit_test(test_w_is_log_cmd_executable_error),
-        // Test w_logcollector_create_oslog_env
-        cmocka_unit_test(test_w_logcollector_create_oslog_env_not_executable),
-        cmocka_unit_test(test_w_logcollector_create_oslog_env_log_wfd_NULL),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_create_oslog_env_success, setup_file, teardown_file),
+        // Test w_macos_is_log_predicate_valid
+        cmocka_unit_test(test_w_macos_is_log_predicate_valid_empty),
+        cmocka_unit_test(test_w_macos_is_log_predicate_valid_existing),
+        // Test w_macos_create_log_stream_array
+        cmocka_unit_test(test_w_macos_create_log_stream_array_NULL),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_log),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_type_activity_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_default_type_activity_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_info_type_activity_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_log_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace_predicate),
+        // Test w_macos_log_exec
+        cmocka_unit_test(test_w_macos_log_exec_wpopenv_error),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_exec_fileno_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_exec_fp_to_fd_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_exec_get_flags_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_exec_set_flags_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_macos_log_exec_success, setup_file, teardown_file),
+        // Test w_macos_is_log_executable
+        cmocka_unit_test(test_w_macos_is_log_executable_success),
+        cmocka_unit_test(test_w_macos_is_log_executable_error),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
