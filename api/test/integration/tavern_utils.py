@@ -159,7 +159,7 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     ----------
     response : Request response.
     key : str
-        Keys expected to sort by separate with a comma (os.name,os.major).
+        Keys expected to sort by. Comma separated keys to be sorted (os.name,os.major).
     reverse : bool
         Indicate if the expected order is ascending (False) or descending (True). Default: False.
 
