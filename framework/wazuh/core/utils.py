@@ -1201,20 +1201,12 @@ class WazuhDBQuery(object):
     def _sort_query(self, field):
         return '{} {}'.format(self.fields[field], self.sort['order'])
 
-    def _check_allowed_sort_fields(self, allowed_sort_fields):
-
-        for field in self.sort['fields']:
-            if field not in allowed_sort_fields:
-                return False
-
-        return True
-
     def _add_sort_to_query(self):
         if self.sort:
             if self.sort['fields']:
                 allowed_sort_fields = set(self.fields.keys())
                 # check every element in sort['fields'] is in allowed_sort_fields
-                if not self._check_allowed_sort_fields(allowed_sort_fields):
+                if not set(self.sort['fields']).issubset(allowed_sort_fields):
                     raise WazuhError(1403, "Allowed sort fields: {}. Fields: {}".format(
                         sorted(allowed_sort_fields, key=str), sorted(self.sort['fields'])))
                 self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in self.sort['fields']])

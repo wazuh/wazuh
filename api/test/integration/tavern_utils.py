@@ -126,33 +126,34 @@ def test_sort_response(response, key=None, reverse=True):
     assert affected_items == sorted(affected_items, key=(lambda item: item[key]) if key else None, reverse=reverse)
 
 
-def sort_items(unordered_items, dict_field, reverse):
+def get_from_dict(dictionary, fields):
+    """Given a python dictionary and a list of keys, return the dict value."""
+    return reduce(operator.getitem, fields, dictionary)
+
+
+def sort_items(unsorted_items, dict_field, reverse):
     """Sort a python dictionary by a certain key. Accepts nested Keys.
 
     Parameters
     ----------
-    unordered_items : dict
-        Python dictionary with all the items to be ordered.
+    unsorted_items : dict
+        Python dictionary with all the items to be sorted.
     dict_field : list
-        List with the keys to obtain the value for which we wish to ordered the items.
+        List with the keys to obtain the value for which we wish to sort the items.
     reverse : bool
-        Indicates either the items are going to be ordered in ascending or descending order.
+        Indicates whether the items are going to be sorted in ascending or descending order.
 
     Returns
     -------
     dict
-        Dictionary shorted by the key.
+        Dictionary sorted by the key.
     """
-    # Given a list of keys return the dict value.
-    def get_from_dict(dictionary, fields):
-        return reduce(operator.getitem, fields, dictionary)
-
-    return sorted(unordered_items, key=lambda item: get_from_dict(item, dict_field), reverse=reverse)
+    return sorted(unsorted_items, key=lambda item: get_from_dict(item, dict_field), reverse=reverse)
 
 
 def test_sort_response_multiple_fields(response, key=None, reverse=False):
     """Check that the response's affected items are sorted by one or multiple keys.
-    Use the auxiliary function _sort_items to sort the elements.
+    Use the auxiliary function sort_items to sort the elements.
 
     Parameters
     ----------
@@ -167,7 +168,6 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     bool
         True if the items are sorted correctly.
     """
-
     affected_items = response.json()['data']['affected_items']
 
     # Split sort fields if there is any
@@ -180,22 +180,30 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     # Create a copy of the affected_items
     items = list(affected_items)
 
-    # Create a new lists with the disconnected agents deleting them from the items list
-    disconnected_agents = [items.pop(items.index(item)) for item in affected_items if item['node_name'] == 'unknown']
+    # Extract the items that do not have one or more fields to sort by.
+    # These items are added at the end before asserting.
+    items_without_sort_by_field = []
+    for item in affected_items:
+        for field in process_fields:
+            if item in items:
+                try:
+                    get_from_dict(item, field)
+                except KeyError:
+                    items_without_sort_by_field.append(items.pop(items.index(item)))
 
-    # Order the items list
+    # Sort the items list
     for field in process_fields[::-1]:
         items = sort_items(items, field, reverse)
 
     # Concatenate the two list (items/disconnected_agents).
-    # If the order is descending, the disconnected agents will be at top
-    # If the order is ascending, the disconnected agents will be at the bottom
+    # If the order is ascending , the disconnected agents will be at the top
+    # If the order is descending, the disconnected agents will be at the bottom
     if reverse:
-        items.extend(disconnected_agents)
+        items.extend(items_without_sort_by_field)
         assert affected_items == items
     else:
-        disconnected_agents.extend(items)
-        assert affected_items == disconnected_agents
+        items_without_sort_by_field.extend(items)
+        assert affected_items == items_without_sort_by_field
 
 
 def test_validate_data_dict_field(response, fields_dict):
