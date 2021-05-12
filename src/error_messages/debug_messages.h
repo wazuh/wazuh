@@ -287,4 +287,8 @@
 #define MOD_TASK_TASKS_DB_ERROR_IN_QUERY    "(8208): Tasks DB Error reported in the result of the query, message: '%s'"
 #define MOD_TASK_TASKS_DB_ERROR_EXECUTE     "(8209): Tasks DB Cannot execute SQL query: err database '%s/%s.db'"
 
+/* Logcollector */
+
+#define LOGCOLLECTOR_FILE_NOT_EXIST           "(9000): File '%s' no longer exists."
+
 #endif /* DEBUG_MESSAGES_H */
