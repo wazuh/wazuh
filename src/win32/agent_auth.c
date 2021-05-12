@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Contributed by Gael Muller (@gaelmuller)
  *
  * This program is free software; you can redistribute it
@@ -123,7 +123,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
             merror_exit("Insufficient memory.");
             break;
         case SEC_E_UNSUPPORTED_FUNCTION: // 0x80090302
-            merror_exit("Couldn't negotiate encryption protocol. Try to run ossec-authd with \"-a\" option.");
+            merror_exit("Couldn't negotiate encryption protocol. Try to run wazuh-authd with \"-a\" option.");
             break;
         case SEC_E_INTERNAL_ERROR:  // 0x80090304
             merror_exit("Internal error.");
@@ -142,7 +142,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         {
             read = recv(*socket, buffer + total_read, IO_BUFFER_SIZE - total_read, 0);
             if (read <= 0)
-                merror_exit("Could not get security token from server. Run ossec-authd with \"-a\" option and enable RC4 or 3DES cipher.");
+                merror_exit("Could not get security token from server. Run wazuh-authd with \"-a\" option and enable RC4 or 3DES cipher.");
 
             total_read += read;
         }
@@ -313,15 +313,16 @@ void InstallAuthKeys(char *msg)
             !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
             merror_exit("Invalid key received (2). Closing connection.");
 
-        fp = fopen(KEYSFILE_PATH, "w");
+        fp = fopen(KEYS_FILE, "w");
 
-        if (!fp)
-            merror_exit("Unable to open key file: %s", KEYSFILE_PATH);
+        if (!fp) {
+            merror_exit("Unable to open key file: %s", KEYS_FILE);
+        }
 
         fprintf(fp, "%s\n", key);
         fclose(fp);
 
-        printf("INFO: Valid key created. Finished.\n");
+        printf("INFO: Valid key received\n");
     }
     else
         merror_exit("Unknown message received (%s)", msg);
@@ -446,7 +447,7 @@ int main(int argc, char **argv)
     /* Checking if there is a custom password file */
     if (authpass == NULL) {
         FILE *fp;
-        fp = fopen(AUTHDPASS_PATH, "r");
+        fp = fopen(AUTHD_PASS, "r");
         buf[0] = '\0';
 
         if (fp) {
@@ -458,7 +459,8 @@ int main(int argc, char **argv)
             }
 
             fclose(fp);
-            printf("INFO: Using password specified on file: %s\n", AUTHDPASS_PATH);
+
+            printf("INFO: Using password specified on file: %s\n", AUTHD_PASS);
         }
     }
     if (!authpass) {

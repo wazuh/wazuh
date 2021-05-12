@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -36,6 +36,13 @@ typedef struct _OSList {
 
 OSList *OSList_Create(void);
 
+/**
+ * @brief Frees all resources associated with a list.
+ *
+ * @param list List to be destroyed.
+*/
+void OSList_Destroy(OSList *);
+
 int OSList_SetMaxSize(OSList *list, int max_size);
 int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *));
 
@@ -51,5 +58,19 @@ void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode) __attribute__((no
 void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
 
 void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
+
+/**
+ * @brief Clears all the nodes from a list and frees the referenced data
+ *
+ * @param list List to delete
+ */
+void OSList_CleanNodes(OSList *list);
+
+/**
+ * @brief Clears all the nodes from a list without freeing the referenced data
+ *
+ * @param list List to delete nodes
+ */
+void OSList_CleanOnlyNodes(OSList *list);
 
 #endif /* OS_LIST */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,6 +16,8 @@ int maximum_files;
 int current_files;
 int total_files;
 
+
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
@@ -29,13 +31,16 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_frequency = "frequency";
     const char *xml_localfile_alias = "alias";
     const char *xml_localfile_future = "only-future-events";
+    const char *xml_localfile_max_size_attr = "max-size";
     const char *xml_localfile_query = "query";
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
+    const char *xml_localfile_reconnect_time = "reconnect_time";
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
+    const char *xml_localfile_multiline_regex =  "multiline_regex";
 
     logreader *logf;
     logreader_config *log_config;
@@ -79,6 +84,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].ign = 360;
     logf[pl].exists = 1;
     logf[pl].future = 1;
+    logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
 
     /* Search for entries related to files */
     i = 0;
@@ -90,6 +96,23 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_localfile_future) == 0) {
+            logf[pl].diff_max_size = DIFF_DEFAULT_SIZE;
+            if (node[i]->attributes) {
+                for (int j = 0; node[i]->attributes[j]; j++) {
+                    if (strcmp(node[i]->attributes[j], xml_localfile_max_size_attr) == 0) {
+                        long long value = w_validate_bytes(node[i]->values[j]);
+                        if (value == -1 || value > DIFF_MAX_SIZE) {
+                            mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, node[i]->values[j], \
+                                  xml_localfile_max_size_attr, xml_localfile_future);
+
+                            continue;
+                        }
+                        logf[pl].diff_max_size = (long) value;
+                    } else {
+                        mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->element);
+                    }
+                }
+            }
             if (strcmp(node[i]->content, "yes") == 0) {
                 logf[pl].future = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
@@ -138,6 +161,35 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logf[pl].out_format[n]->target = target ? strdup(target) : NULL;
             os_strdup(node[i]->content, logf[pl].out_format[n]->format);
             logf[pl].out_format[n + 1] = NULL;
+        } else if (strcmp(node[i]->element, xml_localfile_reconnect_time) == 0) {
+            char *c;
+            int time = strtoul(node[i]->content, &c, 0);
+            if(time) {
+                switch (c[0]) {
+                case 'w':
+                    time *= 604800;
+                    break;
+                case 'd':
+                    time *= 86400;
+                    break;
+                case 'h':
+                    time *= 3600;
+                    break;
+                case 'm':
+                    time *= 60;
+                    break;
+                case 's':
+                    break;
+                default:
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+            }
+            if(time < 1 ||  time == INT_MAX){
+                mwarn("Invalid reconnection time value. Changed to %d seconds.", DEFAULT_EVENTCHANNEL_REC_TIME);
+                time = DEFAULT_EVENTCHANNEL_REC_TIME;
+            }
+            logf[pl].reconnect_time = time;
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
             flags.hidden = flags.system = 0;
             char *key_value = 0;
@@ -245,6 +297,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, "command") == 0) {
             } else if (strcmp(logf[pl].logformat, "full_command") == 0) {
             } else if (strcmp(logf[pl].logformat, "audit") == 0) {
+            } else if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
             } else if (strncmp(logf[pl].logformat, "multi-line", 10) == 0) {
 
                 char *p_lf = logf[pl].logformat;
@@ -273,6 +326,29 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcasecmp(node[i]->element, xml_localfile_multiline_regex) == 0) {
+
+            if (strlen(node[i]->content) == 0) {
+                mwarn("Empty tag '%s' is ignored", xml_localfile_multiline_regex);
+            } else if (logf[pl].multiline == NULL) {
+                os_calloc(1, sizeof(w_multiline_config_t), logf[pl].multiline);
+                w_calloc_expression_t(&logf[pl].multiline->regex, EXP_TYPE_PCRE2);
+
+                if (!w_expression_compile(logf[pl].multiline->regex, node[i]->content, 0)) {
+                    merror(LOCALFILE_REGEX, node[i]->content);
+                    w_free_expression_t(&logf[pl].multiline->regex);
+                    os_free(logf[pl].multiline);
+                    return (OS_INVALID);
+                }
+
+                logf[pl].multiline->match_type = w_get_attr_match(node[i]);
+                logf[pl].multiline->replace_type = w_get_attr_replace(node[i]);
+                logf[pl].multiline->timeout = w_get_attr_timeout(node[i]);
+
+            } else {
+                mwarn("Duplicate tag '%s' is ignored", xml_localfile_multiline_regex);
+            }
+
         } else if (strcasecmp(node[i]->element, xml_localfile_exclude) == 0) {
             if (logf[pl].exclude) {
                 os_free(logf[pl].exclude);
@@ -341,10 +417,39 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         os_strdup("agent", logf[pl].target[0]);
     }
 
+    /* Missing file */
+    if (logf[pl].file == NULL) {
+        merror(MISS_FILE);
+        os_strdup("", logf[pl].file);
+        return (OS_INVALID);
+    }
+
     /* Missing log format */
     if (!logf[pl].logformat) {
         merror(MISS_LOG_FORMAT);
         return (OS_INVALID);
+    }
+
+    /* Verify Multiline Regex Config */
+    if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
+
+        if (logf[pl].multiline == NULL) {
+            /* Multiline_regex must be configured */
+            merror(MISS_MULT_REGEX);
+            return (OS_INVALID);
+
+        } else if (logf[pl].age && logf[pl].age <= logf[pl].multiline->timeout) {
+            /* Avoid dismissing an incomplete multiline log */
+            mwarn(LOGCOLLECTOR_MULTILINE_AGE_TIMEOUT);
+            logf[pl].age = 0;
+            os_free(logf[pl].age_str);
+        }
+
+    } else if (logf[pl].multiline) {
+        /* Only log format multi-line-regex support multiline_regex */
+        mwarn(LOGCOLLECTOR_MULTILINE_SUPPORT, logf[pl].logformat);
+        w_free_expression_t(&logf[pl].multiline->regex);
+        os_free(logf[pl].multiline);
     }
 
         /* Verify a valid event log config */
@@ -394,13 +499,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             /* Wildcard exclusion, check for date */
             if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
 
-                struct tm *p;
                 time_t l_time = time(0);
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
+                struct tm tm_result = { .tm_sec = 0 };
 
-                p = localtime(&l_time);
-                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
+                localtime_r(&l_time, &tm_result);
+                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, &tm_result);
                 if (ret != 0) {
                     os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
                 }
@@ -438,13 +543,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             /* Wildcard exclusion, check for date */
             if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
 
-                struct tm *p;
                 time_t l_time = time(0);
+                struct tm tm_result = { .tm_sec = 0 };
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
 
-                p = localtime(&l_time);
-                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
+                localtime_r(&l_time, &tm_result);
+                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, &tm_result);
                 if (ret != 0) {
                     os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
                 }
@@ -464,14 +569,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 #endif
         } else if (strchr(logf[pl].file, '%')) {
             /* We need the format file (based on date) */
-            struct tm *p;
             time_t l_time = time(0);
+            struct tm tm_result = { .tm_sec = 0 };
             char lfile[OS_FLSIZE + 1];
             size_t ret;
 
-            p = localtime(&l_time);
+            localtime_r(&l_time, &tm_result);
             lfile[OS_FLSIZE] = '\0';
-            ret = strftime(lfile, OS_FLSIZE, logf[pl].file, p);
+            ret = strftime(lfile, OS_FLSIZE, logf[pl].file, &tm_result);
             if (ret != 0) {
                 os_strdup(logf[pl].file, logf[pl].ffile);
             }
@@ -481,12 +586,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
             }
         }
-    }
-
-    /* Missing file */
-    if (!logf[pl].file) {
-        merror(MISS_FILE);
-        return (OS_INVALID);
     }
 
     return (0);
@@ -627,4 +726,88 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
         }
     }
     return (OS_INVALID);
+}
+
+w_multiline_match_type_t w_get_attr_match(xml_node * node) {
+
+    const char * xml_attr_name = "match";
+
+    /* default value */
+    w_multiline_match_type_t retval = ML_MATCH_START;
+    const char * str_match = w_get_attr_val_by_name(node, xml_attr_name);
+
+    if (str_match == NULL) {
+        return retval;
+    }
+
+    if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_START)) == 0) {
+        retval = ML_MATCH_START;
+    } else if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_ALL)) == 0) {
+        retval = ML_MATCH_ALL;
+    } else if (strcasecmp(str_match, multiline_attr_match_str(ML_MATCH_END)) == 0) {
+        retval = ML_MATCH_END;
+    } else {
+        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_match, xml_attr_name, "multiline_regex");
+    }
+
+    return retval;
+}
+
+w_multiline_replace_type_t w_get_attr_replace(xml_node * node) {
+
+    const char * xml_attr_name = "replace";
+
+    /* default value */
+    w_multiline_replace_type_t retval = ML_REPLACE_NO_REPLACE;
+    const char * str_replace = w_get_attr_val_by_name(node, xml_attr_name);
+
+    if (str_replace == NULL) {
+        return retval;
+    }
+
+    if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_NO_REPLACE)) == 0) {
+        retval = ML_REPLACE_NO_REPLACE;
+    } else if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_WSPACE)) == 0) {
+        retval = ML_REPLACE_WSPACE;
+    } else if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_TAB)) == 0) {
+        retval = ML_REPLACE_TAB;
+    } else if (strcasecmp(str_replace, multiline_attr_replace_str(ML_REPLACE_NONE)) == 0) {
+        retval = ML_REPLACE_NONE;
+    } else {
+        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_replace, xml_attr_name, "multiline_regex");
+    }
+
+    return retval;
+}
+
+unsigned int w_get_attr_timeout(xml_node * node) {
+
+    const char * xml_attr_name = "timeout";
+
+    /* default value: 1 seg */
+    unsigned int retval = MULTI_LINE_REGEX_TIMEOUT;
+    const char * str_timeout = w_get_attr_val_by_name(node, xml_attr_name);
+    char * endptr = NULL;
+
+    if (str_timeout == NULL) {
+        return retval;
+    }
+
+    retval = strtoul(str_timeout, &endptr, 0);
+    if (*endptr != '\0' || retval == 0 || retval > MULTI_LINE_REGEX_MAX_TIMEOUT) {
+        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, str_timeout, xml_attr_name, "multiline_regex");
+        retval = MULTI_LINE_REGEX_TIMEOUT;
+    }
+
+    return retval;
+}
+
+const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type) {
+    const char * const replace_str[ML_REPLACE_MAX] = {"no-replace", "none", "wspace", "tab"};
+    return replace_str[replace_type];
+}
+
+const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
+    const char * const match_str[ML_MATCH_MAX] = {"start", "all", "end"};
+    return match_str[match_type];
 }

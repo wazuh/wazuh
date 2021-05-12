@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # March 13, 2018.
 #
 # This program is free software; you can redistribute it
@@ -42,7 +42,7 @@ def main(args):
 
     # Read args
     alert_file_location = args[1]
-    webhook = args[2]
+    webhook = args[3]
 
     debug("# Webhook")
     debug(webhook)

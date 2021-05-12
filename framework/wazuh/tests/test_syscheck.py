@@ -1,139 +1,290 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from sqlite3 import connect
-from unittest.mock import patch, mock_open
 import os
+import sys
+from sqlite3 import connect
+from unittest.mock import patch, MagicMock
+
 import pytest
-from wazuh import common
-from os.path import join
-from wazuh import exception
-from wazuh.ossec_queue import OssecQueue
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        from wazuh.syscheck import last_scan, run, clear, files
+from wazuh.tests.util import InitWDBSocketMock
 
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
+
+        del sys.modules['wazuh.rbac.orm']
+
+        from wazuh.tests.util import RBAC_bypasser
+
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from wazuh.syscheck import run, clear, last_scan, files
+        from wazuh.syscheck import AffectedItemsWazuhResult
+        from wazuh import WazuhError, WazuhInternalError
+        from wazuh.core import common
+
+callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
-def get_fake_syscheck_db(sql_file):
+# Retrieve used parameters in mocked method
+def set_callable_list(*params, **kwargs):
+    callable_list.append((params, kwargs))
 
+
+# Get a fake database
+def get_fake_syscheck_db(sql_file):
     def create_memory_db(*args, **kwargs):
         syscheck_db = connect(':memory:')
         cur = syscheck_db.cursor()
         with open(os.path.join(test_data_path, sql_file)) as f:
             cur.executescript(f.read())
-
         return syscheck_db
 
     return create_memory_db
 
 
-@pytest.mark.parametrize('agent_id, version', [
-    ('001', {'version': 'Wazuh v3.5.0'}),
-    ('002', {'version': 'Wazuh v3.6.2'}),
-    ('003', {'version': 'Wazuh v3.7.1'}),
-    ('004', {'version': 'Wazuh v3.8.2'}),
-    ('005', {'version': 'Wazuh v3.9.1'}),
-    ('006', {'version': 'Wazuh v3.10.0'})
+test_result = [
+    {'affected_items': ['001', '002'], 'total_affected_items': 2, 'failed_items': {}, 'total_failed_items': 0},
+    {'affected_items': ['003', '008'], 'total_affected_items': 2, 'failed_items': {'001'}, 'total_failed_items': 1},
+    {'affected_items': ['001'], 'total_affected_items': 1, 'failed_items': {'002', '003'},
+     'total_failed_items': 2},
+    # This result is used for exceptions
+    {'affected_items': [], 'total_affected_items': 0, 'failed_items': {'001'}, 'total_failed_items': 1},
+]
+
+
+@pytest.mark.parametrize('agent_list, status_list, expected_result', [
+    (['002', '001'], [{'status': status} for status in ['active', 'active']], test_result[0]),
+    (['003', '001', '008'], [{'status': status} for status in ['active', 'disconnected', 'active']], test_result[1]),
+    (['001', '002', '003'], [{'status': status} for status in ['active', 'disconnected', 'disconnected']],
+     test_result[2]),
+])
+@patch('wazuh.syscheck.WazuhQueue._connect')
+@patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
+@patch('wazuh.syscheck.WazuhQueue.close')
+def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
+    """Test function `run` from syscheck module.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    status_list : list
+        List of agent statuses.
+    expected_result : list
+        List of dicts with expected results for every test.
+    """
+    with patch('wazuh.syscheck.Agent.get_basic_information', side_effect=status_list):
+        result = run(agent_list=agent_list)
+        for args, kwargs in callable_list:
+            assert (isinstance(a, str) for a in args)
+            assert (isinstance(k, str) for k in kwargs)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert result.affected_items == expected_result['affected_items']
+        assert result.total_affected_items == expected_result['total_affected_items']
+        if result.failed_items:
+            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
+        else:
+            assert result.failed_items == expected_result['failed_items']
+        assert result.total_failed_items == expected_result['total_failed_items']
+
+
+@pytest.mark.parametrize('agent_list, status_list, expected_result', [
+    (['001'], {'status': 'active'}, test_result[3])
+])
+@patch('wazuh.syscheck.WazuhQueue', side_effect=WazuhError(1000))
+def test_syscheck_run_exception(wazuh_queue_mock, agent_list, status_list, expected_result):
+    """Test function `run` from syscheck module.
+
+    It will force an exception.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    status_list : list
+        List of agent statuses.
+    expected_result : list
+        List of dicts with expected results for every test.
+    """
+    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=status_list):
+        result = run(agent_list=agent_list)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert result.affected_items == expected_result['affected_items']
+        assert result.total_affected_items == expected_result['total_affected_items']
+        if result.failed_items:
+            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
+        assert result.total_failed_items == expected_result['total_failed_items']
+
+
+@pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
+    (['001', '002'], test_result[0], ['001', '002']),
+    (['003', '001', '008'], test_result[1], ['003', '008'])
+])
+@patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.execute', return_value=None)
+def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+    """Test function `clear` from syscheck module.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    expected_result : list
+        List of dicts with expected results for every test.
+    agent_info_list : list
+        List of agent IDs that `syscheck.get_agents_info` will return when mocked.
+    """
+    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+        result = clear(agent_list=agent_list)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert result.affected_items == expected_result['affected_items']
+        assert result.total_affected_items == expected_result['total_affected_items']
+        if result.failed_items:
+            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
+        else:
+            assert result.failed_items == expected_result['failed_items']
+        assert result.total_failed_items == expected_result['total_failed_items']
+
+
+@pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
+    (['001'], test_result[3], ['001']),
+])
+@patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
+@patch('wazuh.core.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
+def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+    """Test function `clear` from syscheck module.
+
+    It will force an exception.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    expected_result : list
+        List of dicts with expected results for every test.
+    agent_info_list : list
+        List of agent IDs that `syscheck.get_agents_info` will return when mocked.
+    """
+    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+        result = clear(agent_list=agent_list)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert result.affected_items == expected_result['affected_items']
+        assert result.total_affected_items == expected_result['total_affected_items']
+        if result.failed_items:
+            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
+        assert result.total_failed_items == expected_result['total_failed_items']
+
+
+@pytest.mark.parametrize('agent_id, wazuh_version', [
+    (['001'], {'version': 'Wazuh v3.6.0'}),
+    (['002'], {'version': 'Wazuh v3.8.3'}),
+    (['005'], {'version': 'Wazuh v3.5.3'}),
+    (['006'], {'version': 'Wazuh v3.9.4'}),
+    (['004'], {}),
 ])
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
-@patch("wazuh.database.isfile", return_value=True)
-@patch("wazuh.syscheck.WazuhDBBackend.execute", return_value=[{'end': '', 'start': ''}])
+@patch("wazuh.core.database.isfile", return_value=True)
+@patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
-def test_last_scan(sock_mock, wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
-    """Test last_scan function."""
-    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
-        with patch("wazuh.syscheck.glob", return_value=[join(common.database_path_agents, agent_id)+".db"]):
+def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, agent_id, wazuh_version):
+    """Test function `last_scan` from syscheck module.
+
+    Parameters
+    ----------
+    agent_id : list
+        Agent ID.
+    wazuh_version : dict
+        Dict with the Wazuh version to be applied.
+    """
+    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=wazuh_version):
+        with patch('wazuh.syscheck.glob',
+                   return_value=[os.path.join(common.database_path_agents, '{}.db'.format(agent_id[0]))]):
             result = last_scan(agent_id)
-
-            assert isinstance(result, dict)
-            assert set(result.keys()) == {'start', 'end'}
-
-
-@patch("wazuh.agent.Agent.get_basic_information", side_effect=KeyError)
-def test_failed_last_scan_key_error_agent_version(info_mock):
-    """Test last_scan function when a ErrorKey appears."""
-    result = last_scan('001')
-
-    assert isinstance(result, dict)
-    assert set(result.keys()) == {'start', 'end'}
+            assert isinstance(result, AffectedItemsWazuhResult)
+            assert isinstance(result.affected_items, list)
+            assert result.total_affected_items == 1
 
 
-@patch("wazuh.syscheck.Agent.get_basic_information", return_value={'version': 'Wazuh v3.5.0'})
-@patch("wazuh.syscheck.glob", return_value=None)
-def test_failed_last_scan_not_agent_db(glob_mock, info_mock):
-    """Test failed last_scan function when agent don't exist."""
-    with pytest.raises(exception.WazuhException, match=".* 1600 .*"):
-        last_scan('001')
-
-
-@pytest.mark.parametrize('agent_id, all_agents', [
-    ('000', False),
-    (None, True),
-    ('001', False)
+@pytest.mark.parametrize('version', [
+    {'version': 'Wazuh v3.6.0'}
 ])
-@patch("builtins.open")
-@patch("wazuh.ossec_queue.OssecQueue._connect")
-@patch("wazuh.syscheck.OssecQueue.send_msg_to_agent", return_value='Test message')
-@patch("wazuh.ossec_queue.OssecQueue.close")
-@patch("wazuh.agent.Agent.get_basic_information", return_value={'status': 'active'})
-def test_run(mock_info, mock_close, mock_send_msg, mock_ossec_queue, mock_open, agent_id, all_agents):
-    """Test run function."""
-    result = run(agent_id, all_agents)
+@patch('wazuh.syscheck.glob', return_value=None)
+def test_syscheck_last_scan_internal_error(glob_mock, version):
+    """Test function `last_scan` from syscheck module.
 
-    assert isinstance(result, str)
+    It will expect a WazuhInternalError.
 
+    Parameters
+    ----------
+    version : dict
+        Dict with the Wazuh version to be applied.
 
-@patch("builtins.open", side_effect=Exception)
-def test_failed_run_exception_open(mock_open):
-    """Test failed run function when an Exception appears when opening a file."""
-    with pytest.raises(exception.WazuhException, match=".* 1601 .*"):
-        run('000')
-
-
-@patch("wazuh.syscheck.Agent.get_basic_information")
-def test_failed_run_agent_not_status(mock_info):
-    """Test failed run function when an agent have status diferent to Active."""
-    with pytest.raises(exception.WazuhException, match=".* 1604 .*"):
-        run('001')
+    Raises
+    ------
+    WazuhInternalError
+        Raised when there is not a valid database file.
+    """
+    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
+        with pytest.raises(WazuhInternalError):
+            last_scan(['001'])
 
 
-@pytest.mark.parametrize('agent_id, all_agents', [
-    ('001', False),
-    (None, True)
-])
-@patch("wazuh.syscheck.WazuhDBConnection")
-@patch("wazuh.syscheck.Agent.get_basic_information")
-@patch("wazuh.syscheck.Agent.get_agents_overview", return_value={'items':[{'id':'001'},{'id':'002'},{'id':'003'}]})
-def test_clear(mock_all_agents, mock_info, mock_wbd_conn, agent_id, all_agents):
-    """Test clear function."""
-    result = clear(agent_id, all_agents)
-
-    assert isinstance(result, str)
-
-
-@pytest.mark.parametrize('select, filters', [
-    (None, {}),
-    ({'fields': ['file']}, {}),
-    (None, {'hash': 'md5'})
+@pytest.mark.parametrize('agent_id, select, filters, distinct', [
+    (['001'], None, None, None),
+    (['002'], ['file', 'size', 'mtime'], None, False),
+    (['003'], None, {'inode': '15470536'}, True),
+    (['004'], ['file', 'size'], {'hash': '15470536'}, False),
+    (['005'], None, {'date': '2019-05-21 12:10:20'}, True),
+    (['006'], None, {'type': 'registry_key'}, True),
+    (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True),
+    (['008'], ['file', 'value.name'], None, True),
+    (['009'], ['value.name'], None, True),
+    (['000'], ['attributes'], None, True),
+    (['000'], None, {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
 ])
 @patch('socket.socket.connect')
-def test_files(mock_socket, select, filters):
-    """Test files function."""
-    with patch("wazuh.syscheck.WazuhDBBackend.execute",
-               return_value=[{'items': [{'date': 0, 'mtime': 0}], 'totalItems': 1}]):
-        result = files(select=select, filters=filters)
+@patch('wazuh.core.common.wdb_path', new=test_data_path)
+def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
+    """Test function `files` from syscheck module.
 
-        assert isinstance(result, dict)
-        assert set(result.keys()) == {'totalItems', 'items'}
+    Parameters
+    ----------
+    agent_id : list
+        Agent ID.
+    select :
+        List of parameters to show from the query.
+    filters : dict
+        Dict to filter out the result.
+    distinct : bool
+        True if all response items must be unique
+    """
+    select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid',
+                   'uid', 'type', 'changes', 'attributes', 'arch', 'value.name', 'value.type']
+    nested_fields = ['value']
 
-
-@patch('socket.socket.connect')
-def test_failed_files(mock_socket):
-    """Test failed files function when select field isn't valid."""
-    with pytest.raises(exception.WazuhException, match=".* 1724 .*"):
-        files(select={'fields': ['bad_select']})
+    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
+        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
+        select = select if select else select_list
+        result = files(agent_id, select=select, filters=filters)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert isinstance(result.affected_items, list)
+        # Use flag for min_select_field, if file not in select, len(item.keys()) = len(select) + 1
+        flag_select_min = 1 if 'file' not in select else 0
+        for item in result.affected_items:
+            # Use flag for nested_fields in order to compare select and item.keys() lengths
+            flag_nested = 0
+            for nested_field in nested_fields:
+                if nested_field in item.keys():
+                    flag_nested += sum(1 for i in select if i.startswith(nested_field)) - 1
+            assert len(select) + flag_select_min == len(item.keys()) + flag_nested
+            assert (param in select for param in item.keys())
+        assert not any(result.affected_items.count(item) > 1 for item in result.affected_items) if distinct else True
+        if filters:
+            for key, value in filters.items():
+                assert (item[key] == value for item in result.affected_items)

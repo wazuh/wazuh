@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,6 +13,7 @@
 
 #include <time.h>
 #include <pthread.h>
+#include "shared.h"
 
 typedef enum _crypt_method{
     W_METH_BLOWFISH,W_METH_AES
@@ -29,6 +30,7 @@ typedef struct _keyentry {
     unsigned int local;
     unsigned int keyid;
     unsigned int global;
+    time_t updating_time;
 
     char *id;
     char *key;
@@ -37,11 +39,14 @@ typedef struct _keyentry {
     ino_t inode;
 
     os_ip *ip;
-    int sock;
+    int sock;                           ///< File descriptor of client's TCP socket
+    int net_protocol;                   ///< Client current protocol
     pthread_mutex_t mutex;
     struct sockaddr_in peer_info;
     FILE *fp;
     crypt_method crypto_method;
+
+    w_linked_queue_node_t *rids_node;
 } keyentry;
 
 /* Key storage */
@@ -50,9 +55,9 @@ typedef struct _keystore {
     keyentry **keyentries;
 
     /* Hashes, based on the ID/IP to look up the keys */
-    OSHash *keyhash_id;
-    OSHash *keyhash_ip;
-    OSHash *keyhash_sock;
+    rb_tree *keytree_id;
+    rb_tree *keytree_ip;
+    rb_tree *keytree_sock;
 
     /* Total key size */
     unsigned int keysize;
@@ -69,6 +74,11 @@ typedef struct _keystore {
     /* Removed keys storage */
     char **removed_keys;
     size_t removed_keys_size;
+
+    w_linked_queue_t *opened_fp_queue;
+
+    /* Mutexes */
+    pthread_mutex_t keytree_sock_mutex;
 } keystore;
 
 typedef enum key_states {
@@ -78,7 +88,7 @@ typedef enum key_states {
     KS_ENCKEY
 } key_states;
 
-#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0 }
+#define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0, NULL, PTHREAD_MUTEX_INITIALIZER }
 
 /** Function prototypes -- key management **/
 
@@ -86,7 +96,7 @@ typedef enum key_states {
 int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit) __attribute((nonnull));
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed) __attribute((nonnull));
 
 void OS_FreeKey(keyentry *key);
 
@@ -152,12 +162,23 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock);
 // Delete socket number from keystore
 int OS_DeleteSocket(keystore * keys, int sock);
 
+/**
+ * @brief Get agent's network protocol from keystore given its agent id
+ *
+ * @param keys Contains information related with the agents
+ * @param agent_id This variable is used to index the keys array
+ * @retval -1 if protocol could not be found
+ * @retval REMOTED_NET_PROTOCOL_TCP if agent protocol is TCP
+ * @retval REMOTED_NET_PROTOCOL_UDP if agent protocol is UDP
+ */
+int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
+
 /* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
 
 /** Remote IDs directories and internal definitions */
 #ifndef WIN32
-#define RIDS_DIR        "/queue/rids"
+#define RIDS_DIR        "queue/rids"
 #else
 #define RIDS_DIR        "rids"
 #endif

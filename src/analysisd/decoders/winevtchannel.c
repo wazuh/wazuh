@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015-2019, Wazuh Inc.
+* Copyright (C) 2015-2021, Wazuh Inc.
 * December 05, 2018.
 *
 * This program is free software; you can redistribute it
@@ -39,7 +39,7 @@ static int first_time = 0;
 void WinevtInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), winevt_decoder);
-    winevt_decoder->id = getDecoderfromlist(WINEVT_MOD);
+    winevt_decoder->id = getDecoderfromlist(WINEVT_MOD, &os_analysisd_decoder_store);
     winevt_decoder->name = WINEVT_MOD;
     winevt_decoder->type = OSSEC_RL;
     winevt_decoder->fts = 0;

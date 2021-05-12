@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -47,10 +47,6 @@
 #define SERVER_IP_USED      1
 #define SERVER_HOST_USED    2
 
-/* Prototypes */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
-
 /* Global ossec config structure */
 typedef struct _ossec_config {
     unsigned short int server_type;
@@ -73,14 +69,11 @@ typedef struct _ossec_config {
 
 /** Global variables **/
 
-/* Agent status */
-char ui_server_info[2048 + 1];
-
 /* Configuration */
-ossec_config config_inst;
+extern ossec_config config_inst;
 
 /* Status bar */
-HWND hStatus;
+extern HWND hStatus;
 
 /* Ossec icon */
 #define IDI_OSSECICON  201

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -27,8 +27,8 @@
 /* For internal logs */
 #ifndef LOGFILE
 #ifndef WIN32
-#define LOGFILE   "/logs/ossec.log"
-#define LOGJSONFILE "/logs/ossec.json"
+#define LOGFILE   "logs/ossec.log"
+#define LOGJSONFILE "logs/ossec.json"
 #define _PRINTF_FORMAT printf
 #else
 #define LOGFILE "ossec.log"
@@ -67,6 +67,11 @@ void _mferror(const char * file, int line, const char * func, const char *msg, .
 void _mtferror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));
 void _merror_exit(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull)) __attribute__ ((noreturn));
 void _mterror_exit(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull)) __attribute__ ((noreturn));
+
+/**
+ * @brief Logging module initializer
+ */
+void w_logging_init(void);
 
 /* Function to read the logging format configuration */
 void os_logging_config(void);

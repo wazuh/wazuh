@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -17,25 +17,21 @@
 extern void *(*osdb_connect)(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
 void *mysql_osdb_connect(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
 void *postgresql_osdb_connect(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
-void *none_osdb_connect(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
 
 /* Send insert query to the database */
 extern int (* osdb_query_insert)(void *db_conn, const char *query);
 int mysql_osdb_query_insert(void *db_conn, const char *query);
 int postgresql_osdb_query_insert(void *db_conn, const char *query);
-int none_osdb_query_insert(void *db_conn, const char *query);
 
 /* Send select query to the database */
 extern int (* osdb_query_select)(void *db_conn, const char *query);
 int mysql_osdb_query_select(void *db_conn, const char *query);
 int postgresql_osdb_query_select(void *db_conn, const char *query);
-int none_osdb_query_select(void *db_conn, const char *query);
 
 /* Close connection to the database */
 extern void *(*osdb_close)(void *db_conn);
 void *mysql_osdb_close(void *db_conn);
 void *postgresql_osdb_close(void *db_conn);
-void *none_osdb_close(void *db_conn);
 
 /* Escape strings before inserting */
 void osdb_escapestr(char *str);

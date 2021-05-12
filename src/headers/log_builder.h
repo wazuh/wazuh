@@ -1,11 +1,9 @@
 /**
  * @file log_builder.h
- * @author Vikman Fernandez-Castro (victor@wazuh.com)
  * @brief Declaration of the shared log builder library
- * @version 0.1
  * @date 2019-12-06
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 /*

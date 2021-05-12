@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "string.h"
 #include "../os_regex/os_regex.h"
+#include "string_op.h"
 
 #ifdef WIN32
 #ifdef EVENTCHANNEL_SUPPORT
@@ -169,6 +170,7 @@ char * w_strtrim(char * string) {
 
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
+
     cJSON *object;
     char *current;
     char *nest = strchr(key, '.');
@@ -176,7 +178,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
     if (nest) {
         length = nest - key;
-        current = malloc(length + 1);
+        os_malloc(length + 1, current);
         strncpy(current, key, length);
         current[length] = '\0';
 
@@ -191,15 +193,17 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        char *string_end =  NULL;
+        const char *jsonErrPtr;
+        cJSON * value_json = NULL;
+
         if (*value == '[' &&
-           (string_end = memchr(value, '\0', OS_MAXSTR)) &&
-           (string_end != NULL) &&
-           (']' == *(string_end - 1)))
-        {
-            const char *jsonErrPtr;
-            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
+           (value_json = cJSON_ParseWithOpts(value, &jsonErrPtr, 0), value_json) &&
+           (*jsonErrPtr == '\0')) {
+            cJSON_AddItemToObject(root, key, value_json);
         } else {
+            if (value_json) {
+                cJSON_Delete(value_json);
+            }
             cJSON_AddStringToObject(root, key, value);
         }
     }
@@ -679,7 +683,28 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     return token;
 }
 
-const char *find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(const char * source, const char * str) {
+    int matching = 0;
+    size_t source_lenght;
+
+    if (!(source && str)) {
+        return -1;
+    }
+
+    source_lenght = strlen(source);
+    if (source_lenght > strlen(str)) {
+        return -2;
+    }
+
+    // Match if result is 0
+    matching = strncmp(source, str, source_lenght);
+
+    return matching == 0 ? source_lenght : 0;
+}
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
 {
     if (!string_array || !str){
         return NULL;
@@ -693,6 +718,94 @@ const char *find_string_in_array(char * const string_array[], size_t array_len, 
     }
 
     return NULL;
+}
+
+// Parse boolean string
+
+int w_parse_bool(const char * string) {
+    return (strcmp(string, "yes") == 0) ? 1 : (strcmp(string, "no") == 0) ? 0 : -1;
+}
+
+// Parse positive time string into seconds
+
+long w_parse_time(const char * string) {
+    char * end;
+    long seconds = strtol(string, &end, 10);
+
+    if (seconds < 0 || (seconds == LONG_MAX && errno == ERANGE)) {
+        return -1;
+    }
+
+    switch (*end) {
+    case '\0':
+        break;
+    case 'w':
+        seconds *= W_WEEK_SECONDS;
+        break;
+    case 'd':
+        seconds *= W_DAY_SECONDS;
+        break;
+    case 'h':
+        seconds *= W_HOUR_SECONDS;
+        break;
+    case 'm':
+        seconds *= W_MINUTE_SECONDS;
+        break;
+    case 's':
+        break;
+    default:
+        return -1;
+    }
+
+    return seconds >= 0 ? seconds : -1;
+}
+
+// Get time unit from seconds
+
+char*  w_seconds_to_time_unit(long seconds, bool long_format) {
+
+    if (seconds < 0) {
+        return "invalid";
+    }
+    else if (seconds >= W_WEEK_SECONDS) {
+        return long_format ? W_WEEKS_L : W_WEEKS_S ;
+    }
+    else if (seconds >= W_DAY_SECONDS) {
+        return long_format ? W_DAYS_L : W_DAYS_S ;
+    }
+    else if (seconds >= W_HOUR_SECONDS) {
+        return long_format ? W_HOURS_L : W_HOURS_S ;
+    }
+    else if (seconds >= W_MINUTE_SECONDS) {
+       return long_format ? W_MINUTES_L : W_MINUTES_S ;
+    }
+    else {
+       return long_format ? W_SECONDS_L : W_SECONDS_S ;
+    }
+}
+
+// Get time value from seconds
+
+long w_seconds_to_time_value(long seconds) {
+    
+    if(seconds < 0) {
+        return -1;
+    }
+    else if (seconds >= W_WEEK_SECONDS) {
+        return seconds/W_WEEK_SECONDS;
+    }
+    else if (seconds >= W_DAY_SECONDS) {
+        return seconds/W_DAY_SECONDS;
+    }
+    else if (seconds >= W_HOUR_SECONDS) {
+        return seconds/W_HOUR_SECONDS;
+    }
+    else if (seconds >= W_MINUTE_SECONDS) {
+        return seconds/W_MINUTE_SECONDS;
+    }
+    else {
+        return seconds;
+    }
 }
 
 char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
@@ -845,5 +958,197 @@ char * wstr_unescape_json(const char * string) {
     } while (string[i] != '\0');
 
     output[j] = '\0';
+    return output;
+}
+
+// Lowercase a string
+
+char * w_tolower_str(const char *string) {
+    char *tolower_str;
+    int count;
+
+    if (!string) {
+        return NULL;
+    }
+
+    os_malloc(1, tolower_str);
+
+    for(count = 0; string[count]; count++) {
+        os_realloc(tolower_str, count + 2, tolower_str);
+        tolower_str[count] = tolower(string[count]);
+    }
+
+    tolower_str[count] = '\0';
+
+    return tolower_str;
+}
+
+// Verify the string is not truncated after executing snprintf
+
+int os_snprintf(char *str, size_t size, const char *format, ...) {
+    size_t ret;
+    va_list args;
+
+    va_start(args, format);
+    ret = vsnprintf(str, size, format, args);
+    if (ret >= size) {
+        mwarn("String may be truncated because it is too long.");
+    }
+    va_end(args);
+
+    return ret;
+}
+
+// Remove a substring from a string
+
+char * w_remove_substr(char *str, const char *sub) {
+    char *p, *q, *r;
+    if ((q = r = strstr(str, sub)) != NULL) {
+        size_t len = strlen(sub);
+        while ((r = strstr(p = r + len, sub)) != NULL) {
+            while (p < r)
+                *q++ = *p++;
+        }
+        while ((*q++ = *p++) != '\0')
+            continue;
+    }
+    return str;
+}
+
+char * w_strndup(const char * str, size_t n) {
+
+    char * str_cpy = NULL;
+    size_t str_len;
+
+    if (str == NULL) {
+        return str_cpy;
+    }
+
+    if (str_len = strlen(str), str_len > n) {
+        str_len = n;
+    }
+
+    os_malloc(str_len + 1, str_cpy);
+    if (str_len > 0) {
+        memcpy(str_cpy, str, str_len);
+    }
+
+    str_cpy[str_len] = '\0';
+
+    return str_cpy;
+}
+
+char ** w_string_split(const char *string_to_split, const char *delim, int max_array_size) {
+    char **paths = NULL;
+    char *state;
+    char *token;
+    int i = 0;
+    char *aux;
+
+    os_calloc(1, sizeof(char *), paths);
+
+    if (!string_to_split || !delim) {
+        return paths;
+    }
+    os_strdup(string_to_split, aux);
+
+    for(token = strtok_r(aux, delim, &state); token; token = strtok_r(NULL, delim, &state)){
+        os_realloc(paths, (i + 2) * sizeof(char *), paths);
+        os_strdup(token, paths[i]);
+        paths[i + 1] = NULL;
+        i++;
+        if (max_array_size && i >= max_array_size) break;
+    }
+    os_free(aux);
+
+    return paths;
+}
+
+// Append two strings
+
+char* w_strcat(char *a, const char *b, size_t n) {
+    if (a == NULL) {
+        return w_strndup(b, n);
+    }
+
+    size_t a_len = strlen(a);
+    size_t output_len = a_len + n;
+
+    os_realloc(a, output_len + 1, a);
+
+    memcpy(a + a_len, b, n);
+    a[output_len] = '\0';
+
+    return a;
+}
+
+// Append a string into the n-th position of a string array
+
+char** w_strarray_append(char **array, char *string, int n) {
+    os_realloc(array, sizeof(char *) * (n + 2), array);
+    array[n] = string;
+    array[n + 1] = NULL;
+
+    return array;
+}
+
+// Tokenize string separated by spaces, respecting double-quotes
+
+char** w_strtok(const char *string) {
+    bool quoting = false;
+    int output_n = 0;
+    char *accum = NULL;
+    char **output;
+
+    os_calloc(1, sizeof(char*), output);
+
+    const char *i;
+    const char *j;
+
+    for (i = string; (j = strpbrk(i, " \"\\")) != NULL; i = j + 1) {
+        switch (*j) {
+        case ' ':
+            if (quoting) {
+                accum = w_strcat(accum, i, j - i + 1);
+            } else {
+                if (j > i) {
+                    accum = w_strcat(accum, i, j - i);
+                }
+
+                if (accum != NULL) {
+                    output = w_strarray_append(output, accum, output_n++);
+                    accum = NULL;
+                }
+            }
+
+            break;
+
+        case '\"':
+            if (j > i || quoting) {
+                accum = w_strcat(accum, i, j - i);
+            }
+
+            quoting = !quoting;
+            break;
+
+        case '\\':
+            if (j > i) {
+                accum = w_strcat(accum, i, j - i);
+            }
+
+            if (j[1] != '\0') {
+                accum = w_strcat(accum, ++j, 1);
+            }
+        }
+    }
+
+    if (*i != '\0') {
+        accum = w_strcat(accum, i, strlen(i));
+    }
+
+    if (accum != NULL) {
+        output = w_strarray_append(output, accum, output_n);
+    }
+
     return output;
 }

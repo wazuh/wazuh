@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2014 Daniel B. Cid
  * All right reserved.
  *
@@ -14,7 +14,7 @@
 #define CINTEGRATORCONFIG_H
 
 #ifndef ARGV0
-#define ARGV0 "ossec-integrator"
+#define ARGV0 "wazuh-integrator"
 #endif
 
 /* Integrator Config Structure */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,6 +13,7 @@
 
 #include "sha1_op.h"
 #include "headers/defs.h"
+#include "shared.h"
 
 /* OpenSSL SHA-1
  * Only use if OpenSSL is not available
@@ -24,9 +25,6 @@
 #endif
 */
 
-#include <openssl/sha.h>
-
-
 int OS_SHA1_File(const char *fname, os_sha1 output, int mode)
 {
     SHA_CTX c;
@@ -35,7 +33,7 @@ int OS_SHA1_File(const char *fname, os_sha1 output, int mode)
     unsigned char md[SHA_DIGEST_LENGTH];
     size_t n;
 
-    memset(output, 0, 65);
+    memset(output, 0, sizeof(os_sha1));
     buf[2049] = '\0';
 
     fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
@@ -77,4 +75,95 @@ int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output)
     }
 
     return (0);
+}
+
+int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output)
+{
+    unsigned char temp[SHA_DIGEST_LENGTH];
+    size_t n;
+
+    memset(temp, 0x0, SHA_DIGEST_LENGTH);
+    SHA1((unsigned char *)str, length, temp);
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", temp[n]);
+        output += 2;
+    }
+
+    return (0);
+}
+
+// Get the hexadecimal result of a SHA-1 digest
+
+void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output) {
+    size_t n;
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", digest[n]);
+        output += 2;
+    }
+}
+
+int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, int64_t nbytes) {
+
+    FILE *fp = NULL;
+    char buf[OS_MAXSTR];
+    int64_t n;
+    unsigned char md[SHA_DIGEST_LENGTH];
+
+    memset(output, 0, sizeof(os_sha1));
+    buf[OS_MAXSTR - 1] = '\0';
+
+    /* It's important to read \r\n instead of \n to generate the correct hash */
+#ifdef WIN32
+    if (fp = w_fopen_r(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
+        return -1;
+    }
+#else
+    if (fp = fopen(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
+        return -1;
+    }
+#endif
+
+    SHA1_Init(c);
+
+    for (int64_t bytes_count = 0; bytes_count < nbytes; bytes_count+=2048) {
+        if(bytes_count+2048 < nbytes) {
+            n = fread(buf, 1, 2048, fp);
+        } else {
+            n = fread(buf, 1, nbytes-bytes_count, fp);
+        }
+
+        buf[n] = '\0';
+        SHA1_Update(c, buf, n);
+    }
+
+    SHA_CTX aux = *c;
+
+    SHA1_Final(&(md[0]), &aux);
+
+    OS_SHA1_Hexdigest(md, output);
+
+    fclose(fp);
+
+    return (0);
+}
+
+void OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf) {
+    if(buf) {
+        size_t n = strlen(buf);
+
+        SHA1_Update(c, buf, n);
+    }
+
+    if(output) {
+        memset(output, 0, sizeof(os_sha1));
+        unsigned char md[SHA_DIGEST_LENGTH];
+        SHA_CTX aux = *c;
+
+        SHA1_Final(&(md[0]), &aux);
+
+        OS_SHA1_Hexdigest(md, output);
+    }
+
 }

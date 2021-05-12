@@ -5,7 +5,7 @@ var:
     default:
       - /var/ossec/logs/archives/archives.json
   - name: index_prefix
-    default: wazuh-archives-3.x-
+    default: wazuh-archives-4.x-
 
 input: config/archives.yml
 

@@ -1,287 +1,156 @@
-
-
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
-from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct, SQLiteBackend
-from wazuh.agent import Agent
-from wazuh.database import Connection
-from wazuh.ossec_queue import OssecQueue
 from wazuh import common
-from glob import glob
-from os import remove, path
-from datetime import datetime
-
-fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay': 'date_last', 'pci':'pci_dss', 'cis': 'cis'}
-
-
-class WazuhDBQueryRootcheck(WazuhDBQuery):
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data,
-                 default_sort_field='date_last', filters={}, fields=fields):
-
-        Agent(agent_id).get_basic_information()  # check if the agent exists
-        db_path = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-        if not db_path:
-            raise WazuhException(1600)
-
-        backend = SQLiteBackend(db_path[0])
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search, select=select,
-                              fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', filters=filters,
-                              query=query, backend=backend, min_select_fields=set(), count=count, get_data=get_data,
-                              date_fields={'oldDay', 'readDay'})
-
-    def _parse_filters(self):
-        WazuhDBQuery._parse_filters(self)
-        # status filter can only appear once in the filter list
-        statuses = list(filter(lambda x: x['field'].startswith('status'), self.query_filters))
-        if statuses:
-            for status in statuses:
-                self.query_filters.remove(status)
-            first_status = statuses[0]
-            first_status['separator'] = 'AND' if first_status['separator'] == '' else first_status['separator']
-            self.query_filters.insert(0, statuses[0])
-            self.query_filters[-1]['separator'] = ''
+from wazuh.core.agent import Agent, get_agents_info
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.wazuh_queue import WazuhQueue
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.rootcheck import WazuhDBQueryRootcheck, last_scan
+from wazuh.core.wdb import WazuhDBConnection
+from wazuh.rbac.decorators import expose_resources
 
 
-    def _filter_status(self, filter_status):
-        partial = """SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t
-                WHERE date_last {1} (SELECT date_last-86400 FROM pm_event WHERE log = 'Ending rootcheck scan.')"""
+@expose_resources(actions=["rootcheck:run"], resources=["agent:id:{agent_list}"])
+def run(agent_list=None):
+    """Run rootcheck scan.
 
-        if filter_status['value'] == 'all':
-            self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + ' UNION ' + partial.format("'solved'",'<=') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
-        elif filter_status['value'] == 'outstanding':
-            self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
-        elif filter_status['value'] == 'solved':
-            self.query = "SELECT {0} FROM (" + partial.format("'solved'", '<=') + \
-                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
-        else:
-            raise WazuhException(1603, filter_status['value'])
+    Parameters
+    ----------
+    agent_list : list
+         Run rootcheck in a list of agents.
 
-    def _format_data_into_dictionary(self):
-        def format_fields(field_name, value):
-            if field_name in ['oldDay', 'readDay']:
-                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                return value
-
-        return {'items': [{field: format_fields(field, db_tuple[field]) for field in self.select['fields'] | self.min_select_fields
-                           if field in db_tuple and db_tuple[field] is not None} for db_tuple in self._data], 'totalItems': self.total_items}
-
-    @staticmethod
-    def _pass_filter(db_filter):
-        return False
-
-
-class WazuhDBQueryRootcheckDistinct(WazuhDBQueryDistinct, WazuhDBQueryRootcheck): pass
-
-
-def run(agent_id=None, all_agents=False):
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the affected agents.
     """
-    Runs rootcheck and syscheck.
-
-    :param agent_id: Run rootcheck/syscheck in the agent.
-    :param all_agents: Run rootcheck/syscheck in all agents.
-    :return: Message.
-    """
-
-    if agent_id == "000" or all_agents:
+    result = AffectedItemsWazuhResult(all_msg='Rootcheck scan was restarted on returned agents',
+                                      some_msg='Rootcheck scan was not restarted on some agents',
+                                      none_msg='No rootcheck scan was restarted')
+    for agent_id in agent_list:
         try:
-            SYSCHECK_RESTART = "{0}/var/run/.syscheck_run".format(common.ossec_path)
-
-            fp = open(SYSCHECK_RESTART, 'w')
-            fp.write('{0}\n'.format(SYSCHECK_RESTART))
-            fp.close()
-            ret_msg = "Restarting Syscheck/Rootcheck locally"
-        except:
-            raise WazuhException(1601, "locally")
-
-        if all_agents:
-            oq = OssecQueue(common.ARQUEUE)
-            ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART)
-            oq.close()
-    else:
-        # Check if agent exists and it is active
-        agent_info = Agent(agent_id).get_basic_information()
-        if 'status' in agent_info:
-            agent_status = agent_info['status']
-        else:
-            agent_status = "N/A"
-
-        if agent_status.lower() != 'active':
-            raise WazuhException(1605, '{0} - {1}'.format(agent_id, agent_status))
-
-        oq = OssecQueue(common.ARQUEUE)
-        ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
-        oq.close()
-
-    return ret_msg
-
-
-def clear(agent_id=None, all_agents=False):
-    """
-    Clears the database.
-
-    :param agent_id: For an agent.
-    :param all_agents: For all agents.
-    :return: Message.
-    """
-
-    # Clear DB
-    if int(all_agents):
-        db_agents = glob('{0}/*-*.db'.format(common.database_path_agents))
-    else:
-        Agent(agent_id).get_basic_information()  # check if the agent exists
-        db_agents = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-
-    if not db_agents:
-        raise WazuhException(1600)
-
-    for db_agent in db_agents:
-        conn = Connection(db_agent)
-        conn.begin()
-        try:
-            conn.execute('DELETE FROM pm_event')
-        except WazuhException as e:
-            raise e
-        except Exception as exception:
-            conn.commit()
-            conn.vacuum()
-            raise WazuhException(1654, exception)
-        else:
-            conn.commit()
-            conn.vacuum()
-
-    # Clear OSSEC info
-    if int(all_agents):
-        rootcheck_files = glob('{0}/queue/rootcheck/*'.format(common.ossec_path))
-    else:
-        if agent_id == "000":
-            rootcheck_files = ['{0}/queue/rootcheck/rootcheck'.format(common.ossec_path)]
-        else:
             agent_info = Agent(agent_id).get_basic_information()
-            rootcheck_files = glob('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, agent_info['name'], agent_info['ip']))
+            agent_status = agent_info.get('status', 'N/A')
+            if agent_status.lower() != 'active':
+                result.add_failed_item(
+                    id_=agent_id, error=WazuhError(1601, extra_message='Status - {}'.format(agent_status)))
+            else:
+                wq = WazuhQueue(common.ARQUEUE)
+                wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
+                result.affected_items.append(agent_id)
+                wq.close()
+        except WazuhError as e:
+            result.add_failed_item(id_=agent_id, error=e)
+    result.affected_items = sorted(result.affected_items, key=int)
+    result.total_affected_items = len(result.affected_items)
 
-    for rootcheck_file in rootcheck_files:
-        if path.exists(rootcheck_file):
-            remove(rootcheck_file)
-
-    return "Rootcheck database deleted"
+    return result
 
 
-def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
+@expose_resources(actions=["rootcheck:clear"], resources=["agent:id:{agent_list}"])
+def clear(agent_list=None):
+    """Clear the rootcheck database for a list of agents.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent ids.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the affected agents.
     """
-    Returns a list of events from the database.
+    result = AffectedItemsWazuhResult(all_msg='Rootcheck database was cleared on returned agents',
+                                      some_msg='Rootcheck database was not cleared on some agents',
+                                      none_msg="No rootcheck database was cleared")
 
-    :param agent_id: Agent ID.
-    :param filters: Fields to filter by.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param select: Selects which fields to return.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    wdb_conn = WazuhDBConnection()
+    for agent_id in agent_list:
+        if agent_id not in get_agents_info():
+            result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+        else:
+            try:
+                wdb_conn.execute(f"agent {agent_id} rootcheck delete", delete=True)
+                result.affected_items.append(agent_id)
+            except WazuhError as e:
+                result.add_failed_item(id_=agent_id, error=e)
+
+    result.affected_items.sort(key=int)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
+def get_last_scan(agent_list):
+    """Get the last rootcheck scan of the agent.
+
+    Parameters
+    ----------
+    agent_list : list
+        Agent ID to get the last scan date from.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the scan date.
     """
-    select = {'fields':["status", "oldDay", "readDay", "event", "pci", "cis"]} if select is None else select
-    if 'status' not in q and 'status' not in filters:
-        q = 'status=all' + ('' if not q else ';'+q)
+    result = AffectedItemsWazuhResult(all_msg='Last rootcheck scan of the agent was returned',
+                                      none_msg='No last scan information was returned')
 
-    db_query = WazuhDBQueryRootcheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, count=True, get_data=True, query=q, filters=filters)
-    return db_query.run()
+    result.affected_items.append(last_scan(agent_list[0]))
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
-def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, q="", filters={}):
+@expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
+def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+                        filters=None, q='', distinct=None):
+    """Return a list of events from the rootcheck database.
+
+    Parameters
+    ----------
+    agent_list : list
+        Agent ID to get the rootcheck events from.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
+    q : str
+        Query to filter results by.
+    distinct : bool
+        Look for distinct values.
+    filters : dict
+        Fields to filter by.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the rootcheck events.
     """
-    Get all requirements used in the rootcheck of the agent
+    if filters is None:
+        filters = {}
+    result = AffectedItemsWazuhResult(all_msg='All selected rootcheck information was returned',
+                                      some_msg='Some rootcheck information was not returned',
+                                      none_msg='No rootcheck information was returned'
+                                      )
 
-    :param requirement: requirement to get
-    :param agent_id: Agent ID
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param filters: Fields to filter by.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    db_query = WazuhDBQueryRootcheckDistinct(offset=offset, limit=limit, sort=sort, search=search, filters=filters,
-                                            select={'fields':[requirement]}, agent_id=agent_id, fields={requirement:fields[requirement]},
-                                             default_sort_field=fields[requirement], count=True, get_data=True, query=q)
-    return db_query.run()
+    db_query = WazuhDBQueryRootcheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
+                                     select=select, count=True, get_data=True, query=q, filters=filters,
+                                     distinct=distinct)
+    data = db_query.run()
+    result.affected_items.extend(data['items'])
+    result.total_affected_items = data['totalItems']
 
-
-def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Get all the PCI requirements used in the rootchecks of the agent.
-
-    :param agent_id: Agent ID.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    return _get_requirement(requirement='pci', agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search)
-
-
-def get_gpg13(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Get all the GPG13 requirements used in the rootchecks of the agent.
-
-    :param agent_id: Agent ID.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    return _get_requirement(requirement='gpg13', agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search)
-
-
-def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
-    """
-    Get all the CIS requirements used in the rootchecks of the agent.
-
-    :param agent_id: Agent ID.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    return _get_requirement(requirement='cis', agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search)
-
-
-def last_scan(agent_id):
-    """
-    Gets the last scan of the agent.
-
-    :param agent_id: Agent ID.
-    :return: Dictionary: end, start.
-    """
-    Agent(agent_id).get_basic_information()  # check if the agent exists
-    # Connection
-    db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-    if not db_agent:
-        raise WazuhException(1600)
-    else:
-        db_agent = db_agent[0]
-
-    conn = Connection(db_agent)
-
-    data = {}
-    # end time
-    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
-    conn.execute(query)
-    time = conn.fetch()
-    data['end'] = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else "ND"
-    # start time
-    query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
-    conn.execute(query)
-    time = conn.fetch()
-    data['start'] = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else "ND"
-
-    return data
+    return result

@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Mar 12, 2018.
  *
  * This program is free software; you can redistribute it
@@ -28,14 +28,17 @@ size_t agcom_dispatch(char * command, char ** output){
         // getconfig section
         if (!rcv_args){
             mdebug1("AGCOM getconfig needs arguments.");
-            *output = strdup("err AGCOM getconfig needs arguments");
+            os_strdup("err AGCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return agcom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "getstate") == 0) {
+        *output = w_agentd_state_get();
+        return strlen(*output);
     } else {
         mdebug1("AGCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -94,6 +97,6 @@ size_t agcom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At AGCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }

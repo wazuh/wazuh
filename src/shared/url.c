@@ -1,6 +1,6 @@
 /*
  * URL download support library
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 3, 2018.
  *
  * This program is free software; you can redistribute it
@@ -10,13 +10,62 @@
  */
 
 #include "shared.h"
+#include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
+
 struct MemoryStruct {
   char *memory;
   size_t size;
 };
 
-int wurl_get(const char * url, const char * dest, const char * header, const char *data){
+static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+  char *ptr = realloc(mem->memory, mem->size + realsize + 1);
+  if(ptr == NULL) {
+    return 0;
+  }
+
+  mem->memory = ptr;
+  memcpy(&(mem->memory[mem->size]), contents, realsize);
+  mem->size += realsize;
+  mem->memory[mem->size] = 0;
+
+  return realsize;
+}
+
+#ifndef WIN32
+/*
+ * These values ​​were taken from how libcurl looks for the paths at compilation time,
+ * here it is modified to be able to support the precompiled deps.
+ *
+ * https://github.com/curl/curl/blob/5930cb1c465ef5f0de6f1b91a843bb6f0bed1f23/acinclude.m4#L2182
+ */
+const char* certs_list[] = {
+    "/etc/ssl/certs/ca-certificates.crt",       // Debian systems
+    "/etc/pki/tls/certs/ca-bundle.crt",         // Redhat and Mandriva
+    "/usr/share/ssl/certs/ca-bundle.crt",       // RedHat
+    "/usr/local/share/certs/ca-root-nss.crt",   // FreeBSD
+    "/etc/ssl/cert.pem",                        // OpenBSD, FreeBSD, MacOS
+    NULL
+};
+
+char const * find_cert_list() {
+    char const * ret_val = NULL;
+
+    for (size_t i = 0; NULL != certs_list[i]; ++i) {
+        if (-1 != FileSize(certs_list[i])) {
+            ret_val = certs_list[i];
+            break;
+        }
+    }
+
+    return ret_val;
+}
+
+int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout) {
     CURL *curl;
     FILE *fp;
     CURLcode res;
@@ -24,7 +73,9 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     char errbuf[CURL_ERROR_SIZE];
     int old_mask;
 
-    if (curl){
+    if (curl) {
+        char const *cert = find_cert_list();
+
         old_mask = umask(0006);
         fp = fopen(dest,"wb");
         umask(old_mask);
@@ -33,36 +84,61 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
             curl_easy_cleanup(curl);
             return OS_FILERR;
         }
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+        res = curl_easy_setopt(curl, CURLOPT_URL, url);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
         if (header) {
             struct curl_slist *c_header = curl_slist_append(NULL, header);
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, c_header);
+            res += curl_easy_setopt(curl, CURLOPT_HTTPHEADER, c_header);
         }
 
         if (data) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+            res += curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+        }
+
+        if (timeout) {
+            res += curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
         }
 
         // Enable SSL check if url is HTTPS
-        if(!strncmp(url,"https",5)){
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+        if (!strncmp(url,"https",5)) {
+            if (NULL != cert) {
+                res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+            }
         }
 
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-        res = curl_easy_perform(curl);
+        res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
 
-        if(res){
-            mdebug1("CURL ERROR %s",errbuf);
+        if (res != 0) {
+            mdebug1("Parameter setup error at CURL");
             curl_easy_cleanup(curl);
             fclose(fp);
             unlink(dest);
             return OS_CONNERR;
         }
+
+        res = curl_easy_perform(curl);
+
+        switch(res) {
+        case CURLE_OK:
+            break;
+        case CURLE_OPERATION_TIMEDOUT:
+            mdebug1("CURL ERROR: %s", errbuf);
+            curl_easy_cleanup(curl);
+            fclose(fp);
+            unlink(dest);
+            return OS_TIMEOUT;
+        default:
+            mdebug1("CURL ERROR: %s",errbuf);
+            curl_easy_cleanup(curl);
+            fclose(fp);
+            unlink(dest);
+            return OS_CONNERR;
+        }
+
         curl_easy_cleanup(curl);
         fclose(fp);
     }
@@ -85,7 +161,7 @@ int w_download_status(int status,const char *url,const char *dest){
 }
 
 // Request download
-int wurl_request(const char * url, const char * dest, const char *header, const char *data) {
+int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout) {
     const char * COMMAND = "download";
     char response[64];
     char * _url;
@@ -120,17 +196,17 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 
     zrequest = strlen(_url) + strlen(parsed_dest) + strlen(COMMAND) +
                (parsed_header ? strlen(parsed_header) : 0) +
-               (parsed_data ? strlen(parsed_data) : 0) + 6;
-    os_malloc(zrequest, srequest);
-    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "");
+               (parsed_data ? strlen(parsed_data) : 0) + sizeof(long) + 7;
+    os_calloc(1, zrequest, srequest);
+    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|%ld|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_data ? parsed_data : "", timeout ? timeout : 0);
     os_free(parsed_dest);
     os_free(parsed_header);
     os_free(parsed_data);
 
     // Connect to downlod module
 
-    if (sock = OS_ConnectUnixDomain(isChroot() ? WM_DOWNLOAD_SOCK : WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        mwarn("Couldn't connect to download module socket '%s'", WM_DOWNLOAD_SOCK_PATH);
+    if (sock = OS_ConnectUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        mwarn("Couldn't connect to download module socket '%s'", WM_DOWNLOAD_SOCK);
         goto end;
     }
 
@@ -160,11 +236,11 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
         if (!strcmp(response, "ok")) {
             retval = 0;
         } else if (!strcmp(response, "err connecting to url")) {
-            mdebug1(WURL_DOWNLOAD_FILE_ERROR, dest, _url);
             retval = OS_CONNERR;
         } else if (!strcmp(response, "err writing file")) {
-            mdebug1(WURL_WRITE_FILE_ERROR, dest);
             retval = OS_FILERR;
+        } else if (!strcmp(response, "err timeout")) {
+            retval = OS_TIMEOUT;
         } else {
             mdebug1("Couldn't download from '%s': %s", _url, response);
         }
@@ -182,17 +258,23 @@ end:
 }
 
 // Request a uncompressed download (.gz)
-int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data) {
+int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256) {
     char compressed_file[OS_SIZE_6144 + 1];
     int retval = OS_INVALID;
 
     snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
 
-    if (wurl_request(url, compressed_file, header, data)) {
+    if (wurl_request(url, compressed_file, header, data, timeout)) {
         return retval;
+
     } else {
-        if (w_uncompress_gzfile(compressed_file, dest)) {
-            merror("Could not uncompress the file downloaded from '%s'.", url);
+        os_sha256 filehash = {0};
+        if (sha256 && !OS_SHA256_File(compressed_file, filehash, 'r') && strcmp(sha256, filehash)) {
+            merror("Invalid file integrity for '%s'", compressed_file);
+
+        } else if (w_uncompress_gzfile(compressed_file, dest)) {
+            merror("Could not uncompress the file downloaded from '%s'", url);
+
         } else {
             retval = 0;
         }
@@ -207,7 +289,7 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
 
 /* Check download module availability */
 int wurl_check_connection() {
-    int sock = OS_ConnectUnixDomain(isChroot() ? WM_DOWNLOAD_SOCK : WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+    int sock = OS_ConnectUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
         return -1;
@@ -215,24 +297,6 @@ int wurl_check_connection() {
         close(sock);
         return 0;
     }
-}
-
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-  size_t realsize = size * nmemb;
-  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
-
-  char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-  if(ptr == NULL) {
-    return 0;
-  }
-
-  mem->memory = ptr;
-  memcpy(&(mem->memory[mem->size]), contents, realsize);
-  mem->size += realsize;
-  mem->memory[mem->size] = 0;
-
-  return realsize;
 }
 
 char * wurl_http_get(const char * url) {
@@ -247,18 +311,29 @@ char * wurl_http_get(const char * url) {
     chunk.size = 0;    /* no data at this point */
 
     if (curl){
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        char const *cert = find_cert_list();
+
+        res = curl_easy_setopt(curl, CURLOPT_URL, url);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
 
         // Enable SSL check if url is HTTPS
         if(!strncmp(url,"https",5)){
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+            if (NULL != cert) {
+                res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+            }
         }
 
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+        res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+
+        if (res != 0) {
+            mdebug1("Parameter setup error at CURL");
+            curl_easy_cleanup(curl);
+            free(chunk.memory);
+            return NULL;
+        }
+
         res = curl_easy_perform(curl);
 
         if(res){
@@ -271,4 +346,148 @@ char * wurl_http_get(const char * url) {
     }
 
     return chunk.memory;
+}
+
+#endif
+#ifndef CLIENT
+
+// Request a download of a bzip2 file and uncompress it.
+int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256) {
+    char compressed_file[OS_SIZE_6144 + 1];
+    int retval = OS_INVALID;
+
+    snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
+
+    if (wurl_request(url, compressed_file, header, data, timeout)) {
+        return retval;
+
+    } else {
+        os_sha256 filehash = {0};
+        if (sha256 && !OS_SHA256_File(compressed_file, filehash, 'r') && strcmp(sha256, filehash)) {
+            merror("Invalid file integrity for '%s'", compressed_file);
+
+        } else if (bzip2_uncompress(compressed_file, dest)) {
+            merror("Could not uncompress the file downloaded from '%s'", url);
+
+        } else {
+            retval = 0;
+        }
+    }
+
+    if (remove(compressed_file) < 0) {
+        mdebug1("Could not remove '%s'. Error: %d.", compressed_file, errno);
+    }
+
+    return retval;
+}
+
+// Check the compression type of the file and try to download and uncompress it.
+int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256) {
+    int res_url_request;
+    int compress = 0;
+
+    if (wstr_end((char *)url, ".gz")) {
+        compress = 1;
+        res_url_request = wurl_request_gz(url, dest, header, data, timeout, sha256);
+    } else if (wstr_end((char *)url, ".bz2")) {
+        compress = 1;
+        res_url_request = wurl_request_bz2(url, dest, header, data, timeout, sha256);
+    } else {
+        res_url_request = wurl_request(url, dest, header, data, timeout);
+    }
+
+    if (compress == 1 && !res_url_request) {
+        mdebug1("File from URL '%s' was successfully uncompressed into '%s'", url, dest);
+    }
+
+    return res_url_request;
+}
+#endif
+
+curl_response* wurl_http_get_with_header(const char *header, const char* url) {
+    curl_response *response;
+    struct curl_slist* headers = NULL;
+    struct curl_slist* headers_tmp = NULL;
+    CURLcode res;
+    struct MemoryStruct req;
+    struct MemoryStruct req_header;
+
+    CURL* curl = curl_easy_init();
+
+    if (!curl) {
+        mdebug1("curl initialization failure");
+        return NULL;
+    }
+
+    if (!header) {
+        mdebug1("curl header NULL");
+        curl_easy_cleanup(curl);
+        return NULL;
+    }
+
+#ifndef WIN32
+    char const *cert = find_cert_list();
+
+    // Enable SSL check if url is HTTPS
+    if(!strncmp(url,"https",5)){
+        if (NULL != cert) {
+            curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+        }
+    }
+#endif
+
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+
+    headers = curl_slist_append(headers, "User-Agent: curl/7.58.0");
+
+    if (headers == NULL) {
+        curl_easy_cleanup(curl);
+        mdebug1("curl append header failure");
+        return NULL;
+    }
+
+    headers_tmp = curl_slist_append(headers, header);
+
+    if (headers_tmp == NULL) {
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        mdebug1("curl append header failure");
+        return NULL;
+    }
+
+    headers = headers_tmp;
+
+    req.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    req.size = 0;    /* no data at this point */
+
+    req_header.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    req_header.size = 0;    /* no data at this point */
+
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        mdebug1("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        os_free(req.memory);
+        os_free(req_header.memory);
+        return NULL;
+    }
+
+    os_calloc(1, sizeof(curl_response), response);
+    curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &response->status_code);
+    response->header = req_header.memory;
+    response->body = req.memory;
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    return response;
 }

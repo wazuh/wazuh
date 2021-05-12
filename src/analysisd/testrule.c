@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,7 +10,7 @@
 
 #ifdef ARGV0
 #undef ARGV0
-#define ARGV0 "ossec-testrule"
+#define ARGV0 "wazuh-testrule"
 #endif
 
 #include "shared.h"
@@ -30,13 +30,9 @@
 #include "cleanevent.h"
 #include "lists_make.h"
 
+
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
-
-/* Analysisd function */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
-
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 
 // Cleanup at exit
 static void onexit();
@@ -46,9 +42,10 @@ static void onsignal(int signum);
 
 /* Print help statement */
 __attribute__((noreturn))
-static void help_logtest(void)
+static void help_logtest(char * home_path)
 {
     print_header();
+    print_out("\nSince Wazuh v4.1.0 this binary is deprecated. Use wazuh-logtest instead\n");
     print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
@@ -58,10 +55,11 @@ static void help_logtest(void)
     print_out("    -t          Test configuration");
     print_out("    -a          Alerts output");
     print_out("    -v          Verbose (full) output/rule debugging");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out("    -U <rule:alert:decoder>  Unit test. Refer to contrib/ossec-testing/runtests.py");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -70,8 +68,7 @@ int main(int argc, char **argv)
     int test_config = 0;
     int c = 0;
     char *ut_str = NULL;
-    const char *dir = DEFAULTDIR;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
@@ -79,10 +76,13 @@ int main(int argc, char **argv)
     struct sigaction action = { .sa_handler = onsignal };
     int quiet = 0;
     num_rule_matching_threads = 1;
-    last_events_list = NULL;
+    os_analysisd_last_events = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
 
     thishour = 0;
     today = 0;
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             case 'h':
-                help_logtest();
+                help_logtest(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -121,7 +121,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                snprintf(home_path, PATH_MAX, "%s", optarg);
                 break;
             case 'c':
                 if (!optarg) {
@@ -139,10 +139,17 @@ int main(int argc, char **argv)
                 full_output = 1;
                 break;
             default:
-                help_logtest();
+                help_logtest(home_path);
                 break;
         }
     }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Read configuration file */
     if (GlobalConf(cfg) < 0) {
@@ -167,7 +174,7 @@ int main(int argc, char **argv)
     /* Get server hostname */
     memset(__shost, '\0', 512);
     if (gethostname(__shost, 512 - 1) != 0) {
-        strncpy(__shost, OSSEC_SERVER, 512 - 1);
+        strncpy(__shost, WAZUH_SERVER, 512 - 1);
     } else {
         char *_ltmp;
 
@@ -184,7 +191,7 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Set the group */
@@ -193,16 +200,16 @@ int main(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
-    if (!last_events_list) {
-        os_calloc(1, sizeof(EventList), last_events_list);
-        OS_CreateEventList(Config.memorysize, last_events_list);
+    if (!os_analysisd_last_events) {
+        os_calloc(1, sizeof(EventList), os_analysisd_last_events);
+        OS_CreateEventList(Config.memorysize, os_analysisd_last_events);
     }
 
     /*
@@ -218,6 +225,13 @@ int main(int argc, char **argv)
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
 
+            /* Error and warning msg */
+            char * msg;
+            OSList * list_msg = OSList_Create();
+            OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+            OSListNode * node_log_msg;
+            int error_exit = 0;
+
             if (!Config.decoders) {
                 /* Legacy loading */
                 /* Read decoders */
@@ -230,7 +244,20 @@ int main(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn,
+                                       &os_analysisd_decoderlist_nopn,
+                                       &os_analysisd_decoder_store, list_msg)) {
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            merror("%s", msg);
+                            os_free(msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
+                        }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -240,10 +267,27 @@ int main(int argc, char **argv)
 
                 /* Read local ones */
 
-                c = ReadDecodeXML(XML_LDECODER);
+                c = ReadDecodeXML(XML_LDECODER, &os_analysisd_decoderlist_pn,
+                                  &os_analysisd_decoderlist_nopn,
+                                  &os_analysisd_decoder_store, list_msg);
+                node_log_msg = OSList_GetFirstNode(list_msg);
+                while (node_log_msg) {
+                    os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                    msg = os_analysisd_string_log_msg(data_msg);
+
+                    if (data_msg->level == LOGLEVEL_WARNING) {
+                        mwarn("%s", msg);
+                    } else if (data_msg->level == LOGLEVEL_ERROR) {
+                        merror("%s", msg);
+                    }
+                    os_free(msg);
+                    os_analysisd_free_log_msg(&data_msg);
+                    OSList_DeleteCurrentlyNode(list_msg);
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+                }
                 if (!c) {
                     if ((c != -2)) {
-                        merror_exit(CONFIG_ERROR,  XML_LDECODER);
+                        merror_exit(CONFIG_ERROR, XML_LDECODER);
                     }
                 } else {
                     minfo("Reading local decoder file.");
@@ -258,7 +302,21 @@ int main(int argc, char **argv)
                     if(!quiet) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn,
+                                       &os_analysisd_decoderlist_nopn,
+                                       &os_analysisd_decoder_store,
+                                       list_msg)) {
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            merror("%s", msg);
+                            os_free(msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
+                        }
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
@@ -268,7 +326,25 @@ int main(int argc, char **argv)
             }
 
             /* Load decoders */
-            SetDecodeXML();
+            SetDecodeXML(list_msg, &os_analysisd_decoder_store, &os_analysisd_decoderlist_nopn, &os_analysisd_decoderlist_pn);
+            node_log_msg = OSList_GetFirstNode(list_msg);
+            while (node_log_msg) {
+                os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                msg = os_analysisd_string_log_msg(data_msg);
+                if (data_msg->level == LOGLEVEL_WARNING) {
+                    mwarn("%s", msg);
+                } else if (data_msg->level == LOGLEVEL_ERROR) {
+                    merror("%s", msg);
+                    error_exit = 1;
+                }
+                os_free(msg);
+                os_analysisd_free_log_msg(&data_msg);
+                OSList_DeleteCurrentlyNode(list_msg);
+                node_log_msg = OSList_GetFirstNode(list_msg);
+            }
+            if (error_exit) {
+                 merror_exit(DEC_PLUGIN_ERR);
+            }
         }
         {
             /* Load Lists */
@@ -278,9 +354,25 @@ int main(int argc, char **argv)
             {
                 char **listfiles;
                 listfiles = Config.lists;
+                /* Error and warning messages */
+                OSList * list_msg = OSList_Create();
+                OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+
                 while (listfiles && *listfiles) {
                     mdebug1("Reading the lists file: '%s'", *listfiles);
-                    if (Lists_OP_LoadList(*listfiles) < 0) {
+                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists, list_msg) < 0) {
+                        char * msg;
+                        OSListNode * node_log_msg;
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                        while (node_log_msg) {
+                            os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                            msg = os_analysisd_string_log_msg(data_msg);
+                            merror("%s", msg);
+                            os_free(msg);
+                            os_analysisd_free_log_msg(&data_msg);
+                            OSList_DeleteCurrentlyNode(list_msg);
+                            node_log_msg = OSList_GetFirstNode(list_msg);
+                        }
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
                     free(*listfiles);
@@ -288,13 +380,21 @@ int main(int argc, char **argv)
                 }
                 free(Config.lists);
                 Config.lists = NULL;
+                os_free(list_msg);
             }
-            Lists_OP_MakeAll(0, 0);
+            Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
         {
             /* Load Rules */
             /* Create the rules list */
             Rules_OP_CreateRules();
+
+            /* Error and warning msg */
+            char * msg;
+            OSList * list_msg = OSList_Create();
+            OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+            OSListNode * node_log_msg;
+            int error_exit = 0;
 
             /* Read the rules */
             {
@@ -302,7 +402,27 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles) < 0) {
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, 
+                                           &os_analysisd_last_events, &os_analysisd_decoder_store, list_msg) < 0) {
+                        error_exit = 1;
+                    }
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+                    while (node_log_msg) {
+                        os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                        msg = os_analysisd_string_log_msg(data_msg);
+
+                        if (data_msg->level == LOGLEVEL_WARNING) {
+                            mwarn("%s", msg);
+                        } else if (data_msg->level == LOGLEVEL_ERROR) {
+                            merror("%s", msg);
+                            error_exit = 1;
+                        }
+                        os_free(msg);
+                        os_analysisd_free_log_msg(&data_msg);
+                        OSList_DeleteCurrentlyNode(list_msg);
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                    }
+                    if (error_exit) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
@@ -319,7 +439,7 @@ int main(int argc, char **argv)
              * having to search thought the list of lists for the correct file
              * during rule evaluation.
              */
-            OS_ListLoadRules();
+            OS_ListLoadRules(&os_analysisd_cdblists, &os_analysisd_cdbrules);
         }
     }
 
@@ -363,6 +483,9 @@ int main(int argc, char **argv)
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
+    /* Inform that binary is deprecated */
+    print_out("\nSince Wazuh v4.1.0 this binary is deprecated. Use wazuh-logtest instead\n");
+
     /* Going to main loop */
     OS_ReadMSG(ut_str);
 
@@ -405,18 +528,21 @@ void OS_ReadMSG(char *ut_str)
 
     RuleInfoDetail *last_info_detail;
     Eventinfo *lf;
+    OSDecoderNode *node = NULL;
 
     RuleInfo * currently_rule;
     /* Null global pointer to current rule */
     currently_rule = NULL;
 
     /* Initiate the FTS list */
-    if (!FTS_Init(1)) {
+    if (!FTS_Init(1, &os_analysisd_fts_list, &os_analysisd_fts_store)) {
         merror_exit(FTS_LIST_ERROR);
     }
 
+    mdebug1("FTS_Init completed.");
+
     /* Initialize the Accumulator */
-    if (!Accumulate_Init()) {
+    if (!Accumulate_Init(&os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts)) {
         merror("accumulator: ERROR: Initialization failed");
         exit(1);
     }
@@ -484,12 +610,13 @@ void OS_ReadMSG(char *ut_str)
             lf->size = strlen(lf->log);
 
             /* Decode event */
-            DecodeEvent(lf, &decoder_match);
+            node = OS_GetFirstOSDecoder(lf->program_name);
+            DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
 
             /* Run accumulator */
             if ( lf->decoder_info->accumulate == 1 ) {
                 print_out("\n**ACCUMULATOR: LEVEL UP!!**\n");
-                lf = Accumulate(lf);
+                lf = Accumulate(lf, &os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts);
             }
 
             /* Loop over all the rules */
@@ -521,7 +648,8 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check each rule */
-                else if (currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match), !currently_rule) {
+                else if (currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
+                         rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, false), !currently_rule) {
                     continue;
                 }
 
@@ -578,7 +706,7 @@ void OS_ReadMSG(char *ut_str)
                 /* Log the alert if configured to */
                 if (currently_rule->alert_opts & DO_LOGALERT) {
                     if (alert_only) {
-                        OS_LogOutput(lf);
+                        OS_Log(lf);
                         __crt_ftell++;
                     } else {
                         print_out("**Alert to be generated.\n\n");
@@ -609,7 +737,7 @@ void OS_ReadMSG(char *ut_str)
                     }
                 }
 
-                OS_AddEvent(lf, last_events_list);
+                OS_AddEvent(lf, os_analysisd_last_events);
                 break;
 
             } while ((rulenode_pt = rulenode_pt->next) != NULL);

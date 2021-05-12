@@ -1,6 +1,6 @@
-#!/var/ossec/framework/python/bin/python3
+#!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -9,7 +9,10 @@ import logging
 import argparse
 import operator
 import sys
-from wazuh.cluster import control, cluster
+
+import wazuh.core.cluster.cluster
+import wazuh.core.cluster.utils
+from wazuh.core.cluster import control, local_client
 
 
 def __print_table(data, headers, show_header=False):
@@ -35,22 +38,25 @@ def __print_table(data, headers, show_header=False):
 
 
 async def print_agents(filter_status, filter_node):
-    result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
+    lc = local_client.LocalClient()
+    result = await control.get_agents(lc, filter_node=filter_node, filter_status=filter_status)
     headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
                'node_name': 'Node name'}
-    data = map(operator.itemgetter(*headers.keys()), result['data']['items'])
+    data = map(operator.itemgetter(*headers.keys()), result['items'])
     __print_table(data, list(headers.values()), True)
 
 
 async def print_nodes(filter_node):
-    result = await control.get_nodes(filter_node)
+    lc = local_client.LocalClient()
+    result = await control.get_nodes(lc, filter_node=filter_node)
     headers = ["Name", "Type", "Version", "Address"]
     data = map(lambda x: list(x.values()), result['items'])
     __print_table(data, headers, True)
 
 
 async def print_health(config, more, filter_node):
-    result = await control.get_health(filter_node)
+    lc = local_client.LocalClient()
+    result = await control.get_health(lc, filter_node=filter_node)
     msg1 = ""
     msg2 = ""
 
@@ -71,11 +77,11 @@ async def print_health(config, more, filter_node):
         if node_info['info']['type'] != "master":
 
             if not more:
-                msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {} | Last keep alive: {}.\n".format(
-                    node, node_info['info']['ip'], node_info['status']['last_sync_integrity']['date_end_master'],
-                    node_info['status']['last_sync_agentinfo']['date_end_master'],
-                    node_info['status']['last_sync_agentgroups']['date_end_master'],
-                    node_info['status']['last_keep_alive']
+                msg1 += "    {} ({}): Integrity check: {} | Integrity sync: {} | Agents-info: {} | Last keep alive: {}.\n".format(
+                    node, node_info['info']['ip'], str(node_info['status']['last_check_integrity']['date_end_master']),
+                    str(node_info['status']['last_sync_integrity']['date_end_master']),
+                    str(node_info['status']['last_sync_agentinfo']['date_end_master']),
+                    str(node_info['status']['last_keep_alive'])
                 )
 
             msg2 += "        Status:\n"
@@ -84,41 +90,39 @@ async def print_health(config, more, filter_node):
             msg2 += "            Last keep Alive:\n"
             msg2 += "                Last received: {0}.\n".format(node_info['status']['last_keep_alive'])
 
-            # Integrity
-            msg2 += "            Integrity\n"
-            msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_integrity']['date_start_master'],
-                node_info['status']['last_sync_integrity']['date_end_master'])
+            # Integrity check
+            msg2 += "            Integrity check:\n"
+            msg2 += "                Last integrity check: {0} - {1}.\n".format(
+                str(node_info['status']['last_check_integrity']['date_start_master']),
+                str(node_info['status']['last_check_integrity']['date_end_master']))
+            msg2 += "                Permission to check integrity: {}.\n".format(
+                str(node_info['status']['sync_integrity_free']))
+
+            # Integrity sync
+            msg2 += "            Integrity sync:\n"
+            msg2 += "                Last integrity synchronization: {0} - {1}.\n".format(
+                str(node_info['status']['last_sync_integrity']['date_start_master']),
+                str(node_info['status']['last_sync_integrity']['date_end_master']))
 
             n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
             n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
             n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
             n_extra_valid = str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])
-
             msg2 += "                Synchronized files: Shared: {} | Missing: {} | Extra: {} | Extra valid: {}.\n".format(
                 n_shared, n_missing, n_extra, n_extra_valid)
-            msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_integrity_free']))
+
+            msg2 += "                Permission to sync extra valid files: {}.\n".format(
+                str(node_info['status']['sync_extravalid_free']))
+            msg2 += "                Extra valid files correctly updated in master: {}.\n".format(
+                str(node_info['status']['last_sync_integrity']['total_extra_valid']))
 
             # Agent info
-            msg2 += "            Agents-info\n"
+            msg2 += "            Agents-info:\n"
             msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_agentinfo']['date_start_master'],
-                node_info['status']['last_sync_agentinfo']['date_end_master'])
-            msg2 += "                Synchronized files: {}.\n".format(
-                str(node_info['status']['last_sync_agentinfo']['total_agentinfo']))
-            msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_agentinfo_free']))
-
-            # Agent groups
-            msg2 += "            Agents-group\n"
-            msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_agentgroups']['date_start_master'],
-                node_info['status']['last_sync_agentgroups']['date_end_master'])
-            msg2 += "                Synchronized files: {}.\n".format(
-                str(node_info['status']['last_sync_agentgroups']['total_agentgroups']))
-            msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_extravalid_free']))
+                str(node_info['status']['last_sync_agentinfo']['date_start_master']),
+                str(node_info['status']['last_sync_agentinfo']['date_end_master']))
+            msg2 += "                Number of synchronized chunks: {}.\n".format(
+                str(node_info['status']['last_sync_agentinfo']['n_synced_chunks']))
 
     print(msg1)
 
@@ -140,13 +144,13 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
-    cluster_status = cluster.get_status_json()
+    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
     if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
         logging.error("Cluster is not running.")
         sys.exit(1)
 
-    cluster_config = cluster.read_config()
-    cluster.check_cluster_config(config=cluster_config)
+    cluster_config = wazuh.core.cluster.utils.read_config()
+    wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
 
     try:
         if args.filter_status and not args.list_agents:

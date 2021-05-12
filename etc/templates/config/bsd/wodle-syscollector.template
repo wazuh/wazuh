@@ -9,4 +9,9 @@
     <packages>yes</packages>
     <ports all="no">no</ports>
     <processes>no</processes>
+
+    <!-- Database synchronization settings -->
+    <synchronization>
+      <max_eps>10</max_eps>
+    </synchronization>
   </wodle>

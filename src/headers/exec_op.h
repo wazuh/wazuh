@@ -1,6 +1,6 @@
 /*
  * Subprocess execution library
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * May 1, 2018
  *
  * This program is free software; you can redistribute it
@@ -16,6 +16,7 @@
 #define W_BIND_STDERR   002
 #define W_CHECK_WRITE   004
 #define W_APPEND_POOL   010
+#define W_BIND_STDIN    020
 
 #ifdef WIN32
 #define WEXITSTATUS(x) x

@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -11,16 +11,13 @@
 #ifndef SYSCHECK_OP_H
 #define SYSCHECK_OP_H
 
-#include "analysisd/eventinfo.h"
-
 #ifndef WIN32
 
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
-#define PATH_SEP '/'
 
-// ATTRS
+// Windows file attributes
 #define FILE_ATTRIBUTE_READONLY                 0x00000001
 #define FILE_ATTRIBUTE_HIDDEN                   0x00000002
 #define FILE_ATTRIBUTE_SYSTEM                   0x00000004
@@ -35,11 +32,7 @@
 #define FILE_ATTRIBUTE_OFFLINE                  0x00001000
 #define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED      0x00002000
 #define FILE_ATTRIBUTE_ENCRYPTED                0x00004000
-#define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
 #define FILE_ATTRIBUTE_VIRTUAL                  0x00010000
-#define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000
-#define FILE_ATTRIBUTE_RECALL_ON_OPEN           0x00040000
-#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x00400000
 
 // Permissions
 // Generic rights
@@ -68,52 +61,69 @@
 
 #include "shared.h"
 #include "aclapi.h"
+#include <sddl.h>
 
 #define BUFFER_LEN 1024
-#define PATH_SEP '\\'
 
 #endif
 
-// Number of attributes in checksum
-#define FIM_NATTR 11
-// Number of options in checksum hash table
-#define FIM_NOPTS 10
+#include "../syscheckd/syscheck.h"
+#include "analysisd/eventinfo.h"
+#include "os_net/os_net.h"
+
+#define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
+#define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000
+#define FILE_ATTRIBUTE_RECALL_ON_OPEN           0x00040000
+#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x00400000
+
+#define MAX_WIN_PERM_SIZE OS_SIZE_20480
+
 /* Fields for rules */
-typedef enum sk_syscheck {
-    SK_FILE,
-    SK_SIZE,
-    SK_PERM,
-    SK_UID,
-    SK_GID,
-    SK_MD5,
-    SK_SHA1,
-    SK_UNAME,
-    SK_GNAME,
-    SK_MTIME,
-    SK_INODE,
-    SK_SHA256,
-    SK_ATTRS,
-    SK_CHFIELDS,
-    SK_USER_ID,
-    SK_USER_NAME,
-    SK_GROUP_ID,
-    SK_GROUP_NAME,
-    SK_PROC_NAME,
-    SK_AUDIT_ID,
-    SK_AUDIT_NAME,
-    SK_EFFECTIVE_UID,
-    SK_EFFECTIVE_NAME,
-    SK_PPID,
-    SK_PROC_ID,
-    SK_TAG,
-    SK_SYM_PATH,
-    SK_NFIELDS
-} sk_syscheck;
+typedef enum fim_fields {
+    FIM_FILE,
+    FIM_HARD_LINKS,
+    FIM_MODE,
+    FIM_SIZE,
+    FIM_PERM,
+    FIM_UID,
+    FIM_GID,
+    FIM_MD5,
+    FIM_SHA1,
+    FIM_UNAME,
+    FIM_GNAME,
+    FIM_MTIME,
+    FIM_INODE,
+    FIM_SHA256,
+    FIM_DIFF,
+    FIM_ATTRS,
+    FIM_CHFIELDS,
+    FIM_USER_ID,
+    FIM_USER_NAME,
+    FIM_GROUP_ID,
+    FIM_GROUP_NAME,
+    FIM_PROC_NAME,
+    FIM_PROC_PNAME,
+    FIM_AUDIT_CWD,
+    FIM_AUDIT_PCWD,
+    FIM_AUDIT_ID,
+    FIM_AUDIT_NAME,
+    FIM_EFFECTIVE_UID,
+    FIM_EFFECTIVE_NAME,
+    FIM_PPID,
+    FIM_PROC_ID,
+    FIM_TAG,
+    FIM_SYM_PATH,
+    FIM_REGISTRY_ARCH,
+    FIM_REGISTRY_VALUE_NAME,
+    FIM_REGISTRY_VALUE_TYPE,
+    FIM_ENTRY_TYPE,
+    FIM_NFIELDS
+} fim_fields;
 
 typedef struct __sdb {
     char comment[OS_MAXSTR + 1];
     char size[OS_FLSIZE + 1];
-    char perm[OS_SIZE_20480 + 1];
+    char perm[OS_FLSIZE + 1];
     char owner[OS_FLSIZE + 1];
     char gowner[OS_FLSIZE + 1];
     char md5[OS_FLSIZE + 1];
@@ -147,10 +157,13 @@ typedef struct sk_sum_wdata {
     char *group_id;
     char *group_name;
     char *process_name;
+    char *cwd;
     char *audit_uid;
     char *audit_name;
     char *effective_uid;
     char *effective_name;
+    char *parent_name;
+    char *parent_cwd;
     char *ppid;
     char *process_id;
 } sk_sum_wdata;
@@ -165,7 +178,7 @@ typedef struct sk_sum_t {
     char *md5;
     char *sha1;
     char *sha256;
-    unsigned int attrs;
+    char *attributes;
     char *uname;
     char *gname;
     long mtime;
@@ -178,52 +191,262 @@ typedef struct sk_sum_t {
     long date_alert;
 } sk_sum_t;
 
-/* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
-   or -1 on failure. */
+/**
+ * @brief Parse c_sum string
+ *
+ * @param [out] sum
+ * @param [in] c_sum
+ * @param [in] w_sum
+ * @return 0 if success, 1 when c_sum denotes a deleted file, -1 on failure
+ */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum);
 
-// Parse fields changes and date_alert only provide for wazuh_db
+/**
+ * @brief Parse fields changes and date_alert only provide for wazuh_db
+ *
+ * @param [out] sum
+ * @param [in] c_sum
+ * @return 0 if success, -1 on failure
+ */
 int sk_decode_extradata(sk_sum_t *sum, char *c_sum);
 
+/**
+ * @brief Fill an event with specific data
+ *
+ * @param [out] lf Event to be filled
+ * @param [in] f_name File name for the event
+ * @param [in] sum File sum used to fill the event
+ */
 void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum);
 
-int sk_build_sum(const sk_sum_t * sum, char * output, size_t size);
+/**
+ * @brief Fills a buffer with a specific file sum
+ *
+ * @param [in] sum File sum used to fill the buffer
+ * @param [out] output The output buffer to be written
+ * @param [in] size Size in bytes to be written into output
+ * @return 0 on success, -1 on failure
+ */
+int sk_build_sum(const sk_sum_t *sum, char *output, size_t size);
 
-/* Delete from path to parent all empty folders */
+/**
+ * @brief Delete from path to parent all empty folders
+ *
+ * @param path The path from which to delete
+ * @return 0 on success, -1 on failure
+ */
 int remove_empty_folders(const char *path);
 
-/* Delete path file and all empty folders above */
-int delete_target_file(const char *path);
+/**
+ * @brief Frees from memory a sk_sum_t structure
+ *
+ * @param [out] sum The sk_sum_t object to be freed
+ */
+void sk_sum_clean(sk_sum_t *sum);
 
-void sk_sum_clean(sk_sum_t * sum);
-
-int fim_find_child_depth(const char *parent, const char *child);
-
-//Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
+/**
+ * @brief Change in Windows paths all slashes for backslashes for compatibility
+ *
+ * @param [out] path The path of the file to be normalized
+ */
 void normalize_path(char *path);
 
-//Return an attr from checksum
-char *get_attr_from_checksum(char *checksum, int attr);
-
+/**
+ * @brief Escape characteres '!', ':', ' ' from incomming string
+ *
+ * @param field Syscheck checksum string
+ * @return A string with escaped characters
+ */
 char *escape_syscheck_field(char *field);
+#ifndef CLIENT
+char *unescape_syscheck_field(char *sum);
+#endif
 
 #ifndef WIN32
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
-const char *get_group(int gid);
-void decode_win_attributes(char *str, unsigned int attrs);
-int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
-cJSON *attrs_to_json(unsigned int attributes);
-cJSON *perm_to_json(char *permissions);
+/**
+ * @brief Retrieves the user name from a user ID in UNIX
+ *
+ * @param uid The user ID
+ * @return The user name on success, NULL on failure
+ */
+char *get_user(int uid);
+
+/**
+ * @brief Retrieves the group name from a group ID in UNIX
+ *
+ * @param gid The group ID
+ * @return The group name on success, an empty string on failure
+ */
+char *get_group(int gid);
+
 
 #else
 
-char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
+/**
+ * @brief Retrieves the user name of the owner of a registry in Windows.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
+ *
+ * @param path Registry path to check the owner of.
+ * @param sid The user ID associated to the user.
+ * @param hndl Handle for the registry to check the owner of.
+ *
+ * @return The user name on success, an empty string on failure.
+ */
+char *get_registry_user(const char *path, char **sid, HANDLE hndl);
+
+/**
+ * @brief Retrieves the user name of the owner of a file in Windows.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
+ *
+ * @param path File path to check the owner of.
+ * @param sid The user ID associated to the user.
+ *
+ * @return The user name on success, an empty string on failure.
+ */
+char *get_file_user(const char *path, char **sid);
+
+/**
+ * @brief Retrieves the user name of the owner of a file or registry in Windows.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
+ *
+ * @param path File or registry path to check the owner of.
+ * @param sid The user ID associated to the user.
+ * @param hndl Handle of the file or registry to check the owner of.
+ * @param object_type Type of the object to check the owner of (SE_FILE_OBJECT or SE_REGISTRY_KEY).
+ *
+ * @return The user name on success, an empty string on failure.
+ */
+char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type);
+
+/**
+ * @brief Check if a directory exists
+ *
+ * @param path Path of the directory to check
+ * @return The FILE_ATTRIBUTE_DIRECTORY bit mask on success, 0 on failure
+ */
+unsigned int w_directory_exists(const char *path);
+
+/**
+ * @brief Retrieves the attributes of a specific file (Windows)
+ *
+ * @param file_path The path of the file to check the attributes of
+ * @return The bit mask of the file attributes on success, 0 on failure
+ */
 unsigned int w_get_file_attrs(const char *file_path);
+
+/**
+ * @brief Retrieves the permissions of a specific file (Windows)
+ *
+ * @param [in] file_path The path of the file from which to check permissions
+ * @param [out] permissions Buffer in which to write the permissions
+ * @param [in] perm_size The size of the permissions buffer
+ * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
+ */
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
-const char *get_group(__attribute__((unused)) int gid);
-char *escape_perm_sum(char *sum);
+
+/**
+ * @brief Retrieves the group name from a group ID in windows
+ *
+ * @return The group name on success, an empty string on failure
+ */
+char *get_group(__attribute__((unused)) int gid);
+
+/**
+ * @brief Retrieves the group name and gid of a registry key.
+ * Also sets the group ID associated to that group.
+ *
+ * @param sid The user ID associated to the group.
+ * @param hndl Handle for the registry to check the group of.
+ *
+ * @return The user name on success, NULL on failure.
+*/
+char *get_registry_group(char **sid, HANDLE hndl);
+
+/**
+ * @brief Retrieves the permissions of a registry key.
+ *
+ * @param hndl Handle for the registry key to check the permissions of.
+ * @param perm_key Permissions associated to the registry key.
+ *
+ * @return Permissions in perm_key. ERROR_SUCCESS on success, different otherwise
+*/
+DWORD get_registry_permissions(HKEY hndl, char *perm_key);
+
+/**
+ * @brief Get last modification time from registry key.
+ *
+ * @param hndl Handle for the registry key to check the permissions of.
+ *
+ * @return Last modification time of registry key in POSIX format.
+*/
+unsigned int get_registry_mtime(HKEY hndl);
+
+/**
+ * @brief Copy ACE information into buffer
+ *
+ * @param [in] ace ACE structure
+ * @param [out] perm Buffer in which to write the ACE information
+ * @param [in] perm_size The size of the buffer
+ * @return 0 on failure, the number of bytes written into perm on success
+ */
+int copy_ace_info(void *ace, char *perm, int perm_size);
+
+/**
+ * @brief Retrieves the account information (name and domain) from SID
+ *
+ * @param [in] sid SID from which retrieve the information
+ * @param [out] account_name Buffer in which the account name is written
+ * @param [out] account_domain Buffer in which the account domain is written
+ * @return 0 on success, error code on failure
+ */
+int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 
 #endif
+
+/**
+ * @brief Converts a bit mask into a human readable format
+ *
+ * @param [out] str Buffer to be written
+ * @param [in] attrs Bit mask to be converted
+ */
+void decode_win_attributes(char *str, unsigned int attrs);
+
+/**
+ * @brief Decodes a permission string and converts it to a human readable format
+ *
+ * @param [in] raw_perm A raw string with the permissions
+ * @return A string in human readable format with the Windows permission
+ */
+char *decode_win_permissions(char *raw_perm);
+
+/**
+ * @brief Transforms a bit mask of attributes into a human readable cJSON
+ *
+ * @param attributes A string with the Windows attributes
+ * @return A cJSON with the attributes
+ */
+cJSON *attrs_to_json(const char *attributes);
+
+/**
+ * @brief Transforms a string of permissions into a human readable cJSON
+ *
+ * @param permissions Permissions string
+ * @return A cJSON with the permissions
+ */
+cJSON *win_perm_to_json(char *permissions);
+
+/**
+ * @brief Send a one-way message to Syscheck
+ *
+ * @param message Payload.
+ */
+void ag_send_syscheck(char * message);
 
 #endif /* SYSCHECK_OP_H */

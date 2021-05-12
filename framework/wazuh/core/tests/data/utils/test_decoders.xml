@@ -1,0 +1,7 @@
+<!-- NEW Local Decoders -->
+
+<!-- Modify it at your will. -->
+
+<decoder name="local_decoder_example" type="ossec">
+    <program_name>NEW DECODER</program_name>
+</decoder>

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -33,7 +33,6 @@ static void helpmsg()
     printf("\t-r -u <id>        Runs the integrity/rootkit checking on one agent now.\n\n");
     printf("\t-s                Changes the output to CSV (comma delimited).\n");
     printf("\t-j                Changes the output to JSON .\n");
-    printf("\t-m                Show the limit of agents that can be added.\n");
     printf("Available options for active response:\n");
     printf("\t-b <ip>           Blocks the specified ip address.\n");
     printf("\t-f <ar> -a        Used with -b, specifies which response to run. Apply AR on all agents.\n");
@@ -44,7 +43,6 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
-    const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     const char *agent_id = NULL;
@@ -66,9 +64,7 @@ int main(int argc, char **argv)
     int csv_output = 0;
     int json_output = 0;
     int list_responses = 0;
-    int end_time = 0;
     int restart_agent = 0;
-    int show_max_agents = 0;
     int inactive_only = 0;
 
     char shost[512];
@@ -77,6 +73,13 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    char * home_path = w_homedir(argv[0]);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 
     int is_worker = w_is_worker();
     char *master;
@@ -97,7 +100,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:Rn")) != -1) {
+    while ((c = getopt(argc, argv, "VhdlLcsjarmu:i:b:f:Rn")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -111,17 +114,11 @@ int main(int argc, char **argv)
             case 'L':
                 list_responses = 1;
                 break;
-            case 'e':
-                end_time = 1;
-                break;
             case 'r':
                 restart_syscheck = 1;
                 break;
             case 'l':
                 list_agents++;
-                break;
-            case 'm':
-                show_max_agents++;
                 break;
             case 's':
                 csv_output = 1;
@@ -179,6 +176,8 @@ int main(int argc, char **argv)
 
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     /* Prepare JSON Structure */
     if(json_output)
         root = cJSON_CreateObject();
@@ -189,7 +188,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Set the group */
@@ -198,9 +197,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot to the default directory */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
+
+    os_free(home_path);
 
     /* Inside chroot now */
     nowChroot();
@@ -257,6 +258,9 @@ int main(int argc, char **argv)
                 if (strcmp(r_name, "restart-ossec0") == 0) {
                     continue;
                 }
+                if (strcmp(r_name, "restart-wazuh0") == 0) {
+                    continue;
+                }
                 printf("\n   Response name: %s, command: %s", r_name, r_cmd);
             }
 
@@ -272,6 +276,7 @@ int main(int argc, char **argv)
     /* List available agents */
     if (list_agents) {
         cJSON *agents = NULL;
+        const char* server_status = print_agent_status(get_agent_status(0));
 
         if (!csv_output && !json_output) {
             printf("\n%s %s. List of available agents:",
@@ -280,7 +285,7 @@ int main(int argc, char **argv)
             if (inactive_only) {
                 puts("");
             } else {
-                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n", shost);
+                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, %s/Local\n", shost, server_status);
             }
         } else if(json_output){
                 cJSON *first;
@@ -297,11 +302,11 @@ int main(int argc, char **argv)
                     cJSON_AddStringToObject(first, "id", "000");
                     cJSON_AddStringToObject(first, "name", shost);
                     cJSON_AddStringToObject(first, "ip", "127.0.0.1");
-                    cJSON_AddStringToObject(first, "status", "Active");
+                    cJSON_AddStringToObject(first, "status", server_status);
                     cJSON_AddItemToArray(agents, first);
                 }
         } else if (!inactive_only) {
-            printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
+            printf("000,%s (server),127.0.0.1,%s/Local,\n", shost, server_status);
         }
 
         print_agents(1, active_only, inactive_only, csv_output, agents);
@@ -316,38 +321,11 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    /* Show limit of agents */
-
-    if (show_max_agents) {
-        if (json_output) {
-            cJSON *data = cJSON_CreateObject();
-
-            if (!(root && data)) {
-                exit(1);
-            }
-
-            cJSON_AddNumberToObject(data, "max_agents", MAX_AGENTS);
-            cJSON_AddNumberToObject(root, "error", 0);
-            cJSON_AddItemToObject(root, "data", data);
-
-            char *render = cJSON_PrintUnformatted(root);
-            printf("%s", render);
-            cJSON_Delete(root);
-            free(render);
-        } else if (csv_output) {
-            printf("%d\n", MAX_AGENTS);
-        } else {
-            printf("Limit of agents: %d\n", MAX_AGENTS);
-        }
-
-        exit(0);
-    }
-
     /* Check if the provided ID is valid */
     if (agent_id != NULL) {
         if (strcmp(agent_id, "000") != 0) {
             OS_PassEmptyKeyfile();
-            OS_ReadKeys(&keys, 1, 0, 0);
+            OS_ReadKeys(&keys, 1, 0);
 
             agt_id = OS_IsAllowedID(&keys, agent_id);
             if (agt_id < 0) {
@@ -370,7 +348,6 @@ int main(int argc, char **argv)
 
     /* Print information from an agent */
     if (info_agent) {
-        agent_status_t agt_status = 0;
         char final_ip[128 + 1];
         char final_mask[128 + 1];
         agent_info *agt_info;
@@ -383,12 +360,11 @@ int main(int argc, char **argv)
         }
 
         if (agt_id != -1) {
-            agt_status = get_agent_status(keys.keyentries[agt_id]->name,
-                                          keys.keyentries[agt_id]->ip->ip);
-
-            agt_info = get_agent_info(keys.keyentries[agt_id]->name,
-                                      keys.keyentries[agt_id]->ip->ip,
-                                      agent_id);
+            agt_info = get_agent_info(agent_id);
+            if (!agt_info) {
+                printf("\n Unable to get agent info\n\n");
+                exit(0);
+            }
 
             /* Get netmask from IP */
             getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
@@ -399,81 +375,75 @@ int main(int argc, char **argv)
                 printf("\n   Agent ID:   %s\n", keys.keyentries[agt_id]->id);
                 printf("   Agent Name: %s\n", keys.keyentries[agt_id]->name);
                 printf("   IP address: %s\n", final_ip);
-                printf("   Status:     %s\n\n", print_agent_status(agt_status));
-            }else if(json_output){
+                printf("   Status:     %s\n\n", print_agent_status(agt_info->connection_status));
+            } else if (json_output) {
                 cJSON_AddStringToObject(json_data, "id", keys.keyentries[agt_id]->id);
                 cJSON_AddStringToObject(json_data, "name", keys.keyentries[agt_id]->name);
                 cJSON_AddStringToObject(json_data, "ip", final_ip);
-                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_status));
+                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_info->connection_status));
             } else {
                 printf("%s,%s,%s,%s,",
                        keys.keyentries[agt_id]->id,
                        keys.keyentries[agt_id]->name,
                        final_ip,
-                       print_agent_status(agt_status));
+                       print_agent_status(agt_info->connection_status));
             }
         } else {
-            agt_status = get_agent_status(NULL, NULL);
-            agt_info = get_agent_info(NULL, "127.0.0.1", "000");
+            agt_info = get_agent_info("000");
+            if (!agt_info) {
+                printf("\n Unable to get agent info\n\n");
+                exit(0);
+            }
 
             if (!csv_output && !json_output) {
                 printf("\n   Agent ID:   000 (local instance)\n");
                 printf("   Agent Name: %s\n", shost);
                 printf("   IP address: 127.0.0.1\n");
-                printf("   Status:     %s/Local\n\n", print_agent_status(agt_status));
-            }else if(json_output){
+                printf("   Status:     %s/Local\n\n", print_agent_status(agt_info->connection_status));
+            } else if (json_output) {
                 cJSON_AddStringToObject(json_data, "id", "000");
                 cJSON_AddStringToObject(json_data, "name", shost);
                 cJSON_AddStringToObject(json_data, "ip", "127.0.0.1");
-                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_status));
+                cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_info->connection_status));
             } else {
-                printf("000,%s,127.0.0.1,%s/Local,",
-                       shost,
-                       print_agent_status(agt_status));
+                printf("000,%s,127.0.0.1,%s/Local,", shost, print_agent_status(agt_info->connection_status));
             }
         }
 
         if (!csv_output && !json_output) {
             printf("   Operating system:    %s\n", agt_info->os);
             printf("   Client version:      %s\n", agt_info->version);
+            printf("   Configuration hash:  %s\n", agt_info->config_sum);
             printf("   Shared file hash:    %s\n", agt_info->merged_sum);
             printf("   Last keep alive:     %s\n\n", agt_info->last_keepalive);
 
             printf("   Syscheck last started at:  %s\n", agt_info->syscheck_time);
             printf("   Syscheck last ended at:    %s\n", agt_info->syscheck_endtime);
-
-            if (end_time) {
-                printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
-                printf("   Rootcheck last ended at:   %s\n\n", agt_info->rootcheck_endtime);
-            } else {
-                printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
-            }
-        }else if(json_output){
-                cJSON_AddStringToObject(json_data, "os", agt_info->os);
-                cJSON_AddStringToObject(json_data, "version", agt_info->version);
-                cJSON_AddStringToObject(json_data, "mergedSum", agt_info->merged_sum);
-                cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
-                cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
-                cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
-                cJSON_AddStringToObject(json_data, "rootcheckTime", agt_info->rootcheck_time);
-
-                if (end_time) {
-                    cJSON_AddStringToObject(json_data, "rootcheckEndTime", agt_info->rootcheck_endtime);
-                }
+        } else if (json_output) {
+            cJSON_AddStringToObject(json_data, "os", agt_info->os);
+            cJSON_AddStringToObject(json_data, "version", agt_info->version);
+            cJSON_AddStringToObject(json_data, "configSum", agt_info->config_sum);
+            cJSON_AddStringToObject(json_data, "mergedSum", agt_info->merged_sum);
+            cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
+            cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
+            cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
         } else {
-            printf("%s,%s,%s,%s,%s,\n",
+            printf("%s,%s,%s,%s,\n",
                    agt_info->os,
                    agt_info->version,
                    agt_info->last_keepalive,
-                   agt_info->syscheck_time,
-                   agt_info->rootcheck_time);
+                   agt_info->syscheck_time);
         }
+
         if(json_output){
             cJSON_AddNumberToObject(root, "error", 0);
             cJSON_AddItemToObject(root, "data", json_data);
             printf("%s",cJSON_PrintUnformatted(root));
             cJSON_Delete(root);
         }
+
+        os_free(agt_info);
+
         exit(0);
     }
 
@@ -608,7 +578,7 @@ int main(int argc, char **argv)
         }
         mdebug1("Connected...");
 
-        if (send_msg_to_agent(arq, "restart-ossec0", restart_all_agents ? NULL : agent_id, "null") == 0) {
+        if (send_msg_to_agent(arq, "restart-wazuh0", restart_all_agents ? NULL : agent_id, "null") == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
                 cJSON_AddStringToObject(root, "data", restart_all_agents ? "Restarting all agents" : "Restarting agent");

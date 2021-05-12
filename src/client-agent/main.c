@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,20 +14,19 @@
 #include "agentd.h"
 
 #ifndef ARGV0
-#define ARGV0 "ossec-agentd"
+#define ARGV0 "wazuh-agentd"
 #endif
 
-int agent_debug_level;
 
 /* Prototypes */
-static void help_agentd(void) __attribute((noreturn));
+static void help_agentd(char *home_path) __attribute((noreturn));
 
 
 /* Print help statement */
-static void help_agentd()
+static void help_agentd(char *home_path)
 {
     print_header();
-    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -37,9 +36,9 @@ static void help_agentd()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -49,12 +48,11 @@ int main(int argc, char **argv)
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
-    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
+    char *home_path = w_homedir(argv[0]);
 
-    const char *dir = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     uid_t uid;
     gid_t gid;
@@ -64,13 +62,22 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+	/* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
+
+    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
+
     while ((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help_agentd();
+                help_agentd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -98,7 +105,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                mwarn("-D is deprecated.");
                 break;
             case 'c':
                 if (!optarg) {
@@ -107,12 +114,10 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             default:
-                help_agentd();
+                help_agentd(home_path);
                 break;
         }
     }
-
-    mdebug1(STARTED_MSG);
 
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
@@ -130,6 +135,10 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
+    mdebug1(STARTUP_MSG, (int)getpid());
 
     /* Read config */
     if (ClientConf(cfg) < 0) {
@@ -157,20 +166,12 @@ int main(int argc, char **argv)
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
-    /* Check auth keys */
-    if (!OS_CheckKeys()) {
-        merror_exit(AG_NOKEYS_EXIT);
-    }
-
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
-
-    /* Check client keys */
-    OS_ReadKeys(&keys, 1, 0, 0);
 
     /* Exit if test config */
     if (test_config) {
@@ -181,7 +182,7 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
     /* Agentd Start */
-    AgentdStart(dir, uid, gid, user, group);
+    AgentdStart(uid, gid, user, group);
 
     return (0);
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,12 +8,12 @@
  * Foundation.
 */
 
-/* ossec-analysisd
+/* wazuh-analysisd
  * Responsible for correlation and log decoding
  */
 
 #ifndef ARGV0
-#define ARGV0 "ossec-analysisd"
+#define ARGV0 "wazuh-analysisd"
 #endif
 
 #include "shared.h"
@@ -29,13 +29,13 @@
 #include "active-response.h"
 #include "config.h"
 #include "rules.h"
+#include "mitre.h"
 #include "stats.h"
 #include "eventinfo.h"
 #include "accumulator.h"
 #include "analysisd.h"
 #include "fts.h"
 #include "cleanevent.h"
-#include "dodiff.h"
 #include "output/jsonout.h"
 #include "labels.h"
 #include "state.h"
@@ -52,18 +52,19 @@
 
 /** Prototypes **/
 void OS_ReadMSG(int m_queue);
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
-void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
+// Decode events in json format
+int decode_fim_event(_sdb *sdb, Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
-int DecodeSyscollector(Eventinfo *lf,int *socket);
+int DecodeSyscollector(Eventinfo *lf, int *socket);
 int DecodeCiscat(Eventinfo *lf, int *socket);
 int DecodeWinevt(Eventinfo *lf);
-int DecodeSCA(Eventinfo *lf,int *socket);
+int DecodeSCA(Eventinfo *lf, int *socket);
+void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf);
 
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
@@ -84,11 +85,7 @@ int __crt_wday;
 struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
-rlim_t nofile;
-int sys_debug_level;
 int num_rule_matching_threads;
-EventList *last_events_list;
-time_t current_time;
 
 /* execd queue */
 static int execdq = 0;
@@ -96,15 +93,10 @@ static int execdq = 0;
 /* Active response queue */
 static int arq = 0;
 
-static unsigned int hourly_alerts;
 static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
-void w_free_event_info(Eventinfo *lf);
-
-/* Output threads */
-void * w_main_output_thread(__attribute__((unused)) void * args);
 
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
@@ -151,6 +143,11 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args);
 /* Decode winevt threads */
 void * w_decode_winevt_thread(__attribute__((unused)) void * args);
 
+/* Database synchronization thread */
+static void * w_dispatch_dbsync_thread(void * args);
+
+static void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void *args);
+
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -178,9 +175,6 @@ static w_queue_t * writer_queue_log_statistical;
 /* Firewall log writer queue */
 static w_queue_t * writer_queue_log_firewall;
 
-/* FTS log writer queue */
-static w_queue_t * writer_queue_log_fts;
-
 /* Decode syscheck input queue */
 static w_queue_t * decode_queue_syscheck_input;
 
@@ -205,14 +199,20 @@ static w_queue_t * decode_queue_event_output;
 /* Decode windows event input queue */
 static w_queue_t * decode_queue_winevt_input;
 
-/* Hourly alerts mutex */
-static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* Database synchronization input queue */
+static w_queue_t * dispatch_dbsync_input;
+
+/* Upgrade module decoder  */
+static w_queue_t * upgrade_module_input;
+
+/* FTS log writer queue */
+extern w_queue_t * writer_queue_log_fts;
 
 /* Hourly firewall mutex */
 static pthread_mutex_t hourly_firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Do diff mutex */
-static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* Accumulate mutex */
+static pthread_mutex_t accumulate_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported variables */
 static int reported_syscheck = 0;
@@ -223,12 +223,13 @@ static int reported_sca = 0;
 static int reported_event = 0;
 static int reported_writer = 0;
 static int reported_winevt = 0;
+static int reported_dbsync;
+static int reported_upgrade_module = 0;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_check_hour_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -244,7 +245,7 @@ static int cpu_cores;
 
 /* Print help statement */
 __attribute__((noreturn))
-static void help_analysisd(void)
+static void help_analysisd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -257,13 +258,17 @@ static void help_analysisd(void)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
 #ifndef TESTRULE
+#ifdef WAZUH_UNIT_TESTING
+__attribute((weak))
+#endif
 int main(int argc, char **argv)
 #else
 __attribute__((noreturn))
@@ -272,16 +277,18 @@ int main_analysisd(int argc, char **argv)
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
-    const char *dir = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
 
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
 
     thishour = 0;
     today = 0;
@@ -291,7 +298,6 @@ int main_analysisd(int argc, char **argv)
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
-    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
 #ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
@@ -304,7 +310,7 @@ int main_analysisd(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -329,7 +335,7 @@ int main_analysisd(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                snprintf(home_path, PATH_MAX, "%s", optarg);
                 break;
             case 'c':
                 if (!optarg) {
@@ -341,11 +347,18 @@ int main_analysisd(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
         }
 
     }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -359,8 +372,9 @@ int main_analysisd(int argc, char **argv)
         }
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     /* Start daemon */
-    mdebug1(STARTED_MSG);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     srandom_init();
@@ -369,7 +383,7 @@ int main_analysisd(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Found user */
@@ -416,7 +430,7 @@ int main_analysisd(int argc, char **argv)
     /* Get server's hostname */
     memset(__shost, '\0', 512);
     if (gethostname(__shost, 512 - 1) != 0) {
-        strncpy(__shost, OSSEC_SERVER, 512 - 1);
+        strncpy(__shost, WAZUH_SERVER, 512 - 1);
     } else {
         char *_ltmp;
 
@@ -479,16 +493,21 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
 
+    /* Set the user */
+    if (Privsep_SetUser(uid) < 0) {
+        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
+    }
+
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
-    if (!last_events_list) {
-        os_calloc(1, sizeof(EventList), last_events_list);
-        OS_CreateEventList(Config.memorysize, last_events_list);
+    if (!os_analysisd_last_events) {
+        os_calloc(1, sizeof(EventList), os_analysisd_last_events);
+        OS_CreateEventList(Config.memorysize, os_analysisd_last_events);
     }
 
     /*
@@ -500,6 +519,14 @@ int main_analysisd(int argc, char **argv)
      */
     {
         {
+            /* Error and warning messages */
+            char * msg;
+            OSList * list_msg = OSList_Create();
+            OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+            OSListNode * node_log_msg;
+            int error_exit = 0;
+
+
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
 
@@ -518,17 +545,56 @@ int main_analysisd(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles)) {
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn,
+                                        &os_analysisd_decoderlist_nopn, &os_analysisd_decoder_store, list_msg)) {
+                        error_exit = 1;
+                    }
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+
+                    while (node_log_msg) {
+                        os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                        msg = os_analysisd_string_log_msg(data_msg);
+
+                        if (data_msg->level == LOGLEVEL_WARNING) {
+                            mwarn("%s", msg);
+                        } else if (data_msg->level == LOGLEVEL_ERROR) {
+                            merror("%s", msg);
+                        }
+                        os_free(msg);
+                        os_analysisd_free_log_msg(&data_msg);
+                        OSList_DeleteCurrentlyNode(list_msg);
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                    }
+                    if (error_exit) {
                         merror_exit(CONFIG_ERROR, *decodersfiles);
                     }
 
-                    free(*decodersfiles);
                     decodersfiles++;
                 }
             }
 
             /* Load decoders */
-            SetDecodeXML();
+            SetDecodeXML(list_msg, &os_analysisd_decoder_store, &os_analysisd_decoderlist_nopn, &os_analysisd_decoderlist_pn);
+            node_log_msg = OSList_GetFirstNode(list_msg);
+            while (node_log_msg) {
+                os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                msg = os_analysisd_string_log_msg(data_msg);
+
+                if (data_msg->level == LOGLEVEL_WARNING) {
+                    mwarn("%s", msg);
+                } else if (data_msg->level == LOGLEVEL_ERROR) {
+                    merror("%s", msg);
+                    error_exit = 1;
+                }
+                os_free(msg);
+                os_analysisd_free_log_msg(&data_msg);
+                OSList_DeleteCurrentlyNode(list_msg);
+                node_log_msg = OSList_GetFirstNode(list_msg);
+            }
+            if (error_exit) {
+                merror_exit(DEC_PLUGIN_ERR);
+            }
+            os_free(list_msg);
         }
         {
             /* Load Lists */
@@ -536,22 +602,47 @@ int main_analysisd(int argc, char **argv)
             Lists_OP_CreateLists();
             /* Load each list into list struct */
             {
+                /* Error and warning messages */
+                OSList * list_msg = OSList_Create();
+                OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+
                 char **listfiles;
                 listfiles = Config.lists;
+                int error_exit = 0;
                 while (listfiles && *listfiles) {
+
                     if (!test_config) {
                         mdebug1("Reading the lists file: '%s'", *listfiles);
                     }
-                    if (Lists_OP_LoadList(*listfiles) < 0) {
+                    if (Lists_OP_LoadList(*listfiles, &os_analysisd_cdblists, list_msg) < 0) {
+                        error_exit = 1;
+                    }
+                    char * msg;
+                    OSListNode * node_log_msg;
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+                    while (node_log_msg) {
+                        os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                        msg = os_analysisd_string_log_msg(data_msg);
+                        if (data_msg->level == LOGLEVEL_WARNING) {
+                            mwarn("%s", msg);
+                        } else if (data_msg->level == LOGLEVEL_ERROR) {
+                            merror("%s", msg);
+                        }
+                        os_free(msg);
+                        os_analysisd_free_log_msg(&data_msg);
+                        OSList_DeleteCurrentlyNode(list_msg);
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                    }
+                    if (error_exit) {
                         merror_exit(LISTS_ERROR, *listfiles);
                     }
-                    free(*listfiles);
+
                     listfiles++;
                 }
-                free(Config.lists);
-                Config.lists = NULL;
+                os_free(list_msg);
             }
-            Lists_OP_MakeAll(0, 0);
+            mdebug1("Building CDB lists.");
+            Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
 
         {
@@ -566,22 +657,49 @@ int main_analysisd(int argc, char **argv)
 
             /* Read the rules */
             {
+                /* Error and warning msg */
+                char * msg;
+                OSList * list_msg = OSList_Create();
+                OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+                OSListNode * node_log_msg;
+                int error_exit = 0;
+
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     if (!test_config) {
                         mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
-                    if (Rules_OP_ReadRules(*rulesfiles) < 0) {
+
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist,
+                                           &os_analysisd_cdblists, &os_analysisd_last_events,
+                                           &os_analysisd_decoder_store, list_msg) < 0) {
+                        error_exit = 1;
+                    }
+
+                    node_log_msg = OSList_GetFirstNode(list_msg);
+                    while (node_log_msg) {
+                        os_analysisd_log_msg_t * data_msg = node_log_msg->data;
+                        msg = os_analysisd_string_log_msg(data_msg);
+
+                        if (data_msg->level == LOGLEVEL_WARNING) {
+                            mwarn("%s", msg);
+                        } else if (data_msg->level == LOGLEVEL_ERROR) {
+                            merror("%s", msg);
+                        }
+                        os_free(msg);
+                        os_analysisd_free_log_msg(&data_msg);
+                        OSList_DeleteCurrentlyNode(list_msg);
+                        node_log_msg = OSList_GetFirstNode(list_msg);
+                    }
+
+                    if (error_exit) {
                         merror_exit(RULES_ERROR, *rulesfiles);
                     }
 
-                    free(*rulesfiles);
                     rulesfiles++;
                 }
-
-                free(Config.includes);
-                Config.includes = NULL;
+                os_free(list_msg);
             }
 
             /* Find all rules that require list lookups and attache the the
@@ -589,7 +707,7 @@ int main_analysisd(int argc, char **argv)
              * search thought the list of lists for the correct file during
              * rule evaluation.
              */
-            OS_ListLoadRules();
+            OS_ListLoadRules(&os_analysisd_cdblists, &os_analysisd_cdbrules);
         }
     }
 
@@ -614,18 +732,6 @@ int main_analysisd(int argc, char **argv)
         AddHash_Rule(tmp_node);
     }
 
-    /* Ignored files on syscheck */
-    {
-        char **files;
-        files = Config.syscheck_ignore;
-        while (files && *files) {
-            if (!test_config) {
-                minfo("Ignoring file: '%s'", *files);
-            }
-            files++;
-        }
-    }
-
     /* Check if log_fw is enabled */
     Config.logfw = (u_int8_t) getDefine_Int("analysisd",
                                  "log_fw",
@@ -641,15 +747,11 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Verbose message */
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
-
-    /* Set the user */
-    if (Privsep_SetUser(uid) < 0) {
-        merror_exit(SETUID_ERROR, user, errno, strerror(errno));
-    }
 
     /* Create the PID file */
     if (CreatePID(ARGV0, getpid()) < 0) {
@@ -657,7 +759,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
+    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
@@ -699,7 +801,7 @@ int main_analysisd(int argc, char **argv)
                 }
                 wl++;
             }
-            minfo("%d Hostname(s) in the white list for active response.",wlc);
+            minfo("%d Hostname(s) in the white list for active response.", wlc);
         }
     }
 
@@ -708,6 +810,12 @@ int main_analysisd(int argc, char **argv)
 
     // Start com request thread
     w_create_thread(asyscom_main, NULL);
+
+    /* Load Mitre JSON File and Mitre hash table */
+    mitre_load();
+
+    /* Initialize Logtest */
+    w_create_thread(w_logtest_init, NULL);
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
@@ -752,7 +860,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     SecurityConfigurationAssessmentInit();
 
     /* Initialize the Accumulator */
-    if (!Accumulate_Init()) {
+    if (!Accumulate_Init(&os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts)) {
         merror("accumulator: ERROR: Initialization failed");
         exit(1);
     }
@@ -764,43 +872,17 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 #ifndef LOCAL
         if (Config.ar & REMOTE_AR) {
-            if ((arq = StartMQ(ARQUEUE, WRITE)) < 0) {
+            if ((arq = StartMQ(ARQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If LOCAL_AR is set, keep it there */
-                if (Config.ar & LOCAL_AR) {
-                    Config.ar = 0;
-                    Config.ar |= LOCAL_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, ARQUEUE, "active-response");
-            }
-        }
-#else
-        /* Only for LOCAL_ONLY installs */
-        if (Config.ar & REMOTE_AR) {
-            if (Config.ar & LOCAL_AR) {
-                Config.ar = 0;
-                Config.ar |= LOCAL_AR;
-            } else {
-                Config.ar = 0;
             }
         }
 #endif
 
         if (Config.ar & LOCAL_AR) {
-            if ((execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
+            if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If REMOTE_AR is set, keep it there */
-                if (Config.ar & REMOTE_AR) {
-                    Config.ar = 0;
-                    Config.ar |= REMOTE_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, EXECQUEUE, "exec");
             }
@@ -825,7 +907,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         strncpy(lf->mon, prev_month, 3);
         lf->day = today;
 
-        if (OS_GetLogLocation(today,prev_year,prev_month) < 0) {
+        if (OS_GetLogLocation(today, prev_year, prev_month) < 0) {
             merror_exit("Error allocating log files");
         }
 
@@ -854,6 +936,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_sca_threads = getDefine_Int("analysisd", "sca_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
     int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
+    int num_dispatch_dbsync_threads = getDefine_Int("analysisd", "dbsync_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_cores;
@@ -883,60 +966,64 @@ void OS_ReadMSG_analysisd(int m_queue)
         num_decode_winevt_threads = cpu_cores;
     }
 
+    num_dispatch_dbsync_threads = (num_dispatch_dbsync_threads > 0) ? num_dispatch_dbsync_threads : cpu_cores;
+
     /* Initiate the FTS list */
-    if (!FTS_Init(num_rule_matching_threads)) {
+    if (!FTS_Init(num_rule_matching_threads, &os_analysisd_fts_list, &os_analysisd_fts_store)) {
         merror_exit(FTS_LIST_ERROR);
     }
+
+    mdebug1("FTS_Init completed.");
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
 
     /* Create archives writer thread */
-    w_create_thread(w_writer_thread,NULL);
+    w_create_thread(w_writer_thread, NULL);
 
     /* Create alerts log writer thread */
-    w_create_thread(w_writer_log_thread,NULL);
+    w_create_thread(w_writer_log_thread, NULL);
 
     /* Create statistical log writer thread */
-    w_create_thread(w_writer_log_statistical_thread,NULL);
+    w_create_thread(w_writer_log_statistical_thread, NULL);
 
     /* Create firewall log writer thread */
-    w_create_thread(w_writer_log_firewall_thread,NULL);
+    w_create_thread(w_writer_log_firewall_thread, NULL);
 
     /* Create FTS log writer thread */
-    w_create_thread(w_writer_log_fts_thread,NULL);
+    w_create_thread(w_writer_log_fts_thread, NULL);
 
     /* Create log rotation thread */
-    w_create_thread(w_log_rotate_thread,NULL);
+    w_create_thread(w_log_rotate_thread, NULL);
 
     /* Create decode syscheck threads */
     for(i = 0; i < num_decode_syscheck_threads;i++){
-        w_create_thread(w_decode_syscheck_thread,NULL);
+        w_create_thread(w_decode_syscheck_thread, NULL);
     }
 
     /* Create decode syscollector threads */
     for(i = 0; i < num_decode_syscollector_threads;i++){
-        w_create_thread(w_decode_syscollector_thread,NULL);
+        w_create_thread(w_decode_syscollector_thread, NULL);
     }
 
     /* Create decode hostinfo threads */
     for(i = 0; i < num_decode_hostinfo_threads;i++){
-        w_create_thread(w_decode_hostinfo_thread,NULL);
+        w_create_thread(w_decode_hostinfo_thread, NULL);
     }
 
     /* Create decode rootcheck threads */
     for(i = 0; i < num_decode_rootcheck_threads;i++){
-        w_create_thread(w_decode_rootcheck_thread,NULL);
+        w_create_thread(w_decode_rootcheck_thread, NULL);
     }
 
     /* Create decode Security Configuration Assessment threads */
     for(i = 0; i < num_decode_sca_threads;i++){
-        w_create_thread(w_decode_sca_thread,NULL);
+        w_create_thread(w_decode_sca_thread, NULL);
     }
 
     /* Create decode event threads */
     for(i = 0; i < num_decode_event_threads;i++){
-        w_create_thread(w_decode_event_thread,NULL);
+        w_create_thread(w_decode_event_thread, NULL);
     }
 
     /* Create the process event threads */
@@ -946,579 +1033,25 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Create decode winevt threads */
     for(i = 0; i < num_decode_winevt_threads;i++){
-        w_create_thread(w_decode_winevt_thread,NULL);
+        w_create_thread(w_decode_winevt_thread, NULL);
     }
 
+    /* Create database synchronization dispatcher threads */
+    for (i = 0; i < num_dispatch_dbsync_threads; i++){
+        w_create_thread(w_dispatch_dbsync_thread, NULL);
+    }
+
+    /* Create upgrade module dispatcher thread */
+    w_create_thread(w_dispatch_upgrade_module_thread, NULL);
+
     /* Create State thread */
-    w_create_thread(w_analysisd_state_main,NULL);
+    w_create_thread(w_analysisd_state_main, NULL);
 
     mdebug1("Startup completed. Waiting for new messages..");
 
     while (1) {
         sleep(1);
     }
-}
-
-/* Checks if the current_rule matches the event information */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match)
-{
-    /* We check for:
-     * decoded_as,
-     * fts,
-     * word match (fast regex),
-     * regex,
-     * url,
-     * id,
-     * user,
-     * maxsize,
-     * protocol,
-     * srcip,
-     * dstip,
-     * srcport,
-     * dstport,
-     * time,
-     * weekday,
-     * status,
-     */
-    RuleInfo *rule = curr_node->ruleinfo;
-    int i;
-    const char *field;
-    /* Can't be null */
-    if (!rule) {
-        merror("Inconsistent state. currently rule NULL");
-        return (NULL);
-    }
-
-#ifdef TESTRULE
-    if (full_output && !alert_only)
-        print_out("    Trying rule: %d - %s", rule->sigid,
-                  rule->comment);
-#endif
-
-    /* Check if any decoder pre-matched here for syscheck event */
-    if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
-            rule->decoded_as != lf->decoder_syscheck_id)){
-        return (NULL);
-    }
-    /* Check if any decoder pre-matched here for non-syscheck events*/
-    else if (lf->decoder_syscheck_id == 0 && (rule->decoded_as &&
-            rule->decoded_as != lf->decoder_info->id)) {
-        return (NULL);
-    }
-
-    /* Check program name */
-    if (rule->program_name) {
-        if (!lf->program_name) {
-            return (NULL);
-        }
-
-        if (!OSMatch_Execute(lf->program_name,
-                             lf->p_name_size,
-                             rule->program_name)) {
-            return (NULL);
-        }
-    }
-
-    /* Check for the ID */
-    if (rule->id) {
-        if (!lf->id) {
-            return (NULL);
-        }
-
-        if (!OSMatch_Execute(lf->id,
-                             strlen(lf->id),
-                             rule->id)) {
-            return (NULL);
-        }
-    }
-
-    /* Check for the system name */
-    if (rule->system_name) {
-        if (!lf->systemname) {
-            return (NULL);
-        }
-
-        if (!OSMatch_Execute(lf->systemname, strlen(lf->systemname), rule->system_name)) {
-            return (NULL);
-        }
-    }
-
-    /* Check for the protocol */
-    if (rule->protocol) {
-        if (!lf->protocol) {
-            return (NULL);
-        }
-        if (!OSMatch_Execute(lf->protocol, strlen(lf->protocol), rule->protocol)) {
-            return (NULL);
-        }
-    }
-
-    /* Check if any word to match exists */
-    if (rule->match) {
-        if (!OSMatch_Execute(lf->log, lf->size, rule->match)) {
-            return (NULL);
-        }
-    }
-
-    /* Check if exist any regex for this rule */
-    if (rule->regex) {
-        if (!OSRegex_Execute_ex(lf->log, rule->regex, rule_match)) {
-            return (NULL);
-        }
-    }
-
-    /* Check for actions */
-    if (rule->action) {
-        if (!lf->action) {
-            return (NULL);
-        }
-
-        if (strcmp(rule->action, lf->action) != 0) {
-            return (NULL);
-        }
-    }
-
-    /* Checking for the URL */
-    if (rule->url) {
-        if (!lf->url) {
-            return (NULL);
-        }
-
-        if (!OSMatch_Execute(lf->url, strlen(lf->url), rule->url)) {
-            return (NULL);
-        }
-    }
-
-    /* Checking for the URL */
-    if (rule->location) {
-        if (!lf->location) {
-            return (NULL);
-        }
-
-        if (!OSMatch_Execute(lf->location, strlen(lf->location), rule->location)) {
-            return (NULL);
-        }
-    }
-
-    /* Check for dynamic fields */
-
-    for (i = 0; i < Config.decoder_order_size && rule->fields[i]; i++) {
-        field = FindField(lf, rule->fields[i]->name);
-
-        if (!(field && OSRegex_Execute_ex(field, rule->fields[i]->regex, rule_match))) {
-            return NULL;
-        }
-    }
-
-    /* Get TCP/IP packet information */
-    if (rule->alert_opts & DO_PACKETINFO) {
-        /* Check for the srcip */
-        if (rule->srcip) {
-            if (!lf->srcip) {
-                return (NULL);
-            }
-
-            if (!OS_IPFoundList(lf->srcip, rule->srcip)) {
-                return (NULL);
-            }
-        }
-
-        /* Check for the dstip */
-        if (rule->dstip) {
-            if (!lf->dstip) {
-                return (NULL);
-            }
-
-            if (!OS_IPFoundList(lf->dstip, rule->dstip)) {
-                return (NULL);
-            }
-        }
-
-        if (rule->srcport) {
-            if (!lf->srcport) {
-                return (NULL);
-            }
-
-            if (!OSMatch_Execute(lf->srcport,
-                                 strlen(lf->srcport),
-                                 rule->srcport)) {
-                return (NULL);
-            }
-        }
-        if (rule->dstport) {
-            if (!lf->dstport) {
-                return (NULL);
-            }
-
-            if (!OSMatch_Execute(lf->dstport,
-                                 strlen(lf->dstport),
-                                 rule->dstport)) {
-                return (NULL);
-            }
-        }
-    } /* END PACKET_INFO */
-
-    /* Extra information from event */
-    if (rule->alert_opts & DO_EXTRAINFO) {
-        /* Check compiled rule */
-        if (rule->compiled_rule) {
-            if (!rule->compiled_rule(lf)) {
-                return (NULL);
-            }
-        }
-
-        /* Checking if exist any user to match */
-        if (rule->user) {
-            if (lf->dstuser) {
-                if (!OSMatch_Execute(lf->dstuser,
-                                     strlen(lf->dstuser),
-                                     rule->user)) {
-                    return (NULL);
-                }
-            } else if (lf->srcuser) {
-                if (!OSMatch_Execute(lf->srcuser,
-                                     strlen(lf->srcuser),
-                                     rule->user)) {
-                    return (NULL);
-                }
-            } else {
-                /* no user set */
-                return (NULL);
-            }
-        }
-
-        /* Adding checks for geoip. */
-        if(rule->srcgeoip) {
-            if(lf->srcgeoip) {
-                if(!OSMatch_Execute(lf->srcgeoip,
-                            strlen(lf->srcgeoip),
-                            rule->srcgeoip))
-                    return(NULL);
-            } else {
-                return(NULL);
-            }
-        }
-
-
-        if(rule->dstgeoip) {
-            if(lf->dstgeoip) {
-                if(!OSMatch_Execute(lf->dstgeoip,
-                            strlen(lf->dstgeoip),
-                            rule->dstgeoip))
-                    return(NULL);
-            } else {
-                return(NULL);
-            }
-        }
-
-
-        /* Check if any rule related to the size exist */
-        if (rule->maxsize) {
-            if (lf->size < rule->maxsize) {
-                return (NULL);
-            }
-        }
-
-        /* Check if we are in the right time */
-        if (rule->day_time) {
-            if (!OS_IsonTime(lf->hour, rule->day_time)) {
-                return (NULL);
-            }
-        }
-
-        /* Check week day */
-        if (rule->week_day) {
-            if (!OS_IsonDay(__crt_wday, rule->week_day)) {
-                return (NULL);
-            }
-        }
-
-        /* Check for the data */
-        if (rule->data) {
-            if (!lf->data) {
-                return (NULL);
-            }
-            if (!OSMatch_Execute(lf->data, strlen(lf->data), rule->data)) {
-                return (NULL);
-            }
-        }
-
-        /* Check for the extra_data */
-        if (rule->extra_data) {
-            if(!lf->extra_data){
-                return(NULL);
-            }
-
-            if (!OSMatch_Execute(lf->extra_data,
-                                 strlen(lf->extra_data),
-                                 rule->extra_data)) {
-                return (NULL);
-            }
-        }
-
-        /* Check hostname */
-        if (rule->hostname) {
-            if (!lf->hostname) {
-                return (NULL);
-            }
-
-            if (!OSMatch_Execute(lf->hostname,
-                                 strlen(lf->hostname),
-                                 rule->hostname)) {
-                return (NULL);
-            }
-        }
-
-        /* Check for status */
-        if (rule->status) {
-            if (!lf->status) {
-                return (NULL);
-            }
-
-            if (!OSMatch_Execute(lf->status,
-                                 strlen(lf->status),
-                                 rule->status)) {
-                return (NULL);
-            }
-        }
-
-
-        /* Do diff check */
-        if (rule->context_opts & SAME_DODIFF) {
-            w_mutex_lock(&do_diff_mutex);
-            if (!doDiff(rule, lf)) {
-                w_mutex_unlock(&do_diff_mutex);
-                return (NULL);
-            }
-            w_mutex_unlock(&do_diff_mutex);
-        }
-    }
-
-    /* Check for the FTS flag */
-    if (rule->alert_opts & DO_FTS) {
-        /** FTS CHECKS **/
-        if (lf->decoder_info->fts || lf->rootcheck_fts) {
-            char * _line = NULL;
-            char * _line_cpy;
-            if ((lf->decoder_info->fts & FTS_DONE) || (lf->rootcheck_fts & FTS_DONE))  {
-                /* We already did the fts in here */
-            } else if (_line = FTS(lf),_line == NULL) {
-                return (NULL);
-            }
-
-            if(_line){
-                os_strdup(_line,_line_cpy);
-                free(_line);
-                if (queue_push_ex_block(writer_queue_log_fts,_line_cpy) < 0) {
-                    free(_line_cpy);
-                }
-            }
-        } else {
-            return (NULL);
-        }
-    }
-
-    /* List lookups */
-    if (rule->lists != NULL) {
-        ListRule *list_holder = rule->lists;
-        while (list_holder) {
-            switch (list_holder->field) {
-                case RULE_SRCIP:
-                    if (!lf->srcip) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->srcip)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_SRCPORT:
-                    if (!lf->srcport) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->srcport)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_DSTIP:
-                    if (!lf->dstip) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->dstip)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_DSTPORT:
-                    if (!lf->dstport) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->dstport)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_USER:
-                    if (lf->srcuser) {
-                        if (!OS_DBSearch(list_holder, lf->srcuser)) {
-                            return (NULL);
-                        }
-                    } else if (lf->dstuser) {
-                        if (!OS_DBSearch(list_holder, lf->dstuser)) {
-                            return (NULL);
-                        }
-                    } else {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_URL:
-                    if (!lf->url) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->url)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_ID:
-                    if (!lf->id) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->id)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_HOSTNAME:
-                    if (!lf->hostname) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->hostname)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_PROGRAM_NAME:
-                    if (!lf->program_name) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->program_name)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_STATUS:
-                    if (!lf->status) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->status)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_ACTION:
-                    if (!lf->action) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->action)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_SYSTEMNAME:
-                    if (!lf->systemname) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->systemname)){
-                        return (NULL);
-                    }
-                    break;
-                case RULE_PROTOCOL:
-                    if (!lf->protocol) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->protocol)){
-                        return (NULL);
-                    }
-                    break;
-                case RULE_DATA:
-                    if (!lf->data) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->data)){
-                        return (NULL);
-                    }
-                    break;
-                case RULE_EXTRA_DATA:
-                    if (!lf->extra_data) {
-                        return (NULL);
-                    }
-                    if (!OS_DBSearch(list_holder, lf->extra_data)) {
-                        return (NULL);
-                    }
-                    break;
-                case RULE_DYNAMIC:
-                    field = FindField(lf, list_holder->dfield);
-
-                    if (!(field &&OS_DBSearch(list_holder, (char*)field)))
-                        return NULL;
-
-                    break;
-                default:
-                    return (NULL);
-            }
-
-            list_holder = list_holder->next;
-        }
-    }
-
-    /* If it is a context rule, search for it */
-    if (rule->context == 1) {
-        if (!(rule->context_opts & SAME_DODIFF)) {
-            if (rule->event_search) {
-                if (!rule->event_search(lf, rule, rule_match)) {
-                    w_FreeArray(lf->last_events);
-                    return (NULL);
-                }
-            }
-        }
-    }
-
-#ifdef TESTRULE
-    if (full_output && !alert_only) {
-        print_out("       *Rule %d matched.", rule->sigid);
-    }
-#endif
-
-    /* Search for dependent rules */
-    if (curr_node->child) {
-        RuleNode *child_node = curr_node->child;
-        RuleInfo *child_rule = NULL;
-
-#ifdef TESTRULE
-        if (full_output && !alert_only) {
-            print_out("       *Trying child rules.");
-        }
-#endif
-
-        while (child_node) {
-            child_rule = OS_CheckIfRuleMatch(lf, child_node, rule_match);
-            if (child_rule != NULL) {
-                if (!child_rule->prev_rule) {
-                    child_rule->prev_rule = rule;
-                }
-                return (child_rule);
-            }
-
-            child_node = child_node->next;
-        }
-    }
-
-    /* If we are set to no alert, keep going */
-    if (rule->alert_opts & NO_ALERT) {
-        return (NULL);
-    }
-
-    w_mutex_lock(&hourly_alert_mutex);
-    hourly_alerts++;
-    w_mutex_unlock(&hourly_alert_mutex);
-    w_mutex_lock(&rule->mutex);
-    rule->firedtimes++;
-    lf->r_firedtimes = rule->firedtimes;
-    w_mutex_unlock(&rule->mutex);
-
-    return (rule); /* Matched */
 }
 
 /*  Update each rule and print it to the logs */
@@ -1618,7 +1151,7 @@ void * ad_input_main(void * args) {
     mdebug1("Input message handler thread started.");
 
     while (1) {
-        if (recv = OS_RecvUnix(m_queue, OS_MAXSTR, buffer),recv) {
+        if (recv = OS_RecvUnix(m_queue, OS_MAXSTR, buffer), recv) {
             buffer[recv] = '\0';
             msg = buffer;
 
@@ -1646,7 +1179,7 @@ void * ad_input_main(void * args) {
                     continue;
                 }
 
-                result = queue_push_ex(decode_queue_syscheck_input,copy);
+                result = queue_push_ex(decode_queue_syscheck_input, copy);
 
                 if(result < 0){
                     if(!reported_syscheck){
@@ -1674,7 +1207,7 @@ void * ad_input_main(void * args) {
                     continue;
                 }
 
-                result = queue_push_ex(decode_queue_rootcheck_input,copy);
+                result = queue_push_ex(decode_queue_rootcheck_input, copy);
 
                 if(result < 0){
                     if(!reported_rootcheck){
@@ -1701,7 +1234,7 @@ void * ad_input_main(void * args) {
                     continue;
                 }
 
-                result = queue_push_ex(decode_queue_sca_input,copy);
+                result = queue_push_ex(decode_queue_sca_input, copy);
 
                 if(result < 0){
                     if(!reported_sca){
@@ -1729,7 +1262,7 @@ void * ad_input_main(void * args) {
                     continue;
                 }
 
-                result = queue_push_ex(decode_queue_syscollector_input,copy);
+                result = queue_push_ex(decode_queue_syscollector_input, copy);
 
                 if(result < 0){
 
@@ -1758,7 +1291,7 @@ void * ad_input_main(void * args) {
                     continue;
                 }
 
-                result = queue_push_ex(decode_queue_hostinfo_input,copy);
+                result = queue_push_ex(decode_queue_hostinfo_input, copy);
 
                 if(result < 0){
                     if(!reported_hostinfo){
@@ -1786,7 +1319,7 @@ void * ad_input_main(void * args) {
                     continue;
                 }
 
-                result = queue_push_ex(decode_queue_winevt_input,copy);
+                result = queue_push_ex(decode_queue_winevt_input, copy);
 
                 if(result < 0){
                     if(!reported_winevt){
@@ -1799,8 +1332,50 @@ void * ad_input_main(void * args) {
                 }
                 /* Increment number of events received */
                 hourly_events++;
-            }
-            else{
+            } else if (msg[0] == DBSYNC_MQ) {
+                result = -1;
+
+                if (!queue_full(dispatch_dbsync_input)) {
+                    os_strdup(buffer, copy);
+
+                    result = queue_push_ex(dispatch_dbsync_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    }
+                }
+
+                if (result == -1) {
+                    w_inc_dropped_events();
+
+                    if (!reported_dbsync) {
+                        mwarn("Database synchronization messge queue is full.");
+                        reported_dbsync = TRUE;
+                    }
+                }
+            } else if (msg[0] == UPGRADE_MQ) {
+                result = -1;
+
+                if (!queue_full(upgrade_module_input)) {
+                    os_strdup(buffer, copy);
+
+                    result = queue_push_ex(upgrade_module_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    }
+                }
+
+                if (result == -1) {
+                    w_inc_dropped_events();
+
+                    if (!reported_upgrade_module) {
+                        mwarn("Upgrade module messge queue is full.");
+                        reported_upgrade_module = TRUE;
+                    }
+                }
+
+            } else {
 
                 os_strdup(buffer, copy);
 
@@ -1814,7 +1389,7 @@ void * ad_input_main(void * args) {
                     continue;
                 }
 
-                result = queue_push_ex(decode_queue_event_input,copy);
+                result = queue_push_ex(decode_queue_event_input, copy);
 
                 if(result < 0){
 
@@ -1835,35 +1410,6 @@ void * ad_input_main(void * args) {
     return NULL;
 }
 
-void w_free_event_info(Eventinfo *lf) {
-    /** Cleaning the memory **/
-    int force_remove = 1;
-    /* Only clear the memory if the eventinfo was not
-        * added to the stateful memory
-        * -- message is free inside clean event --
-    */
-    if (lf->generated_rule == NULL) {
-        Free_Eventinfo(lf);
-        force_remove = 0;
-    } else if (lf->last_events) {
-        int i;
-        if (lf->queue_added) {
-            force_remove = 0;
-        }
-        if (lf->last_events) {
-            for (i = 0; lf->last_events[i]; i++) {
-                os_free(lf->last_events[i]);
-            }
-            os_free(lf->last_events);
-        }
-    } else if (lf->queue_added) {
-        force_remove = 0;
-    }
-
-    if (force_remove) {
-        Free_Eventinfo(lf);
-    }
-}
 
 void * w_writer_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
@@ -1915,7 +1461,9 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
     #ifdef PRELUDE_OUTPUT_ENABLED
                 /* Log to prelude */
                 if (Config.prelude) {
-                    if (Config.prelude_log_level <= currently_rule->level) {
+                    RuleInfo *rule = lf->generated_rule;
+
+                    if (rule && Config.prelude_log_level <= rule->level) {
                         OS_PreludeLog(lf);
                     }
                 }
@@ -1949,6 +1497,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
+            int res = 0;
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
@@ -1970,15 +1519,18 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             w_inc_syscheck_decoded_events();
             lf->decoder_info = fim_decoder;
 
-            if (DecodeSyscheck(lf, &sdb) != 1) {
+            // If the event comes in JSON format agent version is >= 3.11. Therefore we decode, alert and update DB entry.
+            if (*lf->log == '{') {
+                res = decode_fim_event(&sdb, lf);
+            } else {
+                res = DecodeSyscheck(lf, &sdb);
+            }
+
+            if (res == 1 && queue_push_ex_block(decode_queue_event_output, lf) == 0) {
+                continue;
+            } else {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
-                continue;
-            }
-            else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
-                    w_free_event_info(lf);
-                }
             }
         }
     }
@@ -2018,7 +1570,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
@@ -2060,7 +1612,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
@@ -2103,7 +1655,7 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
@@ -2143,7 +1695,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
@@ -2156,6 +1708,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 
 void * w_decode_event_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
+    OSDecoderNode *node;
     char * msg = NULL;
     regex_matching decoder_match;
     memset(&decoder_match, 0, sizeof(regex_matching));
@@ -2185,7 +1738,8 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                     continue;
                 }
             } else {
-                DecodeEvent(lf, &decoder_match);
+                node = OS_GetFirstOSDecoder(lf->program_name);
+                DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
             }
 
             free(msg);
@@ -2195,7 +1749,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
 
 
-            if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+            if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                 Free_Eventinfo(lf);
             }
 
@@ -2233,7 +1787,7 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
                 w_free_event_info(lf);
             }
             else{
-                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
@@ -2241,6 +1795,90 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
             w_inc_winevt_decoded_events();
         }
     }
+}
+
+void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
+    char * msg;
+    Eventinfo * lf;
+    dbsync_context_t ctx = { .db_sock = -1, .ar_sock = -1 };
+
+    for (;;) {
+        msg = queue_pop_ex(dispatch_dbsync_input);
+        assert(msg != NULL);
+
+        os_calloc(1, sizeof(Eventinfo), lf);
+        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+        Zero_Eventinfo(lf);
+
+        if (OS_CleanMSG(msg, lf) < 0) {
+            merror(IMSG_ERROR, msg);
+            Free_Eventinfo(lf);
+            free(msg);
+            continue;
+        }
+
+        DispatchDBSync(&ctx, lf);
+        w_inc_dbsync_dispatched_messages();
+        Free_Eventinfo(lf);
+        free(msg);
+    }
+
+    return NULL;
+}
+
+void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
+    char * msg;
+    Eventinfo * lf;
+
+    while (true) {
+        msg = queue_pop_ex(upgrade_module_input);
+        assert(msg != NULL);
+
+        os_calloc(1, sizeof(Eventinfo), lf);
+        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+        Zero_Eventinfo(lf);
+
+        if (OS_CleanMSG(msg, lf) < 0) {
+            merror(IMSG_ERROR, msg);
+            Free_Eventinfo(lf);
+            free(msg);
+            continue;
+        }
+        free(msg);
+
+        // Inserts agent id into incomming message and sends it to upgrade module
+        cJSON *message_obj = cJSON_Parse(lf->log);
+
+        if (message_obj) {
+            cJSON *message_params = cJSON_GetObjectItem(message_obj, "parameters");
+
+            if (message_params) {
+                int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+                if (sock == OS_SOCKTERR) {
+                    merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+                } else {
+                    int agent = atoi(lf->agent_id);
+                    cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+                    cJSON_AddItemToObject(message_params, "agents", agents);
+
+                    char *message = cJSON_PrintUnformatted(message_obj);
+                    OS_SendSecureTCP(sock, strlen(message), message);
+                    os_free(message);
+
+                    close(sock);
+                }
+            } else {
+                merror("Could not get parameters from upgrade message: %s", lf->log);
+            }
+            cJSON_Delete(message_obj);
+        } else {
+            merror("Could not parse upgrade message: %s", lf->log);
+        }
+        Free_Eventinfo(lf);
+    }
+
+    return NULL;
 }
 
 void * w_process_event_thread(__attribute__((unused)) void * id){
@@ -2253,6 +1891,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     memset(&rule_match, 0, sizeof(regex_matching));
     Eventinfo *lf_cpy = NULL;
     Eventinfo *lf_logall = NULL;
+    int sock = -1;
 
     /* Stats */
     RuleInfo *stats_rule = NULL;
@@ -2262,10 +1901,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         Config.stats = 0;
     } else {
         /* Initialize stats rules */
-        stats_rule = zerorulemember(
-                         STATS_MODULE,
-                         Config.stats,
-                         0, 0, 0, 0, 0, 0);
+        stats_rule = zerorulemember(STATS_MODULE, Config.stats, 0, 0, 0, 0, 0, 0, &os_analysisd_last_events);
 
         if (!stats_rule) {
             merror_exit(MEM_ERROR, errno, strerror(errno));
@@ -2290,7 +1926,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         /* Run accumulator */
         if ( lf->decoder_info->accumulate == 1 ) {
-            lf = Accumulate(lf);
+            w_mutex_lock(&accumulate_mutex);
+            lf = Accumulate(lf, &os_analysisd_acm_store, &os_analysisd_acm_lookups, &os_analysisd_acm_purge_ts);
+            w_mutex_unlock(&accumulate_mutex);
         }
 
         /* Firewall event */
@@ -2310,7 +1948,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
-                w_copy_event_for_log(lf,lf_cpy);
+                w_copy_event_for_log(lf, lf_cpy);
 
                 if (queue_push_ex_block(writer_queue_log_firewall, lf_cpy) < 0) {
                     Free_Eventinfo(lf_cpy);
@@ -2334,7 +1972,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 /* Alert for statistical analysis */
                 if (stats_rule && (stats_rule->alert_opts & DO_LOGALERT)) {
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
-                    w_copy_event_for_log(lf,lf_cpy);
+                    w_copy_event_for_log(lf, lf_cpy);
 
                     if (queue_push_ex_block(writer_queue_log_statistical, lf_cpy) < 0) {
                         Free_Eventinfo(lf_cpy);
@@ -2349,9 +1987,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         }
 
         // Insert labels
-        w_mutex_lock(&lf_mutex);
-        lf->labels = labels_find(lf);
-        w_mutex_unlock(&lf_mutex);
+        lf->labels = labels_find(lf->agent_id, &sock);
 
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
@@ -2378,8 +2014,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Check each rule */
-            else if ((t_currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match))
-                        == NULL) {
+            else if (t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
+                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, true), !t_currently_rule) {
+
                 continue;
             }
 
@@ -2425,12 +2062,12 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 AddtoIGnore(lf, t_id);
             }
 
+            lf->comment = ParseRuleComment(lf);
+
             /* Log the alert if configured to */
             if (t_currently_rule->alert_opts & DO_LOGALERT) {
-                lf->comment = ParseRuleComment(lf);
-
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
-                w_copy_event_for_log(lf,lf_cpy);
+                w_copy_event_for_log(lf, lf_cpy);
                 if (queue_push_ex_block(writer_queue_log, lf_cpy) < 0) {
                     Free_Eventinfo(lf_cpy);
                 }
@@ -2445,32 +2082,17 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
                 while (*rule_ar) {
                     do_ar = 1;
-                    if ((*rule_ar)->ar_cmd->expect & USERNAME) {
-                        if (!lf->dstuser ||
-                                !OS_PRegex(lf->dstuser, "^[a-zA-Z._0-9@?-]*$")) {
-                            if (lf->dstuser) {
-                                mwarn(CRAFTED_USER, lf->dstuser);
-                            }
-                            do_ar = 0;
-                        }
+                    if (lf->dstuser && !OS_PRegex(lf->dstuser, "^[a-zA-Z._0-9@?-]*$")) {
+                        mwarn(CRAFTED_USER, lf->dstuser);
+                        do_ar = 0;
                     }
-                    if ((*rule_ar)->ar_cmd->expect & SRCIP) {
-                        if (!lf->srcip ||
-                                !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$")) {
-                            if (lf->srcip) {
-                                mwarn(CRAFTED_IP, lf->srcip);
-                            }
-                            do_ar = 0;
-                        }
-                    }
-                    if ((*rule_ar)->ar_cmd->expect & FILENAME) {
-                        if (!lf->filename) {
-                            do_ar = 0;
-                        }
+                    if (lf->srcip && !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$")) {
+                        mwarn(CRAFTED_IP, lf->srcip);
+                        do_ar = 0;
                     }
 
-                    if (do_ar && execdq >= 0) {
-                        OS_Exec(execdq, arq, lf, *rule_ar);
+                    if (do_ar) {
+                        OS_Exec(&execdq, &arq, lf, *rule_ar);
                     }
                     rule_ar++;
                 }
@@ -2510,7 +2132,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             os_calloc(1, sizeof(Eventinfo), lf_logall);
             w_copy_event_for_log(lf, lf_logall);
             w_free_event_info(lf);
-            OS_AddEvent(lf, last_events_list);
+            OS_AddEvent(lf, os_analysisd_last_events);
             break;
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
@@ -2544,19 +2166,19 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
 
     int day = 0;
     int year = 0;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
     char mon[4] = {0};
 
     while(1){
         time(&current_time);
-        p = localtime(&c_time);
-        day = p->tm_mday;
-        year = p->tm_year + 1900;
-        strncpy(mon, month[p->tm_mon], 3);
+        localtime_r(&c_time, &tm_result);
+        day = tm_result.tm_mday;
+        year = tm_result.tm_year + 1900;
+        strncpy(mon, month[tm_result.tm_mon], 3);
 
         /* Set the global hour/weekday */
-        __crt_hour = p->tm_hour;
-        __crt_wday = p->tm_wday;
+        __crt_hour = tm_result.tm_hour;
+        __crt_wday = tm_result.tm_wday;
 
         w_mutex_lock(&writer_threads_mutex);
 
@@ -2575,17 +2197,17 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
                     Update_Hour();
                 }
 
-                if (OS_GetLogLocation(day,year,mon) < 0) {
+                if (OS_GetLogLocation(day, year, mon) < 0) {
                     merror_exit("Error allocating log files");
                 }
 
                 today = day;
-                strncpy(prev_month,mon, 3);
+                strncpy(prev_month, mon, 3);
                 prev_year = year;
             }
         }
 
-        OS_RotateLogs(day,year,mon);
+        OS_RotateLogs(day, year, mon);
         w_mutex_unlock(&writer_threads_mutex);
         sleep(1);
     }
@@ -2661,7 +2283,7 @@ void w_log_flush(){
         OS_CustomLog_Flush();
     }
 
-    if(Config.alerts_log){
+    if (Config.alerts_log) {
         OS_Log_Flush();
     }
 
@@ -2697,6 +2319,8 @@ void w_get_queues_size(){
     s_winevt_queue = ((decode_queue_winevt_input->elements / (float)decode_queue_winevt_input->size));
     s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
     s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
+    s_dbsync_message_queue = ((dispatch_dbsync_input->elements / (float)dispatch_dbsync_input->size));
+    s_upgrade_message_queue = ((upgrade_module_input->elements / (float)upgrade_module_input->size));
 
     s_writer_archives_queue = ((writer_queue->elements / (float)writer_queue->size));
     s_writer_alerts_queue = ((writer_queue_log->elements / (float)writer_queue_log->size));
@@ -2713,6 +2337,8 @@ void w_get_initial_queues_size(){
     s_winevt_queue_size = decode_queue_winevt_input->size;
     s_event_queue_size = decode_queue_event_input->size;
     s_process_event_queue_size = decode_queue_event_output->size;
+    s_dbsync_message_queue_size = dispatch_dbsync_input->size;
+    s_upgrade_message_queue_size = upgrade_module_input->size;
 
     s_writer_alerts_queue_size = writer_queue_log->size;
     s_writer_archives_queue_size = writer_queue->size;
@@ -2759,4 +2385,10 @@ void w_init_queues(){
 
     /* Init the decode event queue output */
     decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
+
+    /* Initialize database synchronization message queue */
+    dispatch_dbsync_input = queue_init(getDefine_Int("analysisd", "dbsync_queue_size", 0, 2000000));
+
+    /* Initialize upgrade module message queue */
+    upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 0, 2000000));
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -43,31 +43,32 @@ int AR_ReadConfig(const char *cfgfile)
     modules |= CAR;
 
     /* Clean ar file */
-    fp = fopen(DEFAULTARPATH, "w");
+    fp = fopen(DEFAULTAR, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (OS_INVALID);
     }
-    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n");
-    fprintf(fp, "restart-ossec0 - restart-ossec.cmd - 0\n");
+    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n"
+                "restart-wazuh0 - restart-ossec.sh - 0\nrestart-wazuh0 - restart-ossec.cmd - 0\n"
+                "restart-wazuh0 - restart-wazuh - 0\nrestart-wazuh0 - restart-wazuh.exe - 0\n");
     fclose(fp);
 
 #ifndef WIN32
-    struct group *os_group;
-    if ((os_group = getgrnam(USER)) == NULL) {
-        merror("Could not get ossec gid.");
+    gid_t gr_gid;
+    if (gr_gid = Privsep_GetGroup(USER), gr_gid == (uid_t) -1) {
+        merror("Could not get '%s' gid.", USER);
         return (OS_INVALID);
     }
 
-    if ((chown(DEFAULTARPATH, (uid_t) - 1, os_group->gr_gid)) == -1) {
-        merror("Could not change the group to ossec: %d", errno);
+    if ((chown(DEFAULTAR, (uid_t) - 1, gr_gid)) == -1) {
+        merror("Could not change the group to '%s': %d", GROUPGLOBAL, errno);
         return (OS_INVALID);
     }
 #endif
 
     /* Set right permission */
-    if (chmod(DEFAULTARPATH, 0640) == -1) {
-        merror(CHMOD_ERROR, DEFAULTARPATH, errno, strerror(errno));
+    if (chmod(DEFAULTAR, 0640) == -1) {
+        merror(CHMOD_ERROR, DEFAULTAR, errno, strerror(errno));
         return (OS_INVALID);
     }
 

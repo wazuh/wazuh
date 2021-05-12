@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,7 +12,7 @@
 #define LOGREADER_H
 
 #ifndef ARGV0
-#define ARGV0 "ossec-logcollector"
+#define ARGV0 "wazuh-logcollector"
 #endif
 
 #define N_MIN_INPUT_THREADS 1
@@ -20,9 +20,27 @@
 #define OUTPUT_MIN_QUEUE_SIZE 128
 #define WIN32_MAX_FILES 200
 
+///< Size of hash table to save the status file
+#define LOCALFILES_TABLE_SIZE 40
+
+///< JSON path wich contains the files position of last read
+#ifdef WIN32
+#define LOCALFILE_STATUS   "queue\\logcollector\\file_status.json"
+#else
+#define LOCALFILE_STATUS        "queue/logcollector/file_status.json"
+#endif
+
+///< JSON fields for file_status
+#define OS_LOGCOLLECTOR_JSON_FILES      "files"
+#define OS_LOGCOLLECTOR_JSON_PATH       "path"
+#define OS_LOGCOLLECTOR_JSON_HASH       "hash"
+#define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
+
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
+#include "os_crypto/sha1/sha1_op.h"
+
 
 /*** Function prototypes ***/
 
@@ -78,6 +96,16 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it);
 /* read multi line logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it);
 
+/**
+ * @brief Read multi line logs with variable lenght
+ *
+ * @param lf status and configuration of the log file
+ * @param rc output parameter, returns zero
+ * @param drop_it if drop_it is different from 0, the logs will be read and discarded
+ * @return NULL
+ */
+void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
+
 /* Read DJB multilog format */
 /* Initializes multilog */
 int init_djbmultilog(logreader *lf);
@@ -97,7 +125,7 @@ void *read_json(logreader *lf, int *rc, int drop_it);
 void win_startel();
 void win_readel();
 void win_read_vista_sec();
-void win_start_event_channel(char *evt_log, char future, char *query);
+int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time);
 void win_format_event_string(char *string);
 #endif
 
@@ -107,6 +135,7 @@ void * lccom_main(void * arg);
 #endif
 size_t lccom_dispatch(char * command, char ** output);
 size_t lccom_getconfig(const char * section, char ** output);
+size_t lccom_getstate(char ** output);
 
 /*** Global variables ***/
 extern int loop_timeout;
@@ -122,6 +151,7 @@ extern int force_reload;
 extern int reload_interval;
 extern int reload_delay;
 extern int free_excluded_files_interval;
+extern int state_interval;
 
 typedef enum {
     CONTINUE_IT,
@@ -138,7 +168,7 @@ typedef struct w_msg_queue_t{
 
 
 /* Hash table of queues */
-OSHash * msg_queues_table;
+extern OSHash * msg_queues_table;
 
 /* Message structure */
 typedef struct w_message_t {
@@ -158,7 +188,14 @@ typedef struct w_input_range_t{
     int end_j;
 } w_input_range_t;
 
-w_input_range_t *w_input_threads_range;
+///< Struct to save the position of last line read and the SHA1 hash content
+typedef struct file_status {
+    int64_t offset;  ///< Position to read
+    SHA_CTX context;    ///< It stores the hashed data calculated so far
+    os_sha1 hash;       ///< Content file SHA1 hash
+} os_file_status_t;
+
+extern w_input_range_t *w_input_threads_range;
 
 /* Init queue hash table */
 void w_msg_hash_queues_init();
@@ -169,9 +206,6 @@ int w_msg_hash_queues_add_entry(const char *key);
 /* Push message into the hash queue */
 int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq);
 
-/* Pop message from the hash queue */
-w_message_t * w_msg_hash_queues_pop(const char *key);
-
 /* Push message into the queue */
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq);
 
@@ -179,19 +213,48 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
 w_message_t * w_msg_queue_pop(w_msg_queue_t * queue);
 
 /* Output processing thread*/
+#ifdef WIN32
+DWORD WINAPI w_output_thread(void * args);
+#else
 void * w_output_thread(void * args);
+#endif
 
 /* Prepare pool of output threads */
 void w_create_output_threads();
 
 /* Input processing thread */
+#ifdef WIN32
+DWORD WINAPI w_input_thread(__attribute__((unused)) void * t_id);
+#else
 void * w_input_thread(__attribute__((unused)) void * t_id);
+#endif
 
 /* Prepare pool of input threads */
 void w_create_input_threads();
 
 /* Set mutexes for each file */
 void w_set_file_mutexes();
+
+/* Read stop signal from reader threads */
+int can_read();
+
+/**
+ * @brief Update the read position in file status hash table
+ * @param path the path is the hash key
+ * @param pos new read position
+ * @param context SHA1 context.
+ * @return 0 on succes, otherwise -1
+ */
+int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
+
+/**
+ * @brief Get SHA1 context or initialize it
+ * @param path the path is the hash key
+ * @param context SHA1 context.
+ * @param position end file position.
+ */
+void w_get_hash_context(const char * path, SHA_CTX *context, int64_t position);
+
 extern int sample_log_length;
 extern int lc_debug_level;
 extern int accept_remote;

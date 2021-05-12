@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Security Configuration Assessment
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -29,10 +29,6 @@
 #define WM_SCA_STAMP          "sca"
 #define WM_CONFIGURATION_ASSESSMENT_DB_DUMP                   "sca-dump"
 
-#ifdef WIN32
-HKEY wm_sca_sub_tree;
-#endif
-
 typedef struct wm_sca_policy_t {
     unsigned int enabled:1;
     unsigned int remote:1;
@@ -41,15 +37,11 @@ typedef struct wm_sca_policy_t {
 } wm_sca_policy_t;
 
 typedef struct wm_sca_t {
-    int enabled:1;
-    int scan_on_start:1;
-    int skip_nfs:1;
-    unsigned int interval;
-    int scan_day;
-    int scan_wday;
+    int enabled;
+    int scan_on_start;
+    int skip_nfs;
     int msg_delay;
     unsigned int summary_delay;
-    time_t next_time;
     unsigned int request_db_interval;
     char* scan_time;
     wm_sca_policy_t** policies;
@@ -57,7 +49,18 @@ typedef struct wm_sca_t {
     int queue;
     int remote_commands:1;
     int commands_timeout;
+    sched_scan_config scan_config;
 } wm_sca_t;
+
+typedef struct cis_db_info_t {
+    char *result;
+    cJSON *event;
+    int id;
+} cis_db_info_t;
+
+typedef struct cis_db_hash_info_t {
+    cis_db_info_t **elem;
+} cis_db_hash_info_t;
 
 extern const wm_context WM_SCA_CONTEXT;
 
@@ -67,5 +70,6 @@ char *wm_sca_hash_integrity_file(const char *file);
 #ifdef WIN32
 void wm_sca_push_request_win(char *msg);
 #endif
+
 
 #endif // WM_KEY_REQUEST_H

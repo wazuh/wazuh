@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,25 +16,36 @@
 #include "../external/cJSON/cJSON.h"
 #include "execd.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 time_t pending_upg = 0;
 
 #ifndef WIN32
 
 /* Prototypes */
-static void help_execd(void) __attribute__((noreturn));
-static void execd_shutdown(int sig) __attribute__((noreturn));
-static void ExecdStart(int q) __attribute__((noreturn));
-static int CheckManagerConfiguration(char ** output);
+static void help_execd(char * home_path) __attribute__((noreturn));
+STATIC void execd_shutdown(int sig) __attribute__((noreturn));
+#ifdef WAZUH_UNIT_TESTING
+STATIC void ExecdStart(int q);
+#else
+STATIC void ExecdStart(int q) __attribute__((noreturn));
+#endif
+STATIC int CheckManagerConfiguration(char ** output);
 
 /* Global variables */
-static OSList *timeout_list;
-static OSListNode *timeout_node;
-static OSHash *repeated_hash;
+STATIC OSList *timeout_list;
+STATIC OSListNode *timeout_node;
+STATIC OSHash *repeated_hash;
 
 
 /* Print help statement */
-static void help_execd()
+static void help_execd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-g group] [-c config]", ARGV0);
@@ -46,13 +57,14 @@ static void help_execd()
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
 /* Shut down execd properly */
-static void execd_shutdown(int sig)
+STATIC void execd_shutdown(int sig)
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
@@ -63,17 +75,29 @@ static void execd_shutdown(int sig)
 
         list_entry = (timeout_data *)timeout_node->data;
 
-        mdebug2("Delete pending AR: %s", list_entry->command[0]);
-        ExecCmd(list_entry->command);
+        mdebug2("Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
+        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+        if (wfd) {
+            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+            wpclose(wfd);
+        } else {
+            merror(EXEC_CMD_FAIL, strerror(errno), errno);
+        }
 
         /* Delete current node - already sets the pointer to next */
         OSList_DeleteCurrentlyNode(timeout_list);
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
+
+        /* Clear the memory */
+        FreeTimeoutEntry(list_entry);
     }
 
     HandleSIG(sig);
 }
 
+#ifdef WAZUH_UNIT_TESTING
+__attribute((weak))
+#endif
 int main(int argc, char **argv)
 {
     int c;
@@ -83,11 +107,18 @@ int main(int argc, char **argv)
     int debug_level = 0;
     pthread_t wcom_thread;
 
-    const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
-
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    const char *group = GROUPGLOBAL;
+    const char *cfg = OSSECCONF;
+
 
     while ((c = getopt(argc, argv, "Vtdhfg:c:")) != -1) {
         switch (c) {
@@ -95,7 +126,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_execd();
+                help_execd(home_path);
                 break;
             case 'd':
                 debug_level = 1;
@@ -120,7 +151,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_execd();
+                help_execd(home_path);
                 break;
         }
     }
@@ -134,10 +165,13 @@ int main(int argc, char **argv)
         }
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
+
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
+        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
@@ -174,10 +208,6 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-#ifdef CLIENT
-    CheckExecConfig();
-#endif
-
     // Start com request thread
     if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL) < 0) {
         exit(EXIT_FAILURE);
@@ -193,8 +223,8 @@ int main(int argc, char **argv)
     }
 
     /* Start exec queue */
-    if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+    if ((m_queue = StartMQ(EXECQUEUE, READ, 0)) < 0) {
+        merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
 
     /* The real daemon Now */
@@ -226,25 +256,22 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
             tmp_str++;
         }
         os_free(timeout_entry->command);
-        timeout_entry->command = NULL;
     }
 
-    free(timeout_entry);
+    os_free(timeout_entry->parameters);
+
+    os_free(timeout_entry);
 }
 
 #ifndef WIN32
 
 /* Main function on the execd. Does all the data receiving, etc. */
-static void ExecdStart(int q)
+STATIC void ExecdStart(int q)
 {
     int i, childcount = 0;
     time_t curr_time;
 
     char buffer[OS_MAXSTR + 1];
-    char *tmp_msg = NULL;
-    char *name;
-    char *command;
-    char *cmd_args[MAX_ARGS + 2];
     char *cmd_api[MAX_ARGS];
 
     /* Select */
@@ -253,11 +280,6 @@ static void ExecdStart(int q)
 
     /* Clear the buffer */
     memset(buffer, '\0', OS_MAXSTR + 1);
-
-    /* Initialize the cmd arguments */
-    for (i = 0; i <= MAX_ARGS + 1; i++) {
-        cmd_args[i] = NULL;
-    }
 
     /* Initialize the api cmd arguments */
     for (i = 0; i < MAX_ARGS; i++) {
@@ -278,20 +300,22 @@ static void ExecdStart(int q)
 
     /* Main loop */
     while (1) {
+        cJSON *json_root = NULL;
+        char *name = NULL;
+        char *cmd[2] = { NULL, NULL };
+        char *cmd_parameters = NULL;
         int timeout_value;
         int added_before = 0;
-        char **timeout_args;
         timeout_data *timeout_entry;
 
         /* Clean up any children */
         while (childcount) {
             int wp;
             wp = waitpid((pid_t) - 1, NULL, WNOHANG);
-            if (wp < 0) {
+            if (wp < 0 && errno != ECHILD) {
                 merror(WAITPID_ERROR, errno, strerror(errno));
                 break;
             }
-
             /* if = 0, we still need to wait for the child process */
             else if (wp == 0) {
                 break;
@@ -317,11 +341,17 @@ static void ExecdStart(int q)
 
                 mdebug1("Executing command '%s %s' after a timeout of '%ds'",
                     list_entry->command[0],
-                    list_entry->command[1] ? list_entry->command[1] : "",
+                    list_entry->parameters ? list_entry->parameters : "",
                     list_entry->time_to_block
                 );
 
-                ExecCmd(list_entry->command);
+                wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+                if (wfd) {
+                    fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+                    wpclose(wfd);
+                } else {
+                    merror(EXEC_CMD_FAIL, strerror(errno), errno);
+                }
 
                 /* Delete current node - already sets the pointer to next */
                 OSList_DeleteCurrentlyNode(timeout_list);
@@ -358,7 +388,7 @@ static void ExecdStart(int q)
 
         /* Receive the message */
         if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0) {
-            merror(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+            merror(QUEUE_ERROR, EXECQUEUE, strerror(errno));
             continue;
         }
 
@@ -367,24 +397,26 @@ static void ExecdStart(int q)
         /* Current time */
         curr_time = time(0);
 
-        /* Get application name */
-        name = buffer;
-
-        /* Zero the name */
-        tmp_msg = strchr(buffer, ' ');
-        if (!tmp_msg) {
-            if (name[0] != '!') {
-                mwarn(EXECD_INV_MSG, buffer);
-                continue;
-            } else {
-                tmp_msg = buffer + strlen(buffer);
-            }
-        } else {
-            *tmp_msg = '\0';
-            tmp_msg++;
+        /* Parse message */
+        if (json_root = cJSON_Parse(buffer), !json_root) {
+            merror(EXEC_INV_JSON, buffer);
+            continue;
         }
 
-        if(!strcmp(name, "check-manager-configuration")) {
+        /* Get application name */
+        cJSON *json_command = cJSON_GetObjectItem(json_root, "command");
+        if (json_command && (json_command->type == cJSON_String)) {
+            name = json_command->valuestring;
+        } else {
+            merror(EXEC_INV_CMD, buffer);
+            cJSON_Delete(json_root);
+            continue;
+        }
+
+        /* Check manager configuration */
+        if (!strcmp(name, "check-manager-configuration")) {
+            cJSON_Delete(json_root);
+
             char *output = NULL;
             cJSON *result_obj = cJSON_CreateObject();
 
@@ -409,8 +441,8 @@ static void ExecdStart(int q)
             int rc;
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
-                merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+            if ((api_sock = StartMQ(EXECQUEUEA, WRITE, 1)) < 0) {
+                merror(QUEUE_ERROR, EXECQUEUEA, strerror(errno));
                 os_free(output);
                 continue;
             }
@@ -432,12 +464,13 @@ static void ExecdStart(int q)
             continue;
         }
 
-        /* Get the command to execute (valid name) */
-        if(!strcmp(name, "restart-wazuh")) {
+        /* Restart Wazuh */
+        if (!strcmp(name, "restart-wazuh")) {
+            cJSON_Delete(json_root);
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
-                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
+                snprintf(script_path, PATH_MAX, "%s", "active-response/bin/restart.sh");
                 os_strdup(script_path, cmd_api[0]);
             }
 
@@ -453,102 +486,50 @@ static void ExecdStart(int q)
             continue;
         }
 
-        command = GetCommandbyName(name, &timeout_value);
-        if (!command) {
+        /* Get command to execute */
+        cmd[0] = GetCommandbyName(name, &timeout_value);
+        if (!cmd[0]) {
             ReadExecConfig();
-            command = GetCommandbyName(name, &timeout_value);
-            if (!command) {
+            cmd[0] = GetCommandbyName(name, &timeout_value);
+            if (!cmd[0]) {
                 merror(EXEC_INV_NAME, name);
+                cJSON_Delete(json_root);
                 continue;
             }
         }
-
-        /* Command not present */
-        if (command[0] == '\0') {
+        if (cmd[0][0] == '\0') {
+            cJSON_Delete(json_root);
             continue;
         }
 
-        /* Allocate memory for the timeout argument */
-        os_calloc(MAX_ARGS + 2, sizeof(char *), timeout_args);
-
-        /* Add initial variables to the cmd_arg and to the timeout cmd */
-        cmd_args[0] = command;
-        cmd_args[1] = ADD_ENTRY;
-        os_strdup(command, timeout_args[0]);
-        os_strdup(DELETE_ENTRY, timeout_args[1]);
-
-        cmd_args[2] = NULL;
-        timeout_args[2] = NULL;
-
-        /* Get the arguments */
-        for (i = 2; *tmp_msg && i < (MAX_ARGS - 1); i++) {
-            cmd_args[i] = tmp_msg;
-            cmd_args[i + 1] = NULL;
-
-            tmp_msg = strchr(tmp_msg, ' ');
-            if (!tmp_msg) {
-                timeout_args[i] = strdup(cmd_args[i]);
-                timeout_args[i + 1] = NULL;
-                break;
-            }
-            *tmp_msg = '\0';
-            tmp_msg++;
-
-            timeout_args[i] = strdup(cmd_args[i]);
-            timeout_args[i + 1] = NULL;
-        }
-
         if (name[0] != '!') {
-            if (!timeout_args[2] || !timeout_args[3]) {
-                merror("Invalid number of arguments (%s)", name);
-
-                char **ss_ta = timeout_args;
-                while (*timeout_args) {
-                    os_free(*timeout_args);
-                    *timeout_args = NULL;
-                    timeout_args++;
-                }
-                os_free(ss_ta);
-
-                while (i > 0) {
-                    cmd_args[i] = NULL;
-                    i--;
-                }
-
-                continue;
-            }
-
             added_before = 0;
+
             /* Check if this command was already executed */
             timeout_node = OSList_GetFirstNode(timeout_list);
             while (timeout_node) {
                 timeout_data *list_entry;
 
                 list_entry = (timeout_data *)timeout_node->data;
-                if ((strcmp(list_entry->command[3], timeout_args[3]) == 0) &&
-                        (strcmp(list_entry->command[0], timeout_args[0]) == 0)) {
-                    /* Means we executed this command before
-                    * and we don't need to add it again
-                    */
+                if (strcmp(list_entry->command[0], cmd[0]) == 0) {
+                    /* Means we executed this command before and we don't need to add it again */
                     added_before = 1;
 
                     /* Update the timeout */
                     mdebug1("Command already received, updating time of addition to now.");
                     list_entry->time_of_addition = curr_time;
 
-                    if (repeated_offenders_timeout[0] != 0 &&
-                            repeated_hash != NULL &&
-                            strncmp(timeout_args[3], "-", 1) != 0) {
+                    if (repeated_offenders_timeout[0] != 0 && repeated_hash != NULL) {
                         char *ntimes = NULL;
                         char rkey[256];
                         rkey[255] = '\0';
-                        snprintf(rkey, 255, "%s%s", list_entry->command[0],
-                                timeout_args[3]);
+                        snprintf(rkey, 255, "%s", cmd[0]);
 
                         if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
                             int ntimes_int = 0;
                             int i2 = 0;
                             int new_timeout = 0;
+
                             ntimes_int = atoi(ntimes);
                             while (repeated_offenders_timeout[i2] != 0) {
                                 i2++;
@@ -580,23 +561,36 @@ static void ExecdStart(int q)
 
         /* If it wasn't added before, do it now */
         if (!added_before) {
-            /* Execute command */
-            mdebug1("Executing command '%s %s'",
-                cmd_args[0],
-                cmd_args[1] ? cmd_args[1] : ""
-            );
+            /* Command parameters */
+            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
+            cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
+            cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
+            cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
+            cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
+            cmd_parameters = cJSON_PrintUnformatted(json_root);
 
-            ExecCmd(cmd_args);
+            /* Execute command */
+            mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
+
+            wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+            if (wfd) {
+                fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
+                wpclose(wfd);
+            } else {
+                merror(EXEC_CMD_FAIL, strerror(errno), errno);
+                os_free(cmd_parameters);
+                cJSON_Delete(json_root);
+                continue;
+            }
 
             /* We don't need to add to the list if the timeout_value == 0 */
             if (timeout_value) {
-                char *ntimes;
-                char rkey[256];
-                rkey[255] = '\0';
-                snprintf(rkey, 255, "%s%s", timeout_args[0],
-                         timeout_args[3]);
-
                 if (repeated_hash != NULL) {
+                    char *ntimes = NULL;
+                    char rkey[256];
+                    rkey[255] = '\0';
+                    snprintf(rkey, 255, "%s", cmd[0]);
+
                     if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
                         int ntimes_int = 0;
                         int i2 = 0;
@@ -609,6 +603,7 @@ static void ExecdStart(int q)
                         if (ntimes_int >= i2) {
                             new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
                         } else {
+                            free(ntimes);       /* In hash_op.c, data belongs to caller */
                             os_calloc(16, sizeof(char), ntimes);
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
@@ -628,15 +623,22 @@ static void ExecdStart(int q)
                     }
                 }
 
+                /* Timeout parameters */
+                cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
+
                 /* Create the timeout entry */
                 os_calloc(1, sizeof(timeout_data), timeout_entry);
-                timeout_entry->command = timeout_args;
+                os_calloc(2, sizeof(char *), timeout_entry->command);
+                os_strdup(cmd[0], timeout_entry->command[0]);
+                timeout_entry->command[1] = NULL;
+                timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
                 timeout_entry->time_of_addition = curr_time;
                 timeout_entry->time_to_block = timeout_value;
 
                 /* Add command to the timeout list */
-                mdebug1("Adding command '%s' to the timeout list, with a timeout of '%ds'.",
+                mdebug1("Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
                     timeout_entry->command[0],
+                    timeout_entry->parameters,
                     timeout_entry->time_to_block
                 );
 
@@ -644,47 +646,37 @@ static void ExecdStart(int q)
                     merror(LIST_ADD_ERROR);
                     FreeTimeoutEntry(timeout_entry);
                 }
-            } else {
-                /* If no timeout, we still need to free it in here */
-                char **ss_ta = timeout_args;
-                while (*timeout_args) {
-                    os_free(*timeout_args);
-                    *timeout_args = NULL;
-                    timeout_args++;
-                }
-                os_free(ss_ta);
             }
 
             childcount++;
-        } else {
-            /* We didn't add it to the timeout list */
-            char **ss_ta = timeout_args;
-
-            /* Clear the timeout arguments */
-            while (*timeout_args) {
-                os_free(*timeout_args);
-                *timeout_args = NULL;
-                timeout_args++;
-            }
-
-            os_free(ss_ta);
         }
 
-        /* Some cleanup */
-        while (i > 0) {
-            cmd_args[i] = NULL;
-            i--;
-        }
+        os_free(cmd_parameters);
+        cJSON_Delete(json_root);
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
+
+#ifdef WAZUH_UNIT_TESTING
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while (timeout_node) {
+        FreeTimeoutEntry((timeout_data *)timeout_node->data);
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+    }
+    os_free(timeout_list);
+#endif
 }
 
-static int CheckManagerConfiguration(char ** output) {
+STATIC int CheckManagerConfiguration(char ** output) {
     int ret_val;
     int result_code;
     int timeout = 2000;
     char command_in[PATH_MAX] = {0};
     char *output_msg = NULL;
-    char *daemons[] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd", "bin/ossec-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/ossec-agentlessd", "bin/ossec-integratord", "bin/ossec-dbd", "bin/ossec-csyslogd", NULL };
+    char *daemons[] = { "bin/wazuh-authd", "bin/wazuh-remoted", "bin/wazuh-execd", "bin/wazuh-analysisd", "bin/wazuh-logcollector", "bin/wazuh-integratord",  "bin/wazuh-syscheckd", "bin/wazuh-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd", "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL };
     int i;
     ret_val = 0;
 
@@ -693,7 +685,7 @@ static int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         output_msg = NULL;
-        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
+        snprintf(command_in, PATH_MAX, "%s %s", daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
             if (result_code == EXECVE_ERROR) {

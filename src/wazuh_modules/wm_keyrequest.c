@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for remote key requests
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -52,7 +52,8 @@ const wm_context WM_KEY_REQUEST_CONTEXT = {
     KEY_WM_NAME,
     (wm_routine)wm_key_request_main,
     (wm_routine)(void *)wm_key_request_destroy,
-    (cJSON * (*)(const void *))wm_key_request_dump
+    (cJSON * (*)(const void *))wm_key_request_dump,
+    NULL
 };
 
 typedef enum _request_type{
@@ -86,8 +87,8 @@ void * wm_key_request_main(wm_krequest_t * data) {
     /* Init the queue input */
     request_queue = queue_init(data->queue_size);
 
-    if ((sock = StartMQ(WM_KEY_REQUEST_SOCK_PATH, READ)) < 0) {
-        merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK_PATH, strerror(errno));
+    if ((sock = StartMQ(WM_KEY_REQUEST_SOCK, READ, 0)) < 0) {
+        merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK, strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -382,7 +383,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         if (sock = auth_connect(), sock < 0) {
             mwarn("Could not connect to authd socket. Is authd running?");
         } else {
-            auth_add_agent(sock, id, agent_name->valuestring, agent_address->valuestring, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
+            w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
             close(sock);
         }
         cJSON_Delete(agent_infoJSON);
@@ -474,7 +475,7 @@ void * w_socket_launcher(void * args) {
 
     mdebug1("Running integration daemon: %s", exec_path);
 
-    if (argv = wm_strtok(exec_path), !argv) {
+    if (argv = w_strtok(exec_path), !argv) {
         merror("Could not split integration command: %s", exec_path);
         pthread_exit(NULL);
     }

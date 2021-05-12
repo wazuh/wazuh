@@ -1,6 +1,6 @@
 /*
  * Network counter library for Remoted
- * Copyright (C) 2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -29,6 +29,8 @@ void rem_initList(size_t initial_size) {
 
 
 void rem_setCounter(int fd, size_t counter) {
+    assert(fd >= 0);
+
     w_mutex_lock(&lock);
     while (fd >= connections.size) {
         os_realloc(connections.list, sizeof(int) * (connections.size + SIZE_BLOCK), connections.list);
@@ -41,6 +43,8 @@ void rem_setCounter(int fd, size_t counter) {
 
 
 size_t rem_getCounter(int fd) {
+    assert(fd >= 0);
+
     w_mutex_lock(&lock);
     size_t counter = (fd >= connections.size) ? 0 : connections.list[fd];
     w_mutex_unlock(&lock);

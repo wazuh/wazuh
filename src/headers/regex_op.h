@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,10 +15,28 @@
 #include <regex.h>
 #include "external/sqlite/sqlite3.h"
 
-/* POSIX regex pattern matching */
+/**
+ * @brief Compare a string with a regular expression.
+ *
+ * @param str String to check.
+ * @param regex Regex to match.
+ * @return Returns 1 if matches, 0 if not.
+ */
 int OS_PRegex(const char *str, const char *regex);
 
-// Execute a POSIX regex. Return 1 on success or 0 on error.
+
+/**
+ * @brief Compare a string with a expression.
+ *
+ * @details This function extends the POSIX function regexec().
+ *          In this function the pattern is self compiled.
+ *
+ * @param pattern Regex to match.
+ * @param string String to check.
+ * @param nmatch The maximum number of matches to record in pmatch.
+ * @param pmatch Array of regmatch_t objects where the function can record the matches.
+ * @return Returns 1 on success or 0 on error.
+ */
 int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch_t * pmatch);
 
 // Callback to use POSIX regex with the SQLite engine

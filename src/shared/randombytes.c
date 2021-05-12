@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Contributed by Jeremy Rossi (@jrossi)
  *
  * This program is free software; you can redistribute it
@@ -78,11 +78,9 @@ void randombytes(void *ptr, size_t length)
 
 void srandom_init(void)
 {
-#ifndef WIN32
     unsigned int seed;
     randombytes(&seed, sizeof seed);
     srandom(seed);
-#endif /* !WIN32 */
 }
 
 int os_random(void) {

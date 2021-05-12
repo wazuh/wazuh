@@ -1,5 +1,5 @@
 /* Agent restarting function
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Aug 23, 2017.
  *
  * This program is free software; you can redistribute it
@@ -24,20 +24,16 @@ static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 void * restartAgent() {
 
 	char req[] = "restart";
-	ssize_t length;
-
-	length = strlen(req);
 
 	#ifndef WIN32
+
+	ssize_t length;
+	length = strlen(req);
 
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
 
-	if (isChroot()) {
-		strcpy(sockname, COM_LOCAL_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR COM_LOCAL_SOCK);
-	}
+	strcpy(sockname, COM_LOCAL_SOCK);
 
 	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
 		switch (errno) {
@@ -59,7 +55,7 @@ void * restartAgent() {
 	#else
 
 	char *output = NULL;
-	length = wcom_dispatch(req, length, &output);
+	wcom_dispatch(req, &output);
 	if (output) free(output);
 
 	#endif
@@ -71,33 +67,28 @@ int verifyRemoteConf(){
 	const char *configPath;
  	char msg_output[OS_MAXSTR];
 
-	if (isChroot()) {
-		configPath = AGENTCONFIGINT;
-
-	} else {
-		configPath = AGENTCONFIG;
-	}
+	configPath = AGENTCONFIG;
 
 	if (Test_Syscheck(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "syscheck");
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "syscheck");
 		goto fail;
 	} else if (Test_Rootcheck(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "rootcheck");
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "rootcheck");
 		goto fail;
     } else if (Test_Localfile(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "localfile");
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "localfile");
 		goto fail;
     } else if (Test_Client(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "client");
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "client");
 		goto fail;
 	} else if (Test_ClientBuffer(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "client_buffer");
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "client_buffer");
 		goto fail;
     } else if (Test_WModule(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "wodle");
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "wodle");
 		goto fail;
     } else if (Test_Labels(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "labels");
+		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "labels");
 		goto fail;
     }
 

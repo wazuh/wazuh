@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,6 +15,8 @@
 #include "os_net/os_net.h"
 #include "validate_op.h"
 
+/* Agent status */
+char ui_server_info[2048 + 1];
 
 /* Generate server info (for the main status) */
 int gen_server_info(HWND hwnd)
@@ -230,7 +232,7 @@ int config_read(__attribute__((unused)) HWND hwnd)
     }
 
     /* Get agent ID, name and IP */
-    tmp_str = cat_file(AUTH_FILE, NULL);
+    tmp_str = cat_file(KEYS_FILE, NULL);
     if (tmp_str) {
         char *to_free = tmp_str;
         /* Get base 64 */
@@ -483,7 +485,7 @@ int set_ossec_key(char *key, HWND hwnd)
 {
     FILE *fp;
 
-    char auth_file_tmp[] = AUTH_FILE;
+    char auth_file_tmp[] = KEYS_FILE;
     char *keys_file = basename_ex(auth_file_tmp);
 
     char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
@@ -513,7 +515,7 @@ int set_ossec_key(char *key, HWND hwnd)
         return (0);
     }
 
-    if (rename_ex(tmp_path, AUTH_FILE)) {
+    if (rename_ex(tmp_path, KEYS_FILE)) {
         MessageBox(hwnd, "Unable to rename temporary file.",
                    "Error -- Failure Renaming Temporary File", MB_OK);
 

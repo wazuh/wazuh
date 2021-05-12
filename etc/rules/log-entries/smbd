@@ -1,9 +1,0 @@
-smbd[12252]:   getpeername failed. Error was Transport endpoint is not connected
-smbd[12252]:   Denied connection from  (0.0.0.0)
-smbd[12252]:   getpeername failed. Error was Transport endpoint is not connected
-smbd[12252]:   Connection denied from 0.0.0.0
-smbd[12252]:   write_socket_data: write failure. Error = Connection reset by peer
-smbd[12252]:   write_socket: Error writing 5 bytes to socket 5: ERRNO = Connection reset by peer
-smbd[12252]:   Error writing 5 bytes to client. -1. (Connection reset by peer)
-May 31 15:54:18 homesmbsrv smbd[124]:  Permission denied-- user not allowed to delete, pause, or resume print job. User name: oahmet. Printer name: prnq1.
-

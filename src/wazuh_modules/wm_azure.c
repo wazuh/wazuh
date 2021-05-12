@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Azure integration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September, 2018.
  *
  * This program is free software; you can redistribute it
@@ -36,82 +36,44 @@ const wm_context WM_AZURE_CONTEXT = {
     AZ_WM_NAME,
     (wm_routine)wm_azure_main,
     (wm_routine)(void *)wm_azure_destroy,
-    (cJSON * (*)(const void *))wm_azure_dump
+    (cJSON * (*)(const void *))wm_azure_dump,
+    NULL
 };
 
 // Module main function. It won't return.
 
 void* wm_azure_main(wm_azure_t *azure_config) {
 
-    time_t time_start;
-    time_t time_sleep = 0;
     wm_azure_api_t *curr_api = NULL;
     wm_azure_storage_t *curr_storage = NULL;
     char msg[OS_SIZE_6144];
-    int status = 0;
+    char * timestamp = NULL;
 
     wm_azure_setup(azure_config);
     mtinfo(WM_AZURE_LOGTAG, "Module started.");
 
-    // First sleeping
 
-    if (!azure_config->flags.run_on_start) {
-        time_start = time(NULL);
-
-        if (azure_config->scan_day) {
-            do {
-                status = check_day_to_scan(azure_config->scan_day, azure_config->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(azure_config->scan_time);
-                } else {
-                    wm_delay(1000); // Sleep one second to avoid an infinite loop
-                    time_sleep = get_time_to_hour("00:00");
-                }
-
-                mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while (status < 0);
-
-        } else if (azure_config->scan_wday >= 0) {
-
-            time_sleep = get_time_to_day(azure_config->scan_wday, azure_config->scan_time);
-            mtinfo(WM_AZURE_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (azure_config->scan_time) {
-
-            time_sleep = get_time_to_hour(azure_config->scan_time);
-            mtinfo(WM_AZURE_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        } else if (azure_config->state.next_time == 0 || azure_config->state.next_time > time_start) {
-
-            // On first run, take into account the interval of time specified
-            time_sleep = azure_config->state.next_time == 0 ?
-                         (time_t)azure_config->interval :
-                         azure_config->state.next_time - time_start;
-
-            mtinfo(WM_AZURE_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %ld seconds", (long)time_sleep);
-            wm_delay(1000 * time_sleep);
-
-        }
-    }
 
     // Main loop
 
-    while (1) {
+    do {
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
 
+        if(azure_config->state.next_time == 0) {
+            azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
+        }
+
+        if (time_sleep) {
+            const int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", timestamp);
+            os_free(timestamp);
+            w_sleep_until(next_scan_time);
+        }
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 
         snprintf(msg, OS_SIZE_6144, "Starting Azure-logs scan.");
         SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
-
-        // Get time and execute
-        time_start = time(NULL);
 
         for (curr_api = azure_config->api_config; curr_api; curr_api = curr_api->next) {
             if (curr_api->type == LOG_ANALYTICS) {
@@ -134,55 +96,9 @@ void* wm_azure_main(wm_azure_t *azure_config) {
         snprintf(msg, OS_SIZE_6144, "Ending Azure-logs scan.");
         SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
-        mtinfo(WM_AZURE_LOGTAG, "Fetching logs finished.");
+        mtdebug1(WM_AZURE_LOGTAG, "Fetching logs finished.");
 
-        wm_delay(1000); // Avoid infinite loop when execution fails
-        time_sleep = time(NULL) - time_start;
-
-        if (azure_config->scan_day) {
-            int interval = 0, i = 0;
-            interval = azure_config->interval / 60;   // interval in num of months
-
-            do {
-                status = check_day_to_scan(azure_config->scan_day, azure_config->scan_time);
-                if (status == 0) {
-                    time_sleep = get_time_to_hour(azure_config->scan_time);
-                    i++;
-                } else {
-                    wm_delay(1000);
-                    time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
-                }
-
-                mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                wm_delay(1000 * time_sleep);
-
-            } while ((status < 0) && (i < interval));
-
-        } else {
-
-            if (azure_config->scan_wday >= 0) {
-                time_sleep = get_time_to_day(azure_config->scan_wday, azure_config->scan_time);
-                time_sleep += WEEK_SEC * ((azure_config->interval / WEEK_SEC) - 1);
-                azure_config->state.next_time = (time_t)time_sleep + time_start;
-            } else if (azure_config->scan_time) {
-                time_sleep = get_time_to_hour(azure_config->scan_time);
-                time_sleep += DAY_SEC * ((azure_config->interval / DAY_SEC) - 1);
-                azure_config->state.next_time = (time_t)time_sleep + time_start;
-            } else if ((time_t)azure_config->interval >= time_sleep) {
-                time_sleep = azure_config->interval - time_sleep;
-                azure_config->state.next_time = azure_config->interval + time_start;
-            } else {
-                mterror(WM_AZURE_LOGTAG, "Interval overtaken.");
-                time_sleep = azure_config->state.next_time = 0;
-            }
-
-            if (wm_state_io(WM_AZURE_CONTEXT.name, WM_IO_WRITE, &azure_config->state, sizeof(azure_config->state)) < 0)
-                mterror(WM_AZURE_LOGTAG, "Couldn't save running state.");
-
-            mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            wm_delay(1000 * time_sleep);
-        }
-    }
+    } while (FOREVER());
 
     return NULL;
 }
@@ -202,7 +118,11 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
 
-        wm_strcat(&command, WM_AZURE_SCRIPT_PATH, '\0');
+        char * script = NULL;
+        os_calloc(PATH_MAX, sizeof(char), script);
+        snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
+        wm_strcat(&command, script, '\0');
+        os_free(script);
         wm_strcat(&command, "--log_analytics", ' ');
 
         if (log_analytics->auth_path) {
@@ -277,7 +197,11 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
 
-        wm_strcat(&command, WM_AZURE_SCRIPT_PATH, '\0');
+        char * script = NULL;
+        os_calloc(PATH_MAX, sizeof(char), script);
+        snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
+        wm_strcat(&command, script, '\0');
+        os_free(script);
         wm_strcat(&command, "--graph", ' ');
 
         if (graph->auth_path) {
@@ -350,7 +274,11 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
 
-        wm_strcat(&command, WM_AZURE_SCRIPT_PATH, '\0');
+        char * script = NULL;
+        os_calloc(PATH_MAX, sizeof(char), script);
+        snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
+        wm_strcat(&command, script, '\0');
+        os_free(script);
         wm_strcat(&command, "--storage", ' ');
 
         if (storage->auth_path) {
@@ -418,7 +346,6 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
 
 void wm_azure_setup(wm_azure_t *_azure_config) {
 
-    int i;
     azure_config = _azure_config;
     wm_azure_check();
 
@@ -429,10 +356,9 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
     // Connect to socket
 
-    for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        wm_delay(1000 * WM_MAX_WAIT);
+    queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (i == WM_MAX_ATTEMPTS) {
+    if (queue_fd < 0) {
         mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
@@ -550,34 +476,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
 
     if (azure->flags.enabled) cJSON_AddStringToObject(wm_azure,"disabled","no"); else cJSON_AddStringToObject(wm_azure,"disabled","yes");
     if (azure->flags.run_on_start) cJSON_AddStringToObject(wm_azure,"run_on_start","yes"); else cJSON_AddStringToObject(wm_azure,"run_on_start","no");
-    if (azure->interval) cJSON_AddNumberToObject(wm_azure, "interval", azure->interval);
-    if (azure->scan_day) cJSON_AddNumberToObject(wm_azure, "day", azure->scan_day);
-    switch (azure->scan_wday) {
-        case 0:
-            cJSON_AddStringToObject(wm_azure, "wday", "sunday");
-            break;
-        case 1:
-            cJSON_AddStringToObject(wm_azure, "wday", "monday");
-            break;
-        case 2:
-            cJSON_AddStringToObject(wm_azure, "wday", "tuesday");
-            break;
-        case 3:
-            cJSON_AddStringToObject(wm_azure, "wday", "wednesday");
-            break;
-        case 4:
-            cJSON_AddStringToObject(wm_azure, "wday", "thursday");
-            break;
-        case 5:
-            cJSON_AddStringToObject(wm_azure, "wday", "friday");
-            break;
-        case 6:
-            cJSON_AddStringToObject(wm_azure, "wday", "saturday");
-            break;
-        default:
-            break;
-    }
-    if (azure->scan_time) cJSON_AddStringToObject(wm_azure, "time", azure->scan_time);
+    sched_scan_dump(&(azure->scan_config), wm_azure);
     cJSON_AddNumberToObject(wm_azure,"timeout",azure->timeout);
 
     if (azure->api_config || azure->storage) {

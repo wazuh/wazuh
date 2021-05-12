@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Configuration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 26, 2017.
  *
  * This program is free software; you can redistribute it
@@ -14,7 +14,6 @@
 static const char *XML_DISABLED = "disabled";
 static const char *XML_TAG = "tag";
 static const char *XML_COMMAND = "command";
-static const char *XML_INTERVAL = "interval";
 static const char *XML_IGNORE_OUTPUT = "ignore_output";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_TIMEOUT = "timeout";
@@ -27,6 +26,7 @@ static const char *XML_SKIP_VERIFICATION = "skip_verification";
 
 int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 {
+
     int i;
     int empty = 0;
     wm_command_t * command;
@@ -44,11 +44,13 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     command->enabled = 1;
     command->run_on_start = 1;
     command->skip_verification = 0;
-    command->interval = WM_COMMAND_DEFAULT_INTERVAL;
+    sched_scan_init(&(command->scan_config));
+    command->scan_config.interval = WM_COMMAND_DEFAULT_INTERVAL;
     command->agent_cfg = agent_cfg;
     command->md5_hash = NULL;
     command->sha1_hash = NULL;
     command->sha256_hash = NULL;
+    command->full_command = NULL;
     module->context = &WM_COMMAND_CONTEXT;
     module->data = command;
 
@@ -71,7 +73,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
             if (strlen(nodes[i]->content) == 0) {
                 mwarn("Empty content for tag '%s' at module '%s'.", XML_TAG, WM_COMMAND_CONTEXT.name);
                 command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + 2;
-                command_tag = malloc(sizeof(char) * command_tag_length);
+                os_malloc(sizeof(char) * command_tag_length, command_tag);
                 snprintf(command_tag, command_tag_length, "%s", WM_COMMAND_CONTEXT.name);
                 empty = 1;
             }
@@ -81,7 +83,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 
             if (!empty) {
                 command_tag_length = strlen(WM_COMMAND_CONTEXT.name) + strlen(command->tag) + 2;
-                command_tag = malloc(sizeof(char) * command_tag_length);
+                os_malloc(sizeof(char) * command_tag_length, command_tag);
                 snprintf(command_tag, command_tag_length, "%s:%s", WM_COMMAND_CONTEXT.name, command->tag);
             }
 
@@ -97,32 +99,6 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
 
             free(command->command);
             os_strdup(nodes[i]->content, command->command);
-        } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            char *endptr;
-            command->interval = strtoul(nodes[i]->content, &endptr, 0);
-
-            if ((command->interval == 0 && endptr == nodes[i]->content) || command->interval == ULONG_MAX) {
-                merror("Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            switch (*endptr) {
-            case 'd':
-                command->interval *= 86400;
-                break;
-            case 'h':
-                command->interval *= 3600;
-                break;
-            case 'm':
-                command->interval *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid interval at module '%s'", WM_COMMAND_CONTEXT.name);
-                return OS_INVALID;
-            }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 command->run_on_start = 1;
@@ -182,10 +158,17 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_VERIFICATION, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (is_sched_tag(nodes[i]->element)) {
+            // Do nothing
         } else {
-            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);
+            merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);	
             return OS_INVALID;
         }
+    }
+
+    const int sched_read = sched_scan_read(&(command->scan_config), nodes, module->context->name);
+    if ( sched_read != 0 ) {
+        return OS_INVALID;
     }
 
     if (!command->tag) {

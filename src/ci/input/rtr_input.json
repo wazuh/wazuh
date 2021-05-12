@@ -1,0 +1,24 @@
+{
+    "folders": [
+        {
+            "name":"data_provider",
+            "flags":"-r"
+        },
+        {
+            "name":"shared_modules/dbsync",
+            "flags":"-r"
+        },
+        {
+            "name":"shared_modules/rsync",
+            "flags":"-r"
+        },
+        {
+            "name":"shared_modules/utils",
+            "flags":"-r"
+        },
+        {
+            "name":"wazuh_modules/syscollector",
+            "flags":"-r"
+        }
+    ]
+}

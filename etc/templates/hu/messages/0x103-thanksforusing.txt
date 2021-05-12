@@ -8,7 +8,6 @@
 
     További információk a következő címen található meg:
                - http://www.wazuh.com
-               - http://www.ossec.net
 
         --- Nyomja meg az ENTER befejezni. ---
         --- (Talán több információt lent.) ---

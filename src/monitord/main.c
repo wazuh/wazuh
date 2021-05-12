@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -14,11 +14,11 @@
 #include "os_net/os_net.h"
 
 /* Prototypes */
-static void help_monitord(void) __attribute__((noreturn));
+static void help_monitord(char * home_path) __attribute__((noreturn));
 
 
 /* Print help statement */
-static void help_monitord()
+static void help_monitord(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -31,11 +31,12 @@ static void help_monitord()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out("    -n          Disable agent monitoring.");
     print_out("    -w <sec>    Time (sec.) to wait before rotating logs and alerts.");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -45,10 +46,9 @@ int main(int argc, char **argv)
     int no_agents = 0;
     uid_t uid;
     gid_t gid;
-    const char *dir  = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
     short day_wait = -1;
     char * end;
     int debug_level = 0;
@@ -59,13 +59,16 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+
     while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:nw:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help_monitord();
+                help_monitord(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -90,7 +93,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {
@@ -115,10 +119,15 @@ int main(int argc, char **argv)
 
                 break;
             default:
-                help_monitord();
+                help_monitord(home_path);
                 break;
         }
 
+    }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
     if (debug_level == 0) {
@@ -130,35 +139,17 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /*Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
-    /* Get config options */
-    mond.day_wait = day_wait >= 0 ? day_wait : (short)getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT);
-    mond.compress = (unsigned int) getDefine_Int("monitord", "compress", 0, 1);
-    mond.sign = (unsigned int) getDefine_Int("monitord", "sign", 0, 1);
-    mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
-    mond.rotate_log = (unsigned int)getDefine_Int("monitord", "rotate_log", 0, 1);
-    mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
-    mond.size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
-    mond.daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
-    mond.delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
-
-    mond.agents = NULL;
-    mond.smtpserver = NULL;
-    mond.emailfrom = NULL;
-    mond.emailidsname = NULL;
-
-    c = 0;
-    c |= CREPORTS;
-    if (ReadConfig(c, cfg, &mond, NULL) < 0) {
+    /* Reading configuration */
+    if (MonitordConfig(cfg, &mond, no_agents, day_wait) != OS_SUCCESS ) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 
@@ -208,38 +199,26 @@ int main(int argc, char **argv)
         OS_ClearXML(&xml);
     }
 
-    // Do not monitor agents in client nodes
-
-    OS_XML cl_xml;
-    const char * xmlf[] = {"ossec_config", "cluster", "disabled", NULL};
-    const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
-
-    if (OS_ReadXML(cfg, &cl_xml) < 0) {
-        mdebug1(XML_ERROR, cfg, cl_xml.err, cl_xml.err_line);
-    } else {
-        // Read the cluster status and the node type from the configuration file
-        char * cl_status = OS_GetOneContentforElement(&cl_xml, xmlf);
-        if (cl_status && cl_status[0] != '\0') {
-            if (!strncmp(cl_status, "no", 2)) {
-                char * cl_type = OS_GetOneContentforElement(&cl_xml, xmlf2);
-                if (cl_type && cl_type[0] != '\0') {
-                    if (!strncmp(cl_type, "client", 6) || !strncmp(cl_type, "worker", 6)) {
-                        mdebug1("Cluster client node: Disabled the agent monitoring");
-                        mond.monitor_agents = 0;
-                    }
-                    free(cl_type);
-                }
-            }
-
-            free(cl_status);
-        }
+    // Read the cluster status and the node type from the configuration file
+    // Do not monitor agents in client/worker nodes
+    switch (w_is_worker()){
+        case 0:
+            worker_node = false;
+            break;
+        case 1:
+            mdebug1("Cluster client node: Disabled the agent monitoring");
+            worker_node = true;
+            mond.monitor_agents = 0;
+            break;
     }
-    OS_ClearXML(&cl_xml);
 
     /* Exit here if test config is set */
     if (test_config) {
         exit(0);
     }
+
+    /* Setup random */
+    srandom_init();
 
     if (!run_foreground) {
         /* Going on daemon mode */
@@ -253,8 +232,8 @@ int main(int argc, char **argv)
     }
 
     /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
 
     nowChroot();
@@ -264,7 +243,7 @@ int main(int argc, char **argv)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -279,5 +258,7 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     Monitord();
-    exit(0);
+
+    os_free(home_path);
+    return(0);
 }

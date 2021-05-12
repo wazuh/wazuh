@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -53,7 +53,7 @@ Install()
     echo "4- ${installing}"
 
     echo ""
-    echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
+    echo "DIR=\"${INSTALLDIR}\""
 
     # Changing Config.OS with the new C flags
     # Checking if debug is enabled
@@ -97,11 +97,6 @@ Install()
         SYSC_FLAG="DISABLE_SYSC=yes"
     fi
 
-    # Build SQLite library for CentOS 6
-    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
-        LIB_FLAG="USE_FRAMEWORK_LIB=yes"
-    fi
-
     # Makefile
     echo " - ${runningmake}"
     echo ""
@@ -111,7 +106,7 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries if missing
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps PREFIX=${INSTALLDIR}
+        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps TARGET=${INSTYPE}
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
@@ -119,7 +114,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
@@ -127,7 +122,7 @@ Install()
         fi
     fi
 
-    # If update, stop ossec
+    # If update, stop Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         echo "Stopping Wazuh..."
         UpdateStopOSSEC
@@ -138,21 +133,16 @@ Install()
 
     cd ../
 
-    # Generate the /etc/ossec-init.conf
-    VERSION=`cat ${VERSION_FILE}`
-    REVISION=`cat ${REVISION_FILE}`
-    chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
-    GenerateInitConf > ${OSSEC_INIT}
-    chmod 640 ${OSSEC_INIT}
-    chown root:ossec ${OSSEC_INIT}
-    ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
-
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
         WazuhSetup
     fi
 
-    # If update, start OSSEC
+    # Calling the init script to start Wazuh during boot
+    runInit $INSTYPE ${update_only}
+    runinit_value=$?
+
+    # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
         # Update versions previous to Wazuh 1.2
@@ -161,9 +151,7 @@ Install()
         UpdateStartOSSEC
     fi
 
-    # Calling the init script  to start ossec hids during boot
-    runInit $INSTYPE ${update_only}
-    if [ $? = 1 ]; then
+    if [ $runinit_value = 1 ]; then
         notmodified="yes"
     elif [ "X$START_WAZUH" = "Xyes" ]; then
         echo "Starting Wazuh..."
@@ -221,31 +209,6 @@ UseRootcheck()
         *)
             ROOTCHECK="yes"
             echo "   - ${yesrootcheck}."
-            ;;
-    esac
-}
-
-##########
-# UseOpenSCAP()
-##########
-UseOpenSCAP()
-{
-    # OpenSCAP config
-    echo ""
-    $ECHO "  3.4- ${runopenscap} ($yes/$no) [$yes]: "
-    if [ "X${USER_ENABLE_OPENSCAP}" = "X" ]; then
-        read AS
-    else
-        AS=${USER_ENABLE_OPENSCAP}
-    fi
-    echo ""
-    case $AS in
-        $nomatch)
-            echo "   - ${norunopenscap}."
-            ;;
-        *)
-            OPENSCAP="yes"
-            echo "   - ${yesrunopenscap}."
             ;;
     esac
 }
@@ -397,9 +360,6 @@ ConfigureClient()
     # Rootcheck?
     UseRootcheck
 
-    # OpenSCAP?
-    UseOpenSCAP
-
     UseSyscollector
 
     UseSecurityConfigurationAssessment
@@ -532,9 +492,6 @@ ConfigureServer()
     # Checking if rootcheck should run
     UseRootcheck
 
-    # Checking if OpenSCAP should run
-    UseOpenSCAP
-
     UseSyscollector
 
     UseSecurityConfigurationAssessment
@@ -596,17 +553,16 @@ ConfigureServer()
 }
 
 ##########
-# setEnv()
+# setInstallDir()
 ##########
-setEnv()
+setInstallDir()
 {
-    echo ""
-    echo "2- ${settingupenv}."
-
-    echo ""
     if [ "X${USER_DIR}" = "X" ]; then
+        # If we don't have a value in USER_DIR, it means that the user
+        # should specify the installation directory.
         while [ 1 ]; do
-            $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
+            echo ""
+            $ECHO "2- ${wheretoinstall} [$INSTALLDIR]: "
             read ANSWER
             if [ ! "X$ANSWER" = "X" ]; then
                 echo $ANSWER |grep -E "^/[a-zA-Z0-9./_-]{3,128}$">/dev/null 2>&1
@@ -619,22 +575,34 @@ setEnv()
             fi
         done
     else
+        # This else statement handles the case in which it was determined that the installation
+        # is an upgrade. So, the USER_DIR variable was previously set with the value of PREINSTALLEDDIR.
+        # Another possibility is that USER_DIR could have been set before running the script in
+        # order to run an unattended installation.
         INSTALLDIR=${USER_DIR}
     fi
+}
 
-
-    CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
-
+##########
+# setEnv()
+##########
+setEnv()
+{
     echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
-
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         CEXTRA="$CEXTRA -DLOCAL"
     fi
+}
 
+##########
+# askForDelete()
+##########
+askForDelete()
+{
     if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
@@ -783,7 +751,7 @@ AddCAStore()
 AddPFTable()
 {
     #default pf rules
-    TABLE="ossec_fwtable"
+    TABLE="wazuh_fwtable"
 
     # Add table to the first line
     echo ""
@@ -898,7 +866,7 @@ main()
 
     . ./src/init/update.sh
     # Is this an update?
-    if [ "`isUpdate`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
+    if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
         echo ""
         ct="1"
         while [ $ct = "1" ]; do
@@ -916,7 +884,9 @@ main()
                     break;
                     ;;
                 $no)
-                    break;
+                    echo ""
+                    echo "${mustuninstall}"
+                    exit 0;
                     ;;
                   *)
                     ct="1"
@@ -937,11 +907,11 @@ main()
                 update_only=""
             else
                 # Get update
-                USER_INSTALL_TYPE=`getPreinstalled`
-                USER_DIR=`getPreinstalledDir`
-                USER_DELETE_DIR="$nomatch"
+                USER_DIR="$PREINSTALLEDDIR"
+                USER_INSTALL_TYPE=`getPreinstalledType`
                 USER_OLD_VERSION=`getPreinstalledVersion`
                 USER_OLD_NAME=`getPreinstalledName`
+                USER_DELETE_DIR="$nomatch"
             fi
 
             ct="1"
@@ -952,9 +922,9 @@ main()
             fi
 
         fi
-        echo ""
     fi
 
+    # Setting up the installation type
     hybrid="hybrid"
     HYBID=""
     hybridm=`echo ${hybrid} | cut -b 1`
@@ -1013,10 +983,14 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
+    # Setting up the installation directory
+    setInstallDir
 
     # Setting up the environment
     setEnv
 
+    # Ask to remove the current installation if exists
+    askForDelete
 
     # Configuring the system (based on the installation type)
     if [ "X${update_only}" = "X" ]; then
@@ -1040,10 +1014,10 @@ main()
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/ossec-control start"
+    echo "      $INSTALLDIR/bin/wazuh-control start"
     echo ""
     echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/ossec-control stop"
+    echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
     echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
@@ -1054,7 +1028,7 @@ main()
 
     if [ "X${update_only}" = "Xyes" ]; then
         # Message for the update
-        if [ "X`sh ./src/init/fw-check.sh`" = "XPF" -a "X${ACTIVERESPONSE}" = "Xyes" ]; then
+        if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
             if [ "X$USER_NO_STOP" = "X" ]; then
                 read ANY
             fi
@@ -1082,7 +1056,7 @@ main()
 
 
     # PF firewall message
-    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" -a "X${ACTIVERESPONSE}" = "Xyes" ]; then
+    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
         AddPFTable
     fi
 
@@ -1090,26 +1064,21 @@ main()
     if [ "X$INSTYPE" = "Xserver" ]; then
         echo ""
         echo " - ${addserveragent}"
-        echo "   ${runma}:"
-        echo ""
-        echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
 
     elif [ "X$INSTYPE" = "Xagent" ]; then
-        catMsg "0x104-client"
-        echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
-        echo "   ${moreinfo}"
+        echo " - ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
     fi
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "      $INSTALLDIR/bin/ossec-control start"
+        echo "      $INSTALLDIR/bin/wazuh-control start"
         echo ""
     fi
 }
@@ -1139,8 +1108,6 @@ if [ "x$HYBID" = "xgo" ]; then
     echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-    echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

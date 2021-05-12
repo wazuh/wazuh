@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -103,7 +103,9 @@ int os_check_ads(const char *full_path)
             break;
         }
     }
-
+    BackupRead(file_h, (LPBYTE)stream_name,
+                       sid.dwStreamNameSize,
+                       &dwRead, TRUE, FALSE, &context);
     CloseHandle(file_h);
     return (0);
 }

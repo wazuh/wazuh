@@ -8,7 +8,6 @@
 
     Više informacija može se pronaći na:
                - http://www.wazuh.com
-               - http://www.ossec.net
 
          --- Pritisnite ENTER za kraj. ---
     --- (Možda i više informacija u nastavku). ---

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 22, 2016.
  *
  * This program is free software; you can redistribute it
@@ -12,16 +12,12 @@
 #ifndef W_MODULES
 #define W_MODULES
 
-#ifndef ARGV0
-#define ARGV0 "wazuh-modulesd"
-#endif // ARGV0
-
 #include "shared.h"
 #include <pthread.h>
 #include "config/config.h"
+#include "wmodules_def.h"
 
-#define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"        // Default modules directory.
-#define WM_STATE_DIR    DEFAULTDIR "/var/wodles"    // Default directory for states.
+#define WM_STATE_DIR    "var/wodles"               // Default directory for states.
 #define WM_DIR_WIN      "wodles"                    // Default directory for states (Windows)
 #define WM_STRING_MAX   67108864                    // Max. dynamic string size (64 MB).
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
@@ -37,7 +33,11 @@
 #define AZ_WM_NAME "azure-logs"
 #define KEY_WM_NAME "agent-key-polling"
 #define SCA_WM_NAME "sca"
+#define GCP_WM_NAME "gcp-pubsub"
 #define FLUENT_WM_NAME "fluent-forward"
+#define AGENT_UPGRADE_WM_NAME "agent-upgrade"
+#define TASK_MANAGER_WM_NAME "task-manager"
+#define GITHUB_WM_NAME "github"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -45,28 +45,10 @@
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
 
+#define RANDOM_LENGTH  512
+#define MAX_VALUE_NAME 16383
+
 #define EXECVE_ERROR 0x7F
-
-typedef void* (*wm_routine)(void*);     // Standard routine pointer
-
-// Module context: this should be defined for every module
-
-typedef struct wm_context {
-    const char *name;                   // Name for module
-    wm_routine start;                   // Main function
-    wm_routine destroy;                 // Destructor
-    cJSON *(* dump)(const void *);
-} wm_context;
-
-// Main module structure
-
-typedef struct wmodule {
-    pthread_t thread;                   // Thread ID
-    const wm_context *context;          // Context (common structure)
-    char *tag;                          // Module tag
-    void *data;                         // Data (module-dependent structure)
-    struct wmodule *next;               // Pointer to next module
-} wmodule;
 
 // Verification type
 typedef enum crypto_type {
@@ -79,7 +61,7 @@ typedef enum crypto_type {
 
 #include "wm_oscap.h"
 #include "wm_database.h"
-#include "syscollector/syscollector.h"
+#include "wm_syscollector.h"
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"
@@ -92,6 +74,11 @@ typedef enum crypto_type {
 #include "wm_sca.h"
 #include "wm_fluent.h"
 #include "wm_control.h"
+#include "wm_gcp.h"
+#include "wm_task_general.h"
+#include "agent_upgrade/wm_agent_upgrade.h"
+#include "task_manager/wm_task_manager.h"
+#include "wm_github.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -99,10 +86,12 @@ extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wa
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
 
+
 // Read XML configuration and internal options
 int wm_config();
 cJSON *getModulesConfig(void);
 cJSON *getModulesInternalOptions(void);
+int modulesSync(char* args);
 
 // Add module to the global list
 void wm_add(wmodule *module);
@@ -150,9 +139,6 @@ void wm_kill_children();
 // Reads an HTTP header and extracts the size of the response
 long int wm_read_http_size(char *header);
 
-// Tokenize string separated by spaces, respecting double-quotes
-char** wm_strtok(char *string);
-
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE
  * Returns 0 if success, or 1 if fail.
@@ -169,15 +155,6 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 // Returns 0 if absolute, 1 if relative or -1 on error.
 int wm_relative_path(const char * path);
 
-// Get time in seconds to the specified hour in hh:mm
-int get_time_to_hour(const char * hour);
-
-// Get time to reach a particular day of the week and hour
-int get_time_to_day(int wday, const char * hour);
-
-// Function to look for the correct day of the month to run a wodle
-int check_day_to_scan(int day, const char *hour);
-
 // Get binary full path
 int wm_get_path(const char *binary, char **validated_comm);
 
@@ -193,15 +170,15 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 #ifndef WIN32
 // Com request thread dispatcher
 void * wmcom_main(void * arg);
+/**
+ * @brief Send a one-way message to wmodules
+ *
+ * @param message Payload.
+ */
 #endif
+void wmcom_send(char * message);
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
-
-// Sleep function for Windows and Unix (milliseconds)
-void wm_delay(unsigned int ms);
-
-#ifdef __MACH__
-void freegate(gateway *gate);
-#endif
+int wmcom_sync(char * buffer);
 
 #endif // W_MODULES

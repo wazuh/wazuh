@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,121 +8,175 @@
  * Foundation
  */
 
-/* SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE */
+
+// SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE
 #ifdef __linux__
 #include <sched.h>
 #endif
 
+#ifdef INOTIFY_ENABLED
+#include <sys/inotify.h>
+#endif
+
 #include "shared.h"
 #include "syscheck.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/sha256/sha256_op.h"
-#include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
-#include "syscheck_op.h"
+#include "db/fim_db_files.h"
 
-/* Prototypes */
-static void send_sk_db(int first_scan);
-#ifndef WIN32
-static void *symlink_checker_thread(__attribute__((unused)) void * data);
-static void update_link_monitoring(int pos, char *old_path, char *new_path);
-static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
-static void send_silent_del(char *path);
+#ifdef WAZUH_UNIT_TESTING
+unsigned int files_read = 0;
+time_t last_time = 0;
+
+#ifdef WIN32
+
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#endif
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
 #endif
 
-/* Send a message related to syscheck change/addition */
-int send_syscheck_msg(const char *msg)
-{
-    if (SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0) {
-        merror(QUEUE_SEND);
+// Prototypes
+#ifdef WIN32
+DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
+#else
+void * fim_run_realtime(__attribute__((unused)) void * args);
+#endif
 
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-        }
-
-        /* Try to send it again */
-        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
-    }
-    mdebug1(FIM_CHECKSUM_MSG, msg);
-    return (0);
-}
-
-/* Send a message related to rootcheck change/addition */
-int send_rootcheck_msg(const char *msg)
-{
-    if (SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-        merror(QUEUE_SEND);
-
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-        }
-
-        /* Try to send it again */
-        SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ);
-    }
-    return (0);
-}
-
-/* Send syscheck db to the server */
-static void send_sk_db(int first_start)
-{
+int fim_whodata_initialize();
+#ifdef WIN32
+STATIC void set_priority_windows_thread();
 #ifdef WIN_WHODATA
-    long unsigned int t_id;
+STATIC void set_whodata_mode_changes();
+#endif
+#else
+static void *symlink_checker_thread(__attribute__((unused)) void * data);
+STATIC void fim_link_update(const char *new_path, directory_t *configuration);
+STATIC void fim_link_check_delete(directory_t *configuration);
+STATIC void fim_link_delete_range(directory_t *configuration);
+STATIC void fim_link_silent_scan(const char *path, directory_t *configuration);
+STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration);
+STATIC void fim_delete_realtime_watches(const directory_t *configuration);
 #endif
 
-    if (!syscheck.dir[0]) {
+// Send a message
+STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
+    if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
+        merror(QUEUE_SEND);
+
+        if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+        }
+
+        // Try to send it again
+        SendMSG(syscheck.queue, msg, location, mq);
+    }
+}
+
+// Send a data synchronization control message
+void fim_send_sync_msg(const char *location, const char * msg) {
+    mdebug2(FIM_DBSYNC_SEND, msg);
+    fim_send_msg(DBSYNC_MQ, location, msg);
+
+    if (syscheck.sync_max_eps == 0) {
         return;
     }
 
-    log_realtime_status(2);
-    minfo(FIM_FREQUENCY_STARTED);
+    static long n_msg_sent = 0;
 
-    /* Send first start scan control message */
-    if(first_start) {
-        send_syscheck_msg(HC_FIM_DB_SFS);
-        sleep(syscheck.tsleep * 5);
-        create_db();
-        minfo(FIM_FREQUENCY_ENDED);
-    } else {
-        send_syscheck_msg(HC_FIM_DB_SS);
-        sleep(syscheck.tsleep * 5);
-        run_dbcheck();
-        minfo(FIM_FREQUENCY_ENDED);
-    }
-    sleep(syscheck.tsleep * 5);
-#ifdef WIN32
-    /* Check for registry changes on Windows */
-    minfo(FIM_WINREGISTRY_START);
-    os_winreg_check();
-    sleep(syscheck.tsleep * 5);
-    minfo(FIM_WINREGISTRY_ENDED);
-#endif
-
-    /* Send end scan control message */
-    if(first_start) {
-        send_syscheck_msg(HC_FIM_DB_EFS);
-
-        // Running whodata-audit
-#ifdef ENABLE_AUDIT
-        audit_set_db_consistency();
-#endif
-
-        // Running whodata-windows
-#ifdef WIN_WHODATA
-    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
-        minfo(FIM_WHODATA_START);
-        w_create_thread(NULL, 0, state_checker, NULL, 0, &t_id);
-    }
-#endif
-
-    } else {
-        send_syscheck_msg(HC_FIM_DB_ES);
+    if (++n_msg_sent == syscheck.sync_max_eps) {
+        sleep(1);
+        n_msg_sent = 0;
     }
 }
 
-/* Periodically run the integrity checker */
+
+// Send a message related to syscheck change/addition
+void send_syscheck_msg(const cJSON *_msg) {
+    char *msg = cJSON_PrintUnformatted(_msg);
+
+    mdebug2(FIM_SEND, msg);
+    fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
+
+    os_free(msg);
+
+    if (syscheck.max_eps == 0) {
+        return;
+    }
+
+    static unsigned n_msg_sent = 0;
+
+    if (++n_msg_sent == syscheck.max_eps) {
+        sleep(1);
+        n_msg_sent = 0;
+    }
+}
+
+// Send a scan info event
+void fim_send_scan_info(fim_scan_event event) {
+    cJSON * json = fim_scan_info_json(event, time(NULL));
+
+    send_syscheck_msg(json);
+
+    cJSON_Delete(json);
+}
+
+void check_max_fps() {
+#ifndef WAZUH_UNIT_TESTING
+    static unsigned int files_read = 0;
+    static time_t last_time = 0;
+#endif
+    static pthread_mutex_t fps_mutex = PTHREAD_MUTEX_INITIALIZER;
+    static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    struct timespec wait_time = {0, 0};
+
+    if (syscheck.max_files_per_second == 0) {
+        return;
+    }
+    w_mutex_lock(&fps_mutex);
+    gettime(&wait_time);
+
+    if (wait_time.tv_sec != last_time) {
+        files_read = 0;
+        last_time = wait_time.tv_sec;
+    }
+
+    if (files_read < syscheck.max_files_per_second) {
+        files_read++;
+        w_mutex_unlock(&fps_mutex);
+        return;
+    }
+    mdebug2(FIM_REACHED_MAX_FPS);
+    wait_time.tv_sec += 1;
+
+    // Wait for one second or until the thread is unlocked using w_cond_broadcast
+    int rt = pthread_cond_timedwait(&cond, &fps_mutex, &wait_time);
+    if (rt == ETIMEDOUT) {
+        // In case that the mutex is unlocked due to a timeout, free all blocked threads.
+        files_read = 0;
+        w_cond_broadcast(&cond);
+    } else if (rt != 0) {
+        mdebug2("pthread_cond_timedwait failed: %s", strerror(rt));
+    }
+    w_mutex_unlock(&fps_mutex);
+}
+
+// LCOV_EXCL_START
+// Send a message related to logs
+int send_log_msg(const char * msg)
+{
+    fim_send_msg(LOCALFILE_MQ, SYSCHECK, msg);
+    return (0);
+}
+// LCOV_EXCL_STOP
+
+
+// LCOV_EXCL_START
+// Periodically run the integrity checker
 void start_daemon()
 {
     int day_scanned = 0;
@@ -130,90 +184,104 @@ void start_daemon()
     time_t curr_time = 0;
     time_t prev_time_sk = 0;
     char curr_hour[12];
-    struct tm *p;
-    int first_start = 1;
+    struct tm tm_result = { .tm_sec = 0 };
+
+    // Some time to settle
+    memset(curr_hour, '\0', 12);
+
+    // A higher nice value means a low priority.
+#ifndef WIN32
+    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
+
+    if (nice(syscheck.process_priority) == -1) {
+        merror(NICE_ERROR, strerror(errno), errno);
+    }
+#else
+    set_priority_windows_thread();
+#endif
 
 #ifndef WIN32
-    /* Launch rootcheck thread */
-    w_create_thread(w_rootcheck_thread,&syscheck);
+    // Launch rootcheck thread
+    w_create_thread(w_rootcheck_thread, &syscheck);
 #else
-    w_create_thread(NULL,
-                    0,
-                    (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
-                    &syscheck,
-                    0,
-                    NULL);
+    if (CreateThread(NULL, 0, w_rootcheck_thread, &syscheck, 0, NULL) == NULL) {
+        merror(THREAD_ERROR);
+    }
 #endif
 
-#ifdef INOTIFY_ENABLED
-    /* To be used by select */
-    struct timeval selecttime;
-    fd_set rfds;
-#endif
-
-    /* SCHED_BATCH forces the kernel to assume this is a cpu intensive
-     * process and gives it a lower priority. This keeps ossec-syscheckd
-     * from reducing the interactivity of an ssh session when checksumming
-     * large files. This is available in kernel flavors >= 2.6.16.
-     */
-#ifdef SCHED_BATCH
-    struct sched_param pri;
-    int status;
-
-    pri.sched_priority = 0;
-    status = sched_setscheduler(0, SCHED_BATCH, &pri);
-
-    mdebug1(FIM_SCHED_BATCH, status);
-#endif
-
-#ifdef DEBUG
-    minfo(FIM_DAEMON_STARTED);
-#endif
-
-    /* Some time to settle */
-    memset(curr_hour, '\0', 12);
-    sleep(syscheck.tsleep * 10);
-
-    /* If the scan time/day is set, reset the
-     * syscheck.time/rootcheck.time
-     */
+    // If the scan time/day is set, reset the syscheck.time/rootcheck.time
     if (syscheck.scan_time || syscheck.scan_day) {
-        /* At least once a week */
+        // At least once a week
         syscheck.time = 604800;
     }
-    /* Printing syscheck properties */
 
-    if (!syscheck.disabled) {
-        minfo(FIM_FREQUENCY_TIME, syscheck.time);
-        /* Will create the db to store syscheck data */
-        if (syscheck.scan_on_start) {
-            send_sk_db(first_start);
-            first_start = 0;
+    // Deleting content local/diff directory
+    char diff_dir[PATH_MAX];
+
+    snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR);
+
+    if (cldir_ex(diff_dir) == -1 && errno != ENOENT) {
+        merror("Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);
+    }
+
+    if (syscheck.disabled) {
+        return;
+    }
+
+    minfo(FIM_DAEMON_STARTED);
+
+    // Create File integrity monitoring base-line
+    minfo(FIM_FREQUENCY_TIME, syscheck.time);
+    fim_scan();
+#ifndef WIN32
+    // Launch Real-time thread
+    w_create_thread(fim_run_realtime, &syscheck);
+
+    // Launch inventory synchronization thread, if enabled
+    if (syscheck.enable_synchronization) {
+        w_create_thread(fim_run_integrity, &syscheck);
+    }
+
+    // Launch symbolic links checker thread
+    w_create_thread(symlink_checker_thread, NULL);
+
+#else
+    if (syscheck.enable_synchronization) {
+        if (CreateThread(NULL, 0, fim_run_integrity, &syscheck, 0, NULL) == NULL) {
+            merror(THREAD_ERROR);
         }
     }
 
-    /* Before entering in daemon mode itself */
-    prev_time_sk = time(0);
-    sleep(syscheck.tsleep * 10);
+    if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
 
-    /* If the scan_time or scan_day is set, we need to handle the
-     * current day/time on the loop.
-     */
+        merror(THREAD_ERROR);
+    }
+#endif
+
+    // Launch Whodata real-time thread
+    if(syscheck.enable_whodata) {
+        fim_whodata_initialize();
+    }
+
+    // Before entering in daemon mode itself
+    prev_time_sk = time(0);
+
+    // If the scan_time or scan_day is set, we need to handle the current day/time on the loop.
     if (syscheck.scan_time || syscheck.scan_day) {
         curr_time = time(0);
-        p = localtime(&curr_time);
+        localtime_r(&curr_time, &tm_result);
 
-        /* Assign hour/min/sec values */
+        // Assign hour/min/sec values
         snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                 p->tm_hour,
-                 p->tm_min,
-                 p->tm_sec);
+                 tm_result.tm_hour,
+                 tm_result.tm_min,
+                 tm_result.tm_sec);
 
-        curr_day = p->tm_mday;
+        curr_day = tm_result.tm_mday;
 
         if (syscheck.scan_time && syscheck.scan_day) {
             if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                    (OS_IsonDay(p->tm_wday, syscheck.scan_day))) {
+                    (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
                 day_scanned = 1;
             }
         } else if (syscheck.scan_time) {
@@ -221,386 +289,248 @@ void start_daemon()
                 day_scanned = 1;
             }
         } else if (syscheck.scan_day) {
-            if (OS_IsonDay(p->tm_wday, syscheck.scan_day)) {
+            if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
                 day_scanned = 1;
             }
         }
     }
 
-    /* Check every SYSCHECK_WAIT */
+    // Check every SYSCHECK_WAIT
     while (1) {
         int run_now = 0;
         curr_time = time(0);
 
-        /* Check if syscheck should be restarted */
+        // Check if syscheck should be restarted
         run_now = os_check_restart_syscheck();
 
-        /* Check if a day_time or scan_time is set */
+        // Check if a day_time or scan_time is set
         if (syscheck.scan_time || syscheck.scan_day) {
-            p = localtime(&curr_time);
+            localtime_r(&curr_time, &tm_result);
 
-            /* Day changed */
-            if (curr_day != p->tm_mday) {
+            // Day changed
+            if (curr_day != tm_result.tm_mday) {
                 day_scanned = 0;
-                curr_day = p->tm_mday;
+                curr_day = tm_result.tm_mday;
             }
 
-            /* Check for the time of the scan */
+            // Check for the time of the scan
             if (!day_scanned && syscheck.scan_time && syscheck.scan_day) {
-                /* Assign hour/min/sec values */
+                // Assign hour/min/sec values
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         p->tm_hour, p->tm_min, p->tm_sec);
+                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
                 if ((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
-                        (OS_IsonDay(p->tm_wday, syscheck.scan_day))) {
+                        (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day))) {
                     day_scanned = 1;
                     run_now = 1;
                 }
             } else if (!day_scanned && syscheck.scan_time) {
-                /* Assign hour/min/sec values */
+                // Assign hour/min/sec values
                 snprintf(curr_hour, 9, "%02d:%02d:%02d",
-                         p->tm_hour, p->tm_min, p->tm_sec);
+                         tm_result.tm_hour, tm_result.tm_min, tm_result.tm_sec);
 
                 if (OS_IsAfterTime(curr_hour, syscheck.scan_time)) {
                     run_now = 1;
                     day_scanned = 1;
                 }
             } else if (!day_scanned && syscheck.scan_day) {
-                /* Check for the day of the scan */
-                if (OS_IsonDay(p->tm_wday, syscheck.scan_day)) {
+                // Check for the day of the scan
+                if (OS_IsonDay(tm_result.tm_wday, syscheck.scan_day)) {
                     run_now = 1;
                     day_scanned = 1;
                 }
             }
         }
 
-
-        /* If time elapsed is higher than the syscheck time, run syscheck time */
+        // If time elapsed is higher than the syscheck time, run syscheck time
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
-            if (syscheck.scan_on_start == 0) {
-                send_sk_db(first_start);
-                first_start = 0;
-                syscheck.scan_on_start = 1;
-            } else {
-                send_sk_db(first_start);
+            prev_time_sk = fim_scan();
+        }
+        sleep(SYSCHECK_WAIT);
+    }
+}
+// LCOV_EXCL_STOP
+
+
+// LCOV_EXCL_START
+// Starting Real-time thread
+#ifdef WIN32
+DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
+#else
+void * fim_run_realtime(__attribute__((unused)) void * args) {
+#endif
+
+#if defined INOTIFY_ENABLED || defined WIN32
+    static int _base_line = 0;
+#ifdef WIN32
+    directory_t *dir_it;
+
+    set_priority_windows_thread();
+#endif
+
+    while (1) {
+#ifdef WIN32
+        // Directories in Windows configured with real-time add recursive watches
+        foreach_array(dir_it, syscheck.directories) {
+            if (dir_it->options & REALTIME_ACTIVE) {
+                realtime_adddir(dir_it->path, dir_it, 0);
             }
-            prev_time_sk = time(0);
+        }
+#endif
+
+        if (_base_line == 0) {
+            _base_line = 1;
+
+            if (syscheck.realtime != NULL) {
+                if (syscheck.realtime->queue_overflow) {
+                    realtime_sanitize_watch_map();
+                    syscheck.realtime->queue_overflow = false;
+                }
+                mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+            }
         }
 
-#ifdef INOTIFY_ENABLED
+#ifdef WIN_WHODATA
+        if (syscheck.realtime_change) {
+            set_whodata_mode_changes();
+        }
+#endif
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+            log_realtime_status(1);
+#ifdef INOTIFY_ENABLED
+            struct timeval selecttime;
+            fd_set rfds;
+            int run_now = 0;
+
             selecttime.tv_sec = SYSCHECK_WAIT;
             selecttime.tv_usec = 0;
 
-            /* zero-out the fd_set */
+            // zero-out the fd_set
             FD_ZERO (&rfds);
             FD_SET(syscheck.realtime->fd, &rfds);
-            log_realtime_status(1);
 
-            run_now = select(syscheck.realtime->fd + 1, &rfds,
-                             NULL, NULL, &selecttime);
+            run_now = select(syscheck.realtime->fd + 1,
+                            &rfds,
+                            NULL,
+                            NULL,
+                            &selecttime);
+
             if (run_now < 0) {
                 merror(FIM_ERROR_SELECT);
-                sleep(SYSCHECK_WAIT);
             } else if (run_now == 0) {
-                /* Timeout */
+                // Timeout
             } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
                 realtime_process();
             }
-        } else {
-            sleep(SYSCHECK_WAIT);
-        }
-#elif defined(WIN32)
-        if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-            log_realtime_status(1);
+
+#elif defined WIN32
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
                 merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
-                sleep(SYSCHECK_WAIT);
-            } else {
-                sleep(syscheck.tsleep);
             }
+#endif
         } else {
             sleep(SYSCHECK_WAIT);
         }
+    }
+
 #else
-        sleep(SYSCHECK_WAIT);
+    directory_t *dir_it;
+
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it->options & REALTIME_ACTIVE) {
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+            break;
+        }
+    }
+
+    pthread_exit(NULL);
 #endif
+
+}
+// LCOV_EXCL_STOP
+
+
+#ifdef WIN32
+void set_priority_windows_thread() {
+    DWORD dwCreationFlags = syscheck.process_priority <= -10 ? THREAD_PRIORITY_HIGHEST :
+                      syscheck.process_priority <= -5 ? THREAD_PRIORITY_ABOVE_NORMAL :
+                      syscheck.process_priority <= 0 ? THREAD_PRIORITY_NORMAL :
+                      syscheck.process_priority <= 5 ? THREAD_PRIORITY_BELOW_NORMAL :
+                      syscheck.process_priority <= 10 ? THREAD_PRIORITY_LOWEST :
+                      THREAD_PRIORITY_IDLE;
+
+    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
+
+    if(!SetThreadPriority(GetCurrentThread(), dwCreationFlags)) {
+        int dwError = GetLastError();
+        merror("Can't set thread priority: %d", dwError);
     }
 }
-
-/* Read file information and return a pointer to the checksum */
-int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, int dir_position, whodata_evt *evt)
-{
-    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
-    struct stat statbuf;
-    os_md5 mf_sum;
-    os_sha1 sf_sum;
-    os_sha256 sf256_sum;
-    syscheck_node *s_node;
-    char str_size[50], str_mtime[50], str_inode[50];
-#ifdef WIN32
-    unsigned int attributes = 0;
-    char *sid = NULL;
-    char *str_perm = NULL;
-    char *user;
-#else
-    char *w_inode = NULL;
-    char str_owner[50], str_group[50], str_perm[50];
 #endif
-
-    /* Clean sums */
-    strncpy(mf_sum,  "", 1);
-    strncpy(sf_sum,  "", 1);
-    strncpy(sf256_sum, "", 1);
-
-    /* Stat the file */
-#ifdef WIN32
-    if (stat(file_name, &statbuf) < 0)
-#else
-    if (lstat(file_name, &statbuf) < 0)
-#endif
-    {
-        char alert_msg[OS_SIZE_6144 + OS_SIZE_2048];
-        char wd_sum[OS_SIZE_6144 + 1];
 
 #ifdef WIN_WHODATA
-        // If this flag is enable, the remove event will be notified at another point
-        if (evt && evt->ignore_remove_event) {
-            mdebug2(FIM_WHODATA_FILENOEXIST, file_name);
-            return -1;
-        }
-#endif
+int fim_whodata_initialize() {
+    int retval = 0;
+    directory_t *dir_it;
 
-        alert_msg[sizeof(alert_msg) - 1] = '\0';
-
-        // Extract the whodata sum here to not include it in the hash table
-        if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-            merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
+    foreach_array(dir_it, syscheck.directories) {
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
+            continue;
         }
 
-        //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", linked_file ? linked_file : "", file_name);
-        send_syscheck_msg(alert_msg);
-
-#ifndef WIN32
-        if(evt && evt->inode) {
-            w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode);
-        }
-        else {
-            if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
-                char *inode_str;
-                char *checksum_inode;
-
-                os_strdup(s_node->checksum, checksum_inode);
-                if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0') {
-                    OSHashNode *s_inode;
-                    unsigned int i;
-
-                    for (s_inode = OSHash_Begin(syscheck.inode_hash, &i); s_inode; s_inode = OSHash_Next(syscheck.inode_hash, &i, s_inode)) {
-                        if(s_inode && s_inode->data){
-                            if(!strcmp(s_inode->data, file_name)) {
-                                inode_str = s_inode->key;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if(inode_str){
-                    w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str);
-                }
-                os_free(checksum_inode);
-            }
-        }
-#endif
-        // Delete from hash table
-        if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
-            os_free(s_node->checksum);
-            os_free(s_node);
-        }
-#ifndef WIN32
-        os_free(w_inode);
-#endif
-
-        struct timeval timeout = {0, syscheck.rt_delay * 1000};
-        select(0, NULL, NULL, NULL, &timeout);
-
-        return (-1);
-    }
-
-    /* Get the old sum values */
-
-    /* size */
-    if (oldsum[0] == '+') {
-        size = 1;
-    }
-
-    /* perm */
-    if (oldsum[1] == '+') {
-        perm = 1;
-    }
-
-    /* owner */
-    if (oldsum[2] == '+') {
-        owner = 1;
-    }
-
-    /* group */
-    if (oldsum[3] == '+') {
-        group = 1;
-    }
-
-    /* md5 sum */
-    if (oldsum[4] == '+') {
-        md5sum = 1;
-    }
-
-    /* sha1 sum */
-    if (oldsum[5] == '+') {
-        sha1sum = 1;
-    }
-
-    /* Modification time */
-    if (oldsum[6] == '+') {
-        mtime = 1;
-    }
-
-    /* Inode */
-    if (oldsum[7] == '+') {
-        inode = 1;
-    }
-
-    /* sha256 sum */
-    if (oldsum[8] == '+') {
-        sha256sum = 1;
-    }
-
-    /* Attributes*/
-#ifdef WIN32
-    if (oldsum[9] == '+') {
-        attributes = w_get_file_attrs(file_name);
-    }
-#endif
-
-    /* Report changes */
-    if (oldsum[SK_DB_REPORT_CHANG] == '-') {
-        delete_target_file(file_name);
-    }
-
-    /* Generate new checksum */
-    newsum[0] = '\0';
-    if (S_ISREG(statbuf.st_mode)) {
-        if (sha1sum || md5sum || sha256sum) {
-            /* Generate checksums of the file */
-            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
-                return -1;
-            }
+        if (realtime_adddir(dir_it->path, dir_it, 0) == -2) {
+            dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
+            dir_it->dirs_status.status |= WD_CHECK_REALTIME;
+            dir_it->options &= ~WHODATA_ACTIVE;
+            syscheck.realtime_change = 1;
         }
     }
+    HANDLE t_hdle;
+    long unsigned int t_id;
 
-#ifndef WIN32
-
-    if (size == 0){
-        *str_size = '\0';
-    } else {
-        sprintf(str_size, "%ld", (long)statbuf.st_size);
-    }
-
-    if (perm == 0){
-        *str_perm = '\0';
-    } else {
-        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
-    }
-
-    if (owner == 0){
-        *str_owner = '\0';
-    } else {
-        sprintf(str_owner, "%ld", (long)statbuf.st_uid);
-    }
-
-    if (group == 0){
-        *str_group = '\0';
-    } else {
-        sprintf(str_group, "%ld", (long)statbuf.st_gid);
-    }
-
-    if (mtime == 0){
-        *str_mtime = '\0';
-    } else {
-        sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
-    }
-
-    if (inode == 0){
-        *str_inode = '\0';
-    } else {
-        sprintf(str_inode, "%ld", (long)statbuf.st_ino);
-    }
-
-    snprintf(newsum, OS_SIZE_4096, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
-        str_size,
-        str_perm,
-        str_owner,
-        str_group,
-        md5sum   == 0 ? "" : mf_sum,
-        sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
-        group == 0 ? "" : get_group(statbuf.st_gid),
-        str_mtime,
-        inode == 0 ? "" : str_inode,
-        sha256sum  == 0 ? "" : sf256_sum,
-        0);
-#else
-    user = get_user(file_name, statbuf.st_uid, &sid);
-
-    if (size == 0){
-        *str_size = '\0';
-    } else {
-        sprintf(str_size, "%ld", (long)statbuf.st_size);
-    }
-
-    if (perm == 1) {
-        int error;
-        char perm_unescaped[OS_SIZE_6144 + 1];
-        if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-            merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
-        } else {
-            str_perm = escape_perm_sum(perm_unescaped);
+    /* If the initialization of the Whodata engine fails,
+    Wazuh must monitor files/directories in Realtime mode. */
+    if (!run_whodata_scan()) {
+        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
+            merror(FIM_ERROR_CHECK_THREAD);
+            retval = -1;
         }
-    }
-
-    if (mtime == 0){
-        *str_mtime = '\0';
     } else {
-        sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
-    }
+        merror(FIM_ERROR_WHODATA_INIT);
 
-    if (inode == 0){
-        *str_inode = '\0';
-    } else {
-        sprintf(str_inode, "%ld", (long)statbuf.st_ino);
-    }
+        // In case SACLs and policies have been set, restore them.
+        audit_restore();
 
-    snprintf(newsum, OS_SIZE_4096, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
-        str_size,
-        (str_perm) ? str_perm : "",
-        (owner == 0) && sid ? "" : sid,
-        md5sum   == 0 ? "" : mf_sum,
-        sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : user,
-        group == 0 ? "" : get_group(statbuf.st_gid),
-        str_mtime,
-        inode == 0 ? "" : str_inode,
-        sha256sum  == 0 ? "" : sf256_sum,
-        attributes);
-
-        os_free(user);
-        if (sid) {
-            LocalFree(sid);
+        // Add proper flags for the realtime thread monitors the directories/files.
+        foreach_array(dir_it, syscheck.directories) {
+            dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
+            dir_it->dirs_status.status |= WD_CHECK_REALTIME;
+            dir_it->options &= ~WHODATA_ACTIVE;
+            syscheck.realtime_change = 1;
         }
-        free(str_perm);
-#endif
 
-    return (0);
+        retval = -1;
+    }
+
+    return retval;
 }
+
+#elif defined ENABLE_AUDIT
+int fim_whodata_initialize() {
+    audit_set_db_consistency();
+
+    return 0;
+}
+
+#else
+int fim_whodata_initialize() {
+    if (syscheck.enable_whodata) {
+        mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+    }
+    return -1;
+}
+#endif
+
 
 void log_realtime_status(int next) {
     /*
@@ -632,104 +562,298 @@ void log_realtime_status(int next) {
     }
 }
 
-void symlink_checker_init() {
-#ifndef WIN32
-    w_create_thread(symlink_checker_thread, NULL);
-#endif
-}
 
 #ifndef WIN32
+// LCOV_EXCL_START
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
-    int checker_sleep = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
-    int i;
     char *real_path;
-    char *conv_link;
+    directory_t *dir_it;
 
-    syscheck.sym_checker_interval = checker_sleep;
-    mdebug1(FIM_LINKCHECK_START, checker_sleep);
+    mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
     while (1) {
-        sleep(checker_sleep);
-        mdebug1(FIM_LINKCHECK_START, checker_sleep);
+        sleep(syscheck.sym_checker_interval);
+        mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
-        for (i = 0; syscheck.dir[i]; i++) {
-            if (syscheck.converted_links[i]) {
-                if (real_path = realpath(syscheck.dir[i], NULL), !real_path) {
-                    continue;
-                }
-
-                conv_link = get_converted_link_path(i);
-
-                if (strcmp(real_path, conv_link)) {
-                    minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], conv_link, real_path);
-                    update_link_monitoring(i, conv_link, real_path);
-                } else {
-                    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
-                }
-
-                free(conv_link);
-                free(real_path);
+        w_mutex_lock(&syscheck.fim_scan_mutex);
+        foreach_array(dir_it, syscheck.directories) {
+            if ((dir_it->options & CHECK_FOLLOW) == 0) {
+                continue;
             }
+
+            real_path = realpath(dir_it->path, NULL);
+
+            if (dir_it->symbolic_links) {
+                if (real_path) {
+                    // Check if link has changed
+                    if (strcmp(real_path, dir_it->symbolic_links)) {
+                        minfo(FIM_LINKCHECK_CHANGED, dir_it->path, dir_it->symbolic_links, real_path);
+                        fim_link_update(real_path, dir_it);
+                    } else {
+                        mdebug1(FIM_LINKCHECK_NOCHANGE, dir_it->symbolic_links);
+                    }
+                } else {
+                    // Broken link
+                    char path[PATH_MAX];
+
+                    snprintf(path, PATH_MAX, "%s", dir_it->symbolic_links);
+                    fim_link_check_delete(dir_it);
+
+                    directory_t *config = fim_configuration_directory(path);
+
+                    if (config != NULL) {
+                        fim_link_silent_scan(path, config);
+                    }
+                }
+            } else {
+                // Check real_path to reload broken link.
+                if (real_path && strcmp(real_path, dir_it->path) != 0) {
+                    fim_link_reload_broken_link(real_path, dir_it);
+                }
+            }
+
+            os_free(real_path);
         }
 
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
         mdebug1(FIM_LINKCHECK_FINALIZE);
     }
 
     return NULL;
 }
+// LCOV_EXCL_STOP
 
+STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
+    int in_configuration = false;
+    int is_new_link = true;
+    directory_t *dir_it;
 
-static void update_link_monitoring(int pos, char *old_path, char *new_path) {
-    w_rwlock_wrlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-    free(syscheck.converted_links[pos]);
-    os_strdup(new_path, syscheck.converted_links[pos]);
-    w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-
-    // Scan for new files
-    read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0, '+');
-
-    // Remove unlink files
-    OSHash_It_ex(syscheck.fp, 2, (void *) old_path, unlink_files);
-}
-
-
-static void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
-    char *dir = (char *) data;
-
-    if (!strncmp(dir, (*node)->key, strlen(dir))) {
-        syscheck_node *s_node = (syscheck_node *) (*node)->data;
-        OSHashNode *r_node = *node;
-
-        mdebug2(FIM_LINKCHECK_FILE, (*node)->key, dir);
-
-        send_silent_del((*node)->key);
-
-        if ((*node)->next) {
-            (*node)->next->prev = (*node)->prev;
+    // Check if the previously pointed folder is in the configuration
+    // and delete its database entries if it isn't
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it == configuration) {
+            // This is the link being changed
+            continue;
         }
 
-        if ((*node)->prev) {
-            (*node)->prev->next = (*node)->next;
+        if (strcmp(configuration->symbolic_links, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0) {
+            in_configuration = true;
+            break;
         }
+    }
 
-        *node = (*node)->next;
-
-        // If the node is the first and last node of the row
-        if (*row == r_node) {
-            *row = r_node->next;
+    if (in_configuration == false) {
+#ifdef ENABLE_AUDIT
+        // Remove the audit rule for the previous link only if the path is not configured in other entry.
+        if (configuration->options & WHODATA_ACTIVE) {
+            remove_audit_rule_syscheck(configuration->symbolic_links);
         }
+#endif
+        fim_link_delete_range(configuration);
+    }
 
-        free(r_node->key);
-        free(r_node);
-        free(s_node->checksum);
-        free(s_node);
+    // Check if the updated path of the link is already in the configuration
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it == configuration) {
+            if (strcmp(new_path, dir_it->path) == 0) {
+                // We were monitoring a link, now we are monitoring the actual directory
+#ifdef ENABLE_AUDIT
+                if (dir_it->options & WHODATA_ACTIVE) {
+                    add_whodata_directory(dir_it->path);
+                }
+#endif
+                is_new_link = false;
+                break;
+            }
+        } else if (strcmp(new_path, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0) {
+            mdebug1(FIM_LINK_ALREADY_ADDED, dir_it->path);
+            is_new_link = false;
+            break;
+        }
+    }
+
+    w_mutex_lock(&syscheck.fim_symlink_mutex);
+    os_free(configuration->symbolic_links);
+
+    if (is_new_link) {
+        os_strdup(new_path, configuration->symbolic_links);
+    }
+
+    w_mutex_unlock(&syscheck.fim_symlink_mutex);
+    if (is_new_link) {
+        // Add new entries without alert.
+        fim_link_silent_scan(new_path, configuration);
     }
 }
 
-static void send_silent_del(char *path) {
-    char del_msg[OS_SIZE_6144 + 1];
+STATIC void fim_link_check_delete(directory_t *configuration) {
+    struct stat statbuf;
 
-    snprintf(del_msg, OS_SIZE_6144, "-1!:::::::::::::+ %s", path);
-    send_syscheck_msg(del_msg);
+    if (w_stat(configuration->symbolic_links, &statbuf) < 0) {
+        if (errno == ENOENT) {
+#ifdef ENABLE_AUDIT
+            if (configuration->options & WHODATA_ACTIVE) {
+                remove_audit_rule_syscheck(configuration->symbolic_links);
+            }
+#endif
+            w_mutex_lock(&syscheck.fim_symlink_mutex);
+            os_free(configuration->symbolic_links);
+            w_mutex_unlock(&syscheck.fim_symlink_mutex);
+            return;
+        }
+
+        mdebug1(FIM_STAT_FAILED, configuration->symbolic_links, errno, strerror(errno));
+    } else {
+        fim_link_delete_range(configuration);
+
+        if (syscheck.realtime && syscheck.realtime->dirtb) {
+            fim_delete_realtime_watches(configuration);
+        }
+#ifdef ENABLE_AUDIT
+        if (configuration->options & WHODATA_ACTIVE) {
+            remove_audit_rule_syscheck(configuration->symbolic_links);
+        }
+#endif
+        w_mutex_lock(&syscheck.fim_symlink_mutex);
+        os_free(configuration->symbolic_links);
+        w_mutex_unlock(&syscheck.fim_symlink_mutex);
+    }
+}
+
+STATIC void fim_delete_realtime_watches(const directory_t *configuration) {
+#ifdef INOTIFY_ENABLED
+    OSHashNode *hash_node;
+    char *data;
+    W_Vector * watch_to_delete = W_Vector_init(1024);
+    unsigned int inode_it = 0;
+    int deletion_it = 0;
+    directory_t *dir_conf;
+    directory_t *watch_conf;
+
+    assert(watch_to_delete != NULL);
+    assert(configuration != NULL);
+
+    dir_conf = fim_configuration_directory(configuration->symbolic_links);
+
+    if (dir_conf == NULL) {
+        W_Vector_free(watch_to_delete);
+        return;
+    }
+
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    for (hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it); hash_node;
+         hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node)) {
+        data = hash_node->data;
+        if (data == NULL) {
+            continue;
+        }
+        watch_conf = fim_configuration_directory(data);
+
+        if (dir_conf == watch_conf) {
+            W_Vector_insert(watch_to_delete, hash_node->key);
+            deletion_it++;
+        }
+    }
+
+    deletion_it--;
+    while(deletion_it >= 0) {
+        const char * wd_str = W_Vector_get(watch_to_delete, deletion_it);
+        assert(wd_str != NULL);
+
+        inotify_rm_watch(syscheck.realtime->fd, atol(wd_str));
+        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd_str));
+        deletion_it--;
+    }
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
+    W_Vector_free(watch_to_delete);
+#endif
+    return;
+}
+
+STATIC void fim_link_delete_range(directory_t *configuration) {
+    fim_tmp_file * file = NULL;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = false, .w_evt = NULL, .type = FIM_DELETE };
+    char pattern[PATH_MAX] = {0};
+
+    // Create the sqlite LIKE pattern.
+    snprintf(pattern, PATH_MAX, "%s%c%%", configuration->symbolic_links, PATH_SEP);
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+
+    if (fim_db_get_path_from_pattern(syscheck.database, pattern, &file, syscheck.database_store) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+    }
+
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (file && file->elements) {
+        if (fim_db_delete_range(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store,
+                                &evt_data, configuration) != FIMDB_OK) {
+            merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+        }
+    }
+}
+
+STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false };
+
+    fim_checker(path, &evt_data, configuration);
+
+    if (configuration->options & REALTIME_ACTIVE) {
+        realtime_adddir(path, configuration, 1);    // This is acting always on links, so `followsl` will always be `1`
+    } else if (configuration->options & WHODATA_ACTIVE) {
+#ifdef ENABLE_AUDIT
+        // Just in case, we need to remove the configured directory if it was previously monitored
+        remove_audit_rule_syscheck(configuration->path);
+        add_whodata_directory(path);
+#endif
+    }
+}
+
+STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration) {
+    directory_t *dir_it;
+
+    foreach_array(dir_it, syscheck.directories) {
+        if (strcmp(path, dir_it->path) == 0) {
+            // If a configuration directory exists don't reload
+            mdebug1(FIM_LINK_ALREADY_ADDED, dir_it->path);
+            return;
+        }
+    }
+
+    // Reload broken link
+    w_mutex_lock(&syscheck.fim_symlink_mutex);
+    os_free(configuration->symbolic_links);
+    os_strdup(path, configuration->symbolic_links);
+    w_mutex_unlock(&syscheck.fim_symlink_mutex);
+
+    // Add new entries without alert.
+    fim_link_silent_scan(path, configuration);
+}
+
+#endif
+#ifdef WIN_WHODATA
+void set_whodata_mode_changes() {
+    directory_t *dir_it;
+
+    if (!syscheck.realtime) {
+        realtime_start();
+    }
+
+    syscheck.realtime_change = 0;
+
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it->dirs_status.status & WD_CHECK_REALTIME) {
+            // At this point the directories in whodata mode that have been deconfigured are added to realtime
+            dir_it->dirs_status.status &= ~WD_CHECK_REALTIME;
+            dir_it->options |= REALTIME_ACTIVE;
+            if (realtime_adddir(dir_it->path, dir_it, 0) != 1) {
+                merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, dir_it->path);
+            } else {
+                mdebug1(FIM_REALTIME_MONITORING, dir_it->path);
+            }
+        }
+    }
 }
 #endif

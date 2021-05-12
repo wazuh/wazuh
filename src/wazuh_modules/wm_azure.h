@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Azure
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September, 2018.
  *
  * This program is free software; you can redistribute it
@@ -14,8 +14,7 @@
 #define WM_AZURE
 
 #define WM_AZURE_LOGTAG ARGV0 ":" AZ_WM_NAME
-#define AZURE_PATH WM_DEFAULT_DIR "/azure"
-#define WM_AZURE_SCRIPT_PATH AZURE_PATH "/azure-logs"
+#define WM_AZURE_SCRIPT_PATH "wodles/azure/azure-logs"
 
 #define LOG_ANALYTICS   0
 #define GRAPHS          1
@@ -69,15 +68,12 @@ typedef struct wm_azure_storage_t {
 } wm_azure_storage_t;
 
 typedef struct wm_azure_t {
-    unsigned int interval;          // Default time interval between cycles
-    int scan_day;                   // Day of month to run the module
-    int scan_wday;                  // Day of the week to run the module
-    char *scan_time;                // Time of the day to run the module
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_azure_flags_t flags;           // Default flags
     wm_azure_state_t state;           // Running state
     wm_azure_api_t *api_config;     // Log Analytics and Graphs (linked list)
     wm_azure_storage_t *storage;    // Storage (linked list)
+    sched_scan_config scan_config;  // Scheduling configuration
 } wm_azure_t;
 
 extern const wm_context WM_AZURE_CONTEXT;   // Context

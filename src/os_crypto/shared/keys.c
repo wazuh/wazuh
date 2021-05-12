@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
             memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_in));
 
             snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[keyid]->sock);
-            OSHash_Add(keys->keyhash_sock, strsock, keys->keyentries[keyid]);
+            rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[keyid]);
         }
     }
 }
@@ -73,7 +73,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
 
     /* Set configured values for id */
     os_strdup(id, keys->keyentries[keys->keysize]->id);
-    OSHash_Add(keys->keyhash_id,
+    rbtree_insert(keys->keytree_id,
                keys->keyentries[keys->keysize]->id,
                keys->keyentries[keys->keysize]);
 
@@ -87,7 +87,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     if ((tmp_str = strchr(keys->keyentries[keys->keysize]->ip->ip, '/')) != NULL) {
         *tmp_str = '\0';
     }
-    OSHash_Add(keys->keyhash_ip,
+    rbtree_insert(keys->keytree_ip,
                keys->keyentries[keys->keysize]->ip->ip,
                keys->keyentries[keys->keysize]);
 
@@ -102,6 +102,8 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->updating_time = 0;
+    keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     if (keys->flags.rehash_keys) {
@@ -142,17 +144,17 @@ int OS_CheckKeys()
 {
     FILE *fp;
 
-    if (File_DateofChange(KEYSFILE_PATH) < 0) {
-        merror(NO_AUTHFILE, KEYSFILE_PATH);
+    if (File_DateofChange(KEYS_FILE) < 0) {
+        merror(NO_AUTHFILE, KEYS_FILE);
         merror(NO_CLIENT_KEYS);
         return (0);
     }
 
-    fp = fopen(KEYSFILE_PATH, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         /* We can leave from here */
-        merror(FOPEN_ERROR, KEYSFILE_PATH, errno, strerror(errno));
-        merror(NO_AUTHFILE, KEYSFILE_PATH);
+        merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
+        merror(NO_AUTHFILE, KEYS_FILE);
         merror(NO_CLIENT_KEYS);
         return (0);
     }
@@ -164,11 +166,11 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit)
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 {
     FILE *fp;
 
-    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
+    const char *keys_file = KEYS_FILE;
     char buffer[OS_BUFFER_SIZE + 1];
     char name[KEYSIZE + 1];
     char ip[KEYSIZE + 1];
@@ -179,24 +181,30 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
-        merror(NO_AUTHFILE, keys_file);
-        merror_exit(NO_CLIENT_KEYS);
+        if (pass_empty_keyfile) {
+            mdebug1(NO_AUTHFILE, keys_file);
+        } else {
+            merror(NO_AUTHFILE, keys_file);
+            merror_exit(NO_CLIENT_KEYS);
+        }
     }
 
     keys->inode = File_Inode(keys_file);
     fp = fopen(keys_file, "r");
     if (!fp) {
-        /* We can leave from here */
-        merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
-        merror_exit(NO_CLIENT_KEYS);
+        if (!pass_empty_keyfile) {
+            /* We can leave from here */
+            merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
+            merror_exit(NO_CLIENT_KEYS);
+        }
     }
 
     /* Initialize hashes */
-    keys->keyhash_id = OSHash_Create();
-    keys->keyhash_ip = OSHash_Create();
-    keys->keyhash_sock = OSHash_Create();
+    keys->keytree_id = rbtree_init();
+    keys->keytree_ip = rbtree_init();
+    keys->keytree_sock = rbtree_init();
 
-    if (!(keys->keyhash_id && keys->keyhash_ip && keys->keyhash_sock)) {
+    if (!(keys->keytree_id && keys->keytree_ip && keys->keytree_sock)) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
@@ -206,109 +214,109 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     keys->id_counter = 0;
     keys->flags.rehash_keys = rehash_keys;
     keys->flags.save_removed = save_removed;
+    w_mutex_init(&keys->keytree_sock_mutex, NULL);
 
     /* Zero the buffers */
     __memclear(id, name, ip, key, KEYSIZE + 1);
     memset(buffer, '\0', OS_BUFFER_SIZE + 1);
 
-    /* Read each line. Lines are divided as "id name ip key" */
-    while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
-        char *tmp_str;
-        char *valid_str;
+    /* Add additional entry for sender == keysize */
+    os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
+    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
-        if ((buffer[0] == '#') || (buffer[0] == ' ')) {
-            continue;
-        }
+    if(fp) {
+        /* Read each line. Lines are divided as "id name ip key" */
+        while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
+            char *tmp_str;
+            char *valid_str;
 
-        /* Get ID */
-        valid_str = buffer;
-        tmp_str = strchr(buffer, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-        strncpy(id, valid_str, KEYSIZE - 1);
-
-        /* Update counter */
-
-        id_number = strtol(id, &end, 10);
-
-        if (!*end && id_number > keys->id_counter)
-            keys->id_counter = id_number;
-
-        /* Removed entry */
-        if (*tmp_str == '#' || *tmp_str == '!') {
-            if (save_removed) {
-                tmp_str[-1] = ' ';
-                tmp_str = strchr(tmp_str, '\n');
-
-                if (tmp_str) {
-                    *tmp_str = '\0';
-                }
-
-                save_removed_key(keys, buffer);
+            if ((buffer[0] == '#') || (buffer[0] == ' ')) {
+                continue;
             }
 
-            continue;
-        }
+            /* Get ID */
+            valid_str = buffer;
+            tmp_str = strchr(buffer, ' ');
+            if (!tmp_str) {
+                merror(INVALID_KEY, buffer);
+                continue;
+            }
 
-        /* Get name */
-        valid_str = tmp_str;
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-        strncpy(name, valid_str, KEYSIZE - 1);
-
-        /* Get IP address */
-        valid_str = tmp_str;
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-        strncpy(ip, valid_str, KEYSIZE - 1);
-
-        /* Get key */
-        valid_str = tmp_str;
-        tmp_str = strchr(tmp_str, '\n');
-        if (tmp_str) {
             *tmp_str = '\0';
+            tmp_str++;
+            strncpy(id, valid_str, KEYSIZE - 1);
+
+            /* Update counter */
+
+            id_number = strtol(id, &end, 10);
+
+            if (!*end && id_number > keys->id_counter)
+                keys->id_counter = id_number;
+
+            /* Removed entry */
+            if (*tmp_str == '#' || *tmp_str == '!') {
+                if (save_removed) {
+                    tmp_str[-1] = ' ';
+                    tmp_str = strchr(tmp_str, '\n');
+
+                    if (tmp_str) {
+                        *tmp_str = '\0';
+                    }
+
+                    save_removed_key(keys, buffer);
+                }
+
+                continue;
+            }
+
+            /* Get name */
+            valid_str = tmp_str;
+            tmp_str = strchr(tmp_str, ' ');
+            if (!tmp_str) {
+                merror(INVALID_KEY, buffer);
+                continue;
+            }
+
+            *tmp_str = '\0';
+            tmp_str++;
+            strncpy(name, valid_str, KEYSIZE - 1);
+
+            /* Get IP address */
+            valid_str = tmp_str;
+            tmp_str = strchr(tmp_str, ' ');
+            if (!tmp_str) {
+                merror(INVALID_KEY, buffer);
+                continue;
+            }
+
+            *tmp_str = '\0';
+            tmp_str++;
+            strncpy(ip, valid_str, KEYSIZE - 1);
+
+            /* Get key */
+            valid_str = tmp_str;
+            tmp_str = strchr(tmp_str, '\n');
+            if (tmp_str) {
+                *tmp_str = '\0';
+            }
+
+            strncpy(key, valid_str, KEYSIZE - 1);
+
+            /* Generate the key hash */
+            OS_AddKey(keys, id, name, ip, key);
+
+            /* Clear the memory */
+            __memclear(id, name, ip, key, KEYSIZE + 1);
+
+            continue;
         }
 
-        strncpy(key, valid_str, KEYSIZE - 1);
+        fclose(fp);
+        fp = NULL;
 
-        /* Generate the key hash */
-        OS_AddKey(keys, id, name, ip, key);
-
-        /* Clear the memory */
+        /* Clear one last time before leaving */
         __memclear(id, name, ip, key, KEYSIZE + 1);
-
-        /* Check for maximum agent size */
-        if ( !no_limit && keys->keysize >= (MAX_AGENTS - 2) ) {
-            merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-            merror_exit(CONFIG_ERROR, keys_file);
-        }
-
-        continue;
     }
-
-    /* Close key file */
-    fclose(fp);
-    fp = NULL;
-
-    /* Clear one last time before leaving */
-    __memclear(id, name, ip, key, KEYSIZE + 1);
 
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
@@ -318,10 +326,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
             merror_exit(NO_CLIENT_KEYS);
         }
     }
-
-    /* Add additional entry for sender == keysize */
-    os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
-    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     return;
 }
@@ -349,6 +353,10 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
+    if (key->rids_node) {
+        free(key->rids_node);
+    }
+
     w_mutex_destroy(&key->mutex);
     free(key);
 }
@@ -360,14 +368,9 @@ void OS_FreeKeys(keystore *keys)
 
     /* Free the hashes */
 
-    if (keys->keyhash_id)
-        OSHash_Free(keys->keyhash_id);
-
-    if (keys->keyhash_ip)
-        OSHash_Free(keys->keyhash_ip);
-
-    if (keys->keyhash_sock)
-        OSHash_Free(keys->keyhash_sock);
+    rbtree_destroy(keys->keytree_id);
+    rbtree_destroy(keys->keytree_ip);
+    rbtree_destroy(keys->keytree_sock);
 
     for (i = 0; i <= keys->keysize; i++) {
         if (keys->keyentries[i]) {
@@ -378,9 +381,9 @@ void OS_FreeKeys(keystore *keys)
 
     /* Zero the entries */
     keys->keysize = 0;
-    keys->keyhash_id = NULL;
-    keys->keyhash_ip = NULL;
-    keys->keyhash_sock = NULL;
+    keys->keytree_id = NULL;
+    keys->keytree_ip = NULL;
+    keys->keytree_sock = NULL;
 
     if (keys->removed_keys) {
         for (i = 0; i < keys->removed_keys_size; i++)
@@ -391,10 +394,13 @@ void OS_FreeKeys(keystore *keys)
         keys->removed_keys_size = 0;
     }
 
+    linked_queue_free(keys->opened_fp_queue);
+
     /* Free structure */
     free(keys->keyentries);
     keys->keyentries = NULL;
     keys->keysize = 0;
+    w_mutex_destroy(&keys->keytree_sock_mutex);
 }
 
 /* Check if key changed */
@@ -419,7 +425,7 @@ void OS_UpdateKeys(keystore *keys)
     /* Read keys */
     mdebug2("OS_ReadKeys");
     minfo(ENC_READ);
-    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
+    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
 
     mdebug2("OS_StartCounter");
     OS_StartCounter(keys);
@@ -442,7 +448,7 @@ int OS_IsAllowedIP(keystore *keys, const char *srcip)
         return (-1);
     }
 
-    entry = (keyentry *) OSHash_Get(keys->keyhash_ip, srcip);
+    entry = (keyentry *) rbtree_get(keys->keytree_ip, srcip);
     if (entry) {
         return ((int)entry->keyid);
     }
@@ -472,7 +478,7 @@ int OS_IsAllowedID(keystore *keys, const char *id)
         return (-1);
     }
 
-    entry = (keyentry *) OSHash_Get(keys->keyhash_id, id);
+    entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
         return ((int)entry->keyid);
     }
@@ -489,7 +495,7 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
         return (-1);
     }
 
-    entry = (keyentry *) OSHash_Get(keys->keyhash_id, id);
+    entry = (keyentry *) rbtree_get(keys->keytree_id, id);
     if (entry) {
         if (OS_IPFound(srcip, entry->ip)) {
             return ((int)entry->keyid);
@@ -521,13 +527,15 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
         save_removed_key(keys, buffer);
     }
 
-    OSHash_Delete(keys->keyhash_id, id);
-    OSHash_Delete(keys->keyhash_ip, keys->keyentries[i]->ip->ip);
+    rbtree_delete(keys->keytree_id, id);
+    rbtree_delete(keys->keytree_ip, keys->keyentries[i]->ip->ip);
 
     if (keys->keyentries[i]->sock >= 0) {
         char strsock[16] = "";
         snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[i]->sock);
-        OSHash_Delete_ex(keys->keyhash_sock, strsock);
+        w_mutex_lock(&keys->keytree_sock_mutex);
+        rbtree_delete(keys->keytree_sock, strsock);
+        w_mutex_unlock(&keys->keytree_sock_mutex);
     }
 
     OS_FreeKey(keys->keyentries[i]);
@@ -548,7 +556,7 @@ int OS_WriteKeys(const keystore *keys) {
     File file;
     char cidr[20];
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
+    if (TempFile(&file, KEYS_FILE, 0) < 0)
         return -1;
 
     for (i = 0; i < keys->keysize; i++) {
@@ -564,7 +572,7 @@ int OS_WriteKeys(const keystore *keys) {
 
     fclose(file.fp);
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
         free(file.name);
         return -1;
     }
@@ -585,6 +593,7 @@ keystore* OS_DupKeys(const keystore *keys) {
     copy->file_change = keys->file_change;
     copy->inode = keys->inode;
     copy->id_counter = keys->id_counter;
+    w_mutex_init(&copy->keytree_sock_mutex, NULL);
 
     for (i = 0; i <= keys->keysize; i++) {
         copy->keyentries[i] = OS_DupKeyEntry(keys->keyentries[i]);
@@ -641,20 +650,40 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
     keys->keyentries[i]->sock = sock;
-    return OSHash_Set_ex(keys->keyhash_sock, strsock, keys->keyentries[i]);
+
+    w_mutex_lock(&keys->keytree_sock_mutex);
+    int r = rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[i]) ? 2 : rbtree_replace(keys->keytree_sock, strsock, keys->keyentries[i]) ? 1 : 0;
+    w_mutex_unlock(&keys->keytree_sock_mutex);
+
+    return r;
 }
 
 // Delete socket number from keystore
 int OS_DeleteSocket(keystore * keys, int sock) {
     char strsock[16] = "";
     keyentry * entry;
+    int retval = 0;
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
+    w_mutex_lock(&keys->keytree_sock_mutex);
 
-    if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
-        entry->sock = -1;
-        return 0;
+    if (entry = rbtree_get(keys->keytree_sock, strsock), entry) {
+        if (sock == entry->sock) {
+            entry->sock = -1;
+        }
+
+        rbtree_delete(keys->keytree_sock, strsock);
     } else {
-        return -1;
+        retval = -1;
     }
+
+    w_mutex_unlock(&keys->keytree_sock_mutex);
+    return retval;
+}
+
+int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {
+
+    const int key_id = OS_IsAllowedID(keys, agent_id);
+
+    return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);
 }

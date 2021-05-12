@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,7 +12,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
 #ifndef CLIENT
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #endif
 
@@ -32,8 +32,6 @@
 
 /* Global variables */
 fpos_t fp_pos;
-static uid_t uid = -1;
-static uid_t gid = -1;
 
 int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
 {
@@ -47,6 +45,13 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     if (!id) {
         snprintf(_id, 9, "%03d", ++keys->id_counter);
         id = _id;
+    }
+    else {
+        char *endptr;
+        int id_number = strtol(id, &endptr, 10);
+
+        if ('\0' == *endptr && id_number > keys->id_counter)
+            keys->id_counter = id_number;
     }
 
     if (!key) {
@@ -81,7 +86,7 @@ int OS_RemoveAgent(const char *u_id) {
     if (!id_exist)
         return 0;
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp)
         return 0;
@@ -139,7 +144,7 @@ int OS_RemoveAgent(const char *u_id) {
 
     fclose(fp);
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
+    if (TempFile(&file, KEYS_FILE, 0) < 0) {
         free(buffer);
         return 0;
     }
@@ -148,7 +153,7 @@ int OS_RemoveAgent(const char *u_id) {
     fclose(file.fp);
     full_name = getFullnameById(u_id);
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
         free(file.name);
         free(buffer);
         free(full_name);
@@ -164,14 +169,23 @@ int OS_RemoveAgent(const char *u_id) {
     }
 
     // Remove DB from wazuh-db
+    int sock = -1;
+    int error;
     snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
-    wdb_send_query(wdbquery, &wdboutput);
-
-    if (wdboutput) {
+    os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
+    if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), !error) {
         mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
-        os_free(wdboutput);
+    } else {
+        merror("Could not remove the DB of the agent %s. Error: %d.", u_id, error);
     }
 
+    os_free(wdboutput);
+
+    if (wdb_remove_agent(atoi(u_id), &sock) != OS_SUCCESS) {
+        mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
+    }
+
+    wdbc_close(&sock);
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
@@ -221,7 +235,7 @@ char *getFullnameById(const char *id)
         return (NULL);
     }
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (NULL);
     }
@@ -292,11 +306,7 @@ int IDExist(const char *id, int discard_removed)
         return (0);
     }
 
-    if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
-    } else {
-        fp = fopen(KEYSFILE_PATH, "r");
-    }
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -357,6 +367,16 @@ int OS_IsValidName(const char *u_name)
     return (1);
 }
 
+void OS_ConvertToValidAgentName(char *u_name) {
+    size_t i, uname_length = strlen(u_name);
+    while((i = strspn(u_name, VALID_AGENT_NAME_CHARS)), i < uname_length )
+    {
+        // Invalid character detected, delete it
+        memmove(u_name + i, u_name + i + 1, uname_length - i);
+        uname_length--;
+    }
+}
+
 int NameExist(const char *u_name)
 {
     FILE *fp;
@@ -370,11 +390,7 @@ int NameExist(const char *u_name)
         return (0);
     }
 
-    if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
-    } else {
-        fp = fopen(KEYSFILE_PATH, "r");
-    }
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp) {
         return (0);
@@ -426,10 +442,7 @@ char *IPExist(const char *u_ip)
     if (!(u_ip && strncmp(u_ip, "any", 3)) || strchr(u_ip, '/'))
         return NULL;
 
-    if (isChroot())
-        fp = fopen(AUTH_FILE, "r");
-    else
-        fp = fopen(KEYSFILE_PATH, "r");
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp)
         return NULL;
@@ -473,6 +486,8 @@ char *IPExist(const char *u_ip)
     return NULL;
 }
 
+#ifndef CLIENT
+
 double OS_AgentAntiquity_ID(const char *id) {
     char *name = getFullnameById(id);
     char *ip;
@@ -491,19 +506,24 @@ double OS_AgentAntiquity_ID(const char *id) {
     return ret;
 }
 
-/* Returns the number of seconds since last agent connection, or -1 if error. */
-double OS_AgentAntiquity(const char *name, const char *ip)
-{
-    struct stat file_stat;
-    char file_name[OS_FLSIZE];
+/**
+ * @brief Returns the number of seconds since last agent connection
+ *
+ * @param name The name of the agent
+ * @param ip The IP address of the agent (unused). Kept only for compatibility
+ * @retval On success, it returns the difference between the current time and the last keepalive
+ * @retval -1 On error: invalid DB query syntax or result
+ */
+double OS_AgentAntiquity(const char *name, const char *ip){
+    time_t output = 0;
 
-    snprintf(file_name, OS_FLSIZE - 1, "%s/%s-%s", AGENTINFO_DIR, name, ip);
+    output = wdb_get_agent_keepalive(name, ip, NULL);
 
-    if (stat(file_name, &file_stat) < 0)
-        return -1;
-
-    return difftime(time(NULL), file_stat.st_mtime);
+    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
+
+ /* !CLIENT */
+ #endif
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
@@ -513,7 +533,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     char line_read[FILE_SIZE + 1];
     line_read[FILE_SIZE] = '\0';
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (0);
     }
@@ -554,7 +574,9 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                     total++;
 
                     if (print_status) {
-                        agent_status_t agt_status = get_agent_status(name, ip);
+                        #ifndef CLIENT //print_status is only available on servers
+                        // Within this context, line_read corresponds to the agent ID
+                        agent_status_t agt_status = get_agent_status(atoi(line_read));
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
                             continue;
                         }
@@ -581,6 +603,10 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                         } else {
                             printf(PRINT_AGENT_STATUS, line_read, name, ip, print_agent_status(agt_status));
                         }
+                        #else
+                        (void) inactive_only;
+                        printf(PRINT_AGENT, line_read, name, ip);
+                        #endif
                     } else {
                         printf(PRINT_AGENT, line_read, name, ip);
                     }
@@ -593,7 +619,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     if (!active_only && print_status) {
         const char *aip = NULL;
         DIR *dirp;
-        struct dirent *dp;
+        struct dirent *dp = NULL;
 
         if (!csv_output && !json_output) {
             printf("\nList of agentless devices:\n");
@@ -632,148 +658,18 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     return (0);
 }
 
-void OS_BackupAgentInfo_ID(const char *id) {
-    char *name = getFullnameById(id);
-    char *ip;
-
-    if (!name) {
-        merror("Agent id %s not found.", id);
-        return;
-    }
-
-    if ((ip = strchr(name, '-'))) {
-        *(ip++) = 0;
-        OS_BackupAgentInfo(id, name, ip);
-    }
-
-    free(name);
-}
-
-/* Backup agent information before force deleting */
-void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
-{
-    char *path_backup;
-    char path_src[OS_FLSIZE];
-    char path_dst[OS_FLSIZE];
-
-    time_t timer = time(NULL);
-    int status = 0;
-
-    path_backup = OS_CreateBackupDir(id, name, ip, timer);
-
-    if (!path_backup) {
-        merror("Couldn't create backup directory.");
-        return;
-    }
-
-    /* agent-info */
-    snprintf(path_src, OS_FLSIZE, "%s/%s-%s", AGENTINFO_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
-    status += link(path_src, path_dst);
-
-    /* rootcheck */
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->rootcheck", ROOTCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/rootcheck", path_backup);
-    status += link(path_src, path_dst);
-
-    /* agent-group */
-    snprintf(path_src, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
-    snprintf(path_dst, OS_FLSIZE, "%s/agent-group", path_backup);
-    status += link(path_src, path_dst);
-
-    if (status < 0) {
-        mdebug1("Couldn't create some backup files.");
-
-        if (status == -7) {
-            mdebug1("Backup directory empty. Removing %s", path_backup);
-            rmdir(path_backup);
-        }
-    }
-
-    free(path_backup);
-}
-
-char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
-    char path[OS_FLSIZE + 1];
-    char timestamp[40];
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror("Unspecified uid or gid.");
-        return NULL;
-    }
-
-    /* Directory for year ^*/
-
-    strftime(timestamp, 40, "%Y", localtime(&now));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
-
-    if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-            return NULL;
-        }
-    }
-
-    /* Directory for month */
-
-    strftime(timestamp, 40, "%Y/%b", localtime(&now));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
-
-    if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-            return NULL;
-        }
-    }
-
-    /* Directory for day */
-
-    strftime(timestamp, 40, "%Y/%b/%d", localtime(&now));
-    snprintf(path, OS_FLSIZE, "%s/%s", AGNBACKUP_DIR, timestamp);
-
-    if (IsDir(path) != 0) {
-        if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-            return NULL;
-        }
-    }
-
-    /* Directory for agent */
-
-    int acount = 1;
-    char tag[10] = { 0 };
-
-    while (1) {
-        snprintf(path, OS_FLSIZE, "%s/%s/%s-%s-%s%s", AGNBACKUP_DIR, timestamp, id, name, ip, tag);
-
-        if (IsDir(path) != 0) {
-            if (mkdir(path, 0750) < 0 || chmod(path, 0750) < 0 || chown(path, uid, gid) < 0) {
-                return NULL;
-            } else {
-                break;
-            }
-        } else {
-            if (++acount > MAX_TAG_COUNTER) {
-                return NULL;
-            } else {
-                snprintf(tag, 10, "-%03d", acount);
-            }
-        }
-    }
-
-    char *retval;
-    os_strdup(path, retval);
-    return retval;
-}
-
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now)
 {
     File file;
     char timestamp[40];
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("Couldn't open timestamp file.");
         return;
     }
 
-    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime(&now));
+    strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&now, &tm_result));
     fprintf(file.fp, "%s %s %s %s\n", id, name, ip, timestamp);
     fclose(file.fp);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
@@ -872,22 +768,5 @@ void FormatID(char *id) {
 
         if (!*end)
             sprintf(id, "%03d", number);
-    }
-}
-
-/* Load gid and uid.
- * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
- * Should be called before chroot().
- * Returns 0 on success or -1 on failure.
- */
-int OS_LoadUid() {
-    uid = Privsep_GetUser(USER);
-    gid = Privsep_GetGroup(GROUPGLOBAL);
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, USER, GROUPGLOBAL);
-        return -1;
-    } else {
-        return 0;
     }
 }

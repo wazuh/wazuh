@@ -1,4 +1,0 @@
- - Moraš prvo dodati ovog agenta serveru tako da
-   mogu da komuniciraju jedan sa drugim. Kada to uradiš
-   možeš da pustiš 'manage_agents' pomagalo da preuzmeš
-   ključ autentičnosti od servera.

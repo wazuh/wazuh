@@ -1,0 +1,211 @@
+version: '3.7'
+
+services:
+  wazuh-master:
+    build:
+      context: .
+      dockerfile: base/manager/manager.Dockerfile
+    image: integration_test_wazuh-manager
+    hostname: wazuh-master
+    ports:
+      - "55000:55000"
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - master-node
+      - master
+
+  wazuh-worker1:
+    build:
+      context: .
+      dockerfile: base/manager/manager.Dockerfile
+    image: integration_test_wazuh-manager
+    hostname: wazuh-worker1
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - worker1
+      - worker
+
+  wazuh-worker2:
+    build:
+      context: .
+      dockerfile: base/manager/manager.Dockerfile
+    image: integration_test_wazuh-manager
+    hostname: wazuh-worker2
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - wazuh-master
+      - worker2
+      - worker
+
+  wazuh-agent1:
+    build:
+      context: .
+      dockerfile: base/agent/new.Dockerfile
+    image: integration_test_wazuh-agent
+    hostname: wazuh-agent1
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent1
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - nginx-lb
+
+  wazuh-agent2:
+    build:
+      context: .
+      dockerfile: base/agent/new.Dockerfile
+    image: integration_test_wazuh-agent
+    hostname: wazuh-agent2
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent2
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - wazuh-agent1
+      - nginx-lb
+
+  wazuh-agent3:
+    build:
+      context: .
+      dockerfile: base/agent/new.Dockerfile
+    image: integration_test_wazuh-agent
+    hostname: wazuh-agent3
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent3
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - wazuh-agent2
+      - nginx-lb
+
+  wazuh-agent4:
+    build:
+      context: .
+      dockerfile: base/agent/new.Dockerfile
+    image: integration_test_wazuh-agent
+    hostname: wazuh-agent4
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent4
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - wazuh-agent3
+      - nginx-lb
+
+  wazuh-agent5:
+    build:
+      context: .
+      dockerfile: base/agent/old.Dockerfile
+    image: integration_test_wazuh-agent_old
+    hostname: wazuh-agent5
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent5
+      - agent_old
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - wazuh-agent4
+      - nginx-lb
+
+  wazuh-agent6:
+    build:
+      context: .
+      dockerfile: base/agent/old.Dockerfile
+    image: integration_test_wazuh-agent_old
+    hostname: wazuh-agent6
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent6
+      - agent_old
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - wazuh-agent5
+      - nginx-lb
+
+  wazuh-agent7:
+    build:
+      context: .
+      dockerfile: base/agent/old.Dockerfile
+    image: integration_test_wazuh-agent_old
+    hostname: wazuh-agent7
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent7
+      - agent_old
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - wazuh-agent6
+      - nginx-lb
+
+  wazuh-agent8:
+    build:
+      context: .
+      dockerfile: base/agent/old.Dockerfile
+    image: integration_test_wazuh-agent_old
+    hostname: wazuh-agent8
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
+    entrypoint:
+      - /scripts/entrypoint.sh
+      - nginx-lb
+      - wazuh-agent8
+      - agent_old
+    depends_on:
+      - wazuh-worker1
+      - wazuh-worker2
+      - wazuh-agent7
+      - nginx-lb
+
+  nginx-lb:
+    build:
+      context: ./base/nginx-lb
+    image: integration_test_nginx-lb
+    entrypoint:
+      - /scripts/entrypoint.sh

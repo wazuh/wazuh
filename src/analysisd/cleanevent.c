@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -27,7 +27,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
-    struct tm p;
+    struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
     /* The message is formated in the following way:
@@ -520,18 +520,32 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     if (lf->location[0] == '[') {
         /* Messages from an agent */
         char *orig = lf->location;
+        bool extra_info = false;
 
         lf->agent_id = lf->location + 1;
         lf->location = strchr(lf->agent_id, ']');
 
         if (!lf->location) {
+            lf->location = orig;
+            lf->agent_id = NULL;
+            lf->hostname = NULL;
             merror(FORMAT_ERROR);
             return (-1);
         }
 
+        if (strlen(lf->location) > 1) {
+            extra_info = true;
+        }
+
         *lf->location = '\0';
         os_strdup(lf->agent_id, lf->agent_id);
-        os_strdup(lf->location + 2, lf->location);
+
+        if (extra_info) {
+            os_strdup(lf->location + 2, lf->location);
+        } else {
+            os_strdup("", lf->location);
+        }
+
 
         if (lf->location[0] == '(') {
             char * end;
@@ -554,7 +568,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     }
 
     /* Set up the event data */
-    localtime(&c_time);
     gettime(&local_c_timespec);
     time(&lf->generate_time);
     lf->time = local_c_timespec;
@@ -579,5 +592,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         print_out("       log: '%s'", lf->log);
     }
 #endif
+    
     return (0);
 }

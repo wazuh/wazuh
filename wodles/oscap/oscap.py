@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ################################################################################
 # Wazuh wrapper for OpenSCAP
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -107,7 +107,12 @@ def oscap(profile=None):
         pass
 
     # Create an unique FIFO file
-    mkfifo(FIFO_PATH, 0666)
+    try:
+        perm = eval('0666')
+    except SyntaxError:
+        perm = eval('0o666')
+
+    mkfifo(FIFO_PATH, perm)
 
     try:
         cmd = [OSCAP_BIN, arg_module, 'eval', '--results', FIFO_PATH]

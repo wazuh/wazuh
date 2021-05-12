@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,6 +12,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Read syslog files */
@@ -19,23 +20,21 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int __ms_reported = 0;
     char str[OS_MAXSTR + 1];
-    fpos_t fp_pos;
+    int64_t current_position = 0;
     int lines = 0;
-#ifdef WIN32
-    int64_t offset;
-    int64_t rbytes;
-#else
-    long offset = 0;
-    long rbytes = 0;
-#endif
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    /* Get initial file location */
-    fgetpos(lf->fp, &fp_pos);
+    /* Obtain context to calculate hash */
+    current_position = w_ftell(lf->fp);
 
-    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    SHA_CTX context;
+    w_get_hash_context(lf->file, &context, current_position);
+
+    for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
@@ -46,6 +45,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
 
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
+            OS_SHA1_Stream(&context, NULL, str);
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
@@ -61,6 +61,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
+            OS_SHA1_Stream(&context, NULL, str);
             str[rbytes - 1] = '\0';
         } else {
             /* We may not have gotten a line feed
@@ -69,7 +70,9 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
              if (feof(lf->fp)) {
                 /* Message not complete. Return. */
                 mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-                fsetpos(lf->fp, &fp_pos);
+                if(current_position >= 0) {
+                    w_fseek(lf->fp, current_position, SEEK_SET);
+                }
                 break;
             }
         }
@@ -83,13 +86,13 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
 
         /* Look for empty string (only on Windows) */
         if (rbytes <= 2) {
-            fgetpos(lf->fp, &fp_pos);
+            current_position = w_ftell(lf->fp);
             continue;
         }
 
         /* Windows can have comment on their logs */
         if (str[0] == '#') {
-            fgetpos(lf->fp, &fp_pos);
+            current_position = w_ftell(lf->fp);
             continue;
         }
 #endif
@@ -120,6 +123,8 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
                     break;
                 }
 
+                OS_SHA1_Stream(&context, NULL, str);
+
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {
                     break;
@@ -127,9 +132,10 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             }
             __ms = 0;
         }
-        fgetpos(lf->fp, &fp_pos);
-        continue;
+        current_position = w_ftell(lf->fp);
     }
+
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

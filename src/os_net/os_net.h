@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -95,16 +95,23 @@ int OS_SetKeepalive(int socket);
  * @param intvl Interval between probes, in seconds.
  * @param cnt Number of probes sent before closing the connection.
  */
-void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
+void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt);
 
 /* Set the delivery timeout for a socket
  * Returns 0 on success, else -1
  */
 int OS_SetSendTimeout(int socket, int seconds);
 
-/* Send secure TCP message
+/**
+ * @brief Send secure TCP message
+ *
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
- * Return 0 on success or OS_SOCKTERR on error.
+ *
+ * @param sock Socket file descriptor.
+ * @param size Message length, in bytes.
+ * @param msg Pointer to the message content.
+ * @retval 0 on success.
+ * @retval OS_SOCKTERR on error.
  */
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
@@ -114,19 +121,29 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
  */
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
 
-
-/* Send secure TCP Cluster message
- * Return 0 on success or OS_SOCKTERR on error.
- */
+/**
+ * @brief Send secure TCP Cluster message
+ * @param sock Socket to write on
+ * @param command Command to send
+ * @param payload Payload of the command to send
+ * @param length Length of the message to send
+ * @return recvval on success
+ * @return OS_SOCKTERR on error
+ * */
 int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length);
 
-/* Receive secure TCP message
- * Return recvval on success or OS_SOCKTERR on error.
- */
-int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length);
+/**
+ * @brief Receive secure TCP Cluster message
+ * @param sock Socket to read from
+ * @param ret Response read
+ * @param length Max length to be read
+ * @return recvval on success
+ * @return -1 on socket errors
+ * @return -2 on cluster errors
+ * */
+int OS_RecvSecureClusterTCP(int sock, char* ret, size_t length);
 
-// Byte ordering
-
+/* Byte ordering */
 uint32_t wnet_order(uint32_t value);
 
 /* Set the maximum buffer size for the socket */
@@ -141,5 +158,19 @@ ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 
 // Wrapper for select()
 int wnet_select(int sock, int timeout);
+
+/**
+ * @brief Resolve a given hostname, getting the associated ip
+ * @param hostname Hostname to be resolved, if successfull, it will be modified with the format: 'hostname/x.x.x.x'
+ * @param attempts Number of attempts of the call to the function gethostbyname
+ * */
+void resolve_hostname(char **hostname, int attempts);
+
+/**
+ * @brief Extract the ip address from the result of the resolve_hostname function.
+ * @param resolved_hostname String with the format: 'hostname/x.x.x.x'
+ * @return String with the ip addres
+ * */
+const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
 
 #endif /* OS_NET_H */

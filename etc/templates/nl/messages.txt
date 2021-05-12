@@ -102,11 +102,11 @@ tostart="Om Wazuh te starten"
 tostop="Om Wazuh te stoppen"
 configat="De configuratie kan worden bekeken en gewijzigd in"
 addserveragent="Om verbinding te maken tussen agent en server, moet je alle agenten aan de server toevoegen."
-runma="Voer 'manage_agents' uit om ze toe te voegen of te verwijderen"
 presskey="Druk op ENTER om door te gaan"
 
 # Update
 wanttoupdate="U heeft Wazuh reeds geinstalleerd. Wilt u actualiseren?"
+mustuninstall="De installatie kan niet doorgaan zonder oude versies te verwijderen. Afsluiten."
 unabletoupdate="Kan geen actualisatie uitvoeren. Een volledig nieuwe installatie is vereist."
 updatecompleted="Actualisatie succesvol uitgevoerd."
 updatefailed="Actualisatie is gefaald."

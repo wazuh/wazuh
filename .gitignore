@@ -16,6 +16,8 @@ etc/ossec.mc
 src/Config.OS
 src/selinux/*.mod
 src/selinux/*.pp
+framework/wazuh/core/wazuh.json
+src/**/build/*
 
 # Compiled programs
 src/agent-auth
@@ -32,11 +34,11 @@ src/ossec-csyslogd
 src/ossec-dbd
 src/ossec-execd
 src/ossec-logcollector
-src/ossec-logtest
 src/ossec-maild
 src/ossec-makelists
 src/ossec-monitord
 src/ossec-regex
+src/wazuh-regex
 src/parallel-regex
 src/ossec-remoted
 src/ossec-reportd
@@ -49,6 +51,36 @@ src/verify-agent-conf
 src/wazuh-modulesd
 src/wazuh-auth
 src/wazuh-db
+src/wazuh-agentd
+src/wazuh-agentlessd
+src/wazuh-analysisd
+src/wazuh-authd
+src/wazuh-csyslogd
+src/wazuh-dbd
+src/wazuh-execd
+src/wazuh-logcollector
+src/wazuh-logtest-legacy
+src/wazuh-maild
+src/wazuh-monitord
+src/wazuh-remoted
+src/wazuh-reportd
+src/wazuh-syscheckd
+src/wazuh-integratord
+
+# Active responses
+src/firewall-drop
+src/default-firewall-drop
+src/pf
+src/npf
+src/ipfw
+src/firewalld-drop
+src/disable-account
+src/host-deny
+src/ip-customblock
+src/restart-wazuh
+src/route-null
+src/kaspersky
+src/wazuh-slack
 
 # Windows agent
 src/win32/*.exe
@@ -103,9 +135,30 @@ etc/templates/config/windows/xp.zip
 *.gcno
 *.gcda
 src/coverage-report/
+data_provider/coverage_report/
+shared_modules/dbsync/coverage_report/
+shared_modules/rsync/coverage_report/
+shared_modules/utils/coverage_report/
+wazuh_modules/syscollector/coverage_report/
 src/ossec.test
 src/tap_*
 etc/preloaded-vars.conf
 
+# unit tests
+src/unit_tests/build/*
+
+# api tests
+api/test/integration/_test_results
+
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
-active-response/firewall-drop.sh
+src/active-response/firewall-drop.sh
+
+# Databases commits
+framework/wazuh/rbac/migrations/versions/*
+
+# Documentation folder
+documentation/
+
+# MSU for Vulnerability Detector
+src/wazuh_modules/vulnerability_detector/msu.json.gz
+

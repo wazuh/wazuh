@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,10 +15,10 @@
 #include <winsvc.h>
 
 #ifndef ARGV0
-#define ARGV0 "ossec-agent"
+#define ARGV0 "wazuh-agent"
 #endif
 
-static LPTSTR g_lpszServiceName        = "OssecSvc";
+static LPTSTR g_lpszServiceName        = "WazuhSvc";
 static LPTSTR g_lpszServiceDisplayName = "Wazuh";
 static LPTSTR g_lpszServiceDescription = "Wazuh Windows Agent";
 
@@ -80,6 +80,12 @@ int os_stop_service()
 
         CloseServiceHandle(schSCManager);
     }
+
+    /*
+    * Sleep for a short period of time to avoid possible race-conditions with
+    * newer instances of wazuh-agent.
+    */
+    Sleep(300); //milliseconds
 
     return (rc);
 }

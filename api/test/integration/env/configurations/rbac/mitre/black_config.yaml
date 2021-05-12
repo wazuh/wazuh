@@ -1,0 +1,6 @@
+---
+- actions:
+  - mitre:read
+  resources:
+  - "*:*:*"
+  effect: deny

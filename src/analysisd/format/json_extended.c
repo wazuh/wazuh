@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  */
@@ -159,13 +159,13 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 {
     cJSON* groups;
     cJSON* rule;
-    int firstPCI, firstCIS, firstGDPR, firstGPG13, firstHIPAA, firstNIST;
+    int firstPCI, firstCIS, firstGDPR, firstGPG13, firstHIPAA, firstNIST, firstTSC;
     char delim[2];
     char buffer[MAX_STRING] = "";
     char* token;
     char* saveptr;
 
-    firstPCI = firstCIS = firstGDPR = firstGPG13 = firstHIPAA = firstNIST = 1;
+    firstPCI = firstCIS = firstGDPR = firstGPG13 = firstHIPAA = firstNIST = firstTSC = 1;
     delim[0] = ',';
     delim[1] = 0;
 
@@ -192,6 +192,8 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
             firstHIPAA = 0;
         } else if (add_groupNIST(rule, token, firstNIST)) {
             firstNIST = 0;
+        } else if (add_groupTSC(rule, token, firstTSC)) {
+            firstTSC = 0;
         } else {
             if (token) cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
@@ -372,6 +374,25 @@ int add_groupNIST(cJSON* rule, char* group, int firstNIST)
     return 0;
 }
 
+int add_groupTSC(cJSON* rule, char* group, int firstTSC)
+{
+    cJSON* tsc;
+    char *aux;
+    if((startsWith("tsc_", group)) == 1) {
+        if(firstTSC == 1) {
+            tsc = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "tsc", tsc);
+        } else {
+            tsc = cJSON_GetObjectItem(rule, "tsc");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 4);
+        cJSON_AddItemToArray(tsc, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
 // If hostname being with "(" means that alerts came from an agent, so we will remove the brakets
 void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {
@@ -410,7 +431,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 
     if(regexec(regexCompiled, lf->full_log, 2, match, 0) == 0){
         match_size = match[1].rm_eo - match[1].rm_so;
-        agent_hostname = malloc(match_size + 1);
+        os_malloc(match_size + 1, agent_hostname);
         snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[1].rm_so);
 
         if (!cJSON_HasObjectItem(root, "predecoder")) {
@@ -429,7 +450,7 @@ void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
     char timestamp[160];
     char datetime[64];
     char timezone[64];
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
 
     if (lf->time.tv_sec) {
         localtime_r(&lf->time.tv_sec, &tm);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
 #define AUTHD_H
 
 #ifndef ARGV0
-#define ARGV0 "ossec-authd"
+#define ARGV0 "wazuh-authd"
 #endif
 
 #include "addagent/manage_agents.h"
@@ -39,12 +39,13 @@
 #include <openssl/bio.h>
 
 extern BIO *bio_err;
-#define KEYFILE  "/etc/sslmanager.key"
-#define CERTFILE "/etc/sslmanager.cert"
+#define KEYFILE  "etc/sslmanager.key"
+#define CERTFILE "etc/sslmanager.cert"
 #define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
-#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file " DEFAULTCPATH "."
+#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
+#define MAX_SSL_PACKET_SIZE 16384
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -69,14 +70,23 @@ int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
 int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
 
+/**
+ * @brief Wraps SSL_read function to read block largers than a record (16K)
+ * 
+ * Calls SSL_read and if the return value is exactly the size of a record 
+ * calls again with an offset in the buffer until reading is done or until
+ * reaching a reading timeout
+ * @param ssl ssl connection
+ * @param buf buffer to store the read information
+ * @param num maximum number of bytes to read
+ * */
+int wrap_SSL_read(SSL *ssl, void *buf, int num);
+
 // Thread for internal server
 void* run_local_server(void *arg);
 
 // Append key to insertion queue
 void add_insert(const keyentry *entry,const char *group);
-
-// Append key to backup queue
-void add_backup(const keyentry *entry);
 
 // Append key to deletion queue
 void add_remove(const keyentry *entry);
@@ -90,7 +100,48 @@ size_t authcom_getconfig(const char * section, char ** output);
 // Block signals
 void authd_sigblock();
 
-extern char shost[];
+/**
+ * @brief Validate if groups are valid for new enrollment
+ * @param groups Comma separated string with new enrollment groups
+ * @param response 2048 length buffer where the error response will be copied. NULL if no response is required
+ * */
+w_err_t w_auth_validate_groups(const char *groups, char *response);
+
+/**
+ * @brief Parse a raw buffer from agent request into enrollment data. 
+ * @param buf Raw buffer to be parsed
+ * @param response 2048 length buffer where the error response will be copied
+ * @param authpass Authentication password expected on the buffer, NULL if there isn't password
+ * @param ip IP direction of the request. Can be override with IP parsed from buffer
+ * @param agentname Pointer where parsed agent name will be allocated
+ * @param groups Pointer where parsed groups will be allocated
+ * */
+w_err_t w_auth_parse_data(const char* buf, char *response, const char *authpass, char *ip, char **agentname, char **groups);
+
+/**
+ * @brief Validates if new enrollment is possible with provided data
+ * With force configuration disabled, if enrollment data is already registered, validation will fail.
+ * With force configuration enabled, duplicated entry will be removed.
+ * @param response 2048 length buffer where the error response will be copied
+ * @param ip New enrollment ip direction
+ * @param agentname New enrollment agent name
+ * @param groups New enrollment groups
+ * */
+w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups);
+
+/**
+ * @brief Adds new agent with provided enrollment data
+ * @param response 2048 length buffer where the error response will be copied
+ * @param ip New enrollment ip direction
+ * @param agentname New enrollment agent name
+ * @param groups New enrollment groups
+ * @param id Pointer where new Agent ID will be allocated 
+ * @param key Pointer where new Agent key will be allocated 
+ * */
+w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
+
+
+extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;
 extern volatile int running;

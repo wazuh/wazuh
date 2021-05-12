@@ -103,11 +103,11 @@ tostop="Da se zaustavi Wazuh"
 configat="Konfiguracija se može videti ili modifikovati na"
 addserveragent="Da bi se agent povezao sa serverom, treba da dodaš svakog od tvojih agenata
 serveru."
-runma="Pusti 'manage_agents' da ih dodaje ili otklanja"
 presskey="Pritisni ENTER da nastaviš"
 
 # Update
 wanttoupdate="Već imaš instaliran Wazuh. Da li želiš da ga ažuriraš?"
+mustuninstall="Instalacija se ne može nastaviti bez deinstalacije starih verzija. Izlaz."
 unabletoupdate="U nemogućnosti da izvrši ažuriranje. Potrebna je potpuna nova instalacija."
 updatecompleted="Ažuriranje završeno."
 updatefailed="Ažuriranje nije uspelo."

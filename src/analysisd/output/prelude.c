@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,7 +9,7 @@
  */
 
 /*
- * OSSEC to Prelude
+ * Wazuh to Prelude
  */
 
 #ifdef PRELUDE_OUTPUT_ENABLED
@@ -20,6 +20,7 @@
 
 #include "prelude.h"
 
+#include "syscheck_op.h"
 #include "shared.h"
 #include "rules.h"
 
@@ -29,8 +30,8 @@
 #define ANALYZER_MANUFACTURER __site
 #define ANALYZER_VERSION __ossec_version
 
-/** OSSEC to prelude severity mapping. **/
-static const char *(ossec2prelude_sev[]) = {"info", "info", "info", "info",
+/** Wazuh to prelude severity mapping. **/
+static const char *(wazuh2prelude_sev[]) = {"info", "info", "info", "info",
                                "low", "low", "low", "low",
                                "medium", "medium", "medium", "medium",
                                "high", "high", "high", "high", "high"
@@ -74,7 +75,7 @@ add_idmef_object(idmef_message_t *msg, const char *object, const char *value)
 
     ret = idmef_path_set(path, msg, val);
     if (ret < 0) {
-        merror("OSSEC2Prelude: IDMEF: Cannot add object '%s': %s.",
+        merror("Wazuh2Prelude: IDMEF: Cannot add object '%s': %s.",
                object, prelude_strerror(ret));
     }
 
@@ -117,7 +118,7 @@ setup_analyzer(idmef_analyzer_t *analyzer)
     return 0;
 
 err:
-    merror("OSSEC2Prelude: %s: IDMEF error: %s.",
+    merror("Wazuh2Prelude: %s: IDMEF error: %s.",
            prelude_strsource(ret), prelude_strerror(ret));
 
     return -1;
@@ -191,8 +192,13 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
                            const char *sha256,
                            const char *owner,
                            const char *gowner,
-                           int perm)
+                           const char *perm)
 {
+    mode_t octal_perms = 0;
+
+    if (perm) {
+      sscanf(perm, "%o", &octal_perms);
+    }
 
     mdebug1("filename = %s.", filename);
     mdebug1("category = %s.", category);
@@ -209,7 +215,7 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
         add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", sha1);
     }
     if (sha256) {
-        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "SHA256");
+        add_idmef_object(idmef, "alert.target(0).file(-1).checksum(>>).algorithm", "SHA2-256");
         add_idmef_object(idmef, "alert.target(0).file(-1).checksum(-1).value", sha256);
     }
 
@@ -219,21 +225,23 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.number", owner);
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).user_id.type", "user-privs");
 
-        if (perm) {
+        if (octal_perms & S_IRWXU) {
             /* Add the permissions */
-            if (perm & S_IWUSR) {
+            if (octal_perms & S_IWUSR) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "write");
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "delete");
             }
-            if (perm & S_IXUSR) {
+            if (octal_perms & S_IXUSR) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "execute");
             }
-            if (perm & S_IRUSR ) {
+            if (octal_perms & S_IRUSR ) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "read");
             }
-            if (perm & S_ISUID) {
+            if (octal_perms & S_ISUID) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "executeAs");
             }
+        } else if (perm && *perm) {
+            add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "noAccess");
         }
     }
 
@@ -243,38 +251,42 @@ static void FileAccess_PreludeLog(idmef_message_t *idmef,
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.number", gowner);
         add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).user_id.type", "group-privs");
 
-        if (perm) {
+        if (octal_perms & S_IRWXG) {
             /* Add the permissions */
-            if (perm & S_IWGRP) {
+            if (octal_perms & S_IWGRP) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "write");
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "delete");
             }
-            if (perm & S_IXGRP) {
+            if (octal_perms & S_IXGRP) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "execute");
             }
-            if (perm & S_IRGRP ) {
+            if (octal_perms & S_IRGRP ) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "read");
             }
-            if (perm & S_ISGID) {
+            if (octal_perms & S_ISGID) {
                 add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "executeAs");
             }
+        } else if (perm && *perm) {
+            add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "noAccess");
         }
     }
 
     add_idmef_object(idmef, "alert.target(0).file(-1).file_access(>>).user_id.type", "other-privs");
 
-    if (perm) {
+    if (octal_perms & S_IRWXO) {
         /* Add the permissions */
-        if (perm & S_IWOTH) {
+        if (octal_perms & S_IWOTH) {
             add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "write");
             add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "delete");
         }
-        if (perm & S_IXOTH) {
+        if (octal_perms & S_IXOTH) {
             add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "execute");
         }
-        if (perm & S_IROTH ) {
+        if (octal_perms & S_IROTH ) {
             add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "read");
         }
+    } else if (perm && *perm) {
+        add_idmef_object(idmef, "alert.target(0).file(-1).file_access(-1).permission(>>)", "noAccess");
     }
     return;
 }
@@ -291,7 +303,7 @@ void OS_PreludeLog(const Eventinfo *lf)
     /* Generate prelude alert */
     ret = idmef_message_new(&idmef);
     if ( ret < 0 ) {
-        merror("OSSEC2Prelude: Cannot create IDMEF message");
+        merror("Wazuh2Prelude: Cannot create IDMEF message");
         return;
     }
 
@@ -300,7 +312,7 @@ void OS_PreludeLog(const Eventinfo *lf)
 
     add_idmef_object(idmef, "alert.assessment.impact.severity",
                      (lf->generated_rule->level > 15) ? "high" :
-                     ossec2prelude_sev[lf->generated_rule->level]);
+                     wazuh2prelude_sev[lf->generated_rule->level]);
 
     add_idmef_object(idmef, "alert.assessment.impact.completion", "succeeded");
 
@@ -350,7 +362,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                          lf->generated_rule->comment);
 
         /* The Common Vulnerabilities and Exposures (CVE) (http://www.cve.mitre.org/)
-         * infomation if present in the triggering rule
+         * information if present in the triggering rule
          */
         if (lf->generated_rule->cve) {
             add_idmef_object(idmef, "alert.classification.reference(>>).origin", "cve");
@@ -360,16 +372,15 @@ void OS_PreludeLog(const Eventinfo *lf)
             add_idmef_object(idmef, "alert.classification.reference(-1).meaning", _prelude_data);
         }
 
-        /* Rule sid is used to create a link to the rule on the OSSEC wiki */
+        /* Check Wazuh rules for reference */
         if (lf->generated_rule->sigid) {
             add_idmef_object(idmef, "alert.classification.reference(>>).origin", "vendor-specific");
 
             snprintf(_prelude_data, 256, "Rule:%d", lf->generated_rule->sigid);
             add_idmef_object(idmef, "alert.classification.reference(-1).name", _prelude_data);
-            add_idmef_object(idmef, "alert.classification.reference(-1).meaning", "OSSEC Rule Wiki Documentation");
+            add_idmef_object(idmef, "alert.classification.reference(-1).meaning", "Wazuh Ruleset");
 
-            snprintf(_prelude_data, 256, "http://www.ossec.net/wiki/Rule:%d",
-                     lf->generated_rule->sigid);
+            snprintf(_prelude_data, 256, "https://github.com/wazuh/wazuh/tree/master/ruleset");
             add_idmef_object(idmef, "alert.classification.reference(-1).url", _prelude_data);
         }
 
@@ -414,7 +425,7 @@ void OS_PreludeLog(const Eventinfo *lf)
 
         /* Break up the list of groups on the "," boundary
          * For each section create a prelude reference classification
-         * that points back to the the OSSEC wiki for more infomation.
+         * that points back to Wazuh ruleset for more infomation.
          */
         if (lf->generated_rule->group) {
             char *copy_group;
@@ -428,10 +439,9 @@ void OS_PreludeLog(const Eventinfo *lf)
                 snprintf(_prelude_data, 256, "Group:%s", copy_group);
                 add_idmef_object(idmef, "alert.classification.reference(-1).name", _prelude_data);
 
-                add_idmef_object(idmef, "alert.classification.reference(-1).meaning", "OSSEC Group Wiki Documentation");
+                add_idmef_object(idmef, "alert.classification.reference(-1).meaning", "Wazuh Ruleset");
 
-                snprintf(_prelude_data, 256, "http://www.ossec.net/wiki/Group:%s",
-                         copy_group);
+                snprintf(_prelude_data, 256, "https://github.com/wazuh/wazuh/tree/master/ruleset");
                 add_idmef_object(idmef, "alert.classification.reference(-1).url", _prelude_data);
 
                 copy_group = strtok_r(NULL, ",", &saveptr);
@@ -514,12 +524,12 @@ void OS_PreludeLog(const Eventinfo *lf)
         FileAccess_PreludeLog(idmef,
                               "current",
                               lf->filename,
-                              lf->md5_after,
-                              lf->sha1_after,
-                              lf->sha256_after,
-                              lf->owner_after,
-                              lf->gowner_after,
-                              lf->perm_after);
+                              lf->fields[FIM_MD5].value,
+                              lf->fields[FIM_SHA1].value,
+                              lf->fields[FIM_SHA256].value,
+                              lf->fields[FIM_UID].value,
+                              lf->fields[FIM_GID].value,
+                              lf->fields[FIM_PERM].value);
         mdebug1("Done with alert.target(0).file(1)");
     }
 

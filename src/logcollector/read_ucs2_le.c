@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,6 +13,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Read ucs2 files */
@@ -20,7 +21,6 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int __ms_reported = 0;
     wchar_t str[OS_MAXSTR + 1];
-    fpos_t fp_pos;
     int lines = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
@@ -28,12 +28,15 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    /* Get initial file location */
-    fgetpos(lf->fp, &fp_pos);
+    /* Obtain context to calculate hash */
+    SHA_CTX context;
+    int64_t current_position = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, current_position);
 
-    for (offset = w_ftell(lf->fp); fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
+
         mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
 
         /* Flow control */
@@ -44,6 +47,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         wchar_t * n;
         /* Get the last occurrence of \n */
         if ((n = wcsrchr(str, L'\n')) != NULL) {
+            OS_SHA1_Stream(&context, NULL, (char *) str);
             *n = '\0';
         }
         /* If we didn't get the new line, because the
@@ -51,6 +55,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
          */
         if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
+            OS_SHA1_Stream(&context, NULL, (char *) str);
             __ms = 1;
             str[rbytes - 1] = '\0';
         } else {
@@ -60,7 +65,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             if (lf->ucs2 == UCS2_LE && feof(lf->fp)) {
                 /* Message not complete. Return. */
                 mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length,(char* ) str, rbytes > sample_log_length ? "..." : "");
-                fsetpos(lf->fp, &fp_pos);
+                w_fseek(lf->fp, current_position, SEEK_SET);
                 break;
             }
         }
@@ -73,13 +78,13 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
 
         /* Look for empty string (only on Windows) */
         if (rbytes <= 4) {
-            fgetpos(lf->fp, &fp_pos);
+            current_position = w_ftell(lf->fp);
             continue;
         }
 
         /* Windows can have comment on their logs */
         if (str[0] == '#') {
-            fgetpos(lf->fp, &fp_pos);
+            current_position = w_ftell(lf->fp);
             continue;
         }
 
@@ -127,6 +132,8 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                     break;
                 }
 
+                OS_SHA1_Stream(&context, NULL, (char *) str);
+
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 2] == '\n') {
                     break;
@@ -134,9 +141,11 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             }
             __ms = 0;
         }
-        fgetpos(lf->fp, &fp_pos);
-        continue;
+
+        current_position = w_ftell(lf->fp);
     }
+
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

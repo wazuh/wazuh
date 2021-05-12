@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Database support for Wazuh HIDS.
-# Copyright (C) 2015-2019, Wazuh Inc. <info@wazuh.com>
+# Copyright (C) 2015-2021, Wazuh Inc. <info@wazuh.com>
 # September 28, 2018.
 # This program is a free software, you can redistribute it
 # and/or modify it under the terms of GPLv2.
@@ -187,7 +187,7 @@ def _print_help():
         -d          Debug mode.
         -h          Prints this help.
 
-    Copyright 2018 Wazuh, Inc. <info@wazuh.com>
+    Copyright (C) 2015-2021 Wazuh, Inc. <info@wazuh.com>
     ''')
 
 

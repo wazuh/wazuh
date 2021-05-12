@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for OpenSCAP
- * Copyright (C) 2015-2019, Wazuh Inc
+ * Copyright (C) 2015-2021, Wazuh Inc
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -13,11 +13,9 @@
 #define WM_OSCAP
 
 #define WM_OSCAP_DEF_TIMEOUT    1800    // Default runtime limit (30 minutes)
-#define WM_OSCAP_DEF_INTERVAL   86400   // Default cycle interval (1 day)
 
 #define WM_OSCAP_LOGTAG ARGV0 ":oscap"
-#define WM_OSCAP_DEFAULT_DIR WM_DEFAULT_DIR "/oscap"
-#define WM_OSCAP_SCRIPT_PATH WM_OSCAP_DEFAULT_DIR "/oscap.py"
+#define WM_OSCAP_SCRIPT_PATH "wodles/oscap/oscap.py"
 
 typedef enum wm_oscap_eval_t { WM_OSCAP_XCCDF = 1, WM_OSCAP_OVAL } wm_oscap_eval_t;
 
@@ -50,7 +48,7 @@ typedef struct wm_oscap_state {
 } wm_oscap_state;
 
 typedef struct wm_oscap {
-    unsigned int interval;          // Default time interval between cycles
+    sched_scan_config scan_config;
     unsigned int timeout;           // Default execution time limit (seconds)
     wm_oscap_flags flags;           // Default flags
     wm_oscap_state state;           // Running state

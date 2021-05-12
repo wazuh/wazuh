@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,10 +12,9 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-int rotate_log;
 
 /* Start the agent daemon */
-void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
+void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
     int maxfd = 0;
@@ -30,51 +29,62 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Initialize sender */
     sender_init();
 
-    // Resolve hostnames
-    rc = 0;
-    while (rc < agt->rip_id) {
-        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
-            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolveHostname(&agt->server[rc].rip, 5);
-            int rip_l = strlen(agt->server[rc].rip);
-            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-        }
-        rc++;
-    }
-
     /* Going Daemon */
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
     }
 
-    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
-
-    if (!getuname()) {
-        merror(MEM_ERROR, errno, strerror(errno));
-    } else
-        minfo("Version detected -> %s", getuname());
-
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
-    }
-    nowChroot();
-
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
+    }
+
+    if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+        // If autoenrollment is enabled, we will avoid exit if there is no valid key
+        OS_PassEmptyKeyfile();
+    } else {
+        /* Check auth keys */
+        if (!OS_CheckKeys()) {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
+    }
+    /* Read private keys  */
+    minfo(ENC_READ);
+    OS_ReadKeys(&keys, 1, 0);
+
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->server_count) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolve_hostname(&agt->server[rc].rip, 5);
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+        }
+        rc++;
+    }
+
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+    if (agt->force_reconnect_interval) {
+        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
+    }
+
+    if (!getuname()) {
+        merror(MEM_ERROR, errno, strerror(errno));
+    } else {
+        minfo("Version detected -> %s", getuname());
     }
 
     /* Try to connect to server */
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
+    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
@@ -94,28 +104,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         merror_exit(PID_ERROR);
     }
 
-    /* Read private keys  */
-    minfo(ENC_READ);
-
-    OS_StartCounter(&keys);
-
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
-                        agt->profile);
-
-    /*Set the crypto method for the agent */
-    os_set_agent_crypto_method(&keys,agt->crypto_method);
-
-    switch (agt->crypto_method) {
-        case W_METH_AES:
-            minfo("Using AES as encryption method.");
-            break;
-        case W_METH_BLOWFISH:
-            minfo("Using Blowfish as encryption method.");
-            break;
-        default:
-            merror("Invalid encryption method.");
-    }
-
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
@@ -125,7 +113,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     signal(SIGPIPE, SIG_IGN);
 
     /* Launch rotation thread */
-
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
     if (rotate_log) {
         w_create_thread(w_rotate_log_thread, (void *)NULL);
@@ -137,23 +124,21 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         buffer_init();
 
         w_create_thread(dispatch_buffer, (void *)NULL);
-    }else{
+    } else {
         minfo(DISABLED_BUFFER);
     }
+
     /* Connect remote */
     rc = 0;
-    while (rc < agt->rip_id) {
+    while (rc < agt->server_count) {
         int rip_l = strlen(agt->server[rc].rip);
         minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         rc++;
     }
 
+    /* Configure and start statistics */
+    w_agentd_state_init();
     w_create_thread(state_main, NULL);
-
-    /* Try to connect to the server */
-    if (!connect_server(0)) {
-        merror_exit(UNABLE_CONN);
-    }
 
     /* Set max fd for select */
     if (agt->sock > maxfd) {
@@ -162,7 +147,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
+        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;
@@ -172,7 +157,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     start_agent(1);
 
     os_delwait();
-    update_status(GA_STATUS_ACTIVE);
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
     // Ignore SIGPIPE signal to prevent the process from crashing
     struct sigaction act;
@@ -180,13 +165,12 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
 
-    /* Send integrity message for agent configs */
-    intcheck_file(OSSECCONF, dir);
-    intcheck_file(OSSEC_DEFINES, dir);
-
     // Start request module
     req_init();
     w_create_thread(req_receiver, NULL);
+
+    /* Send agent stopped message at exit */
+    atexit(send_agent_stopped_message);
 
     /* Send first notification */
     run_notify();
@@ -223,13 +207,13 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         /* For the receiver */
         if (FD_ISSET(agt->sock, &fdset)) {
             if (receive_msg() < 0) {
-                update_status(GA_STATUS_NACTIVE);
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
                 os_setwait();
                 start_agent(0);
                 minfo(SERVER_UP);
                 os_delwait();
-                update_status(GA_STATUS_ACTIVE);
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
             }
         }
 

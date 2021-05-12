@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Aug 17, 2018.
  *
  * This program is free software; you can redistribute it
@@ -27,14 +27,14 @@ size_t moncom_dispatch(char * command, char ** output) {
         // getconfig section
         if (!rcv_args){
             mdebug1("MONCOM getconfig needs arguments.");
-            *output = strdup("err MONCOM getconfig needs arguments");
+            os_strdup("err MONCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return moncom_getconfig(rcv_args, output);
 
     } else {
         mdebug1("MONCOM Unrecognized command '%s'.", rcv_comm);
-        *output = strdup("err Unrecognized command");
+        os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
 }
@@ -46,7 +46,7 @@ size_t moncom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "internal") == 0){
         if (cfg = getMonitorInternalOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -58,7 +58,19 @@ size_t moncom_getconfig(const char * section, char ** output) {
     }
     else if (strcmp(section, "reports") == 0){
         if (cfg = getReportsOptions(), cfg) {
-            *output = strdup("ok");
+            os_strdup("ok", *output);
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_Delete(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+    }
+    else if (strcmp(section, "global") == 0){
+        if (cfg = getMonitorGlobalOptions(), cfg) {
+            os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -72,7 +84,7 @@ size_t moncom_getconfig(const char * section, char ** output) {
     }
 error:
     mdebug1("At MONCOM getconfig: Could not get '%s' section", section);
-    *output = strdup("err Could not get requested section");
+    os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
 

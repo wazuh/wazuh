@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ static int save_agentless_entry(const char *host, const char *script, const char
 
     sys_location[1024] = '\0';
     snprintf(sys_location, 1024, "%s/(%s) %s",
-             AGENTLESS_ENTRYDIRPATH, script, host);
+             AGENTLESS_ENTRYDIR, script, host);
 
     fp = fopen(sys_location, "w");
     if (fp) {
@@ -60,8 +60,8 @@ static int send_intcheck_msg(const char *script, const char *host, const char *m
     if (SendMSG(lessdc.queue, msg, sys_location, SYSCHECK_MQ) < 0) {
         merror(QUEUE_SEND);
 
-        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+        if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         /* If we reach here, we can try to send it again */
@@ -81,8 +81,8 @@ static int send_log_msg(const char *script, const char *host, const char *msg)
 
     if (SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ) < 0) {
         merror(QUEUE_SEND);
-        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+        if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         /* If we reach here, we can try to send it again */
@@ -103,7 +103,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     diff_alert[OS_MAXSTR - OS_LOG_HEADER] = '\0';
 
     snprintf(buf, 2048, "%s/%s->%s/diff.%d",
-             DIFF_DIR_PATH, host, script, (int)alert_diff_time);
+             DIFF_DIR, host, script, (int)alert_diff_time);
 
     fp = fopen(buf, "r");
     if (!fp) {
@@ -137,8 +137,8 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {
         merror(QUEUE_SEND);
 
-        if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+        if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         /* If we reach here, we can try to send it again */
@@ -172,9 +172,9 @@ static int check_diff_file(const char *host, const char *script)
     tmp_location[1024] = '\0';
     diff_location[1024] = '\0';
 
-    snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+    snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR, host, script,
              DIFF_NEW_FILE);
-    snprintf(old_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+    snprintf(old_location, 1024, "%s/%s->%s/%s", DIFF_DIR, host, script,
              DIFF_LAST_FILE);
 
     /* If the file is not there, rename new location to last location */
@@ -199,7 +199,7 @@ static int check_diff_file(const char *host, const char *script)
 
     /* Save the old file at timestamp and rename new to last */
     date_of_change = File_DateofChange(old_location);
-    snprintf(tmp_location, 1024, "%s/%s->%s/state.%d", DIFF_DIR_PATH, host, script,
+    snprintf(tmp_location, 1024, "%s/%s->%s/state.%d", DIFF_DIR, host, script,
              (int)date_of_change);
 
     if (rename(old_location, tmp_location) != 0) {
@@ -219,7 +219,7 @@ static int check_diff_file(const char *host, const char *script)
         return 0;
     }
 
-    snprintf(diff_location, sizeof(diff_location), DIFF_DIR_PATH "/%s->%s/diff.%d", host, script, (int)date_of_change);
+    snprintf(diff_location, sizeof(diff_location), DIFF_DIR "/%s->%s/diff.%d", host, script, (int)date_of_change);
 
     if (fp = fopen(diff_location, "wb"), !fp) {
         merror("Unable to open diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
@@ -255,14 +255,14 @@ static FILE *open_diff_file(const char *host, const char *script)
     char sys_location[1024 + 1];
 
     sys_location[1024] = '\0';
-    snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+    snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR, host, script,
              DIFF_NEW_FILE);
 
     fp = fopen(sys_location, "w");
 
     /* If we can't open, try creating the directory */
     if (!fp) {
-        snprintf(sys_location, 1024, "%s/%s->%s", DIFF_DIR_PATH, host, script);
+        snprintf(sys_location, 1024, "%s/%s->%s", DIFF_DIR, host, script);
         if (IsDir(sys_location) == -1) {
             if (mkdir(sys_location, 0770) == -1) {
                 merror(MKDIR_ERROR, sys_location, errno, strerror(errno));
@@ -270,7 +270,7 @@ static FILE *open_diff_file(const char *host, const char *script)
             }
         }
 
-        snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host,
+        snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR, host,
                  script, DIFF_NEW_FILE);
         fp = fopen(sys_location, "w");
         if (!fp) {
@@ -287,9 +287,10 @@ static char ** command_args(const char * type, const char * server, const char *
     char ** argv;
     char * _options;
     char * token;
+    char * save_ptr = NULL;
     int i = 1;
 
-    snprintf(command, sizeof(command), AGENTLESSDIRPATH "/%s", type);
+    snprintf(command, sizeof(command), AGENTLESSDIR "/%s", type);
 
     os_malloc(4 * sizeof(char *), argv);
     os_strdup(command, argv[0]);
@@ -306,7 +307,7 @@ static char ** command_args(const char * type, const char * server, const char *
     os_strdup(server + 1, argv[i++]);
     os_strdup(options, _options);
 
-    for (token = strtok(_options, " "); token; token = strtok(NULL, " ")) {
+    for (token = strtok_r(_options, " ", &save_ptr); token; token = strtok_r(NULL, " ", &save_ptr)) {
         os_strdup(token, argv[i++]);
         os_realloc(argv, (i + 1) * sizeof(char *), argv);
     }
@@ -341,7 +342,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         /* We only test for the first server entry */
         else if (test_it) {
             int ret_code = 0;
-            snprintf(command, OS_SIZE_1024, "%s/%s", AGENTLESSDIRPATH, entry->type);
+            snprintf(command, OS_SIZE_1024, "%s/%s", AGENTLESSDIR, entry->type);
 
             if (wfd = wpopenl(command, W_CHECK_WRITE, command, "test", "test", NULL), wfd) {
                 ret_code = wpclose(wfd);
@@ -436,25 +437,22 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 void Agentlessd()
 {
     time_t tm;
-    struct tm *p;
+    struct tm tm_result = { .tm_sec = 0 };
 
     int today = 0;
     int test_it = 1;
 
-    char str[OS_SIZE_1024 + 1];
-
     /* Wait a few seconds to settle */
     sleep(2);
-    memset(str, '\0', OS_SIZE_1024 + 1);
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    localtime_r(&tm, &tm_result);
 
-    today = p->tm_mday;
+    today = tm_result.tm_mday;
 
     /* Connect to the message queue. Exit if it fails. */
-    if ((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+    if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
@@ -465,11 +463,11 @@ void Agentlessd()
     while (1) {
         unsigned int i = 0;
         tm = time(NULL);
-        p = localtime(&tm);
+        localtime_r(&tm, &tm_result);
 
         /* Day changed, deal with log files */
-        if (today != p->tm_mday) {
-            today = p->tm_mday;
+        if (today != tm_result.tm_mday) {
+            today = tm_result.tm_mday;
         }
 
         while (lessdc.entries[i]) {

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -12,6 +12,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Send pgsql message and check the return code */
@@ -37,12 +38,19 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
+    /* Obtain context to calculate hash */
+    SHA_CTX context;
+    int64_t current_position = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, current_position);
+
     /* Get new entry */
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */
         str_len = strlen(str);
+
+        OS_SHA1_Stream(&context, NULL, str);
 
         /* Check str_len size. Very useless, but just to make sure.. */
         if (str_len >= sizeof(buffer) - 2) {
@@ -132,13 +140,15 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             }
         }
 
-        continue;
     }
 
     /* Send whatever is stored */
     if (buffer[0] != '\0') {
         __send_pgsql_msg(lf, drop_it, buffer);
     }
+
+    current_position = w_ftell(lf->fp);
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

@@ -1,6 +1,6 @@
 /*
  * Wazuh Integration with Osquery
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 5, 2018.
  *
  * This program is free software; you can redistribute it
@@ -50,7 +50,8 @@ const wm_context WM_OSQUERYMONITOR_CONTEXT = {
     "osquery",
     (wm_routine)wm_osquery_monitor_main,
     (wm_routine)(void *)wm_osquery_monitor_destroy,
-    (cJSON * (*)(const void *))wm_osquery_dump
+    (cJSON * (*)(const void *))wm_osquery_dump,
+    NULL
 };
 
 void *Read_Log(wm_osquery_monitor_t * osquery)
@@ -418,7 +419,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 
     os_calloc(1, sizeof(wlabel_t), labels);
 
-    if (ReadConfig(CLABELS, DEFAULTCPATH, &labels, NULL) < 0)
+    if (ReadConfig(CLABELS, OSSECCONF, &labels, NULL) < 0)
         goto end;
 
 #ifdef CLIENT
@@ -480,11 +481,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 
     free(osquery->config_path);
 
-#ifdef WIN32
     os_strdup(TMP_CONFIG_PATH, osquery->config_path);
-#else
-    os_strdup(DEFAULTDIR "/" TMP_CONFIG_PATH, osquery->config_path);
-#endif
 
     // Write new configuration
 
@@ -554,11 +551,7 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
     free(osquery->config_path);
 
-#ifdef WIN32
     os_strdup(TMP_CONFIG_PATH, osquery->config_path);
-#else
-    os_strdup(DEFAULTDIR "/" TMP_CONFIG_PATH, osquery->config_path);
-#endif
 
     // Write new configuration
 
@@ -585,16 +578,10 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     osquery->msg_delay = 1000000 / wm_max_eps;
 
 #ifndef WIN32
-    int i;
-
     // Connect to queue
 
-    for (i = 0; i < WM_MAX_ATTEMPTS && (osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE), osquery->queue_fd < 0); i++) {
-        // Trying to connect to queue
-        sleep(WM_MAX_WAIT);
-    }
-
-    if (i == WM_MAX_ATTEMPTS) {
+    osquery->queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    if (osquery->queue_fd < 0) {
         mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
         return NULL;
     }

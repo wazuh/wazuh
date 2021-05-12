@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,6 +16,7 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_sca.h"
+#include "syscheck_op.h"
 #include "agentd.h"
 
 /* Global variables */
@@ -95,7 +96,7 @@ int receive_msg()
             undefined_msg_logged = 0;
 
             available_server = (int)time(NULL);
-            update_ack(available_server);
+            w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
 
 #ifdef WIN32
             /* Run timeout commands */
@@ -124,9 +125,38 @@ int receive_msg()
                 continue;
             }
 
-            /* Restart syscheck */
-            else if (strcmp(tmp_msg, HC_SK_RESTART) == 0) {
-                os_set_restart_syscheck();
+            /* Force reconnect agent to the manager */
+            else if (strncmp(tmp_msg, HC_FORCE_RECONNECT, strlen(HC_FORCE_RECONNECT)) == 0) {
+                /* Set lock and wait for it */
+                minfo("Wazuh Agent will be reconnected because a reconnect message was received");
+                os_setwait();
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+
+                /* Send sync message */
+                start_agent(0);
+
+                os_delwait();
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+                continue;
+            }
+
+            /* Syscheck */
+            else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_SK));
+                continue;
+            }
+            else if (strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_FIM_FILE));
+                continue;
+            }
+            else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+                continue;
+            }
+
+            /* syscollector */
+            else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
+                wmcom_send(tmp_msg);
                 continue;
             }
 
@@ -147,27 +177,27 @@ int receive_msg()
                 /* Connect to the Security configuration assessment queue */
                 if (agt->cfgadq >= 0) {
                     if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                        merror("Error communicating with Security configuration assessment");
+                        mwarn("Error communicating with Security configuration assessment");
                         close(agt->cfgadq);
 
-                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
-                            merror("Unable to connect to the Security configuration assessment "
+                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
+                            mwarn("Unable to connect to the Security configuration assessment "
                                     "queue (disabled).");
                             agt->cfgadq = -1;
                         } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            merror("Error communicating with Security configuration assessment");
+                            mwarn("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }
                     }
                 } else {
-                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
-                        merror("Unable to connect to the Security configuration assessment "
+                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
+                        mwarn("Unable to connect to the Security configuration assessment "
                             "queue (disabled).");
                         agt->cfgadq = -1;
                     } else {
                          if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            merror("Error communicating with Security configuration assessment");
+                            mwarn("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }
@@ -267,7 +297,7 @@ int receive_msg()
                                 if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
                                     char msg_output[OS_MAXSTR];
 
-                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                     send_msg(msg_output, -1);
                                 }
                                 else if (agt->flags.remote_conf && !verifyRemoteConf()) {
@@ -296,7 +326,7 @@ int receive_msg()
 
         else if (fp) {
             available_server = (int)time(NULL);
-            update_ack(available_server);
+            w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
             fprintf(fp, "%s", tmp_msg);
         }
 

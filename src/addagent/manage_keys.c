@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,6 +15,8 @@
 #ifdef WIN32
   #include <wincrypt.h>
 #endif
+
+#define DEFAULT_ID   132512
 
 /* Prototypes */
 static char *trimwhitespace(char *str);
@@ -54,7 +56,7 @@ int k_import(const char *cmdimport)
 {
     FILE *fp;
     const char *user_input;
-    char auth_file[] = AUTH_FILE;
+    char auth_file[] = KEYS_FILE;
     char *keys_file = basename_ex(auth_file);
     char *b64_dec;
 
@@ -196,7 +198,7 @@ int k_extract(const char *cmdextract, int json_output)
         json_root = cJSON_CreateObject();
 
     if (cmdextract) {
-        user_input = strdup(cmdextract);
+        os_strdup(cmdextract, user_input);
         FormatID(user_input);
 
         if (!IDExist(user_input, 1)) {
@@ -239,17 +241,17 @@ int k_extract(const char *cmdextract, int json_output)
     }
 
     /* Try to open the auth file */
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         if (json_output) {
             char buffer[1024];
-            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
             cJSON_AddNumberToObject(json_root, "error", 71);
             cJSON_AddStringToObject(json_root, "message", buffer);
             printf("%s", cJSON_PrintUnformatted(json_root));
             exit(1);
         } else
-            merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+            merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
     }
 
     if (fsetpos(fp, &fp_pos)) {
@@ -327,6 +329,7 @@ int k_bulkload(const char *cmdbulk)
     char ip[FILE_SIZE + 1];
     char delims[] = AGENT_FILE_DELIMS;
     char *token = NULL;
+    char *save_ptr;
 
     sock = auth_connect();
 
@@ -339,9 +342,9 @@ int k_bulkload(const char *cmdbulk)
     }
 
     /* Check if we can open the auth_file */
-    fp = fopen(AUTH_FILE, "a");
+    fp = fopen(KEYS_FILE, "a");
     if (!fp) {
-        merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
     }
     fclose(fp);
 
@@ -354,11 +357,11 @@ int k_bulkload(const char *cmdbulk)
         }
 
         memset(ip, '\0', FILE_SIZE + 1);
-        token = strtok(line, delims);
+        token = strtok_r(line, delims, &save_ptr);
         strncpy(ip, trimwhitespace(token), FILE_SIZE - 1);
 
         memset(name, '\0', FILE_SIZE + 1);
-        token = strtok(NULL, delims);
+        token = strtok_r(NULL, delims, &save_ptr);
 
         if (!token)
             merror_exit(SYNTAX_ERROR, cmdbulk);
@@ -366,8 +369,8 @@ int k_bulkload(const char *cmdbulk)
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
-        if (chmod(AUTH_FILE, 0640) == -1) {
-            merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
+        if (chmod(KEYS_FILE, 0640) == -1) {
+            merror_exit(CHMOD_ERROR, KEYS_FILE, errno, strerror(errno));
         }
 #endif
 
@@ -406,7 +409,7 @@ int k_bulkload(const char *cmdbulk)
 
         if (sock < 0) {
             /* Default ID */
-            i = MAX_AGENTS + 32512;
+            i = DEFAULT_ID;
             snprintf(id, 8, "%03d", i);
             while (sock < 0 && !IDExist(id, 0)) {
                 i--;
@@ -437,13 +440,13 @@ int k_bulkload(const char *cmdbulk)
             time3 = time(0);
             rand2 = os_random();
 
-            fp = fopen(AUTH_FILE, "a");
+            fp = fopen(KEYS_FILE, "a");
             if (!fp) {
                 merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
             }
 #ifndef WIN32
-            if (chmod(AUTH_FILE, 0640) == -1) {
-                merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
+            if (chmod(KEYS_FILE, 0640) == -1) {
+                merror_exit(CHMOD_ERROR, KEYS_FILE, errno, strerror(errno));
             }
 #endif
 
@@ -454,8 +457,8 @@ int k_bulkload(const char *cmdbulk)
              * Random 5: Final key
              */
 
-            snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-            snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+            os_snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+            os_snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
             OS_MD5_Str(str1, -1, md1);
             OS_MD5_Str(str2, -1, md2);
@@ -466,7 +469,7 @@ int k_bulkload(const char *cmdbulk)
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
         } else {
-            if (auth_add_agent(sock, id, name, ip, NULL, -1, 0,NULL,1) < 0) {
+            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, -1, 0,NULL,1) < 0) {
                 goto cleanup;
             }
         }

@@ -1,56 +1,82 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
-import pytest
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
-        from wazuh.exception import WazuhException
-        from wazuh import active_response
 import os
+import sys
+from unittest.mock import patch, MagicMock
 
-# all necessary params
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+import pytest
+
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
+        from wazuh.tests.util import RBAC_bypasser
+
+        del sys.modules['wazuh.rbac.orm']
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
+        from wazuh.active_response import run_command
+        from wazuh.core.tests.test_active_response import agent_config, agent_info_exception_and_version
+
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
+full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008']
 
 
-def test_get_commands():
-    with patch("wazuh.common.ossec_path", new=test_data_path):
-        assert (active_response.get_commands() != [])
+# Tests
 
-
-@patch('wazuh.active_response.OssecQueue')
-@patch('wazuh.active_response.Agent')
-@patch('wazuh.active_response.get_commands', return_value=['valid_cmd', 'another_valid_cmd', 'one_more'])
-@pytest.mark.parametrize('expected_exception, agent_id, command, arguments, custom', [
-    (1650, '000', None, [], False),
-    (1653, None, 'random', [], False),
-    (1655, '000', 'invalid_cmd', [], False),
-    (1651, '001', 'valid_cmd', [], False),
-    (None, '001', 'valid_cmd', [], False),
-    (None, '001', 'valid_cmd', [], True),
-    (None, '001', 'valid_cmd', ["arg1", "arg2"], False),
-    (None, '000', 'valid_cmd', [], False),
-    (None, 'all', 'valid_cmd', [], False)
+@pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, custom, alert, version', [
+    (1701, None, ['999'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (1703, None, ['000'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (1650, None, ['001'], None, [], False, None, 'Wazuh v4.0.0'),
+    (1652, None, ['002'], 'random', [], False, None, 'Wazuh v4.0.0'),
+    (None, 1651, ['003'], 'restart-wazuh0', [], False, None, None),
+    (None, 1750, ['004'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['005'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['006'], 'custom-ar', [], True, None, 'Wazuh v4.0.0'),
+    (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.2.0'),
+    (None, None, ['002'], 'restart-wazuh0', [], False, None, 'Wazuh v4.2.1'),
 ])
-def test_run_command(cmd_patch, agent_patch, queue_patch, expected_exception, agent_id, command, arguments, custom):
-    """
-    Tests run_command function
-    """
-    agent_patch.return_value.get_basic_information.return_value = {'status': 'disconnected' if expected_exception else 'active'}
-    queue_patch.return_value.send_msg_to_agent.return_value = "success"
-    queue_patch.AR_TYPE = "AR"
+@patch("wazuh.core.wazuh_queue.WazuhQueue._connect")
+@patch("wazuh.syscheck.WazuhQueue._send", return_value='1')
+@patch("wazuh.core.wazuh_queue.WazuhQueue.close")
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
+def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, message_exception,
+                     send_exception, agent_id, command, arguments, custom, alert, version):
+    """Verify the proper operation of active_response module.
 
-    if expected_exception is not None:
-        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            active_response.run_command(agent_id, command, arguments, custom)
-    else:
-        ret = active_response.run_command(agent_id, command, arguments, custom)
-        assert ret == "success"
-        handle = queue_patch()
-        msg = f'{"!" if custom else ""}{command} {"- -" if not arguments else " ".join(arguments)}'
-        if agent_id != 'all':
-            handle.send_msg_to_agent.assert_called_with(agent_id=agent_id, msg=msg, msg_type='AR')
-        else:
-            handle.send_msg_to_agent.assert_called_with(agent_id=None, msg=msg, msg_type='AR')
+    Parameters
+    ----------
+    message_exception : int
+        Exception code expected when calling create_message.
+    send_exception : int
+        Exception code expected when calling send_command.
+    agent_id : list
+        Agents on which to execute the Active response command.
+    command : string
+        Command to be executed on the agent.
+    arguments : list
+        Arguments of the command.
+    custom : boolean
+        True if command is a script.
+    version : list
+        List with the agent version to test whether the message sent was the correct one or not.
+    """
+    with patch('wazuh.core.agent.Agent.get_basic_information',
+               return_value=agent_info_exception_and_version(send_exception, version)):
+        with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(send_exception)):
+            if message_exception:
+                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
+                assert ret.render()['data']['failed_items'][0]['error']['code'] == message_exception
+            else:
+                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
+                if send_exception:
+                    assert ret.render()['message'] == 'AR command was not sent to any agent'
+                    assert ret.render()['data']['failed_items'][0]['error']['code'] == send_exception
+                else:
+                    assert ret.render()['message'] == 'AR command was sent to all agents'

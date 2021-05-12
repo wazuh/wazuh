@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -11,6 +11,8 @@
 #include "config.h"
 #include "shared.h"
 #include "global-config.h"
+
+#ifndef WIN32
 
 #define DEFAULT_RULE_DIR "ruleset/rules"
 #define DEFAULT_DECODER_DIR "ruleset/decoders"
@@ -81,7 +83,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     char path[PATH_MAX + 2];
     char f_name[PATH_MAX + 2];
     int att_count = 0;
-    struct dirent *entry;
+    struct dirent *entry = NULL;
     DIR *dfd;
     OSRegex regex;
 
@@ -111,7 +113,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     regex.prts_closure = NULL;
     regex.d_prts_str = NULL;
     regex.d_sub_strings = NULL;
-    regex.mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    w_mutex_init(&regex.mutex, NULL);
 
     if (node) {
         while (node[i]) {
@@ -272,11 +274,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
     for (i = 0; decoder_dirs[i]; i++) {
         mdebug1("Reading decoders folder: %s", decoder_dirs[i]);
-        if(isChroot()) {
-            snprintf(path, PATH_MAX + 1, "%s", decoder_dirs[i]);
-        } else {
-            snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, decoder_dirs[i]);
-        }
+        snprintf(path, PATH_MAX + 1, "%s", decoder_dirs[i]);
 
         OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(decoder_dirs_pattern[i], &regex, 0)) {
@@ -329,11 +327,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
     for (i = 0; rules_dirs[i]; i++) {
         mdebug1("Reading rules folder: %s", rules_dirs[i]);
-        if(isChroot()) {
-            snprintf(path, PATH_MAX + 1, "%s", rules_dirs[i]);
-        } else {
-            snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, rules_dirs[i]);
-        }
+        snprintf(path, PATH_MAX + 1, "%s", rules_dirs[i]);
 
         OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(rules_dirs_pattern[i], &regex, 0)) {
@@ -392,12 +386,13 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     OSRegex_FreePattern(&regex);
 
 cleanup:
-    free(exclude_decoders);
-    free(exclude_rules);
-    free(decoder_dirs);
-    free(rules_dirs);
-    free(decoder_dirs_pattern);
-    free(rules_dirs_pattern);
+    free_strarray(exclude_decoders);
+    free_strarray(exclude_rules);
+    free_strarray(decoder_dirs);
+    free_strarray(rules_dirs);
+    free_strarray(decoder_dirs_pattern);
+    free_strarray(rules_dirs_pattern);
 
     return retval;
 }
+#endif

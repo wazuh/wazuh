@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -59,12 +59,12 @@ SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, con
         char default_key[PATH_MAX + 1];
 
         if (!cert) {
-            snprintf(default_cert, PATH_MAX + 1, "%s%s", os_dir, CERTFILE);
+            snprintf(default_cert, PATH_MAX + 1, "%s/%s", os_dir, CERTFILE);
             cert = default_cert;
         }
 
         if (!key) {
-            snprintf(default_key, PATH_MAX + 1, "%s%s", os_dir, KEYFILE);
+            snprintf(default_key, PATH_MAX + 1, "%s/%s", os_dir, KEYFILE);
             key = default_key;
         }
 
@@ -200,4 +200,21 @@ int verify_callback(int ok, X509_STORE_CTX *store)
     }
 
     return ok;
+}
+
+
+int wrap_SSL_read(SSL *ssl, void *buf, int num) {
+    int ret = 0;
+    int offset = 0;
+    ret = SSL_read(ssl, buf, num);
+    while(ret >= MAX_SSL_PACKET_SIZE) {
+        offset += ret;
+        ret = SSL_read(ssl, (void *) buf + offset, num - offset);
+    }
+    if (ret < 0 && offset > 0) {
+        // If we have already read at least once return what was read
+        return offset;
+    } else {
+        return offset + ret;
+    }
 }

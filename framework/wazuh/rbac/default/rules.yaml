@@ -1,0 +1,14 @@
+# WAZUH SYSTEM FILE, PLEASE DO NOT MODIFY
+
+default_rules:
+  wui_elastic_admin:
+    description: "Administrator permissions for WUI's elastic users."
+    rule:
+      FIND:
+        username: "elastic"
+
+  wui_opendistro_admin:
+    description: "Administrator permissions for WUI's opendistro users."
+    rule:
+      FIND:
+        user_name: "admin"

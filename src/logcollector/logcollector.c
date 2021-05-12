@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,11 +10,20 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "state.h"
 #include <math.h>
 #include <pthread.h>
 
+// Remove STATIC qualifier from tests
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
+#define OFFSET_SIZE 20
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -27,6 +36,51 @@ static void files_lock_init(void);
 static void check_text_only();
 static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
+static void set_can_read(int value);
+
+/**
+ * @brief Create files_status hash and load the previous estatus from JSON file
+ */
+STATIC void w_initialize_file_status();
+
+/**
+ * @brief Before stop logcollector save the files_status hash on JSON file
+ */
+STATIC void w_save_file_status();
+
+/**
+ * @brief Load files_status data to hash
+ * @param global_json json wich contains the previous files_status hash
+ */
+STATIC void w_load_files_status(cJSON *global_json);
+
+/**
+ * @brief Parse the hash files_status to JSON
+ * @return json of all read status files in a string
+ */
+STATIC char * w_save_files_status_to_cJSON();
+
+/**
+ * @brief Set file on the last line read or on the end in case the status hasn't been saved.
+ * @param lf logreader to set
+ * @return 0 on success, otherwise -1
+ */
+STATIC int w_set_to_last_line_read(logreader *lf);
+
+/**
+ * @brief Set file on the end
+ * @param lf logreader to set
+ * @return 0 on success, otherwise -1
+ */
+STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
+
+/**
+ * @brief Update or add (if it not exit) hash node
+ * @param path Hash key
+ * @param pos Offset of hash
+ * @return 0 on success, otherwise -1
+ */
+STATIC int w_update_hash_node(char * path, int64_t pos);
 
 /* Global variables */
 int loop_timeout;
@@ -42,6 +96,13 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
+int state_interval;
+OSHash * msg_queues_table;
+
+///< To asociate the path, the position to read, and the hash key of lines read.
+OSHash * files_status;
+///< Use for log messages
+char *files_status_name = "file_status";
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
@@ -56,31 +117,15 @@ static pthread_mutex_t win_el_mutex;
 static pthread_mutexattr_t win_el_mutex_attr;
 #endif
 
+/* can read synchronization */
+static int _can_read = 0;
+static pthread_rwlock_t can_read_rwlock;
+
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
-
-static char *rand_keepalive_str(char *dst, int size)
-{
-    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
-                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                               "0123456789"
-                               "!@#$%^&*()_+-=;'[],./?";
-    int i;
-    int len;
-    srandom_init();
-    len = os_random() % (size - 10);
-    len = len >= 0 ? len : -len;
-
-    strncpy(dst, "--MARK--: ", 12);
-    for ( i = 10; i < len; ++i ) {
-        dst[i] = text[(unsigned int)os_random() % (sizeof text - 1)];
-    }
-    dst[i] = '\0';
-    return dst;
-}
 
 /* Handle file management */
 void LogCollectorStart()
@@ -91,7 +136,6 @@ void LogCollectorStart()
     int f_free_excluded = 0;
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
-    char keepalive[1024];
     logreader *current;
 
     /* Create store data */
@@ -106,6 +150,33 @@ void LogCollectorStart()
         merror_exit(LIST_ERROR);
     }
 
+    /* Initialize status file struct (files_status) and set w_save_file_status at the process exit */
+    w_initialize_file_status();
+
+    if (atexit(w_save_file_status)) {
+        merror(ATEXIT_ERROR);
+    }
+
+    /* Initialize state component */
+    if (state_interval == 0) {
+        w_logcollector_state_init(LC_STATE_GLOBAL, false);
+    } else if (state_interval > 0) {
+        w_logcollector_state_init(LC_STATE_GLOBAL | LC_STATE_INTERVAL, true);
+    }
+
+
+    /* Create the state thread */
+#ifndef WIN32
+    w_create_thread(w_logcollector_state_main, (void *) &state_interval);
+#else
+    w_create_thread(NULL,
+                    0,
+                    w_logcollector_state_main,
+                    (void *) &state_interval,
+                    0,
+                    NULL);
+#endif
+
     set_sockets();
     files_lock_init();
 
@@ -114,7 +185,6 @@ void LogCollectorStart()
     check_pattern_expand_excluded();
 
     w_mutex_init(&mutex, NULL);
-
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -127,7 +197,6 @@ void LogCollectorStart()
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
     memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
-    int r;
     const char *m_uname;
 
     m_uname = getuname();
@@ -182,8 +251,9 @@ void LogCollectorStart()
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
-#endif
+#else
             free(current->file);
+#endif
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -192,15 +262,16 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, current->query);
+            win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
             mwarn("eventchannel not available on this version of Windows");
 #endif
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
-#endif
+#else
             free(current->file);
+#endif
             current->file = NULL;
             current->command = NULL;
             current->fp = NULL;
@@ -272,7 +343,12 @@ void LogCollectorStart()
              */
 #ifdef WIN32
             if (current->fp) {
-                current->read(current, &r, 1);
+                if (current->future == 0) {
+                    w_set_to_last_line_read(current);
+                } else {
+                    int64_t offset = w_set_to_pos(current, 0, SEEK_END);
+                    w_update_hash_node(current->file, offset);
+                }
             }
 
             /* Mutexes are not previously initialized under Windows*/
@@ -281,11 +357,17 @@ void LogCollectorStart()
         } else {
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
-            set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
 
             if (current->fp) {
-                current->read(current, &r, 1);
+                if (current->future == 0) {
+                    w_set_to_last_line_read(current);
+                } else {
+                    int64_t offset = w_set_to_pos(current, 0, SEEK_END);
+                    w_update_hash_node(current->file, offset);
+                }
             }
 #endif
         }
@@ -300,6 +382,9 @@ void LogCollectorStart()
             }
         }
     }
+
+    //Save status localfiles to disk
+    w_save_file_status();
 
     // Initialize message queue's log builder
     mq_log_builder_init();
@@ -318,14 +403,15 @@ void LogCollectorStart()
     // Start com request thread
     w_create_thread(lccom_main, NULL);
 #endif
-
+    set_can_read(1);
     /* Daemon loop */
     while (1) {
 
         /* Free hash table content for excluded files */
         if (f_free_excluded >= free_excluded_files_interval) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
-
+            set_can_read(1); // Clean signal once we have the lock
             mdebug1("Refreshing excluded files list.");
 
             OSHash_Free(excluded_files);
@@ -348,7 +434,9 @@ void LogCollectorStart()
         }
 
         if (f_check >= vcheck_files) {
+            set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
+            set_can_read(1); // Clean signal once we have the lock
             int i;
             int j = -1;
             f_reload += f_check;
@@ -384,7 +472,9 @@ void LogCollectorStart()
                     nanosleep(&delay, NULL);
                 }
 
+                set_can_read(0); // Stop reading threads
                 w_rwlock_wrlock(&files_update_rwlock);
+                set_can_read(1); // Clean signal once we have the lock
 
                 // Open files again, and restore position
 
@@ -566,11 +656,12 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File inode changed. %s",
                                current->file);
 
+                        OSHash_Delete_ex(files_status,current->file);
                         fclose(current->fp);
 
 #ifdef WIN32
@@ -583,7 +674,7 @@ void LogCollectorStart()
                         continue;
                     }
 #ifdef WIN32
-                    else if (current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                    else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
 #else
                     else if (current->size > tmp_stat.st_size)
 #endif
@@ -596,12 +687,13 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        w_msg_hash_queues_push(msg_alert, "ossec-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File size reduced. %s",
                                 current->file);
 
                         /* Get new file */
+                        OSHash_Delete_ex(files_status,current->file);
                         fclose(current->fp);
 
 #ifdef WIN32
@@ -741,16 +833,14 @@ void LogCollectorStart()
                 f_reload = 0;
             }
 
+            //Save status localfiles to disk
+            w_save_file_status();
+
             f_check = 0;
-        }
 
-        if (!os_iswait()) {
-            rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
-            w_msg_hash_queues_push(keepalive, "ossec-keepalive", strlen(keepalive) + 1, default_target, LOCALFILE_MQ);
-        }
-
-        if (mq_log_builder_update() == -1) {
-            mdebug1("Output log pattern data could not be updated.");
+            if (mq_log_builder_update() == -1) {
+                mdebug1("Output log pattern data could not be updated.");
+            }
         }
 
         sleep(1);
@@ -762,11 +852,11 @@ void LogCollectorStart()
 
 int update_fname(int i, int j)
 {
-    struct tm *p;
     time_t __ctime = time(0);
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (j < 0) {
         lf = &logff[i];
@@ -774,15 +864,15 @@ int update_fname(int i, int j)
         lf = &globs[j].gfiles[i];
     }
 
-    p = localtime(&__ctime);
+    localtime_r(&__ctime, &tm_result);
 
     /* Handle file */
-    if (p->tm_mday == _cday) {
+    if (tm_result.tm_mday == _cday) {
         return (0);
     }
 
     lfile[OS_FLSIZE] = '\0';
-    ret = strftime(lfile, OS_FLSIZE, lf->ffile, p);
+    ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
         merror_exit(PARSE_ERROR, lf->ffile);
     }
@@ -800,15 +890,14 @@ int update_fname(int i, int j)
         return (1);
     }
 
-    _cday = p->tm_mday;
+    _cday = tm_result.tm_mday;
     return (0);
 }
 
 /* Open, get the fileno, seek to the end and update mtime */
-int handle_file(int i, int j, int do_fseek, int do_log)
+int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 {
     int fd;
-    struct stat stat_fd = { .st_mode = 0 };
     logreader *lf;
 
     if (j < 0) {
@@ -821,6 +910,8 @@ int handle_file(int i, int j, int do_fseek, int do_log)
      * time of change from it.
      */
 #ifndef WIN32
+    struct stat stat_fd = { .st_mode = 0 };
+
     lf->fp = fopen(lf->file, "r");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
@@ -857,7 +948,9 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         }
         goto error;
     }
+
     fd = _open_osfhandle((intptr_t)lf->h, 0);
+
     if (fd == -1) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
@@ -893,18 +986,22 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         return 0;
     }
 
-    /* Only seek the end of the file if set to */
-    if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
-        /* Windows and fseek causes some weird issues */
+/* Windows and fseek causes some weird issues */
 #ifndef WIN32
-        if (fseek(lf->fp, 0, SEEK_END) < 0) {
-            merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
-            fclose(lf->fp);
-            lf->fp = NULL;
-            goto error;
+    if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
+        if (lf->future == 0) {
+            if (w_set_to_last_line_read(lf) < 0) {
+                goto error;
+            }
+        } else {
+            int64_t offset;
+            if (offset = w_set_to_pos(lf, 0, SEEK_END), offset < 0) {
+                goto error;
+            }
+            w_update_hash_node(lf->file, offset);
         }
-#endif
     }
+#endif
 
     /* Set ignore to zero */
     lf->ign = 0;
@@ -1055,7 +1152,7 @@ void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
     current->ign = 0;
-
+    w_logcollector_state_add_file(current->file);
     /* Initialize the files */
     if (current->ffile) {
 
@@ -1075,6 +1172,7 @@ void set_read(logreader *current, int i, int j) {
     if (current->target) {
         while (current->target[tg]) {
             mdebug1("Socket target for '%s' -> %s", current->file, current->target[tg]);
+            w_logcollector_state_add_target(current->file, current->target[tg]);
             tg++;
         }
     }
@@ -1112,6 +1210,8 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_multiline;
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
+    } else if (strcmp(MULTI_LINE_REGEX, current->logformat) == 0) {
+        current->read = read_multiline_regex;
     } else {
 #ifdef WIN32
         if (current->filter_binary) {
@@ -1345,7 +1445,7 @@ int check_pattern_expand(int do_seek) {
             if ( wildcard ) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -1723,6 +1823,9 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     w_msg_queue_t *msg;
     int i;
     char *file_cpy;
+    int result;
+
+    w_logcollector_state_update_file(file, size);
 
     for (i = 0; targets[i].log_socket; i++)
     {
@@ -1734,28 +1837,15 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
 
         if (msg) {
             os_strdup(file, file_cpy);
-            w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+            result = w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+
+            if (result < 0) {
+                w_logcollector_state_update_target(file,targets[i].log_socket->name, true);
+            }
         }
     }
 
     return 0;
-}
-
-w_message_t * w_msg_hash_queues_pop(const char *key){
-    w_msg_queue_t *msg;
-
-    msg = OSHash_Get(msg_queues_table,key);
-
-    if(msg)
-    {
-        w_message_t *message;
-        message = w_msg_queue_pop(msg);
-
-        if(message){
-            return message;
-        }
-    }
-    return NULL;
 }
 
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {
@@ -1778,6 +1868,15 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         w_cond_signal(&msg->available);
     }
 
+    if ((result < 0) && !reported) {
+        #ifndef WIN32
+            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #else
+            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+        #endif
+            reported = 1;
+    }
+
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
@@ -1785,15 +1884,6 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
-
-        if (!reported) {
-#ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
-#endif
-            reported = 1;
-        }
     }
 
     return result;
@@ -1811,35 +1901,103 @@ w_message_t * w_msg_queue_pop(w_msg_queue_t * msg){
     return message;
 }
 
+#ifdef WIN32
+DWORD WINAPI w_output_thread(void * args) {
+#else
 void * w_output_thread(void * args){
+#endif
     char *queue_name = args;
     w_message_t *message;
     w_msg_queue_t *msg_queue;
+    int result;
 
     if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
         mwarn("Could not found the '%s'.", queue_name);
+    #ifdef WIN32
+        exit(1);
+    #else
         return NULL;
+    #endif
     }
 
     while(1)
     {
+        int sleep_time = 5;
         /* Pop message from the queue */
         message = w_msg_queue_pop(msg_queue);
 
-        if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
-            merror(QUEUE_SEND);
+        if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
+            // When dealing with this type of messages we don't want any of them to be lost
+            // Continuously attempt to reconnect to the queue and send the message.
+            result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
+                                  message->queue_mq, message->log_target);
+            if (result != 0) {
+                if (result != 1) {
+#ifdef CLIENT
+                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+#else
+                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+#endif
+                }
+                // Retry to connect infinitely.
+                logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+                if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
+                    result != 0) {
+                    // We reconnected but are still unable to send the message, notify it and go on.
+                    if (result != 1) {
+#ifdef CLIENT
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+#else
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+#endif
+                    }
+                    result = 1;
+                }
+            }
+
+            w_logcollector_state_update_target(message->file,
+                                               message->log_target->log_socket->name,
+                                               result == 1);
+
+        } else {
+            const int MAX_RETRIES = 3;
+            int retries = 0;
+            result = 1;
+            while (retries < MAX_RETRIES) {
+                result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
+                                      message->queue_mq, message->log_target);
+                if (result < 0) {
+                    merror(QUEUE_SEND);
+
+                    sleep(sleep_time);
+
+                    // If we failed, we will wait longer before reattempting to connect
+                    sleep_time += 5;
+                    retries++;
+                } else {
+                    break;
+                }
+            }
+
+            w_logcollector_state_update_target(message->file,
+                                               message->log_target->log_socket->name,
+                                               result == 1);
+
+            if (retries == MAX_RETRIES) {
+                merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
             }
         }
-
         free(message->file);
         free(message->buffer);
         free(message);
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void w_create_output_threads(){
@@ -1857,7 +2015,7 @@ void w_create_output_threads(){
 #else
                 w_create_thread(NULL,
                     0,
-                    (LPTHREAD_START_ROUTINE)w_output_thread,
+                    w_output_thread,
                     curr_node->key,
                     0,
                     NULL);
@@ -1867,7 +2025,11 @@ void w_create_output_threads(){
     }
 }
 
+#ifdef WIN32
+DWORD WINAPI w_input_thread(__attribute__((unused)) void * t_id) {
+#else
 void * w_input_thread(__attribute__((unused)) void * t_id){
+#endif
     logreader *current;
     int i = 0, r = 0, j = -1;
     IT_control f_control = 0;
@@ -1969,16 +2131,19 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                 /* We check for the end of file. If is returns EOF,
                 * we don't attempt to read it.
+                * Excluding multiline_regex log format which has its own handler.
                 */
-                if ((r = fgetc(current->fp)) == EOF) {
-                    clearerr(current->fp);
-                    w_mutex_unlock(&current->mutex);
-                    w_rwlock_unlock(&files_update_rwlock);
-                    continue;
-                }
+               if (current->multiline == NULL) {
+                   if ((r = fgetc(current->fp)) == EOF) {
+                       clearerr(current->fp);
+                       w_mutex_unlock(&current->mutex);
+                       w_rwlock_unlock(&files_update_rwlock);
+                       continue;
+                   }
 
-                /* If it is not EOF, we need to return the read character */
-                ungetc(r, current->fp);
+                   /* If it is not EOF, we need to return the read character */
+                   ungetc(r, current->fp);
+                }
     #endif
 
 #ifdef WIN32
@@ -2046,8 +2211,10 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     if (!ucs2) {
                         if (!strcmp("syslog", current->logformat) || !strcmp("generic", current->logformat)) {
                             current->read = read_syslog;
-                        } else if (!strcmp("multi-line", current->logformat)) {
+                        } else if (strcmp("multi-line", current->logformat) == 0) {
                             current->read = read_multiline;
+                        } else if (strcmp(MULTI_LINE_REGEX, current->logformat) == 0) {
+                            current->read = read_multiline_regex;
                         }
                     }
                 }
@@ -2101,7 +2268,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             continue;
                         }
     #ifdef WIN32
-                        current->read(current, &r, 1);
+                        if (current->future == 0) {
+                            w_set_to_last_line_read(current);
+                        } else {
+                            int64_t offset = w_set_to_pos(current, 0, SEEK_END);
+                            w_update_hash_node(current->file, offset);
+                        }
     #endif
                     }
                     /* Increase the error count  */
@@ -2113,7 +2285,10 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         mdebug1(OPEN_UNABLE, current->file);
                     }
 
-                    clearerr(current->fp);
+                    if (current->fp) {
+                        clearerr(current->fp);
+                    }
+
                     w_mutex_unlock(&current->mutex);
                 }
             }
@@ -2122,7 +2297,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         }
     }
 
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 void w_create_input_threads(){
@@ -2141,7 +2318,7 @@ void w_create_input_threads(){
 #else
         w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)w_input_thread,
+                     w_input_thread,
                      NULL,
                      0,
                      NULL);
@@ -2162,6 +2339,7 @@ void files_lock_init()
 #endif
 
     w_rwlock_init(&files_update_rwlock, &attr);
+    w_rwlock_init(&can_read_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
 }
 
@@ -2254,7 +2432,7 @@ static void check_pattern_expand_excluded() {
             if (wildcard) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = NULL;
 
                 *wildcard = '\0';
                 wildcard++;
@@ -2360,3 +2538,311 @@ static void check_pattern_expand_excluded() {
     }
 }
 #endif
+
+
+static void set_can_read(int value){
+    w_rwlock_wrlock(&can_read_rwlock);
+    _can_read = value;
+    w_rwlock_unlock(&can_read_rwlock);
+}
+
+int can_read() {
+    int ret;
+    w_rwlock_rdlock(&can_read_rwlock);
+    ret = _can_read;
+    w_rwlock_unlock(&can_read_rwlock);
+    return ret;
+}
+
+int w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
+
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+
+    data->context = *context;
+
+    os_sha1 output;
+    OS_SHA1_Stream(context, output, NULL);
+    memcpy(data->hash, output, sizeof(os_sha1));
+
+    data->offset = pos;
+
+    if (OSHash_Update_ex(files_status, path, data) != 1) {
+        if (OSHash_Add_ex(files_status, path, data) != 2) {
+            os_free(data);
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+STATIC void w_initialize_file_status() {
+
+    /* Initialize hash table to associate paths and read position */
+    if (files_status = OSHash_Create(), files_status == NULL) {
+        merror_exit(HCREATE_ERROR, files_status_name);
+    }
+
+    if (OSHash_setSize(files_status, LOCALFILES_TABLE_SIZE) == 0) {
+        merror_exit(HSETSIZE_ERROR, files_status_name);
+    }
+
+    OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free);
+
+    /* Read json file to load last read positions */
+    FILE * fd = NULL;
+
+    if (fd = fopen(LOCALFILE_STATUS, "r"), fd != NULL) {
+        char str[OS_MAXSTR] = {0};
+
+        if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
+            merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+            clearerr(fd);
+        } else {
+            cJSON * global_json = cJSON_Parse(str);
+            w_load_files_status(global_json);
+            cJSON_Delete(global_json);
+        }
+
+        fclose(fd);
+    } else if (errno != ENOENT) {
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+    }
+}
+
+STATIC void w_save_file_status() {
+    char * str = w_save_files_status_to_cJSON();
+
+    if (str == NULL) {
+        return;
+    }
+
+    FILE * fd = NULL;
+    size_t size_str = strlen(str);
+
+    if (fd = wfopen(LOCALFILE_STATUS, "w"), fd != NULL) {
+        if (fwrite(str, 1, size_str, fd) == 0) {
+            merror(FWRITE_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+            clearerr(fd);
+        }
+        fclose(fd);
+    } else {
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+    }
+
+    os_free(str);
+}
+
+STATIC void w_load_files_status(cJSON * global_json) {
+
+    cJSON * localfiles_array = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_FILES);
+    int array_size = cJSON_GetArraySize(localfiles_array);
+
+    for (int i = 0; i < array_size; i++) {
+        cJSON * localfile_item = cJSON_GetArrayItem(localfiles_array, i);
+
+        cJSON * path = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_PATH);
+        if (path == NULL) {
+            continue;
+        }
+
+        char * path_str = cJSON_GetStringValue(path);
+        if (path_str == NULL) {
+            continue;
+        }
+
+        struct stat stat_fd;
+
+        if (stat(path_str, &stat_fd) == -1) {
+            continue;
+        }
+
+        cJSON * hash = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_HASH);
+        if (hash == NULL) {
+            continue;
+        }
+
+        char * hash_str = cJSON_GetStringValue(hash);
+        if (hash_str == NULL) {
+            continue;
+        }
+
+        cJSON * offset = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_OFFSET);
+        if (offset == NULL) {
+            continue;
+        }
+
+        char * offset_str = cJSON_GetStringValue(offset);
+        if (offset_str == NULL) {
+            continue;
+        }
+
+        char * end;
+
+#ifdef WIN32
+        int64_t value_offset = strtoll(offset_str, &end, 10);
+#else
+        int64_t value_offset = strtol(offset_str, &end, 10);
+#endif
+
+        if (value_offset < 0 || *end != '\0') {
+            continue;
+        }
+
+        os_file_status_t * data;
+
+        os_malloc(sizeof(os_file_status_t), data);
+        memcpy(data->hash, hash_str, sizeof(os_sha1));
+        data->offset = value_offset;
+
+        SHA_CTX context;
+        os_sha1 output;
+        OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset);
+        data->context = context;
+
+        if (OSHash_Update_ex(files_status, path_str, data) != 1) {
+            if (OSHash_Add_ex(files_status, path_str, data) != 2) {
+                merror(HADD_ERROR, path_str, files_status_name);
+                os_free(data);
+            }
+        }
+    }
+}
+
+STATIC char * w_save_files_status_to_cJSON() {
+    OSHashNode * hash_node;
+    unsigned int index = 0;
+
+    w_rwlock_rdlock(&files_status->mutex);
+    if (hash_node = OSHash_Begin(files_status, &index), !hash_node) {
+        w_rwlock_unlock(&files_status->mutex);
+        return NULL;
+    }
+
+    cJSON * global_json = cJSON_CreateObject();
+    cJSON * array = cJSON_AddArrayToObject(global_json, OS_LOGCOLLECTOR_JSON_FILES);
+
+    while (hash_node) {
+        os_file_status_t * data = hash_node->data;
+        char * path = hash_node->key;
+        char offset[OFFSET_SIZE] = {0};
+
+        sprintf(offset, "%" PRIi64, data->offset);
+
+        cJSON * item = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_PATH, path);
+        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_HASH, data->hash);
+        cJSON_AddStringToObject(item, OS_LOGCOLLECTOR_JSON_OFFSET, offset);
+        cJSON_AddItemToArray(array, item);
+
+        hash_node = OSHash_Next(files_status, &index, hash_node);
+    }
+    w_rwlock_unlock(&files_status->mutex);
+
+    char * global_json_str = cJSON_PrintUnformatted(global_json);
+    cJSON_Delete(global_json);
+
+    return global_json_str;
+}
+
+STATIC int w_set_to_last_line_read(logreader * lf) {
+
+    os_file_status_t * data;
+
+    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
+        w_set_to_pos(lf, 0, SEEK_END);
+        if (w_update_hash_node(lf->file, w_ftell(lf->fp)) == -1) {
+            merror(HUPDATE_ERROR, lf->file, files_status_name);
+        }
+        return 0;
+    }
+
+    struct stat stat_fd;
+
+    if (fstat(fileno(lf->fp), &stat_fd) == -1) {
+        merror(FSTAT_ERROR, lf->file, errno, strerror(errno));
+        return -1;
+    }
+
+    int64_t result = 0;
+
+    SHA_CTX context;
+    os_sha1 output;
+
+    if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) == -1) {
+        merror("Failure to generate the SHA1 hash from file '%s'", lf->file);
+        return -1;
+    }
+
+    if (strcmp(output, data->hash)) {
+        result = w_set_to_pos(lf, 0, SEEK_SET);
+    } else if (stat_fd.st_size - data->offset > lf->diff_max_size) {
+        result = w_set_to_pos(lf, 0, SEEK_END);
+    } else {
+        return w_set_to_pos(lf, data->offset, SEEK_SET);
+    }
+
+    if (result >= 0) {
+        if (w_update_hash_node(lf->file, result) == -1) {
+            merror(HUPDATE_ERROR, lf->file, files_status_name);
+        }
+    }
+
+    return result;
+}
+
+STATIC int w_update_hash_node(char * path, int64_t pos) {
+    os_file_status_t * data;
+
+    if (path == NULL) {
+        return -1;
+    }
+
+    os_malloc(sizeof(os_file_status_t), data);
+
+    data->offset = pos;
+
+    SHA_CTX context;
+    os_sha1 output;
+    OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos);
+    memcpy(data->hash, output, sizeof(os_sha1));
+    data->context = context;
+
+    if (OSHash_Update_ex(files_status, path, data) != 1) {
+        if (OSHash_Add_ex(files_status, path, data) != 2) {
+            os_free(data);
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
+
+    if (lf == NULL || lf->file == NULL) {
+        return -1;
+    }
+
+    if (w_fseek(lf->fp, pos, mode) < 0) {
+        merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
+        fclose(lf->fp);
+        lf->fp = NULL;
+        return -1;
+    }
+
+    return w_ftell(lf->fp);
+}
+
+void w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
+    os_file_status_t * data;
+
+    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
+        os_sha1 output;
+        OS_SHA1_File_Nbytes(path, context, output, OS_BINARY, position);
+    } else {
+        *context = data->context;
+    }
+}

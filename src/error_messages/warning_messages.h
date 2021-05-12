@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019
+ * Copyright (C) 2015-2021
  * January 17
  *
  * This program is free software; you can redistribute it
@@ -12,28 +12,93 @@
 #define WARN_MESSAGES_H
 
 /* File integrity monitoring warning messages*/
-#define FIM_WARN_ACCESS                         "Accessing to '%s': [(%d) - (%s)]"
-#define FIM_WARN_DELETE                         "Could not delete of filesystem '%s'"
-#define FIM_WARN_DELETE_HASH_TABLE              "Could not delete from hash table '%s'"
-#define FIM_WARN_SYMLINKS_UNSUPPORTED           "Links are not supported: '%s'"
-#define FIM_WARN_STAT_BROKEN_LINK               "Error in stat() function: %s. This may be caused by a broken symbolic link (%s)."
-#define FIM_WARN_REALTIME_UNSUPPORTED           "The realtime monitoring request on unsupported system for '%s'"
+#define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"
+#define FIM_WARN_DELETE                         "(6901): Could not delete from filesystem '%s'"
+#define FIM_WARN_DELETE_HASH_TABLE              "(6902): Could not delete from hash table '%s'"
+#define FIM_WARN_SYMLINKS_UNSUPPORTED           "(6903) Links are not supported: '%s'"
+#define FIM_WARN_STAT_BROKEN_LINK               "(6904): Error in stat() function: %s. This may be caused by a broken symbolic link (%s)."
+#define FIM_WARN_ALLOW_PREFILTER                "(6905): Ignoring prefilter option '%s'. Enable <%s> to use it."
+#define FIM_WARN_REALTIME_OVERFLOW              "(6906): Real time process: no data. Probably buffer overflow."
+#define FIM_WARN_REALTIME_OPENFAIL              "(6907): '%s' does not exist. Monitoring discarded."
+#define FIM_WARN_REALTIME_DISABLED              "(6908): Ignoring flag for real time monitoring on directory: '%s'."
+#define FIM_WARN_AUDIT_SOCKET_NOEXIST           "(6909): Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled."
+#define FIM_WARN_AUDIT_CONFIGURATION_MODIFIED   "(6910): Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled."
+#define FIM_WARN_AUDIT_RULES_MODIFIED           "(6911): Detected Audit rules manipulation: Audit rules removed."
+#define FIM_WARN_AUDIT_CONNECTION_CLOSED        "(6912): Audit: connection closed."
+#define FIM_WARN_AUDIT_THREAD_NOSTARTED         "(6913): Who-data engine could not start. Switching who-data to real-time."
+#define FIM_WARN_GENDIFF_SNAPSHOT               "(6914): Cannot create a snapshot of file '%s'"
+#define FIM_WARN_WHODATA_AUTOCONF               "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode."
+#define FIM_WARN_WHODATA_LOCALPOLICIES          "(6916): Local audit policies could not be configured."
+#define FIM_WARN_WHODATA_EVENT_OVERFLOW         "(6917): Real-time Whodata events queue for Windows has more than %d elements."
+#define FIM_WARN_NFS_INOTIFY                    "(6918): '%s' NFS Directories do not support iNotify."
+#define FIM_INV_REG                             "(6919): Invalid syscheck registry entry: '%s' arch: '%s'."
+#define FIM_REG_OPEN                            "(6920): Unable to open registry key: '%s' arch: '%s'."
+#define FIM_WARN_FILE_REALTIME                  "(6921): Unable to configure real-time option for file: '%s'"
+#define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
 
-#define FIM_WARN_REALTIME_OVERFLOW              "Real time process: no data. Probably buffer overflow."
-#define FIM_WARN_REALTIME_OPENFAIL              "'%s' does not exist. Monitoring discarded."
-#define FIM_WARN_REALTIME_DISABLED              "Ignoring flag for real time monitoring on directory: '%s'."
+#define FIM_AUDIT_NORUNNING                     "(6924): Who-data engine cannot start because Auditd is not running."
+#define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' will not be monitored."
+#define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
+#define FIM_DB_FULL_ALERT                       "(6927): Sending DB 100%% full alert."
+#define FIM_WARN_WHODATA_GETID                  "(6928): Couldn't get event ID from Audit message. Line: '%s'."
+#define FIM_WARN_WHODATA_EVENT_TOOLONG          "(6929): Caching Audit message: event too long. Event with ID: '%s' will be discarded."
+#define FIM_WARN_MAX_DIR_REACH                  "(6930): Maximum number of directories to be monitored in the same tag reached (%d) Excess are discarded: '%s'"
+#define FIM_WARN_MAX_REG_REACH                  "(6931): Maximum number of registries to be monitored in the same tag reached (%d) Excess are discarded: '%s'"
+#define FIM_WHODATA_PARAMETER                   "(6932): Invalid parameter type (%ld) for '%s'."
+#define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
+#define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
+#define FIM_DB_TEMPORARY_FILE_POSITION          "(6935): Unable to reposition temporary file to beginning. Error[%d]: '%s'"
+#define FIM_REG_VAL_WRONG_TYPE                  "(6936): Wrong registry value type processed for report_changes."
+#define FIM_INVALID_REG_OPTION_SKIP             "(6937): Invalid option '%s' for attribute '%s'. The registry '%s' not be monitored."
+#define FIM_REGISTRY_EVENT_NULL_ENTRY           "(6938): Invalid null registry event."
+#define FIM_REGISTRY_EVENT_NULL_ENTRY_KEY       "(6939): Invalid registry event with a null key was detected."
+#define FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE     "(6940): Invalid registry event with a type different than registry was detected."
+#define FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE     "(6941): Invalid registry event with a saved type different than registry was detected."
+#define FIM_REGISTRY_UNSCANNED_KEYS_FAIL        "(6942): Failed to get unscanned registry keys."
+#define FIM_REGISTRY_UNSCANNED_VALUE_FAIL       "(6943): Failed to get unscanned registry values."
+#define FIM_REGISTRY_FAIL_TO_INSERT_VALUE       "(6944): Failed to insert value '%s %s\\%s'"
+#define FIM_REGISTRY_FAIL_TO_GET_KEY_ID         "(6945): Unable to get id for registry key '%s %s'"
+#define FIM_AUDIT_DISABLED                      "(6946): Audit is disabled."
+#define FIM_WARN_FORMAT_PATH                    "(6947): Error formatting path: '%s'"
+#define FIM_DATABASE_NODES_COUNT_FAIL           "(6948): Unable to get the number of entries in database."
 
-#define FIM_WARN_AUDIT_SOCKET_NOEXIST           "Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled."
-#define FIM_WARN_AUDIT_CONFIGURATION_MODIFIED   "Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled."
-#define FIM_WARN_AUDIT_RULES_MODIFIED           "Detected Audit rules manipulation: Audit rules removed."
-#define FIM_WARN_AUDIT_CONNECTION_CLOSED        "Audit: connection closed."
-#define FIM_WARN_AUDIT_THREAD_NOSTARTED         "Audit events reader thread not started."
+/* Monitord warning messages */
+#define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
+#define ROTATE_JSON_LONG_PATH                   "(7501): The path of the rotated json is too long."
+#define COMPRESSED_LOG_LONG_PATH                "(7502): The path of the compressed log is too long."
+#define COMPRESSED_JSON_LONG_PATH               "(7503): The path of the compressed json is too long."
 
-#define FIM_WARN_GENDIFF_SNAPSHOT               "Cannot create a snapshot of file '%s'"
+/* Wazuh-logtest warning messages*/
+#define LOGTEST_INV_NUM_THREADS                 "(7000): Number of logtest threads too high. Only creates %d threads"
+#define LOGTEST_INV_NUM_USERS                   "(7001): Number of maximum users connected in logtest too high. Only allows %d users"
+#define LOGTEST_INV_NUM_TIMEOUT                 "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
+#define LOGTEST_WARN_TOKEN_EXPIRED              "(7003): '%s' token expires"
+#define LOGTEST_WARN_SESSION_NOT_FOUND          "(7004): No session found for token '%s'"
 
-#define FIM_WARN_WHODATA_AUTOCONF               "Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode."
-#define FIM_WARN_WHODATA_LOCALPOLICIES          "Local audit policies could not be configured."
-#define FIM_WARN_WHODATA_EVENT_OVERFLOW         "Real-time Whodata events queue for Windows has more than %d elements."
-#define FIM_WARN_ALLOW_PREFILTER                "Ignoring prefilter option '%s'. Enable <%s> to use it."
+/* Ruleset reading warnings */
+#define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
+#define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be used"
+#define ANALYSISD_INV_OPT_VALUE_DEFAULT         "(7602): Invalid value '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be used"
+#define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be used"
 
+/* Logcollector */
+#define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
+                                                "Default value will be used."
+#define LOGCOLLECTOR_MULTILINE_SUPPORT          "(8001): log_format '%s' does not support multiline_regex option." \
+                                                " Will be ignored."
+#define LOGCOLLECTOR_MULTILINE_AGE_TIMEOUT      "(8002): 'age' cannot be less than 'timeout' in multiline_regex option."\
+                                                " 'age' will be ignored."
+
+/* Remoted */
+#define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
+#define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
+#define REMOTED_NET_PROTOCOL_ONLY_SECURE        "(9002): Only secure connection supports TCP and UDP at the same time."\
+                                                " Default value (%s) will be used."
+#define REMOTED_INET6_SECURE_CONNNECTION        "(9003): Secure connection does not support IPv6. "\
+                                                "IPv4 will be used instead."
+#define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
+                                                "Default value will be used."
 #endif /* WARN_MESSAGES_H */

@@ -1,16 +1,15 @@
 
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
-import re
+from datetime import datetime
 from time import strftime
 
-from wazuh import common
-from wazuh.database import Connection
-from wazuh.exception import WazuhException
+from wazuh.core import common
+from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 
 """
 Wazuh HIDS Python package
@@ -19,7 +18,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.11.2'
+__version__ = '4.3.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -30,9 +29,9 @@ msg += "\n  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/li
 try:
     from sys import version_info as python_version
     if python_version.major < 2 or (python_version.major == 2 and python_version.minor < 7):
-        raise WazuhException(999, msg)
+        raise WazuhInternalError(999, msg)
 except Exception as e:
-    raise WazuhException(999, msg)
+    raise WazuhInternalError(999, msg)
 
 
 class Wazuh:
@@ -49,10 +48,9 @@ class Wazuh:
         self.version = common.wazuh_version
         self.installation_date = common.installation_date
         self.type = common.install_type
-        self.path = common.ossec_path
-        self.max_agents = 'N/A'
+        self.path = common.wazuh_path
+        self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
-        self.ruleset_version = None
         self.tz_offset = None
         self.tz_name = None
 
@@ -61,14 +59,23 @@ class Wazuh:
     def __str__(self):
         return str(self.to_dict())
 
+    def __eq__(self, other):
+        if isinstance(other, Wazuh):
+            return self.to_dict() == other.to_dict()
+        return False
+
     def to_dict(self):
+        date_format = '%a %b %d %H:%M:%S %Z %Y'
+        try:
+            compilation_date = datetime.strptime(self.installation_date, date_format)
+        except ValueError:
+            compilation_date = datetime.now()
         return {'path': self.path,
                 'version': self.version,
-                'compilation_date': self.installation_date,
+                'compilation_date': compilation_date,
                 'type': self.type,
                 'max_agents': self.max_agents,
                 'openssl_support': self.openssl_support,
-                'ruleset_version': self.ruleset_version,
                 'tz_offset': self.tz_offset,
                 'tz_name': self.tz_name
                 }
@@ -77,34 +84,13 @@ class Wazuh:
         """
         Calculates all Wazuh installation metadata
         """
-
         # info DB if possible
         try:
-            conn = Connection(common.database_path_global)
-
-            query = "SELECT * FROM info"
-            conn.execute(query)
-
-            for tuple_ in conn:
-                if tuple_[0] == 'max_agents':
-                    self.max_agents = tuple_[1]
-                elif tuple_[0] == 'openssl_support':
-                    self.openssl_support = tuple_[1]
+            wdb_conn = WazuhDBConnection()
+            open_ssl = wdb_conn.execute("global sql SELECT value FROM info WHERE key = 'openssl_support'")[0]['value']
+            self.openssl_support = open_ssl
         except Exception:
-            self.max_agents = "N/A"
             self.openssl_support = "N/A"
-
-        # Ruleset version
-        ruleset_version_file = os.path.join(self.path, 'ruleset', 'VERSION')
-        try:
-            with open(ruleset_version_file, 'r') as f:
-                line_regex = re.compile(r'(^\w+)="(.+)"')
-                for line in f:
-                    match = line_regex.match(line)
-                    if match and len(match.groups()) == 2:
-                        self.ruleset_version = match.group(2)
-        except Exception:
-            raise WazuhException(1005, ruleset_version_file)
 
         # Timezone info
         try:

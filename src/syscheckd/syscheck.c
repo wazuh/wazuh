@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,12 +15,11 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
+#include "db/fim_db_files.h"
 
 // Global variables
 syscheck_config syscheck;
-pthread_cond_t audit_thread_started;
-pthread_cond_t audit_hc_started;
-pthread_cond_t audit_db_consistency;
+
 int sys_debug_level;
 
 #ifdef USE_MAGIC
@@ -49,13 +48,12 @@ void init_magic(magic_t *cookie_ptr)
 #endif /* USE_MAGIC */
 
 /* Read syscheck internal options */
-static void read_internal(int debug_level)
+void read_internal(int debug_level)
 {
-    syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
-    syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
-    syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
+    syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 0, 1000);
     syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
     syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
+    syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
@@ -76,29 +74,21 @@ static void read_internal(int debug_level)
     return;
 }
 
-void free_syscheck_node_data(syscheck_node *data) {
-    if (!data) return;
-    if (data->checksum) free(data->checksum);
-    free(data);
-}
 
-// Initialize syscheck variables
-int fim_initialize() {
-    /* Create store data */
-    syscheck.fp = OSHash_Create();
-    syscheck.local_hash = OSHash_Create();
-#ifndef WIN32
-    syscheck.inode_hash = OSHash_Create();
-#endif
-    // Duplicate hash table to check for deleted files
-    syscheck.last_check = OSHash_Create();
+void fim_initialize() {
+    // Create store data
+    syscheck.database = fim_db_init(syscheck.database_store);
 
-    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) {
-        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()", strerror(errno));
+    if (!syscheck.database) {
+        merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db");
     }
-    OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
 
-    return 0;
+    w_mutex_init(&syscheck.fim_entry_mutex, NULL);
+    w_mutex_init(&syscheck.fim_scan_mutex, NULL);
+    w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
+#ifndef WIN32
+    w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
+#endif
 }
 
 
@@ -108,11 +98,9 @@ int Start_win32_Syscheck()
 {
     int debug_level = 0;
     int r = 0;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
     /* Read internal options */
     read_internal(debug_level);
-
-    mdebug1(STARTED_MSG);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
@@ -121,28 +109,30 @@ int Start_win32_Syscheck()
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror(RCONFIG_ERROR, SYSCHECK, cfg);
+        syscheck.disabled = 1;
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         /* Disabled */
-        if (!syscheck.dir) {
+        if (!syscheck.directories) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
-        } else if (!syscheck.dir[0]) {
+            dump_syscheck_file(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
+        } else if (syscheck.directories[0]->path == NULL) {
             minfo(FIM_DIRECTORY_NOPROVIDED);
         }
 
-        syscheck.dir[0] = NULL;
+        free_directory(syscheck.directories[0]);
+        syscheck.directories[0] = NULL;
 
         if (!syscheck.ignore) {
             os_calloc(1, sizeof(char *), syscheck.ignore);
         } else {
-            syscheck.ignore[0] = NULL;
+            os_free(syscheck.ignore[0]);
         }
 
         if (!syscheck.registry) {
-            dump_syscheck_entry(&syscheck, "", 0, 1, NULL, 0, NULL, -1);
+            dump_syscheck_registry(&syscheck, "", 0, NULL, NULL,  0, NULL, 0, -1);
         }
-        syscheck.registry[0].entry = NULL;
+        os_free(syscheck.registry[0].entry);
 
         minfo(FIM_DISABLED);
     }
@@ -155,40 +145,62 @@ int Start_win32_Syscheck()
     }
 
     if (!syscheck.disabled) {
-#ifdef WIN32
+        directory_t *dir_it;
 #ifndef WIN_WHODATA
         int whodata_notification = 0;
         /* Remove whodata attributes */
-        for (r = 0; syscheck.dir[r]; r++) {
-            if (syscheck.opts[r] & CHECK_WHODATA) {
+        foreach_array(dir_it, syscheck.directories) {
+            if (dir_it->options & WHODATA_ACTIVE) {
                 if (!whodata_notification) {
                     whodata_notification = 1;
                     minfo(FIM_REALTIME_INCOMPATIBLE);
                 }
-                syscheck.opts[r] &= ~CHECK_WHODATA;
-                syscheck.opts[r] |= CHECK_REALTIME;
+                dir_it->options &= ~WHODATA_ACTIVE;
+                dir_it->options |= REALTIME_ACTIVE;
             }
         }
 #endif
-#endif
-
 
         /* Print options */
         r = 0;
+        // TODO: allow sha256 sum on registries
         while (syscheck.registry[r].entry != NULL) {
-            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
+            char optstr[1024];
+            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry,
+                  syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
+                  syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
+            if (syscheck.file_size_enabled){
+                minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
+            }
             r++;
         }
 
         /* Print directories to be monitored */
-        r = 0;
-        while (syscheck.dir[r] != NULL) {
+        foreach_array(dir_it, syscheck.directories) {
             char optstr[ 1024 ];
-            minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            if (syscheck.tag && syscheck.tag[r] != NULL) {
-                mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
+
+            minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+
+            if (dir_it->tag != NULL) {
+                mdebug1(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
             }
-            r++;
+
+            // Print diff file size limit
+            if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
+                mdebug2(FIM_DIFF_FILE_SIZE_LIMIT, dir_it->diff_size_limit, dir_it->path);
+            }
+        }
+
+        if (!syscheck.file_size_enabled) {
+            minfo(FIM_FILE_SIZE_LIMIT_DISABLED);
+        }
+
+        // Print maximum disk quota to be used by the queue\diff\local folder
+        if (syscheck.disk_quota_enabled) {
+            mdebug2(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
+        }
+        else {
+            minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
         }
 
         /* Print ignores. */
@@ -202,14 +214,33 @@ int Start_win32_Syscheck()
                 minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print registry ignores. */
-        if(syscheck.registry_ignore)
-            for (r = 0; syscheck.registry_ignore[r].entry != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.registry_ignore[r].entry);
+        if(syscheck.key_ignore)
+            for (r = 0; syscheck.key_ignore[r].entry != NULL; r++)
+                minfo(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
 
         /* Print sregex registry ignores. */
-        if(syscheck.registry_ignore_regex)
-            for (r = 0; syscheck.registry_ignore_regex[r].regex != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.registry_ignore_regex[r].regex->raw);
+        if(syscheck.key_ignore_regex)
+            for (r = 0; syscheck.key_ignore_regex[r].regex != NULL; r++)
+                minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
+
+        if(syscheck.value_ignore)
+            for (r = 0; syscheck.value_ignore[r].entry != NULL; r++)
+                minfo(FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
+
+        /* Print sregex registry ignores. */
+        if(syscheck.value_ignore_regex)
+            for (r = 0; syscheck.value_ignore_regex[r].regex != NULL; r++)
+                minfo(FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
+
+        /* Print registry values with nodiff. */
+        if(syscheck.registry_nodiff)
+            for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
+                minfo(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
+
+        /* Print sregex registry values with nodiff. */
+        if(syscheck.registry_nodiff_regex)
+            for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
+                minfo(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
@@ -225,7 +256,6 @@ int Start_win32_Syscheck()
     }
 
     /* Some sync time */
-    sleep(syscheck.tsleep * 5);
     fim_initialize();
 
     /* Wait if agent started properly */
@@ -233,258 +263,6 @@ int Start_win32_Syscheck()
 
     start_daemon();
 
-    exit(0);
+    return 0;
 }
 #endif /* WIN32 */
-
-#ifndef WIN32
-
-/* Print help statement */
-__attribute__((noreturn)) static void help_syscheckd()
-{
-    print_header();
-    print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
-    print_out("    -V          Version and license message");
-    print_out("    -h          This help message");
-    print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified multiple times");
-    print_out("                to increase the debug level.");
-    print_out("    -t          Test configuration");
-    print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out(" ");
-    exit(1);
-}
-
-/* Syscheck unix main */
-int main(int argc, char **argv)
-{
-    int c, r;
-    int debug_level = 0;
-    int test_config = 0, run_foreground = 0;
-    const char *cfg = DEFAULTCPATH;
-    gid_t gid;
-    const char *group = GROUPGLOBAL;
-#ifdef ENABLE_AUDIT
-    audit_thread_active = 0;
-    whodata_alerts = 0;
-#endif
-
-    /* Set the name */
-    OS_SetName(ARGV0);
-
-    while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
-        switch (c) {
-            case 'V':
-                print_version();
-                break;
-            case 'h':
-                help_syscheckd();
-                break;
-            case 'd':
-                nowDebug();
-                debug_level ++;
-                break;
-            case 'f':
-                run_foreground = 1;
-                break;
-            case 'c':
-                if (!optarg) {
-                    merror_exit("-c needs an argument");
-                }
-                cfg = optarg;
-                break;
-            case 't':
-                test_config = 1;
-                break;
-            default:
-                help_syscheckd();
-                break;
-        }
-    }
-
-    /* Check if the group given is valid */
-    gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group);
-    }
-
-    /* Privilege separation */
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
-    }
-
-    /* Read internal options */
-    read_internal(debug_level);
-
-    mdebug1(STARTED_MSG);
-
-    /* Check if the configuration is present */
-    if (File_DateofChange(cfg) < 0) {
-        merror_exit(NO_CONFIG, cfg);
-    }
-
-    /* Read syscheck config */
-    if ((r = Read_Syscheck_Config(cfg)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
-    } else if ((r == 1) || (syscheck.disabled == 1)) {
-        if (!syscheck.dir) {
-            if (!test_config) {
-                minfo(FIM_DIRECTORY_NOPROVIDED);
-            }
-            dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
-        } else if (!syscheck.dir[0]) {
-            if (!test_config) {
-                minfo(FIM_DIRECTORY_NOPROVIDED);
-            }
-        }
-
-        syscheck.dir[0] = NULL;
-
-        if (!syscheck.ignore) {
-            os_calloc(1, sizeof(char *), syscheck.ignore);
-        } else {
-            syscheck.ignore[0] = NULL;
-        }
-
-        if (!test_config) {
-            minfo(FIM_DISABLED);
-        }
-    }
-
-    /* Rootcheck config */
-    if (rootcheck_init(test_config) == 0) {
-        syscheck.rootcheck = 1;
-    } else {
-        syscheck.rootcheck = 0;
-    }
-
-    /* Exit if testing config */
-    if (test_config) {
-        exit(0);
-    }
-
-    /* Setup libmagic */
-#ifdef USE_MAGIC
-    init_magic(&magic_cookie);
-#endif
-
-    if (!run_foreground) {
-        nowDaemon();
-        goDaemon();
-    }
-
-    /* Start signal handling */
-    StartSIG(ARGV0);
-
-    // Start com request thread
-    w_create_thread(syscom_main, NULL);
-
-    /* Create pid */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
-
-    if (syscheck.rootcheck) {
-        rootcheck_connect();
-    }
-
-    /* Initial time to settle */
-    sleep(syscheck.tsleep + 2);
-
-    /* Connect to the queue */
-    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 5);
-
-        sleep(5);
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            /* more 10 seconds of wait */
-            minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 10);
-            sleep(10);
-            if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-            }
-        }
-    }
-
-    if (!syscheck.disabled) {
-
-        /* Start up message */
-        minfo(STARTUP_MSG, (int)getpid());
-
-        /* Print directories to be monitored */
-        r = 0;
-        while (syscheck.dir[r] != NULL) {
-            char optstr[ 1024 ];
-
-            if (!syscheck.converted_links[r]) {
-                minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            } else {
-                minfo(FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.converted_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            }
-
-            if (syscheck.tag && syscheck.tag[r] != NULL)
-                mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
-            r++;
-        }
-
-        /* Print ignores. */
-        if(syscheck.ignore)
-            for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
-
-        /* Print sregex ignores. */
-        if(syscheck.ignore_regex)
-            for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
-
-        /* Print files with no diff. */
-        if (syscheck.nodiff){
-            r = 0;
-            while (syscheck.nodiff[r] != NULL) {
-                minfo(FIM_NO_DIFF, syscheck.nodiff[r]);
-                r++;
-            }
-        }
-
-        /* Check directories set for real time */
-        r = 0;
-        while (syscheck.dir[r] != NULL) {
-            if (syscheck.opts[r] & CHECK_REALTIME) {
-  #ifdef INOTIFY_ENABLED
-                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
-  #elif defined(WIN32)
-                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
-  #else
-                mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
-  #endif
-            }
-            r++;
-        }
-    }
-
-    if (syscheck.rootcheck) {
-        mtinfo("rootcheck", STARTUP_MSG, (int)getpid());
-    }
-
-    /* Some sync time */
-    sleep(syscheck.tsleep * 5);
-    fim_initialize();
-
-    // Audit events thread
-    if (syscheck.enable_whodata) {
-#ifdef ENABLE_AUDIT
-        int out = audit_init();
-        if (out < 0)
-            mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
-#else
-        merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);
-#endif
-    }
-
-    /* Start the daemon */
-    start_daemon();
-
-}
-
-#endif /* !WIN32 */

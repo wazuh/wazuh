@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -14,21 +14,25 @@
 
 /** Prototypes **/
 
-/* b64 function prototypes */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
-
 /* Read any input from the user (stdin) */
 char *read_from_user(void);
 
 /* Add or remove an agent */
-int add_agent(int json_output, int no_limit);
+int add_agent(int json_output);
 int remove_agent(int json_output);
 
 /* Extract or import a key */
 int k_extract(const char *cmdextract, int json_output);
 int k_import(const char *cmdimport);
 int k_bulkload(const char *cmdbulk);
+
+/**
+ * @brief Converts invalid hostnames to valid by eliminating
+ * invalid characters
+ *
+ * @param u_name name to be converted
+ * */
+void OS_ConvertToValidAgentName(char *u_name);
 
 /* Validation functions */
 int OS_IsValidName(const char *u_name);
@@ -41,20 +45,10 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
 int OS_RemoveAgent(const char *id);
 double OS_AgentAntiquity(const char *name, const char *ip);
 double OS_AgentAntiquity_ID(const char *id);
-void OS_BackupAgentInfo(const char *id, const char *name, const char *ip);
-void OS_BackupAgentInfo_ID(const char *id);
-char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
-
-/* Load gid and uid.
- * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
- * Should be called before chroot().
- * Returns 0 on success or -1 on failure.
- */
-int OS_LoadUid();
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output);
@@ -62,9 +56,6 @@ int list_agents(int cmdlist);
 
 /* Clear a line */
 char *chomp(char *str);
-
-/* Checks if the agent limit has been reached */
-int limitReached();
 
 /* Shared variables */
 extern time_t time1;
@@ -79,6 +70,7 @@ extern char shost[];
 #define USER_SIZE       514
 #define FILE_SIZE       257
 #define STR_SIZE        66
+#define VALID_AGENT_NAME_CHARS "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.-"
 
 /* Internal strings */
 #define QUIT                "\\q"

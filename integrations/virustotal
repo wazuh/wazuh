@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # October 19, 2017.
 #
 # This program is free software; you can redistribute it
@@ -39,7 +39,7 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
 log_file = '{0}/logs/integrations.log'.format(pwd)
-socket_addr = '{0}/queue/ossec/queue'.format(pwd)
+socket_addr = '{0}/queue/sockets/queue'.format(pwd)
 
 def main(args):
     debug("# Starting")

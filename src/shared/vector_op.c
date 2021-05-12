@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 19, 2018.
  *
  * This program is free software; you can redistribute it
@@ -13,7 +13,8 @@
 
 W_Vector *W_Vector_init(int initialSize) {
 
-    W_Vector *v = malloc(sizeof(W_Vector));
+    W_Vector *v;
+    os_malloc(sizeof(W_Vector), v);
     v->vector = (char **)malloc(initialSize * sizeof(char *));
     v->used = 0;
     v->size = initialSize;
@@ -60,10 +61,10 @@ void W_Vector_free(W_Vector *v) {
 
     if (v) {
         for (i=0; i < v->used; i++) {
-            free(v->vector[i]);
+            os_free(v->vector[i]);
         }
-        free (v->vector);
-        free (v);
+        os_free (v->vector);
+        os_free (v);
     }
 }
 

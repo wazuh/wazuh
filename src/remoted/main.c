@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -13,15 +13,12 @@
 #include "shared_download.h"
 #include <unistd.h>
 
-/* Global variables */
-int pass_empty_keyfile;
-
 /* Prototypes */
-static void help_remoted(void) __attribute__((noreturn));
+static void help_remoted(char *home_path) __attribute__((noreturn));
 
 
 /* Print help statement */
-static void help_remoted()
+static void help_remoted(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -32,12 +29,13 @@ static void help_remoted()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", REMUSER);
+    print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -50,13 +48,15 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
 
-    const char *cfg = DEFAULTCPATH;
-    const char *dir = DEFAULTDIR;
-    const char *user = REMUSER;
-    const char *group = GROUPGLOBAL;
-
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+
+    const char *cfg = OSSECCONF;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
 
     while ((c = getopt(argc, argv, "Vdthfu:g:c:D:m")) != -1) {
         switch (c) {
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_remoted();
+                help_remoted(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -98,15 +98,21 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'm':
                 nocmerged = 1;
                 break;
             default:
-                help_remoted();
+                help_remoted(home_path);
                 break;
         }
+    }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
     /* Check current debug_level
@@ -121,25 +127,28 @@ int main(int argc, char **argv)
         }
     }
 
-    mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Return 0 if not configured */
     if (RemotedConfig(cfg, &logr) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 
+    /* Exit if verify msg id is set and worker pool is greater than one */
+    if ((getDefine_Int("remoted", "worker_pool", 1, 16) > 1) && (getDefine_Int("remoted", "verify_msg_id", 0, 1) == 1)) {
+        merror_exit("Message id verification can't be guaranteed when worker_pool is greater than 1.");
+    }
+
     logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
 
-    // Don`t create the merged file in worker nodes of the cluster
-
     // Read the cluster status and the node type from the configuration file
-    int is_worker = w_is_worker();
-
-    switch (is_worker){
+    switch (w_is_worker()){
         case 0:
+            logr.worker_node = false;
             mdebug1("This is not a worker");
             break;
         case 1:
+            logr.worker_node = true;
             mdebug1("Cluster worker node: Disabling the merged.mg creation");
             logr.nocmerged = 1;
             break;
@@ -166,7 +175,7 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, user, group);
+        merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
     /* Setup random */
@@ -183,10 +192,11 @@ int main(int argc, char **argv)
     }
 
     /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
+    os_free(home_path);
 
     /* Start the signal manipulation */
     StartSIG(ARGV0);

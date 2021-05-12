@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -26,7 +26,7 @@ extern long int __crt_ftell; /* Global ftell pointer */
 extern _Config Config;       /* Global Config structure */
 
 #ifdef LIBGEOIP_ENABLED
-GeoIP *geoipdb;
+extern GeoIP *geoipdb;
 #endif
 
 int GlobalConf(const char *cfgfile);
@@ -42,5 +42,6 @@ cJSON *getRulesConfig(void);
 void _getRulesListJSON(RuleNode *list, cJSON *array);
 cJSON *getAnalysisInternalOptions(void);
 cJSON *getManagerLabelsConfig(void);
+void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg);
 
 #endif /* CONFIG_H */

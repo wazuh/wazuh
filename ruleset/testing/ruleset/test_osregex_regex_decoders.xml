@@ -1,0 +1,101 @@
+<!-- action tests -->
+<decoder name="test_osregex_3">
+  <program_name>^test_osregex_3$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>action</order>
+</decoder>
+
+<!-- extra_data tests -->
+<decoder name="test_osregex_4">
+  <program_name>^test_osregex_4$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>extra_data</order>
+</decoder>
+
+<!-- id tests -->
+<decoder name="test_osregex_5">
+  <program_name>^test_osregex_5$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>id</order>
+</decoder>
+
+<!-- pre-decoding loaded fields -->
+<!-- location,hostname,program_name tests -->
+<decoder name="test_osregex_6">
+  <program_name>^test_osregex_6$</program_name>
+</decoder>
+
+<!-- match tests -->
+<decoder name="test_osregex_7">
+  <program_name>^test_osregex_7$</program_name>
+</decoder>
+
+<!-- protocol tests -->
+<decoder name="test_osregex_8">
+  <program_name>^test_osregex_8$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>protocol</order>
+</decoder>
+
+<!-- user tests -->
+<decoder name="test_osregex_9">
+  <program_name>^test_osregex_9$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>user</order>
+</decoder>
+
+<!-- url tests -->
+<decoder name="test_osregex_10">
+  <program_name>^test_osregex_10$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>url</order>
+</decoder>
+
+<!-- srcport tests -->
+<decoder name="test_osregex_11">
+  <program_name>^test_osregex_11$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>srcport</order>
+</decoder>
+
+<!-- dstport tests -->
+<decoder name="test_osregex_12">
+  <program_name>^test_osregex_12$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>dstport</order>
+</decoder>
+
+<!-- status tests -->
+<decoder name="test_osregex_13">
+  <program_name>^test_osregex_13$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>status</order>
+</decoder>
+
+<!-- system_name tests -->
+<decoder name="test_osregex_14">
+  <program_name>^test_osregex_14$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>system_name</order>
+</decoder>
+
+<!-- data tests -->
+<decoder name="test_osregex_15">
+  <program_name>^test_osregex_15$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>data</order>
+</decoder>
+
+<!-- srcgeoip tests -->
+<decoder name="test_osregex_16">
+  <program_name>^test_osregex_16$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>srcip</order>
+</decoder>
+
+ <!-- dstgeoip -->
+<decoder name="test_osregex_17">
+  <program_name>^test_osregex_17$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>dstip</order>
+</decoder>

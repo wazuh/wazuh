@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,29 +10,26 @@
 
 #include "syscheck_op.h"
 
-#ifdef WIN32
-#include <sddl.h>
-int copy_ace_info(void *ace, char *perm, int perm_size);
-int w_get_account_info(SID *sid, char **account_name, char **account_domain);
-#elif !CLIENT
-static char *unescape_syscheck_field(char *sum);
-#endif
-int delete_target_file(const char *path) {
-    char full_path[PATH_MAX] = "\0";
-    snprintf(full_path, PATH_MAX, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
+#ifdef WAZUH_UNIT_TESTING
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 
 #ifdef WIN32
-    char *windows_path = strchr(path, ':');
-    strncat(full_path, (windows_path + 1), PATH_MAX - strlen(full_path) - 1);
-#else
-    strncat(full_path, path, PATH_MAX - strlen(full_path) - 1);
+#include "unit_tests/wrappers/windows/aclapi_wrappers.h"
+#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "unit_tests/wrappers/windows/sddl_wrappers.h"
+#include "unit_tests/wrappers/windows/securitybaseapi_wrappers.h"
+#include "unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "unit_tests/wrappers/windows/winreg_wrappers.h"
+
 #endif
-    if(rmdir_ex(full_path) == 0){
-        mdebug1("Deleting last-entry of file '%s'", full_path);
-        return(remove_empty_folders(full_path));
-    }
-    return 1;
-}
+#endif
 
 char *escape_syscheck_field(char *field) {
     char *esc_it;
@@ -46,61 +43,9 @@ char *escape_syscheck_field(char *field) {
     return field;
 }
 
-int fim_find_child_depth(const char *parent, const char *child) {
-
-    int length_A = strlen(parent);
-    int length_B = strlen(child);
-
-    char* p_first = strdup(parent);
-    char *p_second = strdup(child);
-
-    char *diff_str;
-
-    if(parent[length_A - 1] == PATH_SEP && length_A >= 2 && parent[length_A - 2] != ':') {
-        p_first[length_A - 1] = '\0';
-    }
-
-    if(child[length_B - 1] == PATH_SEP && length_B >= 2 && child[length_B - 2] != ':') {
-        p_second[length_B - 1] = '\0';
-    }
-
-
-#ifndef WIN32
-    if(strncmp(parent, child, length_A) == 0) {
-#else
-    if(strncasecmp(parent, child, length_A) == 0) {
-#endif
-        diff_str = p_second;
-        diff_str += length_A;
-    }
-#ifndef WIN32
-    else if(strncmp(child, parent, length_B) == 0) {
-#else
-    else if(strncasecmp(child, parent, length_B) == 0) {
-#endif
-        diff_str = p_first;
-        diff_str += length_B;
-    }
-    else{
-        os_free(p_first);
-        os_free(p_second);
-        return INT_MAX;
-    }
-
-    char *c;
-    int child_depth = 0;
-    c = strchr(diff_str, PATH_SEP);
-    while (c != NULL) {
-        child_depth++;
-        c = strchr(c + 1, PATH_SEP);
-    }
-
-    os_free(p_first);
-    os_free(p_second);
-    return child_depth ? child_depth : 1;
-}
-
 void normalize_path(char * path) {
+    assert(path != NULL);
+
     char *ptname = path;
 
     if(ptname[1] == ':' && ((ptname[0] >= 'A' && ptname[0] <= 'Z') || (ptname[0] >= 'a' && ptname[0] <= 'z'))) {
@@ -116,9 +61,9 @@ void normalize_path(char * path) {
 }
 
 int remove_empty_folders(const char *path) {
-    const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
-    char DIFF_PATH[MAXPATHLEN] = DIFF_DIR_PATH;
-    strcat(DIFF_PATH, LOCALDIR);
+    assert(path != NULL);
+
+    char DIFF_PATH[PATH_MAX] = DIFF_DIR;
     const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
@@ -129,16 +74,15 @@ int remove_empty_folders(const char *path) {
     if (c) {
         memcpy(parent, path, c - path);
         parent[c - path] = '\0';
-        // Don't delete above /local
+        // Don't delete above /diff
         if (strcmp(DIFF_PATH, parent) != 0) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
                 mdebug1("Removing empty directory '%s'.", parent);
                 if (rmdir_ex(parent) != 0) {
-                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')",
-                        parent, strerror(errno));
-                    retval = 1;
+                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')", parent, strerror(errno));
+                    retval = -1;
                 } else {
                     // Get parent and remove it if it's empty
                     retval = remove_empty_folders(parent);
@@ -154,9 +98,10 @@ int remove_empty_folders(const char *path) {
 
 #ifndef WIN32
 #ifndef CLIENT
-/* Parse c_sum string. Returns 0 if success, 1 when c_sum denotes a deleted file
-   or -1 on failure. */
 int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
+    assert(sum != NULL);
+    assert(c_sum != NULL);
+
     char *c_perm;
     char *c_mtime;
     char *c_inode;
@@ -174,16 +119,24 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         *(c_perm++) = '\0';
 
-        if (!(sum->uid = strchr(c_perm, ':')))
+        if (!(sum->uid = wstr_chr(c_perm, ':')))
             return -1;
 
         *(sum->uid++) = '\0';
 
         if (*c_perm == '|') {
             // Windows permissions
-            sum->win_perm = unescape_syscheck_field(c_perm);
-        } else {
+            char *unsc_perm = unescape_syscheck_field(c_perm);
+
+            // We need to transform them to the new format
+            // before processing
+            sum->win_perm = decode_win_permissions(unsc_perm);
+            free(unsc_perm);
+        } else if (*c_perm == ':') {
+        } else if (isdigit(*c_perm)) {
             sum->perm = atoi(c_perm);
+        } else {
+            os_strdup(c_perm, sum->win_perm);
         }
 
         if (!(sum->gid = strchr(sum->uid, ':')))
@@ -231,7 +184,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
                 if (sum->sha256) {
                     if (attrs = strchr(sum->sha256, ':'), attrs) {
                         *(attrs++) = '\0';
-                        sum->attrs = strtoul(attrs, NULL, 10);
+                        if (isdigit(*attrs)) {
+                            int attributes = strtoul(attrs, NULL, 10);
+                            os_calloc(OS_SIZE_256 + 1, sizeof(char), sum->attributes);
+                            decode_win_attributes(sum->attributes, attributes);
+                        } else {
+                            os_strdup(attrs, sum->attributes);
+                        }
                     }
                 }
 
@@ -243,15 +202,19 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
     // Get extra data
     if (w_sum) {
+        char * user_name;
+        char * process_name;
+        char * symbolic_path;
+
         sum->wdata.user_id = w_sum;
 
-        if ((sum->wdata.user_name = wstr_chr(w_sum, ':'))) {
-            *(sum->wdata.user_name++) = '\0';
+        if ((user_name = wstr_chr(w_sum, ':'))) {
+            *(user_name++) = '\0';
         } else {
             return -1;
         }
 
-        if ((sum->wdata.group_id = wstr_chr(sum->wdata.user_name, ':'))) {
+        if ((sum->wdata.group_id = wstr_chr(user_name, ':'))) {
             *(sum->wdata.group_id++) = '\0';
         } else {
             return -1;
@@ -263,13 +226,13 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
         }
 
-        if ((sum->wdata.process_name = wstr_chr(sum->wdata.group_name, ':'))) {
-            *(sum->wdata.process_name++) = '\0';
+        if ((process_name = wstr_chr(sum->wdata.group_name, ':'))) {
+            *(process_name++) = '\0';
         } else {
             return -1;
         }
 
-        if ((sum->wdata.audit_uid = wstr_chr(sum->wdata.process_name, ':'))) {
+        if ((sum->wdata.audit_uid = wstr_chr(process_name, ':'))) {
             *(sum->wdata.audit_uid++) = '\0';
         } else {
             return -1;
@@ -313,12 +276,14 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
 
         /* Look for a symbolic path */
-        if (sum->tag && (sum->symbolic_path = wstr_chr(sum->tag, ':'))) {
-            *(sum->symbolic_path++) = '\0';
+        if (sum->tag && (symbolic_path = wstr_chr(sum->tag, ':'))) {
+            *(symbolic_path++) = '\0';
+        } else {
+            symbolic_path = NULL;
         }
 
         /* Look if it is a silent event */
-        if (sum->symbolic_path && (c_inode = wstr_chr(sum->symbolic_path, ':'))) {
+        if (symbolic_path && (c_inode = wstr_chr(symbolic_path, ':'))) {
             *(c_inode++) = '\0';
             if (*c_inode == '+') {
                 sum->silent = 1;
@@ -326,9 +291,9 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
 
 
-        sum->symbolic_path = unescape_syscheck_field(sum->symbolic_path);
-        sum->wdata.user_name = unescape_syscheck_field(sum->wdata.user_name);
-        sum->wdata.process_name = unescape_syscheck_field(sum->wdata.process_name);
+        sum->symbolic_path = unescape_syscheck_field(symbolic_path);
+        sum->wdata.user_name = unescape_syscheck_field(user_name);
+        sum->wdata.process_name = unescape_syscheck_field(process_name);
         if (*sum->wdata.ppid == '-') {
             sum->wdata.ppid = NULL;
         }
@@ -337,19 +302,21 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     return retval;
 }
 
-// Only decoded by manager
 int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     char *changes;
     char *date_alert;
     char *sym_path;
 
+    assert(sum != NULL);
+    assert(c_sum != NULL);
+
     if (changes = strchr(c_sum, '!'), !changes) {
-        return -1;
+        return 0;
     }
     *changes++ = '\0';
 
     if (date_alert = strchr(changes, ':'), !date_alert) {
-        return -1;
+        return 0;
     }
     *(date_alert++) = '\0';
 
@@ -361,8 +328,219 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     sum->changes = atoi(changes);
     sum->date_alert = atol(date_alert);
 
-    return 0;
+    return 1;
 }
+
+void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
+    assert(lf != NULL);
+    assert(f_name != NULL);
+    assert(sum != NULL);
+
+    os_strdup(f_name, lf->filename);
+    os_strdup(f_name, lf->fields[FIM_FILE].value);
+
+    if (sum->size) {
+        os_strdup(sum->size, lf->fields[FIM_SIZE].value);
+    }
+
+    if (sum->perm) {
+        os_calloc(7, sizeof(char), lf->fields[FIM_PERM].value);
+        snprintf(lf->fields[FIM_PERM].value, 7, "%06o", sum->perm);
+    } else if (sum->win_perm && *sum->win_perm != '\0') {
+        os_strdup(sum->win_perm, lf->fields[FIM_PERM].value);
+    }
+
+    if (sum->uid) {
+        os_strdup(sum->uid, lf->fields[FIM_UID].value);
+    }
+
+    if (sum->gid) {
+        os_strdup(sum->gid, lf->fields[FIM_GID].value);
+    }
+
+    if (sum->md5) {
+        os_strdup(sum->md5, lf->fields[FIM_MD5].value);
+    }
+
+    if (sum->sha1) {
+        os_strdup(sum->sha1, lf->fields[FIM_SHA1].value);
+    }
+
+    if (sum->uname) {
+        os_strdup(sum->uname, lf->fields[FIM_UNAME].value);
+    }
+
+    if (sum->gname) {
+        os_strdup(sum->gname, lf->fields[FIM_GNAME].value);
+    }
+
+    if (sum->mtime) {
+        lf->mtime_after = sum->mtime;
+        os_calloc(20, sizeof(char), lf->fields[FIM_MTIME].value);
+        snprintf(lf->fields[FIM_MTIME].value, 20, "%ld", sum->mtime);
+    }
+
+    if (sum->inode) {
+        lf->inode_after = sum->inode;
+        os_calloc(20, sizeof(char), lf->fields[FIM_INODE].value);
+        snprintf(lf->fields[FIM_INODE].value, 20, "%ld", sum->inode);
+    }
+
+    if(sum->sha256) {
+        os_strdup(sum->sha256, lf->fields[FIM_SHA256].value);
+    }
+
+    if(sum->attributes) {
+        os_strdup(sum->attributes, lf->fields[FIM_ATTRS].value);
+    }
+
+    if(sum->wdata.user_id) {
+        os_strdup(sum->wdata.user_id, lf->user_id);
+        os_strdup(sum->wdata.user_id, lf->fields[FIM_USER_ID].value);
+    }
+
+    if(sum->wdata.user_name) {
+        os_strdup(sum->wdata.user_name, lf->user_name);
+        os_strdup(sum->wdata.user_name, lf->fields[FIM_USER_NAME].value);
+    }
+
+    if(sum->wdata.group_id) {
+        os_strdup(sum->wdata.group_id, lf->group_id);
+        os_strdup(sum->wdata.group_id, lf->fields[FIM_GROUP_ID].value);
+    }
+
+    if(sum->wdata.group_name) {
+        os_strdup(sum->wdata.group_name, lf->group_name);
+        os_strdup(sum->wdata.group_name, lf->fields[FIM_GROUP_NAME].value);
+    }
+
+    if(sum->wdata.process_name) {
+        os_strdup(sum->wdata.process_name, lf->process_name);
+        os_strdup(sum->wdata.process_name, lf->fields[FIM_PROC_NAME].value);
+    }
+
+    if(sum->wdata.parent_name) {
+        os_strdup(sum->wdata.parent_name, lf->parent_name);
+        os_strdup(sum->wdata.parent_name, lf->fields[FIM_PROC_PNAME].value);
+    }
+
+    if(sum->wdata.cwd) {
+        os_strdup(sum->wdata.cwd, lf->cwd);
+        os_strdup(sum->wdata.cwd, lf->fields[FIM_AUDIT_CWD].value);
+    }
+
+    if(sum->wdata.parent_cwd) {
+        os_strdup(sum->wdata.parent_cwd, lf->parent_cwd);
+        os_strdup(sum->wdata.parent_cwd, lf->fields[FIM_AUDIT_PCWD].value);
+    }
+
+    if(sum->wdata.audit_uid) {
+        os_strdup(sum->wdata.audit_uid, lf->audit_uid);
+        os_strdup(sum->wdata.audit_uid, lf->fields[FIM_AUDIT_ID].value);
+    }
+
+    if(sum->wdata.audit_name) {
+        os_strdup(sum->wdata.audit_name, lf->audit_name);
+        os_strdup(sum->wdata.audit_name, lf->fields[FIM_AUDIT_NAME].value);
+    }
+
+    if(sum->wdata.effective_uid) {
+        os_strdup(sum->wdata.effective_uid, lf->effective_uid);
+        os_strdup(sum->wdata.effective_uid, lf->fields[FIM_EFFECTIVE_UID].value);
+    }
+
+    if(sum->wdata.effective_name) {
+        os_strdup(sum->wdata.effective_name, lf->effective_name);
+        os_strdup(sum->wdata.effective_name, lf->fields[FIM_EFFECTIVE_NAME].value);
+    }
+
+    if(sum->wdata.ppid) {
+        os_strdup(sum->wdata.ppid, lf->ppid);
+        os_strdup(sum->wdata.ppid, lf->fields[FIM_PPID].value);
+    }
+
+    if(sum->wdata.process_id) {
+        os_strdup(sum->wdata.process_id, lf->process_id);
+        os_strdup(sum->wdata.process_id, lf->fields[FIM_PROC_ID].value);
+    }
+
+    if(sum->tag) {
+        os_strdup(sum->tag, lf->sk_tag);
+        os_strdup(sum->tag, lf->fields[FIM_TAG].value);
+    }
+
+    if(sum->symbolic_path) {
+        os_strdup(sum->symbolic_path, lf->sym_path);
+        os_strdup(sum->symbolic_path, lf->fields[FIM_SYM_PATH].value);
+    }
+}
+
+int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
+    int r;
+    char s_perm[16];
+    char s_mtime[16];
+    char s_inode[16];
+    char *username;
+
+    assert(sum != NULL);
+    assert(output != NULL);
+
+    if(sum->perm) {
+        snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
+    } else {
+        *s_perm = '\0';
+    }
+    snprintf(s_mtime, sizeof(s_mtime), "%ld", sum->mtime);
+    snprintf(s_inode, sizeof(s_inode), "%ld", sum->inode);
+
+    username = wstr_replace((const char*)sum->uname, " ", "\\ ");
+
+    // This string will be sent to Analysisd, who will parse it
+    // If it is a Windows event, we need to escape the permissions
+    char *win_perm = NULL;
+    if (sum->win_perm) {
+        win_perm = wstr_replace(sum->win_perm, ":", "\\:");
+    }
+
+    // size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256:attrs!changes:date_alert
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^
+    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s!%d:%ld",
+            sum->size,
+            (!win_perm) ? s_perm : win_perm,
+            sum->uid,
+            sum->gid,
+            sum->md5,
+            sum->sha1,
+            sum->uname ? username : "",
+            sum->gname ? sum->gname : "",
+            sum->mtime ? s_mtime : "",
+            sum->inode ? s_inode : "",
+            sum->sha256 ? sum->sha256 : "",
+            sum->attributes ? sum->attributes : "",
+            sum->changes,
+            sum->date_alert
+    );
+
+    free(win_perm);
+    free(username);
+    return r < (int)size ? 0 : -1;
+}
+
+void sk_sum_clean(sk_sum_t * sum) {
+    assert(sum != NULL);
+
+    os_free(sum->symbolic_path);
+    os_free(sum->attributes);
+    os_free(sum->wdata.user_name);
+    os_free(sum->wdata.process_name);
+    os_free(sum->wdata.parent_cwd);
+    os_free(sum->wdata.cwd);
+    os_free(sum->wdata.parent_name);
+    os_free(sum->uname);
+    os_free(sum->win_perm);
+}
+
+#endif /* #ifndef CLIENT */
 
 char *unescape_syscheck_field(char *sum) {
     char *esc_it;
@@ -379,526 +557,105 @@ char *unescape_syscheck_field(char *sum) {
     return NULL;
 }
 
-void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
-    os_strdup(f_name, lf->filename);
-    os_strdup(f_name, lf->fields[SK_FILE].value);
+char *get_user(int uid) {
+    struct passwd pwd;
+    struct passwd *result;
+    char *buf;
+    char *user_name = NULL;
+    int bufsize;
+    int errno;
 
-    if (sum->size) {
-        os_strdup(sum->size, lf->size_after);
-        os_strdup(sum->size, lf->fields[SK_SIZE].value);
+    bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufsize == -1) {
+        bufsize = 16384;
     }
 
-    if (sum->perm) {
-        lf->perm_after = sum->perm;
-        os_calloc(7, sizeof(char), lf->fields[SK_PERM].value);
-        snprintf(lf->fields[SK_PERM].value, 7, "%06o", sum->perm);
-    } else if (sum->win_perm && *sum->win_perm != '\0') {
-        int size;
-        os_strdup(sum->win_perm, lf->win_perm_after);
-        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->fields[SK_PERM].value);
-        if (size = decode_win_permissions(lf->fields[SK_PERM].value, OS_SIZE_256, lf->win_perm_after, 1, NULL), size > 1) {
-            os_realloc(lf->fields[SK_PERM].value, size + 1, lf->fields[SK_PERM].value);
-        }
-    }
+    os_calloc(bufsize, sizeof(char), buf);
 
-    if (sum->uid) {
-        os_strdup(sum->uid, lf->owner_after);
-        os_strdup(sum->uid, lf->fields[SK_UID].value);
-    }
-
-    if (sum->gid) {
-        os_strdup(sum->gid, lf->gowner_after);
-        os_strdup(sum->gid, lf->fields[SK_GID].value);
-    }
-
-    if (sum->md5) {
-        os_strdup(sum->md5, lf->md5_after);
-        os_strdup(sum->md5, lf->fields[SK_MD5].value);
-    }
-
-    if (sum->sha1) {
-        os_strdup(sum->sha1, lf->sha1_after);
-        os_strdup(sum->sha1, lf->fields[SK_SHA1].value);
-    }
-
-    if (sum->uname) {
-        os_strdup(sum->uname, lf->uname_after);
-        os_strdup(sum->uname, lf->fields[SK_UNAME].value);
-    }
-
-    if (sum->gname) {
-        os_strdup(sum->gname, lf->gname_after);
-        os_strdup(sum->gname, lf->fields[SK_GNAME].value);
-    }
-
-    if (sum->mtime) {
-        lf->mtime_after = sum->mtime;
-        os_calloc(20, sizeof(char), lf->fields[SK_MTIME].value);
-        snprintf(lf->fields[SK_MTIME].value, 20, "%ld", sum->mtime);
-    }
-
-    if (sum->inode) {
-        lf->inode_after = sum->inode;
-        os_calloc(20, sizeof(char), lf->fields[SK_INODE].value);
-        snprintf(lf->fields[SK_INODE].value, 20, "%ld", sum->inode);
-    }
-
-    if(sum->sha256) {
-        os_strdup(sum->sha256, lf->sha256_after);
-        os_strdup(sum->sha256, lf->fields[SK_SHA256].value);
-    }
-
-    if(sum->attrs) {
-        lf->attrs_after = sum->attrs;
-        os_calloc(OS_SIZE_256 + 1, sizeof(char), lf->fields[SK_ATTRS].value);
-        decode_win_attributes(lf->fields[SK_ATTRS].value, lf->attrs_after);
-    }
-
-    if(sum->wdata.user_id) {
-        os_strdup(sum->wdata.user_id, lf->user_id);
-        os_strdup(sum->wdata.user_id, lf->fields[SK_USER_ID].value);
-    }
-
-    if(sum->wdata.user_name) {
-        os_strdup(sum->wdata.user_name, lf->user_name);
-        os_strdup(sum->wdata.user_name, lf->fields[SK_USER_NAME].value);
-    }
-
-    if(sum->wdata.group_id) {
-        os_strdup(sum->wdata.group_id, lf->group_id);
-        os_strdup(sum->wdata.group_id, lf->fields[SK_GROUP_ID].value);
-    }
-
-    if(sum->wdata.group_name) {
-        os_strdup(sum->wdata.group_name, lf->group_name);
-        os_strdup(sum->wdata.group_name, lf->fields[SK_GROUP_NAME].value);
-    }
-
-    if(sum->wdata.process_name) {
-        os_strdup(sum->wdata.process_name, lf->process_name);
-        os_strdup(sum->wdata.process_name, lf->fields[SK_PROC_NAME].value);
-    }
-
-    if(sum->wdata.audit_uid) {
-        os_strdup(sum->wdata.audit_uid, lf->audit_uid);
-        os_strdup(sum->wdata.audit_uid, lf->fields[SK_AUDIT_ID].value);
-    }
-
-    if(sum->wdata.audit_name) {
-        os_strdup(sum->wdata.audit_name, lf->audit_name);
-        os_strdup(sum->wdata.audit_name, lf->fields[SK_AUDIT_NAME].value);
-    }
-
-    if(sum->wdata.effective_uid) {
-        os_strdup(sum->wdata.effective_uid, lf->effective_uid);
-        os_strdup(sum->wdata.effective_uid, lf->fields[SK_EFFECTIVE_UID].value);
-    }
-
-    if(sum->wdata.effective_name) {
-        os_strdup(sum->wdata.effective_name, lf->effective_name);
-        os_strdup(sum->wdata.effective_name, lf->fields[SK_EFFECTIVE_NAME].value);
-    }
-
-    if(sum->wdata.ppid) {
-        os_strdup(sum->wdata.ppid, lf->ppid);
-        os_strdup(sum->wdata.ppid, lf->fields[SK_PPID].value);
-    }
-
-    if(sum->wdata.process_id) {
-        os_strdup(sum->wdata.process_id, lf->process_id);
-        os_strdup(sum->wdata.process_id, lf->fields[SK_PROC_ID].value);
-    }
-
-    if(sum->tag) {
-        os_strdup(sum->tag, lf->sk_tag);
-        os_strdup(sum->tag, lf->fields[SK_TAG].value);
-    }
-
-    if(sum->symbolic_path) {
-        os_strdup(sum->symbolic_path, lf->sym_path);
-        os_strdup(sum->symbolic_path, lf->fields[SK_SYM_PATH].value);
-    }
-}
-
-int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
-    int r;
-    char s_perm[16];
-    char s_mtime[16];
-    char s_inode[16];
-    char *username;
-
-    if(sum->perm) {
-        snprintf(s_perm, sizeof(s_perm), "%d", sum->perm);
-    } else {
-        *s_perm = '\0';
-    }
-    snprintf(s_mtime, sizeof(s_mtime), "%ld", sum->mtime);
-    snprintf(s_inode, sizeof(s_inode), "%ld", sum->inode);
-
-    username = wstr_replace((const char*)sum->uname, " ", "\\ ");
-
-    // size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256:attrs!changes:date_alert
-    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^
-    r = snprintf(output, size, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%d:%ld",
-            sum->size,
-            (!sum->win_perm) ? s_perm : sum->win_perm,
-            sum->uid,
-            sum->gid,
-            sum->md5,
-            sum->sha1,
-            sum->uname ? username : "",
-            sum->gname ? sum->gname : "",
-            sum->mtime ? s_mtime : "",
-            sum->inode ? s_inode : "",
-            sum->sha256 ? sum->sha256 : "",
-            sum->attrs ? sum->attrs : 0,
-            sum->changes,
-            sum->date_alert
-    );
-
-    free(username);
-    return r < (int)size ? 0 : -1;
-}
-
-void sk_sum_clean(sk_sum_t * sum) {
-    os_free(sum->symbolic_path);
-    os_free(sum->wdata.user_name);
-    os_free(sum->wdata.process_name);
-    os_free(sum->uname);
-    os_free(sum->win_perm);
-}
-
-#endif
-
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
-    struct passwd *user = getpwuid(uid);
-    return user ? user->pw_name : "";
-}
-
-const char *get_group(int gid) {
-    struct group *group = getgrgid(gid);
-    return group ? group->gr_name : "";
-}
-
-    void decode_win_attributes(char *str, unsigned int attrs) {
-    size_t size;
-
-    size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-                    attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE, " : "",
-                    attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED, " : "",
-                    attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE, " : "",
-                    attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY, " : "",
-                    attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED, " : "",
-                    attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN, " : "",
-                    attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM, " : "",
-                    attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL, " : "",
-                    attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED, " : "",
-                    attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA, " : "",
-                    attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE, " : "",
-                    attrs & FILE_ATTRIBUTE_READONLY ? "READONLY, " : "",
-                    attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS, " : "",
-                    attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN, " : "",
-                    attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT, " : "",
-                    attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE, " : "",
-                    attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM, " : "",
-                    attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY, " : "",
-                    attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL, " : "");
-    if (size > 2) {
-        str[size - 2] = '\0';
-    }
-}
-
-int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array) {
-    int writted = 0;
-    int size;
-    char *perm_it = NULL;
-    char *base_it = NULL;
-    char *account_name = NULL;
-    static char *str_a = "allowed";
-    static char *str_d = "denied";
-    static char *str_n = "name";
-    cJSON *perm_type = NULL;
-    cJSON *json_it;
-    char a_type;
-    long mask;
-
-    perm_it = raw_perm;
-    while (perm_it = strchr(perm_it, '|'), perm_it) {
-        // Get the account/group name
-        base_it = ++perm_it;
-        if (perm_it = strchr(perm_it, ','), !perm_it) {
-            goto error;
-        }
-        *perm_it = '\0';
-        os_strdup(base_it, account_name);
-        *perm_it = ',';
-
-        // Get the access type
-        base_it = ++perm_it;
-        if (perm_it = strchr(perm_it, ','), !perm_it) {
-            goto error;
-        }
-        *perm_it = '\0';
-        a_type = *base_it;
-        *perm_it = ',';
-
-        // Get the access mask
-        base_it = ++perm_it;
-        if (perm_it = strchr(perm_it, '|'), perm_it) {
-            *perm_it = '\0';
-            mask = strtol(base_it, NULL, 10);
-            *perm_it = '|';
-        } else {
-            // End of the msg
-            mask = strtol(base_it, NULL, 10);
-        }
-
-        if (perm_array) {
-            cJSON *a_found = NULL;
-            char *perm_type_str;
-
-
-            perm_type_str = (a_type == '0') ? str_a : str_d;
-            for (json_it = perm_array->child; json_it; json_it = json_it->next) {
-                cJSON *obj;
-                if (obj = cJSON_GetObjectItem(json_it, str_n), obj) {
-                    if (!strcmp(obj->valuestring, account_name)) {
-                        if (obj = cJSON_GetObjectItem(json_it, perm_type_str), obj) {
-                            mdebug2("ACL [%s] fragmented. All permissions may not be displayed.", raw_perm);
-                            goto next_it;
-                        }
-                        a_found = json_it;
-                        break;
-                    }
-                }
-            }
-
-            if (perm_type = cJSON_CreateArray(), !perm_type) {
-                goto error;
-            }
-
-            if (mask & GENERIC_READ) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_READ"));
-            if (mask & GENERIC_WRITE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_WRITE"));
-            if (mask & GENERIC_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_EXECUTE"));
-            if (mask & GENERIC_ALL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("GENERIC_ALL"));
-
-            if (mask & DELETE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("DELETE"));
-            if (mask & READ_CONTROL) cJSON_AddItemToArray(perm_type, cJSON_CreateString("READ_CONTROL"));
-            if (mask & WRITE_DAC) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_DAC"));
-            if (mask & WRITE_OWNER) cJSON_AddItemToArray(perm_type, cJSON_CreateString("WRITE_OWNER"));
-            if (mask & SYNCHRONIZE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("SYNCHRONIZE"));
-
-            if (mask & FILE_READ_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_DATA"));
-            if (mask & FILE_WRITE_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_DATA"));
-            if (mask & FILE_APPEND_DATA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_APPEND_DATA"));
-            if (mask & FILE_READ_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_EA"));
-            if (mask & FILE_WRITE_EA) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_EA"));
-            if (mask & FILE_EXECUTE) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_EXECUTE"));
-            if (mask & FILE_READ_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_READ_ATTRIBUTES"));
-            if (mask & FILE_WRITE_ATTRIBUTES) cJSON_AddItemToArray(perm_type, cJSON_CreateString("FILE_WRITE_ATTRIBUTES"));
-
-            if (!a_found) {
-                if (a_found = cJSON_CreateObject(), !a_found) {
-                    goto error;
-                }
-                cJSON_AddStringToObject(a_found, str_n, account_name);
-                cJSON_AddItemToArray(perm_array, a_found);
-            }
-
-            cJSON_AddItemToObject(a_found, perm_type_str, perm_type);
-            perm_type = NULL;
-            writted = 1;
-        } else if (seq) {
-            writted = snprintf(str, 50, "Permissions changed.\n");
-        } else {
-            size = snprintf(str, str_size, "   %s  (%s) -%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-                            account_name,
-                            a_type == '0' ? "ALLOWED" : "DENIED",
-                            mask & GENERIC_READ ? " GENERIC_READ," : "",
-                            mask & GENERIC_WRITE ? " GENERIC_WRITE," : "",
-                            mask & GENERIC_EXECUTE ? " GENERIC_EXECUTE," : "",
-                            mask & GENERIC_ALL ? " GENERIC_ALL," : "",
-                            mask & DELETE ? " DELETE," : "",
-                            mask & READ_CONTROL ? " READ_CONTROL," : "",
-                            mask & WRITE_DAC ? " WRITE_DAC," : "",
-                            mask & WRITE_OWNER ? " WRITE_OWNER," : "",
-                            mask & SYNCHRONIZE ? " SYNCHRONIZE," : "",
-                            mask & FILE_READ_DATA ? " FILE_READ_DATA," : "",
-                            mask & FILE_WRITE_DATA ? " FILE_WRITE_DATA," : "",
-                            mask & FILE_APPEND_DATA ? " FILE_APPEND_DATA," : "",
-                            mask & FILE_READ_EA ? " FILE_READ_EA," : "",
-                            mask & FILE_WRITE_EA ? " FILE_WRITE_EA," : "",
-                            mask & FILE_EXECUTE ? " FILE_EXECUTE," : "",
-                            mask & FILE_READ_ATTRIBUTES ? " FILE_READ_ATTRIBUTES," : "",
-                            mask & FILE_WRITE_ATTRIBUTES ? " FILE_WRITE_ATTRIBUTES," : ""
-                        );
-            if (size > 1) {
-                str[size - 1] = '\n';
-            }
-            writted += size;
-            str += size;
-        }
-
-next_it:
-        os_free(account_name);
-        if (!perm_it) {
-            break;
-        }
-    }
-
-    return writted;
-error:
-    if (perm_type) {
-        cJSON_Delete(perm_type);
-    }
-    os_free(account_name);
-    mdebug1("The file permissions could not be decoded: '%s'", raw_perm);
-    *str = '\0';
-    return 0;
-}
-
-cJSON *perm_to_json(char *permissions) {
-    cJSON *perm_array;
-
-    if (perm_array = cJSON_CreateArray(), !perm_array) {
-        return NULL;
-    }
-
-    if (!decode_win_permissions(NULL, 0, permissions, 0, perm_array)) {
-        os_free(perm_array);
-    }
-
-    return perm_array;
-}
-
-cJSON *attrs_to_json(unsigned int attributes) {
-    cJSON *ab_array;
-
-    if (ab_array = cJSON_CreateArray(), !ab_array) {
-        return NULL;
-    }
-
-    if (attributes & FILE_ATTRIBUTE_ARCHIVE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ARCHIVE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_COMPRESSED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("COMPRESSED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_DEVICE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DEVICE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("DIRECTORY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_ENCRYPTED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("ENCRYPTED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_HIDDEN) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("HIDDEN"));
-    }
-    if (attributes & FILE_ATTRIBUTE_INTEGRITY_STREAM) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("INTEGRITY_STREAM"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NORMAL) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NORMAL"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NOT_CONTENT_INDEXED"));
-    }
-    if (attributes & FILE_ATTRIBUTE_NO_SCRUB_DATA) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("NO_SCRUB_DATA"));
-    }
-    if (attributes & FILE_ATTRIBUTE_OFFLINE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("OFFLINE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_READONLY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("READONLY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_DATA_ACCESS"));
-    }
-    if (attributes & FILE_ATTRIBUTE_RECALL_ON_OPEN) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("RECALL_ON_OPEN"));
-    }
-    if (attributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("REPARSE_POINT"));
-    }
-    if (attributes & FILE_ATTRIBUTE_SPARSE_FILE) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SPARSE_FILE"));
-    }
-    if (attributes & FILE_ATTRIBUTE_SYSTEM) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("SYSTEM"));
-    }
-    if (attributes & FILE_ATTRIBUTE_TEMPORARY) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("TEMPORARY"));
-    }
-    if (attributes & FILE_ATTRIBUTE_VIRTUAL) {
-        cJSON_AddItemToArray(ab_array, cJSON_CreateString("VIRTUAL"));
-    }
-    return ab_array;
-}
-
-char *get_attr_from_checksum(char *checksum, int attr) {
-    char *str_attr = NULL;
-    char *str_end = NULL;
-    int i;
-
-    if (attr < 1 || attr > FIM_NATTR) {
-        return NULL;
-    }
-
-    str_attr = checksum;
-
-    for(i = 2; i <= attr && str_attr; i++){
-        str_attr = strchr(str_attr, ':');
-        if(str_attr) {
-            str_attr++;
-        }
-    }
-
-    if (str_attr) {
-        if(str_end = strchr(str_attr, ':'), str_end) {
-            *(str_end++) = '\0';
-        }
-        return str_attr;
-    }
-
-    return NULL;
-}
-
+#if defined(SUN_MAJOR_VERSION) && defined(SUN_MINOR_VERSION)  && \
+    (SUN_MAJOR_VERSION < 11) || \
+    ((SUN_MAJOR_VERSION == 11) && (SUN_MINOR_VERSION < 4))
+    result = getpwuid_r(uid, &pwd, buf, bufsize);
 #else
-
-char *escape_perm_sum(char *sum) {
-    char *esc_it;
-
-    if (*sum != '\0' ) {
-        esc_it = wstr_replace(sum, "!", "\\!");
-        sum = wstr_replace(esc_it, ":", "\\:");
-        free(esc_it);
-        esc_it = wstr_replace(sum, " ", "\\ ");
-        free(sum);
-        return esc_it;
+    errno = getpwuid_r(uid, &pwd, buf, bufsize, &result);
+#endif
+    if (result == NULL) {
+        if (errno == 0) {
+            mdebug2("User with uid '%d' not found.\n", uid);
+        }
+        else {
+            mdebug2("Failed getting user_name (%d): '%s'\n", errno, strerror(errno));
+        }
+    } else {
+        os_strdup(pwd.pw_name, user_name);
     }
-    return NULL;
+
+    os_free(buf);
+
+    return user_name;
 }
 
-char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
-{
-    DWORD dwRtnCode = 0;
-    PSID pSidOwner = NULL;
-    BOOL bRtnBool = TRUE;
-    char AcctName[BUFFER_LEN];
-    char DomainName[BUFFER_LEN];
-    DWORD dwAcctName = BUFFER_LEN;
-    DWORD dwDomainName = BUFFER_LEN;
-    SID_NAME_USE eUse = SidTypeUnknown;
+char *get_group(int gid) {
+    struct group grp;
+    struct group *result;
+    char *group_name = NULL;
+    char *buf;
+    int bufsize;
+
+    bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+    if (bufsize == -1) {
+        bufsize = 16384;
+    }
+
+    os_calloc(bufsize, sizeof(char), buf);
+
+    result = w_getgrgid(gid, &grp, buf, bufsize);
+
+    if (result == NULL) {
+        if (errno == 0) {
+            mdebug2("Group with gid '%d' not found.\n", gid);
+        } else {
+            mdebug2("Failed getting group_name (%d): '%s'\n", errno, strerror(errno));
+        }
+    } else {
+        os_strdup(grp.gr_name, group_name);
+    }
+
+    os_free(buf);
+
+    return group_name;
+}
+
+/* Send a one-way message to Syscheck */
+void ag_send_syscheck(char * message) {
+    int sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        mwarn("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
+        return;
+    }
+
+    if (OS_SendSecureTCP(sock, strlen(message), message) < 0) {
+        mwarn("Cannot send message to syscheck: %s (%d)", strerror(errno), errno);
+    }
+
+    close(sock);
+}
+
+#else /* #ifndef WIN32 */
+
+// LCOV_EXCL_START
+char *get_registry_user(const char *path, char **sid, HANDLE hndl) {
+    return get_user(path, sid, hndl, SE_REGISTRY_KEY);
+}
+// LCOV_EXCL_STOP
+
+char *get_file_user(const char *path, char **sid) {
     HANDLE hFile;
-    PSECURITY_DESCRIPTOR pSD = NULL;
     char *result;
 
     // Get the handle of the file object.
-    hFile = CreateFile(
-                       TEXT(path),
+    hFile = CreateFile(TEXT(path),
                        GENERIC_READ,
                        FILE_SHARE_READ | FILE_SHARE_WRITE,
                        NULL,
@@ -912,7 +669,8 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
         LPSTR messageBuffer = NULL;
         LPSTR end;
 
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
 
         if (end = strchr(messageBuffer, '\r'), end) {
             *end = '\0';
@@ -928,47 +686,71 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
         }
 
         LocalFree(messageBuffer);
+    }
+
+    result = get_user(path, sid, hFile, SE_FILE_OBJECT);
+
+    CloseHandle(hFile);
+
+    return result;
+}
+
+char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type) {
+    DWORD dwRtnCode = 0;
+    DWORD dwSecurityInfoErrorCode = 0;
+    PSID pSidOwner = NULL;
+    BOOL bRtnBool = TRUE;
+    char AcctName[BUFFER_LEN];
+    char DomainName[BUFFER_LEN];
+    DWORD dwAcctName = BUFFER_LEN;
+    DWORD dwDomainName = BUFFER_LEN;
+    SID_NAME_USE eUse = SidTypeUnknown;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    LPSTR local_sid;
+    char *result;
+
+    if (hndl == INVALID_HANDLE_VALUE) {
+        os_strdup("", *sid);
         *AcctName = '\0';
         goto end;
     }
 
-    // Get the owner SID of the file.
-    dwRtnCode = GetSecurityInfo(
-                                hFile,
-                                SE_FILE_OBJECT,
-                                OWNER_SECURITY_INFORMATION,
-                                &pSidOwner,
-                                NULL,
-                                NULL,
-                                NULL,
-                                &pSD);
+    // Get the owner SID of the file or registry
+    dwRtnCode = GetSecurityInfo(hndl,                       // Object handle
+                                object_type,                // Object type (file or registry)
+                                OWNER_SECURITY_INFORMATION, // Security information bit flags
+                                &pSidOwner,                 // Owner SID
+                                NULL,                       // Group SID
+                                NULL,                       // DACL
+                                NULL,                       // SACL
+                                &pSD);                      // Security descriptor
 
-    CloseHandle(hFile);
+    if (dwRtnCode != ERROR_SUCCESS) {
+        dwSecurityInfoErrorCode = GetLastError();
+    }
 
-
-    if (!ConvertSidToStringSid(pSidOwner, sid)) {
-        *sid = NULL;
+    if (!ConvertSidToStringSid(pSidOwner, &local_sid)) {
+        os_strdup("", *sid);
         mdebug1("The user's SID could not be extracted.");
+    } else {
+        os_strdup(local_sid, *sid);
+        LocalFree(local_sid);
     }
 
     // Check GetLastError for GetSecurityInfo error condition.
     if (dwRtnCode != ERROR_SUCCESS) {
-        DWORD dwErrorCode = 0;
-
-        dwErrorCode = GetLastError();
-        merror("GetSecurityInfo error = %lu", dwErrorCode);
+        merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
         *AcctName = '\0';
         goto end;
     }
 
     // Second call to LookupAccountSid to get the account name.
-    bRtnBool = LookupAccountSid(
-                                NULL,                   // name of local or remote computer
-                                pSidOwner,              // security identifier
-                                AcctName,               // account name buffer
-                                (LPDWORD)&dwAcctName,   // size of account name buffer
-                                DomainName,             // domain name
-                                (LPDWORD)&dwDomainName, // size of domain name buffer
+    bRtnBool = LookupAccountSid(NULL,                   // Name of local or remote computer
+                                pSidOwner,              // Security identifier
+                                AcctName,               // Account name buffer
+                                (LPDWORD)&dwAcctName,   // Size of account name buffer
+                                DomainName,             // Domain name
+                                (LPDWORD)&dwDomainName, // Size of domain name buffer
                                 &eUse);                 // SID type
 
     // Check GetLastError for LookupAccountSid error condition.
@@ -977,10 +759,12 @@ char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
 
         dwErrorCode = GetLastError();
 
-        if (dwErrorCode == ERROR_NONE_MAPPED)
-            mdebug1("Account owner not found for file '%s'", path);
-        else
+        if (dwErrorCode == ERROR_NONE_MAPPED) {
+            mdebug1("Account owner not found for '%s'", path);
+        }
+        else {
             merror("Error in LookupAccountSid.");
+        }
 
         *AcctName = '\0';
     }
@@ -990,7 +774,7 @@ end:
         LocalFree(pSD);
     }
 
-    result = wstr_replace((const char*)&AcctName, " ", "\\ ");
+    result = wstr_replace(AcctName, " ", "\\ ");
 
     return result;
 }
@@ -1062,7 +846,6 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
         mdebug1("The parameters of ACE number %d from '%s' could not be extracted. %d bytes remaining.", i, file_path, perm_size);
     }
 
-    mdebug2("The ACL extracted from '%s' is [%s].", file_path, permissions);
 end:
     free(s_desc);
     return retval;
@@ -1146,19 +929,501 @@ int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
     return 0;
 }
 
+unsigned int w_directory_exists(const char *path){
+    if (path != NULL){
+        unsigned int attrs = w_get_file_attrs(path);
+        return attrs & FILE_ATTRIBUTE_DIRECTORY;
+    }
+
+    return 0;
+}
+
 unsigned int w_get_file_attrs(const char *file_path) {
     unsigned int attrs;
 
     if (attrs = GetFileAttributesA(file_path), attrs == INVALID_FILE_ATTRIBUTES) {
         attrs = 0;
-        merror("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
+        mdebug2("The attributes for '%s' could not be obtained. Error '%ld'.", file_path, GetLastError());
     }
 
     return attrs;
 }
 
-const char *get_group(__attribute__((unused)) int gid) {
-    return "";
+char *get_group(__attribute__((unused)) int gid) {
+    char *result;
+
+    os_strdup("", result);
+    return result;
 }
 
-#endif
+char *get_registry_group(char **sid, HANDLE hndl) {
+    DWORD dwRtnCode = 0;
+    DWORD dwSecurityInfoErrorCode = 0;
+    PSID pSidGroup = NULL;
+    BOOL bRtnBool = TRUE;
+    char GrpName[BUFFER_LEN];
+    char DomainName[BUFFER_LEN];
+    DWORD dwGrpName = BUFFER_LEN;
+    DWORD dwDomainName = BUFFER_LEN;
+    SID_NAME_USE eUse = SidTypeUnknown;
+    PSECURITY_DESCRIPTOR pSD = NULL;
+    char *result;
+    LPSTR local_sid;
+
+    // Get the group SID of the file or registry
+    dwRtnCode = GetSecurityInfo(hndl,                       // Object handle
+                                SE_REGISTRY_KEY,            // Object type (file or registry)
+                                GROUP_SECURITY_INFORMATION, // Security information bit flags
+                                NULL,                       // Owner SID
+                                &pSidGroup,                 // Group SID
+                                NULL,                       // DACL
+                                NULL,                       // SACL
+                                &pSD);                      // Security descriptor
+
+    if (dwRtnCode != ERROR_SUCCESS) {
+        dwSecurityInfoErrorCode = GetLastError();
+        merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
+        *GrpName = '\0';
+        os_strdup("", *sid);
+        goto end;
+    }
+
+    if (!ConvertSidToStringSid(pSidGroup, &local_sid)) {
+        os_strdup("", *sid);
+        mdebug1("The user's SID could not be extracted.");
+    } else {
+        os_strdup(local_sid, *sid);
+        LocalFree(local_sid);
+    }
+
+    // Second call to LookupAccountSid to get the account name.
+    bRtnBool = LookupAccountSid(NULL,                   // Name of local or remote computer
+                                pSidGroup,              // Security identifier
+                                GrpName,                // Group name buffer
+                                (LPDWORD)&dwGrpName,    // Size of group name buffer
+                                DomainName,             // Domain name
+                                (LPDWORD)&dwDomainName, // Size of domain name buffer
+                                &eUse);                 // SID type
+
+    if (strncmp(GrpName, "None", 4) == 0) {
+        *GrpName = '\0';
+    }
+
+    // Check GetLastError for LookupAccountSid error condition.
+    if (bRtnBool == FALSE) {
+        DWORD dwErrorCode = 0;
+
+        dwErrorCode = GetLastError();
+
+        if (dwErrorCode == ERROR_NONE_MAPPED) {
+            mdebug1("Group not found for registry key");
+        }
+        else {
+            merror("Error in LookupAccountSid.");
+        }
+
+        *GrpName = '\0';
+    }
+
+end:
+    if (pSD) {
+        LocalFree(pSD);
+    }
+
+    result = wstr_replace(GrpName, " ", "\\ ");
+
+    return result;
+}
+
+DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
+    PSECURITY_DESCRIPTOR pSecurityDescriptor;
+    ACL_SIZE_INFORMATION aclsizeinfo;
+    ACCESS_ALLOWED_ACE *pAce = NULL;
+    PACL pDacl = NULL;
+    DWORD cAce;
+    DWORD dwRtnCode = 0;
+    DWORD dwErrorCode = 0;
+    DWORD lpcbSecurityDescriptor = 0;
+    BOOL bRtnBool = TRUE;
+    BOOL fDaclPresent = FALSE;
+    BOOL fDaclDefaulted = TRUE;
+    int written;
+    int perm_size = OS_SIZE_6144;
+    char *permissions = perm_key;
+
+    if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) !=
+        ERROR_INSUFFICIENT_BUFFER) {
+
+        dwErrorCode = GetLastError();
+        return dwErrorCode;
+    }
+
+    os_calloc(lpcbSecurityDescriptor, 1, pSecurityDescriptor);
+
+    // Get the security information.
+    dwRtnCode = RegGetKeySecurity(hndl,                         // Handle to an open key
+                                  DACL_SECURITY_INFORMATION,    // Requeste DACL security information
+                                  pSecurityDescriptor,          // Pointer that receives the DACL information
+                                  &lpcbSecurityDescriptor);     // Pointer that specifies the size, in bytes
+
+    if (dwRtnCode != ERROR_SUCCESS) {
+        os_free(pSecurityDescriptor);
+        return dwRtnCode;
+    }
+
+    // Retrieve a pointer to the DACL in the security descriptor.
+    bRtnBool = GetSecurityDescriptorDacl(pSecurityDescriptor,   // Structure that contains the DACL
+                                         &fDaclPresent,         // Indicates the presence of a DACL
+                                         &pDacl,                // Pointer to ACL
+                                         &fDaclDefaulted);      // Flag set to the value of the SE_DACL_DEFAULTED flag
+
+    if (bRtnBool == FALSE) {
+        dwErrorCode = GetLastError();
+        mdebug2("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
+        os_free(pSecurityDescriptor);
+        return dwErrorCode;
+    }
+
+    // Check whether no DACL or a NULL DACL was retrieved from the security descriptor buffer.
+    if (fDaclPresent == FALSE || pDacl == NULL) {
+        mdebug2("No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
+        os_free(pSecurityDescriptor);
+        return -1;
+    }
+
+    // Retrieve the ACL_SIZE_INFORMATION structure to find the number of ACEs in the DACL.
+    bRtnBool = GetAclInformation(pDacl,                 // Pointer to an ACL
+                                 &aclsizeinfo,          // Pointer to a buffer to receive the requested information
+                                 sizeof(aclsizeinfo),   // The size, in bytes, of the buffer
+                                 AclSizeInformation);   // Fill the buffer with an ACL_SIZE_INFORMATION structure
+
+    if (bRtnBool == FALSE) {
+        dwErrorCode = GetLastError();
+        mdebug2("GetAclInformation failed. GetLastError returned: %ld", dwErrorCode);
+        os_free(pSecurityDescriptor);
+        return dwErrorCode;
+    }
+
+    // Loop through the ACEs to get the information.
+    for (cAce = 0; cAce < aclsizeinfo.AceCount; cAce++) {
+        // Get ACE info
+        if (GetAce(pDacl, cAce, (LPVOID*)&pAce) == FALSE) {
+            mdebug2("GetAce failed. GetLastError returned: %ld", GetLastError());
+            continue;
+        }
+
+        written = copy_ace_info(pAce, permissions, perm_size);
+
+        if (written > 0) {
+            permissions += written;
+            perm_size -= written;
+
+            if (perm_size > 0) {
+                continue;
+            }
+        }
+    }
+
+    os_free(pSecurityDescriptor);
+
+    return ERROR_SUCCESS;
+}
+
+unsigned int get_registry_mtime(HKEY hndl) {
+    FILETIME lpftLastWriteTime;
+    DWORD dwRtnCode = 0;
+
+    dwRtnCode = RegQueryInfoKeyA(hndl, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &lpftLastWriteTime);
+
+    if (dwRtnCode != ERROR_SUCCESS) {
+        mwarn("Couldn't get modification time for registry key.");
+        return 0;
+    }
+
+    return get_windows_file_time_epoch(lpftLastWriteTime);
+}
+
+/* Send a one-way message to Syscheck */
+void ag_send_syscheck(char * message) {
+    char * response = NULL;
+    syscom_dispatch(message, &response);
+    free(response);
+}
+
+#endif /* # else (ifndef WIN32) */
+
+void decode_win_attributes(char *str, unsigned int attrs) {
+    size_t size;
+
+    size = snprintf(str, OS_SIZE_256, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                    attrs & FILE_ATTRIBUTE_ARCHIVE ? "ARCHIVE, " : "",
+                    attrs & FILE_ATTRIBUTE_COMPRESSED ? "COMPRESSED, " : "",
+                    attrs & FILE_ATTRIBUTE_DEVICE ? "DEVICE, " : "",
+                    attrs & FILE_ATTRIBUTE_DIRECTORY ? "DIRECTORY, " : "",
+                    attrs & FILE_ATTRIBUTE_ENCRYPTED ? "ENCRYPTED, " : "",
+                    attrs & FILE_ATTRIBUTE_HIDDEN ? "HIDDEN, " : "",
+                    attrs & FILE_ATTRIBUTE_INTEGRITY_STREAM ? "INTEGRITY_STREAM, " : "",
+                    attrs & FILE_ATTRIBUTE_NORMAL ? "NORMAL, " : "",
+                    attrs & FILE_ATTRIBUTE_NOT_CONTENT_INDEXED ? "NOT_CONTENT_INDEXED, " : "",
+                    attrs & FILE_ATTRIBUTE_NO_SCRUB_DATA ? "NO_SCRUB_DATA, " : "",
+                    attrs & FILE_ATTRIBUTE_OFFLINE ? "OFFLINE, " : "",
+                    attrs & FILE_ATTRIBUTE_READONLY ? "READONLY, " : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS ? "RECALL_ON_DATA_ACCESS, " : "",
+                    attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN ? "RECALL_ON_OPEN, " : "",
+                    attrs & FILE_ATTRIBUTE_REPARSE_POINT ? "REPARSE_POINT, " : "",
+                    attrs & FILE_ATTRIBUTE_SPARSE_FILE ? "SPARSE_FILE, " : "",
+                    attrs & FILE_ATTRIBUTE_SYSTEM ? "SYSTEM, " : "",
+                    attrs & FILE_ATTRIBUTE_TEMPORARY ? "TEMPORARY, " : "",
+                    attrs & FILE_ATTRIBUTE_VIRTUAL ? "VIRTUAL, " : "");
+    if (size > 2) {
+        str[size - 2] = '\0';
+    }
+}
+
+char *decode_win_permissions(char *raw_perm) {
+    int written = 0;
+    int size = 0;
+    char *base_it = NULL;
+    char *account_name = NULL;
+    char a_type;
+    char *decoded_perm;
+    long mask;
+
+    if (*raw_perm != '|') {
+        // It is trying to convert to the new format
+        // a permissions that have already been transformed
+        os_strdup("", decoded_perm);
+        return decoded_perm;
+    }
+
+    os_calloc(MAX_WIN_PERM_SIZE, sizeof(char), decoded_perm);
+
+    int perm_size = MAX_WIN_PERM_SIZE;
+    char *decoded_it = decoded_perm;
+    char *perm_it = raw_perm;
+
+    while (perm_it = strchr(perm_it, '|'), perm_it) {
+        // Get the account/group name
+        base_it = ++perm_it;
+        if (perm_it = strchr(perm_it, ','), !perm_it) {
+            goto error;
+        }
+        *perm_it = '\0';
+        os_strdup(base_it, account_name);
+        *perm_it = ',';
+
+        // Get the access type
+        base_it = ++perm_it;
+        if (perm_it = strchr(perm_it, ','), !perm_it) {
+            goto error;
+        }
+        *perm_it = '\0';
+        a_type = *base_it;
+        *perm_it = ',';
+
+        // Get the access mask
+        base_it = ++perm_it;
+        if (perm_it = strchr(perm_it, '|'), perm_it) {
+            *perm_it = '\0';
+            mask = strtol(base_it, NULL, 10);
+            *perm_it = '|';
+        } else {
+            // End of the msg
+            mask = strtol(base_it, NULL, 10);
+        }
+
+        size = snprintf(decoded_it, perm_size, "%s (%s): %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                        account_name,
+                        a_type == '0' ? "allowed" : "denied",
+                        mask & GENERIC_READ ? "generic_read|" : "",
+                        mask & GENERIC_WRITE ? "generic_write|" : "",
+                        mask & GENERIC_EXECUTE ? "generic_execute|" : "",
+                        mask & GENERIC_ALL ? "generic_all|" : "",
+                        mask & DELETE ? "delete|" : "",
+                        mask & READ_CONTROL ? "read_control|" : "",
+                        mask & WRITE_DAC ? "write_dac|" : "",
+                        mask & WRITE_OWNER ? "write_owner|" : "",
+                        mask & SYNCHRONIZE ? "synchronize|" : "",
+                        mask & FILE_READ_DATA ? "read_data|" : "",
+                        mask & FILE_WRITE_DATA ? "write_data|" : "",
+                        mask & FILE_APPEND_DATA ? "append_data|" : "",
+                        mask & FILE_READ_EA ? "read_ea|" : "",
+                        mask & FILE_WRITE_EA ? "write_ea|" : "",
+                        mask & FILE_EXECUTE ? "execute|" : "",
+                        mask & FILE_READ_ATTRIBUTES ? "read_attributes|" : "",
+                        mask & FILE_WRITE_ATTRIBUTES ? "write_attributes|" : ""
+                    );
+
+        if (size + 1 < perm_size) {
+            strncpy(decoded_it + (size++) - 1, ", ", 3);
+        }
+
+        written += size;
+        decoded_it += size;
+        perm_size -= size;
+
+        os_free(account_name);
+        if (!perm_it) {
+            break;
+        }
+    }
+
+    if (decoded_it && size > 1) {
+        *(decoded_it - 2) = '\0';
+        // Adjusts the final size
+        os_realloc(decoded_perm, written * sizeof(char), decoded_perm);
+    }
+
+    return decoded_perm;
+error:
+    free(decoded_perm);
+    free(account_name);
+    mdebug1("The file permissions could not be decoded: '%s'.", raw_perm);
+    return NULL;
+}
+
+cJSON *attrs_to_json(const char *attributes) {
+    cJSON *attrs_array;
+
+    assert(attributes != NULL);
+
+    if (attrs_array = cJSON_CreateArray(), !attrs_array) {
+        return NULL;
+    }
+
+    char *attrs_cpy;
+    os_strdup(attributes, attrs_cpy);
+    char *attr = attrs_cpy;
+
+    while (attr) {
+        char *sep = strchr(attr, ',');
+        if (sep) {
+            *(sep++) = '\0';
+        }
+        while (*attr == ' ') attr++;
+        cJSON_AddItemToArray(attrs_array, cJSON_CreateString(attr));
+        attr = sep;
+    }
+
+    free(attrs_cpy);
+    return attrs_array;
+}
+
+cJSON *win_perm_to_json(char *perms) {
+    cJSON *perms_json;
+
+    assert(perms != NULL);
+
+    if (perms_json = cJSON_CreateArray(), !perms_json) {
+        return NULL;
+    }
+
+    char *perms_cpy;
+    os_strdup(perms, perms_cpy);
+    char *perms_it = perms_cpy;
+
+    while (perms_it && *perms_it) {
+        char *perm_node = perms_it;
+        perms_it = strchr(perms_it, ',');
+        if (perms_it) {
+            *(perms_it++) = '\0';
+        }
+
+        while (*perm_node == ' ') perm_node++;
+
+        // Get the username
+        char *username = perm_node;
+        perm_node = strchr(perm_node, '(');
+        if (!perm_node) {
+            goto error;
+        }
+        *(perm_node++) = '\0';
+        {
+            size_t u_size = strlen(username);
+            if (u_size > 0 && username[u_size - 1] == ' ') {
+                username[u_size - 1] = '\0';
+            }
+        }
+
+        // Get the permission type
+        char *perm_type = perm_node;
+        perm_node = strchr(perm_node, ')');
+        if (!perm_node) {
+            goto error;
+        }
+        *(perm_node++) = '\0';
+
+        perm_node = strchr(perm_node, ' ');
+        if (!perm_node) {
+            goto error;
+        }
+        while (*perm_node == ' ') perm_node++;
+
+        // Get the permissions
+        char *permissions = perm_node;
+        perm_node = strchr(perm_node, ',');
+        if (perm_node) {
+            *(perm_node++) = '\0'; //LCOV_EXCL_LINE
+        }
+
+        const char *tag_name = "name";
+        cJSON *json_it;
+        cJSON *user_obj = NULL;
+        char next_it = 0;
+        for (json_it = perms_json->child; json_it; json_it = json_it->next) {
+            cJSON *obj;
+            if (obj = cJSON_GetObjectItem(json_it, tag_name), !obj || !obj->valuestring) {
+                continue; //LCOV_EXCL_LINE
+            }
+            if (!strcmp(obj->valuestring, username)) {
+                user_obj = json_it;
+                if (obj = cJSON_GetObjectItem(json_it, perm_type), obj) {
+                    mdebug1("ACL [%s] fragmented. All permissions may not be displayed.", perms);
+                    next_it = 1;
+                }
+                break;
+            }
+        }
+        if (next_it) {
+            continue;
+        }
+
+        if (!user_obj) {
+            if (user_obj = cJSON_CreateObject(), !user_obj) {
+                goto error;
+            }
+            cJSON_AddStringToObject(user_obj, tag_name, username);
+            cJSON_AddItemToArray(perms_json, user_obj);
+        }
+
+        cJSON *specific_perms;
+        if (specific_perms = cJSON_CreateArray(), !specific_perms) {
+            goto error;
+        }
+
+        char **perms_array = NULL;
+        wstr_split(permissions, "|", NULL, 1, &perms_array);
+        if (!perms_array) {
+            cJSON_Delete(specific_perms);
+            goto error;
+        }
+
+        int i;
+        for (i = 0; perms_array[i]; i++) {
+            str_uppercase(perms_array[i]);
+            cJSON_AddItemToArray(specific_perms, cJSON_CreateString(perms_array[i]));
+        }
+        cJSON_AddItemToObject(user_obj, perm_type, specific_perms);
+
+        w_FreeArray(perms_array);
+        free(perms_array);
+    }
+
+    free(perms_cpy);
+    return perms_json;
+error:
+    mdebug1("Uncontrolled condition when parsing a Windows permission from '%s'.", perms);
+    cJSON_Delete(perms_json);
+    free(perms_cpy);
+    return NULL;
+}

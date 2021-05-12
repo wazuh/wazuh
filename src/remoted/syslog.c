@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -51,18 +51,15 @@ void HandleSyslog()
     memset(buffer, '\0', OS_MAXSTR + 2);
     memset(&peer_info, 0, sizeof(struct sockaddr_in));
 
-    /* Connect to the message queue
-     * Exit if it fails.
-     */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    /* Connect to the message queue infinitely */
+    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     /* Infinite loop */
     while (1) {
         /* Receive message */
-        recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0,
-                          (struct sockaddr *)&peer_info, &peer_size);
+        recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &peer_size);
 
         /* Nothing received */
         if (recv_b <= 0) {
@@ -102,8 +99,14 @@ void HandleSyslog()
         if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+            // Try to reconnect infinitely
+            logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+            minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+            if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
+                // Something went wrong sending a message after an immediate reconnection...
+                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
         }
     }

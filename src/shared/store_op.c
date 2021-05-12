@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -298,8 +298,8 @@ int OSStore_NCaseCheck(OSStore *list, const char *key)
     list->cur_node = list->first_node;
 
     while (list->cur_node) {
-        if ((chk_rc = strncasecmp(list->cur_node->key, key,
-                                  list->cur_node->key_size)) == 0) {
+        if (chk_rc = strncasecmp(list->cur_node->key, key,
+                                 list->cur_node->key_size), chk_rc == 0) {
             return (1);
         }
 

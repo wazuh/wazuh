@@ -8,6 +8,5 @@
 
      更多信息，請訪問：
            - http://www.wazuh.com
-           - http://www.ossec.net
 
      ---按ENTER鍵完成（也許更多信息如下）。 --- ---

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -419,29 +419,32 @@ char *OS_RecvTCP(int socket, int sizet)
     return (ret);
 }
 
-/* Receive a TCP packet (from an open socket) */
+/* Receive a TCP packet (from an open socket)
+   Returns the number of bytes received,
+   or -1 if an error occurred */
 int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 {
     int retsize;
 
     if ((retsize = recv(socket, buffer, sizet - 1, 0)) > 0) {
         buffer[retsize] = '\0';
-        return (0);
     }
-    return (-1);
+    return (retsize);
 }
 
 /* Receive a UDP packet */
 char *OS_RecvUDP(int socket, int sizet)
 {
     char *ret;
+    int recv_b;
 
     ret = (char *) calloc((sizet), sizeof(char));
     if (ret == NULL) {
         return (NULL);
     }
 
-    if ((recv(socket, ret, sizet - 1, 0)) < 0) {
+    recv_b = recv(socket, ret, sizet - 1, 0);
+    if (recv_b < 0) {
         free(ret);
         return (NULL);
     }
@@ -453,6 +456,8 @@ char *OS_RecvUDP(int socket, int sizet)
 int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 {
     int recv_b;
+
+    buffer[buffer_size] = '\0';
 
     recv_b = recv(socket, buffer, buffer_size, 0);
     if (recv_b < 0) {
@@ -553,7 +558,7 @@ int OS_SetKeepalive(int socket)
 }
 
 // Set keepalive parameters for a socket
-void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
+void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt)
 {
     if (cnt > 0) {
 #if !defined(sun) && !defined(WIN32) && !defined(OpenBSD)
@@ -628,14 +633,16 @@ int OS_SetSendTimeout(int socket, int seconds)
 #endif
 }
 
-/* Send secure TCP message
- * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
- * Return 0 on success or OS_SOCKTERR on error.
- */
+// Send secure TCP message
+
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
-    int retval;
-    void * buffer;
+    int retval = OS_SOCKTERR;
+    void* buffer = NULL;
     size_t bufsz = size + sizeof(uint32_t);
+
+    if (sock < 0) {
+        return retval;
+    }
 
     os_malloc(bufsz, buffer);
     *(uint32_t *)buffer = wnet_order(size);
@@ -716,7 +723,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 
         /* Get current maximum size */
         if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (void *)&len, &optlen) == -1) {
-            return -1;
+            len = 0;
         }
 
         /* Set maximum message size */
@@ -731,7 +738,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 
         /* Get current maximum size */
         if (getsockopt(sock, SOL_SOCKET, SO_SNDBUF, (void *)&len, &optlen) == -1) {
-            return -1;
+            len = 0;
         }
 
         /* Set maximum message size */
@@ -747,9 +754,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size) {
 }
 
 
-/* Send secure TCP to Cluster message
- * Return 0 on success or OS_SOCKTERR on error.
- */
+/* Send secure TCP Cluster message */
 int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length) {
     const unsigned COMMAND_SIZE = 12;
     const unsigned HEADER_SIZE =  8;
@@ -794,9 +799,7 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
 }
 
 
-/* Receive secure TCP message
- * Return recvval on success or OS_SOCKTERR on error.
- */
+/* Receive secure TCP Cluster message */
 int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     int recvval;
     const unsigned CMD_SIZE = 12;
@@ -809,11 +812,9 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     switch(recvval){
         case -1:
             return recvval;
-            break;
 
         case 0:
             return recvval;
-            break;
 
         default:
             if ((uint32_t)recvval != HEADER_SIZE) {
@@ -821,8 +822,11 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
             }
     }
 
-    size = wnet_order_big(*(uint32_t*)(buffer + 4));
+    if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
+        return -2;
+    }
 
+    size = wnet_order_big(*(uint32_t*)(buffer + 4));
     if (size > length) {
         mwarn("Cluster message size (%u) exceeds buffer length (%u)", (unsigned)size, (unsigned)length);
         return -1;
@@ -861,4 +865,41 @@ int wnet_select(int sock, int timeout) {
     FD_SET(sock, &fdset);
 
     return select(sock + 1, &fdset, NULL, NULL, &fdtimeout);
+}
+
+void resolve_hostname(char **hostname, int attempts) {
+    char *tmp_str;
+    char *f_ip;
+
+    assert(hostname != NULL);
+    if (OS_IsValidIP(*hostname, NULL) == 1) {
+        return;
+    }
+
+    tmp_str = strchr(*hostname, '/');
+    if (tmp_str) {
+        *tmp_str = '\0';   // LCOV_EXCL_LINE
+    }
+
+    f_ip = OS_GetHost(*hostname, attempts);
+
+    char ip_str[128] = {0};
+    if (f_ip) {
+        snprintf(ip_str, 127, "%s/%s", *hostname, f_ip);
+        free(f_ip);
+    } else {
+        snprintf(ip_str, 127, "%s/", *hostname);
+    }
+    free(*hostname);
+    os_strdup(ip_str, *hostname);
+}
+
+const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
+    char *tmp_str;
+    assert(resolved_hostname != NULL);
+
+    /* Check if we have a resolved_hostname or an IP */
+    tmp_str = strchr(resolved_hostname, '/');
+
+    return tmp_str ? ++tmp_str : resolved_hostname;
 }

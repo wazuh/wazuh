@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Fluent Forwarder
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January 25, 2019.
  *
  * This program is free software; you can redistribute it
@@ -35,7 +35,14 @@
 #define REQUEST_SIZE 4096
 
 #define expect_type(obj, t, str) if (obj.type != t) { mdebug2("Expecting %s", str); goto error; }
-#define expect_string(obj, s) if (strncmp(obj.via.str.ptr, s, obj.via.str.size)) { mdebug2("Expecting string '%s'", s); goto error; }
+
+// expect_string() is redefined in cmocka.h
+#ifdef WAZUH_UNIT_TESTING
+    #define test_expect_string(obj, s) if (strncmp(obj.via.str.ptr, s, obj.via.str.size)) { mdebug2("Expecting string '%s'", s); goto error; }
+#else
+    #define expect_string(obj, s) if (strncmp(obj.via.str.ptr, s, obj.via.str.size)) { mdebug2("Expecting string '%s'", s); goto error; }
+#endif
+
 #define filled_string(s) (s && *s)
 
 static void * wm_fluent_main(wm_fluent_t * data);   // Module main function. It won't return
@@ -64,7 +71,8 @@ const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
     (wm_routine)wm_fluent_main,
     (wm_routine)(void *)wm_fluent_destroy,
-    (cJSON * (*)(const void *))wm_fluent_dump
+    (cJSON * (*)(const void *))wm_fluent_dump,
+    NULL
 };
 
 // Module main function. It won't return
@@ -93,7 +101,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
     /* Listen socket */
     server_sock = OS_BindUnixDomain(fluent->sock_path, SOCK_DGRAM, OS_MAXSTR);
     if (server_sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
+        merror("Unable to bind to socket '%s': (%d) %s.", fluent->sock_path, errno, strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -388,7 +396,14 @@ static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent) {
 
     array = result.data.via.array.ptr;
     expect_type(array[0], MSGPACK_OBJECT_STR, "string");
-    expect_string(array[0], "HELO");
+
+    // expect_string() is redefined in cmocka.h
+    #ifdef WAZUH_UNIT_TESTING
+        test_expect_string(array[0], "HELO");
+    #else
+        expect_string(array[0], "HELO");
+    #endif
+
     expect_type(array[1], MSGPACK_OBJECT_MAP, "map");
 
     map = array[1].via.map.ptr;
@@ -586,7 +601,13 @@ static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent) {
 
     array = result.data.via.array.ptr;
     expect_type(array[0], MSGPACK_OBJECT_STR, "string");
-    expect_string(array[0], "PONG");
+
+    // expect_string() is redefined in cmocka.h
+    #ifdef WAZUH_UNIT_TESTING
+        test_expect_string(array[0], "PONG");
+    #else
+        expect_string(array[0], "PONG");
+    #endif
 
     expect_type(array[1], MSGPACK_OBJECT_BOOLEAN, "boolean");
     pong->auth_result = array[1].via.boolean;
@@ -782,8 +803,8 @@ void wm_fluent_poll_server(wm_fluent_t * fluent) {
     }
 
     // Peek connection
-
-    switch (SSL_read(fluent->ssl, buffer, sizeof(buffer))) {
+    ssize_t ret = fluent->shared_key ? SSL_read(fluent->ssl, buffer, sizeof(buffer)) : recv(fluent->client_sock, buffer, sizeof(buffer), 0);
+    switch (ret) {
     case -1:
         // No input data. This is the normal case.
         break;

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -30,7 +30,7 @@ class InstallCommand(install):
 
     def run(self):
         here = os.path.abspath(os.path.dirname(__file__))
-        with open(os.path.join(here, 'wazuh', 'wazuh.json'), 'w') as f:
+        with open(os.path.join(here, 'wazuh', 'core', 'wazuh.json'), 'w') as f:
             json.dump({'install_type': self.install_type,
                        'wazuh_version': self.wazuh_version,
                        'installation_date': datetime.utcnow().strftime('%a %b %d %H:%M:%S UTC %Y')
@@ -40,18 +40,18 @@ class InstallCommand(install):
 
 
 setup(name='wazuh',
-      version='3.11.2',
+      version='4.3.0',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',
       author_email='hello@wazuh.com',
       license='GPLv2',
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-      package_data={'wazuh': ['wazuh.json']},
+      package_data={'wazuh': ['core/wazuh.json', 'core/cluster/cluster.json', 'rbac/default/*.yaml']},
       include_package_data=True,
       install_requires=[],
       zip_safe=False,
       cmdclass={
-          'install': InstallCommand,
+          'install': InstallCommand
       }
       )

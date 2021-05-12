@@ -1,5 +1,5 @@
 
- Portions Copyright (C) 2015-2019, Wazuh Inc.
+ Portions Copyright (C) 2015-2021, Wazuh Inc.
  Based on work Copyright (C) 2003 - 2013 Trend Micro, Inc.
 
  This program is free software; you can redistribute it and/or modify
@@ -18,27 +18,27 @@
  program which reference this file.
 
  Note that this license applies to the source code, as well as
- decoders, rules and any other data file included with OSSEC (unless
+ decoders, rules and any other data file included with Wazuh (unless
  otherwise specified).
 
  For the purpose of this license, we consider an application to constitute a
  "derivative work" or a work based on this program if it does any of the
  following (list not exclusive):
 
-  * Integrates source code/data files from OSSEC.
-  * Includes OSSEC copyrighted material.
-  * Includes/integrates OSSEC into a proprietary executable installer.
+  * Integrates source code/data files from Wazuh.
+  * Includes Wazuh copyrighted material.
+  * Includes/integrates Wazuh into a proprietary executable installer.
   * Links to a library or executes a program that does any of the above.
 
  This list is not exclusive, but just a clarification of our interpretation
  of derived works. These restrictions only apply if you actually redistribute
- OSSEC (or parts of it).
+ Wazuh (or parts of it).
 
  We don't consider these to be added restrictions on top of the GPL,
  but just a clarification of how we interpret "derived works" as it
- applies to OSSEC. This is similar to the way Linus Torvalds has
+ applies to Wazuh. This is similar to the way Linus Torvalds has
  announced his interpretation of how "derived works" applies to Linux kernel
- modules. Our interpretation refers only to OSSEC - we don't speak
+ modules. Our interpretation refers only to Wazuh - we don't speak
  for any other GPL products.
 
   * As a special exception, the copyright holders give
@@ -54,7 +54,7 @@
   * version.  If you delete this exception statement from all source
   * files in the program, then also delete it here.
 
- OSSEC HIDS is distributed in the hope that it will be useful, but WITHOUT
+ Wazuh HIDS is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  FITNESS FOR A PARTICULAR PURPOSE.
  See the GNU General Public License Version 2 below for more details.

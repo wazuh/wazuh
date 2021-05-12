@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "state.h"
 
 #ifdef WIN32
 
@@ -74,11 +75,11 @@ int startEL(char *app, os_el *el)
 /* Returns a string that is a human readable datetime from an epoch int */
 char *epoch_to_human(time_t epoch)
 {
-    struct tm   *ts;
     static char buf[80];
+    struct tm tm_result = { .tm_sec = 0 };
 
-    ts = localtime(&epoch);
-    strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", ts);
+    localtime_r(&epoch, &tm_result);
+    strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", &tm_result);
     return (buf);
 }
 
@@ -256,9 +257,9 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
                          LOAD_LIBRARY_AS_DATAFILE);
     if (hevt) {
         int hr;
-        if (!(hr = FormatMessage(fm_flags, hevt, er->EventID,
-                                 0,
-                                 (LPTSTR) &message, 0, el_sstring))) {
+        if (hr = FormatMessage(fm_flags, hevt, er->EventID,
+                               0,
+                               (LPTSTR) &message, 0, el_sstring), !hr) {
             message = NULL;
         }
         FreeLibrary(hevt);
@@ -283,6 +284,7 @@ void readel(os_el *el, int printit)
     int size_left;
     int str_size;
     int id;
+    static int counter = 0;
 
     char mbuffer[BUFFER_SIZE + 1];
     LPSTR sstr = NULL;
@@ -297,7 +299,7 @@ void readel(os_el *el, int printit)
     char el_domain[OS_FLSIZE + 1];
     char el_string[OS_MAXSTR + 1];
     char final_msg[OS_MAXSTR + 1];
-    LPSTR el_sstring[OS_FLSIZE + 1];
+    LPSTR el_sstring[OS_FLSIZE + 1] = {0};
 
     /* er must point to the mbuffer */
     el->er = (EVENTLOGRECORD *) &mbuffer;
@@ -307,11 +309,10 @@ void readel(os_el *el, int printit)
     el_user[OS_FLSIZE] = '\0';
     el_domain[OS_FLSIZE] = '\0';
     final_msg[OS_MAXSTR] = '\0';
-    el_sstring[0] = NULL;
-    el_sstring[OS_FLSIZE] = NULL;
 
     /* Event log is not open */
     if (!el->h) {
+        el->er = NULL;
         return;
     }
 
@@ -466,8 +467,13 @@ void readel(os_el *el, int printit)
                          computer_name,
                          descriptive_msg != NULL ? descriptive_msg : el_string);
 
+                w_logcollector_state_update_file(el->name, strlen(final_msg));
+
                 if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
                     merror(QUEUE_SEND);
+                    w_logcollector_state_update_target(el->name, "agent", true);
+                } else {
+                    w_logcollector_state_update_target(el->name, "agent", false);
                 }
             }
 
@@ -486,6 +492,7 @@ void readel(os_el *el, int printit)
 
     id = GetLastError();
     if (id == ERROR_HANDLE_EOF) {
+        el->er = NULL;
         return;
     }
 
@@ -506,6 +513,35 @@ void readel(os_el *el, int printit)
         /* Reopen */
         if (startEL(el->name, el) < 0) {
             merror("Unable to reopen event log '%s'", el->name);
+        }
+    }
+
+
+    /* Event log was closed and re-opened */
+    else if (id == ERROR_INVALID_HANDLE) {
+        mdebug1("The EventLog service has been restarted. Reconnecting to '%s' channel.", el->name);
+
+        CloseEventLog(el->h);
+        el->h = NULL;
+
+        /* Reopen */
+        if (startEL(el->name, el) < 0) {
+            merror(
+            "Could not subscribe for (%s) which returned (%d)",
+            el->name,
+            id);
+        } else {
+            counter = 0;
+            minfo("'%s' channel has been reconnected succesfully.", el->name);
+        }
+    }
+
+    else if (id == RPC_S_SERVER_UNAVAILABLE || id == RPC_S_UNKNOWN_IF) {
+        /* Prevent message flooding when EventLog is stopped */
+        el->er = NULL;
+        if (counter == 0) {
+            mwarn("The EventLog service is down. Unable to collect logs from its channels.");
+            counter = 1;
         }
     }
 
@@ -541,8 +577,7 @@ void win_read_vista_sec()
 
         p = strchr(buf, ',');
         if (!p) {
-            merror("Invalid entry on the Vista security "
-                   "description.");
+            merror("Invalid entry on the Vista security description.");
             continue;
         }
 
@@ -598,8 +633,11 @@ void win_startel(char *evt_log)
         }
     }
 
+    w_logcollector_state_add_file(evt_log);
+    w_logcollector_state_add_target(evt_log, "agent");
+
     /* Start event log -- going to last available record */
-    if ((entries_count = startEL(evt_log, &el[el_last])) < 0) {
+    if (entries_count = startEL(evt_log, &el[el_last]), entries_count < 0) {
         merror(INV_EVTLOG, evt_log);
         return;
     } else {
