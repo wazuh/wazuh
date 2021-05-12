@@ -38,10 +38,10 @@ static void help_authd(char * home_path) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for remote server */
-static void* run_remote_server(int client_sock);
+void run_remote_server(int client_sock);
 
 /* Thread for dispatching connection pool */
-static void* run_dispatcher(void *arg);
+static void* run_dispatcher(char *home_path);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -157,15 +157,11 @@ int main(int argc, char **argv)
     int status;
     int run_foreground = 0;
     gid_t gid;
-    int client_sock = 0;
     const char *group = GROUPGLOBAL;
-    char buf[4096 + 1];
 
     pthread_t thread_dispatcher = 0;
     pthread_t thread_writer = 0;
     pthread_t thread_local_server = 0;
-    pthread_t thread_remote_server = 0;
-
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -356,6 +352,21 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+    /* Exit here if disabled */
+    if (config.flags.disabled) {
+        minfo("Daemon is disabled. Closing.");
+        exit(0);
+    }
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("authd", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
+    }
+
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     switch(w_is_worker()){
@@ -368,30 +379,6 @@ int main(int argc, char **argv)
     case 0:
         config.worker_node = FALSE;
         break;
-    }
-
-    /* Exit here if disabled */
-    if (config.flags.disabled) {
-        minfo("Daemon is disabled. Closing.");
-        exit(0);
-    }
-
-    /* If remote enrollment is not enabled on the worker node, it goes to sleep */
-    if (!config.flags.remote_enrollment && config.worker_node) {
-        minfo("Port %hu was set as disabled. The deamon goes to sleep.", config.port);
-        while (FOREVER()) {
-            sleep(10);
-        }
-        exit(0);
-    }
-
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("authd", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
     }
 
     /* Check if the user/group given are valid */
@@ -429,13 +416,6 @@ int main(int argc, char **argv)
     }
     fclose(fp);
 
-    /* Start SSL */
-    ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
-    if (!ctx) {
-        merror("SSL error. Exiting.");
-        exit(1);
-    }
-
     /* Before chroot */
     srandom_init();
     getuname();
@@ -452,18 +432,16 @@ int main(int argc, char **argv)
     nowChroot();
     os_free(home_path);
 
-    if (config.timeout_sec || config.timeout_usec) {
-        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
-    } else {
-        mdebug1("Network timeout is disabled.");
-    }
-
-    /* Initialize queues */
-    client_queue = queue_init(AUTH_POOL);
-    insert_tail = &queue_insert;
-    remove_tail = &queue_remove;
-
     atexit(cleanup);
+
+    /* If remote enrollment is not enabled on the worker node, it goes to sleep */
+    if (!config.flags.remote_enrollment && config.worker_node) {
+        minfo("Port %hu was set as disabled. The deamon goes to sleep.", config.port);
+        while (FOREVER()) {
+            sleep(1);
+        }
+        exit(0);
+    }
 
     /* Start working threads */
     if (!config.worker_node) {
@@ -471,59 +449,23 @@ int main(int argc, char **argv)
             merror("Couldn't create thread: %s", strerror(status));
             return EXIT_FAILURE;
         }
-    }
-
-    if (config.flags.remote_enrollment) {
-        if (config.flags.use_password) {
-            /* Checking if there is a custom password file */
-            fp = fopen(AUTHD_PASS, "r");
-            buf[0] = '\0';
-            if (fp) {
-                buf[4096] = '\0';
-                char *ret = fgets(buf, 4095, fp);
-
-                if (ret && strlen(buf) > 2) {
-                    /* Remove newline */
-                    if (buf[strlen(buf) - 1] == '\n')
-                        buf[strlen(buf) - 1] = '\0';
-
-                    authpass = strdup(buf);
-                }
-
-                fclose(fp);
-            }
-
-            if (buf[0] != '\0')
-                minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
-            else {
-                /* Getting temporary pass. */
-                authpass = __generatetmppass();
-                minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
-            }
-        } else
-            minfo("Accepting connections on port %hu. No password required.", config.port);
-
-        if (status = pthread_create(&thread_dispatcher, NULL, run_dispatcher, NULL), status != 0) {
-            merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
-        }
-        if (!config.worker_node) {
+        if (config.flags.remote_enrollment) {
             if (status = pthread_create(&thread_local_server, NULL, run_local_server, NULL), status != 0) {
                 merror("Couldn't create thread: %s", strerror(status));
                 return EXIT_FAILURE;
             }
         }
+    }
+
+    if (config.flags.remote_enrollment) {
+        if (status = pthread_create(&thread_dispatcher, NULL, (void *)&run_dispatcher, home_path), status != 0) {
+            merror("Couldn't create thread: %s", strerror(status));
+            return EXIT_FAILURE;
+        }
 
         /* Create PID files */
         if (CreatePID(ARGV0, getpid()) < 0) {
             merror_exit(PID_ERROR);
-        }
-
-        /* Connect via TCP */
-        remote_sock = OS_Bindporttcp(config.port, NULL, 0);
-        if (remote_sock <= 0) {
-            merror(BIND_ERROR, config.port, errno, strerror(errno));
-            exit(1);
         }
         run_remote_server(remote_sock);
 
@@ -544,26 +486,43 @@ int main(int argc, char **argv)
     if (!config.worker_node) {
         pthread_join(thread_writer, NULL);
     }
-    if (!config.flags.remote_enrollment) {
+    if (config.flags.remote_enrollment) {
         pthread_join(thread_dispatcher, NULL);
         if (!config.worker_node) {
             pthread_join(thread_local_server, NULL);
         }
     }
 
-    queue_free(client_queue);
     minfo("Exiting...");
     return (0);
 }
 
-/* Thread for remote server */
-void* run_remote_server(int client_sock) {
+/* Remote server */
+void run_remote_server(int client_sock) {
     struct sockaddr_in _nc;
     socklen_t _ncl;
     fd_set fdset;
     struct timeval timeout;
 
-    mdebug1("Remote server thread ready.");
+    mdebug1("Remote server ready.");
+
+    /* Initialize queues */
+    client_queue = queue_init(AUTH_POOL);
+    insert_tail = &queue_insert;
+    remove_tail = &queue_remove;
+
+    if (config.timeout_sec || config.timeout_usec) {
+        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
+    } else {
+        mdebug1("Network timeout is disabled.");
+    }
+
+    /* Connect via TCP */
+    remote_sock = OS_Bindporttcp(config.port, NULL, 0);
+    if (remote_sock <= 0) {
+        merror(BIND_ERROR, config.port, errno, strerror(errno));
+        exit(1);
+    }
 
     while (running) {
         memset(&_nc, 0, sizeof(_nc));
@@ -611,18 +570,57 @@ void* run_remote_server(int client_sock) {
         } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
             merror("at main(): accept(): %s", strerror(errno));
     }
-
+    queue_free(client_queue);
     close(remote_sock);
 }
 
 /* Thread for dispatching connection pool */
-void* run_dispatcher(__attribute__((unused)) void *arg) {
+void* run_dispatcher(char * home_path) {
+    FILE *fp;
     char ip[IPSIZE + 1];
     int ret;
     char* buf = NULL;
+    char buf_p[4096 + 1];
     SSL *ssl;
     char response[2048];
     response[2047] = '\0';
+
+    /* Start SSL */
+    ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
+    if (!ctx) {
+        merror("SSL error. Exiting.");
+        exit(1);
+    }
+
+    if (config.flags.use_password) {
+        /* Checking if there is a custom password file */
+        fp = fopen(AUTHD_PASS, "r");
+        buf_p[0] = '\0';
+        if (fp) {
+            buf_p[4096] = '\0';
+            char *ret = fgets(buf_p, 4095, fp);
+
+            if (ret && strlen(buf_p) > 2) {
+                /* Remove newline */
+                if (buf_p[strlen(buf_p) - 1] == '\n') {
+                    buf_p[strlen(buf_p) - 1] = '\0';
+                }
+                authpass = strdup(buf_p);
+            }
+
+            fclose(fp);
+        }
+
+        if (buf_p[0] != '\0')
+            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
+        else {
+            /* Getting temporary pass. */
+            authpass = __generatetmppass();
+            minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+        }
+    } else {
+        minfo("Accepting connections on port %hu. No password required.", config.port);
+    }
 
     authd_sigblock();
 
@@ -633,7 +631,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         OS_PassEmptyKeyfile();
         OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
     }
-    mdebug1("Dispatch thread ready");
+    mdebug1("Dispatch thread ready.");
 
     while (running) {
         const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
@@ -771,7 +769,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-
 /* Thread for writing keystore onto disk */
 void* run_writer(__attribute__((unused)) void *arg) {
     keystore *copy_keys;
@@ -785,6 +782,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
     int wdb_sock = -1;
 
     authd_sigblock();
+
+    mdebug1("Writer thread ready.");
 
     while (running) {
         w_mutex_lock(&mutex_keys);
