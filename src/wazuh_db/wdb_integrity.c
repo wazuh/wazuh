@@ -579,7 +579,7 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
 
     cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info->child, "last_attempt");
     cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info->child, "last_completion");
-    cJSON* j_checksum = cJSON_GetObjectItem(j_sync_info->child, "last_global_checksum");
+    cJSON* j_checksum = cJSON_GetObjectItem(j_sync_info->child, "last_agent_checksum");
 
     if ( cJSON_IsNumber(j_last_attempt) && cJSON_IsNumber(j_last_completion) && cJSON_IsString(j_checksum)) {
         int last_attempt = j_last_attempt->valueint;

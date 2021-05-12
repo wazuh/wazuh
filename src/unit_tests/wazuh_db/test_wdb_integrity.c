@@ -1192,7 +1192,7 @@ void test_wdbi_check_sync_status_data_synced(void **state)
 
     cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
     cJSON_AddNumberToObject(j_object, "last_completion", 123456);
-    cJSON_AddStringToObject(j_object, "last_global_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     cJSON_AddItemToArray(j_data, j_object);
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -1217,7 +1217,7 @@ void test_wdbi_check_sync_status_data_never_synced_without_checksum(void **state
 
     cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
     cJSON_AddNumberToObject(j_object, "last_completion", 0);
-    cJSON_AddStringToObject(j_object, "last_global_checksum", "");
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "");
     cJSON_AddItemToArray(j_data, j_object);
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -1242,7 +1242,7 @@ void test_wdbi_check_sync_status_data_not_synced_error_checksum(void **state)
 
     cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
     cJSON_AddNumberToObject(j_object, "last_completion", 123455);
-    cJSON_AddStringToObject(j_object, "last_global_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     cJSON_AddItemToArray(j_data, j_object);
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -1271,7 +1271,7 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_no_data(void **state)
 
     cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
     cJSON_AddNumberToObject(j_object, "last_completion", 123455);
-    cJSON_AddStringToObject(j_object, "last_global_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     cJSON_AddItemToArray(j_data, j_object);
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -1303,7 +1303,7 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
 
     cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
     cJSON_AddNumberToObject(j_object, "last_completion", 123455);
-    cJSON_AddStringToObject(j_object, "last_global_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     cJSON_AddItemToArray(j_data, j_object);
 
     will_return(__wrap_wdb_stmt_cache, 0);
