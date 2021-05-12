@@ -2772,7 +2772,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         while (hash_node != NULL) {
             data = hash_node->data;
             path = hash_node->key;
-            bzero(offset, OFFSET_SIZE);
+            memset(offset, 0, OFFSET_SIZE);
 
             sprintf(offset, "%" PRIi64, data->offset);
 
