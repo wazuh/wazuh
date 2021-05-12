@@ -147,6 +147,12 @@ int __wrap_wdbi_query_clear(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
+int __wrap_wdbi_check_sync_status(__attribute__((unused)) wdb_t *wdb,
+                                  wdb_component_t component) {
+    check_expected(component);
+    return mock();
+}
+
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
                                     __attribute__((unused)) const char *query,
                                     char *response,
