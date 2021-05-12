@@ -99,5 +99,6 @@ int __wrap_access (const char *__name, int __type) {
 int __wrap__access (const char *__name, int __type) {
     check_expected(__name);
     check_expected(__type);
+    return mock();
 }
 #endif

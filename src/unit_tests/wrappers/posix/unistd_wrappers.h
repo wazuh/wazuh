@@ -49,7 +49,7 @@ int __wrap_symlink(const char *path1, const char *path2);
 
 int __wrap_access (const char *__name, int __type);
 #ifdef WIN32
-int __wrap__access (const char *__name, int __type);#endif
+int __wrap__access (const char *__name, int __type);
 #endif
 
 #endif
