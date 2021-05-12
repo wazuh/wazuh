@@ -267,7 +267,7 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
              */
             if (!is_endline) {
                 if (last_line == NULL) {
-                    char c;
+                    int c;
                     // Discards the rest of the log, up to the end of line
                     do {
                         c = fgetc(stream);
@@ -332,7 +332,7 @@ STATIC INLINE void w_macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt) {
 STATIC INLINE void w_macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt) {
 
     /* Backup */
-    strcpy(ctxt->buffer, buffer);
+    strncpy(ctxt->buffer, buffer, OS_MAXSTR - 1);
     ctxt->timestamp = time(NULL);
 }
 
