@@ -3605,9 +3605,9 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         for (int i = 0; i < SAVE_PACKAGE_FIELDS_AMOUNT; i++) {
             if (!(next = strtok_r(NULL, "|", &tail))) {
-                mdebug1("Invalid Package info query syntax.");
+                mdebug1("Invalid package info query syntax.");
                 mdebug2("Package info query: %s", last);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", last);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", last);
                 return result;
             }
             last = next;
@@ -3620,12 +3620,12 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         /* size (field[6]) must be converted and can be represented as NULL with a string longer than "NULL" */
         long size = -1;
         if (fields[6] && strncmp(fields[6], "NULL", 4)) {
-            size = strtol(fields[6],NULL,10);
+            size = strtol(fields[6], NULL, 10);
         }
 
         if (result = wdb_package_save(wdb, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], size, fields[7], fields[8], fields[9], fields[10], fields[11], fields[12], fields[13], fields[14], SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, fields[15], FALSE), result < 0) {
-            mdebug1("Cannot save Package information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
+            mdebug1("Cannot save package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save package information.");
         } else {
             wdbi_update_attempt(wdb, WDB_SYSCOLLECTOR_PACKAGES, (unsigned)time(NULL), TRUE, "");
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3642,12 +3642,12 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         if (result = wdb_package_update(wdb, scan_id), result < 0) {
             mdebug1("Cannot update scanned packages.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old package information.");
         }
 
         if (result = wdb_package_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Package information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
+            mdebug1("Cannot delete old package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old package information.");
         } else {
             wdbi_update_completion(wdb, WDB_SYSCOLLECTOR_PACKAGES, (unsigned)time(NULL), "");
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3688,9 +3688,9 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         return result;
     }
     else {
-        mdebug1("Invalid Package info query syntax.");
+        mdebug1("Invalid package info query syntax.");
         mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", input);
         return -1;
     }
 }
@@ -3709,7 +3709,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
 
         for (int i = 0; i < SAVE_HOTFIX_FIELDS_AMOUNT; i++) {
             if (!(next = strtok_r(NULL, "|", &tail))) {
-                mdebug1("Invalid Package info query syntax.");
+                mdebug1("Invalid hotfix info query syntax.");
                 mdebug2("Package info query: %s", last);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", last);
                 return OS_INVALID;
@@ -3722,8 +3722,8 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         }
 
         if (result = wdb_hotfix_save(wdb, fields[0], fields[1], fields[2], SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
-            mdebug1("Cannot save Hotfix information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save Hotfix information.");
+            mdebug1("Cannot save hotfix information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save hotfix information.");
         } else {
             wdbi_update_attempt(wdb, WDB_SYSCOLLECTOR_HOTFIXES, (unsigned)time(NULL), TRUE, "");
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3738,8 +3738,8 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         }
 
         if (result = wdb_hotfix_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Process information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Hotfix information.");
+            mdebug1("Cannot delete old hotfix information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old hotfix information.");
         } else {
             wdbi_update_completion(wdb, WDB_SYSCOLLECTOR_HOTFIXES, (unsigned)time(NULL), "");
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3775,9 +3775,9 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         return result;
     }
     else {
-        mdebug1("Invalid Hotfix info query syntax.");
+        mdebug1("Invalid hotfix info query syntax.");
         mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid hotfix info query syntax, near '%.32s'", input);
         return -1;
     }
 }
