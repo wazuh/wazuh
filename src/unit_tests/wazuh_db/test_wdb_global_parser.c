@@ -78,7 +78,7 @@ void test_wdb_parse_global_substr_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global error";
 
-    will_return(__wrap_wdb_open_global, (wdb_t*)1);
+    will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: error");
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: error");
@@ -96,7 +96,7 @@ void test_wdb_parse_global_sql_error(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "global sql";
 
-    will_return(__wrap_wdb_open_global, (wdb_t*)1);
+    will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sql");
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax.");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: sql");
