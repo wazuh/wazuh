@@ -31,4 +31,22 @@
         <description>F5 BigIP GTM: Alert message detected.</description>
     </rule>
 
+    <rule id="65264" level="9">
+        <if_sid>65260,65261,65262,65263</if_sid>
+        <field name="message_code">01010251</field>
+        <description>Virtual server is during high-demand traffic event or under Denial of Service (DoS) attack</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <rule id="65265" level="9">
+        <if_sid>65260,65261,65262,65263</if_sid>
+        <field name="message_code">01010343</field>
+        <description>Platform entered software SYN cookie protection mode. The system has detected a SYN flood attack.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
 </group>
