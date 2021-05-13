@@ -99,6 +99,27 @@ stages:
         data:
           total_affected_items: !anyint
 
+  - name: Try to sort rules by multiple fields
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        sort: -level,id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response_multiple_fields
+          extra_kwargs:
+            key: "level,id"
+            reverse: True
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Try to show the rules of the system with a existent state
     request:
       verify: False
