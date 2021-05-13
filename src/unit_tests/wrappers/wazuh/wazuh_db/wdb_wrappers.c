@@ -153,6 +153,26 @@ int __wrap_wdbi_check_sync_status(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
+void __wrap_wdbi_update_attempt(__attribute__((unused))wdb_t * wdb,
+                                wdb_component_t component,
+                                long timestamp,
+                                bool legacy,
+                                os_sha1 last_agent_checksum) {
+    check_expected(component);
+    check_expected(timestamp);
+    check_expected(legacy);
+    check_expected(last_agent_checksum);
+}
+
+void __wrap_wdbi_update_completion(__attribute__((unused))wdb_t * wdb,
+                                wdb_component_t component,
+                                long timestamp,
+                                os_sha1 last_agent_checksum) {
+    check_expected(component);
+    check_expected(timestamp);
+    check_expected(last_agent_checksum);
+}
+
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
                                     __attribute__((unused)) const char *query,
                                     char *response,
@@ -240,5 +260,77 @@ int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt) {
 
 int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer) {
     check_expected(peer);
+    return mock();
+}
+
+int  __wrap_wdb_package_save(__attribute__((unused))wdb_t * wdb,
+                             const char* scan_id,
+                             const char* scan_time,
+                             const char* format,
+                             const char* name,
+                             const char* priority,
+                             const char* section,
+                             long size,
+                             const char* vendor,
+                             const char* install_time,
+                             const char* version,
+                             const char* architecture,
+                             const char* multiarch,
+                             const char* source,
+                             const char* description,
+                             const char* location,
+                             const char* checksum,
+                             const char* item_id,
+                             const bool replace) {
+    check_expected(scan_id);
+    check_expected(scan_time);
+    check_expected(format);
+    check_expected(name);
+    check_expected(priority);
+    check_expected(section);
+    check_expected(size);
+    check_expected(vendor);
+    check_expected(install_time);
+    check_expected(version);
+    check_expected(architecture);
+    check_expected(multiarch);
+    check_expected(source);
+    check_expected(description);
+    check_expected(location);
+    check_expected(checksum);
+    check_expected(item_id);
+    check_expected(replace);
+    return mock();
+}
+
+int __wrap_wdb_hotfix_save(__attribute__((unused))wdb_t * wdb,
+                           const char* scan_id,
+                           const char* scan_time,
+                           const char* hotfix,
+                           const char* checksum,
+                           const bool replace) {
+    check_expected(scan_id);
+    check_expected(scan_time);
+    check_expected(hotfix);
+    check_expected(checksum);
+    check_expected(replace);
+    return mock();
+}
+
+int __wrap_wdb_package_update(__attribute__((unused))wdb_t * wdb,
+                              const char * scan_id) {
+    check_expected(scan_id);
+    return mock();
+}
+
+int __wrap_wdb_package_delete(__attribute__((unused))wdb_t * wdb,
+                              const char * scan_id) {
+    check_expected(scan_id);
+    return mock();
+}
+
+int __wrap_wdb_hotfix_delete(__attribute__((unused))wdb_t * wdb,
+                              const char * scan_id) {
+    check_expected(scan_id);
     return mock();
 }
