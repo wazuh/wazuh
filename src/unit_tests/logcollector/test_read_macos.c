@@ -54,9 +54,9 @@ int __wrap_can_read() {
 
 /* tests */
 
-/* macos_log_ctxt_restore */
+/* w_macos_log_ctxt_restore */
 
-void test_macos_log_ctxt_restore_false(void ** state) {
+void test_w_macos_log_ctxt_restore_false(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
     ctxt.buffer[0] = '\0';
@@ -68,7 +68,7 @@ void test_macos_log_ctxt_restore_false(void ** state) {
 
 }
 
-void test_macos_log_ctxt_restore_true(void ** state) {
+void test_w_macos_log_ctxt_restore_true(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
     strncpy(ctxt.buffer,"test",OS_MAXSTR);
@@ -81,9 +81,9 @@ void test_macos_log_ctxt_restore_true(void ** state) {
 
 }
 
-/* macos_log_ctxt_backup */
+/* w_macos_log_ctxt_backup */
 
-void test_macos_log_ctxt_backup_success(void ** state) {
+void test_w_macos_log_ctxt_backup_success(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
     char buffer[OS_MAXSTR + 1];
@@ -99,9 +99,9 @@ void test_macos_log_ctxt_backup_success(void ** state) {
 
 }
 
-/* macos_log_ctxt_clean */
+/* w_macos_log_ctxt_clean */
 
-void test_macos_log_ctxt_clean_success(void ** state) {
+void test_w_macos_log_ctxt_clean_success(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
 
@@ -116,9 +116,9 @@ void test_macos_log_ctxt_clean_success(void ** state) {
 
 }
 
-/* macos_is_log_ctxt_expired */
+/* w_macos_is_log_ctxt_expired */
 
-void test_macos_is_log_ctxt_expired_true(void ** state) {
+void test_w_macos_is_log_ctxt_expired_true(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
     time_t timeout = (time_t) MACOS_LOG_TIMEOUT;
@@ -131,7 +131,7 @@ void test_macos_is_log_ctxt_expired_true(void ** state) {
 
 }
 
-void test_macos_is_log_ctxt_expired_false(void ** state) {
+void test_w_macos_is_log_ctxt_expired_false(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
     time_t timeout = (time_t) MACOS_LOG_TIMEOUT;
@@ -144,9 +144,9 @@ void test_macos_is_log_ctxt_expired_false(void ** state) {
 
 }
 
-/* macos_log_get_last_valid_line */
+/* w_macos_log_get_last_valid_line */
 
-void test_macos_log_get_last_valid_line_str_null(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_null(void ** state) {
 
     char * str = NULL;
 
@@ -156,7 +156,7 @@ void test_macos_log_get_last_valid_line_str_null(void ** state) {
 
 }
 
-void test_macos_log_get_last_valid_line_str_empty(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_empty(void ** state) {
 
     char * str = '\0';
 
@@ -166,7 +166,7 @@ void test_macos_log_get_last_valid_line_str_empty(void ** state) {
 
 }
 
-void test_macos_log_get_last_valid_line_str_without_new_line(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_without_new_line(void ** state) {
 
     char * str = NULL;
 
@@ -179,7 +179,7 @@ void test_macos_log_get_last_valid_line_str_without_new_line(void ** state) {
 
 }
 
-void test_macos_log_get_last_valid_line_str_with_new_line_end(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_with_new_line_end(void ** state) {
 
     char * str = NULL;
 
@@ -192,7 +192,7 @@ void test_macos_log_get_last_valid_line_str_with_new_line_end(void ** state) {
 
 }
 
-void test_macos_log_get_last_valid_line_str_with_new_line_not_end(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_with_new_line_not_end(void ** state) {
 
     char * str = NULL;
 
@@ -205,7 +205,7 @@ void test_macos_log_get_last_valid_line_str_with_new_line_not_end(void ** state)
 
 }
 
-void test_macos_log_get_last_valid_line_str_with_two_new_lines_end(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_with_two_new_lines_end(void ** state) {
 
     char * str = NULL;
 
@@ -218,7 +218,7 @@ void test_macos_log_get_last_valid_line_str_with_two_new_lines_end(void ** state
 
 }
 
-void test_macos_log_get_last_valid_line_str_with_two_new_lines_not_end(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_with_two_new_lines_not_end(void ** state) {
 
     char * str = NULL;
 
@@ -231,7 +231,7 @@ void test_macos_log_get_last_valid_line_str_with_two_new_lines_not_end(void ** s
 
 }
 
-void test_macos_log_get_last_valid_line_str_with_three_new_lines_end(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_with_three_new_lines_end(void ** state) {
 
     char * str = NULL;
 
@@ -244,7 +244,7 @@ void test_macos_log_get_last_valid_line_str_with_three_new_lines_end(void ** sta
 
 }
 
-void test_macos_log_get_last_valid_line_str_with_three_new_lines_not_end(void ** state) {
+void test_w_macos_log_get_last_valid_line_str_with_three_new_lines_not_end(void ** state) {
 
     char * str = NULL;
 
@@ -707,25 +707,25 @@ void test_w_macos_log_getlog_split_two_logs(void ** state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-// Test macos_log_ctxt_restore
-        cmocka_unit_test(test_macos_log_ctxt_restore_false),
-        cmocka_unit_test(test_macos_log_ctxt_restore_true),
-        // Test macos_log_ctxt_backup
-        cmocka_unit_test(test_macos_log_ctxt_backup_success),
-        // Test macos_log_ctxt_clean
-        cmocka_unit_test(test_macos_log_ctxt_clean_success),
-        // Test macos_is_log_ctxt_expired
-        cmocka_unit_test(test_macos_is_log_ctxt_expired_true),
-        cmocka_unit_test(test_macos_is_log_ctxt_expired_false),
-        // Test macos_log_get_last_valid_line
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_null),
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_empty),
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_without_new_line),
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_with_new_line_end),
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_with_new_line_not_end),
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_with_two_new_lines_end),
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_with_two_new_lines_not_end),
-        cmocka_unit_test(test_macos_log_get_last_valid_line_str_with_three_new_lines_not_end),
+        // Test w_macos_log_ctxt_restore
+        cmocka_unit_test(test_w_macos_log_ctxt_restore_false),
+        cmocka_unit_test(test_w_macos_log_ctxt_restore_true),
+        // Test w_macos_log_ctxt_backup
+        cmocka_unit_test(test_w_macos_log_ctxt_backup_success),
+        // Test w_macos_log_ctxt_clean
+        cmocka_unit_test(test_w_macos_log_ctxt_clean_success),
+        // Test w_macos_is_log_ctxt_expired
+        cmocka_unit_test(test_w_macos_is_log_ctxt_expired_true),
+        cmocka_unit_test(test_w_macos_is_log_ctxt_expired_false),
+        // Test w_macos_log_get_last_valid_line
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_null),
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_empty),
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_without_new_line),
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_with_new_line_end),
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_with_new_line_not_end),
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_with_two_new_lines_end),
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_with_two_new_lines_not_end),
+        cmocka_unit_test(test_w_macos_log_get_last_valid_line_str_with_three_new_lines_not_end),
         // Test w_macos_is_log_header
         cmocka_unit_test(test_w_macos_is_log_header_false),
         cmocka_unit_test(test_w_macos_is_log_header_log_stream_execution_error_after_exec),
