@@ -27,10 +27,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
-<<<<<<< HEAD
-=======
 
->>>>>>> Fix logcollector UT after adding only_future_events for macOS ULS
 
 extern OSHash *files_status;
 
@@ -339,8 +336,12 @@ void test_w_save_files_status_to_cJSON_macos_invalid_vault(void ** state) {
     strcpy(macos_log_vault.timestamp,"any timestamp");
     macos_log_vault.settings = "my settings";
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
+
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -361,8 +362,12 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
     strcpy(macos_log_vault.timestamp,"2021-04-27 08:07:20-0700");
     macos_log_vault.settings = "/usr/bin/log stream --style syslog";
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
+
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -415,6 +420,8 @@ void test_w_save_files_status_to_cJSON_data(void ** state) {
     strcpy(macos_log_vault.timestamp,"2021-04-27 08:07:20-0700");
     macos_log_vault.settings = "/usr/bin/log stream --style syslog";
 
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -442,6 +449,8 @@ void test_w_save_files_status_to_cJSON_data(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
