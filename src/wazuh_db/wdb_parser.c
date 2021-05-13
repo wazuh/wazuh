@@ -3597,7 +3597,13 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
     char* tail = NULL;
     char* action = strtok_r(input, " ", &tail);
 
-    if (strcmp(action, "save") == 0) {
+    if (!action) {
+        mdebug1("Invalid package info query syntax. Missing action");
+        mdebug2("DB query error. Missing action");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax. Missing action");
+        return result;
+    }
+    else if (strcmp(action, "save") == 0) {
         /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location*/
         #define SAVE_PACKAGE_FIELDS_AMOUNT 16
         char* fields[SAVE_PACKAGE_FIELDS_AMOUNT] = {NULL};
@@ -3642,7 +3648,6 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         if (result = wdb_package_update(wdb, scan_id), result < 0) {
             mdebug1("Cannot update scanned packages.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old package information.");
         }
 
         if (result = wdb_package_delete(wdb, scan_id), result < 0) {
@@ -3691,7 +3696,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid package info query syntax.");
         mdebug2("DB query error near: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", input);
-        return -1;
+        return result;
     }
 }
 
@@ -3701,7 +3706,13 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
     char* tail = NULL;
     char* action = strtok_r(input, " ", &tail);
 
-    if (strcmp(action, "save") == 0) {
+    if (!action) {
+        mdebug1("Invalid hotfix info query syntax. Missing action");
+        mdebug2("DB query error. Missing action");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid hotfix info query syntax. Missing action");
+        return result;
+    }
+    else if (strcmp(action, "save") == 0) {
         /* The format of the data is scan_id|scan_time|hotfix */
         #define SAVE_HOTFIX_FIELDS_AMOUNT 3
         char* fields[SAVE_HOTFIX_FIELDS_AMOUNT] = {NULL};
@@ -3710,8 +3721,8 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         for (int i = 0; i < SAVE_HOTFIX_FIELDS_AMOUNT; i++) {
             if (!(next = strtok_r(NULL, "|", &tail))) {
                 mdebug1("Invalid hotfix info query syntax.");
-                mdebug2("Package info query: %s", last);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", last);
+                mdebug2("Hotfix info query: %s", last);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid hotfix info query syntax, near '%.32s'", last);
                 return OS_INVALID;
             }
             last = next;
@@ -3778,7 +3789,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid hotfix info query syntax.");
         mdebug2("DB query error near: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid hotfix info query syntax, near '%.32s'", input);
-        return -1;
+        return result;
     }
 }
 
