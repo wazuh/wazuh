@@ -47,8 +47,6 @@ def start(foreground, root, config_file):
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
 
-
-
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
@@ -78,17 +76,17 @@ def start(foreground, root, config_file):
 
             # Load SSL context
             allowed_ssl_protocols = {
-                'tls': ssl.PROTOCOL_TLS,
-                'tlsv1': ssl.PROTOCOL_TLSv1,
-                'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
-                'tlsv1.2': ssl.PROTOCOL_TLSv1_2
+                'TLS': ssl.PROTOCOL_TLS,
+                'TLSv1': ssl.PROTOCOL_TLSv1,
+                'TLSv1.1': ssl.PROTOCOL_TLSv1_1,
+                'TLSv1.2': ssl.PROTOCOL_TLSv1_2
             }
             try:
                 ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
             except (KeyError, AttributeError):
                 # KeyError: invalid string value
                 # AttributeError: invalid boolean value
-                logger.error(str(APIError(2003, details='SSL protcol is not valid. Allowed values: '
+                logger.error(str(APIError(2003, details='SSL protocol is not valid. Allowed values: '
                                                         'TLS, TLSv1, TLSv1.1, TLSv1.2')))
                 sys.exit(1)
 
@@ -98,8 +96,10 @@ def start(foreground, root, config_file):
                 ssl_context.load_verify_locations(api_conf['https']['ca'])
             ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
                                         keyfile=api_conf['https']['key'])
+
+            # Base configuration should not have ciphers?
             if 'ssl_ciphers' in api_conf['https']:
-                #Load SSL ciphers 
+                # Load SSL ciphers
                 ssl_ciphers = api_conf['https']['ssl_ciphers'].upper()
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)

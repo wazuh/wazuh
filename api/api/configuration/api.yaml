@@ -1,18 +1,18 @@
 # USE THIS FILE AS A TEMPLATE. UNCOMMENT LINES TO APPLY CUSTOM CONFIGURATION
 
-# host: 0.0.0.0
-# port: 55000
+host: 0.0.0.0
+port: 55000
 
 # Advanced configuration
 
-# https:
-#  enabled: yes
-#  key: "api/configuration/ssl/server.key"
-#  cert: "api/configuration/ssl/server.crt"
-#  use_ca: False
-#  ca: "api/configuration/ssl/ca.crt"
-#  ssl_protocol: "TLSv1.2"
-#  ssl_ciphers: "ECDHE+AESGCM:!ECDSA"
+https:
+ enabled: yes
+ key: "api/configuration/ssl/server.key"
+ cert: "api/configuration/ssl/server.crt"
+ use_ca: False
+ ca: "api/configuration/ssl/ca.crt"
+ ssl_protocol: "TLSv1.2"
+ ssl_ciphers: "ECDHE+AESGCM:!ECDSA"
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).

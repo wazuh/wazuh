@@ -72,7 +72,8 @@ api_config_schema = {
                 "cert": {"type": "string"},
                 "use_ca": {"type": "boolean"},
                 "ca": {"type": "string"},
-                "ssl_cipher": {"type": "string"},
+                "ssl_protocol": {"type": "string"},
+                "ssl_ciphers": {"type": "string"}
             },
         },
         "logs": {
