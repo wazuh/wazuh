@@ -446,7 +446,7 @@ int main(int argc, char **argv)
     /* If remote enrollment is not enabled on the worker node, it goes to sleep */
     if (!config.flags.remote_enrollment && config.worker_node) {
         minfo("Port %hu was set as disabled. The deamon goes to sleep.", config.port);
-        while (FOREVER()) {
+        while (running) {
             sleep(1);
         }
         exit(0);
