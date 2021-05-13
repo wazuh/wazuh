@@ -127,7 +127,19 @@ def test_sort_response(response, key=None, reverse=True):
 
 
 def get_from_dict(dictionary, fields):
-    """Given a python dictionary and a list of keys, return the dict value."""
+    """Given a python dictionary and a list of keys, return the dict value.
+
+    Parameters
+    ----------
+    dictionary : dict
+        Dict from which we wish to obtain the value.
+    fields : list
+        List of keys needed to obtain the dict value.
+
+    Returns
+    -------
+    The desired dictionary value.
+    """
     return reduce(operator.getitem, fields, dictionary)
 
 
@@ -139,7 +151,7 @@ def sort_items(unsorted_items, dict_field, reverse):
     unsorted_items : dict
         Python dictionary with all the items to be sorted.
     dict_field : list
-        List with the keys to obtain the value for which we wish to sort the items.
+        List with the keys needed to obtain the value for which we wish to sort the items.
     reverse : bool
         Indicates whether the items are going to be sorted in ascending or descending order.
 
@@ -170,7 +182,7 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
     """
     affected_items = response.json()['data']['affected_items']
 
-    # Split sort fields if there is any
+    # Get the multiples keys we want to sort_by if there is any
     key = key.split(',')
 
     # Split nested fields
@@ -191,13 +203,13 @@ def test_sort_response_multiple_fields(response, key=None, reverse=False):
                 except KeyError:
                     items_without_sort_by_field.append(items.pop(items.index(item)))
 
-    # Sort the items list
+    # Sort items
     for field in process_fields[::-1]:
         items = sort_items(items, field, reverse)
 
-    # Concatenate the two list (items/disconnected_agents).
-    # If the order is ascending , the disconnected agents will be at the top
-    # If the order is descending, the disconnected agents will be at the bottom
+    # Concatenate the two list (items/items_without_sort_by_field).
+    # If the order is ascending(False),the disconnected agents will be at the top
+    # If the order is descending(True),the disconnected agents will be at the bottom
     if reverse:
         items.extend(items_without_sort_by_field)
         assert affected_items == items
