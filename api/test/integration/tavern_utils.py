@@ -106,24 +106,46 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
 
 
 def test_sort_response(response, key=None, reverse=True):
-    """Check that the response's affected items are sorted by the specified key.
+    """Check that the response's affected items are sorted by the specified key or keys.
 
     Parameters
     ----------
     response : Request response
     key : str
-        Key expected to sort by.
+        Key or keys expected to sort by.
     reverse : bool
         Indicate if the expected order is ascending (False) or descending (True). Default: True
 
     Returns
     -------
     bool
-        True if the response's items are sorted by the key.
+        True if the response's items are sorted by the key or keys.
     """
+
+    def get_val_from_dict(dict, keys):
+        data = dict
+        for k in keys:
+            data = data[k]
+        return data
+
     affected_items = response.json()['data']['affected_items']
-    # If affected_items is a list of strings instead of dictionaries, key will be None
-    assert affected_items == sorted(affected_items, key=(lambda item: item[key]) if key else None, reverse=reverse)
+
+    # If key is a list of keys, split key
+    # If key is only one key, transform it into a list
+    keys = key.split(',')
+
+    sorted_items = affected_items
+    keys.reverse()
+    for key in keys:
+        # Split key in case it is a nested key
+        split_key = key.split('.')
+
+        # Update sorted_items
+        # split_key will be similar to ['name'] in the basic cases
+        # split_key will be similar to ['os', 'name'] in nested cases
+        sorted_items = sorted(affected_items, key=(lambda item: get_val_from_dict(item, split_key)), reverse=reverse)
+
+    assert affected_items == sorted_items
 
 
 def get_from_dict(dictionary, fields):

@@ -168,6 +168,26 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Sort rules by multiple fields
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        sort: level,filename
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "level,filename"
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: [ ]
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Show rules of the system using valid select
     request:
       verify: False

@@ -84,59 +84,43 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
     assert distinct.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
 
 
-@pytest.mark.parametrize('agent_list, fields, order, expected_items', [
-    (['000', '002'],
-     ['os.name', 'os.version'],
+@pytest.mark.parametrize('fields, order, expected_items', [
+    (['os.version', 'os.name'],
      'asc',
      [
-        {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
-        {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}}
-     ]
-     ),
-    (['000', '002'],
-     ['os.name', 'os.version'],
-     'desc',
-     [
-        {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
-        {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}}
-     ]
-     ),
-    (['000', '002', '009'],
-     ['os.version', 'os.name'],
-     'asc',
-     [
-         {'id': '009', 'os': {'name': 'Windows', 'version': '3.14 XP'}},
+         {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
          {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}}
      ]
      ),
-    (['000', '002', '009'],
-     ['os.version', 'os.name'],
+    (['os.version', 'os.name'],
      'desc',
      [
          {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
-         {'id': '009', 'os': {'name': 'Windows', 'version': '3.14 XP'}},
+         {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
      ]
      ),
-    (['000', '002', '009'],
-     ['os.name', 'os.version'],
+    (['os.name', 'os.version'],
      'asc',
      [
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
          {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
-         {'id': '009', 'os': {'name': 'Windows', 'version': '3.14 XP'}},
+         {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
      ]
      ),
 ])
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_sort_order(socket_mock, send_mock, agent_list, order, fields, expected_items):
+def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items):
     """Test `sort` parameter of GET /agents endpoint with multiples fields."""
+    agent_list = ['000', '002', '009']
     sorted_agents = get_agents(agent_list=agent_list, select=fields, sort={'fields': fields, 'order': order})
-    assert isinstance(sorted_agents, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert sorted_agents.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    assert isinstance(sorted_agents, AffectedItemsWazuhResult), 'The returned object is not an ' \
+                                                                '"AffectedItemsWazuhResult". '
+    assert sorted_agents.affected_items == expected_items, f'"Affected_items" does not match. Should be ' \
+                                                           f'"{expected_items}". '
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)

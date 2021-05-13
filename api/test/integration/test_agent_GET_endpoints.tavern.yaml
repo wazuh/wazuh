@@ -73,12 +73,12 @@ stages:
         sort: os.name,os.major
     response:
       verify_response_with:
-        - function: tavern_utils:test_sort_response_multiple_fields
+        - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "os.name,os.major"
+            key: "os.name,os.version"
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           failed_items: []
           total_affected_items: !anyint
