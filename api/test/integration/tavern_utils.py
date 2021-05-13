@@ -1,7 +1,6 @@
 import json
 from base64 import b64decode
 from json import loads
-from functools import reduce  # forward compatibility for Python 3
 
 from box import Box
 
@@ -105,7 +104,7 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
 
 
-def test_sort_response(response, key=None, reverse=True):
+def test_sort_response(response, key=None, reverse=True, default_sort_field='id'):
     """Check that the response's affected items are sorted by the specified key or keys.
 
     Parameters
@@ -115,6 +114,8 @@ def test_sort_response(response, key=None, reverse=True):
         Key or keys expected to sort by.
     reverse : bool
         Indicate if the expected order is ascending (False) or descending (True). Default: True
+    default_sort_field : str
+        Default sort field to be added to the keys to sort by.
 
     Returns
     -------
@@ -122,122 +123,63 @@ def test_sort_response(response, key=None, reverse=True):
         True if the response's items are sorted by the key or keys.
     """
 
-    def get_val_from_dict(dict, keys):
-        data = dict
-        for k in keys:
-            data = data[k]
+    def get_val_from_dict(dictionary, keys):
+        """Get value from dictionary dynamically, given a list of keys.
+
+        Parameters
+        ----------
+        dictionary : dict
+            Dictionary to get the value from.
+        keys : list
+            List of keys used to find the value in the dictionary. If the list length is more than 1, the value to find
+            is a nested one.
+
+        Returns
+        -------
+        Value of the dictionary for key `keys`.
+        """
+        data = dictionary
+        for key in keys:
+            data = data.get(key, "")
+            if data == "":
+                break
         return data
 
     affected_items = response.json()['data']['affected_items']
 
-    # If key is a list of keys, split key
-    # If key is only one key, transform it into a list
-    keys = key.split(',')
-
-    sorted_items = affected_items
-    keys.reverse()
-    for key in keys:
-        # Split key in case it is a nested key
-        split_key = key.split('.')
-
-        # Update sorted_items
-        # split_key will be similar to ['name'] in the basic cases
-        # split_key will be similar to ['os', 'name'] in nested cases
-        sorted_items = sorted(affected_items, key=(lambda item: get_val_from_dict(item, split_key)), reverse=reverse)
-
-    assert affected_items == sorted_items
-
-
-def get_from_dict(dictionary, fields):
-    """Given a python dictionary and a list of keys, return the dict value.
-
-    Parameters
-    ----------
-    dictionary : dict
-        Dict from which we wish to obtain the value.
-    fields : list
-        List of keys needed to obtain the dict value.
-
-    Returns
-    -------
-    The desired dictionary value.
-    """
-    return reduce(operator.getitem, fields, dictionary)
-
-
-def sort_items(unsorted_items, dict_field, reverse):
-    """Sort a python dictionary by a certain key. Accepts nested Keys.
-
-    Parameters
-    ----------
-    unsorted_items : dict
-        Python dictionary with all the items to be sorted.
-    dict_field : list
-        List with the keys needed to obtain the value for which we wish to sort the items.
-    reverse : bool
-        Indicates whether the items are going to be sorted in ascending or descending order.
-
-    Returns
-    -------
-    dict
-        Dictionary sorted by the key.
-    """
-    return sorted(unsorted_items, key=lambda item: get_from_dict(item, dict_field), reverse=reverse)
-
-
-def test_sort_response_multiple_fields(response, key=None, reverse=False):
-    """Check that the response's affected items are sorted by one or multiple keys.
-    Use the auxiliary function sort_items to sort the elements.
-
-    Parameters
-    ----------
-    response : Request response.
-    key : str
-        Keys expected to sort by. Comma separated keys to be sorted (os.name,os.major).
-    reverse : bool
-        Indicate if the expected order is ascending (False) or descending (True). Default: False.
-
-    Returns
-    -------
-    bool
-        True if the items are sorted correctly.
-    """
-    affected_items = response.json()['data']['affected_items']
-
-    # Get the multiples keys we want to sort_by if there is any
-    key = key.split(',')
-
-    # Split nested fields
-    process_fields = []
-    [process_fields.append(field.split('.')) for field in key if isinstance(key, list)]
-
-    # Create a copy of the affected_items
-    items = list(affected_items)
-
-    # Extract the items that do not have one or more fields to sort by.
-    # These items are added at the end before asserting.
-    items_without_sort_by_field = []
-    for item in affected_items:
-        for field in process_fields:
-            if item in items:
-                try:
-                    get_from_dict(item, field)
-                except KeyError:
-                    items_without_sort_by_field.append(items.pop(items.index(item)))
-
-    # Sort items
-    for field in process_fields[::-1]:
-        items = sort_items(items, field, reverse)
-
-    # Concatenate the two list (items/items_without_sort_by_field).
-    # If the order is ascending(False),the disconnected agents will be at the top
-    # If the order is descending(True),the disconnected agents will be at the bottom
-    if reverse:
-        items.extend(items_without_sort_by_field)
-        assert affected_items == items
+    # If affected_items is a list of strings instead of dictionaries, key will be None
+    if not key:
+        assert affected_items == sorted(affected_items, reverse=reverse)
     else:
-        items_without_sort_by_field.extend(items)
-        assert affected_items == items_without_sort_by_field
+        # If key is a list of keys, split key
+        # If key is only one key, transform it into a list
+        # Add default sort field
+        keys = key.split(',')
+        keys.append(default_sort_field)
+
+        sorted_items = affected_items
+        keys.reverse()
+        for k in keys:
+            # Split key in case it is a nested key
+            split_key = k.split('.')
+
+            # Update sorted_items
+            # split_key will be similar to ['name'] in the basic cases
+            # split_key will be similar to ['os', 'name'] in nested cases
+            sorted_items = sorted(sorted_items, key=(lambda item: get_val_from_dict(item, split_key)), reverse=reverse)
+
+        # Change position of items without the key we are sorting by
+        # Our sql query considers an item not having the key < an item having the key
+        # The 'sorted' function considers an item not having the key > an item having the key
+        list_no_keys = [item for item in sorted_items if not any(get_val_from_dict(item, key.split('.'))
+                                                                 for key in keys)]
+        [sorted_items.remove(item) for item in list_no_keys]
+        if reverse:
+            sorted_items = sorted_items + list_no_keys
+        else:
+            sorted_items = list_no_keys + sorted_items
+
+        assert affected_items == sorted_items
 
 
 def test_validate_data_dict_field(response, fields_dict):

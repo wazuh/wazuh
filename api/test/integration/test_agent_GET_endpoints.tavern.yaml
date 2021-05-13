@@ -75,7 +75,8 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "os.name,os.version"
+            key: "os.name,os.major,os.minor"
+            reverse: False
       status_code: 200
       json:
         error: 0

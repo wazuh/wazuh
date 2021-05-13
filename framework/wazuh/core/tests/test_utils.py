@@ -805,46 +805,6 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile,
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('sort, fields', [
-    (
-     {'order': 'asc', 'fields': ['os.name', 'os.version']},
-     {'os.name': None, 'os.version': None}
-     ),
-    (
-     {'order': 'desc', 'fields': ['os.name', 'os.version', 'os.major', 'os.minor']},
-     {'os.name': None, 'os.version': None, 'os.major': None, 'os.minor': None}
-     ),
-    (
-     {'order': 'asc', 'fields': ['id', 'date_first', 'date_last']},
-     {'id': None, 'date_first': None, 'date_last': None}
-     ),
-    (
-     {'order': 'desc', 'fields': ['username', 'id']},
-     {'username': None, 'id': None}
-     ),
-    (
-     {'order': 'asc', 'fields': ['id', 'username']},
-     {'id': None, 'username': None}
-     )
-])
-@patch('wazuh.core.utils.glob.glob', return_value=True)
-@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
-@patch("wazuh.core.database.isfile", return_value=True)
-@patch('socket.socket.connect')
-def test_sorted_order_for_multiple_test_fields(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, sort, fields):
-    """Test WazuhDBQuery._add_sort_to_query function for multiple fields"""
-    query = WazuhDBQuery(
-        offset=0, limit=1, table='agent', sort=sort, search=None, select=None, filters=None,
-        fields=fields, default_sort_field=None, query=None,
-        backend=WazuhDBBackend(agent_id=1), count=5, get_data=None)
-
-    query._add_sort_to_query()
-
-    assert isinstance(query.sort['fields'], list), 'Sort fields is a list'
-    assert query.sort == sort, 'Query sort formed correctly'
-    assert query.sort['order'] == sort['order'], 'Sort order is correct'
-
-
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
