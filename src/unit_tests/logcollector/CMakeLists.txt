@@ -30,7 +30,8 @@ list(APPEND logcollector_flags "-Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Add -
                                 -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_AddItemToObject \
                                 -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
                                 -Wl,--wrap,stat -Wl,--wrap=fgetc -Wl,--wrap=w_fseek -Wl,--wrap,w_ftell \
-                                -Wl,--wrap,OS_SHA1_File_Nbytes_with_fp_check -Wl,--wrap,_mdebug1")
+                                -Wl,--wrap,OS_SHA1_File_Nbytes_with_fp_check -Wl,--wrap,wpclose \
+                                -Wl,--wrap,kill -Wl,--wrap,_mdebug1")
 
 list(APPEND logcollector_names "test_read_multiline_regex")
 list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \

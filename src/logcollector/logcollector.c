@@ -126,10 +126,12 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-static struct _macos_log_wfd_t {
+typedef struct{
     wfd_t * show;
     wfd_t * stream;
-} macos_log_wfd = { .show = NULL, .stream = NULL };
+} w_macos_log_wfd_t;
+
+STATIC w_macos_log_wfd_t macos_log_wfd = { .show = NULL, .stream = NULL };
 #endif
 
 /* Handle file management */
