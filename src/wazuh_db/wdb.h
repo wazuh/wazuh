@@ -256,6 +256,10 @@ typedef enum wdb_stmt {
     WDB_STMT_VULN_CVES_FIND_CVE,
     WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
     WDB_STMT_VULN_CVES_DELETE_ENTRY,
+    WDB_STMT_SYS_HOTFIXES_GET,
+    WDB_STMT_SYS_PROGRAMS_GET,
+    WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED,
+    WDB_STMT_SYS_PROGRAMS_SET_TRIAGED,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -274,6 +278,7 @@ typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * id;
+    int peer;
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
@@ -864,8 +869,28 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a packages command
+ * Commands:
+ * 1. del: Deletes packages table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every package on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a hotfixes command
+ * Commands:
+ * 1. del: Deletes hotfixes table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every hotfix on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);

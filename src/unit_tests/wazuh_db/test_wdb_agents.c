@@ -34,6 +34,7 @@ static int test_setup(void **state) {
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
     os_strdup("000",init_data->wdb->id);
+    init_data->wdb->peer = 1234;
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;
     return 0;
@@ -878,6 +879,313 @@ void test_wdb_agents_set_sys_osinfo_triaged_success(void **state) {
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_agents_set_packages_triaged */
+
+void test_wdb_agents_set_packages_triaged_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_SET_TRIAGED);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    int ret = wdb_agents_set_packages_triaged(data->wdb);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_set_packages_triaged_stmt_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_SET_TRIAGED);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    int ret = wdb_agents_set_packages_triaged(data->wdb);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
+/* wdb_agents_send_packages */
+
+void test_wdb_agents_send_packages_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_SUCCESS);
+
+    int ret = wdb_agents_send_packages(data->wdb, FALSE);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_send_packages_not_triaged_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_SUCCESS);
+
+    int ret = wdb_agents_send_packages(data->wdb, TRUE);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_send_packages_stmt_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    int ret = wdb_agents_send_packages(data->wdb, FALSE);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
+/* wdb_agents_send_hotfixes */
+
+void test_wdb_agents_send_hotfixes_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_HOTFIXES_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_SUCCESS);
+
+    int ret = wdb_agents_send_hotfixes(data->wdb);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_send_hotfixes_stmt_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_HOTFIXES_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    int ret = wdb_agents_send_hotfixes(data->wdb);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
+/* Tests wdb_agents_get_packages */
+
+void test_wdb_agents_get_packages_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_PACKAGES);
+    will_return(__wrap_wdbi_check_sync_status, 1);
+
+    /* wdb_agents_send_packages */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_SUCCESS);
+
+    /* wdb_agents_set_packages_triaged */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_SET_TRIAGED);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_packages(data->wdb, FALSE, &status_response);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_get_packages_not_synced(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_PACKAGES);
+    will_return(__wrap_wdbi_check_sync_status, 0);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "NOT_SYNCED");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_packages(data->wdb, FALSE, &status_response);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_get_packages_sync_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_PACKAGES);
+    will_return(__wrap_wdbi_check_sync_status, OS_INVALID);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_packages(data->wdb, FALSE, &status_response);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
+void test_wdb_agents_get_packages_send_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_PACKAGES);
+    will_return(__wrap_wdbi_check_sync_status, 1);
+
+    /* wdb_agents_send_packages */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_INVALID);
+
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_packages(data->wdb, FALSE, &status_response);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
+void test_wdb_agents_get_packages_set_triaged_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_PACKAGES);
+    will_return(__wrap_wdbi_check_sync_status, 1);
+
+    /* wdb_agents_send_packages */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_SUCCESS);
+
+    /* wdb_agents_set_packages_triaged */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_PROGRAMS_SET_TRIAGED);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_packages(data->wdb, FALSE, &status_response);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
+/* Tests wdb_agents_get_hotfixes */
+
+void test_wdb_agents_get_hotfixes_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_HOTFIXES);
+    will_return(__wrap_wdbi_check_sync_status, 1);
+
+    /* wdb_agents_send_hotfixes */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_HOTFIXES_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_SUCCESS);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_hotfixes(data->wdb, &status_response);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_get_hotfixes_not_synced(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_HOTFIXES);
+    will_return(__wrap_wdbi_check_sync_status, 0);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "NOT_SYNCED");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_hotfixes(data->wdb, &status_response);
+
+    assert_int_equal (OS_SUCCESS, ret);
+}
+
+void test_wdb_agents_get_hotfixes_sync_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_HOTFIXES);
+    will_return(__wrap_wdbi_check_sync_status, OS_INVALID);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_hotfixes(data->wdb, &status_response);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
+void test_wdb_agents_get_hotfixes_send_err(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+
+    /* wdbi_check_sync_status */
+    expect_value(__wrap_wdbi_check_sync_status, component, WDB_SYSCOLLECTOR_HOTFIXES);
+    will_return(__wrap_wdbi_check_sync_status, 1);
+
+    /* wdb_agents_send_hotfixes */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_SYS_HOTFIXES_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_exec_stmt_send, peer, 1234);
+    will_return(__wrap_wdb_exec_stmt_send, OS_INVALID);
+
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    cJSON *status_response = NULL;
+    int ret = wdb_agents_get_hotfixes(data->wdb, &status_response);
+
+    assert_int_equal (OS_INVALID, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -924,6 +1232,27 @@ int main()
         /* Tests wdb_agents_set_sys_osinfo_triaged */
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_success, test_setup, test_teardown),
+        /* Tests wdb_agents_set_packages_triaged */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_set_packages_triaged_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_set_packages_triaged_stmt_err, test_setup, test_teardown),
+        /* Tests wdb_agents_send_packages */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_send_packages_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_send_packages_not_triaged_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_send_packages_stmt_err, test_setup, test_teardown),
+        /* Tests wdb_agents_send_hotfixes */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_send_hotfixes_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_send_hotfixes_stmt_err, test_setup, test_teardown),
+        /* wdb_agents_get_packages */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_packages_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_packages_not_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_packages_sync_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_packages_send_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_packages_set_triaged_err, test_setup, test_teardown),
+        /* Tests wdb_agents_get_hotfixes */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_hotfixes_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_hotfixes_not_synced, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_hotfixes_sync_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_hotfixes_send_err, test_setup, test_teardown),
       };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

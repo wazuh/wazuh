@@ -21,7 +21,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                         -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_agents_insert_vuln_cves \
                         -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cves -Wl,--wrap,wdb_agents_update_vuln_cves_status \
                         -Wl,--wrap,wdb_agents_remove_vuln_cves -Wl,--wrap,wdb_agents_remove_vuln_cves_by_status -Wl,--wrap,cJSON_PrintUnformatted \
-                        -Wl,--wrap,wdb_agents_get_sys_osinfo -Wl,--wrap,wdb_agents_set_sys_osinfo_triaged -Wl,--wrap,wdb_osinfo_save")
+                        -Wl,--wrap,wdb_agents_get_sys_osinfo -Wl,--wrap,wdb_agents_set_sys_osinfo_triaged -Wl,--wrap,wdb_osinfo_save \
+                        -Wl,--wrap,wdb_agents_get_packages -Wl,--wrap,wdb_agents_get_hotfixes -Wl,--wrap,close -Wl,--wrap,getpid")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
@@ -49,7 +50,8 @@ list(APPEND wdb_tests_names "test_wdb_agents")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,wdb_exec_stmt_silent  -Wl,--wrap,sqlite3_step \
                              -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,cJSON_Delete \
                              -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_AddItemToObject \
-                             -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,wdb_exec_stmt_sized")
+                             -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,wdb_exec_stmt_sized \
+                             -Wl,--wrap,wdb_exec_stmt_send -Wl,--wrap,wdbi_check_sync_status")
 
 
 list(APPEND wdb_tests_names "test_wdb_global_helpers")

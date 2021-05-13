@@ -246,6 +246,8 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB for agent %d", agent_id);
             return -1;
         }
+        // Add the current peer to wdb structure
+        wdb->peer = peer;
 
         mdebug2("Agent %s query: %s", sagent_id, query);
 
@@ -570,6 +572,8 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
             return -1;
         }
+        // Add the current peer to wdb structure
+        wdb->peer = peer;
 
         if (next = wstr_chr(query, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
@@ -628,6 +632,8 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
             return OS_INVALID;
         }
+        // Add the current peer to wdb structure
+        wdb->peer = peer;
 
         if (next = wstr_chr(query, ' '), next) {
             *next++ = '\0';
@@ -907,6 +913,8 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB task");
             return OS_INVALID;
         }
+        // Add the current peer to wdb structure
+        wdb->peer = peer;
 
         if (next = wstr_chr(query, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
@@ -3589,256 +3597,42 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
     }
 }
 
-
 int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
-    char * curr;
-    char * next;
-    char * scan_id;
-    char * scan_time;
-    char * format;
-    char * name;
-    char * priority;
-    char * section;
-    long size;
-    char * vendor;
-    char * install_time;
-    char * version;
-    char * architecture;
-    char * multiarch;
-    char * source;
-    char * description;
-    char * location;
-    char * item_id;
-    int result;
 
-    if (next = strchr(input, ' '), !next) {
-        mdebug1("Invalid Package info query syntax.");
-        mdebug2("Package info query: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", input);
-        return -1;
-    }
+    int result = OS_INVALID;
+    char* next = NULL;
+    char* tail = NULL;
+    char* action = strtok_r(input, " ", &tail);
 
-    curr = input;
-    *next++ = '\0';
+    if (strcmp(action, "save") == 0) {
+        /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location*/
+        #define SAVE_PACKAGE_FIELDS_AMOUNT 16
+        char* fields[SAVE_PACKAGE_FIELDS_AMOUNT] = {NULL};
+        char* last = tail;
 
-    if (strcmp(curr, "save") == 0) {
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", curr);
-            return -1;
+        for (int i = 0; i < SAVE_PACKAGE_FIELDS_AMOUNT; i++) {
+            if (!(next = strtok_r(NULL, "|", &tail))) {
+                mdebug1("Invalid package info query syntax.");
+                mdebug2("Package info query: %s", last);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", last);
+                return result;
+            }
+            last = next;
+            if (strcmp(next, "NULL"))
+            {
+                fields[i] = next;
+            }
         }
 
-        scan_id = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (!strcmp(scan_id, "NULL"))
-            scan_id = NULL;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", curr);
-            return -1;
+        /* size (field[6]) must be converted and can be represented as NULL with a string longer than "NULL" */
+        long size = -1;
+        if (fields[6] && strncmp(fields[6], "NULL", 4)) {
+            size = strtol(fields[6], NULL, 10);
         }
 
-        scan_time = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", scan_time);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", scan_time);
-            return -1;
-        }
-
-        if (!strcmp(scan_time, "NULL"))
-            scan_time = NULL;
-
-        format = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", format);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", format);
-            return -1;
-        }
-
-        if (!strcmp(format, "NULL"))
-            format = NULL;
-
-        name = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", name);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", name);
-            return -1;
-        }
-
-        if (!strcmp(name, "NULL"))
-            name = NULL;
-
-        priority = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", priority);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", priority);
-            return -1;
-        }
-
-        if (!strcmp(priority, "NULL"))
-            priority = NULL;
-
-        section = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", section);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", section);
-            return -1;
-        }
-
-        if (!strcmp(section, "NULL"))
-            section = NULL;
-
-        if (!strncmp(curr, "NULL", 4))
-            size = -1;
-        else
-            size = strtol(curr,NULL,10);
-
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package query syntax.");
-            mdebug2("Package query: %ld", size);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        vendor = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", vendor);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", vendor);
-            return -1;
-        }
-
-        if (!strcmp(vendor, "NULL"))
-            vendor = NULL;
-
-        install_time = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", install_time);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", install_time);
-            return -1;
-        }
-
-        if (!strcmp(install_time, "NULL"))
-            install_time = NULL;
-
-        version = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", version);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", version);
-            return -1;
-        }
-
-        if (!strcmp(version, "NULL"))
-            version = NULL;
-
-        architecture = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", architecture);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", architecture);
-            return -1;
-        }
-
-        if (!strcmp(architecture, "NULL"))
-            architecture = NULL;
-
-        multiarch = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", multiarch);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", multiarch);
-            return -1;
-        }
-
-        if (!strcmp(multiarch, "NULL"))
-            multiarch = NULL;
-
-        source = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", source);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", source);
-            return -1;
-        }
-
-        if (!strcmp(source, "NULL"))
-            source = NULL;
-
-        description = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", description);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", description);
-            return -1;
-        }
-
-        if (!strcmp(description, "NULL"))
-            description = NULL;
-
-        location = curr;
-        *next++ = '\0';
-
-        if (!strcmp(location, "NULL"))
-            location = NULL;
-
-        item_id = next;
-
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, item_id, FALSE), result < 0) {
-            mdebug1("Cannot save Package information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
+        if (result = wdb_package_save(wdb, fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], size, fields[7], fields[8], fields[9], fields[10], fields[11], fields[12], fields[13], fields[14], SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, fields[15], FALSE), result < 0) {
+            mdebug1("Cannot save package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save package information.");
         } else {
             wdbi_update_attempt(wdb, WDB_SYSCOLLECTOR_PACKAGES, (unsigned)time(NULL), TRUE, "");
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3846,21 +3640,21 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         return result;
 
-    } else if (strcmp(curr, "del") == 0) {
-
-        if (!strcmp(next, "NULL"))
-            scan_id = NULL;
-        else
-            scan_id = next;
+    }
+    else if (strcmp(action, "del") == 0) {
+        char* scan_id = NULL;
+        if (strcmp(tail, "NULL")) {
+            scan_id = tail;
+        }
 
         if (result = wdb_package_update(wdb, scan_id), result < 0) {
             mdebug1("Cannot update scanned packages.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old package information.");
         }
 
         if (result = wdb_package_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Package information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
+            mdebug1("Cannot delete old package information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old package information.");
         } else {
             wdbi_update_completion(wdb, WDB_SYSCOLLECTOR_PACKAGES, (unsigned)time(NULL), "");
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3868,86 +3662,91 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         return result;
 
-    } else {
-        mdebug1("Invalid Package info query syntax.");
-        mdebug2("DB query error near: %s", curr);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", curr);
+    }
+    else if (strcmp(action, "get") == 0) {
+        bool not_triaged_only = FALSE;
+        if (!strcmp(tail, "not_triaged")) {
+            not_triaged_only = TRUE;
+        }
+
+        cJSON* status_response = NULL;
+        result = wdb_agents_get_packages(wdb, not_triaged_only, &status_response);
+        if (status_response) {
+            char *out = cJSON_PrintUnformatted(status_response);
+            if (OS_SUCCESS == result) {
+                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "err %s", out);
+            }
+            os_free(out);
+            cJSON_Delete(status_response);
+        }
+        else {
+            mdebug1("Error getting packages from sys_programs");
+            snprintf(output, OS_MAXSTR + 1, "err Error getting packages from sys_programs");
+        }
+        if (OS_SOCKTERR == result) {
+            // Close the socket and send nothing as a response
+            close(wdb->peer);
+            *output = '\0';
+        }
+
+        return result;
+    }
+    else {
+        mdebug1("Invalid package info query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", input);
         return -1;
     }
 }
 
 int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
-    char * curr;
-    char * next;
-    char * scan_id;
-    char * scan_time;
-    char * hotfix;
-    int result;
+    int result = OS_INVALID;
+    char* next = NULL;
+    char* tail = NULL;
+    char* action = strtok_r(input, " ", &tail);
 
-    if (next = strchr(input, ' '), !next) {
-        mdebug1("Invalid Hotfix info query syntax.");
-        mdebug2("Hotfix info query: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", input);
-        return -1;
-    }
+    if (strcmp(action, "save") == 0) {
+        /* The format of the data is scan_id|scan_time|hotfix */
+        #define SAVE_HOTFIX_FIELDS_AMOUNT 3
+        char* fields[SAVE_HOTFIX_FIELDS_AMOUNT] = {NULL};
+        char* last = tail;
 
-    curr = input;
-    *next++ = '\0';
-
-    if (strcmp(curr, "save") == 0) {
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Hotfix info query syntax.");
-            mdebug2("Hotfix info query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", curr);
-            return -1;
+        for (int i = 0; i < SAVE_HOTFIX_FIELDS_AMOUNT; i++) {
+            if (!(next = strtok_r(NULL, "|", &tail))) {
+                mdebug1("Invalid hotfix info query syntax.");
+                mdebug2("Package info query: %s", last);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", last);
+                return OS_INVALID;
+            }
+            last = next;
+            if (strcmp(next, "NULL"))
+            {
+                fields[i] = next;
+            }
         }
 
-        scan_id = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Hotfix info query syntax.");
-            mdebug2("Hotfix info query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        scan_time = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Hotfix info query syntax.");
-            mdebug2("Hotfix info query: %s", scan_time);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", scan_time);
-            return -1;
-        }
-
-        hotfix = curr;
-        *next++ = '\0';
-
-        if (result = wdb_hotfix_save(wdb, scan_id, scan_time, hotfix, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
-            mdebug1("Cannot save Hotfix information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save Hotfix information.");
+        if (result = wdb_hotfix_save(wdb, fields[0], fields[1], fields[2], SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
+            mdebug1("Cannot save hotfix information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save hotfix information.");
         } else {
             wdbi_update_attempt(wdb, WDB_SYSCOLLECTOR_HOTFIXES, (unsigned)time(NULL), TRUE, "");
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         return result;
-    } else if (strcmp(curr, "del") == 0) {
-
-        if (!strcmp(next, "NULL"))
-            scan_id = NULL;
-        else
-            scan_id = next;
+    }
+    else if (strcmp(action, "del") == 0) {
+        char* scan_id = NULL;
+        if (strcmp(tail, "NULL")) {
+            scan_id = tail;
+        }
 
         if (result = wdb_hotfix_delete(wdb, scan_id), result < 0) {
-            mdebug1("Cannot delete old Process information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Hotfix information.");
+            mdebug1("Cannot delete old hotfix information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete old hotfix information.");
         } else {
             wdbi_update_completion(wdb, WDB_SYSCOLLECTOR_HOTFIXES, (unsigned)time(NULL), "");
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -3955,10 +3754,37 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
 
         return result;
 
-    } else {
-        mdebug1("Invalid Hotfix info query syntax.");
-        mdebug2("DB query error near: %s", curr);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Hotfix info query syntax, near '%.32s'", curr);
+    }
+    else if (strcmp(action, "get") == 0) {
+        cJSON* status_response = NULL;
+        result = wdb_agents_get_hotfixes(wdb, &status_response);
+        if (status_response) {
+            char *out = cJSON_PrintUnformatted(status_response);
+            if (OS_SUCCESS == result) {
+                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "err %s", out);
+            }
+            os_free(out);
+            cJSON_Delete(status_response);
+        }
+        else {
+            mdebug1("Error getting hotfixes from sys_hotfixes");
+            snprintf(output, OS_MAXSTR + 1, "err Error getting hotfixes from sys_hotfixes");
+        }
+        if (OS_SOCKTERR == result) {
+            // Close the socket and send nothing as a response
+            close(wdb->peer);
+            *output = '\0';
+        }
+
+        return result;
+    }
+    else {
+        mdebug1("Invalid hotfix info query syntax.");
+        mdebug2("DB query error near: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid hotfix info query syntax, near '%.32s'", input);
         return -1;
     }
 }

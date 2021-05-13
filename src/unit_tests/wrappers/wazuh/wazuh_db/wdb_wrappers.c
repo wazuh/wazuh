@@ -147,6 +147,12 @@ int __wrap_wdbi_query_clear(__attribute__((unused)) wdb_t *wdb,
     return mock();
 }
 
+int __wrap_wdbi_check_sync_status(__attribute__((unused)) wdb_t *wdb,
+                                  wdb_component_t component) {
+    check_expected(component);
+    return mock();
+}
+
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
                                     __attribute__((unused)) const char *query,
                                     char *response,
@@ -229,5 +235,10 @@ sqlite3_stmt* __wrap_wdb_init_stmt_in_cache( __attribute__((unused)) wdb_t* wdb,
 }
 
 int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt) {
+    return mock();
+}
+
+int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer) {
+    check_expected(peer);
     return mock();
 }
