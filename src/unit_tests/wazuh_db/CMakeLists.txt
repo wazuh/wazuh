@@ -22,7 +22,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                         -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cves -Wl,--wrap,wdb_agents_update_vuln_cves_status \
                         -Wl,--wrap,wdb_agents_remove_vuln_cves -Wl,--wrap,wdb_agents_remove_vuln_cves_by_status -Wl,--wrap,cJSON_PrintUnformatted \
                         -Wl,--wrap,wdb_agents_get_sys_osinfo -Wl,--wrap,wdb_agents_set_sys_osinfo_triaged -Wl,--wrap,wdb_osinfo_save \
-                        -Wl,--wrap,wdb_agents_get_packages -Wl,--wrap,wdb_agents_get_hotfixes -Wl,--wrap,close -Wl,--wrap,getpid")
+                        -Wl,--wrap,wdb_agents_get_packages -Wl,--wrap,wdb_agents_get_hotfixes -Wl,--wrap,close -Wl,--wrap,getpid \
+                        -Wl,--wrap,wdb_package_save -Wl,--wrap,wdb_hotfix_save -Wl,--wrap,wdb_package_update -Wl,--wrap,wdb_package_delete -Wl,--wrap,wdb_hotfix_delete \
+                        -Wl,--wrap,time -Wl,--wrap,wdbi_update_attempt  -Wl,--wrap,wdbi_update_completion")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
