@@ -46,14 +46,16 @@ STATIC INLINE void w_macos_log_show_array_add_level(char ** log_cmd_array, size_
 
     /* Log Show's Level section: adds, or not, `--debug` and/or `--info`. This that assumes `debug` contains `info` */
     if (level != NULL && strcmp(level, MACOS_LOG_LEVEL_DEFAULT_STR) != 0) {
+        
         /* If the level is not `default`, because it is set to `info` or `debug`, then the info logs are acquired */
         w_strdup(SHOW_INFO_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
-            if (strcmp(level, MACOS_LOG_LEVEL_DEBUG_STR) == 0) {
-            /* Only when the level is set to `debug` the debug logs are acquired */
+
+        if (strcmp(level, MACOS_LOG_LEVEL_DEBUG_STR) == 0) {
+        /* Only when the level is set to `debug` the debug logs are acquired */
             w_strdup(SHOW_DEBUG_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
-            }
         }
     }
+}
 
 /**
  * @brief Creates the predicate fragment related to the type that will be then concatenated with the rest of the filter
@@ -65,26 +67,26 @@ STATIC INLINE char * w_macos_log_show_create_type_predicate(int type) {
 
     char * type_predicate = NULL;
 
-        if (type & MACOS_LOG_TYPE_ACTIVITY) {
-            w_strdup(SHOW_TYPE_ACTIVITY_STR, type_predicate);
+    if (type & MACOS_LOG_TYPE_ACTIVITY) {
+        w_strdup(SHOW_TYPE_ACTIVITY_STR, type_predicate);
+    }
+    if (type & MACOS_LOG_TYPE_LOG) {
+        if (type_predicate == NULL) {
+            w_strdup(SHOW_TYPE_LOG_STR, type_predicate);
+        } else {
+            type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_LOG_STR, strlen(SHOW_OR_TYPE_LOG_STR));
         }
-        if (type & MACOS_LOG_TYPE_LOG) {
-            if (type_predicate == NULL) {
-                w_strdup(SHOW_TYPE_LOG_STR, type_predicate);
-            } else {
-                type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_LOG_STR, strlen(SHOW_OR_TYPE_LOG_STR));
-            }
+    }
+    if (type & MACOS_LOG_TYPE_TRACE) {
+        if (type_predicate == NULL) {
+            w_strdup(SHOW_TYPE_TRACE_STR, type_predicate);
+        } else {
+            type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_TRACE_STR, strlen(SHOW_OR_TYPE_TRACE_STR));
         }
-        if (type & MACOS_LOG_TYPE_TRACE) {
-            if (type_predicate == NULL) {
-                w_strdup(SHOW_TYPE_TRACE_STR, type_predicate);
-            } else {
-                type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_TRACE_STR, strlen(SHOW_OR_TYPE_TRACE_STR));
-            }
-        }
+    }
 
     return type_predicate;
-    }
+}
 
 /**
  * @brief Adds to the `log show` aguments array the predicate arguments by joining user's predicate with the "type" one
@@ -125,7 +127,7 @@ STATIC INLINE void w_macos_log_show_array_add_predicate(char ** log_cmd_array,
         w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         w_strdup(type_predicate, log_cmd_array[(*log_cmd_array_idx)++]);
     }
-    }
+}
 
 /**
  * @brief Generates the `log show` command array with its arguments
