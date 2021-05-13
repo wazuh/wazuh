@@ -31,6 +31,7 @@ char * w_macos_log_get_last_valid_line(char * str);
 bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
+char * w_macos_trim_full_timestamp(char *);
 
 /* setup/teardown */
 
@@ -705,6 +706,37 @@ void test_w_macos_log_getlog_split_two_logs(void ** state) {
 
 }
 
+void test_w_macos_trim_full_timestamp_null_pointer(void ** state) {
+
+    assert_null(w_macos_trim_full_timestamp(NULL));
+}
+
+void test_w_macos_trim_full_timestamp_empty_string(void ** state) {
+
+    assert_null(w_macos_trim_full_timestamp(""));
+}
+
+void test_w_macos_trim_full_timestamp_incomplete_timestamp(void ** state) {
+
+    char * INCOMPLETE_TIMESTAMP = "2019-12-14 05:43:58.9";
+
+    assert_null(w_macos_trim_full_timestamp(INCOMPLETE_TIMESTAMP));
+}
+
+void test_w_macos_trim_full_timestamp_full_timestamp(void ** state) {
+
+    char * FULL_TIMESTAMP = "2019-12-14 05:43:58.972536-0800";
+    char * EXPECTED_TRIMMED_TIMESTAMP = "2019-12-14 05:43:58-0800";
+    char * retstr;
+
+    retstr = w_macos_trim_full_timestamp(FULL_TIMESTAMP);
+
+    assert_non_null(retstr);
+    assert_string_equal(retstr, EXPECTED_TRIMMED_TIMESTAMP);
+
+    os_free(retstr);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_macos_log_ctxt_restore
@@ -742,6 +774,11 @@ int main(void) {
         cmocka_unit_test(test_w_macos_log_getlog_context_not_header_processed),
         cmocka_unit_test(test_w_macos_log_getlog_context_header_processed),
         cmocka_unit_test(test_w_macos_log_getlog_split_two_logs),
+        // Test w_macos_trim_full_timestamp
+        cmocka_unit_test(test_w_macos_trim_full_timestamp_null_pointer),
+        cmocka_unit_test(test_w_macos_trim_full_timestamp_empty_string),
+        cmocka_unit_test(test_w_macos_trim_full_timestamp_incomplete_timestamp),
+        cmocka_unit_test(test_w_macos_trim_full_timestamp_full_timestamp),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
