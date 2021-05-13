@@ -1,0 +1,30 @@
+<!--
+  -  F5 Networks BIG-IP LTM decoders
+  -  Created by Wazuh, Inc.
+  -  Author: Juan Ricci, Javier Bejar, Fabricio Brunetti
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+Log fields: 
+<time stamp> <host name> <level> <service[pid]> <message code> <message text>
+
+Log samples:
+
+May 24 11:15:01 HOSTNAME notice logrotate[3582]: ALERT exited abnormally with [1]
+May 24 11:15:25 HOSTNAME warning tmm1[18463]: 01260013:4: SSL Handshake failed for TCP 192.168.1.15:50932 -> 11.22.33.44:443
+May 17 11:28:20 HOSTNAME alert gtmd[13220]: 011ae0f2:1: Monitor instance /Common/Monitor_1.1.1.1 192.168.1.1:1526 UP -> DOWN from /Common/F5-LAN-SF (no reply from big3d: timed out)
+May 17 11:28:21 HOSTNAME alert gtmd[13202]: 011a4003:1: SNMP_TRAP: Pool /Common/hostname member pmtdbaf5-SF (ip:port=10.1.1.1:5443) state change green -> red ( Monitor /Common/Monitor_1.1.1.1 from /Common/F5-LAN-SF : no reply from big3d: timed out)
+May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_server_name (ip:port=192.168.1.2:1526) (Server /Common/virtual_server_name) state change green -> red ( Monitor /Common/Monitor_1.1.1.1 from /Common/F5-LAN-SF : no reply from big3d: timed out)
+-->
+
+<decoder name="f5_bigip_decoder">
+	<prematch>\w+ \w+[\d+]:</prematch>
+</decoder>
+
+<decoder name="f5_bigip_decoder_fields">
+   <parent>f5_bigip_decoder</parent>
+   <regex>(\w+) (\w+)\p(\d+)\p+ (\S+) (\.+)</regex>
+   <order>level,service,pid,message_code,message_text</order>
+</decoder>
