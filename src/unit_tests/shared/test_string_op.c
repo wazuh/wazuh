@@ -587,9 +587,56 @@ void test_wstr_replace_not_found(void **state)
     os_free(subject);
 }
 
+void test_w_strcat_list_null_list(void ** state) {
+
+    char ** list = NULL;
+    char * retstr;
+
+    retstr = w_strcat_list(list, ' ');
+    
+    assert_null(retstr);
+}
+
+void test_w_strcat_list_empty_list(void ** state) {
+
+    char ** list = {NULL};
+    char * retstr;
+
+    retstr = w_strcat_list(list, ' ');
+    
+    assert_null(retstr);
+}
+
+void test_w_strcat_list_one_element_list(void ** state) {
+
+    char * list[] = {"TestString", NULL};
+    char * retstr;
+
+    retstr = w_strcat_list(list, ' ');
+
+    assert_non_null(retstr);
+    assert_string_equal(retstr, "TestString");
+
+    os_free(retstr);
+}
+
+void test_w_strcat_list_large_list(void ** state) {
+
+    char * list[] = {"A", "large", "test", "string", "to", "be", "concatenated", "in", "this", "function", NULL};
+    char * retstr;
+
+    retstr = w_strcat_list(list, ' ');
+
+    assert_non_null(retstr);
+    assert_string_equal(retstr, "A large test string to be concatenated in this function");
+
+    os_free(retstr);
+}
+
 /* Tests */
 
 int main(void) {
+
     const struct CMUnitTest tests[] = {
         //Tests w_tolower_str
         cmocka_unit_test(test_w_tolower_str_NULL),
@@ -642,7 +689,13 @@ int main(void) {
         cmocka_unit_test(test_wstr_replace_different_variables),
         cmocka_unit_test(test_wstr_replace_multiples_variables_surround_$),
         cmocka_unit_test(test_wstr_replace_contained_variables),
-        cmocka_unit_test(test_wstr_replace_not_found)
+        cmocka_unit_test(test_wstr_replace_not_found),
+        // Tests w_strcat_list
+        cmocka_unit_test(test_w_strcat_list_null_list),
+        cmocka_unit_test(test_w_strcat_list_empty_list),
+        cmocka_unit_test(test_w_strcat_list_one_element_list),
+        cmocka_unit_test(test_w_strcat_list_large_list),
+
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
