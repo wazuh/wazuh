@@ -59,6 +59,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     config->manager_cert = strdup(manager_cert);
     config->manager_key = strdup(manager_key);
     config->flags.auto_negotiate = 0;
+    config->flags.remote_enrollment = 1;
 
     if (!node)
         return 0;

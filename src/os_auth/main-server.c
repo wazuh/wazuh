@@ -496,16 +496,16 @@ int main(int argc, char **argv)
     atexit(cleanup);
 
     /* Join threads */
-    w_mutex_lock(&mutex_keys);
-    w_cond_signal(&cond_pending);
-    w_mutex_unlock(&mutex_keys);
-
     pthread_join(thread_local_server, NULL);
     if (config.flags.remote_enrollment) {
         pthread_join(thread_dispatcher, NULL);
         pthread_join(thread_remote_server, NULL);
     }
     if (!config.worker_node) {
+        /* Send signal to writer thread */
+        w_mutex_lock(&mutex_keys);
+        w_cond_signal(&cond_pending);
+        w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
     }
 
