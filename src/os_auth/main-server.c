@@ -41,7 +41,7 @@ static int ssl_error(const SSL *ssl, int ret);
 void run_remote_server(int client_sock);
 
 /* Thread for dispatching connection pool */
-static void* run_dispatcher(char *home_path);
+static void* run_dispatcher(void *arg);
 
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
@@ -434,6 +434,15 @@ int main(int argc, char **argv)
 
     atexit(cleanup);
 
+    /* Initialize queues */
+    insert_tail = &queue_insert;
+    remove_tail = &queue_remove;
+
+    if (!config.worker_node) {
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
+    }
+
     /* If remote enrollment is not enabled on the worker node, it goes to sleep */
     if (!config.flags.remote_enrollment && config.worker_node) {
         minfo("Port %hu was set as disabled. The deamon goes to sleep.", config.port);
@@ -508,8 +517,6 @@ void run_remote_server(int client_sock) {
 
     /* Initialize queues */
     client_queue = queue_init(AUTH_POOL);
-    insert_tail = &queue_insert;
-    remove_tail = &queue_remove;
 
     if (config.timeout_sec || config.timeout_usec) {
         minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
@@ -575,7 +582,7 @@ void run_remote_server(int client_sock) {
 }
 
 /* Thread for dispatching connection pool */
-void* run_dispatcher(char * home_path) {
+void* run_dispatcher(__attribute__((unused)) void *arg) {
     FILE *fp;
     char ip[IPSIZE + 1];
     int ret;
@@ -584,6 +591,8 @@ void* run_dispatcher(char * home_path) {
     SSL *ssl;
     char response[2048];
     response[2047] = '\0';
+
+    char * home_path = (char *)arg;
 
     /* Start SSL */
     ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
@@ -627,10 +636,6 @@ void* run_dispatcher(char * home_path) {
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
 
-    if (!config.worker_node) {
-        OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
-    }
     mdebug1("Dispatch thread ready.");
 
     while (running) {
