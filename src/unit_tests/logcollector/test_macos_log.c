@@ -2130,6 +2130,7 @@ void test_w_macos_create_log_stream_env_success(void ** state) {
 }
 
 int main(void) {
+
     const struct CMUnitTest tests[] = {
         // Test w_macos_is_log_predicate_valid
         cmocka_unit_test(test_w_macos_is_log_predicate_valid_empty),
