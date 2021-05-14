@@ -327,7 +327,7 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET MITRE ATTACK IDS RBAC
+test_name: GET MITRE TECHNIQUE IDS RBAC
 
 stages:
 

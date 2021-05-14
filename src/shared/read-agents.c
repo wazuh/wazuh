@@ -20,10 +20,7 @@ static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, i
 static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_counter,
                                    int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
 static int _do_print_syscheck(FILE *fp, int all_files, int csv_output, cJSON *json_output) __attribute__((nonnull(1)));
-static void _do_get_rootcheckscan(FILE *fp, time_t values[2]) __attribute__((nonnull));
-static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
-                               int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
-static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
+static int _get_time_fim_scan(const char* agent_id, agent_info *agt_info) __attribute__((nonnull(1)));
 #endif /* !WIN32*/
 
 /* Free the agent list in memory */
@@ -514,219 +511,6 @@ int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname,
     return (0);
 }
 
-static void _do_get_rootcheckscan(FILE *fp, time_t values[2])
-{
-    char *tmp_str;
-    char buf[OS_MAXSTR + 1];
-
-    values[0] = values[1] = time(NULL);
-
-    while (fgets(buf, OS_MAXSTR, fp) != NULL) {
-        if (tmp_str = strstr(buf, "Starting rootcheck scan"), tmp_str) {
-            values[0] = (time_t)atol(buf + 1);
-        } else if (tmp_str = strstr(buf, "Ending rootcheck scan"), tmp_str) {
-            values[1] = (time_t)atol(buf + 1);
-        }
-    }
-}
-
-/* Print rootcheck db */
-static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
-                               int csv_output, cJSON *json_output, int show_last)
-{
-    int i = 0;
-    int f_found = 0;
-
-    /* Time from the message */
-    time_t s_time = 0;
-    time_t i_time = 0;
-    struct tm tm_result = { .tm_sec = 0 };
-
-    char old_day[24 + 1];
-    char read_day[24 + 1];
-    char buf[OS_MAXSTR + 1];
-    char *tmp_str;
-
-    const char *(ig_events[]) = {"Starting rootcheck scan",
-                                 "Ending rootcheck scan",
-                                 "Starting syscheck scan",
-                                 "Ending syscheck scan",
-                                 NULL
-                                };
-
-    const char *(ns_events[]) = {"Application Found:",
-                                 "Windows Audit:",
-                                 "Windows Malware:",
-                                 NULL
-                                };
-
-    buf[OS_MAXSTR] = '\0';
-    old_day[24] = '\0';
-    read_day[24] = '\0';
-
-    fseek(fp, 0, SEEK_SET);
-
-    if (!(csv_output || json_output)) {
-        if (show_last) {
-            localtime_r(time_last_scan, &tm_result);
-            strftime(read_day, 23, "%Y %h %d %T", &tm_result);
-
-            printf("\nLast scan: %s\n\n", read_day);
-        } else if (resolved) {
-            printf("\nResolved events: \n\n");
-        } else {
-            printf("\nOutstanding events: \n\n");
-        }
-    }
-
-    while (fgets(buf, OS_MAXSTR, fp) != NULL) {
-        /* Remove first ! */
-        tmp_str = buf + 1;
-        s_time = (time_t)atoi(tmp_str);
-
-        /* Remove newline */
-        tmp_str = strchr(buf, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        }
-
-        /* Get initial time */
-        tmp_str = strchr(buf + 1, '!');
-        if (!tmp_str) {
-            continue;
-        }
-        tmp_str++;
-
-        i_time = (time_t)atoi(tmp_str);
-
-        /* Get the actual message */
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            continue;
-        }
-        tmp_str++;
-
-        /* Check for resolved */
-        if (s_time < time_last_scan[0] && s_time < time_last_scan[1]) {
-            if (!resolved) {
-                continue;
-            }
-        } else {
-            if (resolved) {
-                continue;
-            }
-        }
-
-        /* Check events to ignore */
-        i = 0;
-        while (ig_events[i]) {
-            if (strncmp(tmp_str, ig_events[i], strlen(ig_events[i]) - 1) == 0) {
-                break;
-            }
-            i++;
-        }
-        if (ig_events[i]) {
-            continue;
-        }
-
-        /* Check events that are not system audit */
-        i = 0;
-        while (ns_events[i]) {
-            if (strncmp(tmp_str, ns_events[i], strlen(ns_events[i]) - 1) == 0) {
-                break;
-            }
-            i++;
-        }
-
-        localtime_r((time_t *)&s_time, &tm_result);
-        strftime(read_day, 23, "%Y %h %d %T", &tm_result);
-        localtime_r((time_t *)&i_time, &tm_result);
-        strftime(old_day, 23, "%Y %h %d %T", &tm_result);
-
-        if (json_output) {
-            char json_buffer[OS_MAXSTR + 1];
-            cJSON *event = cJSON_CreateObject();
-            cJSON_AddStringToObject(event, "status", resolved == 0 ? "outstanding" : "resolved");
-            cJSON_AddStringToObject(event, "readDay", read_day);
-            cJSON_AddStringToObject(event, "oldDay", old_day);
-
-            snprintf(json_buffer, OS_MAXSTR, "%s%s", ns_events[i] ? "" : "System Audit: ", tmp_str);
-            cJSON_AddStringToObject(event, "event", json_buffer);
-            cJSON_AddItemToArray(json_output, event);
-        } else if (csv_output) {
-            printf("%s,%s,%s,%s%s\n", resolved == 0 ? "outstanding" : "resolved",
-                   read_day, old_day,
-                   ns_events[i] != NULL ? "" : "System Audit: ",
-                   tmp_str);
-        } else {
-            if (!show_last) {
-                printf("%s (first time detected: %s)\n", read_day, old_day);
-            }
-
-            if (ns_events[i]) {
-                printf("%s\n\n", tmp_str);
-            } else {
-                printf("System Audit: %s\n\n", tmp_str);
-            }
-        }
-
-        f_found++;
-    }
-
-    if (!f_found && !(csv_output || json_output)) {
-        printf("** No entries found.\n");
-    }
-
-    return (0);
-}
-
-/* Print rootcheck db */
-int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname,
-                    int resolved, int csv_output, cJSON *json_output, int show_last)
-{
-    time_t ltime[2];
-    FILE *fp;
-    char tmp_file[513];
-
-    tmp_file[512] = '\0';
-
-    if (sk_name == NULL) {
-        /* Print database */
-        snprintf(tmp_file, 512, "%s/rootcheck",
-                 ROOTCHECK_DIR);
-
-        fp = fopen(tmp_file, "r+");
-    } else {
-        /* Print database */
-        snprintf(tmp_file, 512, "%s/(%s) %s->rootcheck",
-                 ROOTCHECK_DIR,
-                 sk_name,
-                 sk_ip);
-
-        fp = fopen(tmp_file, "r+");
-    }
-
-    if (fp) {
-        /* Get last time of scan */
-        _do_get_rootcheckscan(fp, ltime);
-
-        if (!fname) {
-            if (resolved == 1) {
-                _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
-            } else if (resolved == 2) {
-                _do_print_rootcheck(fp, 0, ltime, csv_output, json_output, show_last);
-            } else {
-                _do_print_rootcheck(fp, 1, ltime, csv_output, json_output, 0);
-                _do_print_rootcheck(fp, 0, ltime, csv_output, json_output, show_last);
-            }
-        }
-
-        fclose(fp);
-    }
-
-    return (0);
-}
-
 #endif
 
 /* Delete syscheck db */
@@ -793,32 +577,6 @@ int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete)
     return (1);
 }
 
-/* Delete rootcheck db */
-int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete)
-{
-    FILE *fp;
-    char tmp_file[513];
-
-    tmp_file[512] = '\0';
-
-    /* Delete related files */
-    snprintf(tmp_file, 512, "%s/(%s) %s->rootcheck",
-             ROOTCHECK_DIR,
-             sk_name,
-             sk_ip);
-
-    fp = fopen(tmp_file, "w");
-    if (fp) {
-        fclose(fp);
-    }
-
-    if (full_delete) {
-        unlink(tmp_file);
-    }
-
-    return (1);
-}
-
 /* Delete agent SQLite db */
 void delete_sqlite(const char *id, const char *name)
 {
@@ -865,9 +623,6 @@ int delete_agentinfo(const char *id, const char *name)
 
     /* Delete syscheck */
     delete_syscheck(sk_name, sk_ip, 1);
-
-    /* Delete rootcheck */
-    delete_rootcheck(sk_name, sk_ip, 1);
 
     /* Delete SQLite database */
     delete_sqlite(id, sk_name);
@@ -1080,11 +835,9 @@ char *agent_file_perm(mode_t mode)
 }
 
 
-/* Internal function. Extract last time of scan from rootcheck/syscheck. */
-static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id)
+/* Internal function. Extract last time of scan from syscheck. */
+static int _get_time_fim_scan(const char* agent_id, agent_info *agt_info)
 {
-    FILE *fp;
-    char buf[1024 + 1];
     time_t fim_start;
     time_t fim_end;
     char *timestamp;
@@ -1121,82 +874,11 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
         os_strdup(w_ctime(&fim_end, buf_ptr, sizeof(buf_ptr)), agt_info->syscheck_endtime);
     }
 
-    /* Agent name of null, means it is the server info */
-    if (agent_name == NULL) {
-        snprintf(buf, 1024, "%s/rootcheck",
-                 ROOTCHECK_DIR);
-    } else {
-        snprintf(buf, 1024, "%s/(%s) %s->rootcheck",
-                 ROOTCHECK_DIR, agent_name, agent_ip);
-    }
-
-    /* If file is not there, set to unknown */
-    fp = fopen(buf, "r");
-    if (!fp) {
-        os_strdup("Unknown", agt_info->rootcheck_time);
-        os_strdup("Unknown", agt_info->rootcheck_endtime);
-        return (0);
-    }
-
-    while (fgets(buf, 1024, fp) != NULL) {
-        tmp_str = NULL;
-
-        /* Remove newline */
-        tmp_str = strchr(buf, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        }
-
-        tmp_str = strstr(buf, "Starting rootcheck scan");
-        if (tmp_str) {
-            time_t s_time = 0;
-            tmp_str = buf + 1;
-
-            s_time = (time_t)atoi(tmp_str);
-
-            os_strdup(w_ctime(&s_time, buf_ptr, sizeof(buf_ptr)), agt_info->rootcheck_time);
-
-            /* Remove newline */
-            tmp_str = strchr(agt_info->rootcheck_time, '\n');
-            if (tmp_str) {
-                *tmp_str = '\0';
-            }
-
-            continue;
-        }
-
-        tmp_str = strstr(buf, "Ending rootcheck scan");
-        if (tmp_str) {
-            time_t s_time = 0;
-            tmp_str = buf + 1;
-            s_time = (time_t)atoi(tmp_str);
-
-            os_strdup(w_ctime(&s_time, buf_ptr, sizeof(buf_ptr)), agt_info->rootcheck_endtime);
-
-            /* Remove newline */
-            tmp_str = strchr(agt_info->rootcheck_endtime, '\n');
-            if (tmp_str) {
-                *tmp_str = '\0';
-            }
-
-            continue;
-        }
-    }
-
-    /* Set unknown values */
-    if (!agt_info->rootcheck_time) {
-        os_strdup("Unknown", agt_info->rootcheck_time);
-    }
-    if (!agt_info->rootcheck_endtime) {
-        os_strdup("Unknown", agt_info->rootcheck_endtime);
-    }
-
-    fclose(fp);
     return (0);
 }
 
 /* Get information from an agent */
-agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id){
+agent_info *get_agent_info(const char *agent_id){
     cJSON *json_agt_info = NULL;
     cJSON *json_field = NULL;
     agent_info *agt_info = NULL;
@@ -1258,7 +940,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
         }
     }
 
-    _get_time_rkscan(agent_name, agent_ip, agt_info, agent_id);
+    _get_time_fim_scan(agent_id, agt_info);
 
     cJSON_Delete(json_agt_info);
     return (agt_info);
