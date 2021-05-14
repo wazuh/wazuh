@@ -7,6 +7,26 @@ from json import loads
 from box import Box
 
 
+def get_values(o):
+    strings = []
+
+    try:
+        obj = o.to_dict()
+    except:
+        obj = o
+
+    if type(obj) is list:
+        for o in obj:
+            strings.extend(get_values(o))
+    elif type(obj) is dict:
+        for key in obj:
+            strings.extend(get_values(obj[key]))
+    else:
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, str) else str(obj))
+
+    return strings
+
+
 def test_distinct_key(response):
     """
     :param response: Request response
@@ -54,15 +74,15 @@ def test_select_key_affected_items(response, select_key):
     for item in response.json()['data']['affected_items']:
         # Get keys in response that are not specified in 'select_keys'
         set1 = main_keys.symmetric_difference(set(item.keys()))
-        # Check if there are keys in response that were not specified in 'select_keys', apart from those which can be
-        # mandatory (id, agent_id, etc).
-        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file'} | main_keys)), \
-            f'Select keys are {main_keys}, but the response contains these keys: {set1}'
+        assert set1 == set() or set1.issubset(main_keys) or set1.intersection({'id', 'agent_id', 'file'}), \
+            f'Select keys are {main_keys}, but this one is different {set1}'
 
         for nested_key in nested_keys.items():
-            set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
-            assert set2 == set(), f'Nested select keys are {nested_key[1]}, but the response contains these nested ' \
-                                  f'keys {set2}'
+            try:
+                set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
+                assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
+            except KeyError:
+                assert nested_key[0] in main_keys
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
@@ -156,6 +176,22 @@ def test_save_response_data(response):
     return Box({'response_data': response.json()['data']})
 
 
+def test_save_response_data_mitre(response, fields):
+    response = response.json()['data']
+    fields_response = list()
+    for r in response['affected_items']:
+        fields_response.append({k: r[k] for k in fields})
+
+    return Box({'response_data': fields_response})
+
+
+def test_validate_mitre(response, data, index=0):
+    data = json.loads(data.replace("'", '"'))
+    for element in data:
+        for k, v in element.items():
+            assert v == response.json()['data']['affected_items'][index][k]
+
+
 def test_validate_restart_by_node(response, data):
     data = json.loads(data.replace("'", '"'))
     affected_items = list()
@@ -223,3 +259,12 @@ def test_validate_group_configuration(response, expected_field, expected_value):
     assert response_config[expected_field] == expected_value, \
         'The received value for query does not match with the expected one. ' \
         'Received: {}. Expected: {}'.format(response_config[expected_field], expected_value)
+
+
+def test_validate_search(response, search_param):
+    search_param = search_param.lower()
+    response_json = response.json()
+    for item in response_json['data']['affected_items']:
+        values = get_values(item)
+        if not any(filter(lambda x: search_param in x, values)):
+            raise ValueError(f'{search_param} not present in {values}')

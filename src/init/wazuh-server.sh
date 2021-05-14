@@ -29,6 +29,7 @@ AUTHOR="Wazuh Inc."
 USE_JSON=false
 DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
 OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
+DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -278,6 +279,16 @@ start_service()
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp/*"
     rm -rf $TO_DELETE
+
+    # Stop deprecated daemons that could keep alive on updates
+    for i in ${DEPRECATED_DAEMONS}; do
+        ls ${DIR}/var/run/${i}*.pid > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            pid=`cat ${DIR}/var/run/${i}*.pid`
+            kill $pid
+            rm -f ${DIR}/var/run/${i}-${pid}.pid
+        fi
+    done
 
     # We actually start them now.
     first=true

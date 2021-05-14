@@ -36,7 +36,7 @@
 
 #include "syscheckd/syscheck.h"
 
-extern int set_winsacl(const char *dir, int position);
+int set_winsacl(const char *dir, directory_t *configuration);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 extern char *get_whodata_path(const short unsigned int *win_path);
 extern int whodata_path_filter(char **path);
@@ -114,10 +114,6 @@ int syscheck_teardown(void ** state) {
         OSHash_Free(syscheck.wdata.directories);
     }
 
-    if (syscheck.wdata.dirs_status) {
-        free(syscheck.wdata.dirs_status);
-    }
-
     if (syscheck.wdata.drive) {
         free_strarray(syscheck.wdata.drive);
     }
@@ -128,25 +124,19 @@ int syscheck_teardown(void ** state) {
 
     syscheck.wdata.fd = NULL;
     syscheck.wdata.directories = NULL;
-    syscheck.wdata.dirs_status = NULL;
     syscheck.wdata.drive = NULL;
     syscheck.wdata.device = NULL;
 
     // Free everything else in syscheck
     Free_Syscheck(&syscheck);
 
-    syscheck.opts = NULL;
     syscheck.scan_day = NULL;
     syscheck.scan_time = NULL;
     syscheck.ignore = NULL;
     syscheck.ignore_regex = NULL;
     syscheck.nodiff = NULL;
     syscheck.nodiff_regex = NULL;
-    syscheck.dir = NULL;
-    syscheck.filerestrict = NULL;
-    syscheck.tag = NULL;
-    syscheck.symbolic_links = NULL;
-    syscheck.recursion_level = NULL;
+    syscheck.directories = NULL;
     syscheck.key_ignore = NULL;
     syscheck.key_ignore_regex = NULL;
     syscheck.registry = NULL;
@@ -199,30 +189,27 @@ static int setup_whodata_callback_group(void ** state) {
 
     __real_OSHash_SetFreeDataPointer(syscheck.wdata.directories, free);
 
-    if (syscheck.dir = calloc(2, sizeof(char *)), !syscheck.dir)
+    syscheck.directories = calloc(2, sizeof(directory_t *));
+    if (syscheck.directories == NULL) {
         return -1;
+    }
 
-    if (syscheck.symbolic_links = calloc(2, sizeof(char *)), !syscheck.symbolic_links)
+    syscheck.directories[0] = calloc(1, sizeof(directory_t));
+    if (syscheck.directories[0] == NULL) {
         return -1;
+    }
 
-    if (syscheck.opts = calloc(1, sizeof(int *)), !syscheck.opts)
+    syscheck.directories[0]->path = strdup("c:\\windows");
+    if (syscheck.directories[0]->path == NULL) {
         return -1;
+    }
 
-    if (syscheck.dir[0] = strdup("c:\\windows"), !syscheck.dir[0])
-        return -1;
+    syscheck.directories[0]->options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
+                                       CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_ATTRS | WHODATA_ACTIVE;
 
-    if (syscheck.wdata.dirs_status = calloc(2, sizeof(whodata_dir_status)), !syscheck.wdata.dirs_status)
-        return -1;
+    syscheck.directories[0]->dirs_status.status = WD_CHECK_WHODATA;
 
-    if (syscheck.recursion_level = calloc(1, sizeof(int *)), !syscheck.recursion_level)
-        return -1;
-
-    syscheck.opts[0] = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
-                       CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_ATTRS | WHODATA_ACTIVE;
-
-    syscheck.wdata.dirs_status[0].status = WD_CHECK_WHODATA;
-
-    syscheck.recursion_level[0] = 50;
+    syscheck.directories[0]->recursion_level = 50;
 
     OSHash_Add_ex_check_data = 0;
     SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
@@ -248,8 +235,10 @@ static int setup_wdata_dirs_cleanup(void ** state) {
 
     __real_OSHash_SetFreeDataPointer(syscheck.wdata.directories, free);
 
-    if (syscheck.dir = calloc(1, sizeof(char *)), !syscheck.dir)
+    syscheck.directories = calloc(1, sizeof(directory_t *));
+    if (syscheck.directories == NULL) {
         return -1;
+    }
 
     return 0;
 }
@@ -297,14 +286,20 @@ static int teardown_reset_errno(void **state) {
 }
 
 static int setup_state_checker(void ** state) {
-    if (syscheck.dir = calloc(2, sizeof(char *)), !syscheck.dir)
+    syscheck.directories = calloc(2, sizeof(directory_t *));
+    if (!syscheck.directories) {
         return -1;
+    }
 
-    if (syscheck.dir[0] = strdup("c:\\a\\path"), !syscheck.dir[0])
+    syscheck.directories[0] = calloc(1, sizeof(directory_t));
+    if (syscheck.directories[0] == NULL) {
         return -1;
+    }
 
-    if (syscheck.opts = calloc(2, sizeof(char *)), !syscheck.opts)
+    syscheck.directories[0]->path = strdup("c:\\a\\path");
+    if (syscheck.directories[0]->path == NULL) {
         return -1;
+    }
 
 #ifdef TEST_WINAGENT
     will_return_count(__wrap_os_random, 12345, 2);
@@ -316,13 +311,10 @@ static int setup_state_checker(void ** state) {
 
     __real_OSHash_SetFreeDataPointer(syscheck.wdata.directories, free);
 
-    if (syscheck.wdata.dirs_status = calloc(1, sizeof(whodata_dir_status)), !syscheck.wdata.dirs_status)
-        return -1;
+    syscheck.directories[0]->dirs_status.object_type = WD_STATUS_DIR_TYPE;
+    syscheck.directories[0]->dirs_status.status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
 
-    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_DIR_TYPE;
-    syscheck.wdata.dirs_status[0].status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
-
-    syscheck.opts[0] = WHODATA_ACTIVE;
+    syscheck.directories[0]->options = WHODATA_ACTIVE;
 
     test_mode = 1;
 
@@ -365,23 +357,26 @@ static int teardown_win_whodata_evt(void **state) {
 }
 
 static int teardown_whodata_callback_restore_globals(void ** state) {
-    syscheck.wdata.dirs_status[0].status |= WD_CHECK_WHODATA;
-    syscheck.recursion_level[0] = 50;
+    syscheck.directories[0]->dirs_status.status |= WD_CHECK_WHODATA;
+    syscheck.directories[0]->recursion_level = 50;
     return 0;
 }
 
 static int teardown_state_checker_restore_globals(void ** state) {
-    if (syscheck.dir[0])
-        free(syscheck.dir[0]);
-
-    if (syscheck.dir[0] = strdup("c:\\a\\path"), !syscheck.dir[0]) {
+    syscheck.directories[0] = calloc(1, sizeof(directory_t));
+    if (syscheck.directories[0] == NULL) {
         return -1;
     }
 
-    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_DIR_TYPE;
-    syscheck.wdata.dirs_status[0].status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
+    syscheck.directories[0]->path = strdup("c:\\a\\path");
+    if (syscheck.directories[0]->path == NULL) {
+        return -1;
+    }
 
-    syscheck.opts[0] = WHODATA_ACTIVE;
+    syscheck.directories[0]->dirs_status.object_type = WD_STATUS_DIR_TYPE;
+    syscheck.directories[0]->dirs_status.status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
+
+    syscheck.directories[0]->options = WHODATA_ACTIVE;
     return 0;
 }
 
@@ -418,7 +413,7 @@ int __wrap_pthread_rwlock_unlock(pthread_rwlock_t * rwlock) {
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.directories[0]->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -429,12 +424,12 @@ void test_set_winsacl_failed_opening(void **state) {
     will_return(wrap_GetLastError, (unsigned int) 500);
     expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
 
-    set_winsacl(syscheck.dir[0], 0);
+    set_winsacl(syscheck.directories[0]->path, syscheck.directories[0]);
 }
 
 void test_set_winsacl_failed_privileges(void **state) {
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.directories[0]->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -454,12 +449,12 @@ void test_set_winsacl_failed_privileges(void **state) {
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    set_winsacl(syscheck.dir[0], 0);
+    set_winsacl(syscheck.directories[0]->path, syscheck.directories[0]);
 }
 
 void test_set_winsacl_failed_security_descriptor(void **state) {
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.directories[0]->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -478,7 +473,7 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     will_return(wrap_GetNamedSecurityInfo, NULL);
@@ -498,7 +493,7 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    set_winsacl(syscheck.dir[0], 0);
+    set_winsacl(syscheck.directories[0]->path, syscheck.directories[0]);
 }
 
 void test_set_winsacl_no_need_to_configure_acl(void **state) {
@@ -571,7 +566,7 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 0);
 }
@@ -647,7 +642,7 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
 }
@@ -728,7 +723,7 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
 }
@@ -814,7 +809,7 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
 }
@@ -904,7 +899,7 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
 }
@@ -998,7 +993,7 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
 }
@@ -1094,7 +1089,7 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
 }
@@ -1192,7 +1187,7 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1299,7 +1294,7 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1415,7 +1410,7 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1529,7 +1524,7 @@ void test_set_winsacl_success(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", syscheck.directories[9]);
 
     assert_int_equal(ret, 0);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -3484,23 +3479,26 @@ void test_restore_sacls_set_privilege_failed(void **state){
 }
 
 int setup_restore_sacls(void **state) {
-    int *ptr = malloc(sizeof(int));
+    directory_t *dir_it;
 
-    if(ptr == NULL)
-        return -1;
+    foreach_array(dir_it, syscheck.directories) {
+        dir_it->dirs_status.status &= ~WD_IGNORE_REST;
+    }
 
-    *ptr = syscheck.wdata.dirs_status[0].status;
+    syscheck.directories[0]->dirs_status.status |= WD_IGNORE_REST;
 
-    *state = ptr;
-    // Set realtime
-    syscheck.wdata.dirs_status[0].status |= WD_IGNORE_REST;
     return 0;
 }
 
 int teardown_restore_sacls(void **state) {
-    int *ptr = (int *)state;
-    syscheck.wdata.dirs_status[0].status = *ptr;
-    free(*state);
+    directory_t *dir_it;
+
+    foreach_array(dir_it, syscheck.directories) {
+        if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            syscheck.directories[0]->dirs_status.status |= WD_IGNORE_REST;
+        }
+    }
+
     return 0;
 }
 
@@ -3522,7 +3520,7 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     will_return(wrap_GetNamedSecurityInfo, NULL);
@@ -3569,7 +3567,7 @@ void test_restore_sacls_deleteAce_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
     ACL acl;
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3621,7 +3619,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
     ACL acl;
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3633,7 +3631,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
     expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
@@ -3682,7 +3680,7 @@ void test_restore_sacls_success(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
     ACL acl;
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3694,7 +3692,7 @@ void test_restore_sacls_success(void **state){
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
     expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
@@ -3704,7 +3702,7 @@ void test_restore_sacls_success(void **state){
     will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, syscheck.dir[0]);
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, syscheck.directories[0]->path);
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
     /* Inside set_privilege */
@@ -3823,7 +3821,7 @@ void test_audit_restore(void **state) {
             expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
         // GetNamedSecurity
-        expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+        expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
         ACL acl;
         expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
         expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3835,7 +3833,7 @@ void test_audit_restore(void **state) {
         expect_value(wrap_DeleteAce, dwAceIndex, 0);
         will_return(wrap_DeleteAce, 1);
 
-        expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+        expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.directories[0]->path);
         expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
         expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
         expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
@@ -3845,7 +3843,7 @@ void test_audit_restore(void **state) {
         will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
 
         char debug_msg[OS_MAXSTR];
-        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, syscheck.dir[0]);
+        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, syscheck.directories[0]->path);
         expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
         /* Inside set_privilege */
@@ -4736,7 +4734,7 @@ void test_whodata_callback_4656_non_whodata_directory(void **state) {
 
     unsigned long result;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    syscheck.directories[0]->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -4786,7 +4784,7 @@ void test_whodata_callback_4656_path_above_recursion_level(void ** state) {
     };
     unsigned long result;
 
-    syscheck.recursion_level[0] = 0;
+    syscheck.directories[0]->recursion_level = 0;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5242,7 +5240,7 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
         fail();
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = -1;
+    w_evt->config_node = NULL;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5280,7 +5278,7 @@ void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
         fail();
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = 8;
+    w_evt->config_node = syscheck.directories[8];
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5337,7 +5335,7 @@ void test_whodata_callback_4663_new_files_added(void **state) {
         fail();
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = 8;
+    w_evt->config_node = syscheck.directories[8];
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5431,6 +5429,7 @@ void test_whodata_callback_4663_abort_scan(void **state) {
         fail();
 
     w_evt->scan_directory = 1;
+    w_evt->config_node = syscheck.directories[9];
     memset(&w_dir, 0, sizeof(whodata_directory));
     w_dir.QuadPart = 133022717170000000;
 
@@ -5482,6 +5481,7 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
         fail();
 
     w_evt->scan_directory = 1;
+    w_evt->config_node = syscheck.directories[9];
     memset(&w_dir, 0, sizeof(whodata_directory));
 
     successful_whodata_event_render(event, raw_data);
@@ -6544,10 +6544,11 @@ void test_state_checker_no_files_to_check(void **state) {
     int ret;
     void *input = NULL;
 
-    if(syscheck.dir[0])
-        free(syscheck.dir[0]);
+    if(syscheck.directories[0]) {
+        free_directory(syscheck.directories[0]);
+    }
 
-    syscheck.dir[0] = NULL;
+    syscheck.directories[0] = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -6574,7 +6575,7 @@ void test_state_checker_file_not_whodata(void **state) {
     void *input = NULL;
 
     // Leverage Free_Syscheck not free the wdata struct
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    syscheck.directories[0]->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -6632,9 +6633,9 @@ void test_state_checker_file_does_not_exist(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_UNK_TYPE);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_memory_equal(&syscheck.directories[0]->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(syscheck.directories[0]->dirs_status.object_type, WD_STATUS_UNK_TYPE);
+    assert_null(syscheck.directories[0]->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_state_checker_file_with_invalid_sacl(void **state) {
@@ -6737,9 +6738,9 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_int_equal(syscheck.directories[0]->dirs_status.object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(syscheck.directories[0]->dirs_status.status & WD_STATUS_EXISTS);
+    assert_null(syscheck.directories[0]->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_file_with_valid_sacl(void **state) {
@@ -6844,10 +6845,10 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_memory_equal(&syscheck.directories[0]->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(syscheck.directories[0]->dirs_status.object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(syscheck.directories[0]->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.directories[0]->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_dir_readded_error(void **state) {
@@ -6855,7 +6856,7 @@ void test_state_checker_dir_readded_error(void **state) {
     void *input = NULL;
     char debug_msg[OS_MAXSTR];
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_STATUS_EXISTS;
+    syscheck.directories[0]->dirs_status.status &= ~WD_STATUS_EXISTS;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -6872,7 +6873,7 @@ void test_state_checker_dir_readded_error(void **state) {
 
     // Inside set_winsacl
     {
-        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.directories[0]->path);
         expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
         will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -6898,9 +6899,9 @@ void test_state_checker_dir_readded_error(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_int_equal(syscheck.directories[0]->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_null(syscheck.directories[0]->dirs_status.status & WD_STATUS_EXISTS);
+    assert_null(syscheck.directories[0]->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_dir_readded_succesful(void **state) {
@@ -6913,8 +6914,8 @@ void test_state_checker_dir_readded_succesful(void **state) {
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEMTIME st;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_STATUS_EXISTS;
-    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_UNK_TYPE;
+    syscheck.directories[0]->dirs_status.status &= ~WD_STATUS_EXISTS;
+    syscheck.directories[0]->dirs_status.object_type = WD_STATUS_UNK_TYPE;
 
     memset(&st, 0, sizeof(SYSTEMTIME));
     st.wYear = 2020;
@@ -7046,10 +7047,10 @@ void test_state_checker_dir_readded_succesful(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_memory_equal(&syscheck.directories[0]->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(syscheck.directories[0]->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(syscheck.directories[0]->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.directories[0]->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_dirs_cleanup_no_nodes(void ** state) {

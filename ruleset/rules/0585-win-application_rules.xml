@@ -103,7 +103,6 @@
   <rule id="60611" level="3">
     <if_sid>60609</if_sid>
     <field name="win.system.eventID">^11724$|^1034$</field>
-    <options>alert_by_email</options>
     <description>Application Uninstalled $(win.eventdata.data)</description>
     <options>no_full_log</options>
   </rule>
@@ -111,7 +110,6 @@
   <rule id="60612" level="3">
     <if_sid>60609</if_sid>
     <field name="win.system.eventID">^11707$|^1033$</field>
-    <options>alert_by_email</options>
     <description>Application Installed $(win.eventdata.data)</description>
     <options>no_full_log</options>
   </rule>
@@ -2124,7 +2122,7 @@
     <if_sid>60838</if_sid>
     <field name="win.system.eventID">^4172$|^4173$|^4174$|^4175$|^4176$|^4177$|^4178$|^4179$|
             |^4180$|^4181$|^4182$|^4181$|^4182$|^4183$|^4184$|^4185$|^4186$|^4187$|^4188$|
-            |^4189$|^4190$|^4191$|^4192$|</field>
+            |^4189$|^4190$|^4191$|^4192$</field>
     <description>MS DTC Transaction Manager start failed</description>
     <options>no_full_log</options>
   </rule>
@@ -2295,7 +2293,7 @@
 
   <rule id="60908" level="5">
     <if_sid>60838</if_sid>
-    <field name="win.system.eventID">^4240$|4241$|</field>
+    <field name="win.system.eventID">^4240$|4241$</field>
     <description>The MS DTC Transaction Manager sent a TIP "ABORT COMMAND"</description>
     <options>no_full_log</options>
   </rule>
@@ -3433,5 +3431,44 @@
     <options>no_full_log</options>
   </rule>
 
+  <rule id="61069" level="0">
+    <if_sid>60003</if_sid>
+    <field name="win.system.severityValue">^AUDIT_FAILURE$</field>
+    <description>Windows Application audit failure event</description>
+    <options>no_full_log</options>
+    <group>gpg13_4.12,</group>
+  </rule>
+
+  <rule id="61070" level="0">
+    <if_sid>60003</if_sid>
+    <field name="win.system.severityValue">^AUDIT_SUCCESS$</field>
+    <description>Windows Application audit success event</description>
+    <options>no_full_log</options>
+    <group>gpg13_4.12,</group>
+  </rule>
+
+
+  <!-- MS SQL rules -->
+
+  <!-- Sample: {"win":{"system":{"providerName":"MSSQL$SQLEXPRESS","eventID":"18456","level":"0","task":"4","keywords":"0x90000000000000","systemTime":"2021-05-04T00:14:02.000000000Z","eventRecordID":"11930713","channel":"Application","computer":"IPASRV-VPS001","severityValue":"AUDIT_FAILURE","message":"\"Login failed for user 'user'. Reason: Password did not match that for the login provided. [CLIENT: 192.168.0.5]\""},"eventdata":{"binary":"184800000E000000190000004900500041005300520056002D005600500053003000300031005C00530051004C0045005800500052004500530053000000070000006D00610073007400650072000000","data":"user,  Reason: Password did not match that for the login provided.,  [CLIENT: 192.168.0.5]"}}} -->
+  <rule id="61071" level="5">
+    <if_sid>61069</if_sid>
+    <field name="win.system.eventID">^18456$</field>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>MS SQL Server Logon Failure</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- Sample: {"win":{"system":{"providerName":"MSSQL$SQLEXPRESS","eventID":"18453","level":"0","task":"4","keywords":"0xa0000000000000","systemTime":"2021-03-19T22:14:38.786376900Z","eventRecordID":"2530","channel":"Application","computer":"WIN2019.wazuh.local","severityValue":"AUDIT_SUCCESS","message":"\"Login succeeded for user 'WAZUH\\Administrator'. Connection made using Integrated authentication. [CLIENT: <local machine>]\""},"eventdata":{"binary":"154800000A00000013000000570049004E0032003000310039005C00530051004C0045005800500052004500530053000000070000006D00610073007400650072000000","data":"WAZUH\\\\Administrator,  [CLIENT: &lt;local machine&gt;]"}}} -->
+  <rule id="61072" level="3">
+    <if_sid>61070</if_sid>
+    <field name="win.system.eventID">^18454$|^18453$</field>
+    <description>MS SQL Server Logon Success</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
 </group>
 

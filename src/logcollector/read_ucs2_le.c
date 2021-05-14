@@ -31,7 +31,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, current_position);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     for (offset = w_ftell(lf->fp); can_read() && fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
@@ -47,7 +47,9 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         wchar_t * n;
         /* Get the last occurrence of \n */
         if ((n = wcsrchr(str, L'\n')) != NULL) {
-            OS_SHA1_Stream(&context, NULL, (char *) str);
+            if (is_valid_context_file) {
+                OS_SHA1_Stream(&context, NULL, (char *) str);
+            }
             *n = '\0';
         }
         /* If we didn't get the new line, because the
@@ -55,7 +57,9 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
          */
         if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
-            OS_SHA1_Stream(&context, NULL, (char *) str);
+            if (is_valid_context_file) {
+                OS_SHA1_Stream(&context, NULL, (char *) str);
+            }
             __ms = 1;
             str[rbytes - 1] = '\0';
         } else {
@@ -132,7 +136,9 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                     break;
                 }
 
-                OS_SHA1_Stream(&context, NULL, (char *) str);
+                if (is_valid_context_file) {
+                    OS_SHA1_Stream(&context, NULL, (char *) str);
+                }
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 2] == '\n') {
@@ -145,7 +151,9 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         current_position = w_ftell(lf->fp);
     }
 
-    w_update_file_status(lf->file, current_position, &context);
+    if (is_valid_context_file) {
+        w_update_file_status(lf->file, current_position, &context);
+    }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

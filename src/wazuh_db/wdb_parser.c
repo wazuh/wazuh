@@ -569,6 +569,8 @@ int wdb_parse(char * input, char * output) {
     } else if(strcmp(actor, "mitre") == 0) {
         query = next;
 
+        mdebug2("Mitre query: %s", query);
+
         if (wdb = wdb_open_mitre(), !wdb) {
             mdebug2("Couldn't open DB mitre: %s/%s.db", WDB_DIR, WDB_MITRE_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB mitre");
@@ -604,15 +606,6 @@ int wdb_parse(char * input, char * output) {
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Mitre database query; %s", sqlite3_errmsg(wdb->db));
                     result = -1;
                 }
-            }
-        } else if (strcmp(query, "get") == 0) {
-            if (!next) {
-                mdebug1("Mitre DB Invalid DB query syntax.");
-                mdebug2("Mitre DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = -1;
-            } else {
-                result = wdb_parse_mitre_get(wdb, next, output);
             }
         } else {
             mdebug1("Invalid DB query syntax.");
@@ -4668,54 +4661,6 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
         result = -1;
     }
     return result;
-}
-
-
-// Function to get values from MITRE database
-
-int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output) {
-    char * next;
-    char * id;
-    int result;
-
-    if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("Invalid DB query syntax.");
-        mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return -1;
-    }
-    *next++ = '\0';
-
-    if (strcmp(input, "name") == 0) {
-        if (!next) {
-            mdebug1("Mitre DB Invalid DB query syntax.");
-            mdebug2("Mitre DB query error near: %s", input);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-            return -1;
-        } else {
-            id = next;
-            char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
-            result = wdb_mitre_name_get(wdb, id, result_found);
-            switch (result) {
-                case 0:
-                    snprintf(output, OS_MAXSTR + 1, "err not found");
-                    break;
-                case 1:
-                    snprintf(output, OS_MAXSTR + 1, "ok %s", result_found);
-                    break;
-                default:
-                    mdebug1("Cannot query MITRE technique's name.");
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot query name of MITRE technique '%s'", id);
-            }
-
-            return result;
-        }
-    } else {
-        mdebug1("Invalid DB query syntax.");
-        mdebug2("DB query error near: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
-        return -1;
-    }
 }
 
 int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {

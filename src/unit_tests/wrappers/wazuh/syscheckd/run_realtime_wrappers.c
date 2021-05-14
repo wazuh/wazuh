@@ -13,9 +13,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int followsl) {
+int __wrap_realtime_adddir(const char *dir,
+                           __attribute__((unused)) directory_t *configuration,
+                           __attribute__((unused)) int followsl) {
     check_expected(dir);
-    check_expected(whodata);
 
     return mock();
 }
@@ -25,8 +26,7 @@ int __wrap_realtime_start() {
     return 0;
 }
 
-void expect_realtime_adddir_call(const char *path, int whodata, int ret) {
+void expect_realtime_adddir_call(const char *path, int ret) {
     expect_string(__wrap_realtime_adddir, dir, path);
-    expect_value(__wrap_realtime_adddir, whodata, whodata);
     will_return(__wrap_realtime_adddir, ret);
 }

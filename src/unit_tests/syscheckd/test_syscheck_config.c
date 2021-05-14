@@ -63,14 +63,13 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_non_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-    assert_non_null(syscheck.dir);
+    assert_non_null(syscheck.directories);
     // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
     // With the first 10 directories in other lines, the count should be 74 (75 should be NULL)
     for (int i = 0; i < 74; i++){
-        assert_non_null(syscheck.dir[i]);
+        assert_non_null(syscheck.directories[i]);
     }
-    assert_null(syscheck.dir[74]);
-    assert_non_null(syscheck.opts);
+    assert_null(syscheck.directories[74]);
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 1);
@@ -88,7 +87,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 50 * 1024);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_invalid(void **state)
@@ -128,8 +126,7 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-    assert_non_null(syscheck.dir);
-    assert_non_null(syscheck.opts);
+    assert_non_null(syscheck.directories);
     assert_int_equal(syscheck.enable_synchronization, 0);
     assert_int_equal(syscheck.restart_audit, 0);
     assert_int_equal(syscheck.enable_whodata, 1);
@@ -147,7 +144,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 5);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_non_null(syscheck.diff_size_limit);
 }
 
 void test_Read_Syscheck_Config_unparsed(void **state)
@@ -176,12 +172,7 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.nodiff_regex);
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
-#ifndef TEST_WINAGENT
-    assert_null(syscheck.dir);
-#else
-    assert_non_null(syscheck.dir);
-#endif
-    assert_null(syscheck.opts);
+    assert_null(syscheck.directories);
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 0);
@@ -199,7 +190,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 50 * 1024);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_null(syscheck.diff_size_limit);
 }
 
 void test_getSyscheckConfig(void **state)
@@ -479,7 +469,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
@@ -515,8 +505,6 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
     cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
-    cJSON *directories = cJSON_GetObjectItem(sys_items, "directories");
-    assert_int_equal(cJSON_GetArraySize(directories), 0);
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *registry = cJSON_GetObjectItem(sys_items, "registry");
@@ -555,13 +543,13 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     assert_int_equal(ret, 0);
 
     #ifdef WIN32
-    assert_string_equal(syscheck.dir[0], "c:\\,testcommas");
-    assert_string_equal(syscheck.dir[1], "c:\\test,commas");
-    assert_string_equal(syscheck.dir[2], "c:\\testcommas,");
+    assert_string_equal(syscheck.directories[0]->path, "c:\\,testcommas");
+    assert_string_equal(syscheck.directories[1]->path, "c:\\test,commas");
+    assert_string_equal(syscheck.directories[2]->path, "c:\\testcommas,");
     #else
-    assert_string_equal(syscheck.dir[0], "/,testcommas");
-    assert_string_equal(syscheck.dir[1], "/test,commas");
-    assert_string_equal(syscheck.dir[2], "/testcommas,");
+    assert_string_equal(syscheck.directories[0]->path, "/,testcommas");
+    assert_string_equal(syscheck.directories[1]->path, "/test,commas");
+    assert_string_equal(syscheck.directories[2]->path, "/testcommas,");
     #endif
 }
 

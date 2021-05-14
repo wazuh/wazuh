@@ -1768,13 +1768,103 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /mitre
+test_name: GET /mitre/metadata
 
 stages:
-  - name: Try to get MITRE attacks
+  - name: Try to get MITRE metadata
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre"
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/metadata"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /mitre/mitigations
+
+stages:
+
+  - name: Try to get MITRE mitigations
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/mitigations"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /mitre/references
+
+stages:
+
+  - name: Try to get MITRE references
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/references"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /mitre/techniques
+
+stages:
+
+  - name: Try to get MITRE techniques
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/techniques"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /mitre/tactics
+
+stages:
+
+  - name: Try to get MITRE tactics
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/tactics"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /mitre/groups
+
+stages:
+
+  - name: Try to get MITRE groups
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/groups"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /mitre/software
+
+stages:
+
+  - name: Try to get MITRE software
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/software"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

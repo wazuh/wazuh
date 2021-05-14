@@ -1,0 +1,7 @@
+  <localfile>
+    <log_format>full_command</log_format>
+    <command>netstat -an -f inet | awk '{print $1" "$4" "$5" "$6}' | sort -n -k 4 |sed 1,3d</command>
+    <alias>netstat listening ports</alias>
+    <frequency>360</frequency>
+  </localfile>
+  

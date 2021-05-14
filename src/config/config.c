@@ -53,7 +53,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
 #ifndef WIN32
-    const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
+    const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
+#endif
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
+    const char *github = "github";                      /* GitHub Module */
 #endif
 
     while (node[i]) {
@@ -188,6 +191,12 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #ifndef WIN32
         } else if (strcmp(node[i]->element, osfluent_forward) == 0) {
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+#endif
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
+        } else if (chld_node && (strcmp(node[i]->element, github) == 0)) {
+            if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1) < 0)) {
                 goto fail;
             }
 #endif

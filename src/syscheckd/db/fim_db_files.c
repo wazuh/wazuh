@@ -98,16 +98,16 @@ static void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row);
  * @param fim_sql FIM database structure.
  * @param entry Entry data to be removed.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param alert False don't send alert, True send delete alert.
  * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
  * @param configuration Position of the configuration that triggered the deletion of entries.
+ * @param _unused_parameter Needed for this function to be a valid FIM DB callback.
  */
 void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   fim_entry *entry,
                                   pthread_mutex_t *mutex,
-                                  void *alert,
-                                  void *fim_ev_mode,
-                                  void *configuration);
+                                  void *evt_data,
+                                  void *configuration,
+                                  void *_unused_patameter);
 
 
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
@@ -128,19 +128,28 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 // LCOV_EXCL_START
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = TRUE, .type = FIM_DELETE };
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
-                                    (void *) true, (void *) FIM_SCHEDULED, NULL);
+                                    (void *)&evt_data, NULL, NULL);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode, int *configuration) {
+int fim_db_delete_range(fdb_t *fim_sql,
+                        fim_tmp_file *file,
+                        pthread_mutex_t *mutex,
+                        int storage,
+                        event_data_t *evt_data,
+                        directory_t *configuration) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_validated_path, storage,
-                                    (void *) false, (void *) mode, (void *) configuration);
+                                    evt_data, configuration, NULL);
 }
 
-int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
-                                 fim_event_mode mode, whodata_evt * w_evt) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
-                                    (void *) true, (void *) (fim_event_mode) mode, (void *) w_evt);
+int fim_db_process_missing_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data) {
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage, evt_data, NULL,
+                                    NULL);
 }
 // LCOV_EXCL_STOP
 
@@ -498,14 +507,14 @@ end:
 void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   fim_entry *entry,
                                   pthread_mutex_t *mutex,
-                                  void *alert,
-                                  void *fim_ev_mode,
-                                  void *configuration) {
-    int *original_configuration = (int *)configuration;
-    int validated_configuration = fim_configuration_directory(entry->file_entry.path);
+                                  void *evt_data,
+                                  void *configuration,
+                                  __attribute__((unused)) void *_unused_patameter) {
+    const directory_t *original_configuration = (const directory_t *)configuration;
+    directory_t *validated_configuration = fim_configuration_directory(entry->file_entry.path);
 
-    if (validated_configuration == *original_configuration) {
-        fim_delete_file_event(fim_sql, entry, mutex, alert, fim_ev_mode, NULL);
+    if (validated_configuration == original_configuration) {
+        fim_delete_file_event(fim_sql, entry, mutex, evt_data, NULL, NULL);
     }
 }
 

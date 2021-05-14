@@ -53,4 +53,8 @@ int __wrap_fgetc(FILE * stream);
 
 int __wrap__fseeki64(FILE *stream, long offset, int whence);
 
+FILE *__wrap_popen(const char *command, const char *type);
+
+int __wrap_pclose(FILE *stream);
+
 #endif

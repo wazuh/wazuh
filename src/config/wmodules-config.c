@@ -147,7 +147,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #endif
 #endif
-
     else {
         if(!strcmp(node->values[0], VU_WM_NAME) || !strcmp(node->values[0], AZ_WM_NAME) ||
             !strcmp(node->values[0], KEY_WM_NAME)) {
@@ -434,6 +433,63 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
     // Fluent Forwarder Module
     if (!strcmp(node->element, WM_FLUENT_CONTEXT.name)) {
         if (wm_fluent_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+#endif
+
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
+int Read_Github(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //GitHub module
+    if (!strcmp(node->element, WM_GITHUB_CONTEXT.name)) {
+        if (wm_github_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
