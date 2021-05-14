@@ -1798,7 +1798,7 @@ class AWSCustomBucket(AWSBucket):
                     json_data, json_index = decoder.raw_decode(data)
                 except ValueError as err:
                     match = self.macie_ip_pattern.search(data)
-                    if not match:
+                    if not match or not match.group(1) or not match.group(2):
                         raise err
                     lat = match.group(1)
                     lon = match.group(2)
