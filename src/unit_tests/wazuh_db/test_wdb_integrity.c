@@ -568,7 +568,7 @@ static void test_wdbi_update_completion_no_sql_done(void **state)
     expect_value(__wrap_sqlite3_bind_int64, value, 0);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, component);
@@ -589,10 +589,7 @@ static void test_wdbi_update_completion_success(void **state)
     data->id = strdup("000");
     const char *component = "fim";
     os_sha1 agent_checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
-
     will_return(__wrap_wdb_stmt_cache, 1);
-
-    expect_value(__wrap_sqlite3_bind_int64, index, 1);
     expect_value(__wrap_sqlite3_bind_int64, value, 0);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 2);
@@ -655,26 +652,12 @@ void test_wdbi_query_clear_no_id(void **state)
     assert_int_equal(ret, -1);
 }
 
-void test_wdbi_query_clear_no_checksum(void **state)
-{
-    wdb_t *data = *state;
-    int ret;
-    os_strdup("000", data->id);
-    char payload[] = "{\"id\":5678}";
-
-    expect_string(__wrap__mdebug1, formatted_msg, "No such string 'checksum' in JSON payload.");
-
-    ret = wdbi_query_clear(data, WDB_FIM, payload);
-
-    assert_int_equal(ret, -1);
-}
-
 void test_wdbi_query_clear_stmt_cache_error(void **state)
 {
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
-    const char *payload = "{\"id\":5678,\"checksum\":\"ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a\"}";
+    const char *payload = "{\"id\":5678}";
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -688,7 +671,7 @@ void test_wdbi_query_clear_sql_step_error(void **state)
     wdb_t *data = *state;
     int ret;
     os_strdup("000", data->id);
-    const char *payload = "{\"id\":5678,\"checksum\":\"ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a\"}";
+    const char *payload = "{\"id\":5678}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
@@ -708,8 +691,7 @@ void test_wdbi_query_clear_ok(void **state)
     int ret;
     os_strdup("000", data->id);
     const char *component = "fim";
-    os_sha1 checksum = "ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a";
-    const char *payload = "{\"id\":5678,\"checksum\":\"ebccd0d055bfd85fecc7fe612f3ecfc14d679b1a\"}";
+    const char *payload = "{\"id\":5678}";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     will_return(__wrap_sqlite3_step, 0);
@@ -718,13 +700,13 @@ void test_wdbi_query_clear_ok(void **state)
     will_return(__wrap_wdb_stmt_cache, 1);
 
     expect_value(__wrap_sqlite3_bind_int64, index, 1);
-    expect_value(__wrap_sqlite3_bind_int64, value, 0);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5678);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 2);
-    expect_value(__wrap_sqlite3_bind_int64, value, 0);
+    expect_value(__wrap_sqlite3_bind_int64, value, 5678);
     will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, component);
@@ -1498,7 +1480,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_null_payload, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_invalid_payload, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_no_id, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdbi_query_clear_no_checksum, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_stmt_cache_error, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_sql_step_error, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_clear_ok, setup_wdb_t, teardown_wdb_t),
