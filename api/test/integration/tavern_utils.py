@@ -104,7 +104,7 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
 
 
-def test_sort_response(response, key=None, reverse=True, default_sort_field='id'):
+def test_sort_response(response, key=None, reverse=False):
     """Check that the response's affected items are sorted by the specified key or keys.
 
     Parameters
@@ -113,9 +113,7 @@ def test_sort_response(response, key=None, reverse=True, default_sort_field='id'
     key : str
         Key or keys expected to sort by.
     reverse : bool
-        Indicate if the expected order is ascending (False) or descending (True). Default: True
-    default_sort_field : str
-        Default sort field to be added to the keys to sort by.
+        Indicate if the expected order is ascending (False) or descending (True). Default: False
 
     Returns
     -------
@@ -125,6 +123,7 @@ def test_sort_response(response, key=None, reverse=True, default_sort_field='id'
 
     def get_val_from_dict(dictionary, keys):
         """Get value from dictionary dynamically, given a list of keys.
+        E.g. get_val_from_dict(d, ['field1','field2']) will return d['field1']['field2']
 
         Parameters
         ----------
@@ -138,24 +137,25 @@ def test_sort_response(response, key=None, reverse=True, default_sort_field='id'
         -------
         Value of the dictionary for key `keys`.
         """
-        data = dictionary
-        for key in keys:
-            data = data.get(key, "")
-            if data == "":
-                break
-        return data
+        try:
+            for key in keys:
+                dictionary = dictionary[key]
+        except KeyError:
+            return ''
+        return dictionary
 
     affected_items = response.json()['data']['affected_items']
 
-    # If affected_items is a list of strings instead of dictionaries, key will be None
+    # If not key, we are sorting lists
     if not key:
+        # key is None in 'sorted' as affected_items is a list instead of dictionaries
         assert affected_items == sorted(affected_items, reverse=reverse)
+    # If key, we are sorting dictionaries
     else:
         # If key is a list of keys, split key
         # If key is only one key, transform it into a list
         # Add default sort field
         keys = key.split(',')
-        keys.append(default_sort_field)
 
         sorted_items = affected_items
         keys.reverse()
@@ -173,11 +173,9 @@ def test_sort_response(response, key=None, reverse=True, default_sort_field='id'
         # The 'sorted' function considers an item not having the key > an item having the key
         list_no_keys = [item for item in sorted_items if not any(get_val_from_dict(item, key.split('.'))
                                                                  for key in keys)]
-        [sorted_items.remove(item) for item in list_no_keys]
-        if reverse:
-            sorted_items = sorted_items + list_no_keys
-        else:
-            sorted_items = list_no_keys + sorted_items
+        for item in list_no_keys:
+            sorted_items.remove(item)
+        sorted_items = sorted_items + list_no_keys if reverse else list_no_keys + sorted_items
 
         assert affected_items == sorted_items
 

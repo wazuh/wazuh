@@ -138,6 +138,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "filename"
+            reverse: True
       status_code: 200
       json:
         error: 0
@@ -855,6 +856,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -968,6 +972,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -1088,6 +1095,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -1179,6 +1189,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -1270,6 +1283,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -1361,6 +1377,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -1452,6 +1471,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -1543,6 +1565,9 @@ stages:
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            reverse: True
+            # No `key` parameter needed as we are sorting a list
       status_code: 200
       json:
         error: 0
@@ -1636,6 +1661,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "filename"
+            reverse: True
       status_code: 200
       json:
         error: 0
@@ -2040,6 +2066,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "filename"
+            reverse: True
       status_code: 200
       json:
         error: 0
