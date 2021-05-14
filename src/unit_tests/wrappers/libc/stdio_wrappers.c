@@ -199,3 +199,14 @@ int __wrap__fseeki64(__attribute__ ((__unused__)) FILE *stream, \
                      __attribute__ ((__unused__)) long offset, __attribute__ ((__unused__)) int whence){
      return mock();
 }
+
+FILE *__wrap_popen(const char *command, const char *type) {
+    check_expected(command);
+    check_expected(type);
+    return mock_ptr_type(FILE*);
+}
+
+int __wrap_pclose(FILE *stream) {
+    check_expected(stream);
+    return mock();
+}

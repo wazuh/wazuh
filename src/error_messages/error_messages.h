@@ -216,6 +216,7 @@
 #define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 #define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
+#define FAIL_SHA1_GEN   "(1969): Failure to generate the SHA1 hash from file '%s'"
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

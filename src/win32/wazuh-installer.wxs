@@ -61,6 +61,7 @@
         <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
         <WixVariable Id="WixUISupportPerUser" Value="0" />
         <Property Id="ALLUSERS" Value="1" />
+        <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
         <WixVariable Id="WixUIBannerBmp" Value="ui\bannrbmp.jpg" />
         <WixVariable Id="WixUIDialogBmp" Value="ui\dlgbmp.jpg" />
         <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Run Agent configuration interface" />

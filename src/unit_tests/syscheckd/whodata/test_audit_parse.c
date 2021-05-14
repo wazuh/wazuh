@@ -30,6 +30,8 @@
 
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
+extern unsigned int count_reload_retries;
+
 /* setup/teardown */
 static int setup_group(void **state) {
     (void) state;
@@ -54,36 +56,6 @@ static int free_string(void **state) {
     return 0;
 }
 
-
-static int setup_add_audit_rules(void **state) {
-    syscheck.symbolic_links = calloc(2, sizeof(char *));
-
-    if (syscheck.symbolic_links == NULL) {
-        return -1;
-    }
-
-    syscheck.symbolic_links[0] = NULL;
-
-    return 0;
-}
-
-static int teardown_add_audit_rules(void **state) {
-    extern unsigned int count_reload_retries;
-
-    if (syscheck.symbolic_links[0] != NULL) {
-        free(syscheck.symbolic_links[0]);
-        syscheck.symbolic_links[0] = NULL;
-    }
-
-    if (syscheck.symbolic_links != NULL) {
-        free(syscheck.symbolic_links);
-        syscheck.symbolic_links = NULL;
-    }
-
-    count_reload_retries = 0;
-
-    return 0;
-}
 
 void test_filterkey_audit_events_custom(void **state) {
     (void) state;
@@ -561,19 +533,16 @@ void test_audit_parse_delete(void **state) {
 
 
 void test_audit_parse_delete_recursive(void **state) {
-    (void) state;
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
-    extern unsigned int count_reload_retries;
-    count_reload_retries = 0;
-    // In audit_reload_rules()
     char *entry = "/var/test";
-    syscheck.dir = calloc (2, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc (2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
+    directory_t directory = { .path = entry, .options = WHODATA_ACTIVE };
+    directory_t *config[] = { [0] = &directory, [1] = NULL };
+
+    syscheck.directories = config;
     syscheck.max_audit_entries = 100;
 
+    count_reload_retries = 0;
+    // In audit_reload_rules()
     expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 5);
 
     will_return_count(__wrap_fim_manipulated_audit_rules, 0, 5);
@@ -592,9 +561,7 @@ void test_audit_parse_delete_recursive(void **state) {
         audit_parse(buffer);
     }
 
-    free(syscheck.opts);
-    free(syscheck.dir[0]);
-    free(syscheck.dir);
+    count_reload_retries = 0;
 }
 
 
@@ -1105,8 +1072,8 @@ int main(void) {
         cmocka_unit_test(test_audit_parse4),
         cmocka_unit_test(test_audit_parse_hex),
         cmocka_unit_test(test_audit_parse_empty_fields),
-        cmocka_unit_test_setup_teardown(test_audit_parse_delete, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_audit_parse_delete_recursive, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test(test_audit_parse_delete),
+        cmocka_unit_test(test_audit_parse_delete_recursive),
         cmocka_unit_test(test_audit_parse_mv),
         cmocka_unit_test(test_audit_parse_mv_hex),
         cmocka_unit_test(test_audit_parse_rm),
