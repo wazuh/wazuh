@@ -67,8 +67,6 @@ CREATE TABLE IF NOT EXISTS vuln_metadata (
 );
 
 INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN) VALUES (0, 0);
-INSERT INTO sync_info (component) VALUES ('syscollector-packages');
-INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');
 
 CREATE TRIGGER obsolete_vulnerabilities
     AFTER DELETE ON sys_programs
