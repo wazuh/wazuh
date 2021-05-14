@@ -85,28 +85,46 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
 
 
 @pytest.mark.parametrize('fields, order, expected_items', [
-    (['os.version', 'os.name'],
-     'asc',
+    (['os.version', 'os.name'], 'asc',
      [
+         {'id': '003'},
+         {'id': '004'},
          {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
-         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}}
+         {'id': '001', 'os': {'name': 'Ubuntu', 'version': '16.06.1 LTS'}},
+         {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
+         {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
+         {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
+         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '20.04.1 LTS'}},
+         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
      ]
      ),
-    (['os.version', 'os.name'],
-     'desc',
+    (['os.name', 'os.version'], 'asc',
      [
-         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
+         {'id': '003'},
+         {'id': '004'},
          {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
+         {'id': '001', 'os': {'name': 'Ubuntu', 'version': '16.06.1 LTS'}},
+         {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
+         {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
+         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '20.04.1 LTS'}},
          {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
+         {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
+         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
      ]
      ),
-    (['os.name', 'os.version'],
-     'asc',
+    (['os.platform', 'os.minor', 'os.major'], 'desc',
      [
-         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
-         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
-         {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
+         {'id': '006', 'os': {'major': '21', 'minor': '04', 'platform': 'xubuntu'}},
+         {'id': '008', 'os': {'major': '18', 'minor': '04', 'platform': 'xubuntu'}},
+         {'id': '009', 'os': {'major': '10', 'minor': '00', 'platform': 'windows'}},
+         {'id': '005', 'os': {'major': '18', 'minor': '08', 'platform': 'ubuntu'}},
+         {'id': '001', 'os': {'major': '16', 'minor': '06', 'platform': 'ubuntu'}},
+         {'id': '000', 'os': {'major': '20', 'minor': '04', 'platform': 'ubuntu'}},
+         {'id': '007', 'os': {'major': '18', 'minor': '04', 'platform': 'ubuntu'}},
+         {'id': '002', 'os': {'major': '16', 'minor': '04', 'platform': 'ubuntu'}},
+         {'id': '003'},
+         {'id': '004'}
      ]
      ),
 ])
@@ -114,8 +132,8 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items):
-    """Test `sort` parameter of GET /agents endpoint with multiples fields."""
-    agent_list = ['000', '002', '009']
+    """Test `sort` parameter of GET /agents endpoint with multiples and/or nested fields."""
+    agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008', '009']
     sorted_agents = get_agents(agent_list=agent_list, select=fields, sort={'fields': fields, 'order': order})
     assert isinstance(sorted_agents, AffectedItemsWazuhResult), 'The returned object is not an ' \
                                                                 '"AffectedItemsWazuhResult". '
