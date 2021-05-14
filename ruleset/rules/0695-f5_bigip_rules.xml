@@ -8,31 +8,14 @@
 
 <group name="f5_bigip,">
 
+     <!-- F5 BigIP LTM grouped rules -->
     <rule id="65260" level="0">
         <decoded_as>f5_bigip_decoder</decoded_as>
-        <description>F5 Networks BigIP GTM events.</description>
-    </rule>
-	
-	<rule id="65261" level="3">
-        <if_sid>65260</if_sid>
-        <field name="level">notice</field>
-        <description>F5 BigIP GTM: Notice message detected.</description>
-    </rule>
-	
-    <rule id="65262" level="7">
-        <if_sid>65260</if_sid>
-        <field name="level">warning</field>
-        <description>F5 BigIP GTM: Warning message detected.</description>
-    </rule>
-	
-    <rule id="65263" level="7">
-        <if_sid>65260</if_sid>
-        <field name="level">alert</field>
-        <description>F5 BigIP GTM: Alert message detected.</description>
+        <description>F5 Networks BigIP LTM events.</description>
     </rule>
 
     <rule id="65264" level="9">
-        <if_sid>65260,65261,65262,65263</if_sid>
+        <if_sid>65260</if_sid>
         <field name="message_code">01010251</field>
         <description>Virtual server is during high-demand traffic event or under Denial of Service (DoS) attack</description>
         <mitre>
@@ -41,12 +24,31 @@
     </rule>
 
     <rule id="65265" level="9">
-        <if_sid>65260,65261,65262,65263</if_sid>
+        <if_sid>65260</if_sid>
         <field name="message_code">01010343</field>
         <description>Platform entered software SYN cookie protection mode. The system has detected a SYN flood attack.</description>
         <mitre>
             <id>T1498</id>
         </mitre>
+    </rule>
+
+    <!-- General rules by level, defined last to catch all -->
+    <rule id="65261" level="3">
+        <if_sid>65260</if_sid>
+        <field name="level">notice</field>
+        <description>F5 BigIP LTM: Notice message detected.</description>
+    </rule>
+
+    <rule id="65262" level="7">
+        <if_sid>65260</if_sid>
+        <field name="level">warning</field>
+        <description>F5 BigIP LTM: Warning message detected.</description>
+    </rule>
+
+    <rule id="65263" level="7">
+        <if_sid>65260</if_sid>
+        <field name="level">alert</field>
+        <description>F5 BigIP LTM: Alert message detected.</description>
     </rule>
 
 </group>
