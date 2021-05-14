@@ -371,7 +371,7 @@ class WazuhException(Exception):
         1902: {'message': 'Connection to \'execq\' socket failed'
                },
         1903: 'Error deleting temporary file from API',
-        1904: {'message': 'Bad data from \'execq\''
+        1904: {'message': 'Bad data from \'wcom\''
                },
         1905: {'message': 'File could not be updated, it already exists',
                'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
