@@ -236,7 +236,7 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
+		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext
 		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
 ifeq ($(INSTALLDIR),)
 	INSTALLDIR = /var/ossec
