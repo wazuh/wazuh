@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -7,12 +7,11 @@ import os
 import subprocess
 from contextvars import ContextVar
 from copy import deepcopy
+from functools import lru_cache
 from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict, Any
-from copy import deepcopy
-from functools import lru_cache
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
@@ -148,6 +147,7 @@ EXECQ = os.path.join(wazuh_path, 'queue', 'alerts', 'execq')
 # Socket
 AUTHD_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'auth')
 REQUEST_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'request')
+WCOM_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'com')
 LOGTEST_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'logtest')
 UPGRADE_SOCKET = os.path.join(wazuh_path, 'queue', 'tasks', 'upgrade')
 
@@ -181,8 +181,8 @@ database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800  # 600*3
 
-_ossec_uid = None
-_ossec_gid = None
+_wazuh_uid = None
+_wazuh_gid = None
 
 # Version variables (legacy, required, etc)
 AR_LEGACY_VERSION = 'Wazuh v4.2.0'
@@ -192,13 +192,17 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 CHECK_CONFIG_COMMAND = 'check-manager-configuration'
 RESTART_WAZUH_COMMAND = 'restart-wazuh'
 
+# User and group name
+USER_NAME = 'wazuh'
+GROUP_NAME = 'wazuh'
 
-def ossec_uid():
-    return getpwnam("ossec").pw_uid if globals()['_ossec_uid'] is None else globals()['_ossec_uid']
+
+def wazuh_uid():
+    return getpwnam(USER_NAME).pw_uid if globals()['_wazuh_uid'] is None else globals()['_wazuh_uid']
 
 
-def ossec_gid():
-    return getgrnam("ossec").gr_gid if globals()['_ossec_gid'] is None else globals()['_ossec_gid']
+def wazuh_gid():
+    return getgrnam(GROUP_NAME).gr_gid if globals()['_wazuh_gid'] is None else globals()['_wazuh_gid']
 
 
 # Multigroup variables

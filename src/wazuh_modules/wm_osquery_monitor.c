@@ -1,6 +1,6 @@
 /*
  * Wazuh Integration with Osquery
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 5, 2018.
  *
  * This program is free software; you can redistribute it

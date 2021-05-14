@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -20,6 +20,7 @@ from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager, Roles
 from wazuh.rbac.preprocessor import optimize_resources
 
@@ -91,7 +92,7 @@ def generate_secret():
             with open(_secret_file_path, mode='x') as secret_file:
                 secret_file.write(jwt_secret)
             try:
-                chown(_secret_file_path, 'ossec', 'ossec')
+                chown(_secret_file_path, wazuh_uid(), wazuh_gid())
             except PermissionError:
                 pass
             os.chmod(_secret_file_path, 0o640)

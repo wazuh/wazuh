@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -89,8 +89,18 @@ api_config_schema = {
             "properties": {
                 "enabled": {"type": "boolean"},
                 "source_route": {"type": "string"},
-                "expose_headers": {"type": "string"},
-                "allow_headers": {"type": "string"},
+                "expose_headers": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "array", "items": {"type": "string"}}
+                    ]
+                },
+                "allow_headers": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "array", "items": {"type": "string"}}
+                    ]
+                },
                 "allow_credentials": {"type": "boolean"},
             },
         },

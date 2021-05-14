@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -166,6 +166,7 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
         {"NAME",             "os_name"},
         {"VERSION",          "os_version"},
         {"ID",               "os_platform"},
+        {"BUILD_ID",         "os_build"},
         {"VERSION_CODENAME", "os_codename"}
     };
     const auto ret {parseUnixFile(KEY_MAP, SEPARATOR, in, info)};

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -30,7 +30,7 @@ class WazuhException(Exception):
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
-               'remediation': 'Please, check if path to file/directory is correct and `ossec` '
+               'remediation': 'Please, check if path to file/directory is correct and `wazuh` '
                               'has the appropriate permissions'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
@@ -82,7 +82,7 @@ class WazuhException(Exception):
                },
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
-        1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
+        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
@@ -371,7 +371,7 @@ class WazuhException(Exception):
         1902: {'message': 'Connection to \'execq\' socket failed'
                },
         1903: 'Error deleting temporary file from API',
-        1904: {'message': 'Bad data from \'execq\''
+        1904: {'message': 'Bad data from \'wcom\''
                },
         1905: {'message': 'File could not be updated, it already exists',
                'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
@@ -407,6 +407,7 @@ class WazuhException(Exception):
         2007: {'message': 'Error retrieving data from Wazuh DB'},
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
+        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
 
         # Cluster
         3000: 'Cluster',

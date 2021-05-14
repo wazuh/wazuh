@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -32,7 +32,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, current_position);
+    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     /* Get new entry */
     while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
@@ -41,7 +41,9 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
         /* Get buffer size */
         str_len = strlen(str);
 
-        OS_SHA1_Stream(&context, NULL, str);
+        if (is_valid_context_file) {
+            OS_SHA1_Stream(&context, NULL, str);
+        }
 
         /* Get the last occurrence of \n */
         if ((p = strrchr(str, '\n')) != NULL) {
@@ -139,7 +141,10 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     }
 
     current_position = w_ftell(lf->fp);
-    w_update_file_status(lf->file, current_position, &context);
+
+    if (is_valid_context_file) {
+        w_update_file_status(lf->file, current_position, &context);
+    }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

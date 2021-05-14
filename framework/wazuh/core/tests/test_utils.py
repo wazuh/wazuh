@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -9,12 +9,12 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree import ElementTree
+from xml.etree.ElementTree import Element
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
         from wazuh.core.utils import *
         from wazuh.core import exception
@@ -177,7 +177,7 @@ def test_execute(mock_output):
 
 @pytest.mark.parametrize('error_effect, expected_exception', [
     (CalledProcessError(returncode=1000, cmd='Unexpected error', output='{"data":"Some data", "message":"Error", '
-                                                                       '"error":1000}'), 1000),
+                                                                        '"error":1000}'), 1000),
     (Exception, 1002),
     (CalledProcessError(returncode=1, cmd='Unexpected error', output={}), 1003),
     (CalledProcessError(returncode=1, cmd='Unexpected error', output='{"error":1000}'), 1004),
@@ -212,6 +212,7 @@ def test_cut_array(array, limit):
     assert isinstance(result, list)
 
 
+@pytest.mark.xfail(reason='Pending rework for process_array tests: https://github.com/wazuh/wazuh/issues/8249')
 @pytest.mark.parametrize('array, limit, search_text, sort_by, q', [
     (['one', 'two', 'three'], 3, None, None, ''),
     (['one', 'two', 'three'], 2, 'one', [''], 'contains=one'),
@@ -534,7 +535,7 @@ def test_load_wazuh_xml(mock_compile):
         f.return_value.__enter__.return_value = StringIO(test_xml)
         result = load_wazuh_xml('test_file')
 
-        assert isinstance(result, ElementTree.Element)
+        assert isinstance(result, Element)
 
 
 @pytest.mark.parametrize('version1, version2', [
@@ -1496,13 +1497,13 @@ def test_filter_array_by_query(q, return_length):
 
 @pytest.mark.parametrize('select, required_fields, expected_result', [
     (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
-                                                                   'single_select': None,
-                                                                   'nested1': {
-                                                                       'nested12': {
-                                                                           'nested121': None
-                                                                       }
-                                                                   }}),
-    (['single_select', 'noexists'], None, None),
+                                                                     'single_select': None,
+                                                                     'nested1': {
+                                                                         'nested12': {
+                                                                             'nested121': None
+                                                                         }
+                                                                     }}),
+    (['single_select', 'noexists'], None, {'single_select': None}),
     (['required.noexists1.noexists2'], None, None)
 ])
 def test_select_array(select, required_fields, expected_result):
@@ -1634,7 +1635,8 @@ def test_expand_rules():
 @patch('wazuh.core.utils.common.user_decoders_path', new=test_files_path)
 def test_expand_decoders():
     decoders = expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.DECODERS_EXTENSION}'))))
+    assert decoders == set(
+        map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.DECODERS_EXTENSION}'))))
 
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)

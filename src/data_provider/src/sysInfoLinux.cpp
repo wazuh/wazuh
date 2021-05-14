@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -24,8 +24,8 @@
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
-#include "packages/packagesLinuxParserHelper.h"
 #include "packages/berkeleyRpmDbHelper.h"
+#include "packages/packageLinuxDataRetriever.h"
 
 struct ProcTableDeleter
 {
@@ -223,76 +223,11 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100 * memFree / ramTotal);
 }
 
-static nlohmann::json getRpmInfo()
-{
-    nlohmann::json ret;
-    BerkeleyRpmDBReader db(std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE));
-
-    for (std::string row = db.getNext() ; !row.empty() ; row = db.getNext())
-    {
-        const auto& package{ PackageLinuxHelper::parseRpm(row) };
-
-        if (!package.empty())
-        {
-            ret.push_back(package);
-        }
-    }
-
-    return ret;
-}
-
-static nlohmann::json getDpkgInfo(const std::string& fileName)
-{
-    nlohmann::json ret;
-    std::fstream file{fileName, std::ios_base::in};
-
-    if (file.is_open())
-    {
-        while (file.good())
-        {
-            std::string line;
-            std::vector<std::string> data;
-
-            do
-            {
-                std::getline(file, line);
-
-                if (line.front() == ' ') //additional info
-                {
-                    data.back() = data.back() + line + "\n";
-                }
-                else
-                {
-                    data.push_back(line + "\n");
-                }
-            }
-            while (!line.empty()); //end of package item info
-
-            const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
-
-            if (!packageInfo.empty())
-            {
-                ret.push_back(packageInfo);
-            }
-        }
-    }
-
-    return ret;
-}
 
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-
-    if (Utils::existsDir(DPKG_PATH))
-    {
-        packages = getDpkgInfo(DPKG_STATUS_PATH);
-    }
-    else if (Utils::existsDir(RPM_PATH))
-    {
-        packages = getRpmInfo();
-    }
-
+    FactoryPackagesCreator<LINUX_TYPE>::getPackages(packages);
     return packages;
 }
 

@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 16, 2020.
  *
  * This program is free software; you can redistribute it
@@ -37,6 +37,7 @@ static void initNoMetaDataMocks(std::unique_ptr<SQLiteDBEngine>& spEngine)
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -62,6 +63,7 @@ TEST_F(DBEngineTest, Initialization)
     EXPECT_CALL(*mockStatement, step()).WillOnce(Return(SQLITE_DONE));
     EXPECT_CALL(*mockFactory, createStatement(_, _)).WillOnce(Return(ByMove(std::move(mockStatement))));
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
@@ -80,6 +82,7 @@ TEST_F(DBEngineTest, InitializationSQLError)
     EXPECT_CALL(*mockStatement, step()).WillOnce(Return(SQLITE_ERROR));
     EXPECT_CALL(*mockFactory, createStatement(_, _)).WillOnce(Return(ByMove(std::move(mockStatement))));
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     EXPECT_THROW(std::make_unique<SQLiteDBEngine>(
@@ -95,6 +98,7 @@ TEST_F(DBEngineTest, InitializationEmptyQuery)
 
     EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
@@ -130,6 +134,7 @@ TEST_F(DBEngineTest, InitializeStatusField)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -206,6 +211,7 @@ TEST_F(DBEngineTest, InitializeStatusFieldNoMetadata)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -243,6 +249,7 @@ TEST_F(DBEngineTest, InitializeStatusFieldPreExistent)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -328,6 +335,7 @@ TEST_F(DBEngineTest, DeleteRowsByStatusField)
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -412,6 +420,7 @@ TEST_F(DBEngineTest, DeleteRowsByStatusFieldNoMetadata)
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -444,6 +453,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -477,6 +487,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -593,13 +604,13 @@ TEST_F(DBEngineTest, AddTableRelationship)
     const auto& mockConnection { std::make_shared<MockConnection>() };
     const auto& relationshipJSON { nlohmann::json::parse(
                                        R"(
-            {  
+            {
                 "base_table":"dummy",
                 "relationed_tables":
                 [
                     {
                         "table": "dummy_relationed_1",
-                        "field_match": 
+                        "field_match":
                         {
                             "field_n_1": "field_m_1",
                             "field_n_2": "field_m_2"
@@ -607,7 +618,7 @@ TEST_F(DBEngineTest, AddTableRelationship)
                     },
                     {
                         "table": "dummy_relationed_2",
-                        "field_match": 
+                        "field_match":
                         {
                             "field_n_1": "field_m_1",
                             "field_n_2": "field_m_2"
@@ -628,6 +639,7 @@ TEST_F(DBEngineTest, AddTableRelationship)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
@@ -717,13 +729,13 @@ TEST_F(DBEngineTest, AddTableRelationshipNoMetadata)
     const auto& mockConnection { std::make_shared<MockConnection>() };
     const auto& relationshipJSON { nlohmann::json::parse(
                                        R"(
-            {  
+            {
                 "base_table":"dummy",
                 "relationed_tables":
                 [
                     {
                         "table": "dummy_relationed_1",
-                        "field_match": 
+                        "field_match":
                         {
                             "field_n_1": "field_m_1",
                             "field_n_2": "field_m_2"
@@ -731,7 +743,7 @@ TEST_F(DBEngineTest, AddTableRelationshipNoMetadata)
                     },
                     {
                         "table": "dummy_relationed_2",
-                        "field_match": 
+                        "field_match":
                         {
                             "field_n_1": "field_m_1",
                             "field_n_2": "field_m_2"
@@ -752,6 +764,7 @@ TEST_F(DBEngineTest, AddTableRelationshipNoMetadata)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;

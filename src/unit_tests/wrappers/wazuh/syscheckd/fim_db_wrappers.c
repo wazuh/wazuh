@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -186,12 +186,10 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         __attribute__((unused)) pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode,
-                                        __attribute__((unused)) whodata_evt * w_evt) {
+                                        __attribute__((unused)) event_data_t *evt_data) {
     check_expected_ptr(fim_sql);
     check_expected_ptr(file);
     check_expected_ptr(storage);
-    check_expected_ptr(mode);
 
     return mock();
 }

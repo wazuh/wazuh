@@ -49,7 +49,9 @@ list(APPEND analysisd_names "test_labels")
 list(APPEND analysisd_flags "-Wl,--wrap,wdb_get_agent_labels")
 
 list(APPEND analysisd_names "test_mitre")
-list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--wrap,wdbc_query_parse_json")
+list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--wrap,wdbc_query_parse_json \
+							 -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Delete_ex \
+                             -Wl,--wrap,OSHash_SetFreeDataPointer")
 
 list(APPEND analysisd_names "test_rules")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_os_analysisd_add_logmsg")

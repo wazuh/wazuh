@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -249,11 +249,12 @@ int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
 
 /**
  * @brief Get SHA1 context or initialize it
- * @param path the path is the hash key
+ * @param lf Structure that contains file information, with `fd` and `file` non-null.
  * @param context SHA1 context.
  * @param position end file position.
+ * @return true if returns a valid context, false in otherwise.
  */
-void w_get_hash_context(const char * path, SHA_CTX *context, int64_t position);
+bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;

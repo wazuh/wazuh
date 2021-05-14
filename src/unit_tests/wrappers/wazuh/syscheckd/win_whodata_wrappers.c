@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -17,9 +17,9 @@ int __wrap_run_whodata_scan() {
     return mock();
 }
 
-int __wrap_set_winsacl(const char *dir, int position) {
+int __wrap_set_winsacl(const char *dir, directory_t *configuration) {
     check_expected(dir);
-    check_expected(position);
+    check_expected(configuration);
 
     return mock();
 }

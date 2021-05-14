@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -167,6 +167,8 @@ typedef struct _RuleInfo {
     char ** not_same_fields;
 
     char ** mitre_id;
+    char ** mitre_tactic_id;
+    char ** mitre_technique_id;
 } RuleInfo;
 
 int OS_ReadXMLRules(const char *rulefile,
