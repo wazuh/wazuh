@@ -302,6 +302,10 @@ void wm_sync_agents() {
             if (OS_IsAllowedID(&keys, id) == -1) {
                 if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
+                } else {
+                    // Remove agent-related files
+                    OS_RemoveCounter(id);
+                    OS_RemoveAgentGroup(id);
                 }
             }
         }

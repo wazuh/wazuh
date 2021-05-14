@@ -126,6 +126,23 @@ testconfig()
     done
 }
 
+# Check folders
+check_folders()
+{
+    ALERTS_FOLDER="../queue/alerts"
+
+    if [ ! -d $ALERTS_FOLDER ]
+    then
+        if rm -rf $ALERTS_FOLDER && mkdir -p $ALERTS_FOLDER && chown ossec:ossec $ALERTS_FOLDER && chmod 770 $ALERTS_FOLDER
+        then
+            echo "WARNING: missing folder 'queue/alerts'. Restored back."
+        else
+            echo "ERROR: missing folder 'queue/alerts', and could not restore back."
+            exit 1
+        fi
+    fi
+}
+
 # Start function
 start_service()
 {
@@ -272,6 +289,7 @@ arg=$2
 case "$1" in
 start)
     testconfig
+    check_folders
     lock
     start_service
     unlock

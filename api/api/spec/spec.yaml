@@ -1652,7 +1652,7 @@ components:
                       type: string
                     date_end_master:
                       type: string
-                    total_agentinfo:
+                    n_synced_chunks:
                       type: integer
                       format: int32
                 last_sync_integrity:
@@ -7763,7 +7763,7 @@ paths:
                         last_sync_agentinfo:
                           date_start_master: "2019-01-11T18:52:57.72Z"
                           date_end_master: "2019-01-11T18:52:57.73Z"
-                          total_agentinfo: 1
+                          n_synced_chunks: 1
                         sync_integrity_free: true
                         last_sync_agentgroups:
                           date_end_master: "2019-01-11T18:52:51.56Z"

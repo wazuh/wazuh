@@ -205,4 +205,9 @@ WazuhUpgrade()
         rm -f $DIRECTORY/etc/ossec-init.conf
         rm -f /etc/ossec-init.conf
     fi
+
+    # Remove unnecessary `execa` socket
+    if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
+        rm -f $DIRECTORY/queue/alerts/execa
+    fi
 }

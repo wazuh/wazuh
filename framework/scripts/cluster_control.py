@@ -77,11 +77,11 @@ async def print_health(config, more, filter_node):
         if node_info['info']['type'] != "master":
 
             if not more:
-                msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {} | Last keep alive: {}.\n".format(
-                    node, node_info['info']['ip'], node_info['status']['last_sync_integrity']['date_end_master'],
-                    node_info['status']['last_sync_agentinfo']['date_end_master'],
-                    node_info['status']['last_sync_agentgroups']['date_end_master'],
-                    node_info['status']['last_keep_alive']
+                msg1 += "    {} ({}): Integrity check: {} | Integrity sync: {} | Agents-info: {} | Last keep alive: {}.\n".format(
+                    node, node_info['info']['ip'], str(node_info['status']['last_check_integrity']['date_end_master']),
+                    str(node_info['status']['last_sync_integrity']['date_end_master']),
+                    str(node_info['status']['last_sync_agentinfo']['date_end_master']),
+                    str(node_info['status']['last_keep_alive'])
                 )
 
             msg2 += "        Status:\n"
@@ -90,39 +90,39 @@ async def print_health(config, more, filter_node):
             msg2 += "            Last keep Alive:\n"
             msg2 += "                Last received: {0}.\n".format(node_info['status']['last_keep_alive'])
 
-            # Integrity
-            msg2 += "            Integrity\n"
-            msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_integrity']['date_start_master'],
-                node_info['status']['last_sync_integrity']['date_end_master'])
+            # Integrity check
+            msg2 += "            Integrity check:\n"
+            msg2 += "                Last integrity check: {0} - {1}.\n".format(
+                str(node_info['status']['last_check_integrity']['date_start_master']),
+                str(node_info['status']['last_check_integrity']['date_end_master']))
+            msg2 += "                Permission to check integrity: {}.\n".format(
+                str(node_info['status']['sync_integrity_free']))
+
+            # Integrity sync
+            msg2 += "            Integrity sync:\n"
+            msg2 += "                Last integrity synchronization: {0} - {1}.\n".format(
+                str(node_info['status']['last_sync_integrity']['date_start_master']),
+                str(node_info['status']['last_sync_integrity']['date_end_master']))
 
             n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
             n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
             n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
             n_extra_valid = str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])
-
             msg2 += "                Synchronized files: Shared: {} | Missing: {} | Extra: {} | Extra valid: {}.\n".format(
                 n_shared, n_missing, n_extra, n_extra_valid)
-            msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_integrity_free']))
+
+            msg2 += "                Permission to sync extra valid files: {}.\n".format(
+                str(node_info['status']['sync_extravalid_free']))
+            msg2 += "                Extra valid files correctly updated in master: {}.\n".format(
+                str(node_info['status']['last_sync_integrity']['total_extra_valid']))
 
             # Agent info
-            msg2 += "            Agents-info\n"
+            msg2 += "            Agents-info:\n"
             msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_agentinfo']['date_start_master'],
-                node_info['status']['last_sync_agentinfo']['date_end_master'])
+                str(node_info['status']['last_sync_agentinfo']['date_start_master']),
+                str(node_info['status']['last_sync_agentinfo']['date_end_master']))
             msg2 += "                Number of synchronized chunks: {}.\n".format(
-                str(node_info['status']['last_sync_agentinfo']['total_agentinfo']))
-
-            # Agent groups
-            msg2 += "            Agents-group\n"
-            msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_agentgroups']['date_start_master'],
-                node_info['status']['last_sync_agentgroups']['date_end_master'])
-            msg2 += "                Synchronized files: {}.\n".format(
-                str(node_info['status']['last_sync_agentgroups']['total_agentgroups']))
-            msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_extravalid_free']))
+                str(node_info['status']['last_sync_agentinfo']['n_synced_chunks']))
 
     print(msg1)
 

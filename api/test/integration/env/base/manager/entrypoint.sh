@@ -52,7 +52,7 @@ if [ "$3" == "master" ]; then
 
   # Wait until Wazuh API is ready
   elapsed_time=0
-  while [[ $(grep 'Listening on' /var/ossec/logs/api.log | wc -l)  -eq 0 ]] && [[ $elapsed_time -lt 120 ]]
+  while [[ $(grep 'Listening on' /var/ossec/logs/api.log | wc -l)  -eq 0 ]] && [[ $elapsed_time -lt 300 ]]
   do
     sleep 1
     elapsed_time=$((elapsed_time+1))
