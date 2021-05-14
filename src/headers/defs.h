@@ -222,9 +222,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif // WIN32
 #endif // WAZUH_UNIT_TESTING
 
-/* Rootcheck directory */
-#define ROOTCHECK_DIR    "queue/rootcheck"
-
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
