@@ -1705,6 +1705,7 @@ class AWSCustomBucket(AWSBucket):
         self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
+        self.macie_ip_pattern = re.compile(r'"ipGeoLocation":{"lat":(-?\d+\.\d+),"lon":(-?\d+\.\d+)')
         # SQL queries for custom buckets
         self.sql_already_processed = """
                           SELECT
@@ -1793,7 +1794,16 @@ class AWSCustomBucket(AWSBucket):
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
             while data:
-                json_data, json_index = decoder.raw_decode(data)
+                try:
+                    json_data, json_index = decoder.raw_decode(data)
+                except ValueError as err:
+                    match = self.macie_ip_pattern.search(data)
+                    if not match:
+                        raise err
+                    lat = match.group(1)
+                    lon = match.group(2)
+                    new_pattern = f'"ipGeoLocation":{{"lat":"{lat}","lon":"{lon}"'
+                    json_data, json_index = decoder.raw_decode(re.sub(self.macie_ip_pattern, new_pattern, data))
                 data = data[json_index:]
                 yield json_data
 
