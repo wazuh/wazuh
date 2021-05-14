@@ -160,13 +160,13 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
                 snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE + 1, "%s", client_source_ip);
+            snprintf(ip, IPSIZE, "%s", client_source_ip);
         }
 
     }
     else if(!config.flags.use_source_ip) {
         // use_source-ip = 0 and no -I argument in agent
-        snprintf(ip, IPSIZE + 1, "any");
+        snprintf(ip, IPSIZE, "any");
     }
     // else -> agent IP is already on ip
 
