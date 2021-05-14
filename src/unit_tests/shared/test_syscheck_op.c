@@ -2226,85 +2226,62 @@ static void test_decode_win_attributes_some_attributes(void **state) {
 
 /* decode_win_permissions tests */
 static void test_decode_win_permissions_success_all_permissions(void **state) {
-    char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
+    char raw_perm[OS_SIZE_1024] = { '\0' };
     char *output;
 
-    snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld",
-        (long int)(GENERIC_READ |
-        GENERIC_WRITE |
-        GENERIC_EXECUTE |
-        GENERIC_ALL |
-        DELETE |
-        READ_CONTROL |
-        WRITE_DAC |
-        WRITE_OWNER |
-        SYNCHRONIZE |
-        FILE_READ_DATA |
-        FILE_WRITE_DATA |
-        FILE_APPEND_DATA |
-        FILE_READ_EA |
-        FILE_WRITE_EA |
-        FILE_EXECUTE |
-        FILE_READ_ATTRIBUTES |
-        FILE_WRITE_ATTRIBUTES));
+    snprintf(raw_perm, OS_MAXSTR, "|account,0,%ld",
+             (long int)(GENERIC_READ | GENERIC_WRITE | GENERIC_EXECUTE | GENERIC_ALL | DELETE | READ_CONTROL |
+                             WRITE_DAC | WRITE_OWNER | SYNCHRONIZE | FILE_READ_DATA | FILE_WRITE_DATA |
+                             FILE_APPEND_DATA | FILE_READ_EA | FILE_WRITE_EA | FILE_EXECUTE | FILE_READ_ATTRIBUTES |
+                             FILE_WRITE_ATTRIBUTES));
 
     output = decode_win_permissions(raw_perm);
 
-    free(raw_perm);
     *state = output;
 
-    assert_string_equal(output, "account (allowed): generic_read|generic_write|generic_execute|"
-        "generic_all|delete|read_control|write_dac|write_owner|synchronize|read_data|write_data|"
-        "append_data|read_ea|write_ea|execute|read_attributes|write_attributes");
+    assert_string_equal(output,
+                        "account (allowed): generic_read|generic_write|generic_execute|"
+                        "generic_all|delete|read_control|write_dac|write_owner|synchronize|read_data|write_data|"
+                        "append_data|read_ea|write_ea|execute|read_attributes|write_attributes");
 }
 
 static void test_decode_win_permissions_success_no_permissions(void **state) {
-    char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
+    char raw_perm[OS_SIZE_1024] = { '\0' };
     char *output;
 
     snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld", (long int)0);
 
     output = decode_win_permissions(raw_perm);
 
-    free(raw_perm);
     *state = output;
 
     assert_string_equal(output, "account (allowed):");
 }
 
 static void test_decode_win_permissions_success_some_permissions(void **state) {
-    char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
+    char raw_perm[OS_SIZE_1024] = { '\0' };
     char *output;
 
-    snprintf(raw_perm, OS_MAXSTR,  "|account,0,%ld",
-        (long int)(GENERIC_READ |
-        GENERIC_EXECUTE |
-        DELETE |
-        WRITE_DAC |
-        SYNCHRONIZE |
-        FILE_WRITE_DATA |
-        FILE_READ_EA |
-        FILE_EXECUTE |
-        FILE_WRITE_ATTRIBUTES));
+    snprintf(raw_perm, OS_MAXSTR, "|account,0,%ld",
+             (long int)(GENERIC_READ | GENERIC_EXECUTE | DELETE | WRITE_DAC | SYNCHRONIZE | FILE_WRITE_DATA |
+                        FILE_READ_EA | FILE_EXECUTE | FILE_WRITE_ATTRIBUTES));
 
     output = decode_win_permissions(raw_perm);
 
-    free(raw_perm);
     *state = output;
 
     assert_string_equal(output, "account (allowed): generic_read|generic_execute|"
-        "delete|write_dac|synchronize|write_data|read_ea|execute|write_attributes");
+                                "delete|write_dac|synchronize|write_data|read_ea|execute|write_attributes");
 }
 
 static void test_decode_win_permissions_success_multiple_accounts(void **state) {
-    char *raw_perm = calloc(OS_MAXSTR, sizeof(char));
+    char raw_perm[OS_SIZE_1024] = { '\0' };
     char *output;
 
-    snprintf(raw_perm, OS_MAXSTR,  "|first,0,%ld|second,1,%ld", (long int)GENERIC_READ, (long int)GENERIC_EXECUTE);
+    snprintf(raw_perm, OS_MAXSTR, "|first,0,%ld|second,1,%ld", (long int)(GENERIC_READ), (long int)(GENERIC_EXECUTE));
 
     output = decode_win_permissions(raw_perm);
 
-    free(raw_perm);
     *state = output;
 
     assert_string_equal(output, "first (allowed): generic_read, second (denied): generic_execute");
@@ -2324,29 +2301,43 @@ static void test_decode_win_permissions_fail_no_account_name(void **state) {
 }
 
 static void test_decode_win_permissions_fail_no_access_type(void **state) {
-    char *raw_perm = strdup("|account,this wont pass");
+    char raw_perm[OS_SIZE_1024] = { "|account,this wont pass" };
     char *output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "The file permissions could not be decoded: '|account,this wont pass'.");
 
     output = decode_win_permissions(raw_perm);
 
-    free(raw_perm);
     *state = output;
 
     assert_null(output);
 }
 
 static void test_decode_win_permissions_fail_wrong_format(void **state) {
-    char *raw_perm = strdup("this is not the proper format");
+    char raw_perm[OS_SIZE_1024] = { "this is not the proper format" };
     char *output;
 
     output = decode_win_permissions(raw_perm);
 
-    free(raw_perm);
     *state = output;
 
     assert_string_equal("", output);
+}
+
+static void test_decode_win_permissions_overrun_inner_buffer(void **state) {
+    char raw_perm[OS_MAXSTR] = { '\0' };
+    int size = 0;
+    char *output;
+
+    while (size < MAX_WIN_PERM_SIZE) {
+        size += snprintf(raw_perm + size, OS_MAXSTR,  "|account%d,0,%ld", size, (long int)(GENERIC_READ));
+    }
+
+    output = decode_win_permissions(raw_perm);
+
+    *state = output;
+
+    assert_true(strlen(output) < MAX_WIN_PERM_SIZE);
 }
 
 /* attrs_to_json tests */
@@ -2523,16 +2514,40 @@ static void test_win_perm_to_json_no_permissions(void **state) {
     char *input = "account (allowed)";
     cJSON *output;
 
-    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-        "Uncontrolled condition when parsing a Windows permission from 'account (allowed)'.");
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
     output = win_perm_to_json(input);
 
     *state = output;
 
-    assert_null(output);
+    assert_non_null(output);
+
+    const cJSON *ace = cJSON_GetArrayItem(output, 0);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(ace, "name")), "account");
+    assert_int_equal(cJSON_GetArraySize(cJSON_GetObjectItem(ace, "allowed")), 0);
+}
+
+static void test_win_perm_to_json_empty_permissions(void **state) {
+    char *input = "account (allowed):,";
+    cJSON *output;
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    output = win_perm_to_json(input);
+
+    *state = output;
+
+    assert_non_null(output);
+
+    const cJSON *ace = cJSON_GetArrayItem(output, 0);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(ace, "name")), "account");
+    assert_int_equal(cJSON_GetArraySize(cJSON_GetObjectItem(ace, "allowed")), 0);
 }
 
 static void test_win_perm_to_json_allowed_denied_permissions(void **state) {
@@ -3047,7 +3062,7 @@ void test_w_get_account_info_success(void **state) {
 
 void test_copy_ace_info_invalid_ace(void **state) {
     int ret;
-    char perm[OS_SIZE_1024];
+    char perm[OS_SIZE_1024] = { '\0' };
     ACCESS_ALLOWED_ACE ace = {
         .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
     };
@@ -3061,7 +3076,7 @@ void test_copy_ace_info_invalid_ace(void **state) {
 
 void test_copy_ace_info_invalid_sid(void **state) {
     int ret;
-    char perm[OS_SIZE_1024];
+    char perm[OS_SIZE_1024] = { '\0' };
     ACCESS_ALLOWED_ACE ace = {
         .Header.AceType = ACCESS_DENIED_ACE_TYPE,
     };
@@ -3077,7 +3092,7 @@ void test_copy_ace_info_invalid_sid(void **state) {
 
 void test_copy_ace_info_no_information_from_account_or_sid(void **state) {
     int ret;
-    char perm[OS_SIZE_1024];
+    char perm[OS_SIZE_1024] = { '\0' };
     ACCESS_ALLOWED_ACE ace = {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
     };
@@ -3106,7 +3121,7 @@ void test_copy_ace_info_no_information_from_account_or_sid(void **state) {
 
 void test_copy_ace_info_success(void **state) {
     int ret;
-    char perm[OS_SIZE_1024];
+    char perm[OS_SIZE_1024] = { '\0' };
     ACCESS_ALLOWED_ACE ace = {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
         .Mask = 123456,
@@ -3127,6 +3142,31 @@ void test_copy_ace_info_success(void **state) {
 
     assert_int_equal(ret, 21);
     assert_string_equal(perm, "|accountName,0,123456");
+}
+
+void test_copy_ace_info_insufficient_size(void **state) {
+    int ret;
+    char perm[OS_SIZE_1024] = { '\0' };
+    ACCESS_ALLOWED_ACE ace = {
+        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
+        .Mask = 123456,
+    };
+
+    will_return(wrap_IsValidSid, 1);
+
+    // Inside w_get_account_info
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
+    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
+    will_return(wrap_LookupAccountSid, 1);
+
+    will_return(wrap_LookupAccountSid, "accountName");
+    will_return(wrap_LookupAccountSid, "domainName");
+    will_return(wrap_LookupAccountSid, 1);
+
+    ret = copy_ace_info(&ace, perm, 10);
+
+    assert_int_equal(ret, 0);
+    assert_string_equal(perm, "");
 }
 
 void test_w_get_file_permissions_GetFileSecurity_error_on_size(void **state) {
@@ -3866,6 +3906,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_decode_win_permissions_fail_no_account_name, teardown_string),
         cmocka_unit_test_teardown(test_decode_win_permissions_fail_no_access_type, teardown_string),
         cmocka_unit_test_teardown(test_decode_win_permissions_fail_wrong_format, teardown_string),
+        cmocka_unit_test_teardown(test_decode_win_permissions_overrun_inner_buffer, teardown_string),
 
         /* attrs_to_json tests */
         cmocka_unit_test_teardown(test_attrs_to_json_single_attribute, teardown_cjson),
@@ -3877,6 +3918,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_all_permissions, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_some_permissions, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_no_permissions, teardown_cjson),
+        cmocka_unit_test_teardown(test_win_perm_to_json_empty_permissions, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_allowed_denied_permissions, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_multiple_accounts, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_fragmented_acl, teardown_cjson),
@@ -3908,6 +3950,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_copy_ace_info_invalid_sid),
         cmocka_unit_test(test_copy_ace_info_no_information_from_account_or_sid),
         cmocka_unit_test(test_copy_ace_info_success),
+        cmocka_unit_test(test_copy_ace_info_insufficient_size),
 
         /* w_get_file_permissions tests */
         cmocka_unit_test(test_w_get_file_permissions_GetFileSecurity_error_on_size),
