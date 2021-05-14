@@ -201,8 +201,7 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
 @patch('wazuh.core.manager.open')
 @patch('wazuh.core.manager.fcntl')
 @patch("wazuh.core.manager.exists", return_value=True)
-@patch("wazuh.core.manager.remove", return_value=True)
-def test_validation(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
+def test_validation(mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
     """Test validation() method works as expected
 
     Tests configuration validation function with multiple scenarios:
@@ -217,10 +216,10 @@ def test_validation(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag,
     error_msg : str
         Error message to be mocked in the socket response.
     """
-    with patch('socket.socket') as sock:
+    with patch('wazuh.core.manager.WazuhSocket') as sock:
         # Mock sock response
         json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
-        sock.return_value.recv.return_value = json_response
+        sock.return_value.receive.return_value = json_response
         result = validation()
 
         # Assert if error was returned
@@ -228,56 +227,21 @@ def test_validation(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag,
         assert result.render()['data']['total_failed_items'] == error_flag
 
 
-@patch('wazuh.core.manager.open')
-@patch('wazuh.core.manager.fcntl')
-@patch("wazuh.core.manager.exists", return_value=True)
-def test_validation_ko(mosck_exists, mock_lockf, mock_open):
-    # Remove api_socket raise OSError
-    with patch('wazuh.core.manager.remove', side_effect=OSError):
-        with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+@pytest.mark.parametrize('exception', [
+    WazuhInternalError(1013),
+    WazuhError(1013)
+])
+@patch('wazuh.manager.validate_ossec_conf')
+def test_validation_ko(mock_validate, exception):
+    mock_validate.side_effect = exception
+
+    if isinstance(exception, WazuhInternalError):
+        with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
             validation()
-
-    with patch('wazuh.core.manager.remove'):
-        # Socket creation raise socket.error
-        with patch('socket.socket', side_effect=socket.error):
-            with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
-                validation()
-
-        with patch('socket.socket.bind'):
-            # Socket connection raise socket.error
-            with patch('socket.socket.connect', side_effect=socket.error):
-                with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
-                    validation()
-
-            # execq_socket_path not exists
-            with patch("wazuh.core.manager.exists", return_value=False):
-                 with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
-                    validation()
-
-            with patch('socket.socket.connect'):
-                # Socket send raise socket.error
-                with patch('socket.socket.send', side_effect=socket.error):
-                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                        validation()
-
-                with patch('socket.socket.send'):
-                    # Socket recv raise socket.error
-                    with patch('socket.socket.recv', side_effect=socket.timeout):
-                        with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                            validation()
-
-                    # _parse_execd_output raise KeyError
-                    with patch('socket.socket.recv'):
-                        with patch('wazuh.core.manager.parse_execd_output', side_effect=KeyError):
-                            with pytest.raises(WazuhInternalError, match='.* 1904 .*'):
-                                validation()
-
-                    # _parse_execd_output raise WazuhError
-                    with patch('socket.socket') as sock:
-                        json_response = json.dumps({'error': 1, 'message': 'test_error'}).encode()
-                        sock.return_value.recv.return_value = json_response
-                        result = validation()
-                        assert result.total_failed_items == 1
+    else:
+        result = validation()
+        assert not result.affected_items
+        assert result.total_failed_items == 1
 
 
 @patch('wazuh.core.configuration.get_active_configuration')

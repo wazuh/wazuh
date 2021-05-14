@@ -27,8 +27,6 @@ typedef struct _agent_info {
     char *last_keepalive;
     char *syscheck_time;
     char *syscheck_endtime;
-    char *rootcheck_time;
-    char *rootcheck_endtime;
     char *os;
     char *version;
     char *config_sum;
@@ -40,15 +38,8 @@ typedef struct _agent_info {
 int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
                    int all_files, int csv_output, cJSON *json_output, int update_counter);
 
-/* Print rootcheck db */
-int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, int resolved,
-                    int csv_output, cJSON *json_output, int show_last);
-
 /* Delete syscheck db */
 int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete) __attribute__((nonnull));
-
-/* Delete rootcheck db */
-int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete) __attribute__((nonnull));
 
 /* Delete agent information */
 int delete_agentinfo(const char *id, const char *name) __attribute__((nonnull));
@@ -72,7 +63,7 @@ const char *print_agent_status(agent_status_t status);
 agent_status_t get_agent_status(int agent_id);
 
 /* Get information from an agent */
-agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id) __attribute__((nonnull(2)));
+agent_info *get_agent_info(const char *agent_id) __attribute__((nonnull(1)));
 
 /* Connect to remoted to be able to send messages to the agents
  * Returns the socket on success or -1 on failure

@@ -470,8 +470,8 @@ diff_data *initialize_file_diff_data(const char *filename){
     diff->file_size = 0;
 
     if (syscheck.file_size_enabled) {
-        int it = fim_configuration_directory(filename);
-        diff->size_limit = syscheck.diff_size_limit[it];
+        const directory_t *configuration = fim_configuration_directory(filename);
+        diff->size_limit = configuration->diff_size_limit;
     }
 
     // Get absolute path of filename:

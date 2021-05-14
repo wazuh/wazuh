@@ -812,7 +812,7 @@ int main_analysisd(int argc, char **argv)
     w_create_thread(asyscom_main, NULL);
 
     /* Load Mitre JSON File and Mitre hash table */
-    mitre_load(NULL);
+    mitre_load();
 
     /* Initialize Logtest */
     w_create_thread(w_logtest_init, NULL);

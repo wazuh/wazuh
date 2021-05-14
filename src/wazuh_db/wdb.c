@@ -118,7 +118,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;",
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
-    [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
     [WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? and type='file' ORDER BY file;",
     [WDB_STMT_FIM_FILE_CLEAR] = "DELETE FROM fim_entry WHERE type='file';",
     [WDB_STMT_FIM_FILE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE (file < ? OR file > ?) AND type = 'file';",

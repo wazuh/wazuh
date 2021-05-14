@@ -13,18 +13,15 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void __wrap_fim_checker(char *path,
-                        __attribute__((unused)) fim_element *item,
-                        whodata_evt *w_evt,
-                        int report) {
+void __wrap_fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration) {
     check_expected(path);
-    check_expected(w_evt);
-    check_expected(report);
+    check_expected(evt_data);
+    check_expected(configuration);
 }
 
-int __wrap_fim_configuration_directory(const char *path) {
+directory_t *__wrap_fim_configuration_directory(const char *path) {
     check_expected(path);
-    return mock();
+    return mock_type(directory_t *);
 }
 
 cJSON *__wrap_fim_entry_json(const char * path,
@@ -63,13 +60,13 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt)
     return 1;
 }
 
-void expect_fim_checker_call(const char *path, int w_evt, int report) {
+void expect_fim_checker_call(const char *path, const directory_t *configuration) {
     expect_string(__wrap_fim_checker, path, path);
-    expect_value(__wrap_fim_checker, w_evt, w_evt);
-    expect_value(__wrap_fim_checker, report, report);
+    expect_any(__wrap_fim_checker, evt_data);
+    expect_value(__wrap_fim_checker, configuration, configuration);
 }
 
-void expect_fim_configuration_directory_call(const char *path, int ret) {
+void expect_fim_configuration_directory_call(const char *path, directory_t *ret) {
     expect_string(__wrap_fim_configuration_directory, path, path);
     will_return(__wrap_fim_configuration_directory, ret);
 }

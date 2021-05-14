@@ -77,42 +77,20 @@ static OSMatch *syscheck_nodiff_regex[] = { NULL, NULL };
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
-static char *dir_config[] = {
-    "c:\\file\\path",
-    "/path/to/file",
-    "C:\\path\\to\\file",
-    "c:\\file\\nodiff",
-    "/path/to/ignore",
-    NULL,
-};
-
-static char *symbolic_links_config[] = {
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-};
-
-static int diff_size_limit_config[] = {
-    1024,
-    1024,
-    1024,
-    1024,
-    1024,
-};
-
 #define DEFAULT_OPTIONS                                                                                    \
     CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
     CHECK_MTIME | CHECK_INODE
-static int opts_config[] = {
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS,
-    DEFAULT_OPTIONS
+
+static directory_t DIRECTORIES[] = {
+    [0] = { .path = "c:\\file\\path", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [1] = { .path = "/path/to/file", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [2] = { .path = "C:\\path\\to\\file", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [3] = { .path = "c:\\file\\nodiff", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
+    [4] = { .path = "/path/to/ignore", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
 };
+
+static directory_t *GLOBAL_CONFIG[] = { [0] = &DIRECTORIES[0], [1] = &DIRECTORIES[1], [2] = &DIRECTORIES[2],
+                                              [3] = &DIRECTORIES[3], [4] = &DIRECTORIES[4], [5] = NULL };
 
 typedef struct gen_diff_struct {
     diff_data *diff;
@@ -278,10 +256,7 @@ static int setup_group(void **state) {
     syscheck.nodiff = syscheck_nodiff;
     syscheck.nodiff_regex = syscheck_nodiff_regex;
 
-    syscheck.dir = dir_config;
-    syscheck.symbolic_links = symbolic_links_config;
-    syscheck.diff_size_limit = diff_size_limit_config;
-    syscheck.opts = opts_config;
+    syscheck.directories = GLOBAL_CONFIG;
 
 #ifdef TEST_WINAGENT
     syscheck.registry = default_reg_config;

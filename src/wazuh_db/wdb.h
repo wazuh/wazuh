@@ -135,7 +135,6 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_CLEAR,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
-    WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_FILE_CLEAR,
     WDB_STMT_FIM_FILE_DELETE_AROUND,
@@ -844,17 +843,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
  */
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output);
 
-
-/**
- * @brief Function to get values from MITRE database.
- *
- * @param [in] wdb The MITRE struct database.
- * @param [in] input The query to get a value.
- * @param [out] output The response of the query.
- * @return 1 Success: response contains the value. 0 On error: the value was not found. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
-
 /**
  * @brief Function to parse the agent insert request.
  *
@@ -1251,18 +1239,6 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
  * @retval -1 On error.
  */
 int wdb_journal_wal(sqlite3 *db);
-
-/**
- * @brief Function to get a MITRE technique's name.
- *
- * @param [in] wdb The MITRE struct database.
- * @param [in] id MITRE technique's ID.
- * @param [out] output MITRE technique's name.
- * @retval 1 Sucess: name found on MITRE database.
- * @retval 0 On error: name not found on MITRE database.
- * @retval -1 On error: invalid DB query syntax.
- */
-int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 /**
  * @brief Function to insert an agent.
