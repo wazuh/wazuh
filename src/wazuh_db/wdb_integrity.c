@@ -413,14 +413,6 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
         goto end;
     }
 
-    item = cJSON_GetObjectItem(data, "checksum");
-    char * checksum = cJSON_GetStringValue(item);
-
-    if (checksum == NULL) {
-        mdebug1("No such string 'checksum' in JSON payload.");
-        goto end;
-    }
-
     long timestamp = item->valuedouble;
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
@@ -434,7 +426,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
         goto end;
     }
 
-    wdbi_update_completion(wdb, component, timestamp, checksum, "");
+    wdbi_update_completion(wdb, component, timestamp, "", "");
     retval = 0;
 
 end:
