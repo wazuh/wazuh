@@ -13,6 +13,9 @@
 
 #include <sys/types.h>
 #include <openssl/sha.h>
+#ifdef WIN32
+#include <windef.h>
+#endif
 
 typedef char os_sha1[41];
 
@@ -39,6 +42,25 @@ void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output);
  */
 int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, int64_t nbytes);
 
+/**
+ * @brief If fp corresponds to fname then calculates the SHA1 of the `fname` file until N byte and save the context
+ *
+ * @param[in] fname File name to calculate SHA1.
+ * @param[out] c SHA1 context.
+ * @param[out] output Output string.
+ * @param[in] nbytes Number of bytes to read.
+ * @param[in] fd_check File serial number, Is checked against `fname`
+ * @retval 0 on success
+ * @retval -1 when failure opening file.
+ * @retval -2 When fp does not correspond to the `fname` file
+ */
+#ifndef WIN32
+int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 output, int mode, int64_t nbytes,
+                                      ino_t fd_check);
+#else
+int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 output, int mode, int64_t nbytes,
+                                      DWORD fd_check);
+#endif
 /**
  * @brief update the context and calculates the SHA1
  *

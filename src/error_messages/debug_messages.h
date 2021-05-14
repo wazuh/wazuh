@@ -290,4 +290,8 @@
 /* Generic messages */
 #define SUCCESSFULLY_RECONNECTED_SOCKET     "(8300): Successfully reconnected to '%s'"
 
+/* Logcollector */
+
+#define LOGCOLLECTOR_FILE_NOT_EXIST           "(9000): File '%s' no longer exists."
+
 #endif /* DEBUG_MESSAGES_H */
