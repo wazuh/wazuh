@@ -3604,7 +3604,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         return result;
     }
     else if (strcmp(action, "save") == 0) {
-        /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location*/
+        /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location|item_id*/
         #define SAVE_PACKAGE_FIELDS_AMOUNT 16
         char* fields[SAVE_PACKAGE_FIELDS_AMOUNT] = {NULL};
         char* last = tail;
