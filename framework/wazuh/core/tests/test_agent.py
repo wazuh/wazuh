@@ -810,6 +810,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
     ('any', None, 'WMPlw93l2PnwQMN', -1),
     ('any', '003', 'WMPlw93l2PnwQMN', 1),
 ])
+@patch('builtins.open')
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.common.ossec_uid')
@@ -819,13 +820,13 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @patch('wazuh.core.agent.get_manager_name')
 @patch('socket.socket.connect')
 def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid,
-                          mosck_ossec_uid, mock_safe_move, mkstemp_mock, ip, id, key, force):
+                          mosck_ossec_uid, mock_safe_move, mkstemp_mock, open_mock, ip, id, key, force):
     """Tests if method _add_manual() works as expected"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
     client_keys_text = f'001 windows-agent any {key}\n \n002 #name '
 
-    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
+    with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=client_keys_text.encode())) as m:
         agent = Agent(1)
 
         agent._add_manual('test_agent', ip=ip, id=id, key=key, force=force)
@@ -848,6 +849,7 @@ def test_get_manager_name(mock_connect, mock_send):
     mock_send.assert_has_calls(calls)
 
 
+@patch('builtins.open')
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.common.ossec_uid')
 @patch('wazuh.core.common.ossec_gid')
@@ -856,7 +858,7 @@ def test_get_manager_name(mock_connect, mock_send):
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.fcntl.lockf')
 def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock_ossec_gid, mosck_ossec_uid,
-                             mock_mkstemp):
+                             mock_mkstemp, open_mock):
     """Tests if method _add_manual() raises expected exceptions"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
@@ -869,16 +871,16 @@ def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock
     # Adding agent with the name of the manager
     with patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb):
         with patch('socket.socket.connect'):
-            with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)):
+            with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=client_keys_text.encode())):
                 with pytest.raises(WazuhError, match=".* 1705 .*"):
                     agent = Agent(1)
                     agent._add_manual('master', '172.19.0.100')
 
-                with patch('wazuh.core.agent.fcntl.lockf'):
-                    # ID already exists
-                    with pytest.raises(WazuhError, match=".* 1708 .*"):
-                        agent = Agent(1)
-                        agent._add_manual('test_agent', '172.19.0.100', id='001')
+                    with patch('wazuh.core.agent.fcntl.lockf'):
+                        # ID already exists
+                        with pytest.raises(WazuhError, match=".* 1708 .*"):
+                            agent = Agent(1)
+                            agent._add_manual('test_agent', '172.19.0.100', id='001')
 
                     # Name already exists
                     with pytest.raises(WazuhError, match=".* 1705 .*"):
