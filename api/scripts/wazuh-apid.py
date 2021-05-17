@@ -174,7 +174,7 @@ def start(foreground, root, config_file):
     # Enable cache plugin
     if api_conf['cache']['enabled']:
         setup_cache(app.app)
-    
+
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
     logger.debug(f'Loaded security API configuration: {security_conf}')
