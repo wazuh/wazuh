@@ -178,7 +178,7 @@
         <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;WazuhSvc&quot; || NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="check" />
 
         <!-- Explicitely deleting the OSSEC service to install new Wazuh service -->
-        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;WazuhSvc&quot; & SC DELETE &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
