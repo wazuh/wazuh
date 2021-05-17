@@ -324,16 +324,15 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
 }
 
 /**
- * @brief This methods updates only the "last_completion" column.
+ * @brief This methods updates the "last_completion" value.
  *
- * The rest of the columns, "last_attempt", "n_attempts" and "n_completions", are not modified.
  * It should be called after a positive checksum comparison to avoid repeated calculations.
  *
  * @param wdb Database node.
  * @param component Name of the component.
  * @param timestamp Synchronization event timestamp.
  */
-void wdbi_set_last_completion_only(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
 
     assert(wdb != NULL);
 
@@ -629,7 +628,7 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
                 result = !strcmp(hexdigest, checksum);
                 // Updating last_completion timestamp to avoid calculating the checksum again
                 if (1 == result) {
-                    wdbi_set_last_completion_only(wdb, component, (unsigned)time(NULL));
+                    wdbi_set_last_completion(wdb, component, (unsigned)time(NULL));
                 }
             }
         }
