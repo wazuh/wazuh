@@ -219,6 +219,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
+            reverse: True
 
   - name: Parameters -> sort=+score,limit=1
     request:
@@ -244,7 +245,6 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
-            reverse: False
 
   # Testing GET /sca/006
   - name: Parameters -> limit=2
@@ -428,6 +428,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
+            reverse: True
 
   - name: Parameters -> sort=+score,limit=2
     request:
@@ -454,7 +455,6 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
-            reverse: False
 
 ---
 test_name: GET /sca/001/checks/cis_debian9 (001 is an agent with version >=4.2.0)
@@ -570,6 +570,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "id"
+            reverse: True
 
   - name: Parameters -> search=passwd,limit=1
     request:
