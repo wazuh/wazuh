@@ -1298,7 +1298,7 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
  */
 int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum);
 
-void wdbi_set_last_completion_only(wdb_t * wdb, wdb_component_t component, long timestamp);
+void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
