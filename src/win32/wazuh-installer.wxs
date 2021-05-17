@@ -188,7 +188,7 @@
         </UI>
         <InstallExecuteSequence>
             <!-- Delete OSSEC service if it exist -->
-            <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
+            <Custom Action="DeleteOssecService" After="StopWinService">OSSECINSTALLED</Custom>
 
             <!-- Install functions -->
             <Custom Action="SetCustomActionDataValue" After="DeleteOssecService">NOT Installed</Custom>
