@@ -1272,8 +1272,6 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_no_data(void **state)
     assert_int_equal (ret_val, 0);
 }
 
-
-
 void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
 {
     int ret_val = -1;
@@ -1351,7 +1349,6 @@ void test_wdbi_last_completion_step_fail(void **state)
     wdbi_set_last_completion(data, WDB_SYSCOLLECTOR_PACKAGES, timestamp);
 
 }
-
 
 int main(void) {
     const struct CMUnitTest tests[] = {
