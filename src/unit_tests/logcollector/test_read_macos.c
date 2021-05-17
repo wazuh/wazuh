@@ -531,6 +531,43 @@ void test_w_macos_log_getlog_context_buffer_full(void ** state) {
 
 }
 
+void test_w_macos_log_getlog_context_buffer_full_no_endl(void ** state) {
+
+    w_macos_log_ctxt_t ctxt;
+    ctxt.buffer[0] = '\0';
+    ctxt.timestamp = 0;
+
+    const char *test_str = "test large\nlog";
+    char buffer[OS_MAXSTR + 1];
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = true;
+
+    int length = strlen(test_str) + 1;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, test_str);
+    
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder will be send separately");
+
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    assert_string_equal(buffer, "test large");
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "log");
+    assert(macos_log_cfg.ctxt.timestamp <= time(NULL));
+    assert_true(ret);
+
+    os_free(stream);
+
+}
+
 void test_w_macos_log_getlog_context_not_endline(void ** state) {
 
     //test_oslog_ctxt_restore_true
@@ -706,6 +743,165 @@ void test_w_macos_log_getlog_split_two_logs(void ** state) {
 
 }
 
+void test_w_macos_log_getlog_backup_context(void ** state) {
+
+    w_macos_log_ctxt_t ctxt;
+    ctxt.buffer[0] = '\0';
+    ctxt.timestamp = 0;
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = true;
+
+    int length =  OS_MAXSTR;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test\n");
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    assert_false(ret);
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "test\n");
+    assert(macos_log_cfg.ctxt.timestamp <= time(NULL));
+
+    os_free(stream);
+
+}
+
+void test_w_macos_log_getlog_cannot_read(void ** state) {
+
+    w_macos_log_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test",OS_MAXSTR);
+    time_t now = time(NULL);
+    ctxt.timestamp = now;
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = true;
+
+    int length =  OS_MAXSTR;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 0);
+
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    assert_false(ret);
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "test");
+    assert(macos_log_cfg.ctxt.timestamp == now);
+    os_free(stream);
+
+}
+
+void test_w_macos_log_getlog_discard_until_null(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_macos_log_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\0",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = false;
+
+    int length =  strlen(ctxt.buffer)+1;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test");
+
+    //test_oslog_ctxt_backup_success
+
+    //test_w_macos_is_log_header_false
+    will_return(__wrap_w_expression_match, true);
+
+    will_return(__wrap_fgetc,'X');
+    will_return(__wrap_fgetc,'X');
+    will_return(__wrap_fgetc,NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded");
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    //assert_string_equal(buffer,"test");
+    assert_true(ret);
+
+    os_free(stream);
+
+}
+
+void test_w_macos_log_getlog_discard_until_eof(void ** state) {
+
+    //test_oslog_ctxt_restore_true
+    w_macos_log_ctxt_t ctxt;
+    strncpy(ctxt.buffer,"test\0",OS_MAXSTR);
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    //test_oslog_ctxt_is_expired_false
+    ctxt.timestamp = time(NULL);
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = false;
+
+    int length =  strlen(ctxt.buffer)+1;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test");
+
+    //test_oslog_ctxt_backup_success
+
+    //test_w_macos_is_log_header_false
+    will_return(__wrap_w_expression_match, true);
+
+    will_return(__wrap_fgetc,'X');
+    will_return(__wrap_fgetc,'X');
+    will_return(__wrap_fgetc,EOF);
+
+
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded");
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    //assert_string_equal(buffer,"test");
+    assert_true(ret);
+
+    os_free(stream);
+
+}
+
 void test_w_macos_trim_full_timestamp_null_pointer(void ** state) {
 
     assert_null(w_macos_trim_full_timestamp(NULL));
@@ -770,10 +966,15 @@ int main(void) {
         cmocka_unit_test(test_w_macos_log_getlog_context_expired_new_line),
         cmocka_unit_test(test_w_macos_log_getlog_context_not_expired),
         cmocka_unit_test(test_w_macos_log_getlog_context_buffer_full),
+        cmocka_unit_test(test_w_macos_log_getlog_context_buffer_full_no_endl),
         cmocka_unit_test(test_w_macos_log_getlog_context_not_endline),
         cmocka_unit_test(test_w_macos_log_getlog_context_not_header_processed),
         cmocka_unit_test(test_w_macos_log_getlog_context_header_processed),
         cmocka_unit_test(test_w_macos_log_getlog_split_two_logs),
+        cmocka_unit_test(test_w_macos_log_getlog_backup_context),
+        cmocka_unit_test(test_w_macos_log_getlog_cannot_read),
+        cmocka_unit_test(test_w_macos_log_getlog_discard_until_eof),
+        cmocka_unit_test(test_w_macos_log_getlog_discard_until_null),
         // Test w_macos_trim_full_timestamp
         cmocka_unit_test(test_w_macos_trim_full_timestamp_null_pointer),
         cmocka_unit_test(test_w_macos_trim_full_timestamp_empty_string),
