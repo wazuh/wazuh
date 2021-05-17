@@ -916,7 +916,7 @@ class WazuhCommon:
         """
         task_id, error_details = task_id_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
-        if task_id != 'None':
+        if task_id in self.sync_tasks:
             # Remove filename if exists
             if os.path.exists(self.sync_tasks[task_id].filename):
                 try:
