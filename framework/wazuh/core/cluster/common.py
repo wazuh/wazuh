@@ -357,10 +357,8 @@ class Handler(asyncio.Protocol):
                 # The previous message has not been completely received yet. No header to parse, just payload.
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 return True
-            else:
-                return False
-        else:
-            return False
+
+        return False
 
     def get_messages(self) -> Tuple[bytes, int, bytes]:
         """Get received command, counter and payload.

@@ -192,9 +192,6 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     previous_status = common.cluster_integrity_mtime.get()
 
     for entry in entries:
-        # Relative path to listed file.
-        full_path = path.join(dirname, entry)
-
         # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
         if entry in excluded_files or any([entry.endswith(v) for v in excluded_extensions]):
             continue
@@ -236,7 +233,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                                            get_cluster_item_key, get_md5))
 
         except Exception as e:
-            logger.error(f"Could not get checksum of file {entry}: {e}")
+            logger.debug(f"Could not get checksum of file {entry}: {e}")
 
     return walk_files
 
