@@ -68,7 +68,7 @@
         </mitre>
     </rule>
 
-    <!-- General rules by level, defined last to catch all -->
+    <!-- General rules by type, defined last to catch all -->
     <rule id="65267" level="3">
         <if_sid>65260</if_sid>
         <field name="event.type">notice</field>
