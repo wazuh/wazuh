@@ -146,15 +146,14 @@ def test_sort_response(response, key=None, reverse=False):
 
     affected_items = response.json()['data']['affected_items']
 
-    # If not key, we are sorting lists
+    # If not key, we are sorting a list of strings
     if not key:
-        # key is None in 'sorted' as affected_items is a list instead of dictionaries
+        # key is None in 'sorted' as affected_items is a list of strings instead of dictionaries
         assert affected_items == sorted(affected_items, reverse=reverse)
-    # If key, we are sorting dictionaries
+    # If key, we are sorting a list of dictionaries
     else:
         # If key is a list of keys, split key
         # If key is only one key, transform it into a list
-        # Add default sort field
         keys = key.split(',')
 
         sorted_items = affected_items

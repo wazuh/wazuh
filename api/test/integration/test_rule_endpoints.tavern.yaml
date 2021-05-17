@@ -858,7 +858,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
@@ -974,7 +974,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
@@ -1097,7 +1097,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
@@ -1191,7 +1191,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
@@ -1285,7 +1285,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
@@ -1379,7 +1379,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
@@ -1473,7 +1473,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
@@ -1567,7 +1567,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             reverse: True
-            # No `key` parameter needed as we are sorting a list
+            # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
       json:
         error: 0
