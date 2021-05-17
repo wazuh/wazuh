@@ -290,6 +290,34 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
     }
 }
 
+/**
+ * @brief This methods updates only the "last_completion" column.
+ *
+ * The rest of the columns, "last_attempt", "n_attempts" and "n_completions", are not modified.
+ * It should be called after a positive checksum comparison to avoid repeated calculations.
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param timestamp Synchronization event timestamp.
+ */
+void wdbi_set_last_completion_only(wdb_t * wdb, wdb_component_t component, long timestamp) {
+
+    assert(wdb != NULL);
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_SET_COMPLETION) == -1) {
+        return;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_SET_COMPLETION];
+
+    sqlite3_bind_int64(stmt, 1, timestamp);
+    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    }
+}
+
 // Query the checksum of a data range
 integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, dbsync_msg action, const char * payload) {
     integrity_sync_status_t status = INTEGRITY_SYNC_ERR;
@@ -578,7 +606,7 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
         char *checksum = cJSON_GetStringValue(j_checksum);
 
         // Return 0 if there was not at least one successful syncronization or
-        // if the syncronization is in process or there was an error in the syncronization
+        // if the syncronization is in progress or there was an error in the syncronization
         if (last_completion != 0 && last_attempt <= last_completion) {
             result = 1;
         }
@@ -597,6 +625,10 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
 
             case 1:
                 result = !strcmp(hexdigest, checksum);
+                // Updating last_completion timestamp to avoid calculating the checksum again
+                if (1 == result) {
+                    wdbi_set_last_completion_only(wdb, component, (unsigned)time(NULL));
+                }
             }
         }
     } else {

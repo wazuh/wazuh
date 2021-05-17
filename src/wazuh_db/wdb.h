@@ -149,6 +149,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_SYNC_SET_COMPLETION,
     WDB_STMT_SYNC_GET_INFO,
     WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
@@ -1296,6 +1297,8 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
  * @param manager_checksum os_sha1 where the last checksum is returned
  */
 int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum);
+
+void wdbi_set_last_completion_only(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
