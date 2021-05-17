@@ -11,17 +11,18 @@ from secrets import token_urlsafe
 from shutil import chown
 from time import time
 
-from cachetools import cached, TTLCache
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
 import api.configuration as conf
+import wazuh.rbac.utils as rbac_utils
 from api.constants import SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager, Roles
+from wazuh.core.cluster.utils import read_config
+from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
 
 pool = ThreadPoolExecutor()
@@ -157,7 +158,7 @@ def generate_token(user_id=None, data=None, run_as=False):
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
-@cached(cache=TTLCache(maxsize=4500, ttl=conf.security_conf['auth_token_exp_timeout']))
+@rbac_utils.token_cache(rbac_utils.tokens_cache)
 def check_token(username, roles, token_nbf_time, run_as):
     """Check the validity of a token with the current time and the generation time of the token.
 
@@ -184,7 +185,7 @@ def check_token(username, roles, token_nbf_time, run_as):
         user_id = user['id']
 
         with UserRolesManager() as urm:
-            user_roles = [role['id'] for role in map(Roles.to_dict, urm.get_all_roles_from_user(user_id=user_id))]
+            user_roles = [role.id for role in urm.get_all_roles_from_user(user_id=user_id)]
             if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
                 return {'valid': False}
             with TokenManager() as tm:
@@ -219,7 +220,7 @@ def decode_token(token):
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
                                         'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf'],
-                                        'run_as': payload['run_as']},
+                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=False,
