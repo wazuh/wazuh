@@ -76,10 +76,10 @@ def start(foreground, root, config_file):
 
             # Load SSL context
             allowed_ssl_protocols = {
-                'TLS': ssl.PROTOCOL_TLS,
-                'TLSv1': ssl.PROTOCOL_TLSv1,
-                'TLSv1.1': ssl.PROTOCOL_TLSv1_1,
-                'TLSv1.2': ssl.PROTOCOL_TLSv1_2
+                'tls': ssl.PROTOCOL_TLS,
+                'tlsv1': ssl.PROTOCOL_TLSv1,
+                'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
+                'tlsv1.2': ssl.PROTOCOL_TLSv1_2
             }
             try:
                 ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
