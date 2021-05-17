@@ -188,7 +188,6 @@
         </UI>
         <InstallExecuteSequence>
             <!-- Delete OSSEC service if it exist -->
-            <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
             <!-- Install functions -->
