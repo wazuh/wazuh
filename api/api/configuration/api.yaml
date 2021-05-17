@@ -1,7 +1,7 @@
 # USE THIS FILE AS A TEMPLATE. UNCOMMENT LINES TO APPLY CUSTOM CONFIGURATION
 
-host: 0.0.0.0
-port: 55000
+# host: 0.0.0.0
+# port: 55000
 
 # Advanced configuration
 
