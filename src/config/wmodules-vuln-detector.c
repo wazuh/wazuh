@@ -62,6 +62,7 @@ static const char *XML_OS = "os";
 static const char *XML_UPDATE_INTERVAL = "update_interval";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_MIN_FULL_SCAN_INTERVAL = "min_full_scan_interval";
+static const char *XML_RETRY_INTERVAL = "retry_interval";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
@@ -366,6 +367,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     vuldet->flags.permissive_patch_scan = 0;
     vuldet->flags.enabled = 1;
     vuldet->min_full_scan_interval = VU_DEF_MIN_FULL_SCAN_INTERVAL;
+    vuldet->retry_interval = VU_DEF_RETRY_INTERVAL;
     vuldet->scan_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vuldet->scan_agents = NULL;
     cur_wmodule->context = &WM_VULNDETECTOR_CONTEXT;
@@ -428,6 +430,11 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
         } else if (!strcmp(nodes[i]->element, XML_MIN_FULL_SCAN_INTERVAL)) {
             if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->min_full_scan_interval)) {
                 merror("Invalid min_full_scan_interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_RETRY_INTERVAL)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->retry_interval)) {
+                merror("Invalid retry_interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {
