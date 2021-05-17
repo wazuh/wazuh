@@ -87,7 +87,7 @@ int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *))
  */
 OSListNode *OSList_GetFirstNode(OSList *list)
 {
-    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     list->cur_node = list->first_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
     return (list->first_node);
@@ -98,7 +98,7 @@ OSListNode *OSList_GetFirstNode(OSList *list)
  */
 OSListNode *OSList_GetLastNode(OSList *list)
 {
-    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     list->cur_node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
     return (list->last_node);
@@ -109,7 +109,7 @@ OSListNode *OSList_GetLastNode(OSList *list)
  */
 OSListNode *OSList_GetLastNode_group(OSList *list)
 {
-    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     list->cur_node = list->last_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
     return (list->last_node);
@@ -120,7 +120,7 @@ OSListNode *OSList_GetLastNode_group(OSList *list)
  */
 OSListNode *OSList_GetNextNode(OSList *list)
 {
-    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     if (list->cur_node == NULL) {
         w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
         return (NULL);
@@ -137,7 +137,7 @@ OSListNode *OSList_GetNextNode(OSList *list)
  */
 OSListNode *OSList_GetPrevNode(OSList *list)
 {
-    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
     if (list->cur_node == NULL) {
         w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
         return (NULL);
@@ -410,7 +410,6 @@ OSListNode *OSList_GetNext(OSList *list, OSListNode *node) {
     w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
     w_mutex_lock((pthread_mutex_t *)&list->mutex);
     if (node == NULL) {
-        merror(MEM_ERROR, errno, strerror(errno));
         w_mutex_unlock((pthread_mutex_t *)&list->mutex);
         w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
         return (NULL);
@@ -422,6 +421,29 @@ OSListNode *OSList_GetNext(OSList *list, OSListNode *node) {
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 
     return (next);
+}
+
+void *OSList_GetDataFromIndex(OSList *list, int index) {
+    int count = 0;
+    OSListNode *current = list->first_node;
+
+    w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    while (current != NULL) {
+        if (count == index) {
+            w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+            w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+            return (current->data);
+        }
+        count++;
+        current = current->next;
+    }
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+
+    return NULL;
 }
 
 /* Add data to the list

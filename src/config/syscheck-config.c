@@ -39,10 +39,11 @@ directory_t *fim_create_directory(const char *path,
     new_entry->is_wildcard = is_wildcard;
     new_entry->is_expanded = 0;
 
+#ifndef WIN32
     if (CHECK_FOLLOW & options) {
         new_entry->symbolic_links = realpath(new_entry->path, NULL);
     }
-
+#endif
     if (filerestrict) {
         os_calloc(1, sizeof(OSMatch), new_entry->filerestrict);
         if (!OSMatch_Compile(filerestrict, new_entry->filerestrict, 0)) {
@@ -87,65 +88,15 @@ directory_t *fim_copy_directory(const directory_t *_dir) {
         return NULL;
     }
     char *filerestrict = NULL;
+
+#ifndef WIN32
     if (_dir->filerestrict) {
         filerestrict = _dir->filerestrict->raw;
     }
+#endif
 
     return fim_create_directory(_dir->path, _dir->options, filerestrict, _dir->recursion_level,
                                 _dir->tag, _dir->diff_size_limit, _dir->is_wildcard);
-}
-
-void update_wildcards_config(OSList *directories,
-                             OSList *wildcards){
-    if (wildcards == NULL || directories == NULL) {
-        return;
-    }
-
-    OSListNode *node_it;
-    OSListNode *aux_it;
-    directory_t *dir_it;
-    directory_t *new_entry;
-    char **paths;
-
-    OSList_foreach(node_it, directories) {
-        dir_it = node_it->data;
-        dir_it->is_expanded = 0;
-    }
-
-    OSList_foreach(node_it, wildcards) {
-        dir_it = node_it->data;
-        paths = expand_wildcards(dir_it->path);
-        if (paths == NULL) {
-            continue;
-        }
-
-        for (int i = 0; paths[i]; i++) {
-            new_entry = fim_copy_directory(dir_it);
-            os_free(new_entry->path);
-            new_entry->path = paths[i];
-            new_entry->is_expanded = 1;
-
-            if (CHECK_FOLLOW & new_entry->options) {
-                new_entry->symbolic_links = realpath(new_entry->path, NULL);
-            }
-
-            fim_insert_directory(directories, new_entry);
-        }
-        os_free(paths);
-    }
-
-    node_it = OSList_GetFirstNode(directories);
-    while (node_it != NULL) {
-        dir_it = node_it->data;
-        if (dir_it->is_wildcard && !dir_it->is_expanded) {
-            aux_it = OSList_GetNext(directories, node_it);
-            free_directory(dir_it);
-            OSList_DeleteThisNode(directories, node_it);
-            node_it = aux_it;
-        } else {
-            node_it = OSList_GetNext(directories, node_it);
-        }
-    }
 }
 
 #ifdef WIN32
@@ -1072,9 +1023,16 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (syscheck->wildcards == NULL) {
                     syscheck->wildcards = OSList_Create();
                     if (syscheck->wildcards == NULL) {
-                        // TODO error
+                        free_directory(wildcard);
+                        os_free(clean_path);
+                        merror(MEM_ERROR, errno, strerror(errno));
                         continue;
                     }
+                }
+
+                // Check directories options to determine whether to start the whodata thread or not
+                if (wildcard->options & WHODATA_ACTIVE) {
+                    syscheck->enable_whodata = 1;
                 }
 
                 fim_insert_directory(syscheck->wildcards, wildcard);
@@ -1089,9 +1047,13 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     new_entry = fim_copy_directory(wildcard);
                     os_free(new_entry->path);
                     new_entry->path = paths[j];
-
+#ifndef WIN32
                     if (CHECK_FOLLOW & new_entry->options) {
                         new_entry->symbolic_links = realpath(new_entry->path, NULL);
+                    }
+#endif
+                    if (new_entry->diff_size_limit == -1) {
+                        new_entry->diff_size_limit = syscheck->file_size_limit;
                     }
 
                     fim_insert_directory(syscheck->directories, new_entry);

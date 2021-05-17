@@ -417,6 +417,7 @@ typedef struct _config {
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
 
+    pthread_rwlock_t directories_lock;
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
@@ -493,15 +494,6 @@ directory_t *fim_copy_directory(const directory_t *_dir);
  * @param path Path to be expanded
  */
 char **expand_wildcards(const char *path);
-
-/**
- * @brief Update directories configuration with the wildcard list
- *
- * @param OSList List of directories to be updated
- * @param OSList List wildcards to expand
- */
-void update_wildcards_config(OSList *directories,
-                             OSList *wildcards);
 
 #ifdef WIN32
 /**

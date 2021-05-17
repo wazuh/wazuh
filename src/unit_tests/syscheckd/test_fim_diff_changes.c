@@ -81,17 +81,6 @@ static const char *STR_MORE_CHANGES = "More changes...";
     CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
     CHECK_MTIME | CHECK_INODE
 
-static directory_t DIRECTORIES[] = {
-    [0] = { .path = "c:\\file\\path", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
-    [1] = { .path = "/path/to/file", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
-    [2] = { .path = "C:\\path\\to\\file", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
-    [3] = { .path = "c:\\file\\nodiff", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
-    [4] = { .path = "/path/to/ignore", .diff_size_limit = 1024, .options = DEFAULT_OPTIONS },
-};
-
-static directory_t *GLOBAL_CONFIG[] = { [0] = &DIRECTORIES[0], [1] = &DIRECTORIES[1], [2] = &DIRECTORIES[2],
-                                              [3] = &DIRECTORIES[3], [4] = &DIRECTORIES[4], [5] = NULL };
-
 typedef struct gen_diff_struct {
     diff_data *diff;
     char **strarray;
@@ -256,7 +245,28 @@ static int setup_group(void **state) {
     syscheck.nodiff = syscheck_nodiff;
     syscheck.nodiff_regex = syscheck_nodiff_regex;
 
-    syscheck.directories = GLOBAL_CONFIG;
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    directory_t *directory0 = fim_create_directory("c:\\file\\path", DEFAULT_OPTIONS, NULL, 512, NULL, 1024, 0);
+    directory_t *directory1 = fim_create_directory("/path/to/file", DEFAULT_OPTIONS, NULL, 512, NULL, 1024, 0);
+    directory_t *directory2 = fim_create_directory("C:\\path\\to\\file", DEFAULT_OPTIONS, NULL, 512, NULL, 1024, 0);
+    directory_t *directory3 = fim_create_directory("c:\\file\\nodiff", DEFAULT_OPTIONS, NULL, 512, NULL, 1024, 0);
+    directory_t *directory4 = fim_create_directory("/path/to/ignore", DEFAULT_OPTIONS, NULL, 512, NULL, 1024, 0);
+
+    // Initialize directories list
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return -1;
+    }
+
+    OSList_InsertData(syscheck.directories, NULL, directory0);
+    OSList_InsertData(syscheck.directories, NULL, directory1);
+    OSList_InsertData(syscheck.directories, NULL, directory2);
+    OSList_InsertData(syscheck.directories, NULL, directory3);
+    OSList_InsertData(syscheck.directories, NULL, directory4);
 
 #ifdef TEST_WINAGENT
     syscheck.registry = default_reg_config;
@@ -287,6 +297,21 @@ static int setup_group(void **state) {
 }
 
 static int teardown_group(void **state) {
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    if (syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            free_directory(node_it->data);
+            node_it->data = NULL;
+        }
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
 
     test_mode = 0;
 
@@ -1542,6 +1567,11 @@ void test_fim_file_diff_wrong_initialize(void **state) {
 void test_fim_file_diff_wrong_too_big_file(void **state) {
     const char *filename = GENERIC_PATH;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_initialize_file_diff_data(filename, 1);
 
     expect_mkdir_ex(TMP_FOLDER, 0);
@@ -1589,6 +1619,11 @@ void test_fim_file_diff_uncompress_fail(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_initialize_file_diff_data(filename, 1);
 
     expect_mkdir_ex(TMP_FOLDER, 0);
@@ -1615,6 +1650,11 @@ void test_fim_file_diff_create_compress_fail(void **state) {
     const char *filename = GENERIC_PATH;
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_initialize_file_diff_data(filename, 1);
 
@@ -1649,6 +1689,11 @@ void test_fim_file_diff_compare_fail(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_initialize_file_diff_data(filename, 1);
 
     expect_mkdir_ex(TMP_FOLDER, 0);
@@ -1681,6 +1726,11 @@ void test_fim_file_diff_nodiff(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_initialize_file_diff_data(filename, 1);
 
     expect_mkdir_ex(TMP_FOLDER, 0);
@@ -1709,6 +1759,11 @@ void test_fim_file_diff_nodiff(void **state) {
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_initialize_file_diff_data(filename, 1);
 
@@ -1739,6 +1794,11 @@ void test_fim_file_diff_generate_fail(void **state) {
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
@@ -1787,6 +1847,11 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
@@ -1829,6 +1894,11 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
 #ifndef TEST_WINAGENT
     int input_size = strlen(gen_diff_data_container->strarray[0]);

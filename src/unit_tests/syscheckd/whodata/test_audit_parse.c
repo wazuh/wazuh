@@ -50,6 +50,45 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+static int setup_config(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    directory_t *directory0 = fim_create_directory("/var/test", WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return -1;
+    }
+
+    OSList_InsertData(syscheck.directories, NULL, directory0);
+
+    return 0;
+}
+
+static int teardown_config(void **state) {
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    if (syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            free_directory(node_it->data);
+            node_it->data = NULL;
+        }
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
+
+    return 0;
+}
+
 static int free_string(void **state) {
     char * string = *state;
     free(string);
@@ -534,11 +573,7 @@ void test_audit_parse_delete(void **state) {
 
 void test_audit_parse_delete_recursive(void **state) {
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
-    char *entry = "/var/test";
-    directory_t directory = { .path = entry, .options = WHODATA_ACTIVE };
-    directory_t *config[] = { [0] = &directory, [1] = NULL };
 
-    syscheck.directories = config;
     syscheck.max_audit_entries = 100;
 
     count_reload_retries = 0;
@@ -1078,7 +1113,7 @@ int main(void) {
         cmocka_unit_test(test_audit_parse_hex),
         cmocka_unit_test(test_audit_parse_empty_fields),
         cmocka_unit_test(test_audit_parse_delete),
-        cmocka_unit_test(test_audit_parse_delete_recursive),
+        cmocka_unit_test_setup_teardown(test_audit_parse_delete_recursive, setup_config, teardown_config),
         cmocka_unit_test(test_audit_parse_mv),
         cmocka_unit_test(test_audit_parse_mv_hex),
         cmocka_unit_test(test_audit_parse_rm),

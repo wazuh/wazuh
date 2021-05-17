@@ -76,16 +76,46 @@ static int free_string(void **state) {
     return 0;
 }
 
-
-static directory_t DIRECTORIES[] = {
-    [0] = {.path="/test0", .options = WHODATA_ACTIVE},
-    [1] = {.path ="/test1", .options = WHODATA_ACTIVE}
-};
-
-static directory_t *DIR_LINKS[] = { [0] = &DIRECTORIES[0], [1] = &DIRECTORIES[1], [2] = NULL };
-
 static int setup_syscheck_dir_links(void **state) {
-    syscheck.directories = DIR_LINKS;
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE, NULL, 512,
+                                                NULL, -1, 0);
+
+    directory_t *directory1 = fim_create_directory("/test1", WHODATA_ACTIVE, NULL, 512,
+                                                NULL, -1, 0);
+
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return (1);
+    }
+
+    OSList_InsertData(syscheck.directories, NULL, directory0);
+    OSList_InsertData(syscheck.directories, NULL, directory1);
+
+    return 0;
+}
+
+static int teardown_syscheck_dir_links(void **state) {
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    if (syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            free_directory(node_it->data);
+            node_it->data = NULL;
+        }
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
 
     return 0;
 }
@@ -1013,26 +1043,28 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
 
 void test_audit_no_rules_to_realtime(void **state) {
     char error_msg[OS_SIZE_128];
-    // Mutex inside get_real_path
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    // Mutex
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     will_return(__wrap_search_audit_rule, 0);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test0");
     expect_string(__wrap__mwarn, formatted_msg, error_msg);
-    // Mutex inside get_real_path
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+
     will_return(__wrap_search_audit_rule, 1);
 
     audit_no_rules_to_realtime();
 
     // Check that the options have been correctly changed
-    if (syscheck.directories[0]->options & WHODATA_ACTIVE) {
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE) {
         fail();
     }
 
-    if (syscheck.directories[1]->options & REALTIME_ACTIVE) {
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & REALTIME_ACTIVE) {
         fail();
     }
 }
@@ -1069,7 +1101,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_endline, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
-        cmocka_unit_test_setup(test_audit_no_rules_to_realtime, setup_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_no_rules_to_realtime, setup_syscheck_dir_links, teardown_syscheck_dir_links),
         };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

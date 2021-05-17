@@ -45,7 +45,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.file_limit     = 100000;
     syscheck.directories = OSList_Create();
     if (syscheck.directories == NULL) {
-        return (1);
+        return (OS_INVALID);
     }
     syscheck.wildcards = NULL;
     syscheck.enable_synchronization = 1;
@@ -103,8 +103,6 @@ int Read_Syscheck_Config(const char *cfgfile)
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
 
-    minfo("After ReadConfig");
-
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         if (dir_it->diff_size_limit == -1) {
@@ -127,7 +125,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 
 #ifndef WIN32
     /* We must have at least one directory to check */
-    if (syscheck.directories == NULL || syscheck.directories->first_node == NULL) {
+    if (syscheck.directories->first_node == NULL && syscheck.wildcards == NULL) {
         return (1);
     }
 #else
@@ -147,7 +145,7 @@ int Read_Syscheck_Config(const char *cfgfile)
             it++;
         }
     }
-    if ((syscheck.directories == NULL) && (syscheck.registry[0].entry == NULL)) {
+    if ((syscheck.directories->first_node == NULL) && (syscheck.registry[0].entry == NULL && syscheck.wildcards == NULL)) {
         return (1);
     }
     syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
@@ -222,6 +220,7 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     if (syscheck.directories) {
         directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
@@ -297,6 +296,8 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg,"directories",dirs);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
     if (syscheck.nodiff) {
         cJSON *ndfs = cJSON_CreateArray();
         for (i=0;syscheck.nodiff[i];i++) {

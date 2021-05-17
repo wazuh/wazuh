@@ -67,9 +67,9 @@ void test_Read_Syscheck_Config_success(void **state)
     // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
     // With the first 10 directories in other lines, the count should be 74 (75 should be NULL)
     for (int i = 0; i < 74; i++){
-        assert_non_null(syscheck.directories[i]);
+        assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, i)));
     }
-    assert_null(syscheck.directories[74]);
+    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 74)));
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 1);
@@ -543,13 +543,13 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     assert_int_equal(ret, 0);
 
     #ifdef WIN32
-    assert_string_equal(syscheck.directories[0]->path, "c:\\,testcommas");
-    assert_string_equal(syscheck.directories[1]->path, "c:\\test,commas");
-    assert_string_equal(syscheck.directories[2]->path, "c:\\testcommas,");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "c:\\,testcommas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "c:\\test,commas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "c:\\testcommas,");
     #else
-    assert_string_equal(syscheck.directories[0]->path, "/,testcommas");
-    assert_string_equal(syscheck.directories[1]->path, "/test,commas");
-    assert_string_equal(syscheck.directories[2]->path, "/testcommas,");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "/,testcommas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "/test,commas");
+    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "/testcommas,");
     #endif
 }
 

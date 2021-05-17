@@ -86,8 +86,16 @@ OSListNode *OSList_GetNext(OSList *list, OSListNode *node);
  *
  * @param list List where to get the node from
  * @param node Node reference to insert new node with data
- * @param node Data to be insert
+ * @param data Data to be insert
  */
 int OSList_InsertData(OSList *list, OSListNode *node, void *data);
+
+/**
+ * @brief Get the pointer to data from the node placed in index position
+ *
+ * @param list List where to get the node from
+ * @param index Index that indicate the position of the node required
+ */
+void *OSList_GetDataFromIndex(OSList *list, int index);
 
 #endif /* OS_LIST */

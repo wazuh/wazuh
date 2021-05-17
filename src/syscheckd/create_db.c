@@ -145,6 +145,7 @@ time_t fim_scan() {
     fim_db_set_all_unscanned(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
@@ -160,6 +161,7 @@ time_t fim_scan() {
 #endif
         os_free(path);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
@@ -178,6 +180,7 @@ time_t fim_scan() {
     if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
 
+        w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
             char *path;
@@ -197,6 +200,7 @@ time_t fim_scan() {
 
             os_free(path);
         }
+        w_rwlock_unlock(&syscheck.directories_lock);
 
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
@@ -561,7 +565,11 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
-        switch (fim_process_file_from_db(current_path, stack, tree, &event)) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        int ret = fim_process_file_from_db(current_path, stack, tree, &event);
+        w_rwlock_unlock(&syscheck.directories_lock);
+
+        switch (ret) {
         case FIM_FILE_UPDATED:
         case FIM_FILE_DELETED:
             OSList_DeleteCurrentlyNode(stack);
@@ -1586,6 +1594,80 @@ void fim_diff_folder_size(){
     }
 
     os_free(diff_local);
+}
+
+void update_wildcards_config(OSList *directories,
+                             OSList *wildcards){
+    OSListNode *node_it;
+    OSListNode *aux_it;
+    directory_t *dir_it;
+    directory_t *new_entry;
+    char **paths;
+
+    if (wildcards == NULL || directories == NULL) {
+        return;
+    }
+
+    mdebug2(FIM_WILDCARDS_UPDATE_START);
+    w_rwlock_wrlock(&syscheck.directories_lock);
+
+    OSList_foreach(node_it, directories) {
+        dir_it = node_it->data;
+        dir_it->is_expanded = 0;
+    }
+
+    OSList_foreach(node_it, wildcards) {
+        dir_it = node_it->data;
+        paths = expand_wildcards(dir_it->path);
+
+        if (paths == NULL) {
+            continue;
+        }
+
+        for (int i = 0; paths[i]; i++) {
+            new_entry = fim_copy_directory(dir_it);
+            os_free(new_entry->path);
+            new_entry->path = paths[i];
+            new_entry->is_expanded = 1;
+#ifndef WIN32
+            if (CHECK_FOLLOW & new_entry->options) {
+                new_entry->symbolic_links = realpath(new_entry->path, NULL);
+            }
+#endif
+            if (new_entry->diff_size_limit == -1) {
+                new_entry->diff_size_limit = syscheck.file_size_limit;
+            }
+
+#ifdef WIN_WHODATA
+            if (FIM_MODE(new_entry->options) == FIM_WHODATA) {
+                realtime_adddir(new_entry->path, new_entry, 0);
+            }
+#endif
+            fim_insert_directory(directories, new_entry);
+        }
+        os_free(paths);
+    }
+
+    node_it = OSList_GetFirstNode(directories);
+    while (node_it != NULL) {
+        dir_it = node_it->data;
+        if (dir_it->is_wildcard && !dir_it->is_expanded) {
+            // Send event if needed before delete this node entry
+            fim_process_missing_entry(dir_it->path, FIM_SCHEDULED, NULL);
+
+            // Delete node
+            mdebug2(FIM_WILDCARDS_REMOVE_DIRECTORY, dir_it->path);
+            aux_it = OSList_GetNext(directories, node_it);
+            free_directory(dir_it);
+            OSList_DeleteThisNode(directories, node_it);
+            node_it = aux_it;
+        } else {
+            node_it = OSList_GetNext(directories, node_it);
+        }
+    }
+
+    w_rwlock_unlock(&syscheck.directories_lock);
+    mdebug2(FIM_WILDCARDS_UPDATE_FINALIZE);
 }
 
 // LCOV_EXCL_START

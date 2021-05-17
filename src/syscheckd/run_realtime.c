@@ -192,9 +192,11 @@ void realtime_process() {
 
     char ** paths = rbtree_keys(tree);
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     for (int i = 0; paths[i] != NULL; i++) {
         fim_realtime_event(paths[i]);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
     free_strarray(paths);
     rbtree_destroy(tree);
@@ -211,11 +213,13 @@ int realtime_update_watch(const char *wd, const char *dir) {
         return -1;
     }
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     configuration = fim_configuration_directory(dir);
 
     if (configuration == NULL) {
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+        w_rwlock_unlock(&syscheck.directories_lock);
         return 0;
     }
 
@@ -224,6 +228,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
     inotify_add_watch(syscheck.realtime->fd, dir,
                       (configuration->options & CHECK_FOLLOW) == 0 ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
                                                                      REALTIME_MONITOR_FLAGS);
+    w_rwlock_unlock(&syscheck.directories_lock);
 
     if (new_wd < 0) {
         if (errno == ENOSPC) {
@@ -422,6 +427,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             }
             str_lowercase(final_path);
 
+            w_rwlock_rdlock(&syscheck.directories_lock);
             directory_t *index = fim_configuration_directory(wdchar);
             directory_t *file_index = fim_configuration_directory(final_path);
 
@@ -429,6 +435,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
                 /* Check the change */
                 fim_realtime_event(final_path);
             }
+            w_rwlock_unlock(&syscheck.directories_lock);
 
         } while (pinfo->NextEntryOffset != 0);
     }

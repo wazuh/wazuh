@@ -374,6 +374,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     while (1) {
 #ifdef WIN32
         // Directories in Windows configured with real-time add recursive watches
+        w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
@@ -382,6 +383,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
                 w_mutex_unlock(&syscheck.fim_realtime_mutex);
             }
         }
+        w_rwlock_unlock(&syscheck.directories_lock);
 #endif
 
         w_mutex_lock(&syscheck.fim_realtime_mutex);
@@ -450,7 +452,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #else
     directory_t *dir_it;
     OSListNode *node_it;
-
+    w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         if (dir_it->options & REALTIME_ACTIVE) {
@@ -458,6 +460,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             break;
         }
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
     pthread_exit(NULL);
 #endif
@@ -492,6 +495,7 @@ int fim_whodata_initialize() {
     directory_t *dir_it;
     OSListNode *node_it;
 
+    w_rwlock_wrlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
@@ -507,6 +511,17 @@ int fim_whodata_initialize() {
         }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    if (syscheck.wdata.fd == NULL) {
+        OSList_foreach(node_it, syscheck.wildcards) {
+            dir_it = node_it->data;
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+                whodata_audit_start();
+                break;
+            }
+        }
+    }
 
     /* If the initialization of the Whodata engine fails,
     Wazuh must monitor files/directories in Realtime mode. */
@@ -521,6 +536,7 @@ int fim_whodata_initialize() {
         // In case SACLs and policies have been set, restore them.
         audit_restore();
 
+        w_rwlock_rdlock(&syscheck.directories_lock);
         // Add proper flags for the realtime thread monitors the directories/files.
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
@@ -531,6 +547,7 @@ int fim_whodata_initialize() {
         }
 
         retval = -1;
+        w_rwlock_unlock(&syscheck.directories_lock);
     }
 
     return retval;
@@ -598,6 +615,8 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
         mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
+        w_rwlock_rdlock(&syscheck.directories_lock);
+
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
             if ((dir_it->options & CHECK_FOLLOW) == 0) {
@@ -638,6 +657,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
             os_free(real_path);
         }
 
+        w_rwlock_unlock(&syscheck.directories_lock);
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         mdebug1(FIM_LINKCHECK_FINALIZE);
     }
@@ -749,7 +769,7 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
     }
 }
 
-STATIC void fim_delete_realtime_watches(const directory_t *configuration) {
+STATIC void fim_delete_realtime_watches(__attribute__((unused)) const directory_t *configuration) {
 #ifdef INOTIFY_ENABLED
     OSHashNode *hash_node;
     char *data;
@@ -875,6 +895,7 @@ void set_whodata_mode_changes() {
 
     syscheck.realtime_change = 0;
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         if (dir_it->dirs_status.status & WD_CHECK_REALTIME) {
@@ -890,5 +911,6 @@ void set_whodata_mode_changes() {
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
         }
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 }
 #endif

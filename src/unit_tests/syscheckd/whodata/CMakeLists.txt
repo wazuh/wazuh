@@ -57,7 +57,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,select -Wl,--wrap,audit_parse -Wl,--wrap,symlink -Wl,--wrap,SendMSG \
                               -Wl,--wrap,audit_get_rule_list -Wl,--wrap,fim_audit_reload_rules \
                               -Wl,--wrap,search_audit_rule -Wl,--wrap,abspath -Wl,--wrap,atomic_int_get \
-                              -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc")
+                              -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
+                              -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
+                              -Wl,--wrap,pthread_rwlock_rdlock")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
 

@@ -640,7 +640,9 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
                         if (w_evt->inode) {
+                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
+                            w_rwlock_unlock(&syscheck.directories_lock);
                         }
                     }
                 }
@@ -664,7 +666,9 @@ void audit_parse(char *buffer) {
                         free(file_path);
 
                         if (w_evt->inode) {
+                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
+                            w_rwlock_unlock(&syscheck.directories_lock);
                         }
                     }
                 }
@@ -699,7 +703,9 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
                         if (w_evt->inode) {
+                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
+                            w_rwlock_unlock(&syscheck.directories_lock);
                         }
                     }
                 }
@@ -755,7 +761,9 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
                         if (w_evt->inode) {
+                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
+                            w_rwlock_unlock(&syscheck.directories_lock);
                         }
                         free(file_path1);
                         w_evt->path = NULL;
@@ -773,7 +781,9 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
                         if (w_evt->inode) {
+                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
+                            w_rwlock_unlock(&syscheck.directories_lock);
                         }
                     }
                 }
@@ -811,7 +821,9 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
                         if (w_evt->inode) {
+                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
+                            w_rwlock_unlock(&syscheck.directories_lock);
                         }
                     }
                 }

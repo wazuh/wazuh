@@ -268,7 +268,7 @@ int main(int argc, char **argv)
             // Switch who-data to real-time mode
 
             OSList_foreach(node_it, syscheck.directories) {
-            dir_it = node_it->data;
+                dir_it = node_it->data;
                 if (dir_it->options & WHODATA_ACTIVE) {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
