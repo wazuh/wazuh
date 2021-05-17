@@ -56,7 +56,8 @@ def test_select_key_affected_items(response, select_key):
         set1 = main_keys.symmetric_difference(set(item.keys()))
         # Check if there are keys in response that were not specified in 'select_keys', apart from those which can be
         # mandatory (id, agent_id, etc).
-        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file'} | main_keys)), \
+        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file', 'task_id', 'agent_id', 'status',
+                                                            'command', 'create_time'} | main_keys)), \
             f'Select keys are {main_keys}, but the response contains these keys: {set1}'
 
         for nested_key in nested_keys.items():
