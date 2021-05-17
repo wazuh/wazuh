@@ -22,7 +22,7 @@ May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_se
 <!-- Group BigIP F5 decoders-->
 <decoder name="f5_bigip">
   <type>syslog</type>
-	<prematch type="pcre2">^\S+\s[^\[]+\[\d+\]:\s\[0-9a-fA-F]+:\d+:\s</prematch>
+	<prematch type="pcre2">^\S+\s[^\[]+\[\d+\]:\s[0-9a-fA-F]+:\d+:\s</prematch>
 </decoder>
 
 <!-- General decoder catch all-->
