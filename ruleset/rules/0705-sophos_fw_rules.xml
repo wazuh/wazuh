@@ -13,61 +13,61 @@
 
   <rule id="70021" level="5">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Deny</field>
+    <status>Deny</status>
     <description>Traffic Denied: from $(src_ip) to $(dst_ip)</description>
   </rule>
 
   <rule id="70022" level="3">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Allow</field>
+    <status>Allow</status>
     <description>Traffic Allowed: from $(src_ip) to $(dst_ip)</description>
   </rule>
 
   <rule id="70023" level="3">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Detect</field>
+    <status>Detect</status>
     <description>Traffic Detected: from $(src_ip) to $(dst_ip)</description>
   </rule>
 
   <rule id="70024" level="3">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Drop</field>
+    <status>Drop</status>
     <description>Traffic Dropped: from $(src_ip) to $(dst_ip)</description>
   </rule>
 
   <rule id="70025" level="3">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Clean</field>
+    <status>Clean</status>
     <description>Traffic Cleaned: from $(src_ip) to $(dst_ip)</description>
   </rule>
 
   <rule id="70026" level="7">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Virus</field>
+    <status>Virus</status>
     <description>Virus detected: source IP $(src_ip)</description>
   </rule>
 
   <rule id="70027" level="5">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Spam</field>
+    <status>Spam</status>
     <description>Spam: source IP $(src_ip)</description>
   </rule>
 
   <rule id="70028" level="3">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Admin</field>
+    <status>Admin</status>
     <description>Admin Traffic: from $(src_ip) to $(dst_ip)</description>
   </rule>
   
   <rule id="70029" level="5">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">Authentication</field>
+    <status>Authentication</status>
     <description>Authentication Traffic: from $(src_ip) to $(dst_ip)</description>
   </rule>
   
   <rule id="70030" level="3">
     <if_sid>70020</if_sid>
-    <field name="sophos_fw_status_msg">System</field>
+    <status>System</status>
     <description>System Traffic : from $(src_ip) to $(dst_ip)</description>
   </rule>
 
