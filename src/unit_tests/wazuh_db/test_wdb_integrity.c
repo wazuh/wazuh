@@ -1280,10 +1280,15 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
     const char *component = "syscollector-packages";
     cJSON* j_data = cJSON_CreateArray();
     cJSON* j_object = cJSON_CreateObject();
+    unsigned int timestamp = 10000;
+
+    // Using real EVP
+    test_mode = 0;
 
     cJSON_AddNumberToObject(j_object, "last_attempt", 123456);
     cJSON_AddNumberToObject(j_object, "last_completion", 123455);
-    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    // sha-1 of "string_to_hash"
+    cJSON_AddStringToObject(j_object, "last_agent_checksum", "da99eb557da5259fee02be6d0c30e9b121eca384");
     cJSON_AddItemToArray(j_data, j_object);
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -1295,15 +1300,25 @@ void test_wdbi_check_sync_status_data_not_synced_checksum_valid(void **state)
 
     // Calling to calculate checksum
     will_return(__wrap_wdb_stmt_cache, 1);
-
     will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, 100);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, 0);
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, NULL);
+    will_return(__wrap_sqlite3_column_text, "string_to_hash");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL syscollector-packages checksum.");
+    will_return(__wrap_time, timestamp);
+
+    // wdbi_set_last_completion_only
+    will_return(__wrap_wdb_stmt_cache, 0);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 1);
+    expect_value(__wrap_sqlite3_bind_int64, value, timestamp);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "syscollector-packages");
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     ret_val = wdbi_check_sync_status(data, WDB_SYSCOLLECTOR_PACKAGES);
 
