@@ -178,7 +178,7 @@
         <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;WazuhSvc&quot; || NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="check" />
 
         <!-- Explicitely deleting the OSSEC service to install new Wazuh service -->
-        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;WazuhSvc&quot; & SC DELETE &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
@@ -195,7 +195,7 @@
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StopWinService" After="DeleteOssecService">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+            <Custom Action="StopWinService">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
