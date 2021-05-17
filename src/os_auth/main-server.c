@@ -158,6 +158,7 @@ int main(int argc, char **argv)
     int run_foreground = 0;
     gid_t gid;
     const char *group = GROUPGLOBAL;
+    char buf[4096 + 1];
 
     pthread_t thread_local_server = 0;
     pthread_t thread_dispatcher = 0;
@@ -418,6 +419,38 @@ int main(int argc, char **argv)
     fclose(fp);
 
     if (config.flags.remote_enrollment) {
+        /* Check if password is enabled */
+        if (config.flags.use_password) {
+            fp = fopen(AUTHD_PASS, "r");
+            buf[0] = '\0';
+
+            /* Checking if there is a custom password file */
+            if (fp) {
+                buf[4096] = '\0';
+                char *ret = fgets(buf, 4095, fp);
+
+                if (ret && strlen(buf) > 2) {
+                    /* Remove newline */
+                    if (buf[strlen(buf) - 1] == '\n') {
+                        buf[strlen(buf) - 1] = '\0';
+                    }
+                    authpass = strdup(buf);
+                }
+
+                fclose(fp);
+            }
+
+            if (buf[0] != '\0') {
+                minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
+            } else {
+                /* Getting temporary pass. */
+                authpass = __generatetmppass();
+                minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+            }
+        } else {
+            minfo("Accepting connections on port %hu. No password required.", config.port);
+        }
+
         /* Start SSL */
         if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate), !ctx) {
             merror("SSL error. Exiting.");
@@ -516,11 +549,9 @@ int main(int argc, char **argv)
 
 /* Thread for dispatching connection pool */
 void* run_dispatcher(__attribute__((unused)) void *arg) {
-    FILE *fp;
     char ip[IPSIZE + 1];
     int ret;
     char* buf = NULL;
-    char buf_p[4096 + 1];
     SSL *ssl;
     char response[2048];
     response[2047] = '\0';
@@ -529,36 +560,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
-
-    if (config.flags.use_password) {
-        /* Checking if there is a custom password file */
-        fp = fopen(AUTHD_PASS, "r");
-        buf_p[0] = '\0';
-        if (fp) {
-            buf_p[4096] = '\0';
-            char *ret = fgets(buf_p, 4095, fp);
-
-            if (ret && strlen(buf_p) > 2) {
-                /* Remove newline */
-                if (buf_p[strlen(buf_p) - 1] == '\n') {
-                    buf_p[strlen(buf_p) - 1] = '\0';
-                }
-                authpass = strdup(buf_p);
-            }
-
-            fclose(fp);
-        }
-
-        if (buf_p[0] != '\0') {
-            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
-        } else {
-            /* Getting temporary pass. */
-            authpass = __generatetmppass();
-            minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
-        }
-    } else {
-        minfo("Accepting connections on port %hu. No password required.", config.port);
-    }
 
     mdebug1("Dispatch thread ready.");
 
