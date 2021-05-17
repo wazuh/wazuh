@@ -25,7 +25,7 @@ from wazuh.core.cluster.utils import read_config
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
 
-pool = ThreadPoolExecutor()
+pool = ThreadPoolExecutor(max_workers=1)
 
 
 def check_user_master(user, password):
