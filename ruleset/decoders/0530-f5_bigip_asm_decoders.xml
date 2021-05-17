@@ -9,7 +9,7 @@
 <!-- Group BigIP F5 ASM decoders-->
 <decoder name="f5_bigip_asm">
   <type>syslog</type>
-	<field name="program_name">ASM</field>
+	<program_name>ASM</program_name>
 </decoder>
 
 <!-- General decoder catch all-->
