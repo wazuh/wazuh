@@ -514,6 +514,26 @@ def start_storage(first_run):
 	logging.info("Storage: End")
 
 ################################################################################################
+# Search for the first blob to begin with based on the first date to treat
+################################################################################################
+
+def find_first_blob(blobs, blob_date):
+	low = 0
+	high = len(blobs) - 1
+	mid = 0
+	while low <= high:
+		mid = (high + low) // 2
+		if blobs[mid].properties.creation_time < blob_date:
+			low = mid + 1
+		elif blobs[mid].properties.creation_time > blob_date:
+			high = mid - 1
+		else:
+			return mid
+	if mid > 0:
+		return mid-1
+	return 0
+
+################################################################################################
 # Get the blobs from a container and sends or writes their content
 ################################################################################################
 
@@ -546,26 +566,27 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 
 			max_blob = utc.localize(time_format_storage)
 
-			for blob in blobs:
+			if first_run == False:
+				if container_md5 not in all_dates["storage"]:
+					last_blob = time_format_storage
+				else:
+					blob_date_format = all_dates["storage"][container_md5]
+					blob_date_length = len(blob_date_format) - 6
+					blob_date_format = blob_date_format[:blob_date_length]
+					last_blob = datetime.datetime.strptime(blob_date_format, '%Y-%m-%d %H:%M:%S')
+			else:
+				last_blob = time_format_storage
+			last_blob = utc.localize(last_blob)
+			logging.info("Storage: The search starts from the date: {} for blobs in container: '{}' ".format(last_blob, name))
+
+			first_blob = find_first_blob(blobs.items,last_blob)
+
+			for blob in blobs.items[first_blob:]:
 				try:
 					# Access to the desired blobs
 					if search in blob.name:
 						data = block_blob_service.get_blob_to_text(name, blob.name)
 						last_modified = blob.properties.last_modified
-
-						if first_run == False:
-							if container_md5 not in all_dates["storage"]:
-								last_blob = time_format_storage
-							else:
-								blob_date_format = all_dates["storage"][container_md5]
-								blob_date_length = len(blob_date_format) - 6
-								blob_date_format = blob_date_format[:blob_date_length]
-								last_blob = datetime.datetime.strptime(blob_date_format, '%Y-%m-%d %H:%M:%S')
-						else:
-							last_blob = time_format_storage
-
-						last_blob = utc.localize(last_blob)
-						logging.info("Storage: The search starts from the date: {} for blobs in container: '{}' ".format(last_blob, name))
 
 						if last_modified > last_blob:
 							if last_modified > max_blob:
@@ -617,7 +638,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 					logging.error("Storage: sending blob: '{}'.".format(e))
 
 			next_marker = blobs.next_marker
-			if not next_marker:
+			if not next_marker: 
 				break
 
 		try:
