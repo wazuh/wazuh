@@ -296,21 +296,52 @@ void wm_sync_agents() {
 
     if ((agents = wdb_get_all_agents(FALSE, &wdb_wmdb_sock))) {
         char id[9];
+        char wdbquery[OS_SIZE_128 + 1];
+        char *wdboutput = NULL;
+        int error;
 
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(&keys, id) == -1) {
+                char full_name[FILE_SIZE + 1];
+                char *name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
+
                 if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
-                } else {
-                    // Remove agent-related files
-                    OS_RemoveCounter(id);
-                    OS_RemoveAgentGroup(id);
+                    os_free(name);
+                    continue;
                 }
+
+                if (wdboutput == NULL) {
+                    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+                }
+
+                snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id);
+                error = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+                if (error == 0) {
+                    mdebug1("DB from agent %s was deleted '%s'", id, wdboutput);
+                } else {
+                    merror("Could not remove the DB of the agent %s. Error: %d.", id, error);
+                }
+
+                // Remove agent-related files
+                OS_RemoveCounter(id);
+                OS_RemoveAgentTimestamp(id);
+                OS_RemoveAgentGroup(id);
+
+                if (name == NULL) {
+                    continue;
+                }
+
+                delete_diff(name);
+
+                free(name);
             }
         }
 
+        os_free(wdboutput);
         os_free(agents);
     }
 
