@@ -313,7 +313,11 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     {
         for (const auto& platform : PLATFORMS_RELEASE_FILES)
         {
-            ret |= parseFnc(platform.second, platform.first);
+            if(parseFnc(platform.second, platform.first))
+            {
+                ret = true;
+                break;
+            }
         }
     }
     return ret;
