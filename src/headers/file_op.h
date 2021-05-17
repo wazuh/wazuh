@@ -537,9 +537,10 @@ DWORD FileSizeWin(const char * file);
  * This mode of opening the file allows reading \r\n instead of \n.
  *
  * @param file pathfile to open
+ * @param[out] lpFileInformation  pointer to a BY_HANDLE_FILE_INFORMATION structure that receives the file information
  * @return file descriptor on success, otherwise null.
  */
-FILE * w_fopen_r(const char *file, const char * mode);
+FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION * lpFileInformation);
 
 #endif // Windows
 

@@ -173,9 +173,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Security configuration assessment remoted queue */
 #define CFGARQUEUE       "queue/alerts/cfgarq"
 
-/* Exec queue api*/
-#define EXECQUEUEA      "queue/alerts/execa"
-
 /* Active Response queue */
 #define ARQUEUE         "queue/alerts/ar"
 
