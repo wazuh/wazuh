@@ -19,15 +19,15 @@ May 17 11:28:21 HOSTNAME alert gtmd[13202]: 011a4003:1: SNMP_TRAP: Pool /Common/
 May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_server_name (ip:port=192.168.1.2:1526) (Server /Common/virtual_server_name) state change green -> red ( Monitor /Common/Monitor_1.1.1.1 from /Common/F5-LAN-SF : no reply from big3d: timed out)
 -->
 
-<!-- Group BigIP F5 decoders-->
-<decoder name="f5_bigip">
+<!-- Group BigIP F5 LTM decoders-->
+<decoder name="f5_bigip_ltm">
   <type>syslog</type>
 	<prematch type="pcre2">^\S+\s[^\[]+\[\d+\]:\s[0-9a-fA-F]+:\d+:\s</prematch>
 </decoder>
 
 <!-- General decoder catch all-->
-<decoder name="f5_bigip_general_fields">
-   <parent>f5_bigip</parent>
+<decoder name="f5_bigip_ltm_general_fields">
+   <parent>f5_bigip_ltm</parent>
    <regex type="pcre2">^(\S+)\s([^\[]+)\[(\d+)\]:\s([0-9a-fA-F]+):(\d+):\s(.*)$</regex>
    <order>event.type, process.name, process.pid, event.code, log.level, message</order>
 </decoder>

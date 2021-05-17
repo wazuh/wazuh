@@ -1,0 +1,20 @@
+<!--
+  -  F5 Networks BIG-IP LTM decoders
+  -  Created by Wazuh, Inc.
+  -  Author: Juan Ricci, Javier Bejar, Fabricio Brunetti
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!-- Group BigIP F5 ASM decoders-->
+<decoder name="f5_bigip_asm">
+  <type>syslog</type>
+	<field name="program_name">ASM</field>
+</decoder>
+
+<!-- General decoder catch all-->
+<decoder name="f5_bigip_asm_general">
+  <parent>f5_bigip_asm</parent>
+  <regex>(.*)</regex>
+  <order>message</order>
+</decoder>

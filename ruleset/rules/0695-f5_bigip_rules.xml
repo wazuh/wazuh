@@ -10,7 +10,7 @@
 
      <!-- F5 BigIP LTM grouped rules -->
     <rule id="65260" level="0">
-        <decoded_as>f5_bigip</decoded_as>
+        <decoded_as>f5_bigip_ltm</decoded_as>
         <description>F5 Networks BigIP LTM events.</description>
     </rule>
 
