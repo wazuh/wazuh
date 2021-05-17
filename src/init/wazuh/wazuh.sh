@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#Copyright (C) 2015-2020, Wazuh Inc.
+#Copyright (C) 2015-2021, Wazuh Inc.
 # Install functions for Wazuh
 # Wazuh.com (https://github.com/wazuh)
 
@@ -213,4 +213,9 @@ WazuhUpgrade()
         find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
+
+    # Remove unnecessary `execa` socket
+    if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
+        rm -f $DIRECTORY/queue/alerts/execa
+    fi
 }

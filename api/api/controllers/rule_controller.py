@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -45,7 +45,7 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
     :param gpg13: Filters by GPG13 requirement.
     :param hipaa: Filters by HIPAA requirement.
     :param tsc: Filters by TSC requirement.
-    :param mitre: Filters by mitre attack ID.
+    :param mitre: Filters by mitre technique ID.
     :return: Data object
     """
     f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit, 'select': select,

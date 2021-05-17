@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -488,6 +488,18 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
         }
     }
 
+    if (ruleinfo->mitre_tactic_id) {
+        for (int i = 0; ruleinfo->mitre_tactic_id[i]; i++) {
+            os_free(ruleinfo->mitre_tactic_id[i]);
+        }
+    }
+
+    if (ruleinfo->mitre_technique_id) {
+        for (int i = 0; ruleinfo->mitre_technique_id[i]; i++) {
+            os_free(ruleinfo->mitre_technique_id[i]);
+        }
+    }
+
     w_free_expression_t(&ruleinfo->match);
     w_free_expression_t(&ruleinfo->regex);
     w_free_expression_t(&ruleinfo->srcgeoip);
@@ -536,6 +548,8 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
     os_free(ruleinfo->same_fields);
     os_free(ruleinfo->not_same_fields);
     os_free(ruleinfo->mitre_id);
+    os_free(ruleinfo->mitre_tactic_id);
+    os_free(ruleinfo->mitre_technique_id);
 
     os_free(ruleinfo);
 }

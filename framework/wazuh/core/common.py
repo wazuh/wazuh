@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -147,6 +147,7 @@ EXECQ = os.path.join(wazuh_path, 'queue', 'alerts', 'execq')
 # Socket
 AUTHD_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'auth')
 REQUEST_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'request')
+WCOM_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'com')
 LOGTEST_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'logtest')
 UPGRADE_SOCKET = os.path.join(wazuh_path, 'queue', 'tasks', 'upgrade')
 

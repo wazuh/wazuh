@@ -1,0 +1,23 @@
+<!--
+  -  Grouping of TA0005 "Defense Evasion" rules
+  -  Author: Fabricio Brunetti
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+
+
+
+<group name="TA0005,">
+    <!-- Sample: {"win":{"eventdata":{"originalFileName":"csc.exe","image":"C:\\\\Windows\\\\Microsoft.NET\\\\Framework64\\\\v4.0.30319\\\\csc.exe","product":"Microsoft® .NET Framework","parentProcessGuid":"{4dc16835-5bcf-6091-b801-000000003500}","description":"Visual C# Command Line Compiler","logonGuid":"{4dc16835-5948-6091-2f18-2d0000000000}","parentCommandLine":"powershell  -ExecutionPolicy Bypass -NoExit .\\\\meta.ps1","processGuid":"{4dc16835-5bd1-6091-b901-000000003500}","logonId":"0x2d182f","parentProcessId":"5912","processId":"5124","currentDirectory":"C:\\\\Users\\\\AtomicRed\\\\Downloads\\\\","utcTime":"2021-05-04 14:36:01.555","hashes":"SHA1=528973416456C780051889CA1709510B6BF73370,MD5=F65B029562077B648A6A5F6A1AA76A66,SHA256=4A6D0864E19C0368A47217C129B075DDDF61A6A262388F9D21045D82F3423ED7,IMPHASH=EE1E569AD02AA1F7AECA80AC0601D80D","parentImage":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","ruleName":"technique_id=T1127,technique_name=Trusted Developer Utilities Proxy Execution","company":"Microsoft Corporation","commandLine":"\\\"C:\\\\Windows\\\\Microsoft.NET\\\\Framework64\\\\v4.0.30319\\\\csc.exe\\\" /noconfig /fullpaths @\\\"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Local\\\\Temp\\\\bspmrlpb.cmdline\\\"","integrityLevel":"Medium","fileVersion":"4.8.4084.0 built by: NET48REL1","user":"EXCHANGETEST\\\\AtomicRed","terminalSessionId":"1"},"system":{"eventID":"1","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Process Create:\r\nRuleName: technique_id=T1127,technique_name=Trusted Developer Utilities Proxy Execution\r\nUtcTime: 2021-05-04 14:36:01.555\r\nProcessGuid: {4dc16835-5bd1-6091-b901-000000003500}\r\nProcessId: 5124\r\nImage: C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe\r\nFileVersion: 4.8.4084.0 built by: NET48REL1\r\nDescription: Visual C# Command Line Compiler\r\nProduct: Microsoft® .NET Framework\r\nCompany: Microsoft Corporation\r\nOriginalFileName: csc.exe\r\nCommandLine: \"C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe\" /noconfig /fullpaths @\"C:\\Users\\AtomicRed\\AppData\\Local\\Temp\\bspmrlpb.cmdline\"\r\nCurrentDirectory: C:\\Users\\AtomicRed\\Downloads\\\r\nUser: EXCHANGETEST\\AtomicRed\r\nLogonGuid: {4dc16835-5948-6091-2f18-2d0000000000}\r\nLogonId: 0x2D182F\r\nTerminalSessionId: 1\r\nIntegrityLevel: Medium\r\nHashes: SHA1=528973416456C780051889CA1709510B6BF73370,MD5=F65B029562077B648A6A5F6A1AA76A66,SHA256=4A6D0864E19C0368A47217C129B075DDDF61A6A262388F9D21045D82F3423ED7,IMPHASH=EE1E569AD02AA1F7AECA80AC0601D80D\r\nParentProcessGuid: {4dc16835-5bcf-6091-b801-000000003500}\r\nParentProcessId: 5912\r\nParentImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nParentCommandLine: powershell  -ExecutionPolicy Bypass -NoExit .\\meta.ps1\"","version":"5","systemTime":"2021-05-04T14:36:01.5571724Z","eventRecordID":"168729","threadID":"3100","computer":"hrmanager.ExchangeTest.com","task":"1","processID":"2432","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
+    <rule id="92050" level="6">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\csc\.exe</field>
+        <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)powershell.+ExecutionPolicy\s+bypass</field>
+        <description>Powershell script compiling code using CSC.exe, possible malware drop</description>
+        <mitre>
+            <id>T1027.004</id>
+        </mitre>
+    </rule>
+</group>

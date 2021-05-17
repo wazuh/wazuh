@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -12,6 +12,7 @@ from wazuh.core.utils import load_wazuh_xml, add_dynamic_detail
 REQUIRED_FIELDS = ['filename', 'position']
 SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']
 DYNAMIC_OPTIONS = {'program_name', 'prematch', 'regex'}
+DECODER_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status', 'details']
 
 
 class Status(Enum):
