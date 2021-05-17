@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -373,7 +373,11 @@ nlohmann::json SysInfo::getNetworks() const
 
         for (auto addr : interface.second)
         {
-            FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr))->buildNetworkData(ifaddr);
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
+            if (networkInterfacePtr)
+            {
+                networkInterfacePtr->buildNetworkData(ifaddr);
+            }
         }
         networks["iface"].push_back(ifaddr);
     }

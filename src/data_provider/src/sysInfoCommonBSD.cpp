@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -85,7 +85,11 @@ nlohmann::json SysInfo::getNetworks() const
         nlohmann::json ifaddr {};
         for (const auto addr : interface.second)
         {
-            FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr))->buildNetworkData(ifaddr);
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr)) };
+            if (networkInterfacePtr)
+            {
+                networkInterfacePtr->buildNetworkData(ifaddr);
+            }
         }
         networks["iface"].push_back(ifaddr);
     }

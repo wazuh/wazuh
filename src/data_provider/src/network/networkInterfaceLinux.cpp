@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 24, 2020.
  *
  * This program is free software; you can redistribute it
@@ -34,10 +34,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
         {
             ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating linux network data retriever." };
-        }
+        // else: The current interface family is not supported
     }
     else
     {
