@@ -484,8 +484,6 @@ class Agent:
         ------
         WazuhError(1707)
             If the agent to be restarted is not active.
-        WazuhError(1750)
-            If the agent has active response disabled.
 
         Returns
         -------
@@ -496,11 +494,6 @@ class Agent:
         self.get_basic_information()
         if self.status.lower() != 'active':
             raise WazuhError(1707, extra_message='{0}'.format(self.status))
-
-        # Check if agent has active-response enabled
-        agent_conf = self.getconfig('com', 'active-response', self.version)
-        if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhError(1750)
 
         return send_restart_command(self.id, self.version)
 
