@@ -18,7 +18,7 @@
 #endif
 
 #include "wmodules.h"
-#include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
+#include "shared.h"
 
 STATIC void* wm_office365_main(wm_office365* office365_config);    // Module main function. It won't return
 STATIC void wm_office365_destroy(wm_office365* office365_config);
@@ -37,31 +37,9 @@ const wm_context WM_OFFICE365_CONTEXT = {
 void * wm_office365_main(wm_office365* office365_config) {
 
     if (office365_config->enabled) {
-        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 started.");
-
-#ifndef WIN32
-        // Connect to queue
-        office365_config->queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-        if (office365_config->queue_fd < 0) {
-            mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
-            return NULL;
-        }
-#endif
-
-        if (office365_config->run_on_start) {
-            // Execute initial scan
-            wm_office365_execute_scan(office365_config, 1);
-        }
-
-        while (1) {
-            sleep(office365_config->interval);
-            wm_office365_execute_scan(office365_config, 0);
-            #ifdef WAZUH_UNIT_TESTING
-                break;
-            #endif
-        }
+        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 started");
     } else {
-        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 disabled.");
+        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 disabled");
     }
 
     return NULL;
@@ -73,7 +51,7 @@ void wm_office365_destroy(wm_office365* office365_config) {
     os_free(office365_config);
 }
 
-void wm_office365_auth_destroy(wm_office365_auth* office365_config)
+void wm_office365_auth_destroy(wm_office365_auth* office365_auth)
 {
     wm_office365_auth* current = office365_auth;
     wm_office365_auth* next = NULL;
@@ -142,32 +120,30 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
             cJSON_free(arr_auth);
         }
     }
-    if (office365_config->subscription) {
-        cJSON *arr_subscription = cJSON_CreateArray();
+    cJSON *arr_subscription = cJSON_CreateArray();
 
-        cJSON *api_subscription = cJSON_CreateObject();
-        if (office365_config->subscription.azure) {
-            cJSON_AddStringToObject(api_auth, "azure", office365_config->subscription.azure);
-        }
-        if (office365_config->subscription.exchange) {
-            cJSON_AddStringToObject(api_auth, "exchange", office365_config->subscription.exchange);
-        }
-        if (office365_config->subscription.sharepoint) {
-            cJSON_AddStringToObject(api_auth, "sharepoint", office365_config->subscription.sharepoint);
-        }
-        if (office365_config->subscription.general) {
-            cJSON_AddStringToObject(api_auth, "general", office365_config->subscription.general);
-        }
-        if (office365_config->subscription.dlp) {
-            cJSON_AddStringToObject(api_auth, "dlp", office365_config->subscription.dlp);
-        }
-        cJSON_AddItemToArray(arr_subscription, api_subscription);
+    cJSON *api_subscription = cJSON_CreateObject();
+    if (office365_config->subscription.azure) {
+        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.AzureActiveDirectory");
+    }
+    if (office365_config->subscription.exchange) {
+        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.Exchange");
+    }
+    if (office365_config->subscription.sharepoint) {
+        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.SharePoint");
+    }
+    if (office365_config->subscription.general) {
+        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.General");
+    }
+    if (office365_config->subscription.dlp) {
+        cJSON_AddStringToObject(api_subscription, "subscription", "DLP.All");
+    }
+    cJSON_AddItemToArray(arr_subscription, api_subscription);
 
-        if (cJSON_GetArraySize(arr_subscription) > 0) {
-            cJSON_AddItemToObject(wm_info, "subscriptions", arr_subscription);
-        } else {
-            cJSON_free(arr_subscription);
-        }
+    if (cJSON_GetArraySize(arr_subscription) > 0) {
+        cJSON_AddItemToObject(wm_info, "subscriptions", arr_subscription);
+    } else {
+        cJSON_free(arr_subscription);
     }
     cJSON_AddItemToObject(root, "office365", wm_info);
 

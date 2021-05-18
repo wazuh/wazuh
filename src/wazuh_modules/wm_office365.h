@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for Office365 logs
+ * Wazuh Module for Office365 events
  * Copyright (C) 2015-2021, Wazuh Inc.
  * May 3, 2021.
  *
