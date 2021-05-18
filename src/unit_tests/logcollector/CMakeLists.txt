@@ -82,7 +82,8 @@ list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_rea
                                 -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
                                 -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,_merror -Wl,--wrap,waitpid \
                                 -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,_mdebug1 -Wl,--wrap,_minfo \
-                                -Wl,--wrap,kill -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,strerror")
+                                -Wl,--wrap,kill -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,strerror \
+                                -Wl,--wrap,time")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
