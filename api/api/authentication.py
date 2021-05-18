@@ -166,8 +166,8 @@ def check_token(username, roles, token_nbf_time, run_as):
     ----------
     username : str
         Unique username
-    roles : list
-        List of roles related with the current token
+    roles : tuple
+        Tuple of roles related with the current token
     token_nbf_time : int
         Issued at time of the current token
     run_as : bool

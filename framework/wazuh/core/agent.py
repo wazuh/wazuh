@@ -34,6 +34,8 @@ mutex = threading.Lock()
 lock_file = None
 lock_acquired = False
 
+agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
+
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
@@ -1251,7 +1253,6 @@ def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
 @common.context_cached('system_agents')
 def get_agents_info():
     """Get all agent IDs in the system."""
-    agent_regex = re.compile(r"^([^# ]\d+) [^!].* .* .*$", re.MULTILINE)
     with open(common.client_keys, 'r') as f:
         file_content = f.read()
 
