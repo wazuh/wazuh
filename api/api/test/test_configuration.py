@@ -21,7 +21,9 @@ custom_api_configuration = {
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt"
+        "ca": "api/configuration/ssl/ca.crt",
+        "ssl_protocol": "TLSv1.2",
+        "ssl_ciphers": "ECDHE+AESGCM:!ECDSA"
     },
     "logs": {
         "level": "info",
