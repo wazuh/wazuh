@@ -132,7 +132,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
             w_msg_hash_queues_push(read_buffer, MACOS_LOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
             memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN);
         } else {
-            mdebug2("macOS ULS: Discarding empty message...");
+            mdebug2("macOS ULS: Discarding empty message.");
         }
 
         count_logs++;
@@ -235,7 +235,7 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
             w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             is_buffer_full = true;
         } else if (!is_endline) {
-            mdebug2("macOS ULS: Incomplete message...");
+            mdebug2("macOS ULS: Incomplete message.");
             // Saves the context
             w_macos_log_ctxt_backup(buffer, &macos_log_cfg->ctxt);
             continue;
@@ -272,10 +272,10 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
                     do {
                         c = fgetc(stream);
                     } while (c != '\n' && c != '\0' && c != EOF);
-                    mdebug2("macOS ULS: Maximum message length reached. The remainder was discarded");
+                    mdebug2("macOS ULS: Maximum message length reached. The remainder was discarded.");
                 } else {
                     do_split = true;
-                    mdebug2("macOS ULS: Maximum message length reached. The remainder will be send separately");
+                    mdebug2("macOS ULS: Maximum message length reached. The remainder will be send separately.");
                 }
             }
         }
@@ -384,7 +384,7 @@ STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * b
         if (buffer[buffer_size - 1] == '\n') {
             buffer[buffer_size - 1] = '\0';
         }
-        mdebug2("macOS ULS: Reading other log headers or errors: '%s'", buffer);
+        mdebug2("macOS ULS: Reading other log headers or errors: '%s'.", buffer);
     }
 
     return retval;
