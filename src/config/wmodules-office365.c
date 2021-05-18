@@ -7,6 +7,8 @@
  * Foundation
 */
 
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
+
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_ENABLED          = "enabled";
@@ -69,7 +71,7 @@ time_t time_convert_1d(const char *time_c) {
 }
 
 // Parse XML
-int wm_office365_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
+int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
     int i = 0;
     int j = 0;
