@@ -7,7 +7,7 @@
  * Foundation
  */
 
-#include "signal_wrappers.h"
+#include "wait_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
@@ -15,9 +15,8 @@
 #include <string.h>
 #include <stdio.h>
 
-int __wrap_kill(pid_t pid, int sig){
-    
-    check_expected(sig);
-    check_expected(pid);
-    return mock();
+pid_t __wrap_waitpid(pid_t pid, int * wstatus, int options) {
+
+    *wstatus = mock_type(int);
+    return mock_type(pid_t);
 }
