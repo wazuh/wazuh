@@ -7,7 +7,7 @@
  * Foundation.
  *
  * Test corresponding to the scheduling capacities
- * for github Module
+ * for Office365 Module
  * */
 
 #include <stdarg.h>
