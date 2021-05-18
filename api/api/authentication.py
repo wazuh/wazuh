@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -15,15 +15,17 @@ from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
 import api.configuration as conf
+import wazuh.rbac.utils as rbac_utils
 from api.constants import SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
 from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager, Roles
+from wazuh.core.cluster.utils import read_config
+from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
 
-pool = ThreadPoolExecutor()
+pool = ThreadPoolExecutor(max_workers=1)
 
 
 def check_user_master(user, password):
@@ -156,6 +158,7 @@ def generate_token(user_id=None, data=None, run_as=False):
     return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
 
 
+@rbac_utils.token_cache(rbac_utils.tokens_cache)
 def check_token(username, roles, token_nbf_time, run_as):
     """Check the validity of a token with the current time and the generation time of the token.
 
@@ -163,8 +166,8 @@ def check_token(username, roles, token_nbf_time, run_as):
     ----------
     username : str
         Unique username
-    roles : list
-        List of roles related with the current token
+    roles : tuple
+        Tuple of roles related with the current token
     token_nbf_time : int
         Issued at time of the current token
     run_as : bool
@@ -182,7 +185,7 @@ def check_token(username, roles, token_nbf_time, run_as):
         user_id = user['id']
 
         with UserRolesManager() as urm:
-            user_roles = [role['id'] for role in map(Roles.to_dict, urm.get_all_roles_from_user(user_id=user_id))]
+            user_roles = [role.id for role in urm.get_all_roles_from_user(user_id=user_id)]
             if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
                 return {'valid': False}
             with TokenManager() as tm:
@@ -197,7 +200,8 @@ def check_token(username, roles, token_nbf_time, run_as):
 
 
 def decode_token(token):
-    """Decode a jwt formatted token and add processed policies. Raise an Unauthorized exception in case validation fails.
+    """Decode a jwt formatted token and add processed policies.
+    Raise an Unauthorized exception in case validation fails.
 
     Parameters
     ----------
@@ -215,8 +219,8 @@ def decode_token(token):
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
-                                        'roles': payload['rbac_roles'], 'token_nbf_time': payload['nbf'],
-                                        'run_as': payload['run_as']},
+                                        'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf'],
+                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=False,
