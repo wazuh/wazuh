@@ -68,6 +68,13 @@
         </mitre>
     </rule>
 
+    <!-- Bot Defense related logs-->
+    <rule id="65270" level="3">
+        <if_sid>65260</if_sid>
+        <field name="message" type="pcre2">[Bb]ot\s[Dd]efense</field>
+        <description>F5 BigIP LTM: Bot Defense configuration error detected</description>
+    </rule>
+
     <!-- General rules by type, defined last to catch all -->
     <rule id="65267" level="3">
         <if_sid>65260</if_sid>
