@@ -70,7 +70,7 @@ static int teardown_test_read(void **state) {
 void test_read_configuration(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
+        "<run_on_start>no</run_on_start>"
         "<skip_on_error>no</skip_on_error>"
         "<interval>10m</interval>"
         "<api_auth>"
@@ -91,7 +91,7 @@ void test_read_configuration(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
     wm_office365 *module_data = (wm_office365*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
-    assert_int_equal(module_data->run_on_start, 1);
+    assert_int_equal(module_data->run_on_start, 0);
     assert_int_equal(module_data->skip_on_error, 0);
     assert_int_equal(module_data->interval, 600);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
@@ -453,6 +453,32 @@ void test_fake_tag(void **state) {
             "<subscription>DLP.All</subscription>"
         "</subscriptions>"
         "<fake-tag>ASD</fake-tag>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "No such tag 'fake-tag' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_fake_tag_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<run_on_start>yes</run_on_start>"
+        "<skip_on_error>no</skip_on_error>"
+        "<interval>1d</interval>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+            "<fake-tag>ASD</fake-tag>"
+        "</subscriptions>"
     ;
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "No such tag 'fake-tag' at module 'office365'.");
@@ -829,6 +855,31 @@ void test_error_client_secret_path (void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_error_client_secret_path_1(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<run_on_start>yes</run_on_start>"
+        "<skip_on_error>yes</skip_on_error>"
+        "<interval>10</interval>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret_path></client_secret_path>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'client_secret_path' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
@@ -845,6 +896,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_d_fail, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_secret_path_and_secret, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_fake_tag_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_2, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_3, setup_test_read, teardown_test_read),
@@ -860,6 +912,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_client_secret, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_client_secret_path_1, setup_test_read, teardown_test_read),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
