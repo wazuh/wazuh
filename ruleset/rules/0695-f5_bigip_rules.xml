@@ -68,11 +68,27 @@
         </mitre>
     </rule>
 
-    <!-- Bot Defense related logs-->
-    <rule id="65270" level="3">
+    <!-- Bot Defense related logs--> <!-- EXPAND -->
+    <rule id="65270" level="0">
         <if_sid>65260</if_sid>
         <field name="message" type="pcre2">[Bb]ot\s[Dd]efense</field>
         <description>F5 BigIP LTM: Bot Defense configuration error detected</description>
+    </rule>
+
+    <!-- Tcp Dump -->
+    <rule id="65271" level="2">
+    <if_sid>65260</if_sid>
+        <field name="message" type="pcre2">Tcpdump</field>
+        <description>F5 BigIP LTM: Tcpdump message detected</description>
+    </rule>
+
+    <rule id="65272" level="3">
+    <if_sid>65271</if_sid>
+        <field name="message" type="pcre2">Tcpdump\sstarting\sremote</field>
+        <description>F5 BigIP LTM: Tcpdump remote session start detected</description>
+        <mitre>
+            <id>T1040</id>
+        </mitre>
     </rule>
 
     <!-- General rules by type, defined last to catch all -->
