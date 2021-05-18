@@ -20,3 +20,8 @@ int __wrap_kill(pid_t pid, int sig){
     check_expected(pid);
     return mock();
 }
+
+pid_t __wrap_waitpid(pid_t pid, int * wstatus, int options) {
+    
+    return mock_type(pid_t);
+}

@@ -16,4 +16,6 @@
 
 int __wrap_kill(pid_t pid, int sig);
 
+pid_t __wrap_waitpid(pid_t pid, int * wstatus, int options);
+
 #endif // SIGNAL_WRAPPERS_H
