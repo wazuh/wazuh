@@ -324,7 +324,7 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
 }
 
 /**
- * @brief This methods updates the "last_completion" value.
+ * @brief This method updates the "last_completion" value.
  *
  * It should be called after a positive checksum comparison to avoid repeated calculations.
  *
