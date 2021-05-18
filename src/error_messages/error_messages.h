@@ -141,10 +141,10 @@
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."
 #define LOGCOLLECTOR_MACOS_LOG_IREGEX_ERROR         "(1601): Invalid internal macOS log regex."
 #define LOGCOLLECTOR_MACOS_LOG_ERROR_AFTER_EXEC     "(1602): Execution error '%s'"
-#define LOGCOLLECTOR_MACOS_LOG_SHOW_INFO            "(1603): Monitoring MacOS old logs with: %s %s %s %s %s %s %s %s %s %s %s %s %s %s"
-#define LOGCOLLECTOR_MACOS_LOG_STREAM_INFO          "(1604): Monitoring MacOS logs with: %s %s %s %s %s %s %s %s %s %s %s %s %s %s"
-#define LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR      "(1605): Error while trying to execute `log show` as follows: %s %s %s %s %s %s %s %s %s %s %s %s %s %s"
-#define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s %s %s %s %s %s %s %s %s %s %s %s %s %s"
+#define LOGCOLLECTOR_MACOS_LOG_SHOW_INFO            "(1603): Monitoring MacOS old logs with: %s."
+#define LOGCOLLECTOR_MACOS_LOG_STREAM_INFO          "(1604): Monitoring MacOS logs with: %s."
+#define LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR      "(1605): Error while trying to execute `log show` as follows: %s."
+#define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s."
 #define LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED         "(1607): macOS 'log %s' process exited, pid: %d, exit value: %d."
 
 /* remoted */
