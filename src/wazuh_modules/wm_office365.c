@@ -1,7 +1,7 @@
 /*
  * Wazuh Module for Office365 events
  * Copyright (C) 2015-2021, Wazuh Inc.
- * July 3, 2020.
+ * May 18, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -12,7 +12,6 @@
 #if defined (WIN32) || (__linux__) || defined (__MACH__)
 
 #include "wmodules.h"
-#include "shared.h"
 
 static void* wm_office365_main(wm_office365* office365_config);    // Module main function. It won't return
 static void wm_office365_destroy(wm_office365* office365_config);
