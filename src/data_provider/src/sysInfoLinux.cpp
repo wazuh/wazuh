@@ -281,12 +281,12 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
         {"centos",      CENTOS_RELEASE_FILE     },
         {"fedora",      "/etc/fedora-release"   },
         {"rhel",        "/etc/redhat-release"   },
-        {"ubuntu",      "/etc/lsb-release"      },
         {"gentoo",      "/etc/gentoo-release"   },
         {"suse",        "/etc/SuSE-release"     },
         {"arch",        "/etc/arch-release"     },
         {"debian",      "/etc/debian_version"   },
         {"slackware",   "/etc/slackware-version"},
+        {"ubuntu",      "/etc/lsb-release"      },
     };
     const auto parseFnc
     {
@@ -313,7 +313,11 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     {
         for (const auto& platform : PLATFORMS_RELEASE_FILES)
         {
-            ret |= parseFnc(platform.second, platform.first);
+            if(parseFnc(platform.second, platform.first))
+            {
+                ret = true;
+                break;
+            }
         }
     }
     return ret;
