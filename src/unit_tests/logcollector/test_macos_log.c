@@ -15,6 +15,7 @@
 #include <time.h>
 
 #include "../../logcollector/logcollector.h"
+#include "../wrappers/posix/pthread_wrappers.h"
 #include "../../headers/shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
@@ -28,6 +29,21 @@ wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags);
 void w_macos_create_log_env(logreader * current);
 bool w_macos_is_log_executable(void);
 void w_macos_create_log_stream_env(logreader * lf);
+void w_macos_log_show_array_add_level(char ** log_cmd_array, size_t * log_cmd_array_idx, char * level);
+char * w_macos_log_show_create_type_predicate(int type);
+void w_macos_log_show_array_add_predicate(char ** log_cmd_array,
+                                          size_t * log_cmd_array_idx,
+                                          char * query,
+                                          char * type_predicate);
+char ** w_macos_create_log_show_array(char * start_date, char * query, char * level, int type);
+void w_macos_set_last_log_timestamp(char * timestamp);
+char * w_macos_get_last_log_timestamp();
+void w_macos_set_last_log_settings(char * timestamp);
+char * w_macos_get_last_log_settings();
+void w_macos_create_log_show_env(logreader * lf);
+void w_macos_create_log_stream_env(logreader * lf);
+
+extern w_macos_log_vault_t macos_log_vault;
 
 /* setup/teardown */
 
@@ -55,6 +71,24 @@ static int teardown_file(void **state) {
     wfd_t * wfd = *state;
 
     free(wfd);
+
+    return 0;
+}
+
+static int teardown_settings(void **state) {
+    os_free(macos_log_vault.settings);
+
+    return 0;
+}
+
+static int setup_timestamp_null(void **state) {
+    macos_log_vault.timestamp[0] = '\0';
+
+    return 0;
+}
+
+static int teardown_timestamp_null(void **state) {
+    strncpy(macos_log_vault.timestamp, "2021-04-27 12:29:25-0700", OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN);
 
     return 0;
 }
@@ -2082,7 +2116,7 @@ void test_w_macos_create_log_stream_env_log_wfd_NULL(void ** state) {
 
 }
 
-void test_w_macos_create_log_stream_env_success(void ** state) {
+void test_w_macos_create_log_stream_env_complete(void ** state) {
 
     logreader *current = NULL;
     os_calloc(1, sizeof(logreader), current);
@@ -2126,6 +2160,750 @@ void test_w_macos_create_log_stream_env_success(void ** state) {
     os_free(current->query_level);
     os_free(current->macos_log);
     os_free(current);
+
+}
+
+/* w_macos_log_show_array_add_level */
+
+void test_w_macos_log_show_array_add_level_NULL(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    char * type_predicate = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * level = NULL;
+
+    w_macos_log_show_array_add_level(log_cmd_array, &log_cmd_array_idx, level);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_null(log_cmd_array[6]);
+
+    free_strarray(log_cmd_array);
+
+}
+
+void test_w_macos_log_show_array_add_level_default(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    char * type_predicate = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * level = MACOS_LOG_LEVEL_DEFAULT_STR;
+
+    w_macos_log_show_array_add_level(log_cmd_array, &log_cmd_array_idx, level);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_null(log_cmd_array[6]);
+
+    free_strarray(log_cmd_array);
+
+}
+
+void test_w_macos_log_show_array_add_level_info(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    char * type_predicate = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * level = SHOW_INFO_OPT_STR;
+
+    w_macos_log_show_array_add_level(log_cmd_array, &log_cmd_array_idx, level);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_string_equal(log_cmd_array[6], "--info");
+    assert_null(log_cmd_array[7]);
+
+    free_strarray(log_cmd_array);
+
+}
+
+void test_w_macos_log_show_array_add_level_debug(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    char * type_predicate = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * level = MACOS_LOG_LEVEL_DEBUG_STR;
+
+    w_macos_log_show_array_add_level(log_cmd_array, &log_cmd_array_idx, level);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_string_equal(log_cmd_array[6], "--info");
+    assert_string_equal(log_cmd_array[7], "--debug");
+    assert_null(log_cmd_array[8]);
+
+    free_strarray(log_cmd_array);
+
+}
+
+/* w_macos_log_show_create_type_predicate */
+
+void test_w_macos_log_show_create_type_predicate_NULL(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 0;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_null(type_predicate);
+
+}
+
+void test_w_macos_log_show_create_type_predicate_activity(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 1;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_string_equal(type_predicate, "eventType == activityCreateEvent " \
+                                        "OR eventType == activityTransitionEvent " \
+                                        "OR eventType == userActionEvent");
+
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_create_type_predicate_log(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 2;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_string_equal(type_predicate, "eventType == logEvent");
+
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_create_type_predicate_trace(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 4;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_string_equal(type_predicate, "eventType == traceEvent");
+
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_create_type_predicate_activity_log(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 3;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_string_equal(type_predicate, "eventType == activityCreateEvent " \
+                                        "OR eventType == activityTransitionEvent " \
+                                        "OR eventType == userActionEvent " \
+                                        "OR eventType == logEvent");
+
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_create_type_predicate_activity_trace(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 5;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_string_equal(type_predicate, "eventType == activityCreateEvent " \
+                                        "OR eventType == activityTransitionEvent " \
+                                        "OR eventType == userActionEvent " \
+                                        "OR eventType == traceEvent");
+
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_create_type_predicate_log_trace(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 6;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_string_equal(type_predicate, "eventType == logEvent OR eventType == traceEvent");
+
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_create_type_predicate_activity_log_trace(void ** state) {
+
+    char * type_predicate = NULL;
+
+    int type = 7;
+
+    type_predicate = w_macos_log_show_create_type_predicate(type);
+
+    assert_string_equal(type_predicate, "eventType == activityCreateEvent " \
+                                        "OR eventType == activityTransitionEvent " \
+                                        "OR eventType == userActionEvent " \
+                                        "OR eventType == logEvent " \
+                                        "OR eventType == traceEvent");
+
+    os_free(type_predicate);
+
+}
+
+/* w_macos_log_show_array_add_predicate */
+
+void test_w_macos_log_show_array_add_predicate_query_and_predicate_null(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * query = NULL;
+
+    char * type_predicate = NULL;
+
+    w_macos_log_show_array_add_predicate(log_cmd_array, &log_cmd_array_idx, query, type_predicate);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_null(log_cmd_array[6]);
+
+    free_strarray(log_cmd_array);
+
+}
+
+void test_w_macos_log_show_array_add_predicate_query_null_and_valid_predicate(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * query = NULL;
+
+    char * type_predicate = NULL;
+    os_strdup("eventType == logEvent", type_predicate);
+
+    w_macos_log_show_array_add_predicate(log_cmd_array, &log_cmd_array_idx, query, type_predicate);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_string_equal(log_cmd_array[6], "--predicate");
+    assert_string_equal(log_cmd_array[7], "eventType == logEvent");
+    assert_null(log_cmd_array[8]);
+
+    free_strarray(log_cmd_array);
+    os_free(query);
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_array_add_predicate_invalid_query_and_predicate_null(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * query = NULL;
+    os_strdup("", query);
+
+    char * type_predicate = NULL;
+
+    w_macos_log_show_array_add_predicate(log_cmd_array, &log_cmd_array_idx, query, type_predicate);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_null(log_cmd_array[6]);
+
+    free_strarray(log_cmd_array);
+    os_free(query);
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_array_add_predicate_valid_query_and_predicate_null(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * query = NULL;
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", query);
+
+    char * type_predicate = NULL;
+
+    w_macos_log_show_array_add_predicate(log_cmd_array, &log_cmd_array_idx, query, type_predicate);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_string_equal(log_cmd_array[6], "--predicate");
+    assert_string_equal(log_cmd_array[7], "processImagePath CONTAINS[c] 'com.apple.geod'");
+    assert_null(log_cmd_array[8]);
+
+    free_strarray(log_cmd_array);
+    os_free(query);
+    os_free(type_predicate);
+
+}
+
+void test_w_macos_log_show_array_add_predicate_valid_query_and_predicate(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * query = NULL;
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", query);
+
+    char * type_predicate = NULL;
+    os_strdup("eventType == logEvent", type_predicate);
+
+    w_macos_log_show_array_add_predicate(log_cmd_array, &log_cmd_array_idx, query, type_predicate);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_string_equal(log_cmd_array[6], "--predicate");
+    assert_string_equal(log_cmd_array[7], "( processImagePath CONTAINS[c] 'com.apple.geod' ) AND ( eventType == logEvent )");
+    assert_null(log_cmd_array[8]);
+
+    free_strarray(log_cmd_array);
+    os_free(query);
+    os_free(type_predicate);
+
+}
+
+/* w_macos_create_log_show_array */
+
+void test_w_macos_create_log_show_array_complete(void ** state) {
+
+    char start_date[24] = "2021-04-27 12:29:25-0700";
+
+    char * query = NULL;
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", query);
+
+    char * level = MACOS_LOG_LEVEL_DEBUG_STR;
+
+    int type = 7;
+
+    char ** ret = w_macos_create_log_show_array(start_date, query, level, type);
+
+    assert_string_equal(ret[0], "/usr/bin/log");
+    assert_string_equal(ret[1], "show");
+    assert_string_equal(ret[2], "--style");
+    assert_string_equal(ret[3], "syslog");
+    assert_string_equal(ret[4], "--start");
+    assert_string_equal(ret[5], "2021-04-27 12:29:25-0700");
+    assert_string_equal(ret[6], "--info");
+    assert_string_equal(ret[7], "--debug");
+    assert_string_equal(ret[8], "--predicate");
+    assert_string_equal(ret[9], "( processImagePath CONTAINS[c] 'com.apple.geod' ) " \
+                                "AND ( eventType == activityCreateEvent " \
+                                "OR eventType == activityTransitionEvent " \
+                                "OR eventType == userActionEvent " \
+                                "OR eventType == logEvent OR eventType == traceEvent )");
+    assert_null(ret[10]);
+
+    free_strarray(ret);
+    os_free(query);
+
+}
+
+/* w_macos_set_last_log_timestamp */
+
+void test_w_macos_set_last_log_timestamp_complete(void ** state) {
+
+    char * timestamp = NULL;
+    os_strdup("2021-04-27 12:29:25-0700",timestamp);
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    w_macos_set_last_log_timestamp(timestamp);
+
+    os_free(timestamp);
+
+}
+
+/* w_macos_get_last_log_timestamp */
+
+void test_w_macos_get_last_log_timestamp_complete(void ** state) {
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    char * ret = w_macos_get_last_log_timestamp();
+
+    assert_string_equal(ret, "2021-04-27 12:29:25-0700");
+
+    os_free(ret);
+
+}
+
+/* w_macos_set_log_settings */
+
+void test_w_macos_set_log_settings_complete(void ** state) {
+
+    char * settings = NULL;
+    os_strdup("test",settings);
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    w_macos_set_log_settings(settings);
+
+    os_free(settings);
+
+}
+
+/* w_macos_get_log_settings */
+
+void test_w_macos_get_log_settings_complete(void ** state) {
+
+    os_strdup("test", macos_log_vault.settings);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    char * ret = w_macos_get_log_settings();
+
+    assert_string_equal(ret, "test");
+
+    os_free(ret);
+
+}
+
+/* w_macos_create_log_show_env */
+
+void test_w_macos_create_log_show_env_timestamp_NULL(void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    // test_w_macos_get_last_log_timestamp_complete */
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    w_macos_create_log_show_env(lf);
+
+    os_free(lf->macos_log);
+    os_free(lf);
+
+}
+
+void test_w_macos_create_log_show_env_show_wfd_NULL(void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+
+    // test_w_macos_get_last_log_timestamp_complete
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    // test_w_macos_log_exec_wpopenv_error
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+
+    expect_string(__wrap__merror, formatted_msg, "(1605): Error while trying to execute `log show` as follows: " \
+                                                 "/usr/bin/log show --style syslog --start 2021-04-27 12:29:25-0700 " \
+                                                 "--info --debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
+
+    w_macos_create_log_show_env(lf);
+
+    os_free(lf->macos_log->show_wfd);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+
+}
+
+void test_w_macos_create_log_show_env_success(void ** state) {
+
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+
+    // test_w_macos_get_last_log_timestamp_complete
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    // test_w_macos_log_exec_success
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 1);
+
+    will_return(__wrap_fcntl, 0);
+
+    will_return(__wrap_fcntl, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(1603): Monitoring MacOS old logs with: " \
+                                                 "/usr/bin/log show --style syslog --start 2021-04-27 12:29:25-0700 " \
+                                                 "--info --debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
+
+    w_macos_create_log_show_env(lf);
+
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+
+}
+
+/* w_macos_create_log_stream_env */
+void test_w_macos_create_log_stream_env_show_wfd_NULL(void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+
+    // test_w_macos_log_exec_wpopenv_error
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+
+    expect_string(__wrap__merror, formatted_msg, "(1606): Error while trying to execute `log stream` as follows: " \
+                                                 "/usr/bin/log stream --style syslog --level debug " \
+                                                 "--predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
+
+    w_macos_create_log_stream_env(lf);
+
+    os_free(lf->macos_log->show_wfd);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+
+}
+
+void test_w_macos_create_log_stream_env_success(void ** state) {
+
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+
+    // test_w_macos_log_exec_success
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 1);
+
+    will_return(__wrap_fcntl, 0);
+
+    will_return(__wrap_fcntl, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(1604): Monitoring MacOS logs with: " \
+                                                 "/usr/bin/log stream --style syslog --level debug " \
+                                                 "--predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
+
+    w_macos_create_log_stream_env(lf);
+
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
 
 }
 
@@ -2210,6 +2988,43 @@ int main(void) {
         // Test w_macos_is_log_executable
         cmocka_unit_test(test_w_macos_is_log_executable_success),
         cmocka_unit_test(test_w_macos_is_log_executable_error),
+        // Test w_macos_log_show_array_add_level
+        cmocka_unit_test(test_w_macos_log_show_array_add_level_NULL),
+        cmocka_unit_test(test_w_macos_log_show_array_add_level_default),
+        cmocka_unit_test(test_w_macos_log_show_array_add_level_info),
+        cmocka_unit_test(test_w_macos_log_show_array_add_level_debug),
+        // Test w_macos_log_show_create_type_predicate
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_NULL),
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_activity),
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_log),
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_trace),
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_activity_log),
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_activity_trace),
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_log_trace),
+        cmocka_unit_test(test_w_macos_log_show_create_type_predicate_activity_log_trace),
+        // Test w_macos_log_show_array_add_predicate
+        cmocka_unit_test(test_w_macos_log_show_array_add_predicate_query_and_predicate_null),
+        cmocka_unit_test(test_w_macos_log_show_array_add_predicate_query_null_and_valid_predicate),
+        cmocka_unit_test(test_w_macos_log_show_array_add_predicate_invalid_query_and_predicate_null),
+        cmocka_unit_test(test_w_macos_log_show_array_add_predicate_valid_query_and_predicate_null),
+        cmocka_unit_test(test_w_macos_log_show_array_add_predicate_valid_query_and_predicate),
+        // Test w_macos_create_log_show_array
+        cmocka_unit_test(test_w_macos_create_log_show_array_complete),
+        // Test w_macos_set_last_log_timestamp
+        cmocka_unit_test(test_w_macos_set_last_log_timestamp_complete),
+        // Test w_macos_get_last_log_timestamp
+        cmocka_unit_test(test_w_macos_get_last_log_timestamp_complete),
+        // Test w_macos_set_log_settings
+        cmocka_unit_test_teardown(test_w_macos_set_log_settings_complete, teardown_settings),
+        // Test w_macos_get_log_settings
+        cmocka_unit_test_teardown(test_w_macos_get_log_settings_complete, teardown_settings),
+        // Test w_macos_create_log_show_env
+        cmocka_unit_test_setup_teardown(test_w_macos_create_log_show_env_timestamp_NULL, setup_timestamp_null, teardown_timestamp_null),
+        cmocka_unit_test(test_w_macos_create_log_show_env_show_wfd_NULL),
+        cmocka_unit_test_setup_teardown(test_w_macos_create_log_show_env_success, setup_file, teardown_file),
+        // Test w_macos_create_log_stream_env
+        cmocka_unit_test(test_w_macos_create_log_stream_env_show_wfd_NULL),
+        cmocka_unit_test_setup_teardown(test_w_macos_create_log_stream_env_success, setup_file, teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

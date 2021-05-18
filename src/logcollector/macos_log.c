@@ -333,7 +333,8 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
     lf->macos_log->show_wfd = NULL;
 
-    if (timestamp == NULL) {
+    if (timestamp[0] == '\0') {
+        os_free(timestamp);
         return;
     }
 
@@ -341,14 +342,17 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
     lf->macos_log->show_wfd = w_macos_log_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
 
+    char * log_show_str = w_strcat_list(log_show_array,' ');
+
     if (lf->macos_log->show_wfd != NULL) {
         lf->macos_log->state = LOG_RUNNING_SHOW;
-        minfo(LOGCOLLECTOR_MACOS_LOG_SHOW_INFO, MACOS_GET_LOG_PARAMS(log_show_array));
+        minfo(LOGCOLLECTOR_MACOS_LOG_SHOW_INFO, log_show_str);
     } else {
-        merror(LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR, MACOS_GET_LOG_PARAMS(log_show_array));
+        merror(LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR, log_show_str);
     }
 
     os_free(timestamp);
+    os_free(log_show_str);
     free_strarray(log_show_array);
 }
 
@@ -367,15 +371,18 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
 
     lf->macos_log->stream_wfd = w_macos_log_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
+    char * log_stream_str = w_strcat_list(log_stream_array,' ');
+
     if (lf->macos_log->stream_wfd != NULL) {
         if (lf->macos_log->state == LOG_NOT_RUNNING) {
             lf->macos_log->state = LOG_RUNNING_STREAM;
         }
-        minfo(LOGCOLLECTOR_MACOS_LOG_STREAM_INFO, MACOS_GET_LOG_PARAMS(log_stream_array));
+        minfo(LOGCOLLECTOR_MACOS_LOG_STREAM_INFO, log_stream_str);
     } else {
-        merror(LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR, MACOS_GET_LOG_PARAMS(log_stream_array));
+        merror(LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR, log_stream_str);
     }
 
+    os_free(log_stream_str);
     free_strarray(log_stream_array);
 }
 
