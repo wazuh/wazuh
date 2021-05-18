@@ -424,11 +424,12 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.common.wazuh_uid')
 @patch('wazuh.core.agent.common.wazuh_gid')
+@patch('wazuh.core.agent.tempfile.mkstemp', return_value=['handle', 'output'])
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, common_gid_mock, common_uid_mock, chmod_mock,
-                         chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
+def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, common_gid_mock, common_uid_mock,
+                         chmod_mock, chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
     """Test `add_agent` from agent module.
 
     Parameters
