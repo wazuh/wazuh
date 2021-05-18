@@ -98,9 +98,7 @@ src/win32/VERSION
 src/win32/REVISION
 
 # Windows zip files
-etc/sca/windows/10/10.zip
-etc/sca/windows/2012R2/domain/2012R2_domain.zip
-etc/sca/windows/2012R2/member/2012R2_member.zip
+ruleset/sca/windows/10/*.zip
 etc/templates/config/windows/10.zip
 etc/templates/config/windows/2003.zip
 etc/templates/config/windows/2008.zip

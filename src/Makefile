@@ -2265,9 +2265,7 @@ clean-internals: clean-unit-tests
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 	rm -f ../etc/templates/config/windows/*.zip
-	rm -f ../etc/sca/windows/10/*.zip
-	rm -f ../etc/sca/windows/2012R2/domain/*.zip
-	rm -f ../etc/sca/windows/2012R2/member/*.zip
+	rm -f ../ruleset/sca/windows/*.zip
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
 	rm -rf $(SHARED_UTILS_TEST)build
