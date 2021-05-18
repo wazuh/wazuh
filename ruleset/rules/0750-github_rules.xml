@@ -14,7 +14,7 @@ ID: 91100 - 91449
     <!-- GitHub wodle -->
     <rule id="91100" level="0">
         <decoded_as>json</decoded_as>
-        <field name="github.source">github</field>
+        <field name="integration">github</field>
         <description>GitHub alert.</description>
         <options>no_full_log</options>
     </rule>
@@ -3203,7 +3203,7 @@ ID: 91100 - 91449
     </rule>
 
     <!-- This rule capture internal event, 3 request fail.
-        {"github":{"actor":"wazuh","organization":"wazuh","response":"@response","source":"github"}}
+        {"integration":"github","github":{"actor":"wazuh","organization":"wazuh","response":"@response"}}
     -->
     <rule id="91448" level="3">
         <if_sid>91100</if_sid>
