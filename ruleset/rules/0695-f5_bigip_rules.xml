@@ -23,7 +23,7 @@
         </mitre>
     </rule>
 
-    <rule id="65262" level="9">
+    <rule id="65262" level="13">
         <if_sid>65260</if_sid>
         <field name="event.code">01010343</field>
         <description>Platform entered software SYN cookie protection mode. The system has detected a SYN flood attack.</description>
@@ -50,7 +50,7 @@
         </mitre>
     </rule>
 
-    <rule id="65265" level="9">
+    <rule id="65265" level="13">
         <if_sid>65260</if_sid>
         <field name="event.code">01010240</field>
         <description>Detected a syncookie DOS attack. Activated hardware syncookie protection mode on the HSB.</description>
@@ -59,7 +59,7 @@
         </mitre>
     </rule>
 
-    <rule id="65266" level="9">
+    <rule id="65266" level="13">
         <if_sid>65260</if_sid>
         <field name="event.code">01010329</field>
         <description>Ongoing DDos attack.</description>
