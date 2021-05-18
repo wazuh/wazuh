@@ -243,7 +243,7 @@ device="SFW" date=2019-10-09 time=17:19:06 timezone="+08" device_name="XG210" de
 <decoder name="sophos-fw">
   <parent>sophos-fw</parent>
   <regex>status="(\.*)"\s+|status="(\.*)"$|status=(\.*)\s+|status=(\.*)$</regex>
-  <order>status</order>
+  <order>sophos_fw_status_msg</order>
 </decoder>
 <decoder name="sophos-fw">
   <parent>sophos-fw</parent>
