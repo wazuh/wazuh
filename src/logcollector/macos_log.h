@@ -51,14 +51,6 @@
 
 #define QUERY_AND_TYPE_PREDICATE    "( %s ) AND ( %s )"
 
-/** This macro is used for logging the full "log stream" command with its arguments (see MAX_LOG_STREAM_CMD_ARGS) **/
-#define MACOS_GET_LOG_PARAMS(x)     x[0]?x[0]:"", x[1]?x[1]:"", x[2]?x[2]:"", \
-                                    x[3]?x[3]:"", x[4]?x[4]:"", x[5]?x[5]:"", \
-                                    x[6]?x[6]:"", x[7]?x[7]:"", x[8]?x[8]:"", \
-                                    x[9]?x[9]:"", x[10]?x[10]:"",   \
-                                    x[11]?x[11]:"", x[12]?x[12]:"", \
-                                    x[13]?x[13]:""
-
 #define MACOS_LOG_SHOW_CHILD_EXITED      LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED,"show"
 #define MACOS_LOG_STREAM_CHILD_EXITED    LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED,"stream"
 
