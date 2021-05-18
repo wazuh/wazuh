@@ -8,12 +8,12 @@
  */
 
 
-#ifndef SIGNAL_WRAPPERS_H
-#define SIGNAL_WRAPPERS_H
+#ifndef WAIT_WRAPPERS_H
+#define WAIT_WRAPPERS_H
 
-#include <signal.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
-int __wrap_kill(pid_t pid, int sig);
+pid_t __wrap_waitpid(pid_t pid, int * wstatus, int options);
 
-#endif // SIGNAL_WRAPPERS_H
+#endif // WAIT_WRAPPERS_H
