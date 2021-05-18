@@ -57,6 +57,9 @@ class InBuffer:
     Define a buffer to receive incoming requests.
     """
 
+    divide_flag = b' d'  # flag used to indicate the message is divided
+    end_divide_flag = b' e'  # flag used to indicate the message is the end of a big message
+
     def __init__(self, total=0):
         """Class constructor.
 
@@ -92,7 +95,8 @@ class InBuffer:
         self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
         cmd_split = cmd.split(b' ')
         self.cmd = cmd_split[0]
-        self.flag_divided = cmd_split[len(cmd_split)-1] if cmd_split[len(cmd_split)-1] in [b'd', b'e'] else b''
+        self.flag_divided = cmd_split[-1] if cmd_split[-1] in [InBuffer.divide_flag.strip(),
+                                                               InBuffer.end_divide_flag.strip()] else b''
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -261,7 +265,7 @@ class Handler(asyncio.Protocol):
         # The div_msg_box stores all divided messages under its IDs.
         self.div_msg_box = {}
         # Defines command length.
-        self.cmd_len = 14
+        self.cmd_len = 12 + max(len(InBuffer.divide_flag), len(InBuffer.end_divide_flag))
         # Defines header length.
         self.header_len = self.cmd_len + 8  # 4 bytes of counter and 4 bytes of message size
         # Defines header format.
@@ -349,7 +353,7 @@ class Handler(asyncio.Protocol):
         # Message size > request_chunk, send the message divided
         else:
             # Command with the flag d (divided)
-            command = command[:-2] + b' d'
+            command = command[:-len(InBuffer.divide_flag)] + InBuffer.divide_flag
             msg_list = []
             partial_data_size = 0
             data_size = len(encrypted_data)
@@ -360,7 +364,7 @@ class Handler(asyncio.Protocol):
 
                 # Last divided message, change flag to e (end)
                 if message_size == data_size - partial_data_size + self.header_len:
-                    command = command[:-2] + b' e'
+                    command = command[:-len(InBuffer.end_divide_flag)] + InBuffer.end_divide_flag
 
                 msg = bytearray(message_size)
                 msg[:self.header_len] = struct.pack(self.header_format, counter, message_size - self.header_len,
