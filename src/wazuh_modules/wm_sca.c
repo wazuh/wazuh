@@ -73,6 +73,8 @@ static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char
 static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg);
 static int compare_cis_db_info_t_entry(const void * const a, const void * const  b);
 
+static char *wm_find_vars(char *search,char *value);
+
 #ifndef WIN32
 static void * wm_sca_request_thread(wm_sca_t * data);
 #endif
@@ -1052,14 +1054,14 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 /* Check files */
                 char *pattern = wm_sca_get_pattern(value);
                 char *file_list = value;
-
+                char *var_found;
                 /* Get any variable */
-                if (value[0] == '$') {
-                    file_list = (char *) OSStore_Get(vars, value);
+                while((var_found=wm_find_vars("$",value)) != NULL){
+                    file_list = (char *) OSStore_Get(vars, var_found);
                     if (!file_list) {
-                        merror("Invalid variable: '%s'. Skipping check.", value);
+                        merror("Invalid variable: '%s'. Skipping check.", var_found);
                         continue;
-                    }
+                    } 
                 }
 
                 const int result = wm_sca_check_file_list(file_list, pattern, &reason);
@@ -1075,7 +1077,7 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 /* Check command output */
                 char *pattern = wm_sca_get_pattern(value);
                 char *f_value = value;
-
+                char *var_found;
                 if (!data->remote_commands && remote_policy) {
                     mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                     if (reason == NULL) {
@@ -1085,14 +1087,14 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                     found = RETURN_INVALID;
                 } else {
                     /* Get any variable */
-                    if (value[0] == '$') {
-                        f_value = (char *) OSStore_Get(vars, value);
+                    
+                    while((var_found=wm_find_vars("$",value)) != NULL){
+                        f_value = (char *) OSStore_Get(vars, var_found);
                         if (!f_value) {
-                            merror("Invalid variable: '%s'. Skipping check.", value);
+                            merror("Invalid variable: '%s'. Skipping check.", var_found);
                             continue;
                         }
                     }
-
                     mdebug2("Running command: '%s'", f_value);
                     const int val = wm_sca_read_command(f_value, pattern, data, &reason);
                     if (val == RETURN_FOUND) {
@@ -1114,14 +1116,14 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 mdebug2("Processing directory rule '%s'", value);
                 char * const file = wm_sca_get_pattern(value);
                 char *f_value = value;
-
+                char *var_found;
                 /* Get any variable */
-                if (value[0] == '$') {
-                    f_value = (char *) OSStore_Get(vars, value);
-                    if (!f_value) {
-                        merror("Invalid variable: '%s'. Skipping check.", value);
-                        continue;
-                    }
+                while((var_found=wm_find_vars("$",value)) != NULL){
+                        f_value = (char *) OSStore_Get(vars, var_found);
+                        if (!f_value) {
+                            merror("Invalid variable: '%s'. Skipping check.", var_found);
+                            continue;
+                        }
                 }
 
                 char * const pattern = wm_sca_get_pattern(file);
@@ -3103,4 +3105,12 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
         os_strdup(msg, data->alert_msg[i]);
     }
     return 0;
+}
+
+static char *wm_find_vars(char *search,char *value){
+    char *var_found;
+    if((var_found=strstr(value,search)) != NULL){
+        return var_found;
+    }
+    return NULL;
 }
