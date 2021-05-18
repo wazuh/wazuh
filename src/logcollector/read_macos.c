@@ -124,8 +124,8 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (w_macos_log_getlog(read_buffer, MAX_LINE_LEN, log_mode_wfd->file, lf->macos_log)
-           && (maximum_lines == 0 || count_logs < maximum_lines)) {
+    while ((maximum_lines == 0 || count_logs < maximum_lines)
+            && w_macos_log_getlog(read_buffer, MAX_LINE_LEN, log_mode_wfd->file, lf->macos_log)) {
 
         size = strlen(read_buffer);
         if (size > 0) {
