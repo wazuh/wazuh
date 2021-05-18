@@ -71,6 +71,7 @@
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
+        <Binary Id="CMDPath" SourceFile="C:\Windows\System32\cmd.exe" />
 
         <Property Id="APPLICATIONFOLDER">
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
@@ -175,11 +176,11 @@
 
         <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
         <!-- Otherwise, the locked files and directories will not be deleted. -->
-        <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;WazuhSvc&quot;" Execute="immediate" Return="check" />
+        <CustomAction Id="StopWinService" BinaryKey="CMDPath" ExeCommand="/c &quot;NET STOP WazuhSvc&quot;" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
-        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
-        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="deferred" Return="ignore" Impersonate="no" />
+        <CustomAction Id="StopOssecService" BinaryKey="CMDPath" ExeCommand="/c &quot;NET STOP OssecSvc&quot;" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" BinaryKey="CMDPath" ExeCommand="/c &quot;SC DELETE OssecSvc&quot;" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
@@ -197,7 +198,7 @@
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StopWinService" After="DeleteOssecService">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+            <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
