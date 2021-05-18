@@ -23,6 +23,8 @@
 #include "../wrappers/wazuh/shared/expression_wrappers.h"
 #include "../wrappers/wazuh/logcollector/logcollector_wrappers.h"
 #include "../wrappers/posix/signal_wrappers.h"
+#include "../wrappers/posix/wait_wrappers.h"
+
 
 bool w_macos_log_ctxt_restore(char * buffer, w_macos_log_ctxt_t * ctxt);
 void w_macos_log_ctxt_backup(char * buffer, w_macos_log_ctxt_t * ctxt);
@@ -34,8 +36,15 @@ bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
 char * w_macos_trim_full_timestamp(char *);
 char * w_macos_get_last_log_timestamp(void);
+typedef struct{
+    wfd_t * show;
+    wfd_t * stream;
+} w_macos_log_wfd_t;
+extern w_macos_log_vault_t macos_log_vault;
+extern w_macos_log_wfd_t macos_log_wfd;
 
 extern int maximum_lines;
+extern int errno;
 
 /* setup/teardown */
 
@@ -383,7 +392,7 @@ void test_w_macos_is_log_header_reading_other_log(void ** state) {
 
     will_return(__wrap_w_expression_match, false);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Reading other log headers or errors: 'test'");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Reading other log headers or errors: 'test'.");
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 
@@ -408,7 +417,7 @@ void test_w_macos_is_log_header_reading_other_log_line_break(void ** state) {
 
     will_return(__wrap_w_expression_match, false);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Reading other log headers or errors: 'test'");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Reading other log headers or errors: 'test'.");
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 
@@ -564,7 +573,7 @@ void test_w_macos_log_getlog_context_buffer_full_no_endl(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, test_str);
     
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder will be send separately");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder will be send separately.");
 
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
@@ -655,7 +664,7 @@ void test_w_macos_log_getlog_context_not_header_processed(void ** state) {
 
     will_return(__wrap_fgetc,'\n');
 
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded.");
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
@@ -697,7 +706,7 @@ void test_w_macos_log_getlog_context_header_processed(void ** state) {
     //test_w_macos_is_log_header_reading_other_log
     will_return(__wrap_w_expression_match, false);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Reading other log headers or errors: 'test'");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Reading other log headers or errors: 'test'.");
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
@@ -854,7 +863,7 @@ void test_w_macos_log_getlog_discard_until_null(void ** state) {
     will_return(__wrap_fgetc,'X');
     will_return(__wrap_fgetc,NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded.");
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
@@ -901,7 +910,7 @@ void test_w_macos_log_getlog_discard_until_eof(void ** state) {
     will_return(__wrap_fgetc,EOF);
 
 
-    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded");
+    expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded.");
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
@@ -948,7 +957,8 @@ void test_read_macos_can_read_false(void ** state) {
     logreader dummy_lf;
     int dummy_rc;
 
-    os_malloc(sizeof(w_macos_log_config_t), dummy_lf.macos_log);
+    os_calloc(1, sizeof(w_macos_log_config_t), dummy_lf.macos_log);
+    dummy_lf.macos_log->state = LOG_RUNNING_STREAM;
 
     will_return(__wrap_can_read, 0);
 
@@ -962,13 +972,14 @@ void test_read_macos_getlog_false(void ** state) {
     logreader lf;
     int dummy_rc;
 
-    os_malloc(sizeof(w_macos_log_config_t), lf.macos_log);
-    os_malloc(sizeof(wfd_t), lf.macos_log->stream_wfd);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = getpid();
 
     will_return(__wrap_can_read, 1);
     will_return(__wrap_can_read, 0); // forces w_macos_log_getlog to return NULL
+    will_return(__wrap_waitpid, 0);
     will_return(__wrap_waitpid, 0);
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
@@ -982,8 +993,8 @@ void test_read_macos_empty_log(void ** state) {
     logreader lf;
     int dummy_rc;
 
-    os_malloc(sizeof(w_macos_log_config_t), lf.macos_log);
-    os_malloc(sizeof(wfd_t), lf.macos_log->stream_wfd);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = getpid();
 
@@ -997,6 +1008,7 @@ void test_read_macos_empty_log(void ** state) {
     expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Discarding empty message.");
     will_return(__wrap_can_read, 0); // second loop
     will_return(__wrap_waitpid, 0);
+    will_return(__wrap_waitpid, 0);
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
 
@@ -1009,8 +1021,8 @@ void test_read_macos_single_short_log(void ** state) {
     logreader lf;
     int dummy_rc;
 
-    os_malloc(sizeof(w_macos_log_config_t), lf.macos_log);
-    os_malloc(sizeof(wfd_t), lf.macos_log->stream_wfd);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = getpid();
     lf.macos_log->ctxt.buffer[0] = '\0';
@@ -1026,6 +1038,7 @@ void test_read_macos_single_short_log(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
     will_return(__wrap_waitpid, 0);
+  will_return(__wrap_waitpid, 0);
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
 
@@ -1038,52 +1051,273 @@ void test_read_macos_single_full_log(void ** state) {
     logreader lf;
     int dummy_rc;
 
-    os_malloc(sizeof(w_macos_log_config_t), lf.macos_log);
-    os_malloc(sizeof(wfd_t), lf.macos_log->stream_wfd);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = getpid();
     lf.macos_log->is_header_processed = true;
     lf.macos_log->ctxt.timestamp = 0;
-    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\0");
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n");
 
     will_return(__wrap_can_read, 1);
     will_return(__wrap_w_msg_hash_queues_push, 0);
     will_return(__wrap_can_read, 0);
     will_return(__wrap_waitpid, 0);
+    will_return(__wrap_waitpid, 0);
     assert_null(read_macos(&lf, &dummy_rc, 0));
-    assert_string_equal(w_macos_get_last_log_timestamp(), "2021-05-17 15:31:53-0700");
+    char * last_timestamp = w_macos_get_last_log_timestamp();
+    assert_string_equal(last_timestamp, "2021-05-17 15:31:53-0700");
 
     os_free(lf.macos_log->stream_wfd);
     os_free(lf.macos_log);
+    os_free(last_timestamp);
 }
 
-/* In progress
+/*
 void test_read_macos_more_logs_than_maximum(void ** state) {
 
     logreader lf;
     int dummy_rc;
 
-    os_malloc(sizeof(w_macos_log_config_t), lf.macos_log);
-    os_malloc(sizeof(wfd_t), lf.macos_log->stream_wfd);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = getpid();
     lf.macos_log->is_header_processed = true;
-    lf.macos_log->ctxt.timestamp = 0;
-    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n\0");
+    lf.macos_log->ctxt.timestamp = time(NULL);
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n");
     maximum_lines = 2;
 
     will_return(__wrap_can_read, 1);
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_fgets, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n");
     will_return(__wrap_w_msg_hash_queues_push, 0);
-    will_return(__wrap_can_read, 0);
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_fgets, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n");
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+
+    
     will_return(__wrap_waitpid, 0);
+  will_return(__wrap_waitpid, 0);
     assert_null(read_macos(&lf, &dummy_rc, 0));
-    assert_string_equal(w_macos_get_last_log_timestamp(), "2021-05-17 15:31:53-0700");
+    char * last_timestamp = w_macos_get_last_log_timestamp();
+    assert_string_equal(last_timestamp, "2021-05-17 15:31:53-0700");
 
     maximum_lines = 1000;
     os_free(lf.macos_log->stream_wfd);
     os_free(lf.macos_log);
+    os_free(last_timestamp);
+
 }
 */
+
+void test_read_macos_toggle_correctly_ended_show_to_stream(void ** state) {
+
+    logreader lf;
+    int dummy_rc;
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->show_wfd);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
+
+    lf.macos_log->state = LOG_RUNNING_SHOW;
+    lf.macos_log->show_wfd->pid = 10;
+    lf.macos_log->stream_wfd->pid = 11;
+    macos_log_wfd.show = lf.macos_log->show_wfd;
+    macos_log_wfd.stream = lf.macos_log->stream_wfd;
+
+    // Save an expired context to send it immediately 
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
+    lf.macos_log->ctxt.timestamp = 0;
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_waitpid, 0);
+    will_return(__wrap_waitpid, 10);
+
+    expect_string(__wrap__minfo, formatted_msg, "(1607): macOS 'log show' process exited, pid: 10, exit value: 0.");
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
+
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, NULL);
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+
+    os_free(lf.macos_log->show_wfd);
+    os_free(lf.macos_log->stream_wfd);
+    os_free(lf.macos_log);
+}
+
+void test_read_macos_toggle_faulty_ended_show_to_stream(void ** state) {
+
+    logreader lf;
+    int dummy_rc;
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->show_wfd);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
+
+    lf.macos_log->state = LOG_RUNNING_SHOW;
+    lf.macos_log->show_wfd->pid = 10;
+    lf.macos_log->stream_wfd->pid = 11;
+    macos_log_wfd.show = lf.macos_log->show_wfd;
+    macos_log_wfd.stream = lf.macos_log->stream_wfd;
+
+    // Save an expired context to send it immediately 
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
+    lf.macos_log->ctxt.timestamp = 0;
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_waitpid, 1);
+    will_return(__wrap_waitpid, 10);
+
+    expect_string(__wrap__merror, formatted_msg, "(1607): macOS 'log show' process exited, pid: 10, exit value: 1.");
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
+
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, NULL);
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+
+    os_free(lf.macos_log->show_wfd);
+    os_free(lf.macos_log->stream_wfd);
+    os_free(lf.macos_log);
+}
+
+void test_read_macos_toggle_correctly_ended_show_to_faulty_stream(void ** state) {
+
+    logreader lf;
+    int dummy_rc;
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->show_wfd);
+
+    lf.macos_log->state = LOG_RUNNING_SHOW;
+    lf.macos_log->show_wfd->pid = 10;
+    lf.macos_log->stream_wfd = NULL;
+    macos_log_wfd.show = lf.macos_log->show_wfd;
+    macos_log_wfd.stream = lf.macos_log->stream_wfd;
+
+    // Save an expired context to send it immediately 
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
+    lf.macos_log->ctxt.timestamp = 0;
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_waitpid, 0);
+    will_return(__wrap_waitpid, 10);
+
+    expect_string(__wrap__minfo, formatted_msg, "(1607): macOS 'log show' process exited, pid: 10, exit value: 0.");
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
+
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, NULL);
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+
+    os_free(lf.macos_log->show_wfd);
+    os_free(lf.macos_log);
+}
+
+void test_read_macos_faulty_ended_stream(void ** state) {
+
+    logreader lf;
+    int dummy_rc;
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
+
+    lf.macos_log->state = LOG_RUNNING_STREAM;
+    lf.macos_log->stream_wfd->pid = 10;
+    macos_log_wfd.stream = lf.macos_log->stream_wfd;
+
+    // Save an expired context to send it immediately 
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
+    lf.macos_log->ctxt.timestamp = 0;
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_waitpid, 1);
+    will_return(__wrap_waitpid, 10);
+
+    expect_string(__wrap__merror, formatted_msg, "(1607): macOS 'log stream' process exited, pid: 10, exit value: 1.");
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
+
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, NULL);
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+
+    os_free(lf.macos_log->stream_wfd);
+    os_free(lf.macos_log);
+}
+
+void test_read_macos_faulty_waitpid(void ** state) {
+
+    logreader lf;
+    int dummy_rc;
+    errno = 123;
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
+
+    lf.macos_log->state = LOG_RUNNING_STREAM;
+    lf.macos_log->stream_wfd->pid = 10;
+    macos_log_wfd.stream = lf.macos_log->stream_wfd;
+
+    // Save an expired context to send it immediately 
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
+    lf.macos_log->ctxt.timestamp = 0;
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    will_return(__wrap_waitpid, 1);
+    will_return(__wrap_waitpid, 2);
+    will_return(__wrap_strerror, "error test");
+
+    expect_string(__wrap__merror, formatted_msg, "(1111): Error during waitpid()-call due to [(123)-(error test)].");
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+
+    os_free(lf.macos_log->stream_wfd);
+    os_free(lf.macos_log);
+}
 
 int main(void) {
 
@@ -1140,7 +1374,13 @@ int main(void) {
         cmocka_unit_test(test_read_macos_empty_log),
         cmocka_unit_test(test_read_macos_single_short_log),
         cmocka_unit_test(test_read_macos_single_full_log),
-        cmocka_unit_test(test_read_macos_more_logs_than_maximum),
+        //cmocka_unit_test(test_read_macos_more_logs_than_maximum),
+        //cmocka_unit_test(test_read_macos_empty_log),
+        cmocka_unit_test(test_read_macos_toggle_correctly_ended_show_to_stream),
+        cmocka_unit_test(test_read_macos_toggle_faulty_ended_show_to_stream),
+        cmocka_unit_test(test_read_macos_toggle_correctly_ended_show_to_faulty_stream),
+        cmocka_unit_test(test_read_macos_faulty_ended_stream),
+        cmocka_unit_test(test_read_macos_faulty_waitpid),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
