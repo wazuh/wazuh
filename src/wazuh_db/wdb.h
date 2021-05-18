@@ -149,6 +149,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_SYNC_SET_COMPLETION,
     WDB_STMT_SYNC_GET_INFO,
     WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
@@ -1269,6 +1270,8 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 checksum);
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 checksum);
+
+void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
