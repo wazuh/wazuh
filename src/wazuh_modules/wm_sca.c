@@ -3117,7 +3117,9 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
     }
     return 0;
 }
+/* New methods for Issue 7712 */
 
+/* Method that returns a pointer to the variable that we are looking for */
 static char *wm_find_vars(char *search,char *value){
     char *var_found;
     if((var_found=strstr(value,search)) != NULL){
@@ -3125,7 +3127,7 @@ static char *wm_find_vars(char *search,char *value){
     }
     return NULL;
 }
-
+/* Method to get all the variables into an array from the OSStore structure */
 static char *wm_set_var_in_arr(OSStore *list){
     list->cur_node = list->first_node;
     char *arr[list->currently_size];
