@@ -1185,6 +1185,12 @@ void test_read_macos_toggle_correctly_ended_show_to_stream(void ** state) {
     will_return(__wrap_wpclose, NULL);
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
+    assert_string_equal(lf.macos_log->ctxt.buffer, "");
+    assert_true(lf.macos_log->store_current_settings);
+    assert_string_equal(macos_log_vault.timestamp, "2021-05-17 15:31:53-0700");
+    assert_int_equal(lf.macos_log->state, LOG_RUNNING_STREAM);
+    assert_non_null(lf.macos_log->stream_wfd);
+    assert_false(lf.macos_log->is_header_processed);
 
     os_free(lf.macos_log->show_wfd);
     os_free(lf.macos_log->stream_wfd);
@@ -1230,6 +1236,12 @@ void test_read_macos_toggle_faulty_ended_show_to_stream(void ** state) {
     will_return(__wrap_wpclose, NULL);
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
+    assert_string_equal(lf.macos_log->ctxt.buffer, "");
+    assert_true(lf.macos_log->store_current_settings);
+    assert_string_equal(macos_log_vault.timestamp, "2021-05-17 15:31:53-0700");
+    assert_int_equal(lf.macos_log->state, LOG_RUNNING_STREAM);
+    assert_non_null(lf.macos_log->stream_wfd);
+    assert_false(lf.macos_log->is_header_processed);
 
     os_free(lf.macos_log->show_wfd);
     os_free(lf.macos_log->stream_wfd);
@@ -1274,6 +1286,11 @@ void test_read_macos_toggle_correctly_ended_show_to_faulty_stream(void ** state)
     will_return(__wrap_wpclose, NULL);
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
+    assert_string_equal(lf.macos_log->ctxt.buffer, "");
+    assert_true(lf.macos_log->store_current_settings);
+    assert_string_equal(macos_log_vault.timestamp, "2021-05-17 15:31:53-0700");
+    assert_int_equal(lf.macos_log->state, LOG_NOT_RUNNING);
+    assert_null(macos_log_wfd.show);
 
     os_free(lf.macos_log->show_wfd);
     os_free(lf.macos_log);
@@ -1317,6 +1334,12 @@ void test_read_macos_faulty_ended_stream(void ** state) {
     will_return(__wrap_wpclose, NULL);
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
+    assert_string_equal(lf.macos_log->ctxt.buffer, "");
+    assert_true(lf.macos_log->store_current_settings);
+    assert_string_equal(macos_log_vault.timestamp, "2021-05-17 15:31:53-0700");
+    assert_int_equal(lf.macos_log->state, LOG_NOT_RUNNING);
+    assert_null(macos_log_wfd.show);
+
 
     os_free(lf.macos_log->stream_wfd);
     os_free(lf.macos_log);
@@ -1355,6 +1378,12 @@ void test_read_macos_faulty_waitpid(void ** state) {
     expect_string(__wrap__merror, formatted_msg, "(1111): Error during waitpid()-call due to [(123)-(error test)].");
 
     assert_null(read_macos(&lf, &dummy_rc, 0));
+    assert_string_equal(lf.macos_log->ctxt.buffer, "");
+    assert_true(lf.macos_log->store_current_settings);
+    assert_string_equal(macos_log_vault.timestamp, "2021-05-17 15:31:53-0700");
+    //Matamos show si no podemos esperar el PID: Yo creo que si pero nada decirlo
+    assert_null(macos_log_wfd.show);
+
 
     os_free(lf.macos_log->stream_wfd);
     os_free(lf.macos_log);
