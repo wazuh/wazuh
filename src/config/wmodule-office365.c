@@ -28,7 +28,7 @@ static const char *SUBSCRIPTIONS_TYPE_SHAREPOINT    = "Audit.SharePoint";
 static const char *SUBSCRIPTIONS_TYPE_GENERAL       = "Audit.General";
 static const char *SUBSCRIPTIONS_TYPE_ALL           = "DLP.All";
 
-time_t time_convert(const char *time_c) {
+time_t time_convert_1d(const char *time_c) {
     char *endptr;
     time_t time_i = strtoul(time_c, &endptr, 0);
 
@@ -135,7 +135,7 @@ int wm_office365_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            office365_config->interval = time_convert(nodes[i]->content);
+            office365_config->interval = time_convert_1d(nodes[i]->content);
             if (office365_config->interval == OS_INVALID) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_INTERVAL, WM_OFFICE365_CONTEXT.name);
                 return OS_INVALID;
@@ -195,6 +195,28 @@ int wm_office365_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             }
             OS_ClearNode(children);
 
+            if (office365_auth->client_secret_path) {
+                if (office365_auth->client_secret) {
+                    merror("It is not allowed to set 'client_secret' and 'client_secret_path' at module '%s'.", WM_OFFICE365_CONTEXT.name);
+                    return OS_INVALID;
+                }
+                if(access(office365_auth->client_secret_path, F_OK) != 0 ) {
+                    merror("At module '%s': The path cannot be opened. Skipping block...", WM_OFFICE365_CONTEXT.name);
+                    return OS_INVALID;
+                }
+            } else if (!office365_auth->client_secret) {
+                merror("'%s' is missing at module '%s'.", XML_CLIENT_SECRET, WM_OFFICE365_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            if (!office365_auth->client_id) {
+                merror("'%s' is missing at module '%s'.", XML_CLIENT_ID, WM_OFFICE365_CONTEXT.name);;
+                return OS_INVALID;
+            } else if (!office365_auth->tenant_id) {
+                merror("'%s' is missing at module '%s'.", XML_TENANT_ID, WM_OFFICE365_CONTEXT.name);
+                return OS_INVALID;
+            }
+
         } else if (!strcmp(nodes[i]->element, XML_SUBSCRIPTIONS)) {
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
                 continue;
@@ -229,13 +251,24 @@ int wm_office365_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         }
     }
 
+    /* Validation process */
     if (!office365_auth) {
         merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_OFFICE365_CONTEXT.name);
         return OS_INVALID;
     }
-    if (strlen(office365_auth->client_secret) != 0 && strlen(office365_auth->client_secret_path) != 0) {
-        merror("It is not allowed to set 'client_secret' and 'client_secret_path' at module '%s'.", WM_OFFICE365_CONTEXT.name);
-        return OS_INVALID;
+    if (!office365_config->subscription.azure &&
+        !office365_config->subscription.exchange &&
+        !office365_config->subscription.general &&
+        !office365_config->subscription.sharepoint &&
+        !office365_config->subscription.dlp)
+    {
+        mwarn("At module '%s': No subscription was provided, everything will be monitored by default.", WM_OFFICE365_CONTEXT.name);
+        office365_config->subscription.azure = 1;
+        office365_config->subscription.exchange = 1;
+        office365_config->subscription.sharepoint = 1;
+        office365_config->subscription.general = 1;
+        office365_config->subscription.dlp = 1;
     }
+
     return OS_SUCCESS;
 }
