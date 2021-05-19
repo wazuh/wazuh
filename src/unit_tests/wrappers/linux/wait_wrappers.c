@@ -15,8 +15,10 @@
 #include <string.h>
 #include <stdio.h>
 
-pid_t __wrap_waitpid(pid_t pid, int * wstatus, int options) {
+pid_t __wrap_waitpid(pid_t __pid, int * wstatus, int __options) {
 
+    check_expected(__pid);
+    check_expected(__options);
     *wstatus = mock_type(int);
     return mock_type(pid_t);
 }
