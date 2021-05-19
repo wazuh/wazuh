@@ -107,7 +107,7 @@ void test_w_macos_log_ctxt_restore_false(void ** state) {
 void test_w_macos_log_ctxt_restore_true(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
@@ -125,7 +125,7 @@ void test_w_macos_log_ctxt_backup_success(void ** state) {
 
     buffer[OS_MAXSTR] = '\0';
 
-    strncpy(buffer,"test\n",OS_MAXSTR);
+    strncpy(buffer, "test\n", OS_MAXSTR);
     will_return(__wrap_time, 123456);
 
     w_macos_log_ctxt_backup(buffer, &ctxt);
@@ -140,7 +140,7 @@ void test_w_macos_log_ctxt_clean_success(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
 
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
     ctxt.timestamp = 123456;
 
 
@@ -289,7 +289,7 @@ void test_w_macos_log_get_last_valid_line_str_with_three_new_lines_not_end(void 
 void test_w_macos_is_log_header_false(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char * buffer = NULL;
     os_strdup("test", buffer);
@@ -311,7 +311,7 @@ void test_w_macos_is_log_header_false(void ** state) {
 void test_w_macos_is_log_header_log_stream_execution_error_after_exec(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char * buffer = NULL;
     os_strdup("log: test", buffer);
@@ -335,7 +335,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_after_exec(void ** st
 void test_w_macos_is_log_header_log_stream_execution_error_colon(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char * buffer = NULL;
     os_strdup("log: ", buffer);
@@ -359,7 +359,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_colon(void ** state) 
 void test_w_macos_is_log_header_log_stream_execution_error_line_break(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char * buffer = NULL;
     os_strdup("log: test\n", buffer);
@@ -383,7 +383,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_line_break(void ** st
 void test_w_macos_is_log_header_reading_other_log(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char * buffer = NULL;
     os_strdup("test", buffer);
@@ -407,7 +407,7 @@ void test_w_macos_is_log_header_reading_other_log(void ** state) {
 void test_w_macos_is_log_header_reading_other_log_line_break(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char * buffer = NULL;
     os_strdup("test\n", buffer);
@@ -431,14 +431,14 @@ void test_w_macos_is_log_header_reading_other_log_line_break(void ** state) {
 /* w_macos_log_getlog */
 void test_w_macos_log_getlog_context_expired(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_true
+    //test_w_macos_is_log_ctxt_expired_true
     ctxt.timestamp = (time_t) 1000;
     will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
 
@@ -446,7 +446,7 @@ void test_w_macos_log_getlog_context_expired(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = true;
 
-    int length =  OS_MAXSTR - OS_LOG_HEADER;
+    int length = OS_MAXSTR - OS_LOG_HEADER;
 
     FILE * stream = NULL;
 
@@ -458,14 +458,14 @@ void test_w_macos_log_getlog_context_expired(void ** state) {
 
 void test_w_macos_log_getlog_context_expired_new_line(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_true
+    //test_w_macos_is_log_ctxt_expired_true
     ctxt.timestamp = (time_t) 1000;
     will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
 
@@ -473,7 +473,7 @@ void test_w_macos_log_getlog_context_expired_new_line(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = true;
 
-    int length =  OS_MAXSTR - OS_LOG_HEADER;
+    int length = OS_MAXSTR - OS_LOG_HEADER;
 
     FILE * stream = NULL;
 
@@ -485,14 +485,14 @@ void test_w_macos_log_getlog_context_expired_new_line(void ** state) {
 
 void test_w_macos_log_getlog_context_not_expired(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT);
 
@@ -500,7 +500,7 @@ void test_w_macos_log_getlog_context_not_expired(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = true;
 
-    int length =  OS_MAXSTR - OS_LOG_HEADER;
+    int length = OS_MAXSTR - OS_LOG_HEADER;
 
     FILE * stream = (FILE*)1;
 
@@ -518,14 +518,14 @@ void test_w_macos_log_getlog_context_not_expired(void ** state) {
 
 void test_w_macos_log_getlog_context_buffer_full(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\n",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\n", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 999 + MACOS_LOG_TIMEOUT);
 
@@ -533,7 +533,7 @@ void test_w_macos_log_getlog_context_buffer_full(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = true;
 
-    int length =  strlen(ctxt.buffer)+1;
+    int length = strlen(ctxt.buffer) + 1;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -543,13 +543,11 @@ void test_w_macos_log_getlog_context_buffer_full(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "test");
 
-    //test_oslog_ctxt_clean_success
-
-    //test_oslog_get_valid_lastline
+    //test_w_macos_log_get_last_valid_line
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
-    assert_string_equal(buffer,"test");
+    assert_string_equal(buffer, "test");
     assert_true(ret);
 
     os_free(stream);
@@ -594,14 +592,14 @@ void test_w_macos_log_getlog_context_buffer_full_no_endl_force_split(void ** sta
 
 void test_w_macos_log_getlog_context_not_endline(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test-\0",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test-\0", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 999 + MACOS_LOG_TIMEOUT);
 
@@ -609,7 +607,7 @@ void test_w_macos_log_getlog_context_not_endline(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = true;
 
-    int length =  strlen(ctxt.buffer)+10;
+    int length = strlen(ctxt.buffer) + 10;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -622,7 +620,7 @@ void test_w_macos_log_getlog_context_not_endline(void ** state) {
     expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Incomplete message.");
     will_return(__wrap_time, ctxt.timestamp + 1);
 
-    //test_oslog_ctxt_backup_success
+    //test_w_macos_log_ctxt_backup_success
 
     will_return(__wrap_can_read, 1);
 
@@ -640,14 +638,14 @@ void test_w_macos_log_getlog_context_not_endline(void ** state) {
 
 void test_w_macos_log_getlog_context_full_buffer(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test--max...\0",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test--max...\0", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 999 + MACOS_LOG_TIMEOUT);
 
@@ -662,18 +660,18 @@ void test_w_macos_log_getlog_context_full_buffer(void ** state) {
 
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "more content................");
-    int length =  strlen(ctxt.buffer) + strlen("more content...") + 1;
+    int length = strlen(ctxt.buffer) + strlen("more content...") + 1;
 
     //test_w_macos_is_log_header_false
     will_return(__wrap_w_expression_match, true);
 
-    will_return(__wrap_fgetc,'\n');
+    will_return(__wrap_fgetc, '\n');
 
     expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded.");
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
-    assert_string_equal(buffer,"test--max...more content...");
+    assert_string_equal(buffer, "test--max...more content...");
     assert_string_equal("", macos_log_cfg.ctxt.buffer);
     assert_int_equal(0, macos_log_cfg.ctxt.timestamp);
     assert_true(ret);
@@ -683,14 +681,14 @@ void test_w_macos_log_getlog_context_full_buffer(void ** state) {
 
 void test_w_macos_log_getlog_discards_irrelevant_headers(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"Other headers, line1\n\0",OS_MAXSTR);
+    strncpy(ctxt.buffer, "Other headers, line1\n\0", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 999 + MACOS_LOG_TIMEOUT);
 
@@ -698,7 +696,7 @@ void test_w_macos_log_getlog_discards_irrelevant_headers(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = false;
 
-    int length =  strlen(ctxt.buffer) + 100;
+    int length = strlen(ctxt.buffer) + 100;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -708,7 +706,7 @@ void test_w_macos_log_getlog_discards_irrelevant_headers(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "Other headers, line2\n");
 
-    //test_oslog_ctxt_backup_success
+    //test_w_macos_log_ctxt_backup_success
 
     //test_w_macos_is_log_header_reading_other_log
     will_return(__wrap_w_expression_match, false);
@@ -718,7 +716,7 @@ void test_w_macos_log_getlog_discards_irrelevant_headers(void ** state) {
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
-    assert_string_equal(buffer,"");
+    assert_string_equal(buffer, "");
     assert_true(ret);
 
     os_free(stream);
@@ -726,14 +724,14 @@ void test_w_macos_log_getlog_discards_irrelevant_headers(void ** state) {
 
 void test_w_macos_log_getlog_split_two_logs(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
     strncpy(ctxt.buffer, "log 1 first line\nlog 1 second line\n", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 999 + MACOS_LOG_TIMEOUT);
 
@@ -741,7 +739,7 @@ void test_w_macos_log_getlog_split_two_logs(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = false;
 
-    int length =  strlen(ctxt.buffer) + 100;
+    int length = strlen(ctxt.buffer) + 100;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -751,12 +749,12 @@ void test_w_macos_log_getlog_split_two_logs(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "log 2 first line\n");
 
-    //test_oslog_ctxt_backup_success
+    //test_w_macos_log_ctxt_backup_success
 
     //test_w_macos_is_log_header_false
     will_return(__wrap_w_expression_match, true);
 
-    //test_oslog_get_valid_lastline
+    //test_w_macos_log_get_last_valid_line
     will_return(__wrap_w_expression_match, true);
     will_return(__wrap_time, 1001);
 
@@ -783,7 +781,7 @@ void test_w_macos_log_getlog_backup_context(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = true;
 
-    int length =  OS_MAXSTR;
+    int length = OS_MAXSTR;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -808,7 +806,7 @@ void test_w_macos_log_getlog_backup_context(void ** state) {
 void test_w_macos_log_getlog_cannot_read(void ** state) {
 
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test", OS_MAXSTR);
     time_t now = 1000;
     ctxt.timestamp = now;
     will_return(__wrap_time, 1000 + 1);
@@ -820,7 +818,7 @@ void test_w_macos_log_getlog_cannot_read(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = true;
 
-    int length =  OS_MAXSTR;
+    int length = OS_MAXSTR;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -838,14 +836,14 @@ void test_w_macos_log_getlog_cannot_read(void ** state) {
 
 void test_w_macos_log_getlog_discard_until_null(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\0",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\0", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 999 + MACOS_LOG_TIMEOUT);
 
@@ -853,7 +851,7 @@ void test_w_macos_log_getlog_discard_until_null(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = false;
 
-    int length =  strlen(ctxt.buffer)+1;
+    int length = strlen(ctxt.buffer) + 1;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -863,20 +861,20 @@ void test_w_macos_log_getlog_discard_until_null(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "test");
 
-    //test_oslog_ctxt_backup_success
+    //test_w_macos_log_ctxt_backup_success
 
     //test_w_macos_is_log_header_false
     will_return(__wrap_w_expression_match, true);
 
-    will_return(__wrap_fgetc,'X');
-    will_return(__wrap_fgetc,'X');
-    will_return(__wrap_fgetc,NULL);
+    will_return(__wrap_fgetc, 'X');
+    will_return(__wrap_fgetc, 'X');
+    will_return(__wrap_fgetc, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded.");
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
-    //assert_string_equal(buffer,"test");
+    //assert_string_equal(buffer, "test");
     assert_true(ret);
 
     os_free(stream);
@@ -885,14 +883,14 @@ void test_w_macos_log_getlog_discard_until_null(void ** state) {
 
 void test_w_macos_log_getlog_discard_until_eof(void ** state) {
 
-    //test_oslog_ctxt_restore_true
+    //test_w_macos_ctxt_restore_true
     w_macos_log_ctxt_t ctxt;
-    strncpy(ctxt.buffer,"test\0",OS_MAXSTR);
+    strncpy(ctxt.buffer, "test\0", OS_MAXSTR);
 
     char buffer[OS_MAXSTR + 1];
     buffer[OS_MAXSTR] = '\0';
 
-    //test_oslog_ctxt_is_expired_false
+    //test_w_macos_is_log_ctxt_expired_false
     ctxt.timestamp = 1000;
     will_return(__wrap_time, 999 + MACOS_LOG_TIMEOUT);
 
@@ -900,7 +898,7 @@ void test_w_macos_log_getlog_discard_until_eof(void ** state) {
     macos_log_cfg.ctxt = ctxt;
     macos_log_cfg.is_header_processed = false;
 
-    int length =  strlen(ctxt.buffer)+1;
+    int length = strlen(ctxt.buffer) + 1;
 
     FILE * stream;
     os_calloc(1, sizeof(FILE *), stream);
@@ -913,15 +911,15 @@ void test_w_macos_log_getlog_discard_until_eof(void ** state) {
     //test_w_macos_is_log_header_false
     will_return(__wrap_w_expression_match, true);
 
-    will_return(__wrap_fgetc,'X');
-    will_return(__wrap_fgetc,'X');
-    will_return(__wrap_fgetc,EOF);
+    will_return(__wrap_fgetc, 'X');
+    will_return(__wrap_fgetc, 'X');
+    will_return(__wrap_fgetc, EOF);
 
     expect_string(__wrap__mdebug2, formatted_msg, "macOS ULS: Maximum message length reached. The remainder was discarded.");
 
     bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
 
-    //assert_string_equal(buffer,"test");
+    //assert_string_equal(buffer, "test");
     assert_true(ret);
 
     os_free(stream);
@@ -1194,7 +1192,7 @@ void test_read_macos_disable_maximum_lines(void ** state) {
     will_return(__wrap_w_expression_match, true);
     will_return(__wrap_time, TIMESTAMP_TIME);
     will_return(__wrap_w_msg_hash_queues_push, 0);
-    will_return(__wrap_time, TIMESTAMP_TIME+100);
+    will_return(__wrap_time, TIMESTAMP_TIME + 100);
     will_return(__wrap_w_msg_hash_queues_push, 0);
 
     will_return(__wrap_can_read, 1);
@@ -1226,7 +1224,7 @@ void test_read_macos_toggle_correctly_ended_show_to_stream(void ** state) {
     macos_log_wfd.show = lf.macos_log->show_wfd;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
 
-    // Save an expired context to send it immediately 
+    // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
     lf.macos_log->ctxt.timestamp = 1000;
     will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
@@ -1279,7 +1277,7 @@ void test_read_macos_toggle_faulty_ended_show_to_stream(void ** state) {
     macos_log_wfd.show = lf.macos_log->show_wfd;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
 
-    // Save an expired context to send it immediately 
+    // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
     lf.macos_log->ctxt.timestamp = 1000;
     will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
@@ -1331,7 +1329,7 @@ void test_read_macos_toggle_correctly_ended_show_to_faulty_stream(void ** state)
     macos_log_wfd.show = lf.macos_log->show_wfd;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
 
-    // Save an expired context to send it immediately 
+    // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
     lf.macos_log->ctxt.timestamp = 1000;
     will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
@@ -1379,7 +1377,7 @@ void test_read_macos_faulty_ended_stream(void ** state) {
     lf.macos_log->stream_wfd->pid = 10;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
 
-    // Save an expired context to send it immediately 
+    // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
     lf.macos_log->ctxt.timestamp = 1000;
 
@@ -1431,7 +1429,7 @@ void test_read_macos_faulty_waitpid(void ** state) {
     lf.macos_log->stream_wfd->pid = 10;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
 
-    // Save an expired context to send it immediately 
+    // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
     lf.macos_log->ctxt.timestamp = 1000;
 
