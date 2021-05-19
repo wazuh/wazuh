@@ -597,13 +597,13 @@ class Handler(asyncio.Protocol):
         self.in_buffer += message
         for command, counter, payload, flag_divided in self.get_messages():
             # If the message is a divided one
-            if flag_divided == b'd':
+            if flag_divided == InBuffer.divide_flag.strip():
                 try:
                     self.div_msg_box[counter] = self.div_msg_box[counter] + payload
                 except KeyError:
                     self.div_msg_box[counter] = payload
             # If the message is the last part of a division
-            elif flag_divided == b'e':
+            elif flag_divided == InBuffer.end_divide_flag.strip():
                 payload = self.div_msg_box[counter] + payload
                 del self.div_msg_box[counter]
                 flag_divided = b''
