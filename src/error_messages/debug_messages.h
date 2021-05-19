@@ -52,7 +52,6 @@
 #define VU_AGENT_SOFTWARE_REQ "(5437): Collecting agent '%.3d' software."
 #define VU_AG_FULL_SCAN       "(5438): A full scan will be run on agent '%.3d'"
 #define VU_AG_PART_SCAN       "(5439): A partial scan will be run on agent '%.3d'"
-#define VU_AG_FULL_SCAN       "(5438): A full scan will be run on agent '%.3d'"
 #define VU_NO_PACKAGE_SCAN    "(5440): The package inventory of the agent '%.3d' is not available, but a hotfix analysis will be launched."
 #define VU_SOCKET_RETRY       "(5441): Unable to connect to socket '%s'. Waiting '%d' seconds."
 #define VU_NO_HOTFIX_AVAIL    "(5442): It is not possible to perform a hotfix scan on agent '%.3d'"
