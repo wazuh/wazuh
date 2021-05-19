@@ -211,7 +211,7 @@ def test_invalid_users_tokens(db_setup, user_list, expected_users):
     expected_users : set
         Expected users.
     """
-    with patch('wazuh.security.TokenManager.add_user_roles_rules') as TM_mock:
+    with patch('wazuh.core.security.TokenManager.add_user_roles_rules') as TM_mock:
         _, _, core_security = db_setup
         core_security.invalid_users_tokens(users=[user_id for user_id in user_list])
         related_users = TM_mock.call_args.kwargs['users']
@@ -233,7 +233,7 @@ def test_invalid_roles_tokens(db_setup, role_list, expected_roles):
     expected_roles : set
         Expected roles.
     """
-    with patch('wazuh.security.TokenManager.add_user_roles_rules') as TM_mock:
+    with patch('wazuh.core.security.TokenManager.add_user_roles_rules') as TM_mock:
         _, _, core_security = db_setup
         core_security.invalid_roles_tokens(roles=[role_id for role_id in role_list])
         assert set(TM_mock.call_args.kwargs['roles']) == expected_roles

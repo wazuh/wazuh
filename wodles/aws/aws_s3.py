@@ -1705,6 +1705,7 @@ class AWSCustomBucket(AWSBucket):
         self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
+        self.macie_location_pattern = re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
         # SQL queries for custom buckets
         self.sql_already_processed = """
                           SELECT
@@ -1793,7 +1794,17 @@ class AWSCustomBucket(AWSBucket):
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
             while data:
-                json_data, json_index = decoder.raw_decode(data)
+                try:
+                    json_data, json_index = decoder.raw_decode(data)
+                except ValueError as err:
+                    # Handle undefined values for lat and lon fields in Macie logs
+                    match = self.macie_location_pattern.search(data)
+                    if not match or not match.group(1) or not match.group(2):
+                        raise err
+                    lat = float(match.group(1))
+                    lon = float(match.group(2))
+                    new_pattern = f'"lat":{lat},"lon":{lon}'
+                    json_data, json_index = decoder.raw_decode(re.sub(self.macie_location_pattern, new_pattern, data))
                 data = data[json_index:]
                 yield json_data
 
