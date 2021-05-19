@@ -373,7 +373,7 @@ char *get_agent_ip()
                             continue;
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
                             const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
                             if (!ipv4) {
                                 continue;
@@ -388,7 +388,6 @@ char *get_agent_ip()
                                 if (address && cJSON_GetStringValue(address))
                                 {
                                     os_strdup(address->valuestring, agent_ip);
-                                    merror("DWORD %s.", agent_ip);
                                     break;
                                 }
                             }

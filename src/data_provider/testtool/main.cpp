@@ -16,12 +16,12 @@ int main()
         const auto& os        {info.os()};
         const auto& ports     {info.ports()};
 
-        /*std::cout << hw.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << hw.dump(JSON_PRETTY_SPACES) << std::endl;
         std::cout << packages.dump(JSON_PRETTY_SPACES) << std::endl;
         std::cout << processes.dump(JSON_PRETTY_SPACES) << std::endl;
-        */std::cout << networks.dump(JSON_PRETTY_SPACES) << std::endl;
-        /*std::cout << os.dump(JSON_PRETTY_SPACES) << std::endl;
-        std::cout << ports.dump(JSON_PRETTY_SPACES) << std::endl;*/
+        std::cout << networks.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << os.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << ports.dump(JSON_PRETTY_SPACES) << std::endl;
     }
     catch(const std::exception& e)
     {
