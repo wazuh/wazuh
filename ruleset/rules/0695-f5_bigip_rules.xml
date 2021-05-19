@@ -153,8 +153,9 @@
 
     <!-- General ASM Error -->
     <rule id="65280" level="7">
+        <if_sid>65260</if_sid>
         <field name="event.code">01310027</field>
-        <description>F5 BigIP ASM: Subsystem error detected in ${asm.subsystem}</description>
+        <description>F5 BigIP ASM: Subsystem error detected in ${bigip.asm.subsystem}</description>
     </rule>
 
     <!-- General rules by type, defined last to catch all -->
