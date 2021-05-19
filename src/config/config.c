@@ -47,14 +47,16 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
-    const char *wlogtest = "rule_test";                  /* Wazuh Logtest */
-
+    const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
 #ifndef WIN32
-    const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
+    const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
     const char *osauthd = "auth";                       /* Authd Config */
     const char *osreports = "reports";                  /* Server Config */
+#endif
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
+    const char *github = "github";                      /* GitHub Module */
 #endif
 
     while (node[i]) {
@@ -201,14 +203,22 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
-            #if !defined(WIN32) && !defined(CLIENT)  
+            #if !defined(WIN32) && !defined(CLIENT)
                 if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
                     goto fail;
                 }
             #else
                 mwarn("%s configuration is only set in the manager.", node[i]->element);
             #endif
-        } else {
+        }
+#if defined (WIN32) || (__linux__) || defined (__MACH__)
+        else if (chld_node && (strcmp(node[i]->element, github) == 0)) {
+            if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        }
+#endif
+        else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;
         }

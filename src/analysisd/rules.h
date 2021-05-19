@@ -210,6 +210,8 @@ typedef struct _RuleInfo {
     char ** not_same_fields;
 
     char ** mitre_id;
+    char ** mitre_tactic_id;
+    char ** mitre_technique_id;
 
     bool internal_saving;      ///< Used to free RuleInfo structure in wazuh-logtest
 } RuleInfo;

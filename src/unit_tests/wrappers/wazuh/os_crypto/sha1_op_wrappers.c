@@ -38,3 +38,29 @@ void __wrap_OS_SHA1_Stream(__attribute__((unused))SHA_CTX *c, os_sha1 output, ch
     snprintf(output, 41, "%s", mock_type(char *));
 
 }
+
+#ifndef WIN32
+int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, __attribute__((unused))SHA_CTX * c, os_sha1 output,
+                                      int mode, int64_t nbytes, ino_t fd_check) {
+    check_expected(fname);
+    check_expected(mode);
+    check_expected(nbytes);
+    check_expected(fd_check);
+
+    snprintf(output, 41, "%s", mock_type(char *));
+
+    return mock();
+}
+#else
+int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, __attribute__((unused))SHA_CTX * c, os_sha1 output,
+                                      int mode, int64_t nbytes, DWORD fd_check) {
+    check_expected(fname);
+    check_expected(mode);
+    check_expected(nbytes);
+    check_expected(fd_check);
+
+    snprintf(output, 41, "%s", mock_type(char *));
+
+    return mock();
+}
+#endif

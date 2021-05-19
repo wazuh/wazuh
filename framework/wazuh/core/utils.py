@@ -106,7 +106,8 @@ def execute(command):
 
 
 def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
-                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None):
+                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None,
+                  allowed_select_fields=None, filters=None):
     """ Process a Wazuh framework data array
 
     Parameters
@@ -135,6 +136,10 @@ def process_array(array, search_text=None, complementary_search=False, search_in
         Query to filter by
     required_fields : list
         Required fields that must appear in the response
+    allowed_select_fields: list
+        List of fields allowed to select from
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
 
     Returns
     -------
@@ -143,8 +148,24 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     if not array:
         return {'items': list(), 'totalItems': 0}
 
+    if isinstance(filters, dict) and len(filters.keys()) > 0:
+        new_array = list()
+        for element in array:
+            for key, value in filters.items():
+                if element[key] in value:
+                    new_array.append(element)
+
+        array = new_array
+
+    if sort_by == [""]:
+        array = sort_array(array, sort_ascending=sort_ascending)
+    elif sort_by:
+        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
+                           allowed_sort_fields=allowed_sort_fields)
+
     if select:
-        array = select_array(array, select=select, required_fields=required_fields)
+        array = select_array(array, select=select, required_fields=required_fields,
+                             allowed_select_fields=allowed_select_fields)
 
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,
@@ -152,12 +173,6 @@ def process_array(array, search_text=None, complementary_search=False, search_in
 
     if q:
         array = filter_array_by_query(q, array)
-
-    if sort_by == [""]:
-        array = sort_array(array, sort_ascending=sort_ascending)
-    elif sort_by:
-        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
-                           allowed_sort_fields=allowed_sort_fields)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -215,17 +230,37 @@ def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=Non
     if not isinstance(sort_ascending, bool):
         raise WazuhError(1402)
 
+    is_sort_valid = False
     if allowed_sort_fields:
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
+        is_sort_valid = True
 
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
-            check_sort_fields(set(array[0].keys()), set(sort_by))
+            not is_sort_valid and check_sort_fields(set(array[0].keys()), set(sort_by))
+            try:
+                return sorted(array,
+                              key=lambda o: tuple(
+                                  o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                              reverse=not sort_ascending)
+            except TypeError:
+                items_with_missing_keys = list()
+                copy_array = deepcopy(array)
+                for item in array:
+                    set(sort_by) & set(item.keys()) and items_with_missing_keys.append(
+                        copy_array.pop(copy_array.index(item)))
 
-            return sorted(array,
-                          key=lambda o: tuple(
-                              o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
-                          reverse=not sort_ascending)
+                sorted_array = sorted(copy_array, key=lambda o: tuple(
+                    o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                                      reverse=not sort_ascending)
+
+                if not sort_ascending:
+                    items_with_missing_keys.extend(sorted_array)
+                    return items_with_missing_keys
+                else:
+                    sorted_array.extend(items_with_missing_keys)
+                    return sorted_array
+
         else:
             return sorted(array,
                           key=lambda o: tuple(
@@ -299,7 +334,7 @@ def search_array(array, search_text=None, complementary_search=False, search_in_
     return found
 
 
-def select_array(array, select=None, required_fields=None):
+def select_array(array, select=None, required_fields=None, allowed_select_fields=None):
     """Get only those values from each element in the array that matches the select values.
 
     Parameters
@@ -311,6 +346,8 @@ def select_array(array, select=None, required_fields=None):
         Example: ['select1', 'select2.select21.select22', 'select3.select31']
     required_fields : set, optional
         Set of fields that must be in the response. These depends on the framework function.
+    allowed_select_fields: list
+        List of fields allowed to select from
 
     Raises
     ------
@@ -338,28 +375,36 @@ def select_array(array, select=None, required_fields=None):
                 next_element = None
             return {split_select[0]: next_element} if next_element else None
 
+    def detect_nested_select(user_select):
+        nested = set()
+        no_nested = set()
+        for element in user_select:
+            no_nested.add(element) if '.' not in element else nested.add(element)
+
+        return nested, no_nested
+
     if required_fields is None:
         required_fields = set()
-    select = set(select)
+
+    select_nested, select_no_nested = detect_nested_select(set(select))
+    if allowed_select_fields and not select_no_nested.issubset(allowed_select_fields):
+        raise WazuhError(1724, "{}".format(', '.join(select_no_nested)))
+    select = select_nested.union(select_no_nested)
 
     result_list = list()
     for item in array:
         selected_fields = dict()
-        missing_select = False
         # Build an entry with the filtered values
         for sel in select:
             candidate = get_nested_fields(item, sel)
             if candidate:
                 selected_fields.update(candidate)
-            else:
-                missing_select = True
-                break
-        # Add required fields if the entry is not empty or missing one of the selects
-        if selected_fields and not missing_select:
-            selected_fields.update({req_field: item[req_field] for req_field in required_fields})
-            result_list.append(selected_fields)
-    if not result_list:
-        raise WazuhError(1724, "{}".format(', '.join(select)))
+        # Add required fields if the entry is not empty
+        if array and not allowed_select_fields and not selected_fields:
+            raise WazuhError(1724, "{}".format(', '.join(select)))
+        selected_fields.update({req_field: item[req_field] for req_field in required_fields})
+        result_list.append(selected_fields)
+
     return result_list
 
 
@@ -1004,13 +1049,16 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries
     """
 
-    def __init__(self, agent_id=None, query_format='agent'):
+    def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
         self.agent_id = agent_id
         self.query_format = query_format
+        self.max_size = max_size
+        self.request_slice = request_slice
+
         super().__init__()
 
     def connect_to_db(self):
-        return WazuhDBConnection()
+        return WazuhDBConnection(max_size=self.max_size, request_slice=self.request_slice)
 
     def _substitute_params(self, query, request):
         """

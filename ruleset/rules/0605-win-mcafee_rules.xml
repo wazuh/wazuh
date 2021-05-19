@@ -134,7 +134,6 @@
   <rule id="62616" level="5">
     <if_sid>62607</if_sid>
     <field name="win.system.message">contains the EICAR test file</field>
-    <options>alert_by_email</options>
     <description>McAfee Windows AV - EICAR test file detected</description>
   </rule>
 
