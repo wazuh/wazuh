@@ -185,19 +185,10 @@
     </rule>
 
     <!-- 012a0002 : "LIBHAL reporting critical conditions" -->
+    <!-- 012a0003 : LIBHAL reporting error conditions -->
     <rule id="65295" level="13">
         <if_sid>65260</if_sid>
-        <field name="event.code">012a0002</field>
-        <description>The HAL daemon might not be able to correctly identify the platform or publish the hardware abstraction configuration at startup, or has encountered a critical failure during normal operation.</description>
-        <mitre>
-            <id>T1498</id>
-        </mitre>
-    </rule>
-
-    <!-- 012a0003 : LIBHAL reporting error conditions -->
-    <rule id="65296" level="13">
-        <if_sid>65260</if_sid>
-        <field name="event.code">012a0003</field>
+        <field name="event.code">012a0002|012a0003</field>
         <description>The HAL daemon might not be able to correctly identify the platform or publish the hardware abstraction configuration at startup, or has encountered a critical failure during normal operation.</description>
         <mitre>
             <id>T1498</id>
@@ -275,29 +266,11 @@
     </rule>
 
     <!-- 01550004 : Critical: -->
+    <!-- 01550005 : Critical: -->
+    <!-- 01550006 : Critical: -->
     <rule id="65304" level="13">
         <if_sid>65260</if_sid>
-        <field name="event.code">01550004</field>
-        <description>Critical: The BIG-IP system is not allowed not to go Active.</description>
-        <mitre>
-            <id>T1498</id>
-        </mitre>
-    </rule>
-
-    <!-- 01550005 : Critical: -->
-    <rule id="65305" level="13">
-        <if_sid>65260</if_sid>
-        <field name="event.code">01550005</field>
-        <description>Critical: The BIG-IP system is not allowed not to go Active.</description>
-        <mitre>
-            <id>T1498</id>
-        </mitre>
-    </rule>
-
-    <!-- 01550006 : Critical: -->
-    <rule id="65306" level="13">
-        <if_sid>65260</if_sid>
-        <field name="event.code">01550006</field>
+        <field name="event.code">01550004|01550005|01550006</field>
         <description>Critical: The BIG-IP system is not allowed not to go Active.</description>
         <mitre>
             <id>T1498</id>
