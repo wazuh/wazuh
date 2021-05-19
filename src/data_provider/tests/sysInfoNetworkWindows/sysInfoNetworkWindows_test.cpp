@@ -64,14 +64,6 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV6_THROW)
     EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 }
 
-TEST_F(SysInfoNetworkWindowsTest, Test_AF_UNSPEC_THROW)
-{
-    auto mock { std::make_shared<SysInfoNetworkWindowsWrapperMock>() };
-    nlohmann::json networkInfo {};
-    EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::UNDEF));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
-}
-
 TEST_F(SysInfoNetworkWindowsTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json networkInfo {};
