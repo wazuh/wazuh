@@ -22,7 +22,7 @@
     </rule>
 
     <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","processGuid":"{4dc16835-3136-609c-2c01-000000003b00}","processId":"1488","utcTime":"2021-05-12 19:53:22.467","targetFilename":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\pscp.exe","creationUtcTime":"2021-05-12 19:53:22.467"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-05-12 19:53:22.467\r\nProcessGuid: {4dc16835-3136-609c-2c01-000000003b00}\r\nProcessId: 1488\r\nImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nTargetFilename: C:\\Users\\AtomicRed\\AppData\\Roaming\\TransbaseOdbcDriver\\pscp.exe\r\nCreationUtcTime: 2021-05-12 19:53:22.467\"","version":"2","systemTime":"2021-05-12T19:53:22.4784997Z","eventRecordID":"198839","threadID":"3320","computer":"hrmanager.ExchangeTest.com","task":"11","processID":"2080","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
-    <rule id="92101" level="6">
+    <rule id="92041" level="6">
         <if_group>sysmon_event_11</if_group>
         <field name="win.eventdata.image" type="pcre2">\\(?i)powershell\.exe</field>
         <field name="win.eventdata.targetFilename" type="pcre2">(?i)AppData\\Roaming\\.*\\.+\.(exe|bin|dll)</field>
@@ -32,14 +32,4 @@
         </mitre>
     </rule>
 
-    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","processGuid":"{4dc16835-3136-609c-2c01-000000003b00}","processId":"1488","utcTime":"2021-05-12 20:09:21.308","targetFilename":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\psexec.py","creationUtcTime":"2021-05-12 20:09:21.308"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-05-12 20:09:21.308\r\nProcessGuid: {4dc16835-3136-609c-2c01-000000003b00}\r\nProcessId: 1488\r\nImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nTargetFilename: C:\\Users\\AtomicRed\\AppData\\Roaming\\TransbaseOdbcDriver\\psexec.py\r\nCreationUtcTime: 2021-05-12 20:09:21.308\"","version":"2","systemTime":"2021-05-12T20:09:21.3111862Z","eventRecordID":"199107","threadID":"3320","computer":"hrmanager.ExchangeTest.com","task":"11","processID":"2080","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
-    <rule id="92102" level="6">
-        <if_group>sysmon_event_11</if_group>
-        <field name="win.eventdata.image" type="pcre2">\\(?i)powershell\.exe</field>
-        <field name="win.eventdata.targetFilename" type="pcre2">(?i)AppData\\Roaming\\.*\\.+\.(ps|ps1|py|bat)</field>
-        <description>Powershell process created script file in AppData temp folder</description>
-        <mitre>
-            <id>T1105</id>
-        </mitre>
-    </rule>
 </group>
