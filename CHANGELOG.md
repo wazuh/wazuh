@@ -10,14 +10,29 @@ All notable changes to this project will be documented in this file.
   - Added support for Arch Linux OS in Vulnerability Detector. Thanks to Aviel Warschawski (@avielw). ([#8178](https://github.com/wazuh/wazuh/pull/8178))
   - Introduced a new module to collect audit logs from GitHub. ([#8532](https://github.com/wazuh/wazuh/pull/8532))
 
+- **API:**
+  - Added new `PUT /agents/reconnect` endpoint to force agents reconnection to the manager. ([#7988](https://github.com/wazuh/wazuh/pull/7988))
+  - Added `select` parameter to the `GET /security/users`, `GET /security/roles`, `GET /security/rules` and `GET /security/policies` endpoints. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
+  - Added type and status filters to `GET /vulnerability/{agent_id}` endpoint. ([#8100](https://github.com/wazuh/wazuh/pull/8100))
+  
+- **AWS Module:**
+  - Added new `path_suffix` option to AWS module configuration. ([#8306](https://github.com/wazuh/wazuh/pull/8306))
+  - Added new `discard_regex` option to AWS module configuration. ([8331](https://github.com/wazuh/wazuh/pull/8331))
+  
 ### Changed
 
 - **Core:**
-  - Changed the internal handling of agent keys in Remoted and Remoted to speed up key reloading. ([#8083](https://github.com/wazuh/wazuh/pull/8083)
+  - Changed the internal handling of agent keys in Remoted and Remoted to speed up key reloading. ([#8083](https://github.com/wazuh/wazuh/pull/8083))
   - The option `<server>` of the Syslog output now supports hostname resolution. ([#7885](https://github.com/wazuh/wazuh/pull/7885))
   - The product's UNIX user and group have been renamed to "wazuh". ([#7646](https://github.com/wazuh/wazuh/pull/7646))
   - The agent now reports the version of the running AIX operating system to the manager. ([#8381](https://github.com/wazuh/wazuh/pull/8381))
   - The MITRE database has been redesigned to provide full and searchable data. ([#7865](https://github.com/wazuh/wazuh/pull/7865))
+
+- **Cluster:**
+  - Changed all randomly generated IDs used for cluster tasks. Now, `uuid4` is used to ensure IDs are not repeated. ([8351](https://github.com/wazuh/wazuh/pull/8351))
+  
+- **Framework:**
+  - Changed all XML file loads. Now, `defusedxml` library is used to avoid possible XML-based attacks. ([8351](https://github.com/wazuh/wazuh/pull/8351))
 
 ### Fixed
 
@@ -25,6 +40,26 @@ All notable changes to this project will be documented in this file.
   - Fixed a memory defect in Remoted when closing connection handles. ([#8223](https://github.com/wazuh/wazuh/pull/8223))
   - Fixed a timing problem in the manager that might prevent Analysisd from sending Active responses to agents. ([#7625](https://github.com/wazuh/wazuh/pull/7625))
   - Fixed a bug in Analysisd that did not apply field lookup in rules that overwrite other ones. ([#8210](https://github.com/wazuh/wazuh/pull/8210))
+
+- **API:**
+  - Fixed inconsistency in RBAC resources for `group:create`, `decoders:update`, and `rules:update` actions. ([#8196](https://github.com/wazuh/wazuh/pull/8196))
+  - Fixed the handling of an API error message occurring when Wazuh is started with a wrong `ossec.conf`. Now the execution continues and raises a warning. ([8378](https://github.com/wazuh/wazuh/pull/8378))
+  - Fixed a bug with `sort` parameter that caused a wrong response when sorting by several fields.([#8548](https://github.com/wazuh/wazuh/pull/8548))
+  
+- **Framework:**
+  - Corrected remediation message for error code 6004. ([#8254](https://github.com/wazuh/wazuh/pull/8254))
+  - Fixed a bug when deleting non-existing users or roles in the security SDK. ([#8157](https://github.com/wazuh/wazuh/pull/8157))
+  - Fixed a bug with `agent.conf` file permissions when creating an agent group. ([#8418](https://github.com/wazuh/wazuh/pull/8418))
+  - Fixed wrong exceptions with wdb pagination mechanism. ([#8422](https://github.com/wazuh/wazuh/pull/8422))
+  
+- **AWS Module:**
+  - Fixed an error where the IP address was being returned along with the port for Amazon NLB service.([#8362](https://github.com/wazuh/wazuh/pull/8362))
+  - Fixed module to properly handle the exception raised when processing a folder without logs. ([#8372](https://github.com/wazuh/wazuh/pull/8372)
+  - Fixed a bug when pagination is needed in the bucket. ([#8433](https://github.com/wazuh/wazuh/pull/8433))
+  - Fixed an error with the ipGeoLocation field in AWS Macie logs. ([#8672](https://github.com/wazuh/wazuh/pull/8672)) 
+  
+- **Cluster:**
+  - Fix a bug running wazuh-clusterd process when it was already running. ([#8394](https://github.com/wazuh/wazuh/pull/8394))
 
 ### Removed
 
