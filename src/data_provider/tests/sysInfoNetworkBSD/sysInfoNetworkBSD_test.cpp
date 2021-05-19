@@ -133,14 +133,6 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_EQ("8.8.4.4",ifaddr.at("gateway").get_ref<const std::string&>());
 }
 
-TEST_F(SysInfoNetworkBSDTest, Test_AF_UNSPEC_THROW)
-{
-    auto mock { std::make_shared<SysInfoNetworkBSDWrapperMock>() };
-    nlohmann::json ifaddr {};
-    EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_UNSPEC));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
-}
-
 TEST_F(SysInfoNetworkBSDTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json ifaddr {};
