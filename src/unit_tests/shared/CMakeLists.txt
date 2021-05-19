@@ -14,7 +14,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror")
+    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror,--wrap,mdebug2")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
