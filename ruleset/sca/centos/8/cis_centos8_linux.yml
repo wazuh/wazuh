@@ -904,9 +904,10 @@ checks:
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["A1.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:yum check-update --security -> r:No packages needed for security'
+      - 'c:dnf check-update -> r:No packages needed for security'
+      - 'c:dnf check-update -> r:No security updates needed'
 
 
 # 1.10 Ensure system-wide crypto policy is not legacy (Scored)
@@ -3424,18 +3425,3 @@ checks:
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
