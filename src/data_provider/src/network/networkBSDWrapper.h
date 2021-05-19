@@ -27,6 +27,7 @@
 #include "networkHelper.h"
 #include "makeUnique.h"
 #include "sharedDefs.h"
+#include "stringHelper.h"
 
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
