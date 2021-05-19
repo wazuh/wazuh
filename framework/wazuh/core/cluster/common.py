@@ -495,9 +495,9 @@ class Handler(asyncio.Protocol):
         # Send each chunk so it is updated in the destination.
         file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
-            for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
-                await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
-                file_hash.update(chunk)
+            data = f.read()
+            await self.send_request(command=b'file_upd', data=relative_path + b' ' + data)
+            file_hash.update(data)
 
         # Close the destination file descriptor so the file in memory is dumped to disk.
         await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
@@ -521,10 +521,8 @@ class Handler(asyncio.Protocol):
         total = len(my_str)
         task_id = await self.send_request(command=b'new_str', data=str(total).encode())
 
-        # Send chunks of the string to the destination node, indicating the ID of the string.
-        local_req_chunk = self.request_chunk - len(task_id) - 1
-        for c in range(0, total, local_req_chunk):
-            await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
+        # Send the string to the destination node, indicating the ID of the string.
+        await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str)
 
         return task_id
 
@@ -745,12 +743,12 @@ class Handler(asyncio.Protocol):
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
-        """Extend file content.
+        """Update file content.
 
         Parameters
         ----------
         data : bytes
-            Bytes containing filepath and chunk of data separated by ' '.
+            Bytes containing filepath and data separated by ' '.
 
         Returns
         -------
@@ -759,9 +757,9 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        name, chunk = data.split(b' ', 1)
-        self.in_file[name]['fd'].write(chunk)
-        self.in_file[name]['checksum'].update(chunk)
+        name, file_content = data.split(b' ', 1)
+        self.in_file[name]['fd'].write(file_content)
+        self.in_file[name]['checksum'].update(file_content)
         return b"ok", b"File updated"
 
     def end_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -813,7 +811,7 @@ class Handler(asyncio.Protocol):
         Parameters
         ----------
         data : bytes
-            Bytes containing string ID and chunk of data separated by ' '.
+            Bytes containing string ID and data separated by ' '.
 
         Returns
         -------
@@ -824,7 +822,7 @@ class Handler(asyncio.Protocol):
         """
         name, str_data = data.split(b' ', 1)
         self.in_str[name].receive_data(str_data)
-        return b"ok", b"Chunk received"
+        return b"ok", b"String updated"
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:
         """Define message when an unknown command is received.
