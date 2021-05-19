@@ -2007,8 +2007,8 @@ void test_w_macos_log_exec_success(void ** state) {
     wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
     assert_ptr_equal(ret->file,  wfd->file);
-    assert_int_equal(ret->append_pool,0);
-    assert_int_equal(ret->pid,0);
+    assert_int_equal(ret->append_pool, 0);
+    assert_int_equal(ret->pid, 0);
 
     os_free(log_cmd_array);
 
@@ -2687,7 +2687,7 @@ void test_w_macos_create_log_show_array_complete(void ** state) {
 void test_w_macos_set_last_log_timestamp_complete(void ** state) {
 
     char * timestamp = NULL;
-    os_strdup("2021-04-27 12:29:25-0700",timestamp);
+    os_strdup("2021-04-27 12:29:25-0700", timestamp);
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -2718,7 +2718,7 @@ void test_w_macos_get_last_log_timestamp_complete(void ** state) {
 void test_w_macos_set_log_settings_complete(void ** state) {
 
     char * settings = NULL;
-    os_strdup("test",settings);
+    os_strdup("test", settings);
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
