@@ -172,21 +172,33 @@
     </rule>
 
     <!-- General rules by type, defined last to catch all -->
-    <rule id="65267" level="3">
+    <rule id="65284" level="2">
+        <if_sid>65260</if_sid>
+        <field name="event.type">info</field>
+        <description>F5 BigIP LTM: Alert message detected.</description>
+    </rule>
+
+    <rule id="65267" level="2">
         <if_sid>65260</if_sid>
         <field name="event.type">notice</field>
         <description>F5 BigIP LTM: Notice message detected.</description>
     </rule>
 
-    <rule id="65268" level="7">
+    <rule id="65268" level="2">
         <if_sid>65260</if_sid>
         <field name="event.type">warning</field>
         <description>F5 BigIP LTM: Warning message detected.</description>
     </rule>
 
-    <rule id="65269" level="7">
+    <rule id="65269" level="4">
         <if_sid>65260</if_sid>
         <field name="event.type">alert</field>
         <description>F5 BigIP LTM: Alert message detected.</description>
+    </rule>
+
+    <rule id="65283" level="7">
+        <if_sid>65260</if_sid>
+        <field name="event.type">crit</field>
+        <description>F5 BigIP LTM: Critical message detected.</description>
     </rule>
 </group>
