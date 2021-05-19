@@ -97,21 +97,6 @@ src/win32/netsh.cmd
 src/win32/VERSION
 src/win32/REVISION
 
-# Windows zip files
-etc/templates/config/windows/10.zip
-etc/templates/config/windows/2003.zip
-etc/templates/config/windows/2008.zip
-etc/templates/config/windows/2008R2.zip
-etc/templates/config/windows/2012.zip
-etc/templates/config/windows/2012R2.zip
-etc/templates/config/windows/2016.zip
-etc/templates/config/windows/2019.zip
-etc/templates/config/windows/7.zip
-etc/templates/config/windows/8.1.zip
-etc/templates/config/windows/8.zip
-etc/templates/config/windows/Vista.zip
-etc/templates/config/windows/xp.zip
-
 # Eclipse files
 .cproject
 .project
