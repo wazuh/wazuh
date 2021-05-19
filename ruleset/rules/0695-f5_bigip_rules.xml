@@ -134,6 +134,196 @@
         </mitre>
     </rule>
 
+    <!-- 01070822 : "Access Denied: %s" -->
+    <rule id="65290" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01070822</field>
+        <description>User is prevented from doing things they are not authorized to do.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01071bd1 : Inbound CMI connection from IP (%s) denied because it came from VLAN (%s), not from expected VLAN (%s). -->
+    <rule id="65291" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01071bd1</field>
+        <description>Mcpd has detected that sync traffic is being sent over a VLAN that is not the correct one.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01860017 : MR_SIP: Too many media sessions %d / %d. Error Code %d -->
+    <rule id="65292" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01860017</field>
+        <description>Too many SIP media sessions have been established for the current configuration.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01010020 : MCP Connection %s, exiting -->
+    <rule id="65293" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01010020</field>
+        <description>Critical error for TMM. It restarts. Attempts to reconnect will be made after that.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01071d0b : adm: %s -->
+    <rule id="65294" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01071d0b</field>
+        <description>Errors could be caused by a broken feature or critical system errors.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 012a0002 : "LIBHAL reporting critical conditions" -->
+    <rule id="65295" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">012a0002</field>
+        <description>The HAL daemon might not be able to correctly identify the platform or publish the hardware abstraction configuration at startup, or has encountered a critical failure during normal operation.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 012a0003 : LIBHAL reporting error conditions -->
+    <rule id="65296" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">012a0003</field>
+        <description>The HAL daemon might not be able to correctly identify the platform or publish the hardware abstraction configuration at startup, or has encountered a critical failure during normal operation.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 012a0013 : Blade %d hardware sensor critical alarm: %s -->
+    <rule id="65297" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">012a0013</field>
+        <description>Hardware sensor critical alarm.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 012a0031 : %s -->
+    <rule id="65298" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">012a0031</field>
+        <description>AOM has indicated that a temperature sensor has crossed a 'critical' level threshold.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 012a0037 : %s -->
+    <rule id="65299" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">012a0037</field>
+        <description>AOM has indicated that a fan sensor has crossed a 'critical' threshold.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 012a0043 : %s -->
+    <rule id="65300" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">012a0043</field>
+        <description>AOM has indicated that a power sensor has crossed a 'critical' threshold.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 012c0011 : BCM56XXD SDK error -->
+    <rule id="65301" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">012c0011</field>
+        <description>Critical error that prevents the broadcom switch from operating at the proper configuration required by BIG-IP.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01340003 : Cluster error: %s -->
+    <rule id="65302" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01340003</field>
+        <description>Critical errors in communication between TMM threads, specifically by MPI proxy.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01510003 : %s -->
+    <rule id="65303" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01510003</field>
+        <description>Serious issue preventing the guest from starting or shutting down.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01550004 : Critical: -->
+    <rule id="65304" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01550004</field>
+        <description>Critical: The BIG-IP system is not allowed not to go Active.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01550005 : Critical: -->
+    <rule id="65305" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01550005</field>
+        <description>Critical: The BIG-IP system is not allowed not to go Active.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01550006 : Critical: -->
+    <rule id="65306" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01550006</field>
+        <description>Critical: The BIG-IP system is not allowed not to go Active.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01940007 : "Failed to allocate the errdefs tmconf handle!" -->
+    <rule id="65307" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01940007</field>
+        <description>Critical: The errdefsd daemon is out of memory.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
+    <!-- 01a70028 : The platform was not found in %s. -->
+    <rule id="65308" level="13">
+        <if_sid>65260</if_sid>
+        <field name="event.code">01a70028</field>
+        <description>Critical: The file /PLATFORM isn't found, and licensing logic cannot determine the platform type.</description>
+        <mitre>
+            <id>T1498</id>
+        </mitre>
+    </rule>
+
     <!-- Bot Defense related logs--> <!-- EXPAND -->
     <rule id="65270" level="0">
         <if_sid>65260</if_sid>
