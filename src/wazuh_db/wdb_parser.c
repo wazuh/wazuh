@@ -5963,6 +5963,9 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
         cJSON* j_type = cJSON_GetObjectItem(data, "type");
         cJSON* j_status = cJSON_GetObjectItem(data, "status");
         cJSON* j_check_pkg_existence = cJSON_GetObjectItem(data, "check_pkg_existence");
+        cJSON* j_severity = cJSON_GetObjectItem(data, "severity");
+        cJSON* j_cvss2_score = cJSON_GetObjectItem(data, "cvss2_score");
+        cJSON* j_cvss3_score = cJSON_GetObjectItem(data, "cvss3_score");
         // Required fields
         if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve) ||
             !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsBool(j_check_pkg_existence)) {
@@ -5971,7 +5974,9 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
         }
         else {
             cJSON* result = wdb_agents_insert_vuln_cves(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring,
-                                            j_reference->valuestring, j_type->valuestring, j_status->valuestring, (bool)j_check_pkg_existence->valueint);
+                                            j_reference->valuestring, j_type->valuestring, j_status->valuestring, (bool)j_check_pkg_existence->valueint,
+                                            cJSON_GetStringValue(j_severity), cJSON_IsNumber(j_cvss2_score) ? j_cvss2_score->valuedouble : 0,
+                                            cJSON_IsNumber(j_cvss3_score) ? j_cvss3_score->valuedouble : 0);
 
             if (result) {
                 char *out = cJSON_PrintUnformatted(result);
