@@ -15,14 +15,14 @@
 <!-- General decoder catch all-->
 <decoder name="f5_bigip_asm_general_fields">
   <parent>f5_bigip_asm</parent>
-  <regex type = "pcre2">[^\|]+\|F5\|ASM\|[^\|]+\|(.+)</regex>
+  <regex type="pcre2">[^\|]+\|F5\|ASM\|[^\|]+\|(.+)</regex>
   <order>message</order>
 </decoder>
 
 <!-- Illegal action-->
 <decoder name="f5_bigip_asm_general_fields">
   <parent>f5_bigip_asm</parent>
-  <regex type = "pcre2">(?:(Illegal)\s([^\|]+)\|){2}</regex>
+  <regex type="pcre2">(?:(Illegal)\s([^\|]+)\|){2}</regex>
   <order>type, action</order>
 </decoder>
 
