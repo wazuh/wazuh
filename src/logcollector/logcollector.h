@@ -260,6 +260,7 @@ extern int sample_log_length;
 extern int accept_remote;
 extern int N_INPUT_THREADS;
 extern int OUTPUT_QUEUE_SIZE;
+extern int wm_debug_level;
 #ifndef WIN32
 extern rlim_t nofile;
 #endif
