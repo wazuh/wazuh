@@ -274,3 +274,5 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
 
     return OS_SUCCESS;
 }
+
+#endif
