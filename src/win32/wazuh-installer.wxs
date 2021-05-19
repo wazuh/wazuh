@@ -96,7 +96,7 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
 
         <CustomAction Id="InstallConfigurationFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractConfigurationFiles &quot;[APPLICATIONFOLDER]&quot;" />
-        <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles &quot;[APPLICATIONFOLDER]&quot;" />
+        <!-- <CustomAction Id="InstallSCAFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs ExtractSCAFiles &quot;[APPLICATIONFOLDER]&quot;" /> -->
         <CustomAction Id="RemoveZipFiles" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript UnzipVersionFiles.vbs RemoveAllZipFiles &quot;[APPLICATIONFOLDER]&quot;" />
 
         <CustomAction Id="ReplaceConfiguration" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript ReplaceConf.vbs &quot;[APPLICATIONFOLDER]&quot;" />
@@ -213,7 +213,7 @@
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
             <Custom Action="InstallConfigurationFiles" After="InstallFinalize">NOT Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
-            <Custom Action="InstallSCAFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom>
+            <!-- <Custom Action="InstallSCAFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom> -->
             <Custom Action="RemoveZipFiles" After="InstallFinalize">(NOT Installed) OR (REINSTALL)</Custom>
             <Custom Action="ReplaceConfiguration" After="InstallFinalize">NOT Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
 
@@ -503,19 +503,19 @@
                           <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
                         </Component>
                         <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
-                            <File Id="SCA_WIN10.ZIP" Name="10.zip" Source="..\..\ruleset\sca\windows\10.zip" />
+                            <File Id="SCA_WIN10" Name="cis_win10_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win10_enterprise.yml" />
                             <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
                         </Component>
                         <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
-                            <File Id="SCA_WIN2012R2.ZIP" Name="2012R2.zip" Source="..\..\ruleset\sca\windows\2012R2.zip" />
+                            <File Id="SCA_WIN2012R2" Name="cis_win2012r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012r2.yml" />
                             <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
                         </Component>
                         <Component Id="SCA_WIN2016" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
-                            <File Id="SCA_WIN2016.ZIP" Name="2016.zip" Source="..\..\ruleset\sca\windows\2016.zip" />
+                            <File Id="SCA_WIN2016" Name="cis_win2016.yml" Source="..\..\ruleset\sca\windows\cis_win2016.yml" />
                             <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
                         </Component>
                         <Component Id="SCA_WIN2019" DiskId="1" Guid="217F0183-FB18-4FBF-BF98-0FCE7B59C706">
-                            <File Id="SCA_WIN2019.ZIP" Name="2019.zip" Source="..\..\ruleset\sca\windows\2019.zip" />
+                            <File Id="SCA_WIN2019" Name="cis_win2019.yml" Source="..\..\ruleset\sca\windows\cis_win2019.yml" />
                             <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
                         </Component>
                       </Directory>
