@@ -759,12 +759,6 @@ winagent: external win32/libwinpthread-1.dll
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
-	cd ../etc/templates/config/windows/; \
-	for dir in $(subst ../etc/templates/config/windows/,,$(wildcard ../etc/templates/config/windows/*)) ; do \
-		$(ZIP) $(addsuffix .zip, $$dir) $$dir; \
-	done
-	cd win32/ && makensis wazuh-installer.nsi
-
 
 win32/shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
@@ -1089,7 +1083,6 @@ endif
 
 TAR := tar -xf
 GUNZIP := gunzip
-ZIP := zip -jr
 GZIP := gzip
 CURL := curl -so
 DEPS_VERSION = 14
@@ -2260,8 +2253,6 @@ clean-internals: clean-unit-tests
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
-	rm -f ../etc/templates/config/windows/*.zip
-	rm -f ../ruleset/sca/windows/*.zip
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
 	rm -rf $(SHARED_UTILS_TEST)build
