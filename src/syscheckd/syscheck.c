@@ -20,8 +20,6 @@
 // Global variables
 syscheck_config syscheck;
 
-int sys_debug_level;
-
 #ifdef USE_MAGIC
 #include <magic.h>
 magic_t magic_cookie = 0;
@@ -58,20 +56,6 @@ void read_internal(int debug_level)
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
-    sys_debug_level = getDefine_Int("syscheck", "debug", 0, 2);
-
-    /* Check current debug_level
-     * Command line setting takes precedence
-     */
-    if (debug_level == 0) {
-        int debug_level = sys_debug_level;
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
-
-    return;
 }
 
 
