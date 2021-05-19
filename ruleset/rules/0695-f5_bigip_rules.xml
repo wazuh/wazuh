@@ -8,7 +8,7 @@
 
 <group name="f5_bigip,">
 
-     <!-- F5 BigIP LTM grouped rules -->
+     <!-- F5 BigIP LTM decoded grouped rules -->
     <rule id="65260" level="0">
         <decoded_as>f5_bigip_ltm</decoded_as>
         <description>F5 Networks BigIP LTM events.</description>
@@ -151,11 +151,24 @@
         </mitre>
     </rule>
 
-    <!-- General ASM Error -->
+    <!-- General ASM Subsystem Error -->
     <rule id="65280" level="7">
         <if_sid>65260</if_sid>
         <field name="event.code">01310027</field>
         <description>F5 BigIP ASM: Subsystem error detected in ${bigip.asm.subsystem}</description>
+    </rule>
+
+    <!-- ASM decoded grouped rules -->
+    <rule id="65281" level="0">
+        <decoded_as>f5_bigip_asm</decoded_as>
+        <description>ASM decoded grouped alerts</description>
+    </rule>
+
+    <!-- ASM Illegal action -->
+    <rule id="65282" level="5">
+        <if_sid>65281</if_sid>
+        <field name="type">Illegal</field>
+        <description>BigIP ASM: Illegal ${action} detected</description>
     </rule>
 
     <!-- General rules by type, defined last to catch all -->

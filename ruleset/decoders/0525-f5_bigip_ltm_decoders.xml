@@ -49,5 +49,5 @@ May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_se
 <decoder name="f5_bigip_ltm_general_fields">
   <parent>f5_bigip_ltm</parent>
   <regex type="pcre2">ASM\ssubsystem\serror\s([^:\s]+)[:\s]+(.*)</regex>
-  <order>bigip.asm.subsystem,error.message</order>
+  <order>bigip.asm.subsystem, error.message</order>
 </decoder>
