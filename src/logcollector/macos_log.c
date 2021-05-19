@@ -46,7 +46,7 @@ STATIC INLINE void w_macos_log_show_array_add_level(char ** log_cmd_array, size_
 
     /* Log Show's Level section: adds, or not, `--debug` and/or `--info`. This that assumes `debug` contains `info` */
     if (level != NULL && strcmp(level, MACOS_LOG_LEVEL_DEFAULT_STR) != 0) {
-        
+
         /* If the level is not `default`, because it is set to `info` or `debug`, then the info logs are acquired */
         w_strdup(SHOW_INFO_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
 
@@ -342,7 +342,7 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
     lf->macos_log->show_wfd = w_macos_log_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
 
-    char * log_show_str = w_strcat_list(log_show_array,' ');
+    char * log_show_str = w_strcat_list(log_show_array, ' ');
 
     if (lf->macos_log->show_wfd != NULL) {
         lf->macos_log->state = LOG_RUNNING_SHOW;
@@ -371,7 +371,7 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
 
     lf->macos_log->stream_wfd = w_macos_log_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
-    char * log_stream_str = w_strcat_list(log_stream_array,' ');
+    char * log_stream_str = w_strcat_list(log_stream_array, ' ');
 
     if (lf->macos_log->stream_wfd != NULL) {
         if (lf->macos_log->state == LOG_NOT_RUNNING) {

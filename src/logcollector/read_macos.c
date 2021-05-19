@@ -157,10 +157,10 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
         retval = waitpid(log_mode_wfd->pid, &status, WNOHANG);      // Tries to get the child' "soul"
         if (retval == log_mode_wfd->pid) {                          // This is true in the case that the child exited
             if (lf->macos_log->state == LOG_RUNNING_SHOW) {
-                if (status == 0) {      
+                if (status == 0) {
                     // Normal process' end of execution
                     minfo(MACOS_LOG_SHOW_CHILD_EXITED, log_mode_wfd->pid, status);
-                } else {                
+                } else {
                     // Abnormal process' end of execution
                     merror(MACOS_LOG_SHOW_CHILD_EXITED, log_mode_wfd->pid, status);
                 }
@@ -391,7 +391,7 @@ STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * b
 }
 
 STATIC char * w_macos_trim_full_timestamp(const char * full_timestamp) {
-    
+
     char * short_timestamp = NULL;
 
     if (w_strlen(full_timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN) {
