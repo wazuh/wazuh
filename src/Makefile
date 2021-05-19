@@ -759,10 +759,6 @@ winagent: external win32/libwinpthread-1.dll
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
-	cd ../ruleset/sca/windows && $(ZIP) 10.zip cis_win10_enterprise.yml
-	cd ../ruleset/sca/windows&& $(ZIP) 2012R2.zip cis_win2012r2.yml
-	cd ../ruleset/sca/windows && $(ZIP) 2016.zip cis_win2016.yml
-	cd ../ruleset/sca/windows && $(ZIP) 2019.zip cis_win2019.yml
 	cd ../etc/templates/config/windows/; \
 	for dir in $(subst ../etc/templates/config/windows/,,$(wildcard ../etc/templates/config/windows/*)) ; do \
 		$(ZIP) $(addsuffix .zip, $$dir) $$dir; \

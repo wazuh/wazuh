@@ -98,7 +98,6 @@ src/win32/VERSION
 src/win32/REVISION
 
 # Windows zip files
-ruleset/sca/windows/10/*.zip
 etc/templates/config/windows/10.zip
 etc/templates/config/windows/2003.zip
 etc/templates/config/windows/2008.zip
