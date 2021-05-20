@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 4, 2020.
  *
  * This program is free software; you can redistribute it
@@ -34,10 +34,7 @@ std::shared_ptr<IOSNetwork> FactoryWindowsNetwork::create(const std::shared_ptr<
         {
             ret = std::make_shared<WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating Windows network data retriever." };
-        }
+        // else: The current interface family is not supported
     }
     else
     {

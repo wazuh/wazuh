@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
-import subprocess
-import sys
-import socket
-import logging
-import json
 import argparse
 import atexit
+import json
+import logging
+import os
+import socket
 import struct
+import subprocess
+import sys
 import textwrap
-from wazuh.core.common import LOGTEST_SOCKET
 
 from wazuh.core import common
+from wazuh.core.common import LOGTEST_SOCKET
+
 
 def init_argparse():
     """Setup argpase for handle command line parameters
@@ -86,7 +87,7 @@ def main():
     atexit.register(w_logtest.remove_last_session)
 
     # Main processing loop
-    session_token = ''
+    session_token = str()
     while True:
         # Get user input
         try:

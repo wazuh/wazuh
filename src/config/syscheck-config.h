@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -79,6 +79,12 @@ typedef enum fdb_stmt {
 
     FIMDB_STMT_SIZE
 } fdb_stmt;
+
+// The following foreach is really hacky, beware!!
+// It will only work with arrays that end on a NULL element
+#define foreach_array(iterator, array)            \
+    iterator = (array != NULL) ? array[0] : NULL; \
+    for (int _i = 0; iterator != NULL; iterator = array[++_i])
 
 #define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
 
@@ -170,6 +176,40 @@ typedef struct _rtfim {
 
 typedef enum fim_type {FIM_TYPE_FILE, FIM_TYPE_REGISTRY} fim_type;
 
+#ifdef WIN32
+
+typedef struct whodata_dir_status {
+    int status;
+    char object_type;
+    SYSTEMTIME last_check;
+} whodata_dir_status;
+
+typedef ULARGE_INTEGER whodata_directory;
+
+typedef struct whodata {
+    OSHash *fd;          // Open file descriptors
+    OSHash *directories; // Directories checked by whodata mode
+    int interval_scan;   // Time interval between scans of the checking thread
+    char **device;        // Hard disk devices
+    char **drive;         // Drive letter
+} whodata;
+
+#endif /* End WIN32*/
+
+typedef struct _directory_s {
+    char *path;
+    int options;
+    int diff_size_limit; /* Apply the file size limit option in a specific directory */
+    char *symbolic_links;
+    OSMatch *filerestrict;
+    int recursion_level;
+    char *tag; /* array of tags for each directory */
+#ifdef WIN32
+    // Windows specific fields
+    whodata_dir_status dirs_status; // Status list
+#endif
+} directory_t;
+
 typedef struct whodata_evt {
     char *user_id;
     char *user_name;
@@ -193,30 +233,9 @@ typedef struct whodata_evt {
     unsigned __int64 process_id;
     unsigned int mask;
     char scan_directory;
-    int config_node;
+    directory_t *config_node;
 #endif
 } whodata_evt;
-
-#ifdef WIN32
-
-typedef struct whodata_dir_status {
-    int status;
-    char object_type;
-    SYSTEMTIME last_check;
-} whodata_dir_status;
-
-typedef ULARGE_INTEGER whodata_directory;
-
-typedef struct whodata {
-    OSHash *fd;                         // Open file descriptors
-    OSHash *directories;                // Directories checked by whodata mode
-    int interval_scan;                  // Time interval between scans of the checking thread
-    whodata_dir_status *dirs_status;    // Status list
-    char **device;                       // Hard disk devices
-    char **drive;                        // Drive letter
-} whodata;
-
-#endif /* End WIN32*/
 
 #ifdef WIN32
 
@@ -347,7 +366,7 @@ typedef struct _config {
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
     unsigned int enable_registry_synchronization:1; /* Enable registry database synchronization */
 
-    int *opts;                      /* attributes set in the <directories> tag element */
+    directory_t **directories; /* List of directories to be monitored */
 
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
@@ -362,7 +381,6 @@ typedef struct _config {
     int disk_quota_limit;           /* Controls the increase of the size of the queue/diff/local folder (in KB) */
     int file_size_enabled;          /* Enable diff file size limit */
     int file_size_limit;            /* Avoids generating a backup from a file bigger than this limit (in KB) */
-    int *diff_size_limit;           /* Apply the file size limit option in a specific directory */
     float diff_folder_size;         /* Save size of queue/diff/local folder */
     float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */
     uint16_t disk_quota_full_msg;   /* Specify if the full disk_quota message can be written (Once per scan) */
@@ -372,12 +390,6 @@ typedef struct _config {
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
-    char **dir;                     /* array of directories to be scanned */
-    char **symbolic_links;         /* array of converted links directories */
-    OSMatch **filerestrict;
-    int *recursion_level;
-
-    char **tag;                     /* array of tags for each directory */
     long max_sync_interval;         /* Maximum Synchronization interval (seconds) */
     long sync_interval;             /* Synchronization interval (seconds) */
     long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
@@ -427,13 +439,6 @@ typedef struct _config {
  * @return Return 0 on success or -1 on error.
  */
 int read_syscheck_config_xml(const OS_XML *xml, XML_NODE node, syscheck_config *syscheck, int modules);
-
-/**
- * @brief Organizes syscheck directories and related data according to their priority (whodata-realtime-scheduled) and in alphabetical order
- *
- * @param syscheck Syscheck configuration structure
- */
-void organize_syscheck_dirs(syscheck_config *syscheck) __attribute__((nonnull(1)));
 
 /**
  * @brief Converts the value written in the configuration to a determined data unit in KB
@@ -512,6 +517,13 @@ char *syscheck_opts2str(char *buf, int buflen, int opts);
  * @param [out] config The syscheck configuration to free
  */
 void Free_Syscheck(syscheck_config *config);
+
+/**
+ * @brief Frees the memory of a directory_t structure
+ *
+ * @param dir The directory to be free'd
+ */
+void free_directory(directory_t *dir);
 
 /**
  * @brief Transforms an ASCII text to HEX

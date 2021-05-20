@@ -61,6 +61,7 @@
         <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
         <WixVariable Id="WixUISupportPerUser" Value="0" />
         <Property Id="ALLUSERS" Value="1" />
+        <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
         <WixVariable Id="WixUIBannerBmp" Value="ui\bannrbmp.jpg" />
         <WixVariable Id="WixUIDialogBmp" Value="ui\dlgbmp.jpg" />
         <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Run Agent configuration interface" />
@@ -178,7 +179,7 @@
 
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
-        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="deferred" Return="ignore" Impersonate="no" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />

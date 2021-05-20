@@ -1,6 +1,6 @@
 #!/var/ossec/framework/python/bin/python3
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -58,7 +58,7 @@ def start(foreground, root, config_file):
 
     # Set correct permissions on api.log file
     if os.path.exists(os.path.join(common.wazuh_path, log_path)):
-        os.chown(os.path.join(common.wazuh_path, log_path), common.ossec_uid(), common.ossec_gid())
+        os.chown(os.path.join(common.wazuh_path, log_path), common.wazuh_uid(), common.wazuh_gid())
         os.chmod(os.path.join(common.wazuh_path, log_path), 0o660)
 
     # Configure https
@@ -108,11 +108,11 @@ def start(foreground, root, config_file):
                       f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
             sys.exit(1)
 
-    # Drop privileges to ossec
+    # Drop privileges to wazuh
     if not root:
         if api_conf['drop_privileges']:
-            os.setgid(common.ossec_gid())
-            os.setuid(common.ossec_uid())
+            os.setgid(common.wazuh_gid())
+            os.setuid(common.wazuh_uid())
     else:
         print(f"Starting API as root")
 

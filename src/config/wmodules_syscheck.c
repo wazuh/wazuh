@@ -50,7 +50,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     else {
         config = d1;
     }
-    int it = 0;
+    directory_t *dir_it;
 
     config->rootcheck      = 0;
     config->disabled       = SK_CONF_UNPARSED;
@@ -69,8 +69,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     config->scan_time      = NULL;
     config->file_limit_enabled = true;
     config->file_limit     = 100000;
-    config->dir            = NULL;
-    config->opts           = NULL;
+    config->directories    = NULL;
     config->enable_synchronization = 1;
     config->restart_audit  = 1;
     config->enable_whodata = 0;
@@ -123,25 +122,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     ReadConfig(modules, AGENTCONFIG, config, NULL);
 #endif
 
-    // Check directories options to determine whether to start the whodata thread or not
-    if (config->dir) {
-        for (it = 0; config->dir[it]; it++) {
-            if (config->opts[it] & WHODATA_ACTIVE) {
-                config->enable_whodata = 1;
-
-                break;  // Exit loop with the first whodata directory
-            }
+    foreach_array(dir_it, config->directories) {
+        if (dir_it->diff_size_limit == -1) {
+            dir_it->diff_size_limit = config->file_size_limit;
+        }
+        // Check directories options to determine whether to start the whodata thread or not
+        if (dir_it->options & WHODATA_ACTIVE) {
+            config->enable_whodata = 1;
         }
     }
-
-    if (config->diff_size_limit) {
-        for (it = 0; config->diff_size_limit[it]; it++) {
-            if (config->diff_size_limit[it] == -1) {
-                config->diff_size_limit[it] = config->file_size_limit;
-            }
-        }
-    }
-
     switch (config->disabled) {
     case SK_CONF_UNPARSED:
         config->disabled = 1;
@@ -149,25 +138,21 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     case SK_CONF_UNDEFINED:
         config->disabled = 0;
     }
-
 #ifndef WIN32
     /* We must have at least one directory to check */
-    if (!config->dir || config->dir[0] == NULL) {
+    if (config->directories == NULL || config->directories[0] == NULL) {
         return (1);
     }
 #else
-    /* We must have at least one directory or registry key to check. Since
-       it's possible on Windows to have syscheck enabled but only monitoring
-       either the filesystem or the registry, both lists must be valid,
-       even if empty.
+    /* It used to be that we needed to ensure the dir array was not null
+       and had at least a null element, this is no longer the case. In Windows,
+       if config->directories is null nothing will go wrong.
+       config->registry though... That's a different story.
      */
-    if (!config->dir) {
-        config->dir = SYSCHECK_EMPTY;
-    }
     if (!config->registry) {
             config->registry = REGISTRY_EMPTY;
     } else {
-        it = 0;
+        int it = 0;
         while (config->registry[it].entry) {
             if (config->registry[it].diff_size_limit == -1) {
                 config->registry[it].diff_size_limit = config->file_size_limit;
@@ -175,7 +160,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
             it++;
         }
     }
-    if ((config->dir[0] == NULL) && (config->registry[0].entry == NULL)) {
+    if ((config->directories == NULL) && (config->registry[0].entry == NULL)) {
         return (1);
     }
     config->max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);

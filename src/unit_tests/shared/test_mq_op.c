@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -131,14 +131,10 @@ void test_start_mq_write_simple_fail(void ** state){
     char * path = "/test";
 
     int ret = 0;
-    char expected_str[OS_SIZE_64];
     errno = ERRNO;
 
     will_return(__wrap_OS_ConnectUnixDomain, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Can't connect to '/test': Socket operation on non-socket (88). Attempt: 1");
-
-    snprintf(expected_str, OS_SIZE_64, "(1210): Queue '%s' not accessible: '%s'", path,strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, expected_str);
 
     ret = StartMQ(path, type, n_attempts);
     assert_int_equal(ret, -1);
@@ -184,16 +180,12 @@ void test_start_mq_write_multiple_fail(void ** state){
 
     int ret = 0;
     char messages[n_attempts][OS_SIZE_1024];
-    char expected_str[OS_SIZE_64];
 
     for (int i = 0; i <= n_attempts - 1; i++) {
         will_return(__wrap_OS_ConnectUnixDomain, -1);
         snprintf(messages[i], OS_SIZE_1024, "Can't connect to '/test': Socket operation on non-socket (88). Attempt: %d", i + 1);
         expect_string(__wrap__mdebug1, formatted_msg, messages[i]);
     }
-
-    snprintf(expected_str, OS_SIZE_64, "(1210): Queue '%s' not accessible: '%s'", path,strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, expected_str);
 
     ret = StartMQ(path, type, n_attempts);
     assert_int_equal(ret, -1);
@@ -247,7 +239,7 @@ void test_start_mq_write_inf_fail(void ** state){
     will_return(__wrap_OS_ConnectUnixDomain, 0);
     /* Ignoring output */
     expect_any_count(__wrap__mdebug1, formatted_msg, -1);
-    
+
     ret = StartMQ(path, type, n_attempts);
 }
 

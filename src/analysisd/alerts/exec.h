@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -14,15 +14,15 @@
 #include "eventinfo.h"
 #include "active-response.h"
 
-void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar);
+void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *ar);
 void getActiveResponseInString(const Eventinfo *lf,
-                                const active_response *ar,
-                                const char *ip,
-                                const char *user,
-                                char *filename,
-                                char *extra_args,
-                                char *temp_msg);
+                               const active_response *ar,
+                               const char *ip,
+                               const char *user,
+                               char *filename,
+                               char *extra_args,
+                               char *temp_msg);
 void get_exec_msg(const active_response *ar, char *agent_id, const char *temp_msg, char *exec_msg);
-
+void send_exec_msg(int *socket, const char *queue_path, const char *exec_msg);
 
 #endif /* EXEC_H */

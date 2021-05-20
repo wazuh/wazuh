@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -273,57 +273,10 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
     while (r_node) {
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
-            r_node->ruleinfo->level = newrule->level;
-            r_node->ruleinfo->maxsize = newrule->maxsize;
-            r_node->ruleinfo->frequency = newrule->frequency;
-            r_node->ruleinfo->timeframe = newrule->timeframe;
-            r_node->ruleinfo->ignore_time = newrule->ignore_time;
-
-            r_node->ruleinfo->group = newrule->group;
-            r_node->ruleinfo->match = newrule->match;
-            r_node->ruleinfo->regex = newrule->regex;
-            r_node->ruleinfo->day_time = newrule->day_time;
-            r_node->ruleinfo->week_day = newrule->week_day;
-            r_node->ruleinfo->srcip = newrule->srcip;
-            r_node->ruleinfo->dstip = newrule->dstip;
-            r_node->ruleinfo->srcport = newrule->srcport;
-            r_node->ruleinfo->dstport = newrule->dstport;
-            r_node->ruleinfo->user = newrule->user;
-            r_node->ruleinfo->url = newrule->url;
-            r_node->ruleinfo->id = newrule->id;
-            r_node->ruleinfo->status = newrule->status;
-            r_node->ruleinfo->hostname = newrule->hostname;
-            r_node->ruleinfo->program_name = newrule->program_name;
-            r_node->ruleinfo->extra_data = newrule->extra_data;
-            r_node->ruleinfo->action = newrule->action;
-            r_node->ruleinfo->comment = newrule->comment;
-            r_node->ruleinfo->info = newrule->info;
-            r_node->ruleinfo->cve = newrule->cve;
-            r_node->ruleinfo->info_details = newrule->info_details;
-            r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
-            r_node->ruleinfo->if_matched_group = newrule->if_matched_group;
-            r_node->ruleinfo->if_matched_sid = newrule->if_matched_sid;
-            r_node->ruleinfo->alert_opts = newrule->alert_opts;
-            r_node->ruleinfo->context_opts = newrule->context_opts;
-            r_node->ruleinfo->context = newrule->context;
-            r_node->ruleinfo->decoded_as = newrule->decoded_as;
-            r_node->ruleinfo->ar = newrule->ar;
-            r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
-
-            r_node->ruleinfo->location = newrule->location;
-            r_node->ruleinfo->lists = newrule->lists;
-            r_node->ruleinfo->prev_rule = newrule->prev_rule;
-            r_node->ruleinfo->same_fields = newrule->same_fields;
-            r_node->ruleinfo->not_same_fields = newrule->not_same_fields;
-
-#ifdef LIBGEOIP_ENABLED
-            r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
-            r_node->ruleinfo->dstgeoip = newrule->dstgeoip;
-#endif
-
+            os_remove_ruleinfo(r_node->ruleinfo);
+            r_node->ruleinfo = newrule;
             return (1);
         }
-
 
         /* Check if the child has a rule */
         if (r_node->child) {
@@ -535,6 +488,18 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
         }
     }
 
+    if (ruleinfo->mitre_tactic_id) {
+        for (int i = 0; ruleinfo->mitre_tactic_id[i]; i++) {
+            os_free(ruleinfo->mitre_tactic_id[i]);
+        }
+    }
+
+    if (ruleinfo->mitre_technique_id) {
+        for (int i = 0; ruleinfo->mitre_technique_id[i]; i++) {
+            os_free(ruleinfo->mitre_technique_id[i]);
+        }
+    }
+
     w_free_expression_t(&ruleinfo->match);
     w_free_expression_t(&ruleinfo->regex);
     w_free_expression_t(&ruleinfo->srcgeoip);
@@ -583,6 +548,8 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
     os_free(ruleinfo->same_fields);
     os_free(ruleinfo->not_same_fields);
     os_free(ruleinfo->mitre_id);
+    os_free(ruleinfo->mitre_tactic_id);
+    os_free(ruleinfo->mitre_technique_id);
 
     os_free(ruleinfo);
 }

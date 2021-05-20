@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -158,6 +158,6 @@ async def response_postprocessing(request, handler):
             problem = connexion_problem(401, "Unauthorized", type="about:blank",
                                         detail="No authorization token provided")
     finally:
-        if problem:
-            remove_unwanted_fields()
-            return problem
+        problem and remove_unwanted_fields()
+
+    return problem

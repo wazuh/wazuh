@@ -1,5 +1,5 @@
 /* Remote request listener
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Jun 07, 2017.
  *
  * This program is free software; you can redistribute it
@@ -25,13 +25,13 @@ static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
 int req_timeout;
 int max_restart_lock;
 
-size_t wcom_dispatch(char *command, char ** output){
+size_t wcom_dispatch(char *command, char ** output) {
     char *rcv_comm = command;
     char *rcv_args = NULL;
     char * source;
     char * target;
 
-    if ((rcv_args = strchr(rcv_comm, ' '))){
+    if ((rcv_args = strchr(rcv_comm, ' '))) {
         *rcv_args = '\0';
         rcv_args++;
     }
@@ -53,7 +53,6 @@ size_t wcom_dispatch(char *command, char ** output){
         }
         // uncompress [file_path]
         source = rcv_args;
-
         if (target = strchr(rcv_args, ' '), target) {
             *(target++) = '\0';
             return wcom_uncompress(source, target, output);
@@ -63,7 +62,7 @@ size_t wcom_dispatch(char *command, char ** output){
             return strlen(*output);
         }
 
-    } else if (strcmp(rcv_comm, "restart") == 0) {
+    } else if (strcmp(rcv_comm, "restart") == 0 || strcmp(rcv_comm, "restart-wazuh") == 0) {
         return wcom_restart(output);
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
         int timeout = -2;
@@ -87,7 +86,7 @@ size_t wcom_dispatch(char *command, char ** output){
 
         return strlen(*output);
 
-    } else if (strcmp(rcv_comm, "getconfig") == 0){
+    } else if (strcmp(rcv_comm, "getconfig") == 0) {
         // getconfig section
         if (!rcv_args){
             mtdebug1(WM_EXECD_LOGTAG, "WCOM getconfig needs arguments.");
@@ -96,6 +95,9 @@ size_t wcom_dispatch(char *command, char ** output){
         }
         return wcom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "check-manager-configuration") == 0) {
+        return wcom_check_manager_config(output);
+
     } else {
         mtdebug1(WM_EXECD_LOGTAG, "WCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
@@ -103,7 +105,7 @@ size_t wcom_dispatch(char *command, char ** output){
     }
 }
 
-size_t wcom_unmerge(const char *file_path, char ** output){
+size_t wcom_unmerge(const char *file_path, char ** output) {
     char final_path[PATH_MAX + 1];
 
     if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
@@ -180,11 +182,21 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
 
 size_t wcom_restart(char ** output) {
     time_t lock = pending_upg - time(NULL);
-
     if (lock <= 0) {
 #ifndef WIN32
+        char *exec_cmd[3] = {NULL};
 
-        char *exec_cmd[3] = { "bin/wazuh-control", "restart", NULL};
+        if (access("active-response/bin/restart.sh", F_OK) == 0) {
+            exec_cmd[0] = "active-response/bin/restart.sh";
+#ifdef CLIENT
+            exec_cmd[1] = "agent";
+#else
+            exec_cmd[1] = "manager";
+#endif
+        } else {
+            exec_cmd[0] = "bin/wazuh-control";
+            exec_cmd[1] = "restart";
+        }
 
         switch (fork()) {
             case -1:
@@ -241,7 +253,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "logging") == 0){
+    } else if (strcmp(section, "logging") == 0) {
         if (cfg = getLoggingConfig(), cfg) {
             os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
@@ -263,7 +275,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
-    } else if (strcmp(section, "cluster") == 0){
+    } else if (strcmp(section, "cluster") == 0) {
 #ifndef WIN32
         /* Check socket connection with cluster first */
         int sock = -1;
@@ -296,6 +308,72 @@ size_t wcom_getconfig(const char * section, char ** output) {
 error:
     mtdebug1(WM_EXECD_LOGTAG, "At WCOM getconfig: Could not get '%s' section", section);
     os_strdup("err Could not get requested section", *output);
+    return strlen(*output);
+}
+
+size_t wcom_check_manager_config(char **output) {
+    static const char *daemons[] = {"bin/wazuh-authd", "bin/wazuh-remoted",
+                                    "bin/wazuh-execd", "bin/wazuh-analysisd", "bin/wazuh-logcollector",
+                                    "bin/wazuh-integratord", "bin/wazuh-syscheckd", "bin/wazuh-maild",
+                                    "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd",
+                                    "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL
+                                    };
+
+    int response_retval = 0;
+    int i;
+    char command_in[PATH_MAX] = {0};
+    char *response_string = NULL;
+    char *command_out = NULL;
+    cJSON *response = cJSON_CreateObject();
+
+    for (i = 0; daemons[i]; i++) {
+        response_retval = 0;
+        snprintf(command_in, PATH_MAX, "%s -t", daemons[i]);
+        // Exec a command with a timeout of 2000 seconds.
+        if (wm_exec(command_in, &command_out, &response_retval, 2000, NULL) < 0) {
+            if (response_retval == EXECVE_ERROR) {
+                mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
+            } else {
+                mwarn("Error executing [%s]", command_in);
+            }
+
+            os_free(response_string);
+            size_t size = snprintf(NULL, 0, "Error executing %s - (%d)", command_in, response_retval);
+            os_calloc(size + 1, sizeof(char), response_string);
+            snprintf(response_string, size, "Error executing %s - (%d)", command_in, response_retval);
+            break;
+        }
+
+        if (command_out && *command_out) {
+            // Remove last newline
+            size_t lastchar = strlen(command_out) - 1;
+            command_out[lastchar] = command_out[lastchar] == '\n' ? '\0' : command_out[lastchar];
+
+            wm_strcat(&response_string, command_out, ' ');
+        }
+
+        os_free(command_out);
+
+        if(response_retval) {
+            break;
+        }
+    }
+
+    cJSON_AddNumberToObject(response, "error", response_retval);
+
+    if (response_retval) {
+        char error_msg[OS_SIZE_4096 - 27] = {0};
+        snprintf(error_msg, OS_SIZE_4096 - 27, "%s", response_string);
+        cJSON_AddStringToObject(response, "message", error_msg);
+    } else {
+        cJSON_AddStringToObject(response, "message", "ok");
+    }
+
+    os_free(response_string);
+
+    *output = cJSON_PrintUnformatted(response);
+    cJSON_Delete(response);
+
     return strlen(*output);
 }
 
