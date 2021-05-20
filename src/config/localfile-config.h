@@ -131,6 +131,7 @@ typedef enum _w_macos_log_state_t {
 typedef struct {
     char buffer[OS_MAXSTR];     ///< Stores the current read while macOS log is running
     time_t timestamp;           ///< last successful read
+    bool force_send;            ///< Force sending the context
 } w_macos_log_ctxt_t;
 
 /**

@@ -167,9 +167,9 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
                 w_macos_release_log_show();
                 if (lf->macos_log->stream_wfd != NULL) {
                     /* This variable is reseted as, by changing the log mode, stream header must be processed as well */
-                    /* In case a multi-line context is still stored, it is forced to expire to send it */
+                    /* In case a multi-line context is still stored, it is forced to send it */
                     lf->macos_log->is_header_processed = false;
-                    lf->macos_log->ctxt.timestamp -= (MACOS_LOG_TIMEOUT + 2);
+                    lf->macos_log->ctxt.force_send = (lf->macos_log->ctxt.buffer[0] != '\0');
                     lf->macos_log->state = LOG_RUNNING_STREAM;
                 } else {
                     lf->macos_log->state = LOG_NOT_RUNNING;
@@ -206,13 +206,18 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
         offset = strlen(str);
 
         /* If the context is expired then frees it and returns the log */
-        if (w_macos_is_log_ctxt_expired((time_t) MACOS_LOG_TIMEOUT, &macos_log_cfg->ctxt)) {
+        if (w_macos_is_log_ctxt_expired((time_t) MACOS_LOG_TIMEOUT, &macos_log_cfg->ctxt)
+           || (macos_log_cfg->ctxt.force_send)) {
             w_macos_log_ctxt_clean(&macos_log_cfg->ctxt);
             /* delete last end-of-line character */
             if (buffer[offset - 1] == '\n') {
                 buffer[offset - 1] = '\0';
             }
-            return true;
+            /* Force sending the last log of `log show` */
+            retval = (macos_log_cfg->is_header_processed || macos_log_cfg->ctxt.force_send);
+            macos_log_cfg->ctxt.force_send = false;
+
+            return retval;
         }
 
         str += offset;

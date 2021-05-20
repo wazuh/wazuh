@@ -1005,6 +1005,8 @@ void test_read_macos_empty_log(void ** state) {
     os_calloc(1, sizeof(wfd_t), lf.macos_log->stream_wfd);
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = getpid();
+    lf.macos_log->is_header_processed = true;
+
 
     will_return(__wrap_can_read, 1);
 
@@ -1223,6 +1225,7 @@ void test_read_macos_toggle_correctly_ended_show_to_stream(void ** state) {
     lf.macos_log->stream_wfd->pid = 11;
     macos_log_wfd.show = lf.macos_log->show_wfd;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
+    lf.macos_log->is_header_processed = true;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1276,6 +1279,8 @@ void test_read_macos_toggle_faulty_ended_show_to_stream(void ** state) {
     lf.macos_log->stream_wfd->pid = 11;
     macos_log_wfd.show = lf.macos_log->show_wfd;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
+    lf.macos_log->is_header_processed = true;
+
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1328,6 +1333,8 @@ void test_read_macos_toggle_correctly_ended_show_to_faulty_stream(void ** state)
     lf.macos_log->stream_wfd = NULL;
     macos_log_wfd.show = lf.macos_log->show_wfd;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
+    lf.macos_log->is_header_processed = true;
+
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1376,6 +1383,7 @@ void test_read_macos_faulty_ended_stream(void ** state) {
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = 10;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
+    lf.macos_log->is_header_processed = true;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1428,6 +1436,7 @@ void test_read_macos_faulty_waitpid(void ** state) {
     lf.macos_log->state = LOG_RUNNING_STREAM;
     lf.macos_log->stream_wfd->pid = 10;
     macos_log_wfd.stream = lf.macos_log->stream_wfd;
+    lf.macos_log->is_header_processed = true;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
