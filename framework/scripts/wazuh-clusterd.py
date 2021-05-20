@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import sys
+from signal import signal, Signals, SIGTERM, SIG_DFL
 
 
 #
@@ -25,6 +26,18 @@ def set_logging(foreground_mode=False, debug_mode=0):
 def print_version():
     from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
     print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
+
+
+def exit_handler(signum, frame):
+    main_logger.info(f'SIGNAL [({signum})-({Signals(signum).name})] received. Exit...')
+
+    global original_sig_handler
+    if callable(original_sig_handler):
+        original_sig_handler(signum, frame)
+    elif original_sig_handler == SIG_DFL:
+        # Call default handler if the original one can't be run
+        signal(signum, SIG_DFL)
+        os.kill(os.getpid(), signum)
 
 
 #
@@ -153,6 +166,7 @@ if __name__ == '__main__':
         os.setuid(common.wazuh_uid())
 
     pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
+    original_sig_handler = signal(SIGTERM, exit_handler)
 
     main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
     try:
