@@ -9,7 +9,7 @@
 <!-- Group BigIP F5 cef decoders-->
 <decoder name="f5_bigip_cef">
   <type>syslog</type>
-	<program_name>cef</program_name>
+	<program_name>ASM</program_name>
 </decoder>
 
 <!-- General decoder message-->
