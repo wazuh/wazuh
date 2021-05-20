@@ -11,7 +11,7 @@ import os
 import random
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from copy import copy, deepcopy
 from functools import reduce
 from operator import or_
@@ -31,7 +31,7 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-threadpool = ThreadPoolExecutor()
+threadpool = ThreadPoolExecutor(max_workers=1)
 
 
 class DistributedAPI:
@@ -230,7 +230,11 @@ class DistributedAPI:
             data = self.f(**self.f_kwargs)
             common.reset_context_cache()
             self.debug_log("Finished executing request locally")
+
             return data
+
+        async def async_run_local():
+            return run_local()
 
         try:
             before = time.time()
@@ -239,19 +243,16 @@ class DistributedAPI:
             timeout = None if self.wait_for_complete \
                 else self.cluster_items['intervals']['communication']['timeout_api_exe']
 
+            task = run_local if self.is_async else async_run_local
+
             # LocalClient only for control functions
             if self.local_client_arg is not None:
                 lc = local_client.LocalClient()
                 self.f_kwargs[self.local_client_arg] = lc
 
-            if self.is_async:
-                task = run_local()
-            else:
-                loop = asyncio.get_running_loop()
-                task = loop.run_in_executor(threadpool, run_local)
             try:
-                data = await asyncio.wait_for(task, timeout=timeout)
-            except asyncio.TimeoutError:
+                data = threadpool.submit(asyncio.run, task()).result(timeout=timeout)
+            except FuturesTimeoutError:
                 raise exception.WazuhInternalError(3021)
             except OperationalError:
                 raise exception.WazuhInternalError(2008)
