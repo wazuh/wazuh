@@ -467,32 +467,44 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         os_strdup("agent", logf[pl].target[0]);
     }
 
-    /* Missing file */
-    if (logf[pl].file == NULL) {
-        merror(MISS_FILE);
-        os_strdup("", logf[pl].file);
-        return (OS_INVALID);
-    }
-
     /* Missing log format */
-    if (!logf[pl].logformat) {
+    if (logf[pl].logformat == NULL) {
         merror(MISS_LOG_FORMAT);
         return (OS_INVALID);
     }
+
+    /* Missing file */
+    if (logf[pl].file == NULL) {
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+        if (strcmp(logf[pl].logformat, MACOS) == 0) {
+            mwarn(LOGCOLLECTOR_MISSING_LOCATION_MACOS);
+            os_strdup(MACOS, logf[pl].file);
+        } else {
+#endif
+            merror(MISS_FILE);
+            os_strdup("", logf[pl].file);
+            return (OS_INVALID);
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+        }
+#endif
+    }
+
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     /* Verify macos log config*/
     if (log_config->macos_blocks_count > 1) {
         merror(DUP_MACOS);
         return (OS_INVALID);
     }
-
-    if (strcmp(logf[pl].logformat, MACOS) == 0 && strcmp(logf[pl].file, MACOS) != 0) {
-        /* Invalid macos log configuration */
-        merror(INV_MACOS);
-        return (OS_INVALID);
-    }
     
     if (strcmp(logf[pl].logformat, MACOS) == 0) {
+
+        if (strcmp(logf[pl].file, MACOS) != 0) {
+            /* Invalid macos log configuration */
+            mwarn(LOGCOLLECTOR_INV_MACOS, logf[pl].file);
+            os_free(logf[pl].file);
+            w_strdup(MACOS, logf[pl].file);
+        }
+
         if (logf[pl].reconnect_time != DEFAULT_EVENTCHANNEL_REC_TIME) {
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_reconnect_time);
         }

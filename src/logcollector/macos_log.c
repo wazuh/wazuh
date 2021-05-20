@@ -321,7 +321,7 @@ STATIC INLINE bool w_macos_is_log_executable(void) {
 }
 
 /**
- * @brief Creates the environment for collecting "show" logs on MacOS Systems
+ * @brief Creates the environment for collecting "show" logs on macOS Systems
  * 
  * @param lf localfile's logreader structure with `log show`'s arguments and its configuration structure to be set
  */
