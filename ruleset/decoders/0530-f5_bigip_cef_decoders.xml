@@ -23,7 +23,7 @@
 <decoder name="f5_bigip_cef_general_fields">
   <parent>f5_bigip_cef</parent>
   <regex type="pcre2">dvchost=(\S+)?\sdvc=(\S+)?\scs1=(\S+)?\scs1Label=(\S+)?\scs2=(\S+)?\scs2Label=(\S+)?\sdeviceCustomDate1=(\w+\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2})\sdeviceCustomDate1Label=(\S+)?\sexternalId=(\S+)?\sact=(\S+)?\scn1=(\S+)?\scn1Label=(\S+)?\ssrc=(\S+)?\sspt=(\S+)?\sdst=(\S+)?\sdpt=(\S+)?\srequestMethod=(\S+)?\sapp=(\S+)?\scs5=(\S+)?\scs5Label=(\S+)?\srt=(\w+\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2})\sdeviceExternalId=(\S+)?\scs4=(.*)\scs4Label=(\S+)?\scs6=(\S+)?\scs6Label=(\S+)?\sc6a1=(\S+)?\sc6a1Label=(\S+)?\sc6a2=(\S+)?\sc6a2Label=(\S+)?\sc6a3=(\S+)?\sc6a3Label=(\S+)?\sc6a4=(\S+)?\sc6a4Label=(\S+)?\smsg=(\S+)?\ssuid=(\S+)?\ssuser=(\S+)?\scn2=(\S+)?\scn2Label=(\S+)?\scn3=(\S+)?\scn3Label=(\S+)?\smicroservice=(\S+)?\srequest=(\S+)?\scs3Label=(\S+)?\scs3=(.*)</regex>
-  <order>dvchost, dvc, cs1, cs1Label, cs2, cs2Label, deviceCustomDate1, deviceCustomDate1Label, externalId, act, cn1, cn1Label, src, spt, dst, dpt, requestMethod, app, cs5, cs5Label, rt, deviceExternalId, cs4, cs4Label, cs6, cs6Label, c6a1, c6a1Label, c6a2, c6a2Label, msg, suid, suser, cn2, cn2Label, cn3, cn3Label, microservice, request, cs3Label, cs3</order>
+  <order>dvchost, dvc, cs1, cs1Label, cs2, cs2Label, deviceCustomDate1, deviceCustomDate1Label, externalId, act, cn1, cn1Label, src, spt, dst, dpt, requestMethod, app, cs5, cs5Label, rt, deviceExternalId, cs4, cs4Label, cs6, cs6Label, c6a1, c6a1Label, c6a2, c6a2Label, c6a3, c6a3Label, c6a4, c6a4Label, msg, suid, suser, cn2, cn2Label, cn3, cn3Label, microservice, request, cs3Label, cs3</order>
 </decoder>
 
 <!-- Illegal action-->
