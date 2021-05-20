@@ -115,6 +115,8 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     // Define path where CIS-CAT is installed
 
     if (ciscat->ciscat_path) {
+        char pwd[PATH_MAX];
+
         switch (wm_relative_path(ciscat->ciscat_path)) {
             case 0:
                 // Full path
@@ -127,7 +129,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
                 }
             #else
-                snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+                if (getcwd(pwd, sizeof(pwd)) == NULL) {
+                    mterror(WM_CISCAT_LOGTAG, "Could not get the current working directory: %s (%d)", strerror(errno), errno);
+                    ciscat->flags.error = 1;
+                } else {
+                    os_snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", pwd, ciscat->ciscat_path);
+                }
             #endif
                 break;
             default:
