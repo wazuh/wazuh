@@ -458,10 +458,12 @@ int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
     /* Allocate memory for new node */
     newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
     if (newnode == NULL) {
+        // LCOV_EXCL_START
         merror(MEM_ERROR, errno, strerror(errno));
         w_mutex_unlock((pthread_mutex_t *)&list->mutex);
         w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
         return 1;
+        // LCOV_EXCL_STOP
     }
 
     newnode->data = data;
