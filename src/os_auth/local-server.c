@@ -170,7 +170,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
 // Dispatch local request
 char* local_dispatch(const char *input) {
-    cJSON *request;
+    cJSON *request = NULL;
     cJSON *function;
     cJSON *arguments;
     cJSON *response = NULL;
