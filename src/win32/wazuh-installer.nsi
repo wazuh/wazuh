@@ -188,7 +188,6 @@ Section "Wazuh Agent (required)" MainSec
     File wazuh-agent.exe
     File wazuh-agent-eventchannel.exe
     File default-ossec.conf
-    File default-ossec-pre6.conf
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File internal_options.conf
@@ -301,11 +300,7 @@ Section "Wazuh Agent (required)" MainSec
     ConfInstallOSSEC:
         ClearErrors
         IfFileExists "$INSTDIR\ossec.conf" ConfPresentOSSEC
-        ${If} ${AtLeastWinVista}
             Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
-        ${Else}
-            Rename "$INSTDIR\default-ossec-pre6.conf" "$INSTDIR\ossec.conf"
-        ${EndIf}
         IfErrors ConfErrorOSSEC ConfPresentOSSEC
     ConfErrorOSSEC:
         MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
