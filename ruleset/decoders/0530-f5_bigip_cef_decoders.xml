@@ -6,24 +6,30 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<!-- Group BigIP F5 ASM decoders-->
-<decoder name="f5_bigip_asm">
+<!-- Group BigIP F5 cef decoders-->
+<decoder name="f5_bigip_cef">
   <type>syslog</type>
-	<program_name>ASM</program_name>
+	<program_name>cef</program_name>
 </decoder>
 
-<!-- General decoder catch all-->
-<decoder name="f5_bigip_asm_general_fields">
-  <parent>f5_bigip_asm</parent>
-  <regex type="pcre2">[^\|]+\|F5\|ASM\|[^\|]+\|(.+)</regex>
+<!-- General decoder message-->
+<decoder name="f5_bigip_cef_general_fields">
+  <parent>f5_bigip_cef</parent>
+  <regex type="pcre2">CEF:0\|F5\|ASM\|[^\|]+\|(.+)</regex>
   <order>message</order>
 </decoder>
 
+<!-- Structured fields -->
+<decoder name="f5_bigip_cef_general_fields">
+  <parent>f5_bigip_cef</parent>
+  <regex type="pcre2">dvchost=(\S+)|dvc=(\S+)|cs1=(\S+)|cs1Label=(\S+)|cs2=(\S+)|cs2Label=(\S+)|deviceCustomDate1=(\w+\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2})|deviceCustomDate1Label=(\S+)|externalId=(\S+)|act=(\S+)|cn1=(\S+)|cn1Label=(\S+)|src=(\S+)|spt=(\S+)|dst=(\S+)|dpt=(\S+)|requestMethod=(\S+)|app=(\S+)|cs5=(\S+)|cs5Label=(\S+)|rt=(\w+\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2})|deviceExternalId=(\S+)|cs4=(.*)\scs4Label=(\S+)|cs6=(\S+)|cs6Label=(\S+)|c6a1=(\S+)|c6a1Label=(\S+)|c6a2=(\S+)|c6a2Label=(\S+)|c6a3=(\S+)|c6a3Label=(\S+)|c6a4=(\S+)|c6a4Label=(\S+)|msg=(\S+)|suid=(\S+)|suser=(\S+)|cn2=(\S+)|cn2Label=(\S+)|cn3=(\S+)|cn3Label=(\S+)|microservice=(\S+)|request=(\S+)|cs3Label=(\S+)|cs3=(.*)</regex>
+  <order>dvchost, dvc, cs1, cs1Label, cs2, cs2Label, deviceCustomDate1, deviceCustomDate1Label, externalId, act, cn1, cn1Label, src, spt, dst, dpt, requestMethod, app, cs5, cs5Label, rt, deviceExternalId, cs4, cs4Label, cs6, cs6Label, c6a1, c6a1Label, c6a2, c6a2Label, msg, suid, suser, cn2, cn2Label, cn3, cn3Label, microservice, request, cs3Label, cs3</order>
+</decoder>
+
 <!-- Illegal action-->
-<decoder name="f5_bigip_asm_general_fields">
-  <parent>f5_bigip_asm</parent>
+<decoder name="f5_bigip_cef_general_fields">
+  <parent>f5_bigip_cef</parent>
   <regex type="pcre2">(?:(Illegal)\s([^\|]+)\|){2}</regex>
   <order>type, action</order>
 </decoder>
-
 
