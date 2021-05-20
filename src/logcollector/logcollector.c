@@ -125,6 +125,7 @@ static pthread_rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
+
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 typedef struct{
     wfd_t * show;
