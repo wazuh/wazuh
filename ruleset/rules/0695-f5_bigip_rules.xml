@@ -10,8 +10,8 @@
 
      <!-- F5 BigIP LTM decoded grouped rules -->
     <rule id="65260" level="0">
-        <decoded_as>f5_bigip_ltm</decoded_as>
-        <description>F5 Networks BigIP LTM events</description>
+        <decoded_as>f5_bigip</decoded_as>
+        <description>F5 Networks BigIP events</description>
     </rule>
 
     <!-- 01010251 : Virtual %s exceeded configured rate limit. -->
@@ -22,8 +22,8 @@
         <mitre>
             <id>T1498</id>
         </mitre>
-    </rule>    
-    
+    </rule>
+
     <!-- 01010343 : Syncookie SW mode activated, server = %A:%d -->
     <rule id="65262" level="13">
         <if_sid>65260</if_sid>
@@ -327,10 +327,10 @@
         <description>F5 BigIP ASM: Subsystem error detected in $(bigip.asm.subsystem)</description>
     </rule>
 
-    <!-- ASM decoded grouped rules -->
+    <!-- CEF decoded grouped rules -->
     <rule id="65281" level="0">
-        <decoded_as>f5_bigip_asm</decoded_as>
-        <description>ASM decoded grouped alerts</description>
+        <decoded_as>f5_bigip_cef</decoded_as>
+        <description>CEF decoded grouped alerts</description>
     </rule>
 
     <!-- ASM Illegal action -->
@@ -344,30 +344,30 @@
     <rule id="65284" level="2">
         <if_sid>65260</if_sid>
         <field name="event.type">info</field>
-        <description>F5 BigIP LTM: Alert message detected.</description>
+        <description>F5 BigIP: Alert message detected.</description>
     </rule>
 
     <rule id="65267" level="2">
         <if_sid>65260</if_sid>
         <field name="event.type">notice</field>
-        <description>F5 BigIP LTM: Notice message detected.</description>
+        <description>F5 BigIP: Notice message detected.</description>
     </rule>
 
     <rule id="65268" level="2">
         <if_sid>65260</if_sid>
         <field name="event.type">warning</field>
-        <description>F5 BigIP LTM: Warning message detected.</description>
+        <description>F5 BigIP: Warning message detected.</description>
     </rule>
 
     <rule id="65269" level="4">
         <if_sid>65260</if_sid>
         <field name="event.type">alert</field>
-        <description>F5 BigIP LTM: Alert message detected.</description>
+        <description>F5 BigIP: Alert message detected.</description>
     </rule>
 
     <rule id="65283" level="7">
         <if_sid>65260</if_sid>
         <field name="event.type">crit</field>
-        <description>F5 BigIP LTM: Critical message detected.</description>
+        <description>F5 BigIP: Critical message detected.</description>
     </rule>
 </group>
