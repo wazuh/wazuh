@@ -205,9 +205,10 @@ def _read_option(section_name, opt):
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
         regex = rf'<{opt_name}>(.*)</{opt_name}>'
-        opt_value = re.match(regex, re.sub('\s+(?=<)', '',
-                                            tostring(opt, encoding='unicode'
-                                                     ).replace('\\<', '<').replace('\\>', '>')).strip()).group(1)
+        opt_value = re.match(regex,
+                             re.sub('(?:(\n) +)', '',
+                                    tostring(opt, encoding='unicode').replace('\\<', '<').replace('\\>', '>')
+                                    ).strip()).group(1)
     elif section_name == 'remote' and opt_name == 'protocol':
         opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
