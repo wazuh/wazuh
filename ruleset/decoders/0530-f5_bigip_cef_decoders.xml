@@ -33,3 +33,10 @@
   <order>type, action</order>
 </decoder>
 
+<!-- SQL-INJ -->
+<decoder name="f5_bigip_cef_general_fields">
+  <parent>f5_bigip_cef</parent>
+  <regex type="pcre2">(SQL-INJ)\s([^\|]+)</regex>
+  <order>type, action</order>
+</decoder>
+
