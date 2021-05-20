@@ -2151,7 +2151,7 @@ void test_w_macos_create_log_stream_env_complete(void ** state) {
 
     will_return(__wrap_fcntl, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(1604): Monitoring MacOS logs with: /usr/bin/log stream --style syslog --type activity --type log --type trace --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'");
+    expect_string(__wrap__minfo, formatted_msg, "(1604): Monitoring macOS logs with: /usr/bin/log stream --style syslog --type activity --type log --type trace --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'");
 
     w_macos_create_log_stream_env(current);
 
@@ -2828,7 +2828,7 @@ void test_w_macos_create_log_show_env_success(void ** state) {
 
     will_return(__wrap_fcntl, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(1603): Monitoring MacOS old logs with: " \
+    expect_string(__wrap__minfo, formatted_msg, "(1603): Monitoring macOS old logs with: " \
                                                  "/usr/bin/log show --style syslog --start 2021-04-27 12:29:25-0700 " \
                                                  "--info --debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
 
@@ -2894,7 +2894,7 @@ void test_w_macos_create_log_stream_env_success(void ** state) {
 
     will_return(__wrap_fcntl, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(1604): Monitoring MacOS logs with: " \
+    expect_string(__wrap__minfo, formatted_msg, "(1604): Monitoring macOS logs with: " \
                                                  "/usr/bin/log stream --style syslog --level debug " \
                                                  "--predicate processImagePath CONTAINS[c] 'com.apple.geod'.");
 
