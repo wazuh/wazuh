@@ -447,7 +447,7 @@ void *OSList_GetDataFromIndex(OSList *list, int index) {
 }
 
 /* Add data to the list
- * Returns 1 on success and 0 on failure
+ * Returns 0 on success and 1 on failure
  */
 int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
     OSListNode *newnode;

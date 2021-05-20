@@ -862,21 +862,15 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt && w_evt->path) {
 
                     if (!w_evt->scan_directory) {
-                        w_rwlock_rdlock(&syscheck.directories_lock);
                         fim_whodata_event(w_evt);
-                        w_rwlock_unlock(&syscheck.directories_lock);
                     } else if (w_evt->scan_directory == 1) {
                         // Directory scan has been aborted if scan_directory is 2
                         if (w_evt->mask & DELETE) {
-                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
-                            w_rwlock_unlock(&syscheck.directories_lock);
 
                         } else if(w_evt->mask & FILE_APPEND_DATA || w_evt->mask & FILE_WRITE_DATA) {
                             // Find new files
-                            w_rwlock_rdlock(&syscheck.directories_lock);
                             fim_whodata_event(w_evt);
-                            w_rwlock_unlock(&syscheck.directories_lock);
 
                         } else {
                             mdebug2(FIM_WHODATA_NO_NEW_FILES, w_evt->path, w_evt->mask);
@@ -944,7 +938,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     while (FOREVER()) {
         w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
-            minfo("inside whodata scan");
             dir_it = node_it->data;
             exists = 0;
             d_status = &dir_it->dirs_status;
@@ -1010,7 +1003,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
         }
         w_rwlock_unlock(&syscheck.directories_lock);
 
-        minfo("after whodata scan");
         // Go through syscheck.wdata.directories and remove stale entries
         GetSystemTimeAsFileTime(&current_time);
 
@@ -1023,7 +1015,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
         w_dir_it = 0;
         w_rwlock_wrlock(&syscheck.wdata.directories->mutex);
 
-        minfo("whodata scan 2");
         while (w_dir_it <= syscheck.wdata.directories->rows) {
             w_dir_node = syscheck.wdata.directories->table[w_dir_it];
             w_dir_node_next = w_dir_node;
@@ -1042,7 +1033,6 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
             w_dir_it++;
         }
 
-        minfo("whodata scan 3");
         w_rwlock_unlock(&syscheck.wdata.directories->mutex);
 
         sleep(interval);

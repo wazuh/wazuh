@@ -834,6 +834,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
     struct stat file_stat;
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     // If the file exists, generate add or modify events.
     if(w_stat(w_evt->path, &file_stat) >= 0) {
         event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = w_evt, .report_event = true };
@@ -862,6 +863,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
         }
 #endif
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 }
 
 
@@ -1638,11 +1640,14 @@ void update_wildcards_config(OSList *directories,
                 new_entry->diff_size_limit = syscheck.file_size_limit;
             }
 
-#ifdef WIN_WHODATA
             if (FIM_MODE(new_entry->options) == FIM_WHODATA) {
+#ifdef WIN32
                 realtime_adddir(new_entry->path, new_entry, 0);
-            }
+#else
+                add_whodata_directory(new_entry->path);
 #endif
+            }
+
             fim_insert_directory(directories, new_entry);
         }
         os_free(paths);

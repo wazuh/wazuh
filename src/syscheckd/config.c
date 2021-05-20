@@ -179,9 +179,9 @@ void free_whodata_event(whodata_evt *w_evt) {
 }
 
 cJSON *getSyscheckConfig(void) {
-
+    w_rwlock_rdlock(&syscheck.directories_lock);
 #ifndef WIN32
-    if (!syscheck.directories) {
+    if (OSList_GetFirstNode(syscheck.directories) == NULL) {
         return NULL;
     }
 #endif
@@ -220,7 +220,6 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
-    w_rwlock_rdlock(&syscheck.directories_lock);
     if (syscheck.directories) {
         directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
