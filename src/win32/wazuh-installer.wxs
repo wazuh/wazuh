@@ -394,27 +394,27 @@
                     </Component>
                     <Component Id="WXP_CONF_LOCALFILE" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
                         <File Id="WXP_LOCALFILE.TEMPLATE" Name="localfile-events.template" Source="..\..\etc\templates\config\windows\xp\localfile-events.template"/>
-                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 ) AND  MsiNTProductType = 1</Condition>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
                     </Component>
                     <Component Id="WXP_CONF_PROFILE" DiskId="1" Guid="31F19F56-4549-4D80-924E-ED2F7B0CA74E">
                         <File Id="WXP_PROFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\xp\profile.template"/>
-                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 ) AND  MsiNTProductType = 1</Condition>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
                     </Component>
                     <Component Id="WXP_CONF_SYSCHECK" DiskId="1" Guid="EFE11D65-FF03-41B8-B4FE-82BDC522F0E9">
                         <File Id="WXP_SYSCHECK.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\xp\syscheck.template"/>
-                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 ) AND  MsiNTProductType = 1</Condition>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
                     </Component>
                     <Component Id="W2003_CONF_LOCALFILE" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
                         <File Id="W2003_LOCALFILE.TEMPLATE" Name="localfile-events.template" Source="..\..\etc\templates\config\windows\2003\localfile-events.template"/>
-                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 ) AND MsiNTProductType &gt; 1</Condition>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
                     </Component>
                     <Component Id="W2003_CONF_PROFILE" DiskId="1" Guid="31F19F56-4549-4D80-924E-ED2F7B0CA74E">
                         <File Id="W2003_PROFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2003\profile.template"/>
-                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 ) AND MsiNTProductType &gt; 1</Condition>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
                     </Component>
                     <Component Id="W2003_CONF_SYSCHECK" DiskId="1" Guid="EFE11D65-FF03-41B8-B4FE-82BDC522F0E9">
                         <File Id="W2003_SYSCHECK.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2003\syscheck.template"/>
-                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 ) AND MsiNTProductType &gt; 1</Condition>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
                     </Component>
                     <Component Id="WVISTA_CONF_PROFILE" DiskId="1" Guid="06CBBBCB-0D20-4EEA-9E5A-854A9A34DEFE">
                         <File Id="WVISTA_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\Vista\profile.template"/>
