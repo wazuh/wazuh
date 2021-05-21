@@ -73,6 +73,7 @@ class InBuffer:
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
         self.flag_divided = b''  # request's command flag to indicate a msg division
+        self.header_format_local_server = '!2I12s'  # header format for headers received from local server
         self.counter = 0  # request's counter in the box
 
     def get_info_from_header(self, header: bytes, header_format: str, header_size: int) -> bytes:
@@ -92,7 +93,13 @@ class InBuffer:
         header : bytes
             Buffer without the content of the header.
         """
-        self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
+        # Check if command has 14 B (from cluster) or 12 B (from local socket)
+        try:
+            # Base case: header received from cluster (header length = 22 B)
+            self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
+        except struct.error:
+            # Header received from socket (no flag divided, header length = 20 B)
+            self.counter, self.total, cmd = struct.unpack(self.header_format_local_server, header[:header_size])
         cmd_split = cmd.split(b' ')
         self.cmd = cmd_split[0]
         self.flag_divided = cmd_split[-1] if cmd_split[-1] in [InBuffer.divide_flag.strip(),
@@ -385,7 +392,9 @@ class Handler(asyncio.Protocol):
             Whether a message was parsed or not.
         """
         if self.in_buffer:
-            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len:
+            # Check if a new message was received. Messages from local server must be checked too (no flag_divided).
+            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len - \
+                    max(len(InBuffer.divide_flag), len(InBuffer.end_divide_flag)):
                 # A new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
