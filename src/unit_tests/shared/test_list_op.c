@@ -13,22 +13,60 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../syscheckd/syscheck.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../headers/shared.h"
 
+syscheck_config syscheck;
+
+static int setup_syscheck_dir_links(void **state) {
+
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return (1);
+    }
+
+    return 0;
+}
+
+static int teardown_syscheck_dir_links(void **state) {
+
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    if (syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            free_directory(node_it->data);
+            node_it->data = NULL;
+        }
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
+
+    return 0;
+}
+
+void free_data_function(void* data){
+    free(data);
+}
+
 void test_OSList_GetNext_null_return(void **state) {
 
-    OSList list;
+    OSList *list;
     OSListNode *node = NULL;
     OSListNode *node_returned;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    node_returned = OSList_GetNext(&list, node);
+    node_returned = OSList_GetNext(list, node);
 
     assert_null(node_returned);
 
@@ -36,35 +74,44 @@ void test_OSList_GetNext_null_return(void **state) {
 
 void test_OSList_GetNext_node_return(void **state) {
 
-    OSList list;
-    OSListNode node;
-    OSListNode *node_returned = NULL;
+    OSList *list = syscheck.directories;
+    OSListNode *node;
+    OSListNode *node_returned;
 
-    node.next = (OSListNode*) malloc(sizeof(OSListNode));
+    list->first_node = (OSListNode*) malloc(sizeof(OSListNode));
+    list->first_node->next = (OSListNode*) malloc(sizeof(OSListNode));
+    list->first_node->next->next = NULL;
+    node = list->first_node;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    node_returned = OSList_GetNext(&list, &node);
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+
+    node_returned = OSList_GetNext(list, node);
 
     assert_non_null(node_returned);
+
+    OSList_CleanNodes(list);
 
 }
 
 void test_OSList_GetDataFromIndex_null_return(void **state) {
 
-    OSList list;
+    OSList *list = syscheck.directories;
     int data_index = 0;
     void* data_return;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    list->first_node = NULL;
 
-    data_return = OSList_GetDataFromIndex(&list, data_index);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    data_return = OSList_GetDataFromIndex(list, data_index);
 
     assert_null(data_return);
 
@@ -72,126 +119,154 @@ void test_OSList_GetDataFromIndex_null_return(void **state) {
 
 void test_OSList_GetDataFromIndex_data_return(void **state) {
 
-    OSList list;
+    OSList *list = syscheck.directories;
     int data_index = 0;
     void* data_return;
-    char data[5] = "data\0";
+    char* data = malloc(sizeof(char)*5);
 
-    list.first_node = (OSListNode*) malloc(sizeof(OSListNode));
-    list.first_node->data = &data;
+    strncpy (data, "data", 5);
+    list->first_node = (OSListNode*) malloc(sizeof(OSListNode));
+    list->first_node->next = NULL;
+    list->first_node->data = data;
+    list->free_data_function = free_data_function;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    data_return = OSList_GetDataFromIndex(&list, data_index);
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
 
-    assert_ptr_equal(data_return, list.first_node->data);
+    data_return = OSList_GetDataFromIndex(list, data_index);
 
+    assert_ptr_equal(data_return, list->first_node->data);
+
+    list->free_data_function = NULL;
+
+    OSList_CleanNodes(list);
 }
 
 void test_OSList_InsertData_insert_at_first_position(void **state) {
 
-    OSList list;
-    list.first_node = NULL;
-    list.last_node = NULL;
+    OSList *list = syscheck.directories;
     OSListNode *node = NULL;
     void *data = NULL;
     int return_code;
     int success_code = 0;
-    int list_size_after_insertion = list.currently_size + 1;
+    int list_size_after_insertion = 1;
+
+    list->first_node = NULL;
+    list->last_node = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    return_code = OSList_InsertData(&list, node, data);
+    return_code = OSList_InsertData(list, node, data);
 
     assert_int_equal(return_code, success_code);
-    assert_non_null(list.first_node);
-    assert_non_null(list.last_node);
-    assert_int_equal(list.currently_size,list_size_after_insertion);
+    assert_non_null(list->first_node);
+    assert_non_null(list->last_node);
+    assert_int_equal(list->currently_size,list_size_after_insertion);
+
+    OSList_CleanNodes(list);
 
 }
 
 void test_OSList_InsertData_insert_at_last_position(void **state) {
 
-    OSList list;
+    OSList *list = syscheck.directories;
     OSListNode *node = NULL;
-    char data[5] = "data\0";
+    char *data = malloc(sizeof(char)*5);
     int return_code;
     int success_code = 0;
     int list_size_after_insertion = 1;
 
-    list.first_node = (OSListNode*) malloc(sizeof(OSListNode));
-    list.last_node = list.first_node;
-    list.last_node->data = &data;
+    strncpy (data, "data", 5);
+    list->first_node = (OSListNode*) malloc(sizeof(OSListNode));
+    list->first_node->next = (OSListNode*) malloc(sizeof(OSListNode));
+    list->last_node = list->first_node->next;
+    list->last_node->prev = list->first_node;
+    list->last_node->next = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    return_code = OSList_InsertData(&list, node, &data);
+    return_code = OSList_InsertData(list, node, data);
 
     assert_int_equal(return_code, success_code);
-    assert_ptr_equal(list.last_node->data, &data);
-    assert_int_equal(list.currently_size,list_size_after_insertion);
+    assert_ptr_equal(list->last_node->data, data);
+    assert_int_equal(list->currently_size,list_size_after_insertion);
 
+    OSList_CleanNodes(list);
+    free(data);
 }
 
 void test_OSList_InsertData_insert_at_first_position_before_node(void **state) {
 
-    OSList list;
+    OSList *list = syscheck.directories;
     OSListNode *node;
-    char data[5] = "data\0";
+    char *data = malloc(sizeof(char)*5);
     int return_code;
     int success_code = 0;
     int list_size_after_insertion = 1;
 
-    node = (OSListNode*) malloc(sizeof(OSListNode));
-    list.first_node = node;
-    list.last_node = list.first_node;
+    strncpy (data, "data", 5);
+    list->first_node = (OSListNode*) malloc(sizeof(OSListNode));
+    list->last_node = list->first_node;
+    list->first_node->prev = NULL;
+    list->first_node->next = NULL;
+    list->last_node->next = NULL;
+    node = list->first_node;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    return_code = OSList_InsertData(&list, node, &data);
+    return_code = OSList_InsertData(list, node, &data);
 
     assert_int_equal(return_code, success_code);
-    assert_ptr_equal(list.first_node->next, node);
-    assert_int_equal(list.currently_size,list_size_after_insertion);
+    assert_ptr_equal(list->first_node->next, node);
+    assert_int_equal(list->currently_size,list_size_after_insertion);
 
+    OSList_CleanNodes(list);
+    free(data);
 }
 
 void test_OSList_InsertData_insert_at_n_position_before_node(void **state) {
 
-    OSList list;
+    OSList *list = syscheck.directories;
     OSListNode *node;
-    char data[5] = "data\0";
+    char *data = malloc(sizeof(char)*5);
     int return_code;
     int success_code = 0;
     int list_size_after_insertion = 1;
 
-    node = (OSListNode*) malloc(sizeof(OSListNode));
-    node->prev = (OSListNode*) malloc(sizeof(OSListNode));
-    list.first_node = node->prev;
-    list.last_node = node;
+    strncpy (data, "data", 5);
+    list->first_node = (OSListNode*) malloc(sizeof(OSListNode));
+    list->first_node->next = (OSListNode*) malloc(sizeof(OSListNode));
+    list->last_node = list->first_node->next;
+    list->last_node->next = NULL;
+    list->last_node->prev = list->first_node;
+    node = list->last_node;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    return_code = OSList_InsertData(&list, node, &data);
+    return_code = OSList_InsertData(list, node, &data);
 
     assert_int_equal(return_code, success_code);
-    assert_ptr_equal(list.first_node->next, node->prev);
-    assert_int_equal(list.currently_size,list_size_after_insertion);
+    assert_ptr_equal(list->first_node->next, node->prev);
+    assert_int_equal(list->currently_size,list_size_after_insertion);
+
+    OSList_CleanNodes(list);
+    free(data);
 
 }
 
@@ -207,5 +282,5 @@ int main(void) {
         cmocka_unit_test(test_OSList_InsertData_insert_at_n_position_before_node)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_syscheck_dir_links, teardown_syscheck_dir_links);
 }
