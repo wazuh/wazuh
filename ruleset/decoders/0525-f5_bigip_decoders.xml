@@ -209,14 +209,8 @@ May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_se
 
 <decoder name="f5_bigip_cef_general_fields">
   <parent>f5_bigip_cef</parent>
-  <regex type="pcre2">cs4=(.*)\s</regex>
-  <order>cs4</order>
-</decoder>
-
-<decoder name="f5_bigip_cef_general_fields">
-  <parent>f5_bigip_cef</parent>
-  <regex type="pcre2">cs4Label=(\S+)?\s</regex>
-  <order>cs4Label</order>
+  <regex type="pcre2">cs4=(.*)\scs4Label=(\S+)?\s</regex>
+  <order>cs4, cs4Label</order>
 </decoder>
 
 <decoder name="f5_bigip_cef_general_fields">

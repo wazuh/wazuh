@@ -333,30 +333,33 @@
         <description>CEF decoded grouped alerts</description>
     </rule>
 
-    <!-- ASM Illegal action -->
-    <rule id="65294" level="5">
-        <if_sid>65293</if_sid>
-        <field name="type">Illegal</field>
-        <description>BigIP ASM: Illegal $(action) detected</description>
-    </rule>
-
-    <!-- ASM sql injection -->
-    <rule id="65295" level="5">
-        <if_sid>65293</if_sid>
-        <field name="type">SQL-INJ</field>
-        <description>BigIP ASM: SQL injection detected: $(code)</description>
-    </rule>
-
     <!-- ASM Violations -->
-    <rule id="65296" level="5">
+    <rule id="65296" level="12">
         <if_sid>65293</if_sid>
         <field name="cs4Label">attack_type</field>
         <field name="cs4" type="pcre2">^(?!^N\\A$|^$).*</field>
         <description>BigIP ASM: Violation detected, attack_type is $(cs4)</description>
     </rule>
 
+    <!-- ASM Illegal action -->
+    <rule id="65294" level="12">
+        <if_sid>65296</if_sid>
+        <field name="type">Illegal</field>
+        <description>BigIP ASM: Illegal $(action) detected</description>
+    </rule>
+
+    <!-- ASM sql injection -->
+    <rule id="65295" level="13">
+        <if_sid>65296</if_sid>
+        <field name="type">SQL-INJ</field>
+        <description>BigIP ASM: SQL injection detected: $(code)</description>
+        <mitre>
+            <id>T1190</id>
+        </mitre>
+    </rule>
+
     <!-- ASM Anomaly -->
-    <rule id="65297" level="5">
+    <rule id="65297" level="12">
         <if_sid>65293</if_sid>
         <field name="cn3Label">attack_id</field>
         <field name="cn3" type="pcre2">^(?!^N\\A$|^$).*</field>
