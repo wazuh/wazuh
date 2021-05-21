@@ -59,6 +59,8 @@
 #define VULN_CVES_TYPE_OS         "OS"
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
+#define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -139,17 +141,23 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
+    WDB_STMT_FIM_SELECT_CHECKSUM,
     WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_DELETE_AROUND,
     WDB_STMT_FIM_DELETE_RANGE,
     WDB_STMT_FIM_CLEAR,
+    WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
+    WDB_STMT_SYNC_SET_COMPLETION,
+    WDB_STMT_SYNC_GET_INFO,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_FILE_CLEAR,
     WDB_STMT_FIM_FILE_DELETE_AROUND,
     WDB_STMT_FIM_FILE_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM,
     WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_REGISTRY_CLEAR,
     WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
@@ -196,38 +204,47 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_DELETE_TASK,
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_PORTS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
@@ -240,6 +257,10 @@ typedef enum wdb_stmt {
     WDB_STMT_VULN_CVES_FIND_CVE,
     WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
     WDB_STMT_VULN_CVES_DELETE_ENTRY,
+    WDB_STMT_SYS_HOTFIXES_GET,
+    WDB_STMT_SYS_PROGRAMS_GET,
+    WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED,
+    WDB_STMT_SYS_PROGRAMS_SET_TRIAGED,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -258,6 +279,7 @@ typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * id;
+    int peer;
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
@@ -776,6 +798,22 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status);
 
 /**
+ * @brief Function to execute a SQL statement and send the result via TCP socket.
+ *        Each row of the SQL response will be sent in a different command.
+ *        This method will continue until SQL_DONE or an error is obtained.
+ *        This method could block if the receiver lasts longer in receiving the information.
+ *        The block will timeout after the time defined in WDB_BLOCK_SEND_TIMEOUT_S.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [in] peer The peer where the result will be sent.
+ * @return OS_SUCCESS on success.
+ *         OS_INVALID on errors executing SQL statement.
+ *         OS_SOCKTERR on errors handling the socket.
+ *         OS_SIZELIM on error trying to fit the row response into the socket buffer.
+ */
+int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
+
+/**
  * @brief Function to execute a SQL statement and save the result in a JSON array.
  *
  * @param [in] stmt The SQL statement to be executed.
@@ -803,7 +841,7 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
-int wdb_parse(char * input, char * output);
+int wdb_parse(char * input, char * output, int peer);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
@@ -832,8 +870,28 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a packages command
+ * Commands:
+ * 1. del: Deletes packages table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every package on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief Parses a hotfixes command
+ * Commands:
+ * 1. del: Deletes hotfixes table
+ * 2. save: Inserts the entry or updates if it already exists
+ * 3. get: Obtain every hotfix on the table.
+ * @param wdb Database of an agent
+ * @param input Buffer input
+ * @param output Buffer output
+ * */
 int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
@@ -1201,11 +1259,21 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
+// Functions for database integrity
+
+int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest);
+
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp);
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 checksum);
+
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 checksum);
+
+void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp);
+
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 

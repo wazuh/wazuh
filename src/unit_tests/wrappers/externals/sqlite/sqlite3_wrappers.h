@@ -90,4 +90,6 @@ int __wrap_sqlite3_column_type(sqlite3_stmt *pStmt, int i);
 
 const char* __wrap_sqlite3_column_name(sqlite3_stmt *pStmt, int N);
 
+const char* __wrap_sqlite3_sql(sqlite3_stmt *pStmt);
+
 #endif

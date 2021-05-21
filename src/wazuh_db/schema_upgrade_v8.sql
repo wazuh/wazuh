@@ -10,6 +10,8 @@
 
 ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL DEFAULT '';
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
+ALTER TABLE sync_info ADD COLUMN last_agent_checksum TEXT NOT NULL DEFAULT '';
+
 
 DROP TABLE IF EXISTS vuln_cves;
 
@@ -66,5 +68,8 @@ CREATE TRIGGER hotfix_insert
     BEGIN
         UPDATE sys_osinfo SET triaged = 0;
 END;
+
+INSERT INTO sync_info (component) VALUES ('syscollector-packages');
+INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 8);

@@ -13,6 +13,8 @@
  * Foundation.
  */
 
+#include "cJSON.h"
+#include "os_err.h"
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include <openssl/evp.h>
@@ -46,44 +48,21 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 /**
- * @brief Run checksum of a data range
+ * @brief Run checksum of the whole result of an already prepared statement
  *
  * @param[in] wdb Database node.
- * @param component[in] Name of the component.
- * @param begin[in] First element.
- * @param end[in] Last element.
+ * @param[in] stmt Statement to be executed already prepared.
+ * @param[in] component Name of the component.
  * @param[out] hexdigest
  * @retval 1 On success.
- * @retval 0 If no files were found in that range.
+ * @retval 0 If no items were found.
  * @retval -1 On error.
  */
-int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
+int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest) {
 
     assert(wdb != NULL);
+    assert(stmt != NULL);
     assert(hexdigest != NULL);
-
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
-                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
-                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE    };
-
-    assert(component < sizeof(INDEXES) / sizeof(int));
-
-    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
-        return -1;
-    }
-
-    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
-    sqlite3_bind_text(stmt, 1, begin, -1, NULL);
-    sqlite3_bind_text(stmt, 2, end, -1, NULL);
 
     int step = sqlite3_step(stmt);
 
@@ -115,6 +94,88 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     OS_SHA1_Hexdigest(digest, hexdigest);
 
     return 1;
+}
+
+/**
+ * @brief Run checksum of a database table
+ *
+ * @param[in] wdb Database node.
+ * @param[in] component Name of the component.
+ * @param[out] hexdigest
+ * @retval 1 On success.
+ * @retval 0 If no items were found.
+ * @retval -1 On error.
+ */
+int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
+
+    assert(wdb != NULL);
+    assert(hexdigest != NULL);
+
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM };
+
+    assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        return -1;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
+
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
+}
+
+/**
+ * @brief Run checksum of a database table range
+ *
+ * @param[in] wdb Database node.
+ * @param[in] component Name of the component.
+ * @param[in] begin First element.
+ * @param[in] end Last element.
+ * @param[out] hexdigest
+ * @retval 1 On success.
+ * @retval 0 If no items were found in that range.
+ * @retval -1 On error.
+ */
+int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
+
+    assert(wdb != NULL);
+    assert(hexdigest != NULL);
+
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE };
+
+    assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        return -1;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
+    sqlite3_bind_text(stmt, 1, begin, -1, NULL);
+    sqlite3_bind_text(stmt, 2, end, -1, NULL);
+
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
 }
 
 /**
@@ -194,25 +255,33 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @brief Update sync attempt timestamp
  *
  * Set the column "last_attempt" with the timestamp argument,
- * and increase "n_attempts" one unit.
+ * and increase "n_attempts" one unit (non legacy agents).
+ *
+ * It should be called when the syncronization with the agents is in process, or the checksum sent
+ * to the manager is not the same than the one calculated locally.
+ *
+ * The 'legacy' flag calls internally to a different SQL statement, to avoid an overflow in the n_attempts column.
+ * It happens because the old agents call this method once per row, and not once per syncronization cycle.
  *
  * @param wdb Database node.
  * @param component Name of the component.
+ * @param legacy This flag is set to TRUE for agents with an old syscollector syncronization process, and FALSE otherwise.
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 last_agent_checksum) {
 
     assert(wdb != NULL);
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
+    if (wdb_stmt_cache(wdb, legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
     }
 
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_UPDATE_ATTEMPT];
+    sqlite3_stmt * stmt = wdb->stmt[legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT];
 
     sqlite3_bind_int64(stmt, 1, timestamp);
-    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
+    sqlite3_bind_text(stmt, 2, last_agent_checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -225,12 +294,16 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
  * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
  * Increase "n_attempts" and "n_completions" one unit.
  *
+ * It should be called when the syncronization with the agents is complete,
+ * or the checksum sent to the manager is the same than the one calculated locally.
+ *
  * @param wdb Database node.
  * @param component Name of the component.
- * @param timestamp Synchronization event timestamp (field "id");
+ * @param timestamp Synchronization event timestamp (field "id").
+ * @param last_agent_checksum The last global checksum received from the agent.
  */
 
-static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum) {
 
     assert(wdb != NULL);
 
@@ -242,7 +315,35 @@ static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long 
 
     sqlite3_bind_int64(stmt, 1, timestamp);
     sqlite3_bind_int64(stmt, 2, timestamp);
-    sqlite3_bind_text(stmt, 3, COMPONENT_NAMES[component], -1, NULL);
+    sqlite3_bind_text(stmt, 3, last_agent_checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 4, COMPONENT_NAMES[component], -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    }
+}
+
+/**
+ * @brief This method updates the "last_completion" value.
+ *
+ * It should be called after a positive checksum comparison to avoid repeated calculations.
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param timestamp Synchronization event timestamp.
+ */
+void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+
+    assert(wdb != NULL);
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_SET_COMPLETION) == -1) {
+        return;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_SET_COMPLETION];
+
+    sqlite3_bind_int64(stmt, 1, timestamp);
+    sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
@@ -319,11 +420,11 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
         switch (retval) {
         case 0: // No data
         case 1: // Checksum failure
-            wdbi_update_attempt(wdb, component, timestamp);
+            wdbi_update_attempt(wdb, component, timestamp, FALSE, checksum);
             break;
 
         case 2: // Data is synchronized
-            wdbi_update_completion(wdb, component, timestamp);
+            wdbi_update_completion(wdb, component, timestamp, checksum);
         }
 
     } else if (strcmp(command, "integrity_check_left") == 0) {
@@ -381,7 +482,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
         goto end;
     }
 
-    wdbi_update_completion(wdb, component, timestamp);
+    wdbi_update_completion(wdb, component, timestamp, "");
     retval = 0;
 
 end:
@@ -469,3 +570,73 @@ end:
 
     return ret_val;
  }
+
+/**
+ * @brief Returns the syncronization status of a component from sync_info table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] component An enumeration member that was previously added to the table.
+ * @return Returns 0 if data is not ready, 1 if it is, or -1 on error.
+ */
+int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
+    cJSON* j_sync_info = NULL;
+    int result = 0;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_GET_INFO];
+    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
+
+    j_sync_info = wdb_exec_stmt(stmt);
+
+    if (!j_sync_info) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    cJSON* j_last_attempt = cJSON_GetObjectItem(j_sync_info->child, "last_attempt");
+    cJSON* j_last_completion = cJSON_GetObjectItem(j_sync_info->child, "last_completion");
+    cJSON* j_checksum = cJSON_GetObjectItem(j_sync_info->child, "last_agent_checksum");
+
+    if ( cJSON_IsNumber(j_last_attempt) && cJSON_IsNumber(j_last_completion) && cJSON_IsString(j_checksum)) {
+        int last_attempt = j_last_attempt->valueint;
+        int last_completion = j_last_completion->valueint;
+        char *checksum = cJSON_GetStringValue(j_checksum);
+
+        // Return 0 if there was not at least one successful syncronization or
+        // if the syncronization is in progress or there was an error in the syncronization
+        if (last_completion != 0 && last_attempt <= last_completion) {
+            result = 1;
+        }
+        else if (checksum && strcmp("", checksum)) {
+            // Verifying the integrity checksum
+            os_sha1 hexdigest;
+
+            switch (wdbi_checksum(wdb, component, hexdigest)) {
+            case -1:
+                result = OS_INVALID;
+                break;
+
+            case 0:
+                result = 0;
+                break;
+
+            case 1:
+                result = !strcmp(hexdigest, checksum);
+                // Updating last_completion timestamp to avoid calculating the checksum again
+                if (1 == result) {
+                    wdbi_set_last_completion(wdb, component, (unsigned)time(NULL));
+                }
+            }
+        }
+    } else {
+        mdebug1("Failed to get agent's sync status data");
+        result = OS_INVALID;
+    }
+
+    cJSON_Delete(j_sync_info);
+    return result;
+}
