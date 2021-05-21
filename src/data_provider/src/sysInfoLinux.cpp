@@ -277,7 +277,7 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     {
         for (const auto& platform : PLATFORMS_RELEASE_FILES)
         {
-            if(parseFnc(platform.second, platform.first))
+            if (parseFnc(platform.second, platform.first))
             {
                 ret = true;
                 break;
@@ -348,6 +348,7 @@ nlohmann::json SysInfo::getNetworks() const
         for (auto addr : interface.second)
         {
             const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
+
             if (networkInterfacePtr)
             {
                 networkInterfacePtr->buildNetworkData(ifaddr);

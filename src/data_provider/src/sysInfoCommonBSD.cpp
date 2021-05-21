@@ -95,6 +95,7 @@ nlohmann::json SysInfo::getNetworks() const
         for (const auto addr : interface.second)
         {
             const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr)) };
+
             if (networkInterfacePtr)
             {
                 networkInterfacePtr->buildNetworkData(ifaddr);

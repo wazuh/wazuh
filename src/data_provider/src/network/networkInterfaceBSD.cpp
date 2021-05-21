@@ -33,6 +33,7 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
         {
             ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interfaceWrapper);
         }
+
         // else: The current interface family is not supported
     }
     else

@@ -34,6 +34,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
         {
             ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interfaceWrapper);
         }
+
         // else: The current interface family is not supported
     }
     else
