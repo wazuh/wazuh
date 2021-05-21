@@ -28,34 +28,34 @@ namespace RSync
     template <class Type, MessageType mType>
     class FactoryMessageCreator final
     {
-    public:
-        static std::shared_ptr<IMessageCreator<Type>> create()
-        {
-            throw rsync_error
+        public:
+            static std::shared_ptr<IMessageCreator<Type>> create()
             {
-                FACTORY_INSTANTATION
-            };
-        }
+                throw rsync_error
+                {
+                    FACTORY_INSTANTATION
+                };
+            }
     };
 
     template <class Type>
     class FactoryMessageCreator<Type, MessageType::CHECKSUM> final
     {
-    public:
-        static std::shared_ptr<IMessageCreator<Type>> create()
-        {
-            return std::make_shared<MessageChecksum<Type>>();
-        }
+        public:
+            static std::shared_ptr<IMessageCreator<Type>> create()
+            {
+                return std::make_shared<MessageChecksum<Type>>();
+            }
     };
 
     template <class Type>
     class FactoryMessageCreator<Type, MessageType::ROW_DATA> final
     {
-    public:
-        static std::shared_ptr<IMessageCreator<Type>> create()
-        {
-            return std::make_shared<MessageRowData<Type>>();
-        }
+        public:
+            static std::shared_ptr<IMessageCreator<Type>> create()
+            {
+                return std::make_shared<MessageRowData<Type>>();
+            }
     };
 }// namespace RSync
 

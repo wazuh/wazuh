@@ -18,38 +18,38 @@
 
 class ISysOsInfoProvider
 {
-public:
-    // LCOV_EXCL_START
-    virtual ~ISysOsInfoProvider() = default;
-    virtual std::string name() const = 0;
-    virtual std::string version() const = 0;
-    virtual std::string majorVersion() const = 0;
-    virtual std::string minorVersion() const = 0;
-    virtual std::string build() const = 0;
-    virtual std::string release() const = 0;
-    virtual std::string machine() const = 0;
-    virtual std::string nodeName() const = 0;
-    // LCOV_EXCL_STOP
+    public:
+        // LCOV_EXCL_START
+        virtual ~ISysOsInfoProvider() = default;
+        virtual std::string name() const = 0;
+        virtual std::string version() const = 0;
+        virtual std::string majorVersion() const = 0;
+        virtual std::string minorVersion() const = 0;
+        virtual std::string build() const = 0;
+        virtual std::string release() const = 0;
+        virtual std::string machine() const = 0;
+        virtual std::string nodeName() const = 0;
+        // LCOV_EXCL_STOP
 };
 
 
 class SysOsInfo
 {
-public:
-    SysOsInfo() =  default;
-    ~SysOsInfo() = default;
-    static void setOsInfo(const std::shared_ptr<ISysOsInfoProvider>& osInfoProvider,
-                          nlohmann::json& output)
-    {
-        output["os_name"] = osInfoProvider->name();
-        output["os_major"] = osInfoProvider->majorVersion();
-        output["os_minor"] = osInfoProvider->minorVersion();
-        output["os_build"] = osInfoProvider->build();
-        output["os_version"] = osInfoProvider->version();
-        output["hostname"] = osInfoProvider->nodeName();
-        output["os_release"] = osInfoProvider->release();
-        output["architecture"] = osInfoProvider->machine();
-    }
+    public:
+        SysOsInfo() =  default;
+        ~SysOsInfo() = default;
+        static void setOsInfo(const std::shared_ptr<ISysOsInfoProvider>& osInfoProvider,
+                              nlohmann::json& output)
+        {
+            output["os_name"] = osInfoProvider->name();
+            output["os_major"] = osInfoProvider->majorVersion();
+            output["os_minor"] = osInfoProvider->minorVersion();
+            output["os_build"] = osInfoProvider->build();
+            output["os_version"] = osInfoProvider->version();
+            output["hostname"] = osInfoProvider->nodeName();
+            output["os_release"] = osInfoProvider->release();
+            output["architecture"] = osInfoProvider->machine();
+        }
 };
 
 #endif //_SYS_OS_INFO_INTERFACE_H

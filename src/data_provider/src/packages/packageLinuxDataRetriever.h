@@ -41,54 +41,57 @@ void getDpkgInfo(const std::string& libPath, nlohmann::json& jsonPackages);
 template <LinuxType linuxType>
 class FactoryPackagesCreator final
 {
-public:
-    static void getPackages(nlohmann::json&/* packages*/)
-    {
-        throw std::runtime_error
+    public:
+        static void getPackages(nlohmann::json& /* packages*/)
         {
-            "Error creating package data retriever."
-        };
-    }
+            throw std::runtime_error
+            {
+                "Error creating package data retriever."
+            };
+        }
 };
 
 // Standard template to extract package information in fully compatible Linux systems
 template <>
 class FactoryPackagesCreator<LinuxType::STANDARD> final
 {
-public:
-    static void getPackages(nlohmann::json& packages)
-    {
-        if (Utils::existsDir(DPKG_PATH))
+    public:
+        static void getPackages(nlohmann::json& packages)
         {
-            getDpkgInfo(DPKG_STATUS_PATH, packages);
+            if (Utils::existsDir(DPKG_PATH))
+            {
+                getDpkgInfo(DPKG_STATUS_PATH, packages);
+            }
+
+            if (Utils::existsDir(PACMAN_PATH))
+            {
+                getPacmanInfo(PACMAN_PATH, packages);
+            }
+
+            if (Utils::existsDir(RPM_PATH))
+            {
+                getRpmInfo(packages);
+            }
         }
-        if (Utils::existsDir(PACMAN_PATH))
-        {
-            getPacmanInfo(PACMAN_PATH, packages);
-        }
-        if (Utils::existsDir(RPM_PATH))
-        {
-            getRpmInfo(packages);
-        }
-    }
 };
 
 // Template to extract package information in partially incompatible Linux systems
 template <>
 class FactoryPackagesCreator<LinuxType::LEGACY> final
 {
-public:
-    static void getPackages(nlohmann::json& packages)
-    {
-        if (Utils::existsDir(DPKG_PATH))
+    public:
+        static void getPackages(nlohmann::json& packages)
         {
-            getDpkgInfo(DPKG_STATUS_PATH, packages);
+            if (Utils::existsDir(DPKG_PATH))
+            {
+                getDpkgInfo(DPKG_STATUS_PATH, packages);
+            }
+
+            if (Utils::existsDir(RPM_PATH))
+            {
+                getRpmInfo(packages);
+            }
         }
-        if (Utils::existsDir(RPM_PATH))
-        {
-            getRpmInfo(packages);
-        }
-    }
 };
 
 #endif // _PACKAGE_LINUX_DATA_RETRIEVER_H

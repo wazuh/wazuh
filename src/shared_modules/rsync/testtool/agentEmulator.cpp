@@ -16,11 +16,12 @@
 
 
 
-constexpr auto CREATE_STATEMENT{ "CREATE TABLE data_values(`key` BIGINT, `data1` BIGINT, `data2` BIGINT, `data3` BIGINT, PRIMARY KEY (`key`)) WITHOUT ROWID;"};
+constexpr auto CREATE_STATEMENT { "CREATE TABLE data_values(`key` BIGINT, `data1` BIGINT, `data2` BIGINT, `data3` BIGINT, PRIMARY KEY (`key`)) WITHOUT ROWID;"};
 
 static DBSYNC_HANDLE createDbsyncHandle(const std::string& dbName)
 {
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, dbName.c_str(), CREATE_STATEMENT) };
+
     if (!handle)
     {
         throw std::runtime_error
@@ -28,12 +29,13 @@ static DBSYNC_HANDLE createDbsyncHandle(const std::string& dbName)
             "Error creating dbsync handle."
         };
     }
+
     return handle;
 }
 
 struct SmartDeleterJson final
 {
-    void operator()(cJSON * data)
+    void operator()(cJSON* data)
     {
         cJSON_Delete(data);
     }
@@ -59,15 +61,15 @@ AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
                              const unsigned int maxDbItems,
                              const std::shared_ptr<SyncQueue>& outQueue,
                              const std::string& dbFolder)
-: m_agentId{ std::to_string(reinterpret_cast<unsigned long>(this)) }
-, m_rsyncHandle{ rsync_create() }
-, m_dbSyncHandle{ createDbsyncHandle(dbFolder + m_agentId + ".db") }
-, m_config{ nullptr }//TODO: define config based on dbsync handle create statement
-, m_startConfig{ nullptr }//TODO: define config based on first/last sync information statement
-, m_updatePeriod {updatePeriod}
-, m_maxDbItems{ maxDbItems }
-, m_threadsRunning{ true }
-, m_outQueue{ outQueue }
+    : m_agentId{ std::to_string(reinterpret_cast<unsigned long>(this)) }
+    , m_rsyncHandle{ rsync_create() }
+    , m_dbSyncHandle{ createDbsyncHandle(dbFolder + m_agentId + ".db") }
+    , m_config{ nullptr }//TODO: define config based on dbsync handle create statement
+    , m_startConfig{ nullptr }//TODO: define config based on first/last sync information statement
+    , m_updatePeriod {updatePeriod}
+    , m_maxDbItems{ maxDbItems }
+    , m_threadsRunning{ true }
+    , m_outQueue{ outQueue }
 {
     if (!m_rsyncHandle)
     {
@@ -76,7 +78,9 @@ AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
             "Error creating rsync handle."
         };
     }
+
     sync_callback_data_t callback{agentEmulatorSyncCallback, this};
+
     if (rsync_register_sync_id(m_rsyncHandle, m_agentId.c_str(), m_dbSyncHandle, m_config, callback))
     {
         throw std::runtime_error
@@ -84,6 +88,7 @@ AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
             "Error registering rsync id."
         };
     }
+
     if (rsync_start_sync(m_rsyncHandle, m_dbSyncHandle, m_startConfig, callback))
     {
         throw std::runtime_error
@@ -91,23 +96,27 @@ AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
             "Error starting rsync handle."
         };
     }
+
     m_updateThread = std::thread{&AgentEmulator::updateData, this};
 }
 
 AgentEmulator::~AgentEmulator()
 {
     m_threadsRunning = false;
+
     if (m_updateThread.joinable())
     {
         m_updateThread.join();
     }
+
     rsync_close(m_rsyncHandle);
 }
 
 void AgentEmulator::updateData()
 {
     std::srand(std::time(0));
-    while(m_threadsRunning)
+
+    while (m_threadsRunning)
     {
         const auto key{std::to_string(std::rand() % m_maxDbItems)};
         const auto data1{std::to_string(std::rand())};
@@ -141,6 +150,7 @@ void AgentEmulator::syncData(const void* buffer, size_t bufferSize)
 void AgentEmulator::agentEmulatorSyncCallback(const void* buffer, size_t bufferSize, void* userData)
 {
     AgentEmulator* agent{ reinterpret_cast<AgentEmulator*>(userData) };
+
     if (agent)
     {
         agent->syncData(buffer, bufferSize);

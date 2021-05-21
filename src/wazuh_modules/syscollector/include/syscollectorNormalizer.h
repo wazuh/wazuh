@@ -16,20 +16,20 @@
 
 class SysNormalizer
 {
-public:
-    SysNormalizer(const std::string& configFile,
-                  const std::string& target);
-    ~SysNormalizer() = default;
-    nlohmann::json normalize(const std::string& type,
-                             const nlohmann::json& data) const;
-    nlohmann::json removeExcluded(const std::string& type,
-                                  const nlohmann::json& data) const;
-private:
-    static std::map<std::string, nlohmann::json> getTypeValues(const std::string& configFile,
-                                                               const std::string& target,
-                                                               const std::string& type);
-    const std::map<std::string, nlohmann::json> m_typeExclusions;
-    const std::map<std::string, nlohmann::json> m_typeDictionary;
+    public:
+        SysNormalizer(const std::string& configFile,
+                      const std::string& target);
+        ~SysNormalizer() = default;
+        nlohmann::json normalize(const std::string& type,
+                                 const nlohmann::json& data) const;
+        nlohmann::json removeExcluded(const std::string& type,
+                                      const nlohmann::json& data) const;
+    private:
+        static std::map<std::string, nlohmann::json> getTypeValues(const std::string& configFile,
+                                                                   const std::string& target,
+                                                                   const std::string& type);
+        const std::map<std::string, nlohmann::json> m_typeExclusions;
+        const std::map<std::string, nlohmann::json> m_typeDictionary;
 };
 
 
