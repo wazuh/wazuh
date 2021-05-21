@@ -93,13 +93,7 @@ class InBuffer:
         header : bytes
             Buffer without the content of the header.
         """
-        # Check if command has 14 B (from cluster) or 12 B (from local socket)
-        try:
-            # Base case: header received from cluster (header length = 22 B)
-            self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
-        except struct.error:
-            # Header received from socket (no flag divided, header length = 20 B)
-            self.counter, self.total, cmd = struct.unpack(self.header_format_local_server, header[:header_size])
+        self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
         cmd_split = cmd.split(b' ')
         self.cmd = cmd_split[0]
         self.flag_divided = cmd_split[-1] if cmd_split[-1] in [InBuffer.divide_flag.strip(),

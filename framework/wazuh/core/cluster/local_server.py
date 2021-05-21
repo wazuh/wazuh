@@ -166,6 +166,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             if exc:
                 self.logger.error(exc)
 
+
 class LocalServer(server.AbstractServer):
     """
     Create the server, manage multiple client connections. It's connected to the cluster TCP transports.
