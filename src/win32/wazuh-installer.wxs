@@ -69,9 +69,8 @@
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
-        <Binary Id="CMDPath" SourceFile="C:\Windows\System32\cmd.exe" />
 
         <Property Id="APPLICATIONFOLDER">
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
@@ -174,13 +173,9 @@
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
         <CustomAction Id="DepStartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
 
-        <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
-        <!-- Otherwise, the locked files and directories will not be deleted. -->
-        <CustomAction Id="StopWinService" BinaryKey="CMDPath" ExeCommand="/c &quot;NET STOP WazuhSvc&quot;" Execute="deferred" Impersonate="no" Return="ignore" />
-
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
-        <CustomAction Id="StopOssecService" BinaryKey="CMDPath" ExeCommand="/c &quot;NET STOP OssecSvc&quot;" Execute="deferred" Impersonate="no" Return="ignore" />
-        <CustomAction Id="DeleteOssecService" BinaryKey="CMDPath" ExeCommand="/c &quot;SC DELETE OssecSvc&quot;" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
@@ -198,7 +193,6 @@
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
@@ -337,9 +331,14 @@
                         <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
+
                         <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
+
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
-                        <ServiceControl Id="svc_uninstall" Name="WazuhSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
+
+
+                        <ServiceControl Id="ServiceControl" Name="WazuhSvc" Stop="both" Remove="uninstall" Wait="yes" />
+
                         <Condition>VersionNT &lt; 600</Condition>
                     </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
