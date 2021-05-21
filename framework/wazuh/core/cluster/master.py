@@ -200,13 +200,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.logger.debug(f"Command received: {command}")
-        if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p' or command == b'sync_a_w_m_p':
+        if command == b'syn_i_w_m_p' or command == b'syn_e_w_m_p' or command == b'syn_a_w_m_p':
             return self.get_permission(command)
-        elif command == b'sync_i_w_m' or command == b'sync_e_w_m' or command == b'sync_a_w_m':
+        elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m':
             return self.setup_sync_integrity(command, data)
-        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e':
+        elif command == b'syn_i_w_m_e' or command == b'syn_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
-        elif command == b'sync_i_w_m_r' or command == b'sync_e_w_m_r':
+        elif command == b'syn_i_w_m_r' or command == b'syn_e_w_m_r':
             return self.process_sync_error_from_worker(command, data)
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
@@ -257,7 +257,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
 
         # If forward request to other worker, get destination client and request.
-        if command == b'dapi_forward':
+        if command == b'dapi_fwd':
             client, request = data.split(b' ', 1)
             client = client.decode()
             if client in self.server.clients:
@@ -271,8 +271,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             result = self.process_request(command=command, data=data)
 
-        # If command was dapi or dapi_forward, wait for response.
-        if command == b'dapi' or command == b'dapi_forward':
+        # If command was dapi or dapi_fwd, wait for response.
+        if command == b'dapi' or command == b'dapi_fwd':
             try:
                 timeout = None if wait_for_complete \
                                else self.cluster_items['intervals']['communication']['timeout_api_request']
@@ -420,11 +420,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if sync_type == b'sync_i_w_m_p':
+        if sync_type == b'syn_i_w_m_p':
             permission = self.sync_integrity_free
-        elif sync_type == b'sync_e_w_m_p':
+        elif sync_type == b'syn_e_w_m_p':
             permission = self.sync_extra_valid_free
-        elif sync_type == b'sync_a_w_m_p':
+        elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
         else:
             permission = False
@@ -476,9 +476,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if command == b'sync_i_w_m_r':
+        if command == b'syn_i_w_m_r':
             sync_type, self.sync_integrity_free = "Integrity", True
-        else:  # command == b'sync_e_w_m_r':
+        else:  # command == b'syn_e_w_m_r':
             sync_type, self.sync_extra_valid_free = "Extra valid", True
 
         return super().error_receiving_file(error_msg.decode())

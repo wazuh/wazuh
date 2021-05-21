@@ -402,7 +402,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
-        elif command == b'sendsync_res':
+        elif command == b'sendsyn_res':
             asyncio.create_task(self.forward_sendsync_response(data))
             return b'ok', b'Response forwarded to worker'
         elif command == b'dapi_err':
@@ -413,7 +413,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             except WazuhClusterError as e:
                 raise WazuhClusterError(3025)
             return b'ok', b'DAPI error forwarded to worker'
-        elif command == b'sendsync_err':
+        elif command == b'sendsyn_err':
             sendsync_client, error_msg = data.split(b' ', 1)
             try:
                 asyncio.create_task(
@@ -573,13 +573,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
                 logger.error(f"Error synchronizing integrity: {e}")
-                await self.send_request(command=b'sync_i_w_m_r', data=b'None ' +
+                await self.send_request(command=b'syn_i_w_m_r', data=b'None ' +
                                         json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 logger.error(f"Error synchronizing integrity: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder)
-                await self.send_request(command=b'sync_i_w_m_r', data=b'None ' + exc_info.encode())
+                await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
@@ -643,13 +643,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
-            await self.send_request(command=b'sync_e_w_m_r',
+            await self.send_request(command=b'syn_e_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
-            await self.send_request(command=b'sync_e_w_m_r', data=b'None ' + exc_info.encode())
+            await self.send_request(command=b'syn_e_w_m_r', data=b'None ' + exc_info.encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
         """Perform relevant actions for each file according to its status.

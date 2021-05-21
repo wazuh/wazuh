@@ -57,8 +57,7 @@ class InBuffer:
     Define a buffer to receive incoming requests.
     """
 
-    divide_flag = b' d'  # flag used to indicate the message is divided
-    end_divide_flag = b' e'  # flag used to indicate the message is the end of a big message
+    divide_flag = b'd'  # flag used to indicate the message is divided
 
     def __init__(self, total=0):
         """Class constructor.
@@ -73,7 +72,6 @@ class InBuffer:
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
         self.flag_divided = b''  # request's command flag to indicate a msg division
-        self.header_format_local_server = '!2I12s'  # header format for headers received from local server
         self.counter = 0  # request's counter in the box
 
     def get_info_from_header(self, header: bytes, header_format: str, header_size: int) -> bytes:
@@ -94,10 +92,12 @@ class InBuffer:
             Buffer without the content of the header.
         """
         self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
-        cmd_split = cmd.split(b' ')
-        self.cmd = cmd_split[0]
-        self.flag_divided = cmd_split[-1] if cmd_split[-1] in [InBuffer.divide_flag.strip(),
-                                                               InBuffer.end_divide_flag.strip()] else b''
+        # The last Byte of the command is the flag indicating the division
+        flag = cmd[-1:]
+        self.flag_divided = flag if flag == InBuffer.divide_flag else b''
+
+        # Command is the first 11 B of command without dashes (in case they were added)
+        self.cmd = cmd[:-1].split(b' ')[0]
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -266,7 +266,7 @@ class Handler(asyncio.Protocol):
         # The div_msg_box stores all divided messages under its IDs.
         self.div_msg_box = {}
         # Defines command length.
-        self.cmd_len = 12 + max(len(InBuffer.divide_flag), len(InBuffer.end_divide_flag))
+        self.cmd_len = 12
         # Defines header length.
         self.header_len = self.cmd_len + 8  # 4 bytes of counter and 4 bytes of message size
         # Defines header format.
@@ -335,8 +335,8 @@ class Handler(asyncio.Protocol):
             List of Bytes, built messages.
         """
         cmd_len = len(command)
-        # 2 B reserved for the divided msg case
-        if cmd_len > self.cmd_len - 2:
+        # cmd_len must be 12 - 1 (Byte reserved for the flag used in message division)
+        if cmd_len > self.cmd_len - len(InBuffer.divide_flag):
             raise exception.WazuhClusterError(3024, extra_message=command)
 
         # Adds - to command until it reaches cmd length
@@ -363,9 +363,9 @@ class Handler(asyncio.Protocol):
                     if data_size - partial_data_size + self.header_len >= self.request_chunk \
                     else data_size - partial_data_size + self.header_len
 
-                # Last divided message, change flag to e (end)
+                # Last divided message, remove the flag
                 if message_size == data_size - partial_data_size + self.header_len:
-                    command = command[:-len(InBuffer.end_divide_flag)] + InBuffer.end_divide_flag
+                    command = command[:-len(InBuffer.divide_flag)] + b'-' * len(InBuffer.divide_flag)
 
                 msg = bytearray(message_size)
                 msg[:self.header_len] = struct.pack(self.header_format, counter, message_size - self.header_len,
@@ -386,9 +386,8 @@ class Handler(asyncio.Protocol):
             Whether a message was parsed or not.
         """
         if self.in_buffer:
-            # Check if a new message was received. Messages from local server must be checked too (no flag_divided).
-            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len - \
-                    max(len(InBuffer.divide_flag), len(InBuffer.end_divide_flag)):
+            # Check if a new message was received.
+            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len:
                 # A new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
@@ -575,12 +574,12 @@ class Handler(asyncio.Protocol):
             await self.get_manager().local_server.clients[client].send_request(b'ok', self.in_str[string_id].payload)
         except exception.WazuhException as e:
             self.logger.error(f"Error sending send sync response to local client: {e}")
-            await self.send_request(b'sendsync_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
+            await self.send_request(b'sendsyn_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
         except Exception as e:
             self.logger.error(f"Error sending send sync response to local client: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=WazuhJSONEncoder).encode()
-            await self.send_request(b'sendsync_err', exc_info)
+            await self.send_request(b'sendsyn_err', exc_info)
 
     def data_received(self, message: bytes) -> None:
         """Handle received data from other peer.
@@ -596,25 +595,23 @@ class Handler(asyncio.Protocol):
         self.in_buffer += message
         for command, counter, payload, flag_divided in self.get_messages():
             # If the message is a divided one
-            if flag_divided == InBuffer.divide_flag.strip():
+            if flag_divided == InBuffer.divide_flag:
                 try:
                     self.div_msg_box[counter] = self.div_msg_box[counter] + payload
                 except KeyError:
                     self.div_msg_box[counter] = payload
-            # If the message is the last part of a division
-            elif flag_divided == InBuffer.end_divide_flag.strip():
-                payload = self.div_msg_box[counter] + payload
-                del self.div_msg_box[counter]
-                flag_divided = b''
-                # Decrypt the joined payload
-                try:
-                    payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
-                        None else bytes(payload)
-                except cryptography.fernet.InvalidToken:
-                    raise exception.WazuhClusterError(3025)
+            else:
+                # If the message is the last part of a division, join it.
+                if counter in self.div_msg_box:
+                    payload = self.div_msg_box[counter] + payload
+                    del self.div_msg_box[counter]
+                    # Decrypt the joined payload
+                    try:
+                        payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
+                            None else bytes(payload)
+                    except cryptography.fernet.InvalidToken:
+                        raise exception.WazuhClusterError(3025)
 
-            # If the message is not a divided one or it has been already joint
-            if not flag_divided:
                 # If the message is the response of a previously sent request.
                 if counter in self.box:
                     if self.box[counter] is None:
