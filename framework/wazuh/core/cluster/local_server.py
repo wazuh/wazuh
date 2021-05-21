@@ -7,15 +7,13 @@ import functools
 import json
 import os
 import random
-import struct
 from datetime import datetime
 from typing import Tuple, Union
 
 import uvloop
 
-from wazuh.core import common, exception
+from wazuh.core import common
 from wazuh.core.cluster import common as c_common, server, client
-from wazuh.core.cluster.common import InBuffer
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
@@ -167,45 +165,6 @@ class LocalServerHandler(server.AbstractServerHandler):
             exc = future.exception()
             if exc:
                 self.logger.error(exc)
-
-    def msg_build(self, command: bytes, counter: int, data: bytes) -> list[bytearray]:
-        """Build messages with header + payload to be sent from the local server.
-
-        Each message contains a header in self.header_format format that includes self.counter, the data size and the
-        command. The data is also encrypted and added to the bytearray starting from the position self.header_len.
-
-        Parameters
-        ----------
-        command : bytes
-            Command to send to peer.
-        counter : int
-            Message ID.
-        data : bytes
-            Data to send to peer.
-
-        Returns
-        -------
-        list
-            List of Bytes, built messages.
-        """
-        if len(data) > self.request_chunk:
-            raise exception.WazuhClusterError(3033)
-
-        bytes_divided = max(len(InBuffer.divide_flag), len(InBuffer.end_divide_flag))
-        self.header_format = f'!2I{self.cmd_len - bytes_divided}s'
-        cmd_len = len(command)
-        if cmd_len > self.cmd_len - bytes_divided:
-            raise exception.WazuhClusterError(3024, extra_message=command)
-
-        # Adds - to command until it reaches cmd length (no flag_divided from sockets)
-        command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1 - bytes_divided)
-        encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        message_size = self.header_len - bytes_divided + len(encrypted_data)
-
-        msg = bytearray(message_size)
-        msg[:self.header_len - bytes_divided] = struct.pack(self.header_format, counter, len(encrypted_data), command)
-        msg[self.header_len - bytes_divided:message_size] = encrypted_data
-        return [msg]
 
 class LocalServer(server.AbstractServer):
     """
