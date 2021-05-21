@@ -137,14 +137,6 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_EQ("10.2.2.50", ifaddr.at("gateway").get_ref<const std::string&>());
 }
 
-TEST_F(SysInfoNetworkLinuxTest, Test_AF_UNSPEC_THROW)
-{
-    auto mock { std::make_shared<SysInfoNetworkLinuxWrapperMock>() };
-    nlohmann::json ifaddr {};
-    EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_UNSPEC));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
-}
-
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json ifaddr {};

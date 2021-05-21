@@ -2046,6 +2046,109 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
     return fp;
 }
 
+char **expand_win32_wildcards(const char *path) {
+    WIN32_FIND_DATA FindFileData;
+    HANDLE hFind;
+    char **pending_expand = NULL;
+    char **expanded_paths = NULL;
+    char *pattern = NULL;
+    char *next_glob = NULL;
+    char *parent_path = NULL;
+    int pending_expand_index = 0;
+    int expanded_index = 0;
+    size_t glob_pos = 0;
+
+    os_calloc(2, sizeof(char *), pending_expand);
+    os_strdup(path, pending_expand[0]);
+    // Loop until there is not any directory to expand.
+    while(true) {
+        pattern = pending_expand[0];
+
+        if (pattern == NULL) {
+            break;
+        }
+
+        glob_pos = strcspn(pattern, "*?");
+        if (glob_pos == strlen(pattern)) {
+            // If there are no more patterns, exit
+            expanded_paths = pending_expand;
+            break;
+        }
+
+        os_calloc(2, sizeof(char *), expanded_paths);
+
+        for (pending_expand_index = 0; pattern != NULL; pattern = pending_expand[++pending_expand_index]) {
+            glob_pos = strcspn(pattern, "*?");
+            next_glob = strchr(pattern + glob_pos, PATH_SEP);
+
+            // Find the next regex to be appended in case there is an expanded folder.
+            if (next_glob != NULL) {
+                *next_glob = '\0';
+                next_glob++;
+            }
+            os_strdup(pattern, parent_path);
+            char *look_back = strrchr(parent_path, PATH_SEP);
+
+            if (look_back) {
+                *look_back = '\0';
+            }
+
+            hFind = FindFirstFile(pattern, &FindFileData);
+            if (hFind == INVALID_HANDLE_VALUE) {
+                long unsigned errcode = GetLastError();
+                if (errcode == 2) {
+                    mdebug2("No file/folder that matches %s.", pattern);
+                } else {
+                    mdebug2("FindFirstFile failed (%lu) - '%s'\n", errcode, pattern);
+                }
+
+                os_free(pattern);
+                os_free(parent_path);
+                next_glob = NULL;
+                continue;
+            }
+            do {
+                if (strcmp(FindFileData.cFileName, ".") == 0 || strcmp(FindFileData.cFileName, "..") == 0) {
+                    continue;
+                }
+
+                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                    continue;
+                }
+
+                if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 && next_glob != NULL) {
+                    continue;
+                }
+
+                os_strdup(parent_path, expanded_paths[expanded_index]);
+                wm_strcat(&expanded_paths[expanded_index], FindFileData.cFileName, PATH_SEP);
+
+                if (next_glob != NULL) {
+                    wm_strcat(&expanded_paths[expanded_index], next_glob, PATH_SEP);
+                }
+
+                os_realloc(expanded_paths, (expanded_index + 2) * sizeof(char *), expanded_paths);
+                expanded_index++;
+                expanded_paths[expanded_index] = NULL;
+
+            } while(FindNextFile(hFind, &FindFileData));
+
+            FindClose(hFind);
+            // Now, free the memory, as the path that needed to be expanded is no longer needed and it's expansion is
+            // saved in expanded_paths vector.
+            os_free(pattern);
+            os_free(parent_path);
+            next_glob = NULL;
+        }
+
+        expanded_index = 0;
+        os_free(pending_expand);
+        pending_expand = expanded_paths;
+    }
+
+    return expanded_paths;
+}
+
 #endif /* WIN32 */
 
 

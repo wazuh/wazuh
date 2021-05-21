@@ -34,10 +34,7 @@ std::shared_ptr<IOSNetwork> FactoryWindowsNetwork::create(const std::shared_ptr<
         {
             ret = std::make_shared<WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating Windows network data retriever." };
-        }
+        // else: The current interface family is not supported
     }
     else
     {

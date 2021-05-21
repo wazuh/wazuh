@@ -33,10 +33,7 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
         {
             ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating BSD network data retriever." };
-        }
+        // else: The current interface family is not supported
     }
     else
     {
