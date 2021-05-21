@@ -35,5 +35,6 @@ CREATE TABLE IF NOT EXISTS _sys_programs (
 INSERT INTO _sys_programs SELECT * FROM sys_programs;
 DROP TABLE IF EXISTS sys_programs;
 ALTER TABLE _sys_programs RENAME TO sys_programs;
+CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 8);
