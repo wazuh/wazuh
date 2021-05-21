@@ -26,7 +26,6 @@ int wm_sync_message(const char *data);
 pthread_cond_t sys_stop_condition;
 pthread_mutex_t sys_stop_mutex;
 bool need_shutdown_wait = false;
-bool is_stopped = false;
 
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
@@ -175,7 +174,7 @@ void wm_sys_destroy(wm_sys_t *data) {
 }
 
 void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
-    mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
+    mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
     syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
         syscollector_stop_ptr();
