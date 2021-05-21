@@ -4237,13 +4237,6 @@ components:
       required: False
       schema:
         type: boolean
-    raw_conf:
-      in: query
-      name: raw
-      description: "Format response in plain text"
-      required: False
-      schema:
-        type: boolean
     registry:
       in: query
       name: registry
@@ -4395,7 +4388,7 @@ components:
       in: query
       name: search
       description: "Look for elements containing the specified string. To obtain a complementary search, use '-' at the
-      beggining"
+      beginning"
       schema:
         type: string
         format: search
@@ -4515,7 +4508,7 @@ components:
     typesys:
       in: query
       name: type
-      description: "Type of file"
+      description: "Type of interface"
       schema:
         type: string
     allow_run_as:
@@ -4631,7 +4624,7 @@ components:
         - socket
         - syscheck
         - syslog_output
-        # Wodle sections
+        - Wodle sections
         - agent-key-polling
         - aws-s3
         - azure-logs
@@ -5213,7 +5206,7 @@ components:
     package_version:
       in: query
       name: version
-      description: "Filter by version name"
+      description: "Filter by package version"
       schema:
         type: string
     older_than:
@@ -5244,7 +5237,7 @@ components:
     force_single_group:
       in: query
       name: force_single_group
-      description: "Whether to append the new group to current agent's multigroup or replace it"
+      description: "Removes the agent from all groups to which it belongs and assigns it to the specified group"
       schema:
         type: boolean
     wpk_repo:
@@ -5881,8 +5874,8 @@ paths:
       tags:
         - Agents
       summary: "Remove agent from group"
-      description: "Remove an agent from an specified group. If the agent has multigroups, it will preserve all
-      previous groups except the last one"
+      description: "Remove an agent from a specified group. If the agent belongs to several groups, only the specified
+      group will be deleted."
       operationId: api.controllers.agent_controller.delete_single_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
@@ -8265,7 +8258,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -9693,7 +9686,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
