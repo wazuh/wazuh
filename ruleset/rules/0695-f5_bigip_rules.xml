@@ -351,7 +351,7 @@
     <!-- ASM sql injection -->
     <rule id="65295" level="13">
         <if_sid>65296</if_sid>
-        <field name="type">SQL-INJ</field>
+        <field name="cs4">SQL-Injection</field>
         <description>BigIP ASM: SQL injection detected: $(code)</description>
         <mitre>
             <id>T1190</id>
