@@ -5,7 +5,7 @@ import asyncio
 import logging
 import os
 import sys
-from asyncio import TimeoutError
+from concurrent.futures import TimeoutError
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -44,6 +44,11 @@ def AsyncMock(*args, **kwargs):
 
     mock_coro.mock = m
     return mock_coro
+
+
+class FutureMock(MagicMock):
+    def result(self, *args, **kwargs):
+        return 'Testing'
 
 
 def raise_if_exc_routine(dapi_kwargs, expected_error=None):
@@ -184,7 +189,7 @@ def test_DistributedAPI_local_request_errors():
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
-@patch('asyncio.wait_for', new=AsyncMock(return_value='Testing'))
+@patch('concurrent.futures.ThreadPoolExecutor.submit', new=FutureMock())
 def test_DistributedAPI_local_request(mock_local_request):
     """Test `local_request` method from class DistributedAPI and check the behaviour when an error raise."""
     dapi_kwargs = {'f': manager.status, 'logger': logger}
@@ -196,7 +201,7 @@ def test_DistributedAPI_local_request(mock_local_request):
     dapi_kwargs['is_async'] = True
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
-    with patch('asyncio.wait_for', new=AsyncMock(side_effect=TimeoutError('Testing'))):
+    with patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=TimeoutError('Testing')):
         dapi = DistributedAPI(f=manager.status, logger=logger)
         try:
             raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
@@ -204,14 +209,14 @@ def test_DistributedAPI_local_request(mock_local_request):
             assert e.ext['dapi_errors'][list(e.ext['dapi_errors'].keys())[0]]['error'] == \
                    'Timeout executing API request'
 
-    with patch('asyncio.wait_for', new=AsyncMock(side_effect=WazuhError(1001))):
+    with patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=WazuhError(1001)):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
 
         dapi_kwargs['debug'] = True
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
 
-    with patch('asyncio.wait_for', new=AsyncMock(side_effect=WazuhInternalError(1001))):
+    with patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=WazuhInternalError(1001)):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
 
@@ -221,7 +226,7 @@ def test_DistributedAPI_local_request(mock_local_request):
         except WazuhInternalError as e:
             assert e.code == 1001
 
-    with patch('asyncio.wait_for', new=AsyncMock(side_effect=KeyError('Testing'))):
+    with patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=KeyError('Testing')):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
 
