@@ -267,10 +267,13 @@ void test_wdb_agents_insert_vuln_cves_error_json(void **state) {
     const char* type = "PACKAGE";
     const char* status = "VALID";
     bool check_pkg_existence = true;
+    const char* severity = "Unknown";
+    double cvss2_score = 0.0;
+    double cvss3_score = 0.0;
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
 
     assert_null(ret);
 }
@@ -286,6 +289,9 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state) {
     const char* type = "PACKAGE";
     const char* status = "VALID";
     bool check_pkg_existence = true;
+    const char* severity = "Unknown";
+    double cvss2_score = 0.0;
+    double cvss3_score = 0.0;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -316,7 +322,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "PKG_NOT_FOUND");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
 
     assert_ptr_equal(1, ret);
 }
@@ -332,6 +338,9 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state) 
     const char* type = "PACKAGE";
     const char* status = "VALID";
     bool check_pkg_existence = true;
+    const char* severity = "Unknown";
+    double cvss2_score = 0.0;
+    double cvss3_score = 0.0;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -365,7 +374,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state) 
     expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
 
     assert_ptr_equal(1, ret);
 }
@@ -381,6 +390,9 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     const char* type = "PACKAGE";
     const char* status = "VALID";
     bool check_pkg_existence = true;
+    const char* severity = "Unknown";
+    double cvss2_score = 0.0;
+    double cvss3_score = 0.0;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -424,6 +436,13 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     expect_string(__wrap_sqlite3_bind_text, buffer, type);
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, severity);
+    will_return_count(__wrap_sqlite3_bind_double, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_double, index, 9);
+    expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+    expect_value(__wrap_sqlite3_bind_double, index, 10);
+    expect_value(__wrap_sqlite3_bind_double, value, 0.0);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
 
@@ -434,7 +453,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
 
     assert_ptr_equal(1, ret);
 }
@@ -451,6 +470,9 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     const char* type = "PACKAGE";
     const char* status = "VALID";
     bool check_pkg_existence = true;
+    const char* severity = "Unknown";
+    double cvss2_score = 0.0;
+    double cvss3_score = 0.0;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -494,6 +516,13 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, type);
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, severity);
+    will_return_count(__wrap_sqlite3_bind_double, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_double, index, 9);
+    expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+    expect_value(__wrap_sqlite3_bind_double, index, 10);
+    expect_value(__wrap_sqlite3_bind_double, value, 0.0);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
@@ -501,7 +530,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
 
     assert_ptr_equal(1, ret);
 }
