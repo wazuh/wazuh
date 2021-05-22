@@ -23,7 +23,10 @@ cJSON* __wrap_wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                           const char* reference,
                                           const char* type,
                                           const char* status,
-                                          bool check_pkg_existence);
+                                          bool check_pkg_existence,
+                                          const char* severity,
+                                          double cvss2_score,
+                                          double cvss3_score);
 int __wrap_wdb_agents_update_vuln_cves_status(wdb_t *wdb, const char* old_status, const char* new_status, const char* type);
 int __wrap_wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* reference);
 wdbc_result __wrap_wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status, char **output);
