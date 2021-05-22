@@ -73,6 +73,14 @@ int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * s
     return mock();
 }
 
+int __wrap_sqlite3_bind_double(__attribute__((unused)) sqlite3_stmt* stmt,
+                        int index,
+                        double value) {
+    check_expected(index);
+    check_expected(value);
+
+    return mock();
+}
 
 int __wrap_sqlite3_clear_bindings(__attribute__((unused)) sqlite3_stmt* pStmt) {
     return mock();
