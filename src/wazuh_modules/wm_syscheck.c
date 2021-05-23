@@ -31,20 +31,20 @@ const wm_context WM_SYSCHECK_CONTEXT = {
 };
 
 static void wm_syscheck_print_info(void) {
-    /* Print directories to be monitored */
     int r = 0;
+    directory_t *dir_it = NULL;
 #ifdef WIN32
 #ifndef WIN_WHODATA
     int whodata_notification = 0;
     /* Remove whodata attributes */
-    for (r = 0; syscheck.dir[r]; r++) {
-        if (syscheck.opts[r] & WHODATA_ACTIVE) {
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it->options & WHODATA_ACTIVE) {
             if (!whodata_notification) {
                 whodata_notification = 1;
-                mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_INCOMPATIBLE);
+                minfo(FIM_REALTIME_INCOMPATIBLE);
             }
-            syscheck.opts[r] &= ~WHODATA_ACTIVE;
-            syscheck.opts[r] |= REALTIME_ACTIVE;
+            dir_it->options &= ~WHODATA_ACTIVE;
+            dir_it->options |= REALTIME_ACTIVE;
         }
     }
 #endif //WIN_WHODATA
@@ -62,29 +62,30 @@ static void wm_syscheck_print_info(void) {
         r++;
     }
 #endif //WIN32
-    r = 0;
-    while (syscheck.dir[r] != NULL) {
+    /* Print directories to be monitored */
+    foreach_array(dir_it, syscheck.directories) {
         char optstr[ 1024 ];
 
 #ifdef WIN32
-        mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+        mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
 #else
-        if (!syscheck.symbolic_links[r]) {
-            mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-        } else {
-            mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.symbolic_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-        }
-#endif//WIN32
 
-        if (syscheck.tag && syscheck.tag[r] != NULL)
-            mtdebug1(SYSCHECK_LOGTAG, FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
+        if (dir_it->symbolic_links == NULL) {
+            mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, dir_it->path,
+                    syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+        } else {
+            mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_LDIRECTORY, dir_it->path, dir_it->symbolic_links,
+                    syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+        }
+#endif //WIN32
+
+        if (dir_it->tag != NULL)
+            mtdebug1(SYSCHECK_LOGTAG, FIM_TAG_ADDED, dir_it->tag, dir_it->path);
 
         // Print diff file size limit
-        if ((syscheck.opts[r] & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
-            mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);
+        if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
+            mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_FILE_SIZE_LIMIT, dir_it->diff_size_limit, dir_it->path);
         }
-
-        r++;
     }
 
     if (!syscheck.file_size_enabled) {
@@ -152,19 +153,16 @@ static void wm_syscheck_print_info(void) {
     }
 
     /* Check directories set for real time */
-    r = 0;
-    while (syscheck.dir[r] != NULL) {
-        if (syscheck.opts[r] & REALTIME_ACTIVE) {
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it->options & REALTIME_ACTIVE) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
-            mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
+            mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_MONITORING_DIRECTORY, dir_it->path);
 #else
-            mtwarn(SYSCHECK_LOGTAG, FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
-            syscheck.opts[r] &= ~ REALTIME_ACTIVE;
-            syscheck.opts[r] |= SCHEDULED_ACTIVE;
+            mtwarn(SYSCHECK_LOGTAG, FIM_WARN_REALTIME_DISABLED, dir_it->path);
+            dir_it->options &= ~REALTIME_ACTIVE;
+            dir_it->options |= SCHEDULED_ACTIVE;
 #endif
         }
-
-        r++;
     }
 }
 
@@ -186,13 +184,16 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
     read_internal(0);
     mtdebug1(SYSCHECK_LOGTAG, "Starting syscheck.");
     if (syscheck.disabled == 1) {
-        if (!syscheck.dir) {
+        if (syscheck.directories == NULL || syscheck.directories[0] == NULL) {
             mtinfo(SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
             dump_syscheck_file(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
-        } else if (!syscheck.dir[0]) {
-                mtinfo(SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
         }
-        os_free(syscheck.dir[0]);
+
+#ifdef WIN32
+        free_directory(syscheck.directories[0]);
+        syscheck.directories[0] = NULL;
+#endif //WIN32
+
         if (!syscheck.ignore) {
             os_calloc(1, sizeof(char *), syscheck.ignore);
         } else {
@@ -230,16 +231,17 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
     // Audit events thread
     if (syscheck.enable_whodata) {
 #ifdef ENABLE_AUDIT
-        int out = audit_init();
-        if (out < 0) {
+        if (audit_init() < 0) {
+            directory_t *dir_it;
+
             mtwarn(SYSCHECK_LOGTAG, FIM_WARN_AUDIT_THREAD_NOSTARTED);
 
             // Switch who-data to real-time mode
 
-            for (int i = 0; syscheck.dir[i] != NULL; i++) {
-                if (syscheck.opts[i] & WHODATA_ACTIVE) {
-                    syscheck.opts[i] &= ~WHODATA_ACTIVE;
-                    syscheck.opts[i] |= REALTIME_ACTIVE;
+            foreach_array(dir_it, syscheck.directories) {
+                if (dir_it->options & WHODATA_ACTIVE) {
+                    dir_it->options &= ~WHODATA_ACTIVE;
+                    dir_it->options |= REALTIME_ACTIVE;
                 }
             }
         }

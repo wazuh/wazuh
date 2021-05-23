@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -40,7 +40,6 @@ int StartMQ(const char *path, short int type, short int n_attempts)
         }
 
         if (rc < 0) {
-            merror(QUEUE_ERROR, path, strerror(errno));
             return OS_INVALID;
         }
 

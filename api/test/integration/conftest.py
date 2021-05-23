@@ -21,6 +21,7 @@ login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['
 basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+environment_status = None
 
 
 def pytest_addoption(parser):
@@ -67,7 +68,7 @@ def build_and_up(interval: int = 10, build: bool = True):
     os.chdir(pwd)
     values = {
         'interval': interval,
-        'max_retries': 30,
+        'max_retries': 60,
         'retries': 0
     }
     # Get current branch
@@ -294,7 +295,28 @@ def api_test(request):
     clean_tmp_folder()
     if request.session.testsfailed > 0:
         save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
+
+    # Get the environment current status
+    global environment_status
+    environment_status = get_health()
     down_env()
+
+
+def get_health():
+    """Get the current status of the integration environment
+
+    Returns
+    -------
+    str
+        Current status
+    """
+    health = "\nEnvironment final status\n"
+    health += subprocess.check_output(
+        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}' --filter name=^env_wazuh",
+        shell=True).decode()
+    health += '\n'
+
+    return health
 
 
 # HTML report
@@ -382,6 +404,11 @@ def pytest_runtest_makereport(item, call):
 
     elif report.outcome == 'failed':
         results[report.location[0]]['error'] += 1
+
+    if report.when == 'setup' and \
+            report.longrepr and ('api_test did not yield a value' in report.longrepr.reprcrash.message or
+                                 'StopIteration' in report.longrepr.reprcrash.message):
+        report.sections.append(('Environment section', environment_status))
 
 
 def pytest_html_results_summary(prefix, summary, postfix):

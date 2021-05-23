@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January 17, 2018.
  *
  * This program is free software; you can redistribute it
@@ -289,5 +289,9 @@
 
 /* Generic messages */
 #define SUCCESSFULLY_RECONNECTED_SOCKET     "(8300): Successfully reconnected to '%s'"
+
+/* Logcollector */
+
+#define LOGCOLLECTOR_FILE_NOT_EXIST           "(9000): File '%s' no longer exists."
 
 #endif /* DEBUG_MESSAGES_H */

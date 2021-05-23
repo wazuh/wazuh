@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
@@ -6,6 +6,7 @@ import copy
 import fcntl
 import hashlib
 import ipaddress
+import re
 import tempfile
 import threading
 from base64 import b64encode
@@ -32,6 +33,8 @@ from wazuh.core.wdb import WazuhDBConnection
 mutex = threading.Lock()
 lock_file = None
 lock_acquired = False
+
+agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -484,8 +487,6 @@ class Agent:
         ------
         WazuhError(1707)
             If the agent to be restarted is not active.
-        WazuhError(1750)
-            If the agent has active response disabled.
 
         Returns
         -------
@@ -496,11 +497,6 @@ class Agent:
         self.get_basic_information()
         if self.status.lower() != 'active':
             raise WazuhError(1707, extra_message='{0}'.format(self.status))
-
-        # Check if agent has active-response enabled
-        agent_conf = self.getconfig('com', 'active-response', self.version)
-        if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhError(1750)
 
         return send_restart_command(self.id, self.version)
 
@@ -1117,7 +1113,7 @@ class Agent:
                 f_group.write(group_id)
 
             if new_file:
-                chown(agent_group_path, common.ossec_uid(), common.ossec_gid())
+                chown(agent_group_path, common.wazuh_uid(), common.wazuh_gid())
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhInternalError(1005, extra_message=str(e))
@@ -1288,9 +1284,9 @@ def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
 def get_agents_info():
     """Get all agent IDs in the system."""
     with open(common.client_keys, 'r') as f:
-        file_content = f.readlines()
+        file_content = f.read()
 
-    result = {line.split(' ')[0] for line in file_content}
+    result = set(agent_regex.findall(file_content))
     result.add('000')
 
     return result

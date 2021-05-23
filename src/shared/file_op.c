@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -2011,7 +2011,7 @@ void w_ch_exec_dir() {
     }
 }
 
-FILE * w_fopen_r(const char *file, const char * mode) {
+FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION * lpFileInformation) {
 
     FILE *fp = NULL;
     int fd;
@@ -2021,6 +2021,14 @@ FILE * w_fopen_r(const char *file, const char * mode) {
                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) {
         return NULL;
+    }
+
+    if (lpFileInformation != NULL) {
+        memset(lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
+    }
+
+    if (GetFileInformationByHandle(h, lpFileInformation) == 0) {
+        merror(FILE_ERROR, file);
     }
 
     if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {

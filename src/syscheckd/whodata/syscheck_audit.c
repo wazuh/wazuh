@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 13, 2018.
  *
  * This program is free software; you can redistribute it
@@ -185,19 +185,19 @@ int init_auditd_socket(void) {
 void audit_no_rules_to_realtime() {
     int found;
     char *real_path = NULL;
-    int i;
+    directory_t *dir_it = NULL;
 
-    for (i = 0; syscheck.dir[i] != NULL; i++) {
-        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
+    foreach_array(dir_it, syscheck.directories) {
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }
-        real_path = fim_get_real_path(i);
+        real_path = fim_get_real_path(dir_it);
         found = search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY);
 
         if (found == 0) {   // No rule found
             mtwarn(SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
-            syscheck.opts[i] &= ~WHODATA_ACTIVE;
-            syscheck.opts[i] |= REALTIME_ACTIVE;
+            dir_it->options &= ~WHODATA_ACTIVE;
+            dir_it->options |= REALTIME_ACTIVE;
         }
         free(real_path);
     }
@@ -302,7 +302,7 @@ void audit_set_db_consistency(void) {
 // LCOV_EXCL_START
 void *audit_main(audit_data_t *audit_data) {
     char *path = NULL;
-    int pos;
+    directory_t *dir_it = NULL;
     count_reload_retries = 0;
     audit_thread_active = 0;
 
@@ -333,20 +333,20 @@ void *audit_main(audit_data_t *audit_data) {
     // Clean regexes used for parsing events
     clean_regex();
     // Change Audit monitored folders to Inotify.
-    for (pos = 0; syscheck.dir[pos]; pos++) {
-        if ((syscheck.opts[pos] & WHODATA_ACTIVE) == 0) {
+    foreach_array(dir_it, syscheck.directories) {
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }
-        path = fim_get_real_path(pos);
+        path = fim_get_real_path(dir_it);
         // Check if it's a broken link.
         if (*path == '\0') {
             free(path);
             continue;
         }
-        syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
-        syscheck.opts[pos] |= REALTIME_ACTIVE;
+        dir_it->options &= ~ WHODATA_ACTIVE;
+        dir_it->options |= REALTIME_ACTIVE;
 
-        realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
+        realtime_adddir(path, 0, (dir_it->options & CHECK_FOLLOW) ? 1 : 0);
         free(path);
     }
 

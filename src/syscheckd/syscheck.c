@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -19,8 +19,6 @@
 
 // Global variables
 syscheck_config syscheck;
-
-int sys_debug_level;
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -58,20 +56,6 @@ void read_internal(int debug_level)
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
 #endif
-    sys_debug_level = getDefine_Int("syscheck", "debug", 0, 2);
-
-    /* Check current debug_level
-     * Command line setting takes precedence
-     */
-    if (debug_level == 0) {
-        int debug_level = sys_debug_level;
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
-
-    return;
 }
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -16,6 +16,8 @@ SORT_FIELDS = ['filename', 'relative_dirname', 'description', 'id', 'level', 'st
 DYNAMIC_OPTIONS = {'regex', 'field', 'match', 'action', 'extra_data', 'hostname', 'id', 'location', 'match',
                    'program_name', 'protocol', 'user', 'url', 'srcport', 'dstport', 'status', 'system_name',
                    'extra_data', 'srcgeoip', 'dstgeoip'}
+RULE_FIELDS = ['description', 'details', 'filename', 'gdpr', 'groups', 'id', 'level', 'relative_dirname', 'pci_dss',
+               'status', 'gpg13', 'hipaa', 'nist_800_53', 'tsc', 'mitre']
 
 
 class Status(Enum):

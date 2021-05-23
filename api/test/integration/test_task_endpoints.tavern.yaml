@@ -182,6 +182,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "task_id"
+            reverse: True
 
   - name: Verify that query parameter works as expected
     request:

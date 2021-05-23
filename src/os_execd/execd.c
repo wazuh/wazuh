@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -219,8 +219,8 @@ void execd_start(int q) {
             int rc;
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ(EXECQUEUEA, WRITE, 1)) < 0) {
-                mterror(WM_EXECD_LOGTAG, QUEUE_ERROR, EXECQUEUEA, strerror(errno));
+            if ((api_sock = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
+                mterror(WM_EXECD_LOGTAG, QUEUE_ERROR, EXECQUEUE, strerror(errno));
                 os_free(output);
                 continue;
             }

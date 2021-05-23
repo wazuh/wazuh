@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -39,9 +39,11 @@ void free_whodata_event(whodata_evt *w_evt) {
 
 cJSON *getSyscheckConfig(void) {
 
-    if (!syscheck.dir) {
+#ifndef WIN32
+    if (!syscheck.directories) {
         return NULL;
     }
+#endif
 
     cJSON *root = cJSON_CreateObject();
     cJSON *syscfg = cJSON_CreateObject();
@@ -77,40 +79,73 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
-    if (syscheck.dir) {
+    if (syscheck.directories) {
+        directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
-        for (i=0;syscheck.dir[i];i++) {
+
+        foreach_array(dir_it, syscheck.directories) {
             cJSON *pair = cJSON_CreateObject();
             cJSON *opts = cJSON_CreateArray();
-            if (syscheck.opts[i] & CHECK_MD5SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_md5sum"));
-            if (syscheck.opts[i] & CHECK_SHA1SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha1sum"));
-            if (syscheck.opts[i] & CHECK_PERM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_perm"));
-            if (syscheck.opts[i] & CHECK_SIZE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_size"));
-            if (syscheck.opts[i] & CHECK_OWNER) cJSON_AddItemToArray(opts, cJSON_CreateString("check_owner"));
-            if (syscheck.opts[i] & CHECK_GROUP) cJSON_AddItemToArray(opts, cJSON_CreateString("check_group"));
-            if (syscheck.opts[i] & CHECK_MTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("check_mtime"));
-            if (syscheck.opts[i] & CHECK_INODE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
-            if (syscheck.opts[i] & REALTIME_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
-            if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
-            if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
-            if (syscheck.opts[i] & WHODATA_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
-#ifdef WIN32
-            if (syscheck.opts[i] & CHECK_ATTRS) cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
-#endif
-            if (syscheck.opts[i] & CHECK_FOLLOW) cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
-            cJSON_AddItemToObject(pair,"opts",opts);
-            cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
-            if (syscheck.symbolic_links[i]) cJSON_AddStringToObject(pair,"symbolic_link",syscheck.symbolic_links[i]);
-            cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
-            if (syscheck.filerestrict && syscheck.filerestrict[i]) {
-                cJSON_AddStringToObject(pair,"restrict",syscheck.filerestrict[i]->raw);
+            if (dir_it->options & CHECK_MD5SUM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_md5sum"));
             }
-            if (syscheck.tag && syscheck.tag[i]) {
-                cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
+            if (dir_it->options & CHECK_SHA1SUM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha1sum"));
+            }
+            if (dir_it->options & CHECK_PERM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_perm"));
+            }
+            if (dir_it->options & CHECK_SIZE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_size"));
+            }
+            if (dir_it->options & CHECK_OWNER) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_owner"));
+            }
+            if (dir_it->options & CHECK_GROUP) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_group"));
+            }
+            if (dir_it->options & CHECK_MTIME) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_mtime"));
+            }
+            if (dir_it->options & CHECK_INODE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
+            }
+            if (dir_it->options & REALTIME_ACTIVE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
+            }
+            if (dir_it->options & CHECK_SEECHANGES) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
+            }
+            if (dir_it->options & CHECK_SHA256SUM) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
+            }
+            if (dir_it->options & WHODATA_ACTIVE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
+            }
+#ifdef WIN32
+            if (dir_it->options & CHECK_ATTRS) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
+            }
+#endif
+            if (dir_it->options & CHECK_FOLLOW) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
             }
 
-            if (syscheck.file_size_enabled && syscheck.diff_size_limit[i]) {
-                cJSON_AddNumberToObject(pair, "diff_size_limit", syscheck.diff_size_limit[i]);
+            cJSON_AddItemToObject(pair,"opts",opts);
+            cJSON_AddStringToObject(pair, "dir", dir_it->path);
+            if (dir_it->symbolic_links) {
+                cJSON_AddStringToObject(pair, "symbolic_link", dir_it->symbolic_links);
+            }
+            cJSON_AddNumberToObject(pair, "recursion_level", dir_it->recursion_level);
+            if (dir_it->filerestrict) {
+                cJSON_AddStringToObject(pair, "restrict", dir_it->filerestrict->raw);
+            }
+            if (dir_it->tag) {
+                cJSON_AddStringToObject(pair, "tags", dir_it->tag);
+            }
+
+            if (syscheck.file_size_enabled && dir_it->diff_size_limit) {
+                cJSON_AddNumberToObject(pair, "diff_size_limit", dir_it->diff_size_limit);
             }
 
             cJSON_AddItemToArray(dirs, pair);
@@ -372,7 +407,7 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
     cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
     cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);
-    cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
+    cJSON_AddNumberToObject(syscheckd,"debug",wm_debug_level);
     cJSON_AddNumberToObject(syscheckd,"file_max_size",syscheck.file_max_size);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);

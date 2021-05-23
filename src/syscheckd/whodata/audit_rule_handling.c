@@ -79,9 +79,9 @@ void remove_audit_rule_syscheck(const char *path) {
 }
 
 int fim_rules_initial_load() {
-    unsigned int i = 0;
     int retval;
     char *directory = NULL;
+    directory_t *dir_it = NULL;
     int rules_added = 0;
     int auditd_fd = audit_open();
     int res = audit_get_rule_list(auditd_fd);
@@ -93,13 +93,13 @@ int fim_rules_initial_load() {
     }
 
     w_mutex_lock(&rules_mutex);
-    for (i = 0; syscheck.dir[i]; i++) {
+    foreach_array(dir_it, syscheck.directories) {
         // Check if dir[i] is set in whodata mode
-        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue; // LCOV_EXCL_LINE
         }
 
-        directory = fim_get_real_path(i);
+        directory = fim_get_real_path(dir_it);
         if (*directory == '\0') {
             free(directory); // LCOV_EXCL_LINE
             continue; // LCOV_EXCL_LINE

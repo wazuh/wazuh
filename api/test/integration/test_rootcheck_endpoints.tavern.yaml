@@ -391,7 +391,6 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "cis"
-            reverse: False
 
   # GET /rootcheck/001?select=status,distinct=true
   - name: Filter by select parameter and distinct, selecting status
@@ -441,6 +440,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "log"
+            reverse: True
 
 
 ---

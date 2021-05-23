@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -1357,8 +1357,8 @@ void test_free_win32rtfim_data_full_data(void **state) {
 void test_realtime_adddir_whodata_non_existent_file(void **state) {
     int ret;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
-    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+    syscheck.directories[9]->dirs_status.status &= ~WD_CHECK_WHODATA;
+    syscheck.directories[9]->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 0);
@@ -1366,83 +1366,83 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
 
-    ret = realtime_adddir("C:\\a\\path", 1, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[9], 0);
 
     assert_int_equal(ret, 0);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_UNK_TYPE);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.directories[9]->dirs_status.object_type, WD_STATUS_UNK_TYPE);
+    assert_null(syscheck.directories[9]->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     int ret;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
-    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+    syscheck.directories[9]->dirs_status.status &= ~WD_CHECK_WHODATA;
+    syscheck.directories[9]->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 2);
 
     expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
-    expect_value(__wrap_set_winsacl, position, 0);
+    expect_value(__wrap_set_winsacl, configuration, syscheck.directories[9]);
     will_return(__wrap_set_winsacl, 1);
 
     expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
         "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'. It will be monitored in Realtime");
 
-    ret = realtime_adddir("C:\\a\\path", 1, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[9], 0);
 
     assert_int_equal(ret, -2);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.directories[9]->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(syscheck.directories[9]->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_whodata_file_success(void **state) {
     int ret;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
-    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+    syscheck.directories[9]->dirs_status.status &= ~WD_CHECK_WHODATA;
+    syscheck.directories[9]->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 1);
 
     expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
-    expect_value(__wrap_set_winsacl, position, 0);
+    expect_value(__wrap_set_winsacl, configuration, syscheck.directories[9]);
     will_return(__wrap_set_winsacl, 0);
 
-    ret = realtime_adddir("C:\\a\\path", 1, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[9], 0);
 
     assert_int_equal(ret, 1);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.directories[9]->dirs_status.object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(syscheck.directories[9]->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_whodata_dir_success(void **state) {
     int ret;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
-    syscheck.wdata.dirs_status[0].status |= WD_CHECK_REALTIME;
+    syscheck.directories[9]->dirs_status.status &= ~WD_CHECK_WHODATA;
+    syscheck.directories[9]->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 2);
 
     expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
-    expect_value(__wrap_set_winsacl, position, 0);
+    expect_value(__wrap_set_winsacl, configuration, syscheck.directories[9]);
     will_return(__wrap_set_winsacl, 0);
 
-    ret = realtime_adddir("C:\\a\\path", 1, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[9], 0);
 
     assert_int_equal(ret, 1);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_WHODATA);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_CHECK_REALTIME);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_non_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(syscheck.directories[9]->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(syscheck.directories[9]->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(syscheck.directories[9]->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_realtime_start_error(void **state) {
@@ -1455,7 +1455,7 @@ void test_realtime_adddir_realtime_start_error(void **state) {
     expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
 
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, -1);
 }
@@ -1473,7 +1473,7 @@ void test_realtime_adddir_max_limit_reached(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 0);
 }
@@ -1495,7 +1495,7 @@ void test_realtime_adddir_duplicate_entry(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 1);
 }
@@ -1520,7 +1520,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(vo
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 1);
 
@@ -1567,7 +1567,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 1);
 }
@@ -1589,7 +1589,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 1);
 }
@@ -1614,7 +1614,7 @@ void test_realtime_adddir_handle_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
 
     assert_int_equal(ret, 0);
 }
@@ -1640,7 +1640,7 @@ void test_realtime_adddir_success(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     test_mode = 0;
-    ret = realtime_adddir("C:\\a\\path", 0, 0);
+    ret = realtime_adddir("C:\\a\\path", syscheck.directories[0], 0);
     test_mode = 1;
 
     assert_int_equal(ret, 1);
