@@ -63,8 +63,8 @@
 <decoder name="sshd-success">
   <parent>sshd</parent>
   <prematch>^Accepted</prematch>
-  <regex offset="after_prematch">^ \S+ for (\S+) from (\S+) port </regex>
-  <order>user, srcip</order>
+  <regex offset="after_prematch">^ \S+ for (\S+) from (\S+) port (\S+)</regex>
+  <order>user, srcip, srcport</order>
   <fts>name, user, location</fts>
 </decoder>
 
@@ -158,8 +158,8 @@ Sep  4 21:14:25 example sshd[18368]: Did not receive identification string from 
 
 <decoder name="ssh-scan2">
   <parent>sshd</parent>
-  <prematch>^Did not receive identification |^Bad protocol version </prematch>
-  <regex offset="after_prematch"> from (\S+)$| from (\S+) port (\d+)$</regex>
+  <prematch>^Broken pipe|^Did not receive identification |^Bad protocol version </prematch>
+  <regex offset="after_parent"> from (\S+)$| from (\S+) port (\d+)$</regex>
   <order>srcip,srcport</order>
 </decoder>
 
@@ -173,8 +173,8 @@ Sep  4 21:14:25 example sshd[18368]: Did not receive identification string from 
 <decoder name="ssh-closed">
   <parent>sshd</parent>
   <prematch>^Connection closed </prematch>
-  <regex offset="after_prematch">^by (\S+)$</regex>
-  <order>srcip</order>
+  <regex offset="after_prematch">^by (\S+)$ port (\S+)</regex>
+  <order>srcip, srcport</order>
 </decoder>
 
 <decoder name="ssh-disconnect">
@@ -235,4 +235,35 @@ Sep  4 21:14:25 example sshd[18368]: Did not receive identification string from 
   <prematch> exceeded for </prematch>
   <regex offset="after_prematch">^(\S+) from (\S+) port (\d+) </regex>
   <order>user, srcip, srcport</order>
+</decoder>
+
+<!-- Reverse lookup error -->
+<decoder name="sshd-rmap">
+  <parent>sshd</parent>
+  <prematch>but this does not map back</prematch>
+  <regex offset="after_parent">Address (\S+) maps to \S+,</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- connection reset -->
+<decoder name="sshd-reset">
+  <parent>sshd</parent>
+  <prematch>Connection reset</prematch>
+  <regex offset="after_prematch">(\S+) (\S+) port (\d+)</regex>
+  <order>user, srcip, srcport</order>
+</decoder>
+
+<!-- Dissconected from user -->
+<decoder name="sshd-disconnect">
+  <parent>sshd</parent>
+  <prematch>Disconnected from user </prematch>
+  <regex offset="after_prematch">^(\S+) (\S+) port (\d+)</regex>
+  <order>srcuser,srcip,srcport</order>
+</decoder>
+
+<!-- user from, added last to avoid confilicts with ssh-error and ssh-failed -->
+<decoder name="sshd-from">
+  <parent>sshd</parent>
+  <regex>for (\S+) from (\S+)</regex>
+  <order>srcuser, srcip</order>
 </decoder>
