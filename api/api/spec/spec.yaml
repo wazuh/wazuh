@@ -1501,7 +1501,7 @@ components:
       description: "Agent ID"
       format: numbers
 
-    AgentID_DELETE:
+    AgentID_LIST:
       type: string
       minLength: 3
       description: "Agent ID|all"
@@ -3543,7 +3543,7 @@ components:
     agent_name:
       in: query
       name: agent_name
-      description: "Agent name"
+      description: "Agent name. The special characters allowed are: '-','_','.' "
       required: true
       schema:
         type: string
@@ -3986,7 +3986,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentID_DELETE'
+          $ref: '#/components/schemas/AgentID_LIST'
     groups_list:
       in: query
       name: groups_list
