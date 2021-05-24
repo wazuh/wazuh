@@ -392,7 +392,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
                     realtime_sanitize_watch_map();
                     syscheck.realtime->queue_overflow = false;
                 }
-                mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+                mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
             }
         }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
