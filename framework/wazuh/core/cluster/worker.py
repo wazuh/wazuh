@@ -387,17 +387,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Response message.
         """
         self.logger.debug(f"Command received: '{command}'")
-        if command == b'sync_m_c_ok':
+        if command == b'syn_m_c_ok':
             return self.sync_integrity_ok_from_master()
-        elif command == b'sync_m_c':
+        elif command == b'syn_m_c':
             return self.setup_receive_files_from_master()
-        elif command == b'sync_m_c_e':
+        elif command == b'syn_m_c_e':
             return self.end_receiving_integrity(data.decode())
-        elif command == b'sync_m_c_r':
+        elif command == b'syn_m_c_r':
             return self.error_receiving_integrity(data.decode())
-        elif command == b'sync_m_a_e':
+        elif command == b'syn_m_a_e':
             return self.sync_agent_info_from_master(data.decode())
-        elif command == b'sync_m_a_err':
+        elif command == b'syn_m_a_err':
             return self.error_receiving_agent_info(data.decode())
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
@@ -490,7 +490,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         return super().error_receiving_file(taskname_and_error_details)
 
     def sync_integrity_ok_from_master(self) -> Tuple[bytes, bytes]:
-        """Function called when the master sends the "sync_m_c_ok" command.
+        """Function called when the master sends the "syn_m_c_ok" command.
 
         Returns
         -------
@@ -505,7 +505,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         return b'ok', b'Thanks'
 
     def sync_agent_info_from_master(self, response) -> Tuple[bytes, bytes]:
-        """Function called when the master sends the "sync_m_a_e" command.
+        """Function called when the master sends the "syn_m_a_e" command.
 
         This method is called once the master finishes processing the agent-info. It logs
         information like the number of chunks that were updated and any error message.
@@ -532,7 +532,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         return b'ok', b'Thanks'
 
     def error_receiving_agent_info(self, response):
-        """Function called when the master sends the "sync_m_a_err" command.
+        """Function called when the master sends the "syn_m_a_err" command.
 
         Parameters
         ----------
@@ -567,7 +567,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 if self.connected:
                     logger.info("Starting.")
                     start_time = time.time()
-                    if await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, logger=logger, worker=self,
+                    if await SyncWorker(cmd=b'syn_i_w_m', files_to_sync={}, logger=logger, worker=self,
                                         files_metadata=wazuh.core.cluster.cluster.get_files_status()).sync():
                         self.integrity_check_status['date_start'] = start_time
             # If exception is raised during sync process, notify the master so it removes the file if received.
@@ -595,7 +595,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         logger = self.task_loggers["Agent-info sync"]
         wdb_conn = WazuhDBConnection()
         synced = True
-        agent_info = SyncWazuhdb(worker=self, logger=logger, cmd=b'sync_a_w_m', data_retriever=wdb_conn.run_wdb_command,
+        agent_info = SyncWazuhdb(worker=self, logger=logger, cmd=b'syn_a_w_m', data_retriever=wdb_conn.run_wdb_command,
                                  get_data_command='global sync-agent-info-get ',
                                  set_data_command='global sync-agent-info-set')
 
@@ -634,7 +634,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                       node_name=self.name)
             files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
                                            'cluster_item_key': 'queue/agent-groups/'}} if n_files else {}
-            await SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, files_metadata=files_to_sync,
+            await SyncWorker(cmd=b'syn_e_w_m', files_to_sync=files_to_sync, files_metadata=files_to_sync,
                              logger=logger, worker=self).sync()
             after = time.time()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
