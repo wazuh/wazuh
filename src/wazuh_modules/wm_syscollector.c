@@ -19,9 +19,13 @@
 
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
 static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
+static void wm_sys_stop(wm_sys_t *sys);         // Module stopper
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON *wm_sys_dump(const wm_sys_t *sys);
 int wm_sync_message(const char *data);
+pthread_cond_t sys_stop_condition;
+pthread_mutex_t sys_stop_mutex;
+bool need_shutdown_wait = false;
 
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
@@ -29,6 +33,7 @@ const wm_context WM_SYS_CONTEXT = {
     (wm_routine)(void *)wm_sys_destroy,
     (cJSON * (*)(const void *))wm_sys_dump,
     (int(*)(const char*))wm_sync_message,
+    (wm_routine)(void *)wm_sys_stop
 };
 
 void *syscollector_module = NULL;
@@ -85,6 +90,8 @@ static void wm_sys_log_config(wm_sys_t *sys)
 }
 
 void* wm_sys_main(wm_sys_t *sys) {
+    w_cond_init(&sys_stop_condition, NULL);
+    w_mutex_init(&sys_stop_mutex, NULL);
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
@@ -115,6 +122,9 @@ void* wm_sys_main(wm_sys_t *sys) {
     }
     if (syscollector_start_ptr) {
         mtdebug1(WM_SYS_LOGTAG, "Starting Syscollector.");
+        w_mutex_lock(&sys_stop_mutex);
+        need_shutdown_wait = true;
+        w_mutex_unlock(&sys_stop_mutex);
 
         const long max_eps = sys->sync.sync_max_eps;
         if (0 != max_eps) {
@@ -153,18 +163,30 @@ void* wm_sys_main(wm_sys_t *sys) {
     so_free_library(syscollector_module);
     syscollector_module = NULL;
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
-
+    w_mutex_lock(&sys_stop_mutex);
+    w_cond_signal(&sys_stop_condition);
+    w_mutex_unlock(&sys_stop_mutex);
     return 0;
 }
 
 void wm_sys_destroy(wm_sys_t *data) {
-    mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
+    free(data);
+}
 
+void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
+    mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
     syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
         syscollector_stop_ptr();
     }
-    free(data);
+    w_mutex_lock(&sys_stop_mutex);
+    if (need_shutdown_wait) {
+        w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
+    }
+    w_mutex_unlock(&sys_stop_mutex);
+
+    w_cond_destroy(&sys_stop_condition);
+    w_mutex_destroy(&sys_stop_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {

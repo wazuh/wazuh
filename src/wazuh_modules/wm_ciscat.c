@@ -46,6 +46,7 @@ const wm_context WM_CISCAT_CONTEXT = {
     (wm_routine)wm_ciscat_main,
     (wm_routine)(void *)wm_ciscat_destroy,
     (cJSON * (*)(const void *))wm_ciscat_dump,
+    NULL,
     NULL
 };
 

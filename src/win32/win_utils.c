@@ -36,11 +36,13 @@ void *skthread()
     return (NULL);
 }
 
-static void stop_wmodules()
+void stop_wmodules()
 {
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        cur_module->context->destroy(cur_module->data);
+        if (cur_module->context->stop) {
+            cur_module->context->stop(cur_module->data);
+        }
     }
 }
 
@@ -271,8 +273,6 @@ int local_start()
                             (LPDWORD)&threadID2);
         }
     }
-
-    atexit(stop_wmodules);
 
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);
