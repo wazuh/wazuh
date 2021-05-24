@@ -1,4 +1,6 @@
 generic/sca_unix_audit.yml
+amazon/cis_amazon_linux_1.yml
+amazon/cis_amazon_linux_2.yml
 applications/cis_apache_24.yml
 applications/cis_mysql5-6_community.yml
 applications/cis_mysql5-6_enterprise.yml
@@ -24,6 +26,10 @@ rhel/8/cis_rhel8_linux.yml
 sles/11/cis_sles11_linux.yml
 sles/12/cis_sles12_linux.yml
 sunos/cis_solaris11.yml
+ubuntu/cis_ubuntu14-04.yml
+ubuntu/cis_ubuntu16-04.yml
+ubuntu/cis_ubuntu18-04.yml
+ubuntu/cis_ubuntu20-04.yml
 windows/cis_win10_enterprise.yml
 windows/cis_win2012r2.yml
 windows/cis_win2016.yml
