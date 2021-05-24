@@ -3978,7 +3978,7 @@ components:
         items:
           $ref: '#/components/schemas/AgentID'
         maxItems: 100
-    agents_list_delete:
+    agents_list:
       in: query
       name: agents_list
       description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
@@ -5473,7 +5473,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -6291,7 +6291,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -12703,7 +12703,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list'
       responses:
         '200':
           description: "Delete syscheck database"
