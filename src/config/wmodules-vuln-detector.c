@@ -252,6 +252,10 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             upd->dist_tag_ref = FEED_ALAS2;
             os_strdup(vu_feed_tag[FEED_ALAS2], upd->version);
             upd->dist_ext = vu_feed_ext[FEED_ALAS2];
+        } else {
+            merror("Invalid Amazon Linux version '%s'", version);
+            retval = OS_INVALID;
+            goto end;
         }
         upd->dist_ref = FEED_ALAS;
         upd->json_format = 1;
