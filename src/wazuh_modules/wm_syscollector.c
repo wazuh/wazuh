@@ -1,7 +1,7 @@
 /*
  * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
- * November 11, 2021.
+ * November 11, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

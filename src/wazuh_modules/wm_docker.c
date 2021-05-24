@@ -61,12 +61,20 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'", command);
 
-        wfd_t * wfd = wpopenl(command, W_BIND_STDERR | W_APPEND_POOL, command, NULL);
+        wfd_t * wfd = wpopenl(command, W_BIND_STDERR, command, NULL);
 
         if (wfd == NULL) {
             mterror(WM_DOCKER_LOGTAG, "Cannot launch Docker integration due to an internal error.");
             pthread_exit(NULL);
         }
+
+#ifdef WIN32
+        wm_append_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_append_sid(wfd->pid);
+        }
+#endif
 
         char buffer[4096];
 
@@ -80,7 +88,13 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
         }
 
         // At this point, DockerListener terminated
-
+#ifdef WIN32
+        wm_remove_handle(wfd->pinfo.hProcess);
+#else
+        if (0 <= wfd->pid) {
+            wm_remove_sid(wfd->pid);
+        }
+#endif
         status = wpclose(wfd);
         int exitcode = WEXITSTATUS(status);
 

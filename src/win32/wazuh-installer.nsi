@@ -213,6 +213,7 @@ Section "Wazuh Agent (required)" MainSec
     File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
     File /oname=libwazuhext.dll ..\libwazuhext.dll
+    File /oname=libwazuhshared.dll ..\libwazuhshared.dll
     File /oname=dbsync.dll ..\shared_modules\dbsync\build\bin\dbsync.dll
     File /oname=rsync.dll ..\shared_modules\rsync\build\bin\rsync.dll
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
@@ -497,6 +498,7 @@ Section "Uninstall"
     Delete "$INSTDIR\incoming\*"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\libwazuhext.dll"
+    Delete "$INSTDIR\libwazuhshared.dll"
     Delete "$INSTDIR\dbsync.dll"
     Delete "$INSTDIR\rsync.dll"
     Delete "$INSTDIR\sysinfo.dll"
