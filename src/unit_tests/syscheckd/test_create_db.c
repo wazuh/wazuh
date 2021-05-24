@@ -18,6 +18,7 @@
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/wazuh/config/syscheck_config_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
@@ -69,8 +70,6 @@ void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
     check_expected(attrs);
 }
 #endif
-
-/* setup/teardowns */
 
 static int setup_fim_data(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
@@ -197,6 +196,41 @@ static int setup_group(void **state) {
     return 0;
 }
 
+static int setup_wildcards(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    // Wildcards list
+    syscheck.wildcards = OSList_Create();
+    if (syscheck.wildcards == NULL) {
+        return -1;
+    }
+
+    expect_string(__wrap_realpath, path, "/testdir?");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/*/path");
+    will_return(__wrap_realpath, NULL);
+
+    directory_t *wildcard0 = fim_create_directory("/testdir?", WHODATA_ACTIVE | CHECK_FOLLOW, NULL, 512,
+                                                  NULL, -1, 1);
+
+    directory_t *wildcard1 = fim_create_directory("/*/path", WHODATA_ACTIVE | CHECK_FOLLOW, NULL, 512,
+                                                  NULL, -1, 1);
+
+    OSList_InsertData(syscheck.wildcards, NULL, wildcard0);
+    OSList_InsertData(syscheck.wildcards, NULL, wildcard1);
+
+    // Directories list
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return -1;
+    }
+
+    return 0;
+}
+
 static int setup_root_group(void **state) {
     if(setup_fim_data(state) != 0)
         return -1;
@@ -242,6 +276,27 @@ static int teardown_group(void **state) {
     syscheck.key_ignore = NULL;
     syscheck.key_ignore_regex = NULL;
 #endif
+
+    return 0;
+}
+
+static int teardown_wildcards(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    if (syscheck.wildcards) {
+        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
+        OSList_Destroy(syscheck.wildcards);
+        syscheck.wildcards = NULL;
+    }
+
+    if (syscheck.directories) {
+        OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
 
     return 0;
 }
@@ -4428,8 +4483,8 @@ static void test_fim_whodata_event_file_exists(void **state) {
     struct stat buf = { .st_mode = 0 };
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -5550,6 +5605,95 @@ static void test_fim_update_db_data_modified() {
 
 #endif
 
+static void test_update_wildcards_config_list_null() {
+    // Do nothing
+    update_wildcards_config(syscheck.directories, NULL);
+}
+
+static void test_update_wildcards_config() {
+    char **paths;
+    os_calloc(3, sizeof(char *), paths);
+    os_strdup("/testdir1", paths[0]);
+    os_strdup("/testdir2", paths[1]);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_START);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_FINALIZE);
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_string(__wrap_expand_wildcards, path, "/testdir?");
+    will_return(__wrap_expand_wildcards, paths);
+    expect_string(__wrap_expand_wildcards, path, "/*/path");
+    will_return(__wrap_expand_wildcards, NULL);
+
+#ifndef WIN32
+    expect_string(__wrap_realpath, path, "/testdir?");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/testdir1");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/testdir?");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/testdir2");
+    will_return(__wrap_realpath, NULL);
+#endif
+
+#ifdef WIN32
+    expect_string(__wrap_realtime_adddir, dir, "/testdir1");
+    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_realtime_adddir, dir, "/testdir2");
+    will_return(__wrap_realtime_adddir, 0);
+#else
+    expect_string(__wrap_add_whodata_directory, path, "/testdir1");
+    expect_string(__wrap_add_whodata_directory, path, "/testdir2");
+#endif
+
+    update_wildcards_config(syscheck.directories, syscheck.wildcards);
+
+    // Filled config
+    directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
+    assert_string_equal(directory0->path, "/testdir1");
+    directory_t *directory1 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
+    assert_string_equal(directory1->path, "/testdir2");
+}
+
+static void test_update_wildcards_config_remove_config() {
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_START);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6362): Removing entry '/testdir1' due to it has not been expanded by the wildcards");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6362): Removing entry '/testdir2' due to it has not been expanded by the wildcards");
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_FINALIZE);
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_expand_wildcards, path, "/testdir?");
+    will_return(__wrap_expand_wildcards, NULL);
+    expect_string(__wrap_expand_wildcards, path, "/*/path");
+    will_return(__wrap_expand_wildcards, NULL);
+
+    // Inside fim_process_missing_entry
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/testdir1");
+    will_return(__wrap_fim_db_get_path, NULL);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/testdir1/%", NULL, FIM_DB_DISK, FIMDB_ERR);
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, "/testdir2");
+    will_return(__wrap_fim_db_get_path, NULL);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/testdir2/%", NULL, FIM_DB_DISK, FIMDB_ERR);
+
+    update_wildcards_config(syscheck.directories, syscheck.wildcards);
+
+    // Empty config
+    directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
+    assert_null(directory0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_json_event */
@@ -5759,10 +5903,17 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
         cmocka_unit_test(test_fim_checker_root_file_within_recursion_level),
     };
+    const struct CMUnitTest wildcards_tests[] = {
+        /* update_wildcards_config */
+        cmocka_unit_test(test_update_wildcards_config_list_null),
+        cmocka_unit_test(test_update_wildcards_config),
+        cmocka_unit_test(test_update_wildcards_config_remove_config),
+    };
     int retval;
 
     retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
+    retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
 
     return retval;
 }

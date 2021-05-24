@@ -23,12 +23,17 @@
 /* setup/teardowns */
 static int setup_group(void **state) {
     fdb_t *fdb = calloc(1, sizeof(fdb_t));
-
     if(fdb == NULL)
         return -1;
 
-    *state = fdb;
+#ifdef TEST_WINAGENT
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return -1;
+    }
+#endif
 
+    *state = fdb;
     return 0;
 }
 
@@ -36,6 +41,18 @@ static int teardown_group(void **state) {
     fdb_t *fdb = *state;
 
     free(fdb);
+
+#ifdef TEST_WINAGENT
+    OSListNode *node_it;
+    if (syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            free_directory(node_it->data);
+            node_it->data = NULL;
+        }
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
+#endif
 
     return 0;
 }
@@ -114,10 +131,8 @@ void __wrap_read_internal(int debug_level)
 
 void test_Start_win32_Syscheck_no_config_file(void **state) {
     directory_t EMPTY = { 0 };
-    directory_t *SYSCHECK_EMPTY[] = { &EMPTY };
     registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
 
-    syscheck.directories = SYSCHECK_EMPTY;
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
 
@@ -148,10 +163,8 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
 
 void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     directory_t EMPTY = { 0 };
-    directory_t *SYSCHECK_EMPTY[] = { &EMPTY };
     registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
 
-    syscheck.directories = SYSCHECK_EMPTY;
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
 
@@ -214,10 +227,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
 void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     directory_t EMPTY = { 0 };
-    directory_t *SYSCHECK_EMPTY[] = { &EMPTY };
     char info_msg[OS_MAXSTR];
-
-    syscheck.directories = SYSCHECK_EMPTY;
 
     will_return_always(__wrap_getDefine_Int, 1);
 
@@ -253,13 +263,13 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 }
 
 void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
-    directory_t BASE_DIRECTORY = { .path = "Dir1", .options = 0 };
-    directory_t *CONFIG[] = { [0] = &BASE_DIRECTORY, [1] = NULL };
+    directory_t *directory0 = fim_create_directory("Dir1", 0, NULL, 512, NULL, -1, 0);
+
     registry syscheck_registry[] = { { "Entry1", 1, 0, 0, 0, NULL, NULL, "Tag1" },
                                      { NULL, 0, 0, 0, 0, NULL, NULL, NULL } };
     syscheck.disabled = 0;
 
-    syscheck.directories = CONFIG;
+    OSList_InsertData(syscheck.directories, NULL, directory0);
 
     syscheck.registry = syscheck_registry;
 
@@ -321,12 +331,13 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 }
 
 void test_Start_win32_Syscheck_whodata_active(void **state) {
-    directory_t BASE_DIRECTORY = { .path = "Dir1", .options = WHODATA_ACTIVE };
-    directory_t *CONFIG[] = { [0] = &BASE_DIRECTORY, [1] = NULL };
+    directory_t *directory0 = fim_create_directory("Dir1", WHODATA_ACTIVE, NULL, 512, NULL, -1, 0);
+
     registry syscheck_registry[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
 
     syscheck.disabled = 0;
-    syscheck.directories = CONFIG;
+
+    OSList_InsertData(syscheck.directories, NULL, directory0);
 
     syscheck.registry = syscheck_registry;
 

@@ -71,11 +71,11 @@ static int setup_config(void **state) {
 static int teardown_config(void **state) {
     OSListNode *node_it;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     if (syscheck.directories) {
         OSList_foreach(node_it, syscheck.directories) {

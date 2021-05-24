@@ -18,22 +18,11 @@
 #include "../config/syscheck-config.h"
 
 #include "../wrappers/common.h"
-//#include "../wrappers/posix/pthread_wrappers.h"
+#include "../wrappers/posix/pthread_wrappers.h"
+#include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /* redefinitons/wrapping */
-
-
-
-int __wrap_OSMatch_Compile(const char *pattern, OSMatch *reg, int flags) {
-
-    int max_size = 20;
-
-    if (strlen(pattern) > max_size) {
-        reg->error = OS_REGEX_MAXSIZE;
-        return mock();
-    }
-}
 
 static int restart_syscheck(void **state)
 {
@@ -59,6 +48,19 @@ static int restart_syscheck(void **state)
     return 0;
 }
 
+/* setup and teardown */
+
+static int setup_group(void **state) {
+    test_mode = 1;
+
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    test_mode = 0;
+
+    return 0;
+}
 
 /* tests */
 
@@ -76,6 +78,8 @@ void test_Read_Syscheck_Config_success(void **state)
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_any_always(__wrap__mwarn, formatted_msg);
 
+    expect_any_always(__wrap_OSMatch_Compile, pattern);
+    will_return_always(__wrap_OSMatch_Compile, 1);
 
     ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
 
@@ -153,6 +157,9 @@ void test_Read_Syscheck_Config_undefined(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    expect_any_always(__wrap_OSMatch_Compile, pattern);
+    will_return_always(__wrap_OSMatch_Compile, 1);
 
     ret = Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -254,6 +261,9 @@ void test_getSyscheckConfig(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    expect_any_always(__wrap_OSMatch_Compile, pattern);
+    will_return_always(__wrap_OSMatch_Compile, 1);
 
     Read_Syscheck_Config("test_syscheck_config.conf");
     ret = getSyscheckConfig();
@@ -395,6 +405,9 @@ void test_getSyscheckConfig_no_audit(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    expect_any_always(__wrap_OSMatch_Compile, pattern);
+    will_return_always(__wrap_OSMatch_Compile, 1);
 
     Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -644,6 +657,9 @@ void test_getSyscheckInternalOptions(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
+    expect_any_always(__wrap_OSMatch_Compile, pattern);
+    will_return_always(__wrap_OSMatch_Compile, 1);
+
     Read_Syscheck_Config("test_syscheck.conf");
 
     ret = getSyscheckInternalOptions();
@@ -662,12 +678,15 @@ void test_getSyscheckInternalOptions(void **state)
 void test_fim_create_directory_add_new_entry(void **state) {
     const char *path = "./mock_path";
     int options = CHECK_FOLLOW;
-    const char *filerestrict = "<>";
+    const char *filerestrict = "restrict";
     int recursion_level = 0;
     const char *tag = "mock_tag";
     int diff_size_limit = 0;
     unsigned int is_wildcard = 0;
     directory_t *new_entry;
+
+    expect_string(__wrap_OSMatch_Compile, pattern, "restrict");
+    will_return_always(__wrap_OSMatch_Compile, 1);
 
     new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
 
@@ -680,8 +699,7 @@ void test_fim_create_directory_add_new_entry(void **state) {
 
 void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
     const char *path = "./mock_path";
-    char *filerestrict = "aaaaaaaaaaaaaaaaaaaaaaaaa";
-    int filerestrict_expr_size = 25;
+    char *filerestrict = "restrict";
     int recursion_level = 0;
     const char *tag = "mock_tag";
     int options = CHECK_FOLLOW;
@@ -690,9 +708,11 @@ void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
     directory_t *new_entry;
     char error_msg[OS_MAXSTR];
 
-    snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, filerestrict, OS_REGEX_MAXSIZE);
+    snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, filerestrict, 0);
 
+    expect_string(__wrap_OSMatch_Compile, pattern, "restrict");
     will_return(__wrap_OSMatch_Compile, 0);
+
     expect_string(__wrap__merror, formatted_msg, error_msg);
 
     new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
@@ -824,5 +844,5 @@ int main(void) {
         cmocka_unit_test(test_fim_copy_directory_return_dir_copied)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

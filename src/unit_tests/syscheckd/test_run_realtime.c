@@ -61,6 +61,12 @@ typedef struct realtime_process_data{
 static int setup_group(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     test_mode = 0;
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -75,6 +81,13 @@ static int setup_group(void **state) {
 
 static int teardown_group(void **state) {
     test_mode = 0;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     Free_Syscheck(&syscheck);
 
     return 0;
@@ -246,6 +259,10 @@ static int setup_OSHash(void **state) {
 static int teardown_OSHash(void **state) {
     test_mode = 0;
     OSHash *hash = *state;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     void *rtlocald = OSHash_Delete_ex(hash, "1");
 #ifdef TEST_WINAGENT
     free_win32rtfim_data(rtlocald);
@@ -406,6 +423,10 @@ void test_realtime_adddir_realtime_add(void **state) {
     syscheck.realtime->dirtb = *state;
     will_return(__wrap_inotify_add_watch, 1);
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, 0);
@@ -552,6 +573,9 @@ void test_realtime_process_len(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -588,6 +612,9 @@ void test_realtime_process_len_zero(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -622,6 +649,9 @@ void test_realtime_process_len_path_separator(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -646,6 +676,9 @@ void test_realtime_process_overflow(void **state) {
     will_return(__wrap_read, event);
     will_return(__wrap_read, 21);
     expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     expect_string(__wrap_send_log_msg, msg, "ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
@@ -691,6 +724,9 @@ void test_realtime_process_delete(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
@@ -752,6 +788,9 @@ void test_realtime_process_move_self(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
@@ -882,7 +921,10 @@ void test_realtime_sanitize_watch_map_entry_with_no_configuration(void **state) 
     syscheck.realtime->dirtb = *state;
 
     // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
@@ -916,11 +958,14 @@ void test_realtime_sanitize_watch_map_unable_to_add_more_watches(void **state) {
 
     syscheck.realtime->dirtb = *state;
 
-    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
-
     // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, __real_OSHash_Begin(syscheck.realtime->dirtb, &i));
@@ -952,8 +997,12 @@ void test_realtime_sanitize_watch_map_entry_deleted(void **state) {
     if (path == NULL) {
         fail();
     }
+
     // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     syscheck.realtime->dirtb = *state;
@@ -993,11 +1042,14 @@ void test_realtime_sanitize_watch_map_inotify_error(void **state) {
 
     syscheck.realtime->dirtb = *state;
 
-    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
-
     // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, __real_OSHash_Begin(syscheck.realtime->dirtb, &i));
@@ -1030,11 +1082,14 @@ void test_realtime_sanitize_watch_map_entry_already_up_to_date(void **state) {
 
     syscheck.realtime->dirtb = *state;
 
-    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
-
     // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, __real_OSHash_Begin(syscheck.realtime->dirtb, &i));
@@ -1064,11 +1119,14 @@ void test_realtime_sanitize_watch_map_entry_with_new_watch_number(void **state) 
 
     syscheck.realtime->dirtb = *state;
 
-    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
-
     // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, __real_OSHash_Begin(syscheck.realtime->dirtb, &i));
@@ -1107,11 +1165,14 @@ void test_realtime_sanitize_watch_map_entry_with_new_watch_number_fail(void **st
 
     syscheck.realtime->dirtb = *state;
 
-    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
-
     // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, __real_OSHash_Begin(syscheck.realtime->dirtb, &i));
@@ -1156,12 +1217,15 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory(v
 
     syscheck.realtime->dirtb = *state;
 
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
     __real_OSHash_Add_ex(syscheck.realtime->dirtb, "4321", other_path);
-
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, __real_OSHash_Begin(syscheck.realtime->dirtb, &i));
@@ -1198,12 +1262,15 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory_f
 
     syscheck.realtime->dirtb = *state;
 
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     __real_OSHash_Add_ex(syscheck.realtime->dirtb, "1234", path);
     __real_OSHash_Add_ex(syscheck.realtime->dirtb, "4321", other_path);
-
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, __real_OSHash_Begin(syscheck.realtime->dirtb, &i));

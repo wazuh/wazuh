@@ -95,11 +95,11 @@ static int setup_group(void **state) {
 static int teardown_group(void **state) {
     OSListNode *node_it;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     if (GENERAL_CONFIG) {
         OSList_foreach(node_it, GENERAL_CONFIG) {
@@ -137,11 +137,11 @@ static int setup_add_directories_to_whodata_list(void **state) {
     directory_t *dir_it;
     OSListNode *node_it;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     syscheck.directories = RELOAD_CONFIG;
 
@@ -184,10 +184,10 @@ static void test_add_whodata_directory(void **state) {
     assert_int_equal(whodata_directories->currently_size, 0);
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     add_whodata_directory(test_string);
 
     assert_int_equal(whodata_directories->currently_size, 1);
@@ -226,7 +226,6 @@ static void test_remove_audit_rule_syscheck(void **state) {
         fail_msg("Failed to add directory to the whodata rules list");
     }
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     remove_audit_rule_syscheck("/some/path");
 
     assert_int_equal(dir->pending_removal, 1);
@@ -329,9 +328,8 @@ static void test_clean_rules(void **state) {
     assert_int_not_equal(whodata_directories->currently_size, 0);
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug2, formatted_msg, FIM_AUDIT_DELETE_RULE);
@@ -438,8 +436,9 @@ static void test_fim_audit_reload_rules_full(void **state) {
     will_return(__wrap_audit_get_rule_list, 1);
     will_return(__wrap_audit_close, 1);
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
