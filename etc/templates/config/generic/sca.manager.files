@@ -1,4 +1,5 @@
 generic/sca_unix_audit.yml
+applications/cis_iis_10.yml
 applications/cis_apache_24.yml
 applications/cis_mysql5-6_community.yml
 applications/cis_mysql5-6_enterprise.yml
@@ -17,12 +18,16 @@ debian/cis_debian7.yml
 debian/cis_debian8.yml
 debian/cis_debian9.yml
 debian/cis_debian10.yml
+mongodb/cis_mongodb_36.yml
+nginx/cis_nginx_1.yml
+oracledb/cis_oracle_database_19c.yml
 rhel/5/cis_rhel5_linux.yml
 rhel/6/cis_rhel6_linux.yml
 rhel/7/cis_rhel7_linux.yml
 rhel/8/cis_rhel8_linux.yml
 sles/11/cis_sles11_linux.yml
 sles/12/cis_sles12_linux.yml
+sles/15/cis_sles15_linux.yml
 sunos/cis_solaris11.yml
 windows/cis_win10_enterprise.yml
 windows/cis_win2012r2.yml
