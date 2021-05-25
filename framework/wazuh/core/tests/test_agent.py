@@ -850,10 +850,14 @@ def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_s
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.agent.get_manager_name')
+@patch('wazuh.core.wdb.WazuhDBConnection._send')
+@patch('wazuh.core.agent.Agent.load_info_from_db')
+@patch('wazuh.core.agent.Agent.check_if_delete_agent', return_value=True)
+@patch('wazuh.core.agent.Agent.delete_agent_files')
 @patch('socket.socket.connect')
-def test_agent_add_manual_content(socket_mock, mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid,
-                                  mosck_ossec_uid, mock_release_lock, mock_acquire_lock,
-                                  mock_get_agents_info):
+def test_agent_add_manual_content(socket_mock, delete_mock, check_delete_mock, load_info_mock, wazuhdb_mock,
+                                  mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid, mosck_ossec_uid,
+                                  mock_release_lock, mock_acquire_lock, mock_get_agents_info):
     """Tests if method _add_manual() modify the content of a client.keys as expected"""
     def calculate_final_file(file_str, id_, name_, ip_, key_):
         file_str += f"{id_} {name_} {ip_} {key_}\n"
@@ -865,15 +869,23 @@ def test_agent_add_manual_content(socket_mock, mock_get_manager_name, mock_lockf
         for test_case in safe_load(f):
             def mock_safe_move(output_file, dummy, permissions):
                 with open(output_file) as f_t:
-                    assert f_t.read() == calculate_final_file(test_case['client_keys'], test_case['expected_id'],
-                                                              test_case['name'], test_case['ip'], test_case['key'])
+                    if not test_case['expected_client_keys']:
+                        assert f_t.read() == calculate_final_file(test_case['client_keys'], test_case['expected_id'],
+                                                                  test_case['name'], test_case['ip'], test_case['key'])
+                    else:
+                        assert f_t.read() == test_case['expected_client_keys']
 
             with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=test_case['client_keys'].encode())):
                 with patch('wazuh.core.agent.safe_move', new=mock_safe_move):
                     output = tempfile.mkstemp(prefix='wazuh_testing_add_manual', suffix=".tmp")[1]
                     with patch('wazuh.core.agent.tempfile.mkstemp', return_value=[output, output]):
-                        agent._add_manual(test_case['name'], ip=test_case['ip'],
-                                          key=test_case['key'], force=test_case['force'])
+                        if 'Exception' not in test_case['expected_id']:
+                            agent._add_manual(test_case['name'], id=test_case['id'], ip=test_case['ip'],
+                                              key=test_case['key'], force=test_case['force'])
+                        else:
+                            with pytest.raises(WazuhError, match=f".* {test_case['expected_id'].split(' ')[-1]} .*"):
+                                agent._add_manual(test_case['name'], id=test_case['id'], ip=test_case['ip'],
+                                                  key=test_case['key'], force=test_case['force'])
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)

@@ -861,9 +861,9 @@ class Agent:
                             last_id = 0
 
                     # Detect entries with duplicate name or ip
-                    if name in content or (ip != 'any' and ip in content):
+                    if (name in content and f'!{name}' not in content) or (ip != 'any' and ip in content):
                         # Regular expression that will help us to search for the target line
-                        regex = rf'.* {name} .* .*|.* .* {ip} .*|.* {name} {ip} .*'
+                        regex = rf'.* {name} .* .*|.* {name} {ip} .*' if name in content else rf'.* .* {ip} .*'
 
                         for index, line in enumerate(client_keys_entries):
                             agent_match = re.match(regex, line.rstrip())
