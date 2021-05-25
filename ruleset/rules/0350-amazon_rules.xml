@@ -506,7 +506,7 @@ ID: 80200 - 80499
 
 </group>
 
-<!-- S3 Access rules -->
+<!-- S3 Access rules --><!-- WIP -->
 <group name="amazon, aws, s3">
 
     <rule id="200000" level="0">
@@ -555,10 +555,25 @@ ID: 80200 - 80499
     </rule>
 
     <!-- Error events -->
-    <rule id="200031" level="3">
+    <rule id="200031" level="5">
         <if_sid>200000</if_sid>
-        <field name="aws.error_code" type="pcre2">^(?!^$).*</field>
+        <field name="aws.error_code" type="pcre2">^(?!^$|^-$).*</field>
         <description>AWS S3 Error: $(aws.error_code)</description>
     </rule>
+
+    <!-- Authetication failures -->
+    <rule id="200040" level="5">
+        <if_sid>200031</if_sid>
+        <field name="aws.error_code" type="pcre2">^AccessDenied$</field>
+        <description>AWS S3 Error: Access Denied</description>
+    </rule>
+
+    <!-- Needs to look for same field to distinguis between S3 Acces denied and S3 Storage Lens region not supported -->
+    <rule id="200041" level="10" frequency="10" timeframe="60">
+        <if_matched_sid>200040</if_matched_sid>
+        <description>AWS S3 Error: Multiple Access Denied</description>
+    </rule>
+
+
 
 </group>
