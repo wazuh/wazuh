@@ -75,7 +75,6 @@ def start(foreground, root, config_file):
                 configuration.generate_self_signed_certificate(private_key, api_conf['https']['cert'])
                 logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
 
-            # Load SSL context
             allowed_ssl_protocols = {
                 'tls': ssl.PROTOCOL_TLS,
                 'tlsv1': ssl.PROTOCOL_TLSv1,
@@ -83,13 +82,7 @@ def start(foreground, root, config_file):
                 'tlsv1.2': ssl.PROTOCOL_TLSv1_2
             }
 
-            # Checks if the ssl_protocol is valid
-            if api_conf['https']['ssl_protocol'].lower() in validator.api_config_schema['https']['ssl_protocol']['enum']:
-                ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
-            else:
-                logger.error(str(APIError(2003, details='SSL protocol is not valid. Allowed values: '
-                                                        'TLS, TLSv1, TLSv1.1, TLSv1.2')))
-                sys.exit(1)
+            ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
 
             ssl_context = ssl.SSLContext(protocol=ssl_protocol)
 
@@ -100,7 +93,7 @@ def start(foreground, root, config_file):
             ssl_context.load_cert_chain(certfile=api_conf['https']['cert'], keyfile=api_conf['https']['key'])
 
             # Loads SSL ciphers if any have been specified
-            if api_conf['https']['ssl_ciphers'] != "":
+            if api_conf['https']['ssl_ciphers']:
                 ssl_ciphers = api_conf['https']['ssl_ciphers'].upper()
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)
