@@ -26,6 +26,7 @@
 #define merror(msg, ...) _mterror(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define array_size(array) (sizeof(array)/sizeof(array[0]))
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
@@ -51,7 +52,7 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, cJSON *variables_policy);
+static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char ** list_variables);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
 static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const checks, OSHash *global_check_list);
 static int wm_sca_check_requirements(const cJSON * const requirements);
@@ -96,6 +97,7 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason);
 static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason);
 static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **reason);
 static char *str_replace(char *search , char *replace , char *subject);
+static char **wm_sort_to_array(const cJSON * const variables);
 #ifndef WIN32
 static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason);
 #endif
@@ -351,6 +353,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON * object = NULL;
             cJSON *requirements_array = NULL;
             int cis_db_index = i;
+            char **list_variables = NULL;
 
             FILE *fp = fopen(data->policies[i]->policy_path, "r");
 
@@ -404,7 +407,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             vars = OSStore_Create();
-
+            list_variables = wm_sort_to_array(variables_policy);
             if (wm_sca_get_vars(variables_policy,vars) != 0){
                 mwarn("Error found while reading the 'variables' section of file: '%s'. Skipping it.", data->policies[i]->policy_path);
                 goto next;
@@ -463,7 +466,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(requirements) {
                 w_rwlock_rdlock(&dump_rwlock);
-                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->policies[i]->remote,first_scan,&checks_number,variables_policy) == 0) {
+                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->policies[i]->remote,first_scan,&checks_number,list_variables) == 0) {
                     requirements_satisfied = 1;
                 }
                 w_rwlock_unlock(&dump_rwlock);
@@ -478,7 +481,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s'", data->policies[i]->policy_path);
 
-                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number,variables_policy) != 0) {
+                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number,list_variables) != 0) {
                     merror("Error while evaluating the policy '%s'", data->policies[i]->policy_path);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -915,7 +918,7 @@ ANY and NONE aggregators are complementary.
 */
 
 static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
-    int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, cJSON *variables_policy)
+    int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number, char **list_variables)
 {
     int type = 0;
     char buf[OS_SIZE_1024 + 2];
@@ -1056,19 +1059,18 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 char *file_list = value;
                 char *var_replace;
                 char *var_found;
-                const cJSON *variable;
+
                 /* Get any variable */
-                cJSON_ArrayForEach(variable, variables_policy) {
-                    if((var_found = strstr(value,variable->string)) != NULL) {
-                        var_replace = (char *) OSStore_Get(vars, variable->string);
-                        file_list = str_replace(variable->string, var_replace, file_list);
+                for(int i = 0; list_variables[i] != NULL  ; i++){
+                    if((var_found = strstr(value,list_variables[i])) != NULL) {
+                        var_replace = (char *) OSStore_Get(vars, list_variables[i]);
+                        file_list = str_replace(list_variables[i], var_replace, file_list);
                         if (!file_list) {
-                            merror("Invalid variable: '%s'. Skipping check.", variable->string);
+                            merror("Invalid variable: '%s'. Skipping check.", list_variables[i]);
                             continue;
                         } 
                     }
-                }
-                    
+                }                    
 
                 const int result = wm_sca_check_file_list(file_list, pattern, &reason);
                 if (result == RETURN_FOUND || result == RETURN_INVALID) {
@@ -1085,7 +1087,7 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 char *f_value = value;
                 char *var_found;
                 char *var_replace;
-                const cJSON *variable;
+                
                 if (!data->remote_commands && remote_policy) {
                     mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                     if (reason == NULL) {
@@ -1095,14 +1097,14 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                     found = RETURN_INVALID;
                 } else {
                     /* Get any variable */
-                    cJSON_ArrayForEach(variable, variables_policy) {
-                        if ((var_found = strstr(value,variable->string)) != NULL) {
-                            var_replace = (char *) OSStore_Get(vars, variable->string);
-                            f_value = str_replace(variable->string, var_replace, f_value);
+                    for(int i = 0; list_variables[i] != NULL ; i++) {
+                        if((var_found = strstr(value,list_variables[i])) != NULL) {
+                            var_replace = (char *) OSStore_Get(vars, list_variables[i]);
+                            f_value = str_replace(list_variables[i], var_replace, f_value);
                             if (!f_value) {
-                                merror("Invalid variable: '%s'. Skipping check.", variable->string);
+                                merror("Invalid variable: '%s'. Skipping check.", list_variables[i]);
                                 continue;
-                            }
+                            } 
                         }
                     }
                     mdebug2("Running command: '%s'", f_value);
@@ -1128,16 +1130,15 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 char *f_value = value;
                 char *var_found;
                 char *var_replace;
-                const cJSON *variable;
                 /* Get any variable */
-                cJSON_ArrayForEach(variable, variables_policy) {
-                    if ((var_found = strstr(value,variable->string)) != NULL) {
-                        var_replace = (char *) OSStore_Get(vars, variable->string);
-                        f_value = str_replace(variable->string, var_replace, f_value);
+                for(int i = 0; list_variables[i] != NULL ; i++){
+                    if((var_found = strstr(value,list_variables[i])) != NULL) {
+                        var_replace = (char *) OSStore_Get(vars, list_variables[i]);
+                        f_value = str_replace(list_variables[i], var_replace, f_value);
                         if (!f_value) {
-                            merror("Invalid variable: '%s'. Skipping check.", variable->string);
+                            merror("Invalid variable: '%s'. Skipping check.", list_variables[i]);
                             continue;
-                        }
+                        } 
                     }
                 }
 
@@ -3138,10 +3139,8 @@ static char *str_replace(char *search , char *replace , char *subject) {
 	c = ( strlen(replace) - search_size )*c + strlen(subject);
 	
 	//New subject with new size
-	new_subject = malloc( c );
+	new_subject = calloc(sizeof(char), c);
 	
-	//Set it to blank
-	strcpy(new_subject , "");
 	//The start position
 	old = subject;
 	
@@ -3159,4 +3158,29 @@ static char *str_replace(char *search , char *replace , char *subject) {
 	//Copy the part after the last search match
 	strcpy(new_subject + strlen(new_subject) , old);
 	return new_subject;
+}
+
+/* Sort the variables from largest to smallest size */
+static char **wm_sort_to_array(const cJSON * const variables) {
+    char **array = malloc(cJSON_GetArraySize(variables) + 1); 
+    char *aux;
+    const cJSON *variable;
+    int i = 0;
+    cJSON_ArrayForEach(variable, variables) {
+        os_strdup(variable->string, array[i]);
+        i++;
+    }
+
+    for(i = 0; i < cJSON_GetArraySize(variables); i++) {
+        for(int j = i + 1; j < cJSON_GetArraySize(variables); j++) {
+            if(strlen(array[j]) > strlen(array[i])) {
+                aux = array[i];
+                array[i] = array[j];
+                array[j] = aux;
+            }
+        }
+    }
+    array[i] = NULL;
+
+    return array;
 }
