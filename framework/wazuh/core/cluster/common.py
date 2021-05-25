@@ -423,10 +423,11 @@ class Handler(asyncio.Protocol):
 
         while parsed:
             if self.in_msg.received == self.in_msg.total:
-                # Decrypt received message if it is not a divided one
+                # Decrypt received message if it is not a part of a divided message
                 try:
                     decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not \
-                        None and not self.in_msg.flag_divided else bytes(self.in_msg.payload)
+                        None and not self.in_msg.flag_divided and self.in_msg.counter not in self.div_msg_box \
+                        else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     raise exception.WazuhClusterError(3025)
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
