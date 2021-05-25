@@ -32,7 +32,7 @@ from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 
 detect_wrong_lines = re.compile(r'(.+ .+ .+ .+)')
-detect_valid_lines = re.compile(r'([^# ]\d+) (.*) (.*) (.*)')
+detect_valid_lines = re.compile(r'^(\d+) (.*) (.*) (.*)', re.MULTILINE)
 
 mutex = threading.Lock()
 lock_file = None

@@ -10,6 +10,7 @@ from unittest.mock import ANY, patch, mock_open, call
 
 import pytest
 from freezegun import freeze_time
+from yaml import safe_load
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
@@ -810,6 +811,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
     ('any', None, 'WMPlw93l2PnwQMN', -1),
     ('any', '003', 'WMPlw93l2PnwQMN', 1),
 ])
+@patch('wazuh.core.agent.get_agents_info', return_value=list())
 @patch('builtins.open')
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.safe_move')
@@ -819,14 +821,14 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.agent.get_manager_name')
 @patch('socket.socket.connect')
-def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid,
-                          mosck_ossec_uid, mock_safe_move, mkstemp_mock, open_mock, ip, id, key, force):
+def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid, mosck_ossec_uid,
+                          mock_safe_move, mkstemp_mock, open_mock, mock_get_agents_info, ip, id, key, force):
     """Tests if method _add_manual() works as expected"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
     client_keys_text = f'001 windows-agent any {key}\n \n002 #name '
 
-    with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=client_keys_text.encode())) as m:
+    with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=client_keys_text.encode())):
         agent = Agent(1)
 
         agent._add_manual('test_agent', ip=ip, id=id, key=key, force=force)
@@ -837,6 +839,41 @@ def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_s
         mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
         mock_safe_move.assert_called_once_with('mock_tmp_file', common.client_keys,
                                                permissions=ANY)
+
+
+@patch('wazuh.core.agent.get_agents_info', return_value=list())
+@patch('wazuh.core.agent.Agent._acquire_client_keys_lock', return_value=True)
+@patch('wazuh.core.agent.Agent._release_client_keys_lock', return_value=True)
+@patch('wazuh.core.common.client_keys', tempfile.mkstemp(prefix='wazuh_testing_client_keys', suffix=".tmp")[1])
+@patch('wazuh.core.common.ossec_uid')
+@patch('wazuh.core.common.ossec_gid')
+@patch('wazuh.core.agent.stat')
+@patch('wazuh.core.agent.fcntl.lockf')
+@patch('wazuh.core.agent.get_manager_name')
+@patch('socket.socket.connect')
+def test_agent_add_manual_content(socket_mock, mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid,
+                                  mosck_ossec_uid, mock_release_lock, mock_acquire_lock,
+                                  mock_get_agents_info):
+    """Tests if method _add_manual() modify the content of a client.keys as expected"""
+    def calculate_final_file(file_str, id_, name_, ip_, key_):
+        file_str += f"{id_} {name_} {ip_} {key_}\n"
+        return file_str
+
+    agent = Agent(1)
+    with open(os.path.join(os.path.dirname(__file__), 'data', 'test_agent',
+                           'add_manual', 'add_manual_use_cases.yaml')) as f:
+        for test_case in safe_load(f):
+            def mock_safe_move(output_file, dummy, permissions):
+                with open(output_file) as f_t:
+                    assert f_t.read() == calculate_final_file(test_case['client_keys'], test_case['expected_id'],
+                                                              test_case['name'], test_case['ip'], test_case['key'])
+
+            with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=test_case['client_keys'].encode())):
+                with patch('wazuh.core.agent.safe_move', new=mock_safe_move):
+                    output = tempfile.mkstemp(prefix='wazuh_testing_add_manual', suffix=".tmp")[1]
+                    with patch('wazuh.core.agent.tempfile.mkstemp', return_value=[output, output]):
+                        agent._add_manual(test_case['name'], ip=test_case['ip'],
+                                          key=test_case['key'], force=test_case['force'])
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
