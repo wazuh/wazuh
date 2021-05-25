@@ -11,8 +11,8 @@ https:
  cert: "api/configuration/ssl/server.crt"
  use_ca: False
  ca: "api/configuration/ssl/ca.crt"
- ssl_protocol: "TLSv1.1"
- ssl_ciphers: ""
+ ssl_protocol: "TLS"
+ ssl_ciphers: "ECDHE+AESGCM:!ECDSA"
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
