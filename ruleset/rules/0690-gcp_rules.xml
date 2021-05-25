@@ -341,7 +341,19 @@ ID: 65000 - 65499
     </rule>
 
     <!-- GCP VPC Usage rules-->
+    <rule id="65053" level="12">
+        <if_sid>65000</if_sid>
+        <field name="gcp.s_request_id">^(?!^$).*</field>
+        <description>GCP VPC Usage grouped rules</description>
+        <options>no_full_log</options>
+    </rule>
 
     <!-- GCP VPC Storage rules-->
+    <rule id="65054" level="12">
+        <if_sid>65000</if_sid>
+        <field name="gcp.storage_byte_hours">^(?!^$).*</field>
+        <description>GCP VPC Storage grouped rules</description>
+        <options>no_full_log</options>
+    </rule>
 
 </group>
