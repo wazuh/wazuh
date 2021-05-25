@@ -7,7 +7,8 @@
 import argparse
 import sys
 
-from api import alogging, configuration
+
+from api import alogging, configuration, validator
 from wazuh.core import common
 
 
@@ -81,31 +82,32 @@ def start(foreground, root, config_file):
                 'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
                 'tlsv1.2': ssl.PROTOCOL_TLSv1_2
             }
-            try:
+
+            # Checks if the ssl_protocol is valid
+            if api_conf['https']['ssl_protocol'].lower() in validator.api_config_schema['https']['ssl_protocol']['enum']:
                 ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
-            except (KeyError, AttributeError):
-                # KeyError: invalid string value
-                # AttributeError: invalid boolean value
+            else:
                 logger.error(str(APIError(2003, details='SSL protocol is not valid. Allowed values: '
                                                         'TLS, TLSv1, TLSv1.1, TLSv1.2')))
                 sys.exit(1)
 
             ssl_context = ssl.SSLContext(protocol=ssl_protocol)
+
             if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(api_conf['https']['ca'])
-            ssl_context.load_cert_chain(certfile=api_conf['https']['cert'],
-                                        keyfile=api_conf['https']['key'])
 
-            # Base configuration should not have ciphers?
-            if 'ssl_ciphers' in api_conf['https']:
-                # Load SSL ciphers
+            ssl_context.load_cert_chain(certfile=api_conf['https']['cert'], keyfile=api_conf['https']['key'])
+
+            # Loads SSL ciphers if any have been specified
+            if api_conf['https']['ssl_ciphers'] != "":
                 ssl_ciphers = api_conf['https']['ssl_ciphers'].upper()
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)
                 except ssl.SSLError:
                     logger.error(str(APIError(2003, details='SSL ciphers can not be selected')))         
                     sys.exit(1)
+
         except ssl.SSLError:
             logger.error(str(APIError(2003, details='Private key does not match with the certificate')))
             sys.exit(1)

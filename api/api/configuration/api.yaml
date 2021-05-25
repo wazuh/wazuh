@@ -12,7 +12,7 @@
 #  use_ca: False
 #  ca: "api/configuration/ssl/ca.crt"
 #  ssl_protocol: "TLSv1.2"
-#  ssl_ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+#  ssl_ciphers: ""
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
