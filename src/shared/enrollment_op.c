@@ -232,6 +232,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
         ERR_print_errors_fp(stderr);  // This function empties the error queue
         os_free(ip_address);
         SSL_CTX_free(ctx);
+        OS_CloseSocket(sock);
         return ENROLLMENT_CONNECTION_FAILURE;
     }
 
