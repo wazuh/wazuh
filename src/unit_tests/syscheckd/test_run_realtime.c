@@ -310,7 +310,7 @@ void test_realtime_start_success(void **state) {
 
     assert_int_equal(ret, 0);
 #ifdef TEST_WINAGENT
-    assert_int_equal(syscheck.realtime->fd, -1);
+    assert_int_equal(syscheck.realtime->fd, 0);
     assert_ptr_equal(syscheck.realtime->evt, 123456);
 #endif
 }
@@ -1598,6 +1598,9 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     expect_string(__wrap_OSHash_Delete_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Delete_ex, rtlocald);
 
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Get_Elem_ex, 127);
+
     snprintf(debug_msg, OS_SIZE_128, FIM_REALTIME_CALLBACK, "C:\\a\\path");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
@@ -1672,6 +1675,8 @@ void test_realtime_adddir_success(void **state) {
     will_return(wrap_CreateFile, (HANDLE)123456);
 
     will_return(wrap_ReadDirectoryChangesW, 1);
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Get_Elem_ex, 127);
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
