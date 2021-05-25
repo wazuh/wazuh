@@ -339,4 +339,9 @@ ID: 65000 - 65499
         <description>GCP emergency event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
         <options>no_full_log</options>
     </rule>
+
+    <!-- GCP VPC Usage rules-->
+
+    <!-- GCP VPC Storage rules-->
+
 </group>
