@@ -23,7 +23,7 @@ custom_api_configuration = {
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
         "ssl_protocol": "TLSv1.2",
-        "ssl_ciphers": "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+        "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
