@@ -79,7 +79,8 @@ def start(foreground, root, config_file):
                 'tls': ssl.PROTOCOL_TLS,
                 'tlsv1': ssl.PROTOCOL_TLSv1,
                 'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
-                'tlsv1.2': ssl.PROTOCOL_TLSv1_2
+                'tlsv1.2': ssl.PROTOCOL_TLSv1_2,
+                'tlsv1.3': ssl.PROTOCOL_TLSv1_3
             }
 
             ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]

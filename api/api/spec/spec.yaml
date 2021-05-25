@@ -10403,7 +10403,7 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                          ssl_protocol: "TLSv1.2"
+                          ssl_protocol: "TLSv1.3"
                           ssl_ciphers: ""
                         access:
                           max_login_attempts: 50
