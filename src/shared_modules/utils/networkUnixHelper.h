@@ -18,6 +18,7 @@
 #include <memory>
 #include <system_error>
 #include <net/if.h>
+#include "stringHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -46,7 +47,7 @@ namespace Utils
                 {
                     if (!(ifa->ifa_flags & IFF_LOOPBACK))
                     {
-                        networkInterfaces[ifa->ifa_name].push_back(ifa); 
+                        networkInterfaces[substrOnFirstOccurrence(ifa->ifa_name, ":")].push_back(ifa);
                     }
                 }
             }

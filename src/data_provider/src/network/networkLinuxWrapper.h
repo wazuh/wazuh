@@ -265,7 +265,7 @@ public:
 
     std::string name() const override
     {
-        return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
+        return m_interfaceAddress->ifa_name ? Utils::substrOnFirstOccurrence(m_interfaceAddress->ifa_name, ":") : "";
     }
 
     std::string adapter() const override
