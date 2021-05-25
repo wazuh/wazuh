@@ -468,7 +468,7 @@ void test_w_enrollment_connect_SSL_connect_error(void **state) {
 
     expect_value(__wrap_SSL_get_error, i, -1);
     will_return(__wrap_SSL_get_error, 100);
-    expect_string(__wrap__merror, formatted_msg, "SSL error (100). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.");
+    expect_string(__wrap__merror, formatted_msg, "SSL error (100). Connection refused by the manager. Maybe the port specified is incorrect.");
 
     int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
     assert_int_equal(ret, ENROLLMENT_CONNECTION_FAILURE);
