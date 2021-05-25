@@ -12,8 +12,9 @@ import random
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from contextvars import copy_context
 from copy import copy, deepcopy
-from functools import reduce
+from functools import reduce, partial
 from operator import or_
 from typing import Callable, Dict, Tuple, List
 
@@ -31,7 +32,16 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-threadpool = ThreadPoolExecutor(max_workers=1)
+
+class ContextThreadPoolExecutor(ThreadPoolExecutor):
+    """Custom ThreadPoolExecutor class to handle the async context issue."""
+    def submit(self, fn: Callable, *args, **kwargs):
+        context = copy_context()
+
+        return super().submit(partial(context.run, partial(fn, *args, **kwargs)))
+
+
+threadpool = ContextThreadPoolExecutor(max_workers=1)
 
 
 class DistributedAPI:
