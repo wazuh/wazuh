@@ -490,6 +490,8 @@ void LogCollectorStart()
                     if (current->file && current->exists) {
                         if (reload_file(current) == -1) {
                             minfo(FORGET_FILE, current->file);
+                            os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            os_free(old_file_status);
                             current->exists = 0;
                             current->ign++;
 
@@ -565,6 +567,8 @@ void LogCollectorStart()
                         if (errno == ENOENT) {
                             if(current->exists==1){
                                 minfo(FORGET_FILE, current->file);
+                                os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                                os_free(old_file_status);
                                 current->exists = 0;
                             }
                             current->ign++;
@@ -620,6 +624,8 @@ void LogCollectorStart()
                     if (!current->fp) {
                         if(current->exists==1){
                             minfo(FORGET_FILE, current->file);
+                            os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            os_free(old_file_status);
                             current->exists = 0;
                         }
                         current->ign++;
