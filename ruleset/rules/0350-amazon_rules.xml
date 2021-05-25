@@ -554,4 +554,11 @@ ID: 80200 - 80499
         <description>AWS S3: POST operation: $(aws.request_uri)</description>
     </rule>
 
+    <!-- Error events -->
+    <rule id="200031" level="3">
+        <if_sid>200000</if_sid>
+        <field name="aws.error_code" type="pcre2">^(?!^$).*</field>
+        <description>AWS S3 Error: $(aws.error_code)</description>
+    </rule>
+
 </group>
