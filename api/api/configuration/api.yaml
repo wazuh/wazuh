@@ -5,14 +5,14 @@
 
 # Advanced configuration
 
-https:
- enabled: yes
- key: "api/configuration/ssl/server.key"
- cert: "api/configuration/ssl/server.crt"
- use_ca: False
- ca: "api/configuration/ssl/ca.crt"
- ssl_protocol: "TLS"
- ssl_ciphers: "ECDHE+AESGCM:!ECDSA"
+# https:
+#  enabled: yes
+#  key: "api/configuration/ssl/server.key"
+#  cert: "api/configuration/ssl/server.crt"
+#  use_ca: False
+#  ca: "api/configuration/ssl/ca.crt"
+#  ssl_protocol: "TLSv1.2"
+#  ssl_ciphers: ""
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
