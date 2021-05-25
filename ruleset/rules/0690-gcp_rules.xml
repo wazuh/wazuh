@@ -339,4 +339,27 @@ ID: 65000 - 65499
         <description>GCP emergency event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
         <options>no_full_log</options>
     </rule>
+
+    <!-- GCP VPC Flow -->
+    <rule id="65050" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.rule_details.reference" type="pcre2">^(?!^$).*</field>
+        <description>GCP VPC Flow rules grouped</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65051" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.rule_details.action">DENY</field>
+        <description>GCP VPC Flow: DENY rule triggered</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.rule_details.action">ALLOW</field>
+        <description>GCP VPC Flow: ALLOW rule triggered</description>
+        <options>no_full_log</options>
+    </rule>
+
 </group>
