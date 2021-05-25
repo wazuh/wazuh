@@ -504,5 +504,54 @@ ID: 80200 - 80499
         <options>no_full_log</options>
     </rule>
 
+</group>
+
+<!-- S3 Access rules -->
+<group name="amazon, aws, s3">
+
+    <rule id="200000" level="0">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">s3_access_logs</field>
+        <description>AWS S3 Access Log events group</description>
+    </rule>
+
+    <rule id="200001" level="5">
+        <if_sid>200000</if_sid>
+        <field name="aws.operation">DELETE</field>
+        <description>AWS S3: DELETE operation: $(aws.request_uri)</description>
+    </rule>
+
+    <rule id="200010" level="3">
+        <if_sid>200000</if_sid>
+        <field name="aws.operation">GET</field>
+        <description>AWS S3: GET operation: $(aws.request_uri)</description>
+    </rule>
+
+    <!-- Silence general REST.GET.OBJECT with status code 200 -->
+    <rule id="200011" level="0">
+        <if_sid>200010</if_sid>
+        <field name="aws.operation">^REST.GET.OBJECT$</field>
+        <field name="aws.htt_status">200</field>
+        <description>AWS S3: GET with 200 status code</description>
+    </rule>
+
+    <rule id="200020" level="3">
+        <if_sid>200000</if_sid>
+        <field name="aws.operation">PUT</field>
+        <description>AWS S3: PUT operation: $(aws.request_uri)</description>
+    </rule>
+
+    <!-- Silence events when S3 puts a file into the bucket -->
+    <rule id="200021" level="0">
+        <if_sid>200020</if_sid>
+        <field name="aws.requester">^svc:s3.amazonaws.com$</field>
+        <description>AWS S3: PUT operation: $(aws.request_uri) from S3 service</description>
+    </rule>
+
+    <rule id="200030" level="3">
+        <if_sid>200000</if_sid>
+        <field name="aws.operation">POST</field>
+        <description>AWS S3: POST operation: $(aws.request_uri)</description>
+    </rule>
 
 </group>
