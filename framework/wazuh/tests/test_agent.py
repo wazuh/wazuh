@@ -310,23 +310,24 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
 ])
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.agent.Agent._acquire_client_keys_lock')
+@patch('wazuh.core.agent.Agent._release_client_keys_lock')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.common.ossec_uid')
 @patch('wazuh.core.agent.common.ossec_gid')
 @patch('wazuh.core.agent.safe_move')
-@patch('builtins.open')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_add_agent(socket_mock, send_mock, open_mock, safe_move_mock, common_gid_mock, common_uid_mock,
-                         chmod_mock, chown_mock, fcntl_mock, name, agent_id, key):
+def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, common_gid_mock, common_uid_mock, chmod_mock,
+                         chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
     """Test `add_agent` from agent module.
 
     Parameters
     ----------
     name : str
         Name of the agent.
-    expected_id : str
+    agent_id : str
         ID of the agent whose name is the specified one.
     key : str
         The agent key.
