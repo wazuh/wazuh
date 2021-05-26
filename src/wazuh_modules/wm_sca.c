@@ -481,7 +481,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s'", data->policies[i]->policy_path);
 
-                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number,list_variables) != 0) {
+                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number, list_variables) != 0) {
                     merror("Error while evaluating the policy '%s'", data->policies[i]->policy_path);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -524,6 +524,13 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(vars) {
                 OSStore_Free(vars);
+            }
+
+            if (list_variables) {
+                for (int i = 0; list_variables[i]; i++) {
+                    os_free(list_variables[i]);
+                }
+                os_free(list_variables);
             }
         }
         first_scan = 0;
@@ -1056,13 +1063,14 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
             if (type == WM_SCA_TYPE_FILE) {
                 /* Check files */
                 char *pattern = wm_sca_get_pattern(value);
-                char *file_list = value;
+                char *file_list;
                 char *var_replace;
-                char *var_found;
+
+                os_strdup(value, file_list);
 
                 /* Get any variable */
-                for(int i = 0; list_variables[i] != NULL  ; i++){
-                    if((var_found = strstr(value,list_variables[i])) != NULL) {
+                for(int i = 0; list_variables[i]; i++){
+                    if(strstr(value,list_variables[i])) {
                         var_replace = (char *) OSStore_Get(vars, list_variables[i]);
                         file_list = str_replace(list_variables[i], var_replace, file_list);
                         if (!file_list) {
@@ -1081,12 +1089,15 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 _b_msg[OS_SIZE_1024] = '\0';
                 snprintf(_b_msg, OS_SIZE_1024, " File: %s", file_list);
                 append_msg_to_vm_scat(data, _b_msg);
+                os_free(file_list);
+
             } else if (type == WM_SCA_TYPE_COMMAND) {
                 /* Check command output */
                 char *pattern = wm_sca_get_pattern(value);
-                char *f_value = value;
-                char *var_found;
+                char *f_value;
                 char *var_replace;
+
+                os_strdup(value, f_value);
                 
                 if (!data->remote_commands && remote_policy) {
                     mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
@@ -1097,8 +1108,8 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                     found = RETURN_INVALID;
                 } else {
                     /* Get any variable */
-                    for(int i = 0; list_variables[i] != NULL ; i++) {
-                        if((var_found = strstr(value,list_variables[i])) != NULL) {
+                    for(int i = 0; list_variables[i]; i++) {
+                        if(strstr(value,list_variables[i])) {
                             var_replace = (char *) OSStore_Get(vars, list_variables[i]);
                             f_value = str_replace(list_variables[i], var_replace, f_value);
                             if (!f_value) {
@@ -1122,17 +1133,20 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 _b_msg[OS_SIZE_1024] = '\0';
                 snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
                 append_msg_to_vm_scat(data, _b_msg);
+                os_free(f_value);
 
             } else if (type == WM_SCA_TYPE_DIR) {
                 /* Check directory */
                 mdebug2("Processing directory rule '%s'", value);
                 char * const file = wm_sca_get_pattern(value);
-                char *f_value = value;
-                char *var_found;
+                char *f_value;
                 char *var_replace;
+
+                os_strdup(value, f_value);
+
                 /* Get any variable */
-                for(int i = 0; list_variables[i] != NULL ; i++){
-                    if((var_found = strstr(value,list_variables[i])) != NULL) {
+                for(int i = 0; list_variables[i]; i++){
+                    if(strstr(value,list_variables[i])) {
                         var_replace = (char *) OSStore_Get(vars, list_variables[i]);
                         f_value = str_replace(list_variables[i], var_replace, f_value);
                         if (!f_value) {
@@ -1145,6 +1159,8 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                 char * const pattern = wm_sca_get_pattern(file);
                 found = wm_sca_check_dir_list(data, f_value, file, pattern, &reason);
                 mdebug2("Check directory rule result: %d", found);
+                os_free(f_value);
+
             } else if (type == WM_SCA_TYPE_PROCESS) {
                 /* Check process existence */
                 if (!p_list) {
@@ -3136,10 +3152,10 @@ static char *str_replace(char *search , char *replace , char *subject) {
 	}
 	
 	//Final size
-	c = ( strlen(replace) - search_size )*c + strlen(subject);
+	c = ((strlen(replace) - search_size)  * c) + strlen(subject);
 	
 	//New subject with new size
-	new_subject = calloc(sizeof(char), c);
+	os_calloc(c + 1, sizeof(char), new_subject);
 	
 	//The start position
 	old = subject;
@@ -3157,30 +3173,37 @@ static char *str_replace(char *search , char *replace , char *subject) {
 	
 	//Copy the part after the last search match
 	strcpy(new_subject + strlen(new_subject) , old);
+    os_free(subject);
+
 	return new_subject;
 }
 
 /* Sort the variables from largest to smallest size */
 static char **wm_sort_to_array(const cJSON * const variables) {
-    char **array = malloc(cJSON_GetArraySize(variables) + 1); 
-    char *aux;
+    char **variables_array;
     const cJSON *variable;
+    char *aux;
     int i = 0;
+    int variables_array_size = cJSON_GetArraySize(variables);
+
+    os_calloc(variables_array_size + 1, sizeof(char *), variables_array); 
+
+    // Fill array with unsorted variables
     cJSON_ArrayForEach(variable, variables) {
-        os_strdup(variable->string, array[i]);
+        os_strdup(variable->string, variables_array[i]);
         i++;
     }
 
-    for(i = 0; i < cJSON_GetArraySize(variables); i++) {
-        for(int j = i + 1; j < cJSON_GetArraySize(variables); j++) {
-            if(strlen(array[j]) > strlen(array[i])) {
-                aux = array[i];
-                array[i] = array[j];
-                array[j] = aux;
+    // Sorting algorithm
+    for(i = 0; i < variables_array_size; i++) {
+        for(int j = i + 1; j < variables_array_size; j++) {
+            if(strlen(variables_array[j]) > strlen(variables_array[i])) {
+                aux = variables_array[i];
+                variables_array[i] = variables_array[j];
+                variables_array[j] = aux;
             }
         }
     }
-    array[i] = NULL;
 
-    return array;
+    return variables_array;
 }
