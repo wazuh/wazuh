@@ -88,8 +88,12 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    const char* reference,
                                    const char* type,
                                    const char* status,
-                                   bool check_pkg_existence) {
+                                   bool check_pkg_existence,
+                                   const char* severity,
+                                   double cvss2_score,
+                                   double cvss3_score) {
 
+    bool insert = FALSE;
     cJSON* result = cJSON_CreateObject();
     if (!result) {
         return NULL;
@@ -100,12 +104,13 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
     }
     else {
         cJSON_AddStringToObject(result, "action", "INSERT");
+        insert = TRUE;
     }
 
     if (check_pkg_existence && !wdb_agents_find_package(wdb, reference)) {
         cJSON_AddStringToObject(result, "status", "PKG_NOT_FOUND");
     }
-    else {
+    else if (insert){
         sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
         if (stmt) {
@@ -116,6 +121,9 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
             sqlite3_bind_text(stmt, 5, reference, -1, NULL);
             sqlite3_bind_text(stmt, 6, type, -1, NULL);
             sqlite3_bind_text(stmt, 7, status, -1, NULL);
+            sqlite3_bind_text(stmt, 8, severity, -1, NULL);
+            sqlite3_bind_double(stmt, 9, cvss2_score);
+            sqlite3_bind_double(stmt, 10, cvss3_score);
 
             if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
                 cJSON_AddStringToObject(result, "status", "SUCCESS");
