@@ -220,7 +220,7 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
-    if (syscheck.directories) {
+    if (OSList_GetFirstNode(syscheck.directories) != NULL) {
         directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
         OSListNode *node_it;

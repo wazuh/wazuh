@@ -78,8 +78,6 @@ void test_Read_Syscheck_Config_success(void **state)
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_any_always(__wrap__mwarn, formatted_msg);
 
-    expect_any_always(__wrap_OSMatch_Compile, pattern);
-    will_return_always(__wrap_OSMatch_Compile, 1);
 
     ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
 
@@ -158,8 +156,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
-    expect_any_always(__wrap_OSMatch_Compile, pattern);
-    will_return_always(__wrap_OSMatch_Compile, 1);
 
     ret = Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -261,9 +257,6 @@ void test_getSyscheckConfig(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    expect_any_always(__wrap_OSMatch_Compile, pattern);
-    will_return_always(__wrap_OSMatch_Compile, 1);
 
     Read_Syscheck_Config("test_syscheck_config.conf");
     ret = getSyscheckConfig();
@@ -406,8 +399,6 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
-    expect_any_always(__wrap_OSMatch_Compile, pattern);
-    will_return_always(__wrap_OSMatch_Compile, 1);
 
     Read_Syscheck_Config("test_syscheck2.conf");
 
@@ -539,8 +530,6 @@ void test_getSyscheckConfig_no_directories(void **state)
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
@@ -657,9 +646,6 @@ void test_getSyscheckInternalOptions(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
-    expect_any_always(__wrap_OSMatch_Compile, pattern);
-    will_return_always(__wrap_OSMatch_Compile, 1);
-
     Read_Syscheck_Config("test_syscheck.conf");
 
     ret = getSyscheckInternalOptions();
@@ -685,9 +671,6 @@ void test_fim_create_directory_add_new_entry(void **state) {
     unsigned int is_wildcard = 0;
     directory_t *new_entry;
 
-    expect_string(__wrap_OSMatch_Compile, pattern, "restrict");
-    will_return_always(__wrap_OSMatch_Compile, 1);
-
     new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
 
     assert_non_null(new_entry);
@@ -699,7 +682,7 @@ void test_fim_create_directory_add_new_entry(void **state) {
 
 void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
     const char *path = "./mock_path";
-    char *filerestrict = "restrict";
+    char *filerestrict = (char*) malloc(sizeof(char)*OS_PATTERN_MAXSIZE+1);
     int recursion_level = 0;
     const char *tag = "mock_tag";
     int options = CHECK_FOLLOW;
@@ -708,10 +691,8 @@ void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
     directory_t *new_entry;
     char error_msg[OS_MAXSTR];
 
-    snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, filerestrict, 0);
-
-    expect_string(__wrap_OSMatch_Compile, pattern, "restrict");
-    will_return(__wrap_OSMatch_Compile, 0);
+    memset(filerestrict,'a',OS_PATTERN_MAXSIZE+1);
+    snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, filerestrict, OS_REGEX_MAXSIZE);
 
     expect_string(__wrap__merror, formatted_msg, error_msg);
 
@@ -748,16 +729,19 @@ void test_fim_insert_directory_duplicate_entry(void **state) {
 void test_fim_insert_directory_insert_entry_before(void **state) {
     OSList list;
     OSListNode first_list_node;
+    directory_t new_entry;
     directory_t *old_entry = (directory_t*) malloc(sizeof(directory_t));
     old_entry->symbolic_links = NULL;
     old_entry->tag = NULL;
     old_entry->filerestrict = NULL;
-    directory_t new_entry;
+    first_list_node.data = old_entry;
+    list.first_node = &first_list_node;
+    list.last_node = list.first_node;
+    list.first_node->prev = NULL;
+    list.first_node->next = NULL;
     old_entry->path = "BPath";
     new_entry.path = "APath";
     new_entry.tag = "new_entry_tag";
-    first_list_node.data = old_entry;
-    list.first_node = &first_list_node;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -780,7 +764,9 @@ void test_fim_insert_directory_insert_entry_last(void **state) {
     new_entry.tag = "new_entry_tag";
     first_list_node.data = old_entry;
     list.first_node = &first_list_node;
-    list.last_node = &first_list_node;
+    list.first_node->prev = NULL;
+    list.last_node = list.first_node;
+    list.first_node->next = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
