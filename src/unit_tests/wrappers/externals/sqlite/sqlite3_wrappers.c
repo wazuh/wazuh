@@ -74,8 +74,8 @@ int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * s
 }
 
 int __wrap_sqlite3_bind_double(__attribute__((unused)) sqlite3_stmt* stmt,
-                        int index,
-                        double value) {
+                               int index,
+                               double value) {
     check_expected(index);
     check_expected(value);
 

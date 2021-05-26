@@ -5973,10 +5973,10 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
         else {
-            cJSON* result = wdb_agents_insert_vuln_cves(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring,
-                                            j_reference->valuestring, j_type->valuestring, j_status->valuestring, (bool)j_check_pkg_existence->valueint,
-                                            cJSON_GetStringValue(j_severity), cJSON_IsNumber(j_cvss2_score) ? j_cvss2_score->valuedouble : 0,
-                                            cJSON_IsNumber(j_cvss3_score) ? j_cvss3_score->valuedouble : 0);
+            cJSON* result = wdb_agents_insert_vuln_cves(wdb, cJSON_GetStringValue(j_name), cJSON_GetStringValue(j_version), cJSON_GetStringValue(j_architecture), cJSON_GetStringValue(j_cve),
+                                                        cJSON_GetStringValue(j_reference), cJSON_GetStringValue(j_type), cJSON_GetStringValue(j_status), (bool)j_check_pkg_existence->valueint,
+                                                        cJSON_GetStringValue(j_severity), cJSON_IsNumber(j_cvss2_score) ? j_cvss2_score->valuedouble : 0,
+                                                        cJSON_IsNumber(j_cvss3_score) ? j_cvss3_score->valuedouble : 0);
 
             if (result) {
                 char *out = cJSON_PrintUnformatted(result);
