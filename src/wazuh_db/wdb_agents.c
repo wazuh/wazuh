@@ -101,7 +101,6 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
 
     if (wdb_agents_find_cve(wdb, cve, reference)) {
         cJSON_AddStringToObject(result, "action", "UPDATE");
-        insert = FALSE;
     }
     else {
         cJSON_AddStringToObject(result, "action", "INSERT");
