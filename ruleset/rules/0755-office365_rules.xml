@@ -15,7 +15,7 @@ ID: 91531 - 91650
     <rule id="91531" level="0">
         <decoded_as>json</decoded_as>
         <field name="integration">office_365</field>
-        <description>$(office_365.Workload) $(office_365.Operation) operation.</description>
+        <description>Office 365: $(office_365.Workload) $(office_365.Operation) operation.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -25,7 +25,7 @@ ID: 91531 - 91650
     <rule id="91532" level="3">
         <if_sid>91531</if_sid>
         <field name="office_365.RecordType" type="osregex">\d+</field>
-        <description>$(office_365.Workload) $(office_365.Operation) operation.</description>
+        <description>Office 365: $(office_365.Workload) $(office_365.Operation) operation.</description>
         <options>no_full_log</options>
         <group>office365_recordType</group>
     </rule>
@@ -136,7 +136,7 @@ ID: 91531 - 91650
     <rule id="91533" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^1$</field>
-        <description>Events from the Exchange admin audit log.</description>
+        <description>Office 365: Events from the Exchange admin audit log.</description>
         <options>no_full_log</options>
         <group>ExchangeAdmin</group>
     </rule>
@@ -144,7 +144,7 @@ ID: 91531 - 91650
     <rule id="91534" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^2$</field>
-        <description>Events from an Exchange mailbox audit log for actions that are performed on a single item, such as creating or receiving an email message.</description>
+        <description>Office 365: Events from an Exchange mailbox audit log for actions that are performed on a single item, such as creating or receiving an email message.</description>
         <options>no_full_log</options>
         <group>ExchangeItem</group>
     </rule>
@@ -152,7 +152,7 @@ ID: 91531 - 91650
     <rule id="91535" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^3$</field>
-        <description>Events from an Exchange mailbox audit log for actions that can be performed on multiple items, such as moving or deleted one or more email messages.</description>
+        <description>Office 365: Events from an Exchange mailbox audit log for actions that can be performed on multiple items, such as moving or deleted one or more email messages.</description>
         <options>no_full_log</options>
         <group>ExchangeItemGroup</group>
     </rule>
@@ -160,7 +160,7 @@ ID: 91531 - 91650
     <rule id="91536" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^4$</field>
-        <description>SharePoint events.</description>
+        <description>Office 365: SharePoint events.</description>
         <options>no_full_log</options>
         <group>SharePoint</group>
     </rule>
@@ -168,7 +168,7 @@ ID: 91531 - 91650
     <rule id="91537" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^6$</field>
-        <description>SharePoint file operation events.</description>
+        <description>Office 365: SharePoint file operation events.</description>
         <options>no_full_log</options>
         <group>SharePointFileOperation</group>
     </rule>
@@ -176,7 +176,7 @@ ID: 91531 - 91650
     <rule id="91538" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^7$</field>
-        <description>OneDrive for Business events.</description>
+        <description>Office 365: OneDrive for Business events.</description>
         <options>no_full_log</options>
         <group>OneDrive</group>
     </rule>
@@ -184,7 +184,7 @@ ID: 91531 - 91650
     <rule id="91539" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^8$</field>
-        <description>Azure Active Directory events.</description>
+        <description>Office 365: Azure Active Directory events.</description>
         <options>no_full_log</options>
         <group>AzureActiveDirectory</group>
     </rule>
@@ -192,7 +192,7 @@ ID: 91531 - 91650
     <rule id="91540" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^9$</field>
-        <description>Azure Active Directory OrgId logon events (deprecated).</description>
+        <description>Office 365: Azure Active Directory OrgId logon events (deprecated).</description>
         <options>no_full_log</options>
         <group>AzureActiveDirectoryAccountLogon</group>
     </rule>
@@ -200,7 +200,7 @@ ID: 91531 - 91650
     <rule id="91541" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^10$</field>
-        <description>Data Center security cmdlet events.</description>
+        <description>Office 365: Data Center security cmdlet events.</description>
         <options>no_full_log</options>
         <group>DataCenterSecurityCmdlet</group>
     </rule>
@@ -208,7 +208,7 @@ ID: 91531 - 91650
     <rule id="91542" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^11$</field>
-        <description>Data loss protection (DLP) events in SharePoint and OneDrive for Business.</description>
+        <description>Office 365: Data loss protection (DLP) events in SharePoint and OneDrive for Business.</description>
         <options>no_full_log</options>
         <group>ComplianceDLPSharePoint</group>
     </rule>
@@ -216,7 +216,7 @@ ID: 91531 - 91650
     <rule id="91543" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^13$</field>
-        <description>Data loss protection (DLP) events in Exchange, when configured via Unified DLP Policy. DLP events based on Exchange Transport Rules are not supported.</description>
+        <description>Office 365: Data loss protection (DLP) events in Exchange, when configured via Unified DLP Policy. DLP events based on Exchange Transport Rules are not supported.</description>
         <options>no_full_log</options>
         <group>ComplianceDLPExchange</group>
     </rule>
@@ -224,7 +224,7 @@ ID: 91531 - 91650
     <rule id="91544" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^14$</field>
-        <description>SharePoint sharing events.</description>
+        <description>Office 365: SharePoint sharing events.</description>
         <options>no_full_log</options>
         <group>SharePointSharingOperation</group>
     </rule>
@@ -232,7 +232,7 @@ ID: 91531 - 91650
     <rule id="91545" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^15$</field>
-        <description>Secure Token Service (STS) logon events in Azure Active Directory.</description>
+        <description>Office 365: Secure Token Service (STS) logon events in Azure Active Directory.</description>
         <options>no_full_log</options>
         <group>AzureActiveDirectoryStsLogon</group>
     </rule>
@@ -240,7 +240,7 @@ ID: 91531 - 91650
     <rule id="91546" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^16$</field>
-        <description>Public Switched Telephone Network (PSTN) events from Skype for Business.</description>
+        <description>Office 365: Public Switched Telephone Network (PSTN) events from Skype for Business.</description>
         <options>no_full_log</options>
         <group>SkypeForBusinessPSTNUsage</group>
     </rule>
@@ -248,7 +248,7 @@ ID: 91531 - 91650
     <rule id="91547" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^17$</field>
-        <description>Blocked user events from Skype for Business.</description>
+        <description>Office 365: Blocked user events from Skype for Business.</description>
         <options>no_full_log</options>
         <group>SkypeForBusinessUsersBlocked</group>
     </rule>
@@ -256,7 +256,7 @@ ID: 91531 - 91650
     <rule id="91548" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^18$</field>
-        <description>Admin actions from the Security and Compliance Center.</description>
+        <description>Office 365: Admin actions from the Security and Compliance Center.</description>
         <options>no_full_log</options>
         <group>SecurityComplianceCenterEOPCmdlet</group>
     </rule>
@@ -264,7 +264,7 @@ ID: 91531 - 91650
     <rule id="91549" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^19$</field>
-        <description>Aggregated Exchange mailbox auditing events.</description>
+        <description>Office 365: Aggregated Exchange mailbox auditing events.</description>
         <options>no_full_log</options>
         <group>ExchangeAggregatedOperation</group>
     </rule>
@@ -272,7 +272,7 @@ ID: 91531 - 91650
     <rule id="91550" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^20$</field>
-        <description>Power BI events.</description>
+        <description>Office 365: Power BI events.</description>
         <options>no_full_log</options>
         <group>PowerBIAudit</group>
     </rule>
@@ -280,7 +280,7 @@ ID: 91531 - 91650
     <rule id="91551" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^21$</field>
-        <description>Dynamics 365 events.</description>
+        <description>Office 365: Dynamics 365 events.</description>
         <options>no_full_log</options>
         <group>CRM</group>
     </rule>
@@ -288,7 +288,7 @@ ID: 91531 - 91650
     <rule id="91552" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^22$</field>
-        <description>Yammer events.</description>
+        <description>Office 365: Yammer events.</description>
         <options>no_full_log</options>
         <group>Yammer</group>
     </rule>
@@ -296,7 +296,7 @@ ID: 91531 - 91650
     <rule id="91553" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^23$</field>
-        <description>Skype for Business events.</description>
+        <description>Office 365: Skype for Business events.</description>
         <options>no_full_log</options>
         <group>SkypeForBusinessCmdlets</group>
     </rule>
@@ -304,7 +304,7 @@ ID: 91531 - 91650
     <rule id="91554" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^24$</field>
-        <description>Events for eDiscovery activities performed by running content searches and managing eDiscovery cases in the Security and Compliance Center.</description>
+        <description>Office 365: Events for eDiscovery activities performed by running content searches and managing eDiscovery cases in the Security and Compliance Center.</description>
         <options>no_full_log</options>
         <group>Discovery</group>
     </rule>
@@ -312,7 +312,7 @@ ID: 91531 - 91650
     <rule id="91555" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^25$</field>
-        <description>Events from Microsoft Teams.</description>
+        <description>Office 365: Events from Microsoft Teams.</description>
         <options>no_full_log</options>
         <group>MicrosoftTeams</group>
     </rule>
@@ -320,7 +320,7 @@ ID: 91531 - 91650
     <rule id="91556" level="12">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^28$</field>
-        <description>Phishing and malware events from Exchange Online Protection and Microsoft Defender for Office 365.</description>
+        <description>Office 365: Phishing and malware events from Exchange Online Protection and Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>ThreatIntelligence</group>
     </rule>
@@ -328,7 +328,7 @@ ID: 91531 - 91650
     <rule id="91557" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^29$</field>
-        <description>Submission events from Exchange Online Protection and Microsoft Defender for Office 365.</description>
+        <description>Office 365: Submission events from Exchange Online Protection and Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>MailSubmission</group>
     </rule>
@@ -336,7 +336,7 @@ ID: 91531 - 91650
     <rule id="91558" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^30$</field>
-        <description>Microsoft Power Automate (formerly called Microsoft Flow) events.</description>
+        <description>Office 365: Microsoft Power Automate (formerly called Microsoft Flow) events.</description>
         <options>no_full_log</options>
         <group>MicrosoftFlow</group>
     </rule>
@@ -344,7 +344,7 @@ ID: 91531 - 91650
     <rule id="91559" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^31$</field>
-        <description>Advanced eDiscovery events.</description>
+        <description>Office 365: Advanced eDiscovery events.</description>
         <options>no_full_log</options>
         <group>AeD</group>
     </rule>
@@ -352,7 +352,7 @@ ID: 91531 - 91650
     <rule id="91560" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^32$</field>
-        <description>Microsoft Stream events.</description>
+        <description>Office 365: Microsoft Stream events.</description>
         <options>no_full_log</options>
         <group>MicrosoftStream</group>
     </rule>
@@ -360,7 +360,7 @@ ID: 91531 - 91650
     <rule id="91561" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^33$</field>
-        <description>Events related to DLP classification in SharePoint.</description>
+        <description>Office 365: Events related to DLP classification in SharePoint.</description>
         <options>no_full_log</options>
         <group>ComplianceDLPSharePointClassification</group>
     </rule>
@@ -368,7 +368,7 @@ ID: 91531 - 91650
     <rule id="91562" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^34$</field>
-        <description>Campaign-related events from Microsoft Defender for Office 365.</description>
+        <description>Office 365: Campaign-related events from Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>ThreatFinder</group>
     </rule>
@@ -376,7 +376,7 @@ ID: 91531 - 91650
     <rule id="91563" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^35$</field>
-        <description>Microsoft Project events.</description>
+        <description>Office 365: Microsoft Project events.</description>
         <options>no_full_log</options>
         <group>Project</group>
     </rule>
@@ -384,7 +384,7 @@ ID: 91531 - 91650
     <rule id="91564" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^36$</field>
-        <description>SharePoint List events.</description>
+        <description>Office 365: SharePoint List events.</description>
         <options>no_full_log</options>
         <group>SharePointListOperation</group>
     </rule>
@@ -392,7 +392,7 @@ ID: 91531 - 91650
     <rule id="91565" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^37$</field>
-        <description>SharePoint comment events.</description>
+        <description>Office 365: SharePoint comment events.</description>
         <options>no_full_log</options>
         <group>SharePointCommentOperation</group>
     </rule>
@@ -400,7 +400,7 @@ ID: 91531 - 91650
     <rule id="91566" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^38$</field>
-        <description>Events related to retention policies and retention labels in the Security and Compliance Center.</description>
+        <description>Office 365: Events related to retention policies and retention labels in the Security and Compliance Center.</description>
         <options>no_full_log</options>
         <group>DataGovernance</group>
     </rule>
@@ -408,7 +408,7 @@ ID: 91531 - 91650
     <rule id="91567" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^39$</field>
-        <description>Kaizala events.</description>
+        <description>Office 365: Kaizala events.</description>
         <options>no_full_log</options>
         <group>Kaizala</group>
     </rule>
@@ -416,7 +416,7 @@ ID: 91531 - 91650
     <rule id="91568" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^40$</field>
-        <description>Security and compliance alert signals.</description>
+        <description>Office 365: Security and compliance alert signals.</description>
         <options>no_full_log</options>
         <group>SecurityComplianceAlerts</group>
     </rule>
@@ -424,7 +424,7 @@ ID: 91531 - 91650
     <rule id="91569" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^41$</field>
-        <description>Safe links time-of-block and block override events from Microsoft Defender for Office 365.</description>
+        <description>Office 365: Safe links time-of-block and block override events from Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>ThreatIntelligenceUrl</group>
     </rule>
@@ -432,7 +432,7 @@ ID: 91531 - 91650
     <rule id="91570" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^42$</field>
-        <description>Events related to insights and reports in the Office 365 security and compliance center.</description>
+        <description>Office 365: Events related to insights and reports in the Office 365 security and compliance center.</description>
         <options>no_full_log</options>
         <group>SecurityComplianceInsights</group>
     </rule>
@@ -440,7 +440,7 @@ ID: 91531 - 91650
     <rule id="91571" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^43$</field>
-        <description>Events related to the detection in the Transport pipeline of email messages that have been tagged (manually or automatically) with sensitivity labels.</description>
+        <description>Office 365: Events related to the detection in the Transport pipeline of email messages that have been tagged (manually or automatically) with sensitivity labels.</description>
         <options>no_full_log</options>
         <group>MIPLabel</group>
     </rule>
@@ -448,7 +448,7 @@ ID: 91531 - 91650
     <rule id="91572" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^44$</field>
-        <description>Workplace Analytics events.</description>
+        <description>Office 365: Workplace Analytics events.</description>
         <options>no_full_log</options>
         <group>WorkplaceAnalytics</group>
     </rule>
@@ -456,7 +456,7 @@ ID: 91531 - 91650
     <rule id="91573" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^45$</field>
-        <description>Power Apps events.</description>
+        <description>Office 365: Power Apps events.</description>
         <options>no_full_log</options>
         <group>PowerAppsApp</group>
     </rule>
@@ -464,7 +464,7 @@ ID: 91531 - 91650
     <rule id="91574" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^46$</field>
-        <description>Subscription plan events for Power Apps.</description>
+        <description>Office 365: Subscription plan events for Power Apps.</description>
         <options>no_full_log</options>
         <group>PowerAppsPlan</group>
     </rule>
@@ -472,7 +472,7 @@ ID: 91531 - 91650
     <rule id="91575" level="12">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^47$</field>
-        <description>Phishing and malware events for files in SharePoint, OneDrive for Business, and Microsoft Teams from Microsoft Defender for Office 365.</description>
+        <description>Office 365: Phishing and malware events for files in SharePoint, OneDrive for Business, and Microsoft Teams from Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>ThreatIntelligenceAtpContent</group>
     </rule>
@@ -480,7 +480,7 @@ ID: 91531 - 91650
     <rule id="91576" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^48$</field>
-        <description>Events related to data classification content explorer.</description>
+        <description>Office 365: Events related to data classification content explorer.</description>
         <options>no_full_log</options>
         <group>LabelContentExplorer</group>
     </rule>
@@ -488,7 +488,7 @@ ID: 91531 - 91650
     <rule id="91577" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^49$</field>
-        <description>Events related to the Patients application in Microsoft Teams for Healthcare.</description>
+        <description>Office 365: Events related to the Patients application in Microsoft Teams for Healthcare.</description>
         <options>no_full_log</options>
         <group>TeamsHealthcare</group>
     </rule>
@@ -496,7 +496,7 @@ ID: 91531 - 91650
     <rule id="91578" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^50$</field>
-        <description>Events related to the MailItemsAccessed mailbox auditing action.</description>
+        <description>Office 365: Events related to the MailItemsAccessed mailbox auditing action.</description>
         <options>no_full_log</options>
         <group>ExchangeItemAggregated</group>
     </rule>
@@ -504,7 +504,7 @@ ID: 91531 - 91650
     <rule id="91579" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^51$</field>
-        <description>Events related to outbound spam protection.</description>
+        <description>Office 365: Events related to outbound spam protection.</description>
         <options>no_full_log</options>
         <group>HygieneEvent</group>
     </rule>
@@ -512,7 +512,7 @@ ID: 91531 - 91650
     <rule id="91580" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^52$</field>
-        <description>Data Insights REST API events.</description>
+        <description>Office 365: Data Insights REST API events.</description>
         <options>no_full_log</options>
         <group>DataInsightsRestApiAudit</group>
     </rule>
@@ -520,7 +520,7 @@ ID: 91531 - 91650
     <rule id="91581" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^53$</field>
-        <description>Events related to the application of information barrier policies.</description>
+        <description>Office 365: Events related to the application of information barrier policies.</description>
         <options>no_full_log</options>
         <group>InformationBarrierPolicyApplication</group>
     </rule>
@@ -528,7 +528,7 @@ ID: 91531 - 91650
     <rule id="91582" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^54$</field>
-        <description>SharePoint list item events.</description>
+        <description>Office 365: SharePoint list item events.</description>
         <options>no_full_log</options>
         <group>SharePointListItemOperation</group>
     </rule>
@@ -536,7 +536,7 @@ ID: 91531 - 91650
     <rule id="91583" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^55$</field>
-        <description>SharePoint list content type events.</description>
+        <description>Office 365: SharePoint list content type events.</description>
         <options>no_full_log</options>
         <group>SharePointContentTypeOperation</group>
     </rule>
@@ -544,7 +544,7 @@ ID: 91531 - 91650
     <rule id="91584" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^56$</field>
-        <description>SharePoint list field events.</description>
+        <description>Office 365: SharePoint list field events.</description>
         <options>no_full_log</options>
         <group>SharePointFieldOperation</group>
     </rule>
@@ -552,7 +552,7 @@ ID: 91531 - 91650
     <rule id="91585" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^57$</field>
-        <description>Teams admin events.</description>
+        <description>Office 365: Teams admin events.</description>
         <options>no_full_log</options>
         <group>MicrosoftTeamsAdmin</group>
     </rule>
@@ -560,7 +560,7 @@ ID: 91531 - 91650
     <rule id="91586" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^58$</field>
-        <description>Events related to HR data signals that support the Insider risk management solution.</description>
+        <description>Office 365: Events related to HR data signals that support the Insider risk management solution.</description>
         <options>no_full_log</options>
         <group>HRSignal</group>
     </rule>
@@ -568,7 +568,7 @@ ID: 91531 - 91650
     <rule id="91587" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^59$</field>
-        <description>Teams device events.</description>
+        <description>Office 365: Teams device events.</description>
         <options>no_full_log</options>
         <group>MicrosoftTeamsDevice</group>
     </rule>
@@ -576,7 +576,7 @@ ID: 91531 - 91650
     <rule id="91588" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^60$</field>
-        <description>Teams analytics events.</description>
+        <description>Office 365: Teams analytics events.</description>
         <options>no_full_log</options>
         <group>MicrosoftTeamsAnalytics</group>
     </rule>
@@ -584,7 +584,7 @@ ID: 91531 - 91650
     <rule id="91589" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^61$</field>
-        <description>Events related to compromised user alerts.</description>
+        <description>Office 365: Events related to compromised user alerts.</description>
         <options>no_full_log</options>
         <group>InformationWorkerProtection</group>
     </rule>
@@ -592,7 +592,7 @@ ID: 91531 - 91650
     <rule id="91590" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^62$</field>
-        <description>Email campaign events from Microsoft Defender for Office 365.</description>
+        <description>Office 365: Email campaign events from Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>Campaign</group>
     </rule>
@@ -600,7 +600,7 @@ ID: 91531 - 91650
     <rule id="91591" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^63$</field>
-        <description>Endpoint DLP events.</description>
+        <description>Office 365: Endpoint DLP events.</description>
         <options>no_full_log</options>
         <group>DLPEndpoint</group>
     </rule>
@@ -608,7 +608,7 @@ ID: 91531 - 91650
     <rule id="91592" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^64$</field>
-        <description>Automated incident response (AIR) events.</description>
+        <description>Office 365: Automated incident response (AIR) events.</description>
         <options>no_full_log</options>
         <group>AirInvestigation</group>
     </rule>
@@ -616,7 +616,7 @@ ID: 91531 - 91650
     <rule id="91593" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^65$</field>
-        <description>Quarantine events.</description>
+        <description>Office 365: Quarantine events.</description>
         <options>no_full_log</options>
         <group>Quarantine</group>
     </rule>
@@ -624,7 +624,7 @@ ID: 91531 - 91650
     <rule id="91594" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^66$</field>
-        <description>Microsoft Forms events.</description>
+        <description>Office 365: Microsoft Forms events.</description>
         <options>no_full_log</options>
         <group>MicrosoftForms</group>
     </rule>
@@ -632,7 +632,7 @@ ID: 91531 - 91650
     <rule id="91595" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^67$</field>
-        <description>Application audit events.</description>
+        <description>Office 365: Application audit events.</description>
         <options>no_full_log</options>
         <group>ApplicationAudit</group>
     </rule>
@@ -640,7 +640,7 @@ ID: 91531 - 91650
     <rule id="91596" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^68$</field>
-        <description>Events tracked by the Communication compliance offensive language model.</description>
+        <description>Office 365: Events tracked by the Communication compliance offensive language model.</description>
         <options>no_full_log</options>
         <group>ComplianceSupervisionExchange</group>
     </rule>
@@ -648,7 +648,7 @@ ID: 91531 - 91650
     <rule id="91597" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^69$</field>
-        <description>Events related to the customer key encryption service.</description>
+        <description>Office 365: Events related to the customer key encryption service.</description>
         <options>no_full_log</options>
         <group>CustomerKeyServiceEncryption</group>
     </rule>
@@ -656,7 +656,7 @@ ID: 91531 - 91650
     <rule id="91598" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^70$</field>
-        <description>Events related to sensitivity labels applied to Office documents.</description>
+        <description>Office 365: Events related to sensitivity labels applied to Office documents.</description>
         <options>no_full_log</options>
         <group>OfficeNative</group>
     </rule>
@@ -664,7 +664,7 @@ ID: 91531 - 91650
     <rule id="91599" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^71$</field>
-        <description>Auto-labeling events in SharePoint.</description>
+        <description>Office 365: Auto-labeling events in SharePoint.</description>
         <options>no_full_log</options>
         <group>MipAutoLabelSharePointItem</group>
     </rule>
@@ -672,7 +672,7 @@ ID: 91531 - 91650
     <rule id="91600" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^72$</field>
-        <description>Auto-labeling policy events in SharePoint.</description>
+        <description>Office 365: Auto-labeling policy events in SharePoint.</description>
         <options>no_full_log</options>
         <group>MipAutoLabelSharePointPolicyLocation</group>
     </rule>
@@ -680,7 +680,7 @@ ID: 91531 - 91650
     <rule id="91601" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^73$</field>
-        <description>Teams Shifts events.</description>
+        <description>Office 365: Teams Shifts events.</description>
         <options>no_full_log</options>
         <group>MicrosoftTeamsShifts</group>
     </rule>
@@ -688,7 +688,7 @@ ID: 91531 - 91650
     <rule id="91602" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^75$</field>
-        <description>Auto-labeling events in Exchange.</description>
+        <description>Office 365: Auto-labeling events in Exchange.</description>
         <options>no_full_log</options>
         <group>MipAutoLabelExchangeItem</group>
     </rule>
@@ -696,7 +696,7 @@ ID: 91531 - 91650
     <rule id="91603" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^76$</field>
-        <description>Briefing email events.</description>
+        <description>Office 365: Briefing email events.</description>
         <options>no_full_log</options>
         <group>CortanaBriefing</group>
     </rule>
@@ -704,7 +704,7 @@ ID: 91531 - 91650
     <rule id="91604" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^77$</field>
-        <description>Events related to performing search queries in SharePoint and Exchange.</description>
+        <description>Office 365: Events related to performing search queries in SharePoint and Exchange.</description>
         <options>no_full_log</options>
         <group>Search</group>
     </rule>
@@ -712,7 +712,7 @@ ID: 91531 - 91650
     <rule id="91605" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^78$</field>
-        <description>Events related to alerts generated by Windows Defender for Endpoint.</description>
+        <description>Office 365: Events related to alerts generated by Windows Defender for Endpoint.</description>
         <options>no_full_log</options>
         <group>WDATPAlerts</group>
     </rule>
@@ -720,7 +720,7 @@ ID: 91531 - 91650
     <rule id="91606" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^81$</field>
-        <description>Microsoft Defender for Endpoint events.</description>
+        <description>Office 365: Microsoft Defender for Endpoint events.</description>
         <options>no_full_log</options>
         <group>MDATPAudit</group>
     </rule>
@@ -728,7 +728,7 @@ ID: 91531 - 91650
     <rule id="91607" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^82$</field>
-        <description>Events generated when the file labeled with a sensitivity label is opened or renamed.</description>
+        <description>Office 365: Events generated when the file labeled with a sensitivity label is opened or renamed.</description>
         <options>no_full_log</options>
         <group>SensitivityLabelPolicyMatch</group>
     </rule>
@@ -736,7 +736,7 @@ ID: 91531 - 91650
     <rule id="91608" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^83$</field>
-        <description>Event generated when sensitivity labels are applied, updated, or removed from a file.</description>
+        <description>Office 365: Event generated when sensitivity labels are applied, updated, or removed from a file.</description>
         <options>no_full_log</options>
         <group>SensitivityLabelAction</group>
     </rule>
@@ -744,7 +744,7 @@ ID: 91531 - 91650
     <rule id="91609" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^84$</field>
-        <description>Events generated when a file labeled with a sensitivity label is opened or renamed.</description>
+        <description>Office 365: Events generated when a file labeled with a sensitivity label is opened or renamed.</description>
         <options>no_full_log</options>
         <group>SensitivityLabeledFileAction</group>
     </rule>
@@ -752,7 +752,7 @@ ID: 91531 - 91650
     <rule id="91610" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^85$</field>
-        <description>Attack simulator events.</description>
+        <description>Office 365: Attack simulator events.</description>
         <options>no_full_log</options>
         <group>AttackSim</group>
     </rule>
@@ -760,7 +760,7 @@ ID: 91531 - 91650
     <rule id="91611" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^86$</field>
-        <description>Events related to manual investigations in Automated investigation and response (AIR).</description>
+        <description>Office 365: Events related to manual investigations in Automated investigation and response (AIR).</description>
         <options>no_full_log</options>
         <group>AirManualInvestigation</group>
     </rule>
@@ -768,7 +768,7 @@ ID: 91531 - 91650
     <rule id="91612" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^87$</field>
-        <description>Security and compliance RBAC events.</description>
+        <description>Office 365: Security and compliance RBAC events.</description>
         <options>no_full_log</options>
         <group>SecurityComplianceRBAC</group>
     </rule>
@@ -776,7 +776,7 @@ ID: 91531 - 91650
     <rule id="91613" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^88$</field>
-        <description>Attack simulator training events in Microsoft Defender for Office 365.</description>
+        <description>Office 365: Attack simulator training events in Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>UserTraining</group>
     </rule>
@@ -784,7 +784,7 @@ ID: 91531 - 91650
     <rule id="91614" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^89$</field>
-        <description>Events related to admin actions in Automated investigation and response (AIR).</description>
+        <description>Office 365: Events related to admin actions in Automated investigation and response (AIR).</description>
         <options>no_full_log</options>
         <group>AirAdminActionInvestigation</group>
     </rule>
@@ -792,7 +792,7 @@ ID: 91531 - 91650
     <rule id="91615" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^90$</field>
-        <description>Threat intelligence events in Microsoft Defender for Office 365.</description>
+        <description>Office 365: Threat intelligence events in Microsoft Defender for Office 365.</description>
         <options>no_full_log</options>
         <group>MSTIC</group>
     </rule>
@@ -800,7 +800,7 @@ ID: 91531 - 91650
     <rule id="91616" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^91$</field>
-        <description>Events related to physical badging signals that support the Insider risk management solution.</description>
+        <description>Office 365: Events related to physical badging signals that support the Insider risk management solution.</description>
         <options>no_full_log</options>
         <group>PhysicalBadgingSignal</group>
     </rule>
@@ -808,7 +808,7 @@ ID: 91531 - 91650
     <rule id="91617" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^93$</field>
-        <description>Azure Information Protection (AIP) scanner events.</description>
+        <description>Office 365: Azure Information Protection (AIP) scanner events.</description>
         <options>no_full_log</options>
         <group>AipDiscover</group>
     </rule>
@@ -816,7 +816,7 @@ ID: 91531 - 91650
     <rule id="91618" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^94$</field>
-        <description>AIP sensitivity label events.</description>
+        <description>Office 365: AIP sensitivity label events.</description>
         <options>no_full_log</options>
         <group>AipSensitivityLabelAction</group>
     </rule>
@@ -824,7 +824,7 @@ ID: 91531 - 91650
     <rule id="91619" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^95$</field>
-        <description>AIP protection events.</description>
+        <description>Office 365: AIP protection events.</description>
         <options>no_full_log</options>
         <group>AipProtectionAction</group>
     </rule>
@@ -832,7 +832,7 @@ ID: 91531 - 91650
     <rule id="91620" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^96$</field>
-        <description>AIP file deletion events.</description>
+        <description>Office 365: AIP file deletion events.</description>
         <options>no_full_log</options>
         <group>AipFileDeleted</group>
     </rule>
@@ -840,7 +840,7 @@ ID: 91531 - 91650
     <rule id="91621" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^97$</field>
-        <description>AIP heartbeat events.</description>
+        <description>Office 365: AIP heartbeat events.</description>
         <options>no_full_log</options>
         <group>AipHeartBeat</group>
     </rule>
@@ -848,7 +848,7 @@ ID: 91531 - 91650
     <rule id="91622" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^98$</field>
-        <description>Events corresponding to alerts triggered by Microsoft Cloud App Security.</description>
+        <description>Office 365: Events corresponding to alerts triggered by Microsoft Cloud App Security.</description>
         <options>no_full_log</options>
         <group>MCASAlerts</group>
     </rule>
@@ -856,7 +856,7 @@ ID: 91531 - 91650
     <rule id="91623" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^99$</field>
-        <description>Events related to scanning for sensitive data on file shares.</description>
+        <description>Office 365: Events related to scanning for sensitive data on file shares.</description>
         <options>no_full_log</options>
         <group>OnPremisesFileShareScannerDlp</group>
     </rule>
@@ -864,7 +864,7 @@ ID: 91531 - 91650
     <rule id="91624" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^100$</field>
-        <description>Events related to scanning for sensitive data in SharePoint.</description>
+        <description>Office 365: Events related to scanning for sensitive data in SharePoint.</description>
         <options>no_full_log</options>
         <group>OnPremisesSharePointScannerDlp</group>
     </rule>
@@ -872,7 +872,7 @@ ID: 91531 - 91650
     <rule id="91625" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^101$</field>
-        <description>Events related to using Outlook on the web (OWA) to search for mailbox items.</description>
+        <description>Office 365: Events related to using Outlook on the web (OWA) to search for mailbox items.</description>
         <options>no_full_log</options>
         <group>ExchangeSearch</group>
     </rule>
@@ -880,7 +880,7 @@ ID: 91531 - 91650
     <rule id="91626" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^102$</field>
-        <description>Events related to searching an organization's SharePoint home site.</description>
+        <description>Office 365: Events related to searching an organization's SharePoint home site.</description>
         <options>no_full_log</options>
         <group>SharePointSearch</group>
     </rule>
@@ -888,7 +888,7 @@ ID: 91531 - 91650
     <rule id="91627" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^103$</field>
-        <description>Privacy insight events.</description>
+        <description>Office 365: Privacy insight events.</description>
         <options>no_full_log</options>
         <group>PrivacyInsights</group>
     </rule>
@@ -896,7 +896,7 @@ ID: 91531 - 91650
     <rule id="91628" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^105$</field>
-        <description>MyAnalytics events.</description>
+        <description>Office 365: MyAnalytics events.</description>
         <options>no_full_log</options>
         <group>MyAnalyticsSettings</group>
     </rule>
@@ -904,7 +904,7 @@ ID: 91531 - 91650
     <rule id="91629" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^106$</field>
-        <description>Events related to modifying or deleting a user.</description>
+        <description>Office 365: Events related to modifying or deleting a user.</description>
         <options>no_full_log</options>
         <group>SecurityComplianceUserChange</group>
     </rule>
@@ -912,7 +912,7 @@ ID: 91531 - 91650
     <rule id="91630" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^107$</field>
-        <description>Exchange DLP classification events.</description>
+        <description>Office 365: Exchange DLP classification events.</description>
         <options>no_full_log</options>
         <group>ComplianceDLPExchangeClassification</group>
     </rule>
@@ -920,7 +920,7 @@ ID: 91531 - 91650
     <rule id="91631" level="3">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^109$</field>
-        <description>Exact Data Match (EDM) classification events.</description>
+        <description>Office 365: Exact Data Match (EDM) classification events.</description>
         <options>no_full_log</options>
         <group>MipExactDataMatch</group>
     </rule>
