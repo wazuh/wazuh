@@ -9,7 +9,7 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Element, parse
 
 import pytest
 
@@ -529,13 +529,32 @@ def test_plain_dict_to_nested_dict():
 
 
 @patch('wazuh.core.utils.compile', return_value='Something')
-def test_load_wazuh_xml(mock_compile):
-    """Test load_wazuh_xml function."""
+def test_basic_load_wazuh_xml(mock_compile):
+    """Test basic load_wazuh_xml functionality."""
     with patch('wazuh.core.utils.open') as f:
         f.return_value.__enter__.return_value = StringIO(test_xml)
         result = load_wazuh_xml('test_file')
 
         assert isinstance(result, Element)
+
+
+def test_load_wazuh_xml():
+    """Test load_wazuh_xml function."""
+
+    def elements_equal(e1, e2):
+        if e1.tag != e2.tag: return False
+        if e1.text != e2.text: return False
+        if e1.attrib != e2.attrib: return False
+        if len(e1) != len(e2): return False
+        return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
+
+    for rule_file in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml')):
+        path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml'),
+                            rule_file)
+        original = parse(path).getroot()
+        result = load_wazuh_xml(path)
+
+        assert elements_equal(original, result.find('dummy_tag'))
 
 
 @pytest.mark.parametrize('version1, version2', [
@@ -1166,7 +1185,9 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, 
 
 
 @pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}], {'items': [{'id': '099'}], 'totalItems': 1}),
+    (
+            [{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
+            {'items': [{'id': '099'}], 'totalItems': 1}),
     ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
      [{'id': i} for i in range(15001, 30000)],
@@ -1645,6 +1666,7 @@ def test_expand_decoders():
     decoders = expand_decoders()
     assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
                                                                         f'*{common.DECODERS_EXTENSION}'))))
+
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
 @patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)
