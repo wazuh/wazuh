@@ -11,10 +11,11 @@
 
 #include "wazuh_modules/wmodules.h"
 
-static const char *XML_ENABLED          = "enabled";
-static const char *XML_RUN_ON_START     = "run_on_start";
-static const char *XML_SKIP_ON_ERROR    = "skip_on_error";
-static const char *XML_INTERVAL         = "interval";
+static const char *XML_ENABLED                  = "enabled";
+static const char *XML_RUN_ON_START             = "run_on_start";
+static const char *XML_SKIP_ON_ERROR            = "skip_on_error";
+static const char *XML_ONLY_FUTURE_EVENTS       = "only_future_events";
+static const char *XML_INTERVAL                 = "interval";
 
 static const char *XML_API_AUTH             = "api_auth";
 static const char *XML_TENANT_ID            = "tenant_id";
@@ -88,6 +89,7 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
         office365_config->enabled =            WM_OFFICE365_DEFAULT_ENABLED;
         office365_config->run_on_start =       WM_OFFICE365_DEFAULT_RUN_ON_START;
         office365_config->skip_on_error =      WM_OFFICE365_DEFAULT_SKIP_ON_ERROR;
+        office365_config->only_future_events = WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS;
         office365_config->interval =           WM_OFFICE365_DEFAULT_INTERVAL;
 
         office365_config->subscription.azure        = WM_OFFICE365_DEFAULT_AZURE;
@@ -136,10 +138,19 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_ON_ERROR, WM_OFFICE365_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS)) {
+            if (!strcmp(nodes[i]->content, "yes"))
+                office365_config->only_future_events = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                office365_config->only_future_events = 0;
+            else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ONLY_FUTURE_EVENTS, WM_OFFICE365_CONTEXT.name);
+                return OS_INVALID;
+            }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
             office365_config->interval = time_convert_1d(nodes[i]->content);
             if (office365_config->interval == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_INTERVAL, WM_OFFICE365_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'. The maximum value allowed is 1 day.", XML_INTERVAL, WM_OFFICE365_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
@@ -203,7 +214,7 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                     return OS_INVALID;
                 }
                 if(access(office365_auth->client_secret_path, F_OK) != 0 ) {
-                    merror("At module '%s': The path cannot be opened. Skipping block...", WM_OFFICE365_CONTEXT.name);
+                    merror("At module '%s': The path cannot be opened.", WM_OFFICE365_CONTEXT.name);
                     return OS_INVALID;
                 }
             } else if (!office365_auth->client_secret) {

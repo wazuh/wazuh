@@ -121,23 +121,21 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
     }
     cJSON *arr_subscription = cJSON_CreateArray();
 
-    cJSON *api_subscription = cJSON_CreateObject();
     if (office365_config->subscription.azure) {
-        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.AzureActiveDirectory");
+        cJSON_AddItemToArray(arr_subscription, cJSON_CreateString("Audit.AzureActiveDirectory"));
     }
     if (office365_config->subscription.exchange) {
-        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.Exchange");
+        cJSON_AddItemToArray(arr_subscription, cJSON_CreateString("Audit.Exchange"));
     }
     if (office365_config->subscription.sharepoint) {
-        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.SharePoint");
+        cJSON_AddItemToArray(arr_subscription, cJSON_CreateString("Audit.SharePoint"));
     }
     if (office365_config->subscription.general) {
-        cJSON_AddStringToObject(api_subscription, "subscription", "Audit.General");
+        cJSON_AddItemToArray(arr_subscription, cJSON_CreateString("Audit.General"));
     }
     if (office365_config->subscription.dlp) {
-        cJSON_AddStringToObject(api_subscription, "subscription", "DLP.All");
+        cJSON_AddItemToArray(arr_subscription, cJSON_CreateString("DLP.All"));
     }
-    cJSON_AddItemToArray(arr_subscription, api_subscription);
 
     if (cJSON_GetArraySize(arr_subscription) > 0) {
         cJSON_AddItemToObject(wm_info, "subscriptions", arr_subscription);
