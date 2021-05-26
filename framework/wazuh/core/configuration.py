@@ -492,7 +492,7 @@ def get_manager_conf(section=None, field=None, conf_file=common.manager_conf, fr
         if not from_import:
             raise WazuhError(1101, extra_message=str(e))
         else:
-            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
+            print(f"wazuh-apid: There is an error in the manager.conf file: {str(e)}")
             sys.exit(0)
 
     if section:
