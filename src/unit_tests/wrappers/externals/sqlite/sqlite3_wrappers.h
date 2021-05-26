@@ -37,8 +37,8 @@ int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * s
                                         const char *zName);
 
 int __wrap_sqlite3_bind_double(__attribute__((unused)) sqlite3_stmt* stmt,
-                        int index,
-                        double value);
+                               int index,
+                               double value);
 
 int __wrap_sqlite3_clear_bindings(sqlite3_stmt* pStmt);
 
