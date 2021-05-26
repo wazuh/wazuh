@@ -31,7 +31,6 @@ def print_version():
 def exit_handler(signum, frame):
     main_logger.info(f'SIGNAL [({signum})-({Signals(signum).name})] received. Exit...')
 
-    global original_sig_handler
     if callable(original_sig_handler):
         original_sig_handler(signum, frame)
     elif original_sig_handler == SIG_DFL:
