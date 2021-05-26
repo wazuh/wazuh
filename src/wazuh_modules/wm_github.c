@@ -254,7 +254,7 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             if (subitem) {
                                 cJSON * github = cJSON_CreateObject();
 
-                                cJSON_AddStringToObject(subitem, "source", WM_GITHUB_CONTEXT.name);
+                                cJSON_AddStringToObject(github, "integration", WM_GITHUB_CONTEXT.name);
                                 cJSON_AddItemToObject(github, "github", cJSON_Duplicate(subitem, true));
 
                                 payload = cJSON_PrintUnformatted(github);
@@ -407,7 +407,6 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
             cJSON *fail_github = cJSON_CreateObject();
 
             cJSON_AddStringToObject(fail_object, "actor", "wazuh");
-            cJSON_AddStringToObject(fail_object, "source", WM_GITHUB_CONTEXT.name);
             cJSON_AddStringToObject(fail_object, "organization", org_name);
 
             if (msg_obj) {
@@ -418,6 +417,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
                 cJSON_AddStringToObject(fail_object, "response", "Unknown error");
             }
 
+            cJSON_AddStringToObject(fail_github, "integration", WM_GITHUB_CONTEXT.name);
             cJSON_AddItemToObject(fail_github, "github", fail_object);
 
             payload = cJSON_PrintUnformatted(fail_github);

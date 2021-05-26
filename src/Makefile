@@ -1007,12 +1007,14 @@ endif
 
 #### libarchive ######
 
+ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
 	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
+endif
 endif
 
 #### libalpm ######

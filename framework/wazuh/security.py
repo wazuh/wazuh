@@ -15,7 +15,7 @@ from wazuh.core.security import load_spec, update_security_conf, REQUIRED_FIELDS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
-    TokenManager, UserRolesManager, RolesRulesManager, RulesManager
+    UserRolesManager, RolesRulesManager, RulesManager
 from wazuh.rbac.orm import SecurityError, max_id_reserved
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
@@ -256,8 +256,7 @@ def remove_users(user_ids):
             elif query == SecurityError.RELATIONSHIP_ERROR:
                 result.add_failed_item(id_=user_id, error=WazuhError(4025))
             elif user:
-                with TokenManager() as tm:
-                    tm.add_user_roles_rules(users={user_id})
+                invalid_users_tokens(users=[user_id])
                 result.affected_items.append(user)
                 result.total_affected_items += 1
 
@@ -1003,9 +1002,8 @@ def remove_role_policy(role_id, policy_ids):
 
 def revoke_current_user_tokens():
     """Revoke all current user's tokens"""
-    with TokenManager() as tm:
-        with AuthenticationManager() as am:
-            tm.add_user_roles_rules(users={am.get_user(common.current_user.get())['id']})
+    with AuthenticationManager() as am:
+        invalid_users_tokens(users=[am.get_user(common.current_user.get())['id']])
 
     return WazuhResult({'message': f'User {common.current_user.get()} was successfully logged out'})
 
