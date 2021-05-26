@@ -768,31 +768,39 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_isfile, mock_c
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('sort, error, expected_exception', [
-    (None, False, None),
-    ({'order': 'asc', 'fields': None}, False, None),
-    ({'order': 'asc', 'fields': ['1']}, False, None),
-    ({'order': 'asc', 'fields': ['bad_field']}, True, 1403)
+@pytest.mark.parametrize('sort, expected_exception', [
+    (None, None),
+    ({'order': 'asc', 'fields': None}, None),
+    ({'order': 'asc', 'fields': ['1']}, None),
+    ({'order': 'asc', 'fields': ['bad_field']}, 1403),
+    ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None)
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, sort,
-                                                  error, expected_exception):
+                                                  expected_exception):
     """Test WazuhDBQuery._add_sort_to_query function."""
+    fields = {'1': 'one', '2': 'two', '3': 'three', '4': 'four'}
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=sort,
                          search=None, select=None, filters=None,
-                         fields={'1': None, '2': None},
+                         fields=fields,
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=1),
                          count=5, get_data=None)
 
-    if error:
+    if expected_exception:
         with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
             query._add_sort_to_query()
     else:
         query._add_sort_to_query()
+
+    # Check the fields list maintains its original order after adding it to the query
+    if not expected_exception and sort:
+        sort_string_added = ','.join(f"{fields[field]} {sort['order']}" for field in sort['fields']) if sort['fields'] \
+            else f"None {sort['order']}"
+        assert query.query.endswith(f"ORDER BY {sort_string_added}")
 
     mock_conn_db.assert_called_once_with()
 
@@ -1635,9 +1643,8 @@ def test_expand_rules():
 @patch('wazuh.core.utils.common.user_decoders_path', new=test_files_path)
 def test_expand_decoders():
     decoders = expand_decoders()
-    assert decoders == set(
-        map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.DECODERS_EXTENSION}'))))
-
+    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
+                                                                        f'*{common.DECODERS_EXTENSION}'))))
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
 @patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)

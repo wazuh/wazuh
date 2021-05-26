@@ -34,10 +34,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
         {
             ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating linux network data retriever." };
-        }
+        // else: The current interface family is not supported
     }
     else
     {

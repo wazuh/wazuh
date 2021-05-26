@@ -146,7 +146,8 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
 
 @patch('api.authentication.TokenManager')
 def test_check_token(mock_tokenmanager):
-    result = authentication.check_token(username='wazuh_user', roles=[1], token_nbf_time=3600, run_as=False)
+    result = authentication.check_token(username='wazuh_user', roles=tuple([1]), token_nbf_time=3600, run_as=False,
+                                        origin_node_type='master')
     assert result == {'valid': ANY, 'policies': ANY}
 
 
@@ -167,7 +168,8 @@ def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, 
 
     # Check all functions are called with expected params
     calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': original_payload['nbf'],
-                                   'run_as': False, 'roles': original_payload['rbac_roles']},
+                                   'run_as': False, 'roles': tuple(original_payload['rbac_roles']),
+                                   'origin_node_type': 'master'},
                   request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY),
              call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY)]
     mock_dapi.assert_has_calls(calls)
