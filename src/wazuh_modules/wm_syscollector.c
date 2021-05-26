@@ -51,11 +51,12 @@ static bool is_shutdown_process_started() {
     return ret_val;
 }
 
-static void wm_sys_send_diff_message(/*const void* data*/) {
-    // const int eps = 1000000/syscollector_sync_max_eps;
-    // Sending deltas is disabled due to issue: 7322 - https://github.com/wazuh/wazuh/issues/7322
-    // wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
- }
+static void wm_sys_send_diff_message(const void* data) {
+    if(!os_iswait()) {
+        const int eps = 1000000/syscollector_sync_max_eps;
+        wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    }
+}
 
 static void wm_sys_send_dbsync_message(const void* data) {
     if(!os_iswait() && !is_shutdown_process_started()) {
