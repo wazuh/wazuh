@@ -23,15 +23,8 @@
 /* setup/teardowns */
 static int setup_group(void **state) {
     fdb_t *fdb = calloc(1, sizeof(fdb_t));
-    if(fdb == NULL)
+    if (fdb == NULL)
         return -1;
-
-#ifdef TEST_WINAGENT
-    syscheck.directories = OSList_Create();
-    if (syscheck.directories == NULL) {
-        return -1;
-    }
-#endif
 
     *state = fdb;
     return 0;
@@ -42,7 +35,20 @@ static int teardown_group(void **state) {
 
     free(fdb);
 
+    return 0;
+}
+
 #ifdef TEST_WINAGENT
+static int setup_group_win(void **state) {
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int teardown_group_win(void **state) {
     OSListNode *node_it;
     if (syscheck.directories) {
         OSList_foreach(node_it, syscheck.directories) {
@@ -52,10 +58,10 @@ static int teardown_group(void **state) {
         OSList_Destroy(syscheck.directories);
         syscheck.directories = NULL;
     }
-#endif
 
     return 0;
 }
+#endif
 
 /* tests */
 
@@ -155,9 +161,13 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_os_wait);
-
     expect_function_call(__wrap_start_daemon);
+
     Start_win32_Syscheck();
 }
 
@@ -263,14 +273,18 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 }
 
 void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
-    directory_t *directory0 = fim_create_directory("Dir1", 0, NULL, 512, NULL, -1, 0);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    directory_t *directory0 = fim_create_directory("c:\\Dir1", 0, NULL, 512, NULL, 1024, 0);
+    OSList_InsertData(syscheck.directories, NULL, directory0);
+
+    syscheck.disabled = 0;
 
     registry syscheck_registry[] = { { "Entry1", 1, 0, 0, 0, NULL, NULL, "Tag1" },
                                      { NULL, 0, 0, 0, 0, NULL, NULL, NULL } };
-    syscheck.disabled = 0;
-
-    OSList_InsertData(syscheck.directories, NULL, directory0);
-
     syscheck.registry = syscheck_registry;
 
     char *syscheck_ignore[] = {"Dir1", NULL};
@@ -331,6 +345,11 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 }
 
 void test_Start_win32_Syscheck_whodata_active(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     directory_t *directory0 = fim_create_directory("Dir1", WHODATA_ACTIVE, NULL, 512, NULL, -1, 0);
 
     registry syscheck_registry[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
@@ -383,22 +402,32 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 #endif
 
 int main(void) {
+    int ret;
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_fim_initialize),
             cmocka_unit_test(test_fim_initialize),
             cmocka_unit_test(test_fim_initialize_error),
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
+    };
         /* Windows specific tests */
 #ifdef TEST_WINAGENT
+    const struct CMUnitTest tests_win[] = {
             cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_corrupted_config_file),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
             cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
             cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
             cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
-#endif
     };
+#endif
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
+
+    ret = cmocka_run_group_tests(tests, setup_group, teardown_group);
+#ifdef TEST_WINAGENT
+    ret += cmocka_run_group_tests(tests_win, setup_group_win, teardown_group_win);
+#endif
+
+    return ret;
 }

@@ -68,6 +68,13 @@ time_t __wrap_time(time_t *timer) {
 
 static int setup_group(void ** state) {
 #ifdef TEST_WINAGENT
+#ifdef WIN_WHODATA
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#endif
     expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
@@ -187,6 +194,14 @@ static int teardown_tmp_file(void **state) {
 
 static int teardown_group(void **state) {
 #ifdef TEST_WINAGENT
+#ifdef WIN_WHODATA
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
     if (syscheck.realtime) {
         if (syscheck.realtime->dirtb) {
             OSHash_Free(syscheck.realtime->dirtb);
@@ -225,6 +240,12 @@ void test_fim_whodata_initialize(void **state)
 {
     int ret;
 #ifdef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     int i;
     char *dirs[] = {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
@@ -315,6 +336,12 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -429,6 +456,12 @@ void test_set_whodata_mode_changes(void **state) {
     };
     char expanded_dirs[3][OS_SIZE_1024];
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     // Mark directories to be added in realtime
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_CHECK_REALTIME;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
@@ -461,6 +494,12 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {

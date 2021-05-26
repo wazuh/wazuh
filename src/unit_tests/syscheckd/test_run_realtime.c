@@ -1359,6 +1359,11 @@ void test_free_win32rtfim_data_full_data(void **state) {
 void test_realtime_adddir_whodata_non_existent_file(void **state) {
     int ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1378,6 +1383,11 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
 
 void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
@@ -1404,6 +1414,11 @@ void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
 void test_realtime_adddir_whodata_file_success(void **state) {
     int ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
 
@@ -1425,6 +1440,11 @@ void test_realtime_adddir_whodata_file_success(void **state) {
 
 void test_realtime_adddir_whodata_dir_success(void **state) {
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
@@ -1448,12 +1468,15 @@ void test_realtime_adddir_whodata_dir_success(void **state) {
 void test_realtime_adddir_max_limit_reached(void **state) {
     int ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     syscheck.realtime->fd = 1024;
 
     expect_string(__wrap__merror, formatted_msg,
         "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
 
@@ -1464,6 +1487,11 @@ void test_realtime_adddir_duplicate_entry(void **state) {
     win32rtfim rtlocald = { .dir = "C:\\a\\path" };
     int ret;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     syscheck.realtime->fd = 128;
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
@@ -1473,8 +1501,6 @@ void test_realtime_adddir_duplicate_entry(void **state) {
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 1);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
 
     assert_int_equal(ret, 1);
@@ -1483,6 +1509,11 @@ void test_realtime_adddir_duplicate_entry(void **state) {
 void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(void **state) {
     win32rtfim rtlocald = { .dir = "C:\\a\\path", .watch_status = FIM_RT_HANDLE_OPEN, .h = (HANDLE)1234 };
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     syscheck.realtime->fd = 128;
 
@@ -1496,8 +1527,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(vo
     expect_value(wrap_CloseHandle, hObject, 1234);
     will_return(wrap_CloseHandle, 0);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
 
     assert_int_equal(ret, 1);
@@ -1508,6 +1537,11 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     win32rtfim *rtlocald = calloc(1, sizeof(win32rtfim));
     char debug_msg[OS_SIZE_128];
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     if (rtlocald == NULL) {
         fail_msg("Failed to allocate 'rtlocald'");
@@ -1540,8 +1574,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     snprintf(debug_msg, OS_SIZE_128, FIM_REALTIME_CALLBACK, "C:\\a\\path");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
 
     assert_int_equal(ret, 1);
@@ -1550,6 +1582,11 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
 void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(void **state) {
     win32rtfim rtlocald = { .dir = "C:\\a\\path", .watch_status = FIM_RT_HANDLE_OPEN, .h = INVALID_HANDLE_VALUE };
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     syscheck.realtime->fd = 128;
 
@@ -1560,8 +1597,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 0);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
 
     assert_int_equal(ret, 1);
@@ -1569,6 +1604,11 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(
 
 void test_realtime_adddir_handle_error(void **state) {
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     syscheck.realtime->fd = 128;
 
@@ -1582,8 +1622,6 @@ void test_realtime_adddir_handle_error(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
 
     assert_int_equal(ret, 0);
@@ -1592,6 +1630,12 @@ void test_realtime_adddir_handle_error(void **state) {
 void test_realtime_adddir_success(void **state) {
     int ret;
     syscheck.realtime->dirtb = *state;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
@@ -1656,6 +1700,9 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
     OVERLAPPED ov;
     PFILE_NOTIFY_INFORMATION pinfo;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     // Fill the win32rtfim struct with testing data
     pinfo = (PFILE_NOTIFY_INFORMATION) rt->buffer;
     wcscpy(pinfo->FileName, L"C:\\a\\path");
@@ -1690,6 +1737,9 @@ void test_RTCallBack_acquired_changes(void **state) {
     win32rtfim *rt = *state;
     OVERLAPPED ov;
     PFILE_NOTIFY_INFORMATION pinfo;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     // Fill the win32rtfim struct with testing data
     pinfo = (PFILE_NOTIFY_INFORMATION) rt->buffer;

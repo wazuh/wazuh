@@ -102,7 +102,8 @@ else()
                            -Wl,--wrap,convert_windows_string -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,FOREVER \
                            -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,fprintf \
                            -Wl,--wrap,fgets -Wl,--wrap,wstr_split -Wl,--wrap,pthread_rwlock_wrlock \
-                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,getDefine_Int -Wl,--wrap,pthread_rwlock_rdlock")
+                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,getDefine_Int -Wl,--wrap,pthread_rwlock_rdlock \
+                           -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS})
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")

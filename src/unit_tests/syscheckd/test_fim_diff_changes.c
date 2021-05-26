@@ -301,6 +301,7 @@ static int teardown_group(void **state) {
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -1556,7 +1557,13 @@ void test_fim_registry_value_diff_generate_diff_str(void **state) {
 
 void test_fim_file_diff_wrong_initialize(void **state) {
     const char *filename = GENERIC_PATH;
-
+#ifdef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
     expect_initialize_file_diff_data(filename, 0);
 
     char *diff_str = fim_file_diff(filename);
@@ -1567,6 +1574,7 @@ void test_fim_file_diff_wrong_initialize(void **state) {
 void test_fim_file_diff_wrong_too_big_file(void **state) {
     const char *filename = GENERIC_PATH;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1619,6 +1627,7 @@ void test_fim_file_diff_uncompress_fail(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1651,6 +1660,7 @@ void test_fim_file_diff_create_compress_fail(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1689,6 +1699,7 @@ void test_fim_file_diff_compare_fail(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1726,6 +1737,7 @@ void test_fim_file_diff_nodiff(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1760,6 +1772,7 @@ void test_fim_file_diff_nodiff(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1795,6 +1808,7 @@ void test_fim_file_diff_generate_fail(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1847,6 +1861,7 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1895,6 +1910,7 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     syscheck.comp_estimation_perc = 0.4;
     syscheck.diff_folder_size = 512;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
