@@ -581,6 +581,11 @@ ID: 80200 - 80499
         <description>AWS S3 Authentication Failure: $(aws.error_code), from: $(aws.requester)</description>
     </rule>
 
+    <rule id="200051" level="10" frequency="10" timeframe="60">
+        <if_matched_sid>200050</if_matched_sid>
+        <description>AWS S3 Multiple Authentication Failure</description>
+    </rule>
+
 
 
 </group>
