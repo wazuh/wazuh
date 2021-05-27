@@ -3155,7 +3155,7 @@ static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
     return 0;
 }
 
-/* Sort the variables from largest to smallest size */
+/* Sort the variables from largest to smallest in size */
 char **wm_sort_to_array(const cJSON * const variables) {
     char **variables_array;
     const cJSON *variable;
@@ -3175,7 +3175,7 @@ char **wm_sort_to_array(const cJSON * const variables) {
         i++;
     }
 
-    // variables_array_size and i should always be the same value 
+    // variables_array_size and i should always be the same 
     if (variables_array_size != i) {
         free_strarray(variables_array);
         return NULL;
