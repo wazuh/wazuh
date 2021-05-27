@@ -11,9 +11,11 @@
 #ifndef WIN_WHODATA_WRAPPERS_H
 #define WIN_WHODATA_WRAPPERS_H
 
+#include "config/syscheck-config.h"
+
 int __wrap_run_whodata_scan();
 
-int __wrap_set_winsacl(const char *dir, int position);
+int __wrap_set_winsacl(const char *dir, directory_t *configuration);
 
 int __wrap_whodata_audit_start();
 

@@ -1,0 +1,23 @@
+<!--
+  -  Grouping of TA0011 "Command and Control" rules
+  -  Author: Fabricio Brunetti
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+
+
+
+<group name="TA0002,">
+    <!-- Sample: {"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","eventID":"3","version":"5","level":"4","task":"3","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-04-28T20:12:51.1096098Z","eventRecordID":"144535","processID":"2204","threadID":"2944","channel":"Microsoft-Windows-Sysmon/Operational","computer":"DESKTOP-2QKFOBA","severityValue":"INFORMATION","message":"\"Network connection detected:\r\nRuleName: technique_id=T1202,technique_name=Indirect Command Execution\r\nUtcTime: 2021-04-28 20:12:52.061\r\nProcessGuid: {4dc16835-c18b-6089-a503-000000002e00}\r\nProcessId: 2488\r\nImage: C:\\Windows\\System32\\wscript.exe\r\nUser: DESKTOP-2QKFOBA\\AtomicRedTeamTest\r\nProtocol: tcp\r\nInitiated: true\r\nSourceIsIpv6: false\r\nSourceIp: 192.168.0.121\r\nSourceHostname: -\r\nSourcePort: 52094\r\nSourcePortName: -\r\nDestinationIsIpv6: false\r\nDestinationIp: 192.168.0.4\r\nDestinationHostname: -\r\nDestinationPort: 443\r\nDestinationPortName: -\""},"eventdata":{"ruleName":"technique_id=T1202,technique_name=Indirect Command Execution","utcTime":"2021-04-28 20:12:52.061","processGuid":"{4dc16835-c18b-6089-a503-000000002e00}","processId":"2488","image":"C:\\\\Windows\\\\System32\\\\wscript.exe","user":"DESKTOP-2QKFOBA\\\\AtomicRedTeamTest","protocol":"tcp","initiated":"true","sourceIsIpv6":"false","sourceIp":"192.168.0.121","sourcePort":"52094","destinationIsIpv6":"false","destinationIp":"192.168.0.4","destinationPort":"443"}}}-->
+    <rule id="92040" level="4">
+        <if_group>sysmon_event3</if_group>
+        <field name="win.eventdata.image" type="pcre2">\\(c|w)script\.exe</field>
+        <field name="win.eventdata.protocol" type="pcre2">tcp</field>
+        <description>Suspicious network activity over TCP protocol</description>
+        <mitre>
+            <id>T1095</id>
+        </mitre>
+    </rule>
+</group>

@@ -15,7 +15,7 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
-    RULE_REQUIREMENTS, SORT_FIELDS
+    RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, upload_file, delete_file_with_backup, \
     to_relative_path
 from wazuh.rbac.decorators import expose_resources
@@ -39,7 +39,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
     :param tsc: Filters the rules by tsc requirement.
-    :param mitre: Filters the rules by mitre attack ID.
+    :param mitre: Filters the rules by mitre technique ID.
     :param relative_dirname: Filters the relative dirname.
     :param filename: List of filenames to filter by.
     :param level: Filters the rules by level. level=2 or level=2-5.
@@ -97,7 +97,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, select=select, sort_by=sort_by,
                          sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
-                         limit=limit, q=q, required_fields=REQUIRED_FIELDS)
+                         limit=limit, q=q, required_fields=REQUIRED_FIELDS, allowed_select_fields=RULE_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

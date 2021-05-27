@@ -82,6 +82,7 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
 int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
 #if defined (WIN32) || (__linux__) || defined (__MACH__)
 int Read_Github(const OS_XML *xml, xml_node *node, void *d1);
+int Read_Office365(const OS_XML *xml, xml_node *node, void *d1);
 #endif
 
 /**

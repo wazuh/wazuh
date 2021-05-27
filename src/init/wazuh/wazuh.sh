@@ -213,4 +213,9 @@ WazuhUpgrade()
         find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
+
+    # Remove unnecessary `execa` socket
+    if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
+        rm -f $DIRECTORY/queue/alerts/execa
+    fi
 }
