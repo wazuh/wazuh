@@ -21,10 +21,13 @@
 // for retro compatibility compilation this macro is defined.
 // https://github.com/mirror/mingw-w64/blob/d2374f898457b0f4ea8bd4084a94f2dafc87a99a/mingw-w64-headers/include/sdkddkver.h#L25
 #ifndef _WIN32_WINNT_WINTHRESHOLD
-//#define _WIN32_WINNT_WINTHRESHOLD 0x0A00
-static VERSIONHELPERAPI IsWindows10OrGreater()
+constexpr auto WINDOWS_10_MAJOR_VERSION { 10 };
+static VERSIONHELPERAPI IsxWindows10OrGreater()
 {
-    return IsWindowsVersionOrGreater(10, 0, 0);
+    OSVERSIONINFOEX info{ };
+    info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+    GetVersionEx(reinterpret_cast<LPOSVERSIONINFO>(&info));
+    return WINDOWS_10_MAJOR_VERSION <= info.dwMajorVersion;
 }
 #endif
 
