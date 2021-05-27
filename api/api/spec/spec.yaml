@@ -8437,10 +8437,81 @@ paths:
                           executable: disable-account
                           timeout_allowed: yes
                         - name: restart-wazuh
+                          executable: restart-wazuh
+                        - name: firewall-drop
+                          executable: firewall-drop
+                          timeout_allowed: yes
+                        - name: host-deny
+                          executable: host-deny
+                          timeout_allowed: yes
+                        - name: route-null
+                          executable: route-null
+                          timeout_allowed: yes
+                        - name: win_route-null
+                          executable: route-null.exe
+                          timeout_allowed: yes
+                        - name: netsh
+                          executable: netsh.exe
+                          timeout_allowed: yes
+                      localfile:
+                        - log_format: syslog
+                          location: /var/ossec/logs/active-responses.log
+                        - log_format: syslog
+                          location: /var/log/dpkg.log
+                        - log_format: command
+                          command: "df -P"
+                          frequency: 360
+                        - log_format: full_command
+                          command: "netstat -tulpn | sed 's/\\([[:alnum:]]\\+\\)\\ \\+[[:digit:]]\\+\\ \\+[[:digit:]
+                          ]\\+\\ \\+\\(.*\\):\\([[:digit:]]*\\)\\ \\+\\([0-9\\.\\:\\*]\\+\\).\\+\\ \\([[:digit:]]*\\/[
+                          [:alnum:]\\-]*\\).*/\\1 \\2 == \\3 == \\4 \\5/' | sort -k 4 -g | sed 's/ == \\(.*\\) ==/:\\1/'
+                           | sed 1,2d"
+                          alias: netstat listening ports
+                          frequency: 360
+                        - log_format: full_command
+                          command: "last -n 20"
+                          frequency: 360
+                      ruleset:
+                        decoder_dir:
+                          - ruleset/decoders
+                          - etc/decoders
+                        rule_dir:
+                          - ruleset/rules
+                          - etc/rules
+                        rule_exclude:
+                          - 0215-policy_rules.xml
+                        list:
+                          - etc/lists/audit-keys
+                          - etc/lists/amazon/aws-eventnames
+                          - etc/lists/security-eventchannel
+                      auth:
+                        disabled: no
+                        port: "1515"
+                        use_source_ip: "no"
+                        force_insert: "yes"
+                        force_time: "0"
+                        purge: "yes"
+                        use_password: "no"
+                        ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+                        ssl_verify_host: "no"
+                        ssl_manager_cert: "etc/sslmanager.cert"
+                        ssl_manager_key: "etc/sslmanager.key"
+                        ssl_auto_negotiate: "no"
+                      cluster:
+                        name: "wazuh"
+                        node_name: "master-node"
+                        node_type: "master"
+                        key: "9d273b53510fef702b54a92e9cffc82e"
+                        port: "1516"
+                        bind_addr: "0.0.0.0"
+                        nodes:
+                          - "wazuh-master"
+                        hidden: no
+                        disabled: no
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Configuration was successfully read"
+                  failed_items: []
+                message: "Configuration was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8526,35 +8597,50 @@ paths:
               example:
                 data:
                   affected_items:
-                    - hour: 15
+                    - hour: 10
                       alerts:
-                        - sigid: 5303
-                          level: 3
-                          times: 1
-                        - sigid: 5501
-                          level: 3
-                          times: 4
-                        - sigid: 221
-                          level: 0
-                          times: 653
-                      totalAlerts: 658
-                      events: 4387
-                      firewall: 0
-                    - hour: 16
-                      alerts:
-                        - sigid: 5521
-                          level: 0
-                          times: 1
                         - sigid: 530
                           level: 0
-                          times: 120
-                      totalAlerts: 121
-                      events: 4379
-                      syscheck: 0
+                          times: 121
+                        - sigid: 501
+                          level: 3
+                          times: 5
+                        - sigid: 502
+                          level: 3
+                          times: 1
+                        - sigid: 503
+                          level: 3
+                          times: 1
+                        - sigid: 506
+                          level: 3
+                          times: 2
+                        - sigid: 515
+                          level: 0
+                          times: 12
+                        - sigid: 19000
+                          level: 0
+                          times: 980
+                        - sigid: 19007
+                          level: 7
+                          times: 470
+                        - sigid: 19008
+                          level: 3
+                          times: 305
+                        - sigid: 19009
+                          level: 3
+                          times: 185
+                        - sigid: 19004,
+                          level: 7,
+                          times: 10
+                      totalAlerts: 2092
+                      events: 2104
+                      syscheck: 12
                       firewall: 0
-                  total_affected_items: 2
-                  failed_items: []
+                  total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8596,34 +8682,36 @@ paths:
                 data:
                   affected_items:
                     - averages:
-                        - 40
-                        - 24
-                        - 67
-                        - 234
-                        - 66
-                        - 24
-                        - 634
-                        - 66
-                        - 123
-                        - 56
-                        - 65
-                        - 23
-                        - 666
-                        - 233
-                        - 646
-                        - 44
-                        - 64
-                        - 99
-                        - 34
-                        - 235
-                        - 653
-                        - 25
-                        - 65
-                        - 23
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
+                        - 0
                       interactions: 0
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information per hour for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8854,8 +8942,10 @@ paths:
                         - 23
                         interactions: 0
                   total_affected_items: 7
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information per week for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8895,55 +8985,63 @@ paths:
               example:
                 data:
                   affected_items:
-                    - total_events_decoded: 5
-                      syscheck_events_decoded: 0
-                      syscheck_edps: 0
-                      syscollector_events_decoded: 0
-                      syscollector_edps: 0
-                      rootcheck_events_decoded: 0
-                      rootcheck_edps: 0
-                      sca_events_decoded: 0
-                      sca_edps: 0
-                      hostinfo_events_decoded: 0
-                      hostinfo_edps: 0
-                      winevt_events_decoded: 0
-                      winevt_edps: 0
-                      other_events_decoded: 5
-                      other_events_edps: 1
-                      events_processed: 5
-                      events_edps: 1
-                      events_received: 5
-                      events_dropped: 0
-                      alerts_written: 0
-                      firewall_written: 0
-                      fts_written: 0
-                      syscheck_queue_usage: 0
-                      syscheck_queue_size: 16384
-                      syscollector_queue_usage: 0
-                      syscollector_queue_size: 16384
-                      rootcheck_queue_usage: 0
-                      rootcheck_queue_size: 16384
-                      sca_queue_usage: 0
-                      sca_queue_size: 16384
-                      hostinfo_queue_usage: 0
-                      hostinfo_queue_size: 16384
-                      winevt_queue_usage: 0
-                      winevt_queue_size: 16384
-                      event_queue_usage: 0
-                      event_queue_size: 16384
-                      rule_matching_queue_usage: 0
-                      rule_matching_queue_size: 16384
-                      alerts_queue_usage: 0
-                      alerts_queue_size: 16384
-                      firewall_queue_usage: 0
-                      firewall_queue_size: 16384
-                      statistical_queue_usage: 0
-                      statistical_queue_size: 16384
-                      archives_queue_usage: 0
-                      archives_queue_size: 16384
+                  - total_events_decoded: 0.0
+                    syscheck_events_decoded: 0.0
+                    syscheck_edps: 0.0
+                    syscollector_events_decoded: 0.0
+                    syscollector_edps: 0.0
+                    rootcheck_events_decoded: 0.0
+                    rootcheck_edps: 0.0
+                    sca_events_decoded: 0.0
+                    sca_edps: 0.0
+                    hostinfo_events_decoded: 0.0
+                    hostinfo_edps: 0.0
+                    winevt_events_decoded: 0.0
+                    winevt_edps: 0.0
+                    dbsync_messages_dispatched: 0.0
+                    dbsync_mdps: 0.0
+                    other_events_decoded: 0.0
+                    other_events_edps: 0.0
+                    events_processed: 0.0
+                    events_edps: 0.0
+                    events_received: 0.0
+                    events_dropped: 0.0
+                    alerts_written: 0.0
+                    firewall_written: 0.0
+                    fts_written: 0.0
+                    syscheck_queue_usage: 0.0
+                    syscheck_queue_size: 16384.0
+                    syscollector_queue_usage: 0.0
+                    syscollector_queue_size: 16384.0
+                    rootcheck_queue_usage: 0.0
+                    rootcheck_queue_size: 16384.0
+                    sca_queue_usage: 0.0
+                    sca_queue_size: 16384.0
+                    hostinfo_queue_usage: 0.0
+                    hostinfo_queue_size: 16384.0
+                    winevt_queue_usage: 0.0
+                    winevt_queue_size: 16384.0
+                    dbsync_queue_usage: 0.0
+                    dbsync_queue_size: 16384.0
+                    upgrade_queue_usage: 0.0
+                    upgrade_queue_size: 16384.0
+                    event_queue_usage: 0.0
+                    event_queue_size: 16384.0
+                    rule_matching_queue_usage: 0.0
+                    rule_matching_queue_size: 16384.0
+                    alerts_queue_usage: 0.0
+                    alerts_queue_size: 16384.0
+                    firewall_queue_usage: 0.0
+                    firewall_queue_size: 16384.0
+                    statistical_queue_usage: 0.0
+                    statistical_queue_size: 16384.0
+                    archives_queue_usage: 0.0
+                    archives_queue_size: 16384.0
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8985,15 +9083,18 @@ paths:
                   affected_items:
                     - queue_size: 0
                       total_queue_size: 131072
-                      tcp_sessions: 0
-                      evt_count: 0
-                      ctrl_msg_count: 0
+                      tcp_sessions: 4.0
+                      evt_count: 9089.0
+                      ctrl_msg_count: 2099.0
                       discarded_count: 0
-                      msg_sent: 0
-                      recv_bytes: 0
-                  total_affected_items: 0
-                  failed_items: []
+                      msg_sent: 4210.0
+                      recv_bytes: 4541779.0
+                      dequeued_after_close: 0.0
+                  total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9040,21 +9141,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: '2020-04-15T13:43:38+00:00'
-                      tag: wazuh-analysisd
-                      level: error
-                      description: " (1277): Invalid syscheck message received"
-                    - timestamp: '2020-04-15T13:43:38+00:00'
-                      tag: wazuh-analysisd
-                      level: error
-                      description: " (1277): Invalid syscheck message received"
-                    - timestamp: '2020-04-15T13:43:30+00:00'
-                      tag: wazuh-analysisd
-                      level: error
-                      description: " (1277): Invalid syscheck message received"
+                    - timestamp: '2021-05-27T12:18:08+00:00'
+                      tag: wazuh-remoted
+                      level: debug
+                      description: " TCP socket 20 already in keystore. Updating..."
+                    - timestamp: '2021-05-27T12:18:08+00:00'
+                      tag: wazuh-remoted
+                      level: debug
+                      description: " Agent '003' group is 'default'"
+                    - timestamp: '2021-05-27T12:18:08+00:00'
+                      tag: wazuh-remoted
+                      level: debug
+                      description: " Agent '003' with group 'default' file 'merged.mg' MD5
+                        '9a016508cea1e997ab8569f5cfab30f5'"
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Logs were successfully read in specified node"
                 error: 0
         '400':
@@ -9096,30 +9198,25 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-modulesd:
-                        info: 2
-                        all: 2
-                        critical: 0
-                        debug: 0
-                        error: 0
-                        warning: 0
                     - wazuh-db:
-                        info: 1
-                        all: 4
-                        critical: 0
-                        debug: 0
-                        error: 3
-                        warning: 0
-                    - wazuh-rootcheck:
-                        info: 8
-                        all: 8
-                        critical: 0
-                        debug: 0
+                        all: 356
+                        info: 0
                         error: 0
+                        critical: 0
                         warning: 0
-                  total_affected_items: 3
-                  failed_items: []
+                        debug: 356
+                    - wazuh-remoted:
+                        all: 842
+                        info: 0
+                        error: 0
+                        critical: 0
+                        warning: 0
+                        debug: 842
+                  total_affected_items: 2
                   total_failed_items: 0
+                  failed_items: []
+                message: "Log was successfully summarized in specified node"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9158,15 +9255,16 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseNodeIDs'
                 example:
-                  message: "Restart request sent to all specified nodes"
-                  error: 0
                   data:
                     affected_items:
                       - 'master-node'
                       - 'worker1'
-                    total_affected_items: 2
-                    failed_items: []
+                      - 'worker2'
+                    total_affected_items: 3
                     total_failed_items: 0
+                    failed_items: []
+                  message: "Restart request sent to  all specified nodes"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9213,9 +9311,9 @@ paths:
                       - name: worker2
                         status: OK
                     total_affected_items: 3
-                    failed_items: []
                     total_failed_items: 0
-                  message: Validation was successfully checked in all nodes
+                    failed_items: []
+                  message: "Validation was successfully checked in all nodes"
                   error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9317,20 +9415,6 @@ paths:
                 data:
                   affected_items:
                     - items:
-                        - key: AttachLoadBalancers
-                          value: Autoscaling
-                        - key: DetachLoadBalancers
-                          value: Autoscaling
-                        - key: PutScalingPolicy
-                          value: Autoscaling
-                        - key: TerminateInstanceInAutoScalingGroup
-                          value: Autoscaling
-                      relative_dirname: etc/lists/amazon
-                      filename: aws-eventnames
-                    - items: []
-                      relative_dirname: etc/lists/amazon
-                      filename: aws-sources
-                    - items:
                         - key: audit-wazuh-w
                           value: write
                         - key: audit-wazuh-r
@@ -9343,21 +9427,10 @@ paths:
                           value: command
                       relative_dirname: etc/lists
                       filename: audit-keys
-                    - items:
-                        - key: '200'
-                          value: ''
-                        - key: '201'
-                          value: ''
-                        - key: '203'
-                          value: ''
-                        - key: '202'
-                          value: ''
-                      relative_dirname: etc/lists
-                      filename: security-eventchannel
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
-                message: 'All specified lists were returned'
+                  failed_items: []
+                message: "All specified lists were returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9408,7 +9481,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: CDB list was returned
+                message: "CDB list was returned"
                 error: 0
             'text/plain':
               schema:
@@ -9564,8 +9637,8 @@ paths:
                     - relative_dirname: etc/lists
                       filename: security-eventchannel
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: 'All specified paths were returned'
                 error: 0
         '400':
@@ -9606,35 +9679,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                token:  bd83b45f
-                message: ["INFO: (7202): Session initialized with token 'bd83b45f'"]
-                output:
-                  timestamp: 2020-06-24T11:28:09.308+0200
-                  rule:
-                    description: "Systemd rules"
-                    id: 40700
-                    firedtimes: 1
-                    mail: false
-                    groups: ["local", "systemd"]
-                  agent:
-                    id: 000
-                    name: wazuh-master
-                  manager:
-                    name: wazuh-master
-                  id: "1598517414.1892559"
-                  cluster:
-                    name: wazuh
-                    node: master-node
-                  full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-                  predecoder:
-                    program_name: systemd
-                    timestamp: "Jun 24 11:54:19"
-                    hostname: Master
-                  decoder:
-                    name: systemd
-                  location: "master->/var/log/syslog"
-                alert: false
-                codemsg: 0
+                error: 0
+                data:
+                  messages:
+                    - "INFO: (7202): Session initialized with token '8cd2d6d1'"
+                  token: 8cd2d6d1
+                  output:
+                    timestamp: 2021-05-27T12:46:03.391+0000
+                    rule:
+                      level: 2
+                      description: "Unknown problem somewhere in the system."
+                      id: 1002
+                      firedtimes: 1
+                      mail: false
+                      groups:
+                        - "syslog"
+                        - "errors"
+                      gpg13:
+                        - 4.3
+                    agent:
+                      id: "000"
+                      name: "wazuh-master"
+                    manager:
+                      name: "wazuh-master"
+                    id: "1622119563.2682664"
+                    cluster:
+                      name: "wazuh"
+                      node: "master-node"
+                    full_log: "ERROR"
+                    decoder:
+                    location: "/var/log/syslog"
+                  alert: false
+                  codemsg: 1
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9718,27 +9794,27 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-agentlessd: stopped
-                      wazuh-analysisd: running
-                      wazuh-authd: stopped
-                      wazuh-csyslogd: stopped
-                      wazuh-dbd: stopped
-                      wazuh-execd: running
-                      wazuh-integratord: stopped
-                      wazuh-logcollector: running
-                      wazuh-maild: stopped
-                      wazuh-monitord: running
-                      wazuh-remoted: running
-                      wazuh-reportd: stopped
-                      wazuh-syscheckd: running
-                      wazuh-apid: running
-                      wazuh-clusterd: running
-                      wazuh-db: running
-                      wazuh-modulesd: running
+                    - wazuh-agentlessd: "stopped",
+                      wazuh-analysisd: "running",
+                      wazuh-authd: "running",
+                      wazuh-csyslogd: "stopped",
+                      wazuh-dbd: "stopped",
+                      wazuh-monitor": "running",
+                      wazuh-execd: "running",
+                      wazuh-integratord: "stopped",
+                      wazuh-logcollector: "running",
+                      wazuh-maild: "stopped",
+                      wazuh-remoted: "running",
+                      wazuh-reportd: "stopped",
+                      wazuh-syscheckd: "running",
+                      wazuh-clusterd: "running",
+                      wazuh-modulesd: "running",
+                      wazuh-db: "running",
+                      wazuh-apid: "running"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Processes status successfully read"
+                  failed_items: []
+                message: "Processes status was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9779,17 +9855,17 @@ paths:
                 data:
                   affected_items:
                     - path: /var/ossec
-                      version: v3.9.0
-                      compilation_date: "2019-03-06T11:24:59Z"
-                      type: manager
+                      version: v4.3.0
+                      compilation_date: "2021-05-27T09:06:48Z"
+                      type: server
                       max_agents: unlimited
                       openssl_support: yes
                       tz_offset: +0000
                       tz_name: UTC
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Basic information was successfully read"
+                  failed_items: []
+                message: "Basic information was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
