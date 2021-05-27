@@ -1500,6 +1500,7 @@ components:
       minLength: 3
       description: "Agent ID"
       format: numbers
+      example: "GOT AP3D"
 
     AgentID_DELETE:
       type: string
