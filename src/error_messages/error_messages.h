@@ -225,12 +225,11 @@
 #define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
 #define FAIL_SHA1_GEN   "(1969): Failure to generate the SHA1 hash from file '%s'"
-#define DUP_MACOS       "(1969): Can't add more than one 'macos' block."
-#define FP_TO_FD_ERROR  "(1972): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: %s (%d)."
-#define GET_FLAGS_ERROR "(1973): The flags couldn't be obtained from the file descriptor: %s (%d)."
-#define SET_FLAGS_ERROR "(1974): The flags couldn't be set in the file descriptor: %s (%d)."
-#define WPOPENV_ERROR   "(1975): An error ocurred while calling wpopenv(): %s (%d)."
-#define SNPRINTF_ERROR  "(1976): An error ocurred while calling snprintf(): %s (%d)."
+#define DUP_MACOS       "(1970): Can't add more than one 'macos' block."
+#define FP_TO_FD_ERROR  "(1971): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: %s (%d)."
+#define GET_FLAGS_ERROR "(1972): The flags couldn't be obtained from the file descriptor: %s (%d)."
+#define SET_FLAGS_ERROR "(1973): The flags couldn't be set in the file descriptor: %s (%d)."
+#define WPOPENV_ERROR   "(1974): An error ocurred while calling wpopenv(): %s (%d)."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
