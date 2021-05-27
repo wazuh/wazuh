@@ -100,7 +100,6 @@ void test_github_main_fail_StartMQ(void **state) {
 void test_github_main_enable(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->github_config->enabled = 1;
-    data->github_config->run_on_start = 1;
     data->github_config->interval = 2;
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
@@ -183,7 +182,7 @@ void test_github_get_next_page_complete(void **state) {
 
 void test_github_dump_no_options(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    char *test = "{\"github\":{\"enabled\":\"no\",\"run_on_start\":\"no\",\"only_future_events\":\"no\"}}";
+    char *test = "{\"github\":{\"enabled\":\"no\",\"only_future_events\":\"no\"}}";
 
     cJSON *root = wm_github_dump(data->github_config);
     data->root_c = cJSON_PrintUnformatted(root);
@@ -195,7 +194,6 @@ void test_github_dump_no_options(void **state) {
 void test_github_dump_yes_options(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->github_config->enabled = 1;
-    data->github_config->run_on_start = 1;
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
@@ -204,7 +202,7 @@ void test_github_dump_yes_options(void **state) {
     os_strdup("test_org", data->github_config->auth->org_name);
     os_strdup("all", data->github_config->event_type);
 
-    char *test = "{\"github\":{\"enabled\":\"yes\",\"run_on_start\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"time_delay\":1,\"api_auth\":[{\"org_name\":\"test_org\",\"api_token\":\"test_token\"}],\"event_type\":\"all\"}}";
+    char *test = "{\"github\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"time_delay\":1,\"api_auth\":[{\"org_name\":\"test_org\",\"api_token\":\"test_token\"}],\"event_type\":\"all\"}}";
 
     cJSON *root = wm_github_dump(data->github_config);
     data->root_c = cJSON_PrintUnformatted(root);
@@ -310,7 +308,6 @@ void test_github_scan_failure_action_org_null(void **state) {
 void test_github_execute_scan(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->github_config->enabled = 1;
-    data->github_config->run_on_start = 1;
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
@@ -331,33 +328,11 @@ void test_github_execute_scan(void **state) {
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
-    will_return(__wrap_localtime_r, 1);
-
-    will_return(__wrap_strftime,"2021-05-07 12:24:56");
-    will_return(__wrap_strftime, 20);
-
-    will_return(__wrap_localtime_r, 1);
-
-    will_return(__wrap_strftime,"2021-05-07 12:34:56");
-    will_return(__wrap_strftime, 20);
-
     expect_string(__wrap_wm_state_io, tag, "github-test_org");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_any(__wrap__mtdebug1, formatted_msg);
-
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
-    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
-    expect_any(__wrap_wm_state_io, state);
-    expect_any(__wrap_wm_state_io, size);
-    will_return(__wrap_wm_state_io, 1);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
     wm_github_execute_scan(data->github_config, initial_scan);
 }
@@ -374,7 +349,6 @@ void test_github_execute_scan_current_null(void **state) {
 void test_github_execute_scan_no_initial_scan(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->github_config->enabled = 1;
-    data->github_config->run_on_start = 1;
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
@@ -427,7 +401,6 @@ void test_github_execute_scan_no_initial_scan(void **state) {
 void test_github_execute_scan_status_code_200(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->github_config->enabled = 1;
-    data->github_config->run_on_start = 1;
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
@@ -483,7 +456,6 @@ void test_github_execute_scan_status_code_200(void **state) {
 void test_github_execute_scan_status_code_200_null(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->github_config->enabled = 1;
-    data->github_config->run_on_start = 1;
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
@@ -588,7 +560,6 @@ static int teardown_test_read(void **state) {
 void test_read_configuration(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -605,7 +576,6 @@ void test_read_configuration(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
-    assert_int_equal(module_data->run_on_start, 1);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
     assert_int_equal(module_data->only_future_events, 0);
@@ -617,7 +587,6 @@ void test_read_configuration(void **state) {
 void test_read_configuration_1(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -638,7 +607,6 @@ void test_read_configuration_1(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
-    assert_int_equal(module_data->run_on_start, 1);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
     assert_int_equal(module_data->only_future_events, 0);
@@ -661,7 +629,6 @@ void test_read_default_configuration(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
-    assert_int_equal(module_data->run_on_start, 1);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
     assert_int_equal(module_data->only_future_events, 1);
@@ -673,7 +640,6 @@ void test_read_default_configuration(void **state) {
 void test_read_interval(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>10</interval>\n"
         "<time_delay>10</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -695,7 +661,6 @@ void test_read_interval(void **state) {
 void test_read_interval_s(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>50s</interval>\n"
         "<time_delay>10</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -717,7 +682,6 @@ void test_read_interval_s(void **state) {
 void test_read_interval_m(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>1m</interval>\n"
         "<time_delay>10</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -739,7 +703,6 @@ void test_read_interval_m(void **state) {
 void test_read_interval_h(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>2h</interval>\n"
         "<time_delay>10</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -761,7 +724,6 @@ void test_read_interval_h(void **state) {
 void test_read_interval_d(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>3d</interval>\n"
         "<time_delay>10</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -783,7 +745,6 @@ void test_read_interval_d(void **state) {
 void test_repeatd_tag(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -803,7 +764,6 @@ void test_repeatd_tag(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
-    assert_int_equal(module_data->run_on_start, 1);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
     assert_int_equal(module_data->only_future_events, 0);
@@ -815,7 +775,6 @@ void test_repeatd_tag(void **state) {
 void test_fake_tag(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>yes</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -834,31 +793,9 @@ void test_fake_tag(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
 
-void test_invalid_content_1(void **state) {
-    const char *string =
-        "<enabled>no</enabled>\n"
-        "<run_on_start>invalid</run_on_start>\n"
-        "<interval>10m</interval>\n"
-        "<time_delay>1s</time_delay>"
-        "<only_future_events>no</only_future_events>"
-        "<api_auth>"
-            "<org_name>Wazuh</org_name>"
-            "<api_token>Wazuh_token</api_token>"
-        "</api_auth>"
-        "<api_parameters>"
-            "<event_type>all</event_type>"
-        "</api_parameters>"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'run_on_start' at module 'github'.");
-    test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
-}
-
 void test_invalid_content_2(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>yes</only_future_events>"
@@ -879,7 +816,6 @@ void test_invalid_content_2(void **state) {
 void test_invalid_content_3(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>invalid</only_future_events>"
@@ -900,7 +836,6 @@ void test_invalid_content_3(void **state) {
 void test_invalid_content_4(void **state) {
     const char *string =
         "<enabled>invalid</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>yes</only_future_events>"
@@ -921,7 +856,6 @@ void test_invalid_content_4(void **state) {
 void test_invalid_content_5(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>invalid</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>yes</only_future_events>"
@@ -942,7 +876,6 @@ void test_invalid_content_5(void **state) {
 void test_invalid_time_delay_1(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>-1</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -963,7 +896,6 @@ void test_invalid_time_delay_1(void **state) {
 void test_invalid_time_delay_2(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1y</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -984,7 +916,6 @@ void test_invalid_time_delay_2(void **state) {
 void test_error_api_auth(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -1001,7 +932,6 @@ void test_error_api_auth(void **state) {
 void test_error_api_auth_1(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -1022,7 +952,6 @@ void test_error_api_auth_1(void **state) {
 void test_error_org_name(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -1043,7 +972,6 @@ void test_error_org_name(void **state) {
 void test_error_org_name_1(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -1063,7 +991,6 @@ void test_error_org_name_1(void **state) {
 void test_error_api_token(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -1084,7 +1011,6 @@ void test_error_api_token(void **state) {
 void test_error_api_token_1(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -1104,7 +1030,6 @@ void test_error_api_token_1(void **state) {
 void test_error_event_type_1(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
-        "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
         "<only_future_events>no</only_future_events>"
@@ -1155,7 +1080,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_d, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_repeatd_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_invalid_content_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_2, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_3, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_4, setup_test_read, teardown_test_read),

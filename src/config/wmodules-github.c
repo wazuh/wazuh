@@ -11,7 +11,6 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_ENABLED = "enabled";
-static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_TIME_DELAY = "time_delay";
 static const char *XML_ONLY_FUTURE_EVENTS = "only_future_events";
@@ -70,7 +69,6 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         module->tag = strdup(module->context->name);
         os_calloc(1, sizeof(wm_github), github_config);
         github_config->enabled =            WM_GITHUB_DEFAULT_ENABLED;
-        github_config->run_on_start =       WM_GITHUB_DEFAULT_RUN_ON_START;
         github_config->only_future_events = WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS;
         github_config->interval =           WM_GITHUB_DEFAULT_INTERVAL;
         github_config->time_delay =         WM_GITHUB_DEFAULT_DELAY;
@@ -95,15 +93,6 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 github_config->enabled = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_GITHUB_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
-            if (!strcmp(nodes[i]->content, "yes"))
-                github_config->run_on_start = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-                github_config->run_on_start = 0;
-            else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
