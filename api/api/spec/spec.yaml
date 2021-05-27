@@ -1501,6 +1501,7 @@ components:
       description: "Agent ID"
       format: numbers
       example: "GOT AP3D"
+      pattern: "aperegex"
 
     AgentID_DELETE:
       type: string
