@@ -18,13 +18,18 @@
 #include "registryHelper.h"
 #include "sharedDefs.h"
 
+static VERSIONHELPERAPI IsWindowsTenOrGreater()
+{
+    return IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WINTHRESHOLD), LOBYTE(_WIN32_WINNT_WINTHRESHOLD), 0);
+}
+
 static std::string getVersion(const bool isMinor = false)
 {
     std::string version;
     if(IsWindowsVistaOrGreater())
     {
         Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
-        if (IsWindows10OrGreater())
+        if (IsWindowsTenOrGreater())
         {
             const auto versionNumber{currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber")};
             version = std::to_string(versionNumber);
