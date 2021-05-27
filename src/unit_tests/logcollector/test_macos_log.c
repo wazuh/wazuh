@@ -1871,7 +1871,7 @@ void test_w_macos_log_exec_wpopenv_error(void ** state) {
 
     will_return(__wrap_wpopenv, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+    expect_string(__wrap__merror, formatted_msg, "(1974): An error ocurred while calling wpopenv(): Success (0).");
 
     wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
@@ -1894,7 +1894,7 @@ void test_w_macos_log_exec_fileno_error(void ** state) {
     will_return(__wrap_fileno, 0);
 
     expect_string(__wrap__merror, formatted_msg,
-        "(1972): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: Success (0).");
+        "(1971): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: Success (0).");
 
     will_return(__wrap_wpclose, 0);
 
@@ -1919,7 +1919,7 @@ void test_w_macos_log_exec_fp_to_fd_error(void ** state) {
     will_return(__wrap_fileno, 0);
 
     expect_string(__wrap__merror, formatted_msg,
-        "(1972): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: Success (0).");
+        "(1971): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: Success (0).");
 
     will_return(__wrap_wpclose, 0);
 
@@ -1946,7 +1946,7 @@ void test_w_macos_log_exec_get_flags_error(void ** state) {
     will_return(__wrap_fcntl, -1);
 
     expect_string(__wrap__merror, formatted_msg,
-        "(1973): The flags couldn't be obtained from the file descriptor: Success (0).");
+        "(1972): The flags couldn't be obtained from the file descriptor: Success (0).");
 
     will_return(__wrap_wpclose, 0);
 
@@ -1975,7 +1975,7 @@ void test_w_macos_log_exec_set_flags_error(void ** state) {
     will_return(__wrap_fcntl, -1);
 
     expect_string(__wrap__merror, formatted_msg,
-        "(1974): The flags couldn't be set in the file descriptor: Success (0).");
+        "(1973): The flags couldn't be set in the file descriptor: Success (0).");
 
     will_return(__wrap_wpclose, 0);
 
@@ -2103,7 +2103,7 @@ void test_w_macos_create_log_stream_env_log_wfd_NULL(void ** state) {
     // test_w_macos_log_exec_wpopenv_error
     will_return(__wrap_wpopenv, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+    expect_string(__wrap__merror, formatted_msg, "(1974): An error ocurred while calling wpopenv(): Success (0).");
 
     w_macos_create_log_stream_env(current);
 
@@ -2784,7 +2784,7 @@ void test_w_macos_create_log_show_env_show_wfd_NULL(void ** state) {
     // test_w_macos_log_exec_wpopenv_error
     will_return(__wrap_wpopenv, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+    expect_string(__wrap__merror, formatted_msg, "(1974): An error ocurred while calling wpopenv(): Success (0).");
 
     expect_string(__wrap__merror, formatted_msg, "(1605): Error while trying to execute `log show` as follows: " \
                                                  "/usr/bin/log show --style syslog --start 2021-04-27 12:29:25-0700 " \
@@ -2855,7 +2855,7 @@ void test_w_macos_create_log_stream_env_show_wfd_NULL(void ** state) {
     // test_w_macos_log_exec_wpopenv_error
     will_return(__wrap_wpopenv, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+    expect_string(__wrap__merror, formatted_msg, "(1974): An error ocurred while calling wpopenv(): Success (0).");
 
     expect_string(__wrap__merror, formatted_msg, "(1606): Error while trying to execute `log stream` as follows: " \
                                                  "/usr/bin/log stream --style syslog --level debug " \
