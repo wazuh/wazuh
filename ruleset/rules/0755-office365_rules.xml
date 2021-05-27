@@ -20,14 +20,13 @@ ID: 91531 - 91650
     </rule>
 
     <!-- Office365 generic rule
-        This rule capture unknown alerts
+        This rule captures unknown alerts
     -->
     <rule id="91532" level="3">
         <if_sid>91531</if_sid>
         <field name="office_365.RecordType" type="osregex">\d+</field>
         <description>Office 365: $(office_365.Workload) $(office_365.Operation) operation.</description>
         <options>no_full_log</options>
-        <group>office365_recordType</group>
     </rule>
 
     <!-- RecordType
@@ -301,7 +300,7 @@ ID: 91531 - 91650
         <group>SkypeForBusinessCmdlets</group>
     </rule>
 
-    <rule id="91554" level="3">
+    <rule id="91554" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^24$</field>
         <description>Office 365: Events for eDiscovery activities performed by running content searches and managing eDiscovery cases in the Security and Compliance Center.</description>
@@ -325,7 +324,7 @@ ID: 91531 - 91650
         <group>ThreatIntelligence</group>
     </rule>
 
-    <rule id="91557" level="3">
+    <rule id="91557" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^29$</field>
         <description>Office 365: Submission events from Exchange Online Protection and Microsoft Defender for Office 365.</description>
@@ -397,7 +396,7 @@ ID: 91531 - 91650
         <group>SharePointCommentOperation</group>
     </rule>
 
-    <rule id="91566" level="3">
+    <rule id="91566" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^38$</field>
         <description>Office 365: Events related to retention policies and retention labels in the Security and Compliance Center.</description>
@@ -421,7 +420,7 @@ ID: 91531 - 91650
         <group>SecurityComplianceAlerts</group>
     </rule>
 
-    <rule id="91569" level="5">
+    <rule id="91569" level="7">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^41$</field>
         <description>Office 365: Safe links time-of-block and block override events from Microsoft Defender for Office 365.</description>
@@ -429,7 +428,7 @@ ID: 91531 - 91650
         <group>ThreatIntelligenceUrl</group>
     </rule>
 
-    <rule id="91570" level="3">
+    <rule id="91570" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^42$</field>
         <description>Office 365: Events related to insights and reports in the Office 365 security and compliance center.</description>
@@ -437,7 +436,7 @@ ID: 91531 - 91650
         <group>SecurityComplianceInsights</group>
     </rule>
 
-    <rule id="91571" level="3">
+    <rule id="91571" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^43$</field>
         <description>Office 365: Events related to the detection in the Transport pipeline of email messages that have been tagged (manually or automatically) with sensitivity labels.</description>
@@ -501,7 +500,7 @@ ID: 91531 - 91650
         <group>ExchangeItemAggregated</group>
     </rule>
 
-    <rule id="91579" level="3">
+    <rule id="91579" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^51$</field>
         <description>Office 365: Events related to outbound spam protection.</description>
@@ -581,7 +580,7 @@ ID: 91531 - 91650
         <group>MicrosoftTeamsAnalytics</group>
     </rule>
 
-    <rule id="91589" level="5">
+    <rule id="91589" level="7">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^61$</field>
         <description>Office 365: Events related to compromised user alerts.</description>
@@ -589,7 +588,7 @@ ID: 91531 - 91650
         <group>InformationWorkerProtection</group>
     </rule>
 
-    <rule id="91590" level="3">
+    <rule id="91590" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^62$</field>
         <description>Office 365: Email campaign events from Microsoft Defender for Office 365.</description>
@@ -605,7 +604,7 @@ ID: 91531 - 91650
         <group>DLPEndpoint</group>
     </rule>
 
-    <rule id="91592" level="3">
+    <rule id="91592" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^64$</field>
         <description>Office 365: Automated incident response (AIR) events.</description>
@@ -613,7 +612,7 @@ ID: 91531 - 91650
         <group>AirInvestigation</group>
     </rule>
 
-    <rule id="91593" level="3">
+    <rule id="91593" level="9">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^65$</field>
         <description>Office 365: Quarantine events.</description>
@@ -653,7 +652,7 @@ ID: 91531 - 91650
         <group>CustomerKeyServiceEncryption</group>
     </rule>
 
-    <rule id="91598" level="3">
+    <rule id="91598" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^70$</field>
         <description>Office 365: Events related to sensitivity labels applied to Office documents.</description>
@@ -709,7 +708,7 @@ ID: 91531 - 91650
         <group>Search</group>
     </rule>
 
-    <rule id="91605" level="5">
+    <rule id="91605" level="7">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^78$</field>
         <description>Office 365: Events related to alerts generated by Windows Defender for Endpoint.</description>
@@ -717,7 +716,7 @@ ID: 91531 - 91650
         <group>WDATPAlerts</group>
     </rule>
 
-    <rule id="91606" level="3">
+    <rule id="91606" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^81$</field>
         <description>Office 365: Microsoft Defender for Endpoint events.</description>
@@ -757,7 +756,7 @@ ID: 91531 - 91650
         <group>AttackSim</group>
     </rule>
 
-    <rule id="91611" level="3">
+    <rule id="91611" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^86$</field>
         <description>Office 365: Events related to manual investigations in Automated investigation and response (AIR).</description>
@@ -789,7 +788,7 @@ ID: 91531 - 91650
         <group>AirAdminActionInvestigation</group>
     </rule>
 
-    <rule id="91615" level="5">
+    <rule id="91615" level="7">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^90$</field>
         <description>Office 365: Threat intelligence events in Microsoft Defender for Office 365.</description>
@@ -805,7 +804,7 @@ ID: 91531 - 91650
         <group>PhysicalBadgingSignal</group>
     </rule>
 
-    <rule id="91617" level="3">
+    <rule id="91617" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^93$</field>
         <description>Office 365: Azure Information Protection (AIP) scanner events.</description>
@@ -845,7 +844,7 @@ ID: 91531 - 91650
         <group>AipHeartBeat</group>
     </rule>
 
-    <rule id="91622" level="5">
+    <rule id="91622" level="7">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^98$</field>
         <description>Office 365: Events corresponding to alerts triggered by Microsoft Cloud App Security.</description>
@@ -853,7 +852,7 @@ ID: 91531 - 91650
         <group>MCASAlerts</group>
     </rule>
 
-    <rule id="91623" level="3">
+    <rule id="91623" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^99$</field>
         <description>Office 365: Events related to scanning for sensitive data on file shares.</description>
@@ -861,7 +860,7 @@ ID: 91531 - 91650
         <group>OnPremisesFileShareScannerDlp</group>
     </rule>
 
-    <rule id="91624" level="3">
+    <rule id="91624" level="5">
         <if_sid>91532</if_sid>
         <field name="office_365.RecordType" type="osregex">^100$</field>
         <description>Office 365: Events related to scanning for sensitive data in SharePoint.</description>
