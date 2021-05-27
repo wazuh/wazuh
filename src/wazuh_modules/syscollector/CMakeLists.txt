@@ -80,7 +80,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(syscollector PROPERTIES
         PREFIX ""
         SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )

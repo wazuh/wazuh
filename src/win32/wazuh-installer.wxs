@@ -324,6 +324,9 @@
                     <Component Id="LIBWINPTHREAD_1.DLL" DiskId="1" Guid="C15C5883-00FB-41D7-B9E6-53C8BC30761F">
                         <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="libwinpthread-1.dll" />
                     </Component>
+                    <Component Id="LIBGCC_S_SJLJ_1.DLL" DiskId="1" Guid="27BDCB9A-F89F-4009-A789-1F779EB05697">
+                        <File Id="LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" Source="libgcc_s_sjlj-1.dll" />
+                    </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
                     </Component>
@@ -367,6 +370,7 @@
                         <RemoveFile Id="NSIS_WIN32UI_EXE" Name="win32ui.exe" On="install" />
                         <RemoveFile Id="NSIS_AGENT_AUTH_EXE" Name="agent-auth.exe" On="install" />
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
+                        <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_STATE" Name="ossec-agent.state" On="install" />
@@ -620,6 +624,7 @@
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
+            <ComponentRef Id="LIBGCC_S_SJLJ_1.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />

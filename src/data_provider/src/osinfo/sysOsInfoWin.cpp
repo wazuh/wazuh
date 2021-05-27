@@ -24,7 +24,7 @@ static std::string getVersion(const bool isMinor = false)
     if(IsWindowsVistaOrGreater())
     {
         Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
-        if (IsWindows8OrGreater())
+        if (IsWindows10OrGreater())
         {
             const auto versionNumber{currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber")};
             version = std::to_string(versionNumber);
