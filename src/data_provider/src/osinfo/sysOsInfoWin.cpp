@@ -23,13 +23,14 @@ static std::string getVersion(const bool isMinor = false)
     std::string version;
     if(IsWindowsVistaOrGreater())
     {
+        DWORD versionNumber {};
         Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
-        try
+        if (IsWindows8OrGreater()
+            && currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
         {
-            const auto versionNumber{currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber")};
             version = std::to_string(versionNumber);
         }
-        catch (...)
+        else
         {
             enum OS_VERSION
             {

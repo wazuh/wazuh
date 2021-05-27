@@ -59,16 +59,12 @@ namespace Utils
 
         bool dword(const std::string& valueName, DWORD& value) const
         {
-            bool ret{true};
-            try
+            DWORD size{sizeof(DWORD)};
+            const auto result
             {
-                value = this->dword(valueName);
-            }
-            catch(...)
-            {
-                ret = false;
-            }
-            return ret;
+                RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(&value), &size)
+            };
+            return result == ERROR_SUCCESS;
         }
 
         std::vector<std::string> enumerate() const
