@@ -574,6 +574,13 @@ ID: 80200 - 80499
         <description>AWS S3 Error: Multiple Access Denied</description>
     </rule>
 
+    <!-- Authentication failure -->
+    <rule id="200050" level="5">
+        <if_sid>200031</if_sid>
+        <field name="aws.error_code" type="pcre2">^InvalidSecurity$</field>
+        <description>AWS S3 Authentication Failure: $(aws.error_code), from: $(aws.requester)</description>
+    </rule>
+
 
 
 </group>
