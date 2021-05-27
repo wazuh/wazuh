@@ -724,7 +724,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                         mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
                         free_whodata_event(w_evt);
-                    w_rwlock_unlock(&syscheck.directories_lock);
+                        w_rwlock_unlock(&syscheck.directories_lock);
                         goto clean;
                     }
 
@@ -733,7 +733,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     if (depth > w_evt->config_node->recursion_level) {
                         mdebug2(FIM_MAX_RECURSION_LEVEL, depth, w_evt->config_node->recursion_level, w_evt->path);
                         free_whodata_event(w_evt);
-                    w_rwlock_unlock(&syscheck.directories_lock);
+                        w_rwlock_unlock(&syscheck.directories_lock);
                         goto clean;
                     }
                 }
@@ -936,7 +936,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
     while (FOREVER()) {
-        w_rwlock_rdlock(&syscheck.directories_lock);
+        w_rwlock_wrlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
             exists = 0;

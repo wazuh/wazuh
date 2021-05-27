@@ -430,12 +430,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             w_rwlock_rdlock(&syscheck.directories_lock);
             directory_t *index = fim_configuration_directory(wdchar);
             directory_t *file_index = fim_configuration_directory(final_path);
+            w_rwlock_unlock(&syscheck.directories_lock);
 
             if (index == file_index) {
                 /* Check the change */
                 fim_realtime_event(final_path);
             }
-            w_rwlock_unlock(&syscheck.directories_lock);
 
         } while (pinfo->NextEntryOffset != 0);
     }

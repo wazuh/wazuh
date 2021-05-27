@@ -5474,8 +5474,12 @@ static void test_fim_update_db_data_modified() {
 #endif
 
 static void test_update_wildcards_config_list_null() {
-    // Do nothing
-    update_wildcards_config(syscheck.directories, NULL);
+    if (syscheck.wildcards) {
+        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
+        OSList_Destroy(syscheck.wildcards);
+        syscheck.wildcards = NULL;
+    }
+    update_wildcards_config();
 }
 
 static void test_update_wildcards_config() {
@@ -5530,7 +5534,7 @@ static void test_update_wildcards_config() {
     expect_string(__wrap_add_whodata_directory, path, resolvedpath2);
 #endif
 
-    update_wildcards_config(syscheck.directories, syscheck.wildcards);
+    update_wildcards_config();
 
     // Filled config
     directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
@@ -5588,7 +5592,7 @@ static void test_update_wildcards_config_remove_config() {
     will_return(__wrap_fim_db_get_path, NULL);
     expect_fim_db_get_path_from_pattern(syscheck.database, pattern2, NULL, FIM_DB_DISK, FIMDB_ERR);
 
-    update_wildcards_config(syscheck.directories, syscheck.wildcards);
+    update_wildcards_config();
 
     // Empty config
     directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
@@ -5806,9 +5810,9 @@ int main(void) {
     };
     const struct CMUnitTest wildcards_tests[] = {
         /* update_wildcards_config */
-        cmocka_unit_test(test_update_wildcards_config_list_null),
         cmocka_unit_test(test_update_wildcards_config),
         cmocka_unit_test(test_update_wildcards_config_remove_config),
+        cmocka_unit_test(test_update_wildcards_config_list_null),
     };
     int retval;
 

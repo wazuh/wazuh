@@ -536,7 +536,7 @@ int fim_whodata_initialize() {
         // In case SACLs and policies have been set, restore them.
         audit_restore();
 
-        w_rwlock_rdlock(&syscheck.directories_lock);
+        w_rwlock_wrlock(&syscheck.directories_lock);
         // Add proper flags for the realtime thread monitors the directories/files.
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;

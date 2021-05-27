@@ -425,10 +425,12 @@ OSListNode *OSList_GetNext(OSList *list, OSListNode *node) {
 
 void *OSList_GetDataFromIndex(OSList *list, int index) {
     int count = 0;
-    OSListNode *current = list->first_node;
+    OSListNode *current;
 
     w_rwlock_rdlock((pthread_rwlock_t *)&list->wr_mutex);
     w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    current = list->first_node;
 
     while (current != NULL) {
         if (count == index) {
@@ -452,19 +454,17 @@ void *OSList_GetDataFromIndex(OSList *list, int index) {
 int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
     OSListNode *newnode;
 
-    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
-
     /* Allocate memory for new node */
     newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
     if (newnode == NULL) {
         // LCOV_EXCL_START
         merror(MEM_ERROR, errno, strerror(errno));
-        w_mutex_unlock((pthread_mutex_t *)&list->mutex);
-        w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
         return 1;
         // LCOV_EXCL_STOP
     }
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
 
     newnode->data = data;
 

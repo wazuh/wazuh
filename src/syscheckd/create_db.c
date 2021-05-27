@@ -47,6 +47,12 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+/**
+ * @brief Update directories configuration with the wildcard list, at runtime
+ *
+ */
+void update_wildcards_config();
+
 static cJSON *
 _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data);
 
@@ -139,7 +145,7 @@ time_t fim_scan() {
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
-    update_wildcards_config(syscheck.directories, syscheck.wildcards);
+    update_wildcards_config();
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     fim_db_set_all_unscanned(syscheck.database);
@@ -447,9 +453,11 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
             return FIM_FILE_ERROR;
         }
 
+        w_rwlock_rdlock(&syscheck.directories_lock);
         configuration = fim_configuration_directory(path);
         if (configuration == NULL) {
             // This should not happen
+            w_rwlock_unlock(&syscheck.directories_lock);
             free_entry(entry);
             return FIM_FILE_ERROR;
         }
@@ -459,6 +467,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         }
 
         if (fim_db_remove_path(syscheck.database, entry->file_entry.path) == FIMDB_ERR) {
+            w_rwlock_unlock(&syscheck.directories_lock);
             free_entry(entry);
             return FIM_FILE_ERROR;
         }
@@ -466,6 +475,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         evt_data.type = FIM_DELETE;
 
         *event = fim_json_event(entry, NULL, configuration, &evt_data, NULL);
+        w_rwlock_unlock(&syscheck.directories_lock);
         free_entry(entry);
 
         return FIM_FILE_DELETED;
@@ -491,18 +501,22 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
     // The inode is currently being used, scan those files first
     if (fim_db_append_paths_from_inode(syscheck.database, evt_data.statbuf.st_ino, evt_data.statbuf.st_dev, stack,
                                        tree) == 0) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
         // We have somehow reached a point an infinite loop could happen, we will need to update the current file
         // forcefully which will generate a false positive alert
         check_max_fps();
         configuration = fim_configuration_directory(path);
         if (configuration == NULL) {
             // This should not happen
+            w_rwlock_unlock(&syscheck.directories_lock);
             free_entry(entry);     // LCOV_EXCL_LINE
             return FIM_FILE_ERROR; // LCOV_EXCL_LINE
         }
 
         *event = _fim_file_force_update(entry, configuration, &evt_data);
+        w_rwlock_unlock(&syscheck.directories_lock);
         free_entry(entry);
+
         return FIM_FILE_UPDATED;
     }
 
@@ -513,16 +527,20 @@ end:
     // Once here, either the used row was cleared and is available or this file is a hardlink to other file
     // either way the only thing left to do is to process the file
     check_max_fps();
+
+    w_rwlock_rdlock(&syscheck.directories_lock);
     configuration = fim_configuration_directory(path);
     if (configuration == NULL) {
         // This should not happen
+        w_rwlock_unlock(&syscheck.directories_lock);
         free_entry(entry);     // LCOV_EXCL_LINE
         return FIM_FILE_ERROR; // LCOV_EXCL_LINE
     }
 
     *event = _fim_file(path, configuration, &evt_data);
-
+    w_rwlock_unlock(&syscheck.directories_lock);
     free_entry(entry);
+
     return FIM_FILE_UPDATED;
 }
 
@@ -565,9 +583,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
-        w_rwlock_rdlock(&syscheck.directories_lock);
         int ret = fim_process_file_from_db(current_path, stack, tree, &event);
-        w_rwlock_unlock(&syscheck.directories_lock);
 
         switch (ret) {
         case FIM_FILE_UPDATED:
@@ -823,10 +839,14 @@ void fim_realtime_event(char *file) {
          */
         fim_rt_delay();
 
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_checker(file, &evt_data, NULL);
+        w_rwlock_unlock(&syscheck.directories_lock);
     } else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_process_missing_entry(file, FIM_REALTIME, NULL);
+        w_rwlock_unlock(&syscheck.directories_lock);
     }
 }
 
@@ -834,17 +854,20 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
     struct stat file_stat;
 
-    w_rwlock_rdlock(&syscheck.directories_lock);
     // If the file exists, generate add or modify events.
     if(w_stat(w_evt->path, &file_stat) >= 0) {
         event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = w_evt, .report_event = true };
 
         fim_rt_delay();
 
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_checker(w_evt->path, &evt_data, NULL);
+        w_rwlock_unlock(&syscheck.directories_lock);
     } else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        w_rwlock_unlock(&syscheck.directories_lock);
 #ifndef WIN32
         char **paths = NULL;
         const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
@@ -856,14 +879,15 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
         if(paths) {
             for(int i = 0; paths[i]; i++) {
+                w_rwlock_rdlock(&syscheck.directories_lock);
                 fim_process_missing_entry(paths[i], FIM_WHODATA, w_evt);
+                w_rwlock_unlock(&syscheck.directories_lock);
                 os_free(paths[i]);
             }
             os_free(paths);
         }
 #endif
     }
-    w_rwlock_unlock(&syscheck.directories_lock);
 }
 
 
@@ -1598,27 +1622,26 @@ void fim_diff_folder_size(){
     os_free(diff_local);
 }
 
-void update_wildcards_config(OSList *directories,
-                             OSList *wildcards){
+void update_wildcards_config(){
     OSListNode *node_it;
     OSListNode *aux_it;
     directory_t *dir_it;
     directory_t *new_entry;
     char **paths;
 
-    if (wildcards == NULL || directories == NULL) {
+    if (syscheck.wildcards == NULL || syscheck.directories == NULL) {
         return;
     }
 
     mdebug2(FIM_WILDCARDS_UPDATE_START);
     w_rwlock_wrlock(&syscheck.directories_lock);
 
-    OSList_foreach(node_it, directories) {
+    OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         dir_it->is_expanded = 0;
     }
 
-    OSList_foreach(node_it, wildcards) {
+    OSList_foreach(node_it, syscheck.wildcards) {
         dir_it = node_it->data;
         paths = expand_wildcards(dir_it->path);
 
@@ -1648,26 +1671,26 @@ void update_wildcards_config(OSList *directories,
 #endif
             }
 
-            fim_insert_directory(directories, new_entry);
+            fim_insert_directory(syscheck.directories, new_entry);
         }
         os_free(paths);
     }
 
-    node_it = OSList_GetFirstNode(directories);
+    node_it = OSList_GetFirstNode(syscheck.directories);
     while (node_it != NULL) {
         dir_it = node_it->data;
-        if (dir_it->is_wildcard && !dir_it->is_expanded) {
+        if (dir_it->is_wildcard && dir_it->is_expanded == 0) {
             // Send event if needed before delete this node entry
             fim_process_missing_entry(dir_it->path, FIM_SCHEDULED, NULL);
 
             // Delete node
             mdebug2(FIM_WILDCARDS_REMOVE_DIRECTORY, dir_it->path);
-            aux_it = OSList_GetNext(directories, node_it);
+            aux_it = OSList_GetNext(syscheck.directories, node_it);
             free_directory(dir_it);
-            OSList_DeleteThisNode(directories, node_it);
+            OSList_DeleteThisNode(syscheck.directories, node_it);
             node_it = aux_it;
         } else {
-            node_it = OSList_GetNext(directories, node_it);
+            node_it = OSList_GetNext(syscheck.directories, node_it);
         }
     }
 

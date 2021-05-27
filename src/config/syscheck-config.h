@@ -80,10 +80,6 @@ typedef enum fdb_stmt {
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
-#define OSList_foreach(node_it, list)                                                  \
-    for (node_it = (list != NULL) ? OSList_GetFirstNode(list) : NULL; node_it != NULL; \
-         node_it = OSList_GetNext(list, node_it))
-
 #define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
 
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)

@@ -225,7 +225,7 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.scan_day);
     assert_null(syscheck.scan_time);
     assert_non_null(syscheck.directories);
-    assert_null(syscheck.directories->first_node);
+    assert_null(OSList_GetFirstNode(syscheck.directories));
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 0);

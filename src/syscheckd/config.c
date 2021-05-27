@@ -125,7 +125,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 
 #ifndef WIN32
     /* We must have at least one directory to check */
-    if (syscheck.directories->first_node == NULL && syscheck.wildcards == NULL) {
+    if (OSList_GetFirstNode(syscheck.directories) == NULL && syscheck.wildcards == NULL) {
         return (1);
     }
 #else
@@ -145,7 +145,7 @@ int Read_Syscheck_Config(const char *cfgfile)
             it++;
         }
     }
-    if ((syscheck.directories->first_node == NULL) && (syscheck.registry[0].entry == NULL && syscheck.wildcards == NULL)) {
+    if ((OSList_GetFirstNode(syscheck.directories) == NULL) && (syscheck.registry[0].entry == NULL && syscheck.wildcards == NULL)) {
         return (1);
     }
     syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
@@ -179,11 +179,13 @@ void free_whodata_event(whodata_evt *w_evt) {
 }
 
 cJSON *getSyscheckConfig(void) {
-    w_rwlock_rdlock(&syscheck.directories_lock);
 #ifndef WIN32
+    w_rwlock_rdlock(&syscheck.directories_lock);
     if (OSList_GetFirstNode(syscheck.directories) == NULL) {
+        w_rwlock_unlock(&syscheck.directories_lock);
         return NULL;
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 #endif
 
     cJSON *root = cJSON_CreateObject();
@@ -220,6 +222,7 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     if (OSList_GetFirstNode(syscheck.directories) != NULL) {
         directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();

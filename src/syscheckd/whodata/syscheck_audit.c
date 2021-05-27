@@ -182,6 +182,7 @@ void audit_no_rules_to_realtime() {
     directory_t *dir_it = NULL;
     OSListNode *node_it;
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
@@ -197,6 +198,7 @@ void audit_no_rules_to_realtime() {
         }
         free(real_path);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 }
 
 // LCOV_EXCL_START

@@ -932,13 +932,4 @@ void fim_delete_file_event(fdb_t *fim_sql,
                            void *_unused_field_1,
                            void *_unused_field_2);
 
-/**
- * @brief Update directories configuration with the wildcard list
- *
- * @param OSList List of directories to be updated
- * @param OSList List wildcards to expand
- */
-void update_wildcards_config(OSList *directories,
-                             OSList *wildcards);
-
 #endif /* SYSCHECK_H */

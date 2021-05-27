@@ -93,6 +93,7 @@ int fim_rules_initial_load() {
         merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
     }
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     w_mutex_lock(&rules_mutex);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
@@ -140,8 +141,9 @@ int fim_rules_initial_load() {
         // real_path can't be NULL
         free(directory);
     }
-
     w_mutex_unlock(&rules_mutex);
+    w_rwlock_unlock(&syscheck.directories_lock);
+
     return rules_added;
 }
 

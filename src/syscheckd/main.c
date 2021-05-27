@@ -115,7 +115,7 @@ int main(int argc, char **argv)
         merror(RCONFIG_ERROR, SYSCHECK, cfg);
         syscheck.disabled = 1;
     } else if ((r == 1) || (syscheck.disabled == 1)) {
-        if (syscheck.directories == NULL || syscheck.directories->first_node == NULL) {
+        if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
             }

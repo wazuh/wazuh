@@ -13,6 +13,10 @@
 #ifndef OS_LIST
 #define OS_LIST
 
+#define OSList_foreach(node_it, list)                                                  \
+    for (node_it = (list != NULL) ? OSList_GetFirstNode(list) : NULL; node_it != NULL; \
+         node_it = OSList_GetNext(list, node_it))
+
 typedef struct _OSListNode {
     struct _OSListNode *next;
     struct _OSListNode *prev;
