@@ -568,9 +568,9 @@ ID: 80200 - 80499
         <description>AWS S3 Error: $(aws.error_code), operation: $(aws.operation)</description>
     </rule>
 
-    <!-- Needs to look for same field to distinguis between S3 Acces denied and S3 Storage Lens region not supported -->
     <rule id="200041" level="10" frequency="10" timeframe="60">
         <if_matched_sid>200040</if_matched_sid>
+        <same_field>aws.error_code</same_field>
         <description>AWS S3 Error: Multiple Access Denied</description>
     </rule>
 
