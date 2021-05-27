@@ -18,31 +18,18 @@
 #include "registryHelper.h"
 #include "sharedDefs.h"
 
-// for retro compatibility compilation this macro is defined.
-// https://github.com/mirror/mingw-w64/blob/d2374f898457b0f4ea8bd4084a94f2dafc87a99a/mingw-w64-headers/include/sdkddkver.h#L25
-#ifndef _WIN32_WINNT_WINTHRESHOLD
-constexpr auto WINDOWS_10_MAJOR_VERSION { 10 };
-static VERSIONHELPERAPI IsWindows10OrGreater()
-{
-    OSVERSIONINFOEX info{ };
-    info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-    GetVersionEx(reinterpret_cast<LPOSVERSIONINFO>(&info));
-    return WINDOWS_10_MAJOR_VERSION <= info.dwMajorVersion;
-}
-#endif
-
 static std::string getVersion(const bool isMinor = false)
 {
     std::string version;
     if(IsWindowsVistaOrGreater())
     {
         Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
-        if (IsWindows10OrGreater())
+        try
         {
             const auto versionNumber{currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber")};
             version = std::to_string(versionNumber);
         }
-        else
+        catch (...)
         {
             enum OS_VERSION
             {
