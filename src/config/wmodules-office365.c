@@ -12,8 +12,6 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_ENABLED                  = "enabled";
-static const char *XML_RUN_ON_START             = "run_on_start";
-static const char *XML_SKIP_ON_ERROR            = "skip_on_error";
 static const char *XML_ONLY_FUTURE_EVENTS       = "only_future_events";
 static const char *XML_INTERVAL                 = "interval";
 
@@ -87,8 +85,6 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
         os_calloc(1, sizeof(wm_office365), office365_config);
 
         office365_config->enabled =            WM_OFFICE365_DEFAULT_ENABLED;
-        office365_config->run_on_start =       WM_OFFICE365_DEFAULT_RUN_ON_START;
-        office365_config->skip_on_error =      WM_OFFICE365_DEFAULT_SKIP_ON_ERROR;
         office365_config->only_future_events = WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS;
         office365_config->interval =           WM_OFFICE365_DEFAULT_INTERVAL;
 
@@ -118,24 +114,6 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 office365_config->enabled = 0;
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_OFFICE365_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
-            if (!strcmp(nodes[i]->content, "yes"))
-                office365_config->run_on_start = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-                office365_config->run_on_start = 0;
-            else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_OFFICE365_CONTEXT.name);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_SKIP_ON_ERROR)) {
-            if (!strcmp(nodes[i]->content, "yes"))
-                office365_config->skip_on_error = 1;
-            else if (!strcmp(nodes[i]->content, "no"))
-                office365_config->skip_on_error = 0;
-            else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_ON_ERROR, WM_OFFICE365_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS)) {

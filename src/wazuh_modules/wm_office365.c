@@ -76,16 +76,6 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
     } else {
         cJSON_AddStringToObject(wm_info, "enabled", "no");
     }
-    if (office365_config->run_on_start) {
-        cJSON_AddStringToObject(wm_info, "run_on_start", "yes");
-    } else {
-        cJSON_AddStringToObject(wm_info, "run_on_start", "no");
-    }
-    if (office365_config->skip_on_error) {
-        cJSON_AddStringToObject(wm_info, "skip_on_error", "yes");
-    } else {
-        cJSON_AddStringToObject(wm_info, "skip_on_error", "no");
-    }
     if (office365_config->only_future_events) {
         cJSON_AddStringToObject(wm_info, "only_future_events", "yes");
     } else {
