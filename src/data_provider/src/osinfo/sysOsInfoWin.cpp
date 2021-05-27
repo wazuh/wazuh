@@ -22,7 +22,7 @@
 // https://github.com/mirror/mingw-w64/blob/d2374f898457b0f4ea8bd4084a94f2dafc87a99a/mingw-w64-headers/include/sdkddkver.h#L25
 #ifndef _WIN32_WINNT_WINTHRESHOLD
 constexpr auto WINDOWS_10_MAJOR_VERSION { 10 };
-static VERSIONHELPERAPI IsxWindows10OrGreater()
+static VERSIONHELPERAPI IsWindows10OrGreater()
 {
     OSVERSIONINFOEX info{ };
     info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
