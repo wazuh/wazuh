@@ -6,6 +6,7 @@ import copy
 import fcntl
 import hashlib
 import ipaddress
+import re
 import tempfile
 import threading
 from base64 import b64encode
@@ -32,6 +33,8 @@ from wazuh.core.wdb import WazuhDBConnection
 mutex = threading.Lock()
 lock_file = None
 lock_acquired = False
+
+agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -1281,9 +1284,9 @@ def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
 def get_agents_info():
     """Get all agent IDs in the system."""
     with open(common.client_keys, 'r') as f:
-        file_content = f.readlines()
+        file_content = f.read()
 
-    result = {line.split(' ')[0] for line in file_content}
+    result = set(agent_regex.findall(file_content))
     result.add('000')
 
     return result
