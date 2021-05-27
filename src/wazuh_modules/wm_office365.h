@@ -15,8 +15,6 @@
 #define WM_OFFICE365_LOGTAG ARGV0 ":" OFFICE365_WM_NAME
 
 #define WM_OFFICE365_DEFAULT_ENABLED 1
-#define WM_OFFICE365_DEFAULT_RUN_ON_START 1
-#define WM_OFFICE365_DEFAULT_SKIP_ON_ERROR 0
 #define WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS 1
 #define WM_OFFICE365_DEFAULT_INTERVAL 600
 #define WM_OFFICE365_DEFAULT_AZURE 0
@@ -43,8 +41,6 @@ typedef struct subscription_flags_t {
 
 typedef struct wm_office365 {
     int enabled;
-    int run_on_start;
-    int skip_on_error;
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
     wm_office365_auth *auth;

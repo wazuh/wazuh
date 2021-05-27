@@ -70,8 +70,6 @@ static int teardown_test_read(void **state) {
 void test_read_configuration(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>no</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>10m</interval>"
         "<api_auth>"
@@ -92,8 +90,6 @@ void test_read_configuration(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
     wm_office365 *module_data = (wm_office365*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
-    assert_int_equal(module_data->run_on_start, 0);
-    assert_int_equal(module_data->skip_on_error, 0);
     assert_int_equal(module_data->only_future_events, 0);
     assert_int_equal(module_data->interval, 600);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
@@ -109,8 +105,6 @@ void test_read_configuration(void **state) {
 void test_read_configuration_1(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>yes</only_future_events>"
         "<interval>10m</interval>"
         "<api_auth>"
@@ -138,8 +132,6 @@ void test_read_configuration_1(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
     wm_office365 *module_data = (wm_office365*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
-    assert_int_equal(module_data->run_on_start, 1);
-    assert_int_equal(module_data->skip_on_error, 0);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->interval, 600);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
@@ -169,8 +161,6 @@ void test_read_default_configuration(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
     wm_office365 *module_data = (wm_office365*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
-    assert_int_equal(module_data->run_on_start, 1);
-    assert_int_equal(module_data->skip_on_error, 0);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->interval, 600);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
@@ -186,8 +176,6 @@ void test_read_default_configuration(void **state) {
 void test_read_interval(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>10</interval>"
         "<api_auth>"
@@ -208,8 +196,6 @@ void test_read_interval(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
     wm_office365 *module_data = (wm_office365*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
-    assert_int_equal(module_data->run_on_start, 1);
-    assert_int_equal(module_data->skip_on_error, 0);
     assert_int_equal(module_data->only_future_events, 0);
     assert_int_equal(module_data->interval, 10);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
@@ -225,8 +211,6 @@ void test_read_interval(void **state) {
 void test_read_interval_s(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>50s</interval>"
         "<api_auth>"
@@ -252,8 +236,6 @@ void test_read_interval_s(void **state) {
 void test_read_interval_s_fail(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>90000s</interval>"
         "<api_auth>"
@@ -278,8 +260,6 @@ void test_read_interval_s_fail(void **state) {
 void test_read_interval_m(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>1m</interval>"
         "<api_auth>"
@@ -305,8 +285,6 @@ void test_read_interval_m(void **state) {
 void test_read_interval_m_fail(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>1500m</interval>"
         "<api_auth>"
@@ -331,8 +309,6 @@ void test_read_interval_m_fail(void **state) {
 void test_read_interval_h(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>2h</interval>"
         "<api_auth>"
@@ -358,8 +334,6 @@ void test_read_interval_h(void **state) {
 void test_read_interval_h_fail(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>30h</interval>"
         "<api_auth>"
@@ -384,8 +358,6 @@ void test_read_interval_h_fail(void **state) {
 void test_read_interval_d(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
         "<api_auth>"
@@ -411,8 +383,6 @@ void test_read_interval_d(void **state) {
 void test_read_interval_d_fail(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>2d</interval>"
         "<api_auth>"
@@ -452,8 +422,6 @@ void test_secret_path_and_secret(void **state) {
 void test_fake_tag(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
         "<api_auth>"
@@ -479,8 +447,6 @@ void test_fake_tag(void **state) {
 void test_fake_tag_1(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
         "<api_auth>"
@@ -506,34 +472,6 @@ void test_fake_tag_1(void **state) {
 void test_invalid_content_1(void **state) {
     const char *string =
         "<enabled>no</enabled>"
-        "<run_on_start>invalid</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
-        "<only_future_events>no</only_future_events>"
-        "<interval>1d</interval>"
-        "<api_auth>"
-            "<tenant_id>your_tenant_id</tenant_id>"
-            "<client_id>your_client_id</client_id>"
-            "<client_secret>your_secret</client_secret>"
-        "</api_auth>"
-        "<subscriptions>"
-            "<subscription>Audit.AzureActiveDirectory</subscription>"
-            "<subscription>Audit.Exchange</subscription>"
-            "<subscription>Audit.SharePoint</subscription>"
-            "<subscription>Audit.General</subscription>"
-            "<subscription>DLP.All</subscription>"
-        "</subscriptions>"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'run_on_start' at module 'office365'.");
-    test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
-}
-
-void test_invalid_content_2(void **state) {
-    const char *string =
-        "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>no</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
         "<api_auth>"
@@ -555,37 +493,9 @@ void test_invalid_content_2(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
-void test_invalid_content_3(void **state) {
-    const char *string =
-        "<enabled>no</enabled>"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>invalid</skip_on_error>"
-        "<only_future_events>no</only_future_events>"
-        "<interval>1d</interval>"
-        "<api_auth>"
-            "<tenant_id>your_tenant_id</tenant_id>"
-            "<client_id>your_client_id</client_id>"
-            "<client_secret>your_secret</client_secret>"
-        "</api_auth>"
-        "<subscriptions>"
-            "<subscription>Audit.AzureActiveDirectory</subscription>"
-            "<subscription>Audit.Exchange</subscription>"
-            "<subscription>Audit.SharePoint</subscription>"
-            "<subscription>Audit.General</subscription>"
-            "<subscription>DLP.All</subscription>"
-        "</subscriptions>"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'skip_on_error' at module 'office365'.");
-    test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
-}
-
-void test_invalid_content_4(void **state) {
+void test_invalid_content_2(void **state) {
     const char *string =
         "<enabled>invalid</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>invalid</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
         "<api_auth>"
@@ -607,11 +517,9 @@ void test_invalid_content_4(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
-void test_invalid_content_5(void **state) {
+void test_invalid_content_3(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<only_future_events>no</only_future_events>"
         "<interval>invalid</interval>"
         "<api_auth>"
@@ -633,11 +541,9 @@ void test_invalid_content_5(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
-void test_invalid_content_6(void **state) {
+void test_invalid_content_4(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<only_future_events>invalid</only_future_events>"
         "<interval>yes</interval>"
         "<api_auth>"
@@ -662,8 +568,6 @@ void test_invalid_content_6(void **state) {
 void test_invalid_interval(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>-10</interval>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
@@ -687,8 +591,6 @@ void test_invalid_interval(void **state) {
 void test_error_api_auth(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<subscriptions>"
             "<subscription>Audit.AzureActiveDirectory</subscription>"
@@ -707,8 +609,6 @@ void test_error_api_auth(void **state) {
 void test_error_api_auth_1(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<invalid>your_tenant_id</invalid>"
@@ -732,8 +632,6 @@ void test_error_api_auth_1(void **state) {
 void test_error_tenant_id(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<tenant_id></tenant_id>"
@@ -757,8 +655,6 @@ void test_error_tenant_id(void **state) {
 void test_error_tenant_id_1(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<client_id>your_client_id</client_id>"
@@ -781,8 +677,6 @@ void test_error_tenant_id_1(void **state) {
 void test_error_client_id(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
@@ -806,8 +700,6 @@ void test_error_client_id(void **state) {
 void test_error_client_id_1(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
@@ -830,8 +722,6 @@ void test_error_client_id_1(void **state) {
 void test_error_client_secret(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
@@ -855,8 +745,6 @@ void test_error_client_secret(void **state) {
 void test_error_client_secret_1(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
@@ -879,8 +767,6 @@ void test_error_client_secret_1(void **state) {
 void test_error_client_secret_path (void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
@@ -906,8 +792,6 @@ void test_error_client_secret_path (void **state) {
 void test_error_client_secret_path_1(void **state) {
     const char *string =
         "<enabled>yes</enabled>\n"
-        "<run_on_start>yes</run_on_start>"
-        "<skip_on_error>yes</skip_on_error>"
         "<interval>10</interval>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
@@ -949,8 +833,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_invalid_content_2, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_3, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_4, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_invalid_content_5, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_invalid_content_6, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_interval, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_auth, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_auth_1, setup_test_read, teardown_test_read),
