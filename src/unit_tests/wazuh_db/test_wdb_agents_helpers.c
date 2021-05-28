@@ -81,7 +81,7 @@ void test_wdb_agents_sys_osinfo_get_success(void ** state)
 }
 
 /* Tests wdb_insert_vuln_cves */
-
+#if 0
 void test_wdb_insert_vuln_cves_error_json(void **state)
 {
     cJSON *ret = NULL;
@@ -208,7 +208,7 @@ void test_wdb_insert_vuln_cves_success(void **state)
 
     assert_ptr_equal(1, ret);
 }
-
+#endif
 /* Tests wdb_update_vuln_cves_status */
 
 void test_wdb_update_vuln_cves_status_error_json(void **state){
@@ -1225,48 +1225,48 @@ int main()
 {
     const struct CMUnitTest tests[] =
     {
-        /* Tests wdb_agents_sys_osinfo_get */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_get_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_get_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_vuln_cves_insert*/
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_insert_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_insert_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_insert_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_vuln_cves_update_status*/
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_vuln_cves_update_status_by_type*/
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_vuln_cves_remove_entry */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_vuln_cves_remove_by_status */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_error_wdb_query, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_error_json_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_success_ok, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_success_due, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_vuln_cves_clear*/
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_clear_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_clear_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_clear_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_clear_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_sys_osinfo_set_triaged*/
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_get_agent_sys_osinfo */
+        cmocka_unit_test_setup_teardown(test_wdb_get_sys_osinfo_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_sys_osinfo_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_insert_vuln_cves*/
+        /*cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),*/
+        /* Tests wdb_update_vuln_cves_status*/
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_update_vuln_cves_status_by_type*/
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_by_type_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_by_type_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_by_type_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_by_type_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_by_type_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_remove_vuln_cves */
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_remove_vuln_cves_by_status */
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_by_status_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_by_status_error_wdb_query, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_by_status_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_by_status_error_json_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_by_status_success_ok, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_vuln_cves_by_status_success_due, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_clear_vuln_cves*/
+        cmocka_unit_test_setup_teardown(test_wdb_clear_vuln_cves_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_clear_vuln_cves_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_clear_vuln_cves_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_clear_vuln_cves_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_set_agent_sys_osinfo_triaged*/
+        cmocka_unit_test_setup_teardown(test_wdb_set_sys_osinfo_triaged_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_sys_osinfo_triaged_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_sys_osinfo_triaged_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_sys_osinfo_triaged_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
