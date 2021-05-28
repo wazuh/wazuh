@@ -45,7 +45,7 @@
 #define SHOW_OR_TYPE_LOG_STR    " OR eventType == logEvent"
 #define SHOW_OR_TYPE_TRACE_STR  " OR eventType == traceEvent"
 
-#define MAX_LOG_CMD_ARGS        14
+#define MAX_LOG_CMD_ARGS        17
 #define MAX_LOG_STREAM_CMD_ARGS MAX_LOG_CMD_ARGS    ///< This value takes into account the largest case of use
 #define MAX_LOG_SHOW_CMD_ARGS   MAX_LOG_CMD_ARGS    ///< This value takes into account the largest case of use
 
@@ -53,6 +53,11 @@
 
 #define MACOS_LOG_SHOW_CHILD_EXITED      LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED,"show"
 #define MACOS_LOG_STREAM_CHILD_EXITED    LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED,"stream"
+
+#define MACOS_SIERRA_CODENAME_STR   "Sierra"            ///< String to compare macOS version
+#define SCRIPT_CMD_STR              "/usr/bin/script"   ///< `script` tool path
+#define SCRIPT_CMD_ARGS             "-q"                ///< `script` tool quiet argument
+#define SCRIPT_CMD_SINK             "/dev/null"         ///> `script` tool output redirection
 
 
 ///< macOS ULS milliseconds lenght i.e .123456
