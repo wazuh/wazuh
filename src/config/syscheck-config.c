@@ -1022,29 +1022,28 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             // Fill wildcards array
             if (strchr(clean_path, '*') || strchr(clean_path, '?') || strchr(clean_path, '[')) {
-                directory_t *wildcard = fim_create_directory(clean_path, opts, restrictfile, recursion_limit,
-                                                             clean_tag, tmp_diff_size, 1);
                 if (syscheck->wildcards == NULL) {
                     syscheck->wildcards = OSList_Create();
                     if (syscheck->wildcards == NULL) {
-                        free_directory(wildcard);
                         os_free(clean_path);
                         merror(MEM_ERROR, errno, strerror(errno));
                         continue;
                     }
                 }
-
-                // Check directories options to determine whether to start the whodata thread or not
-                if (wildcard->options & WHODATA_ACTIVE) {
-                    syscheck->enable_whodata = 1;
-                }
-
-                fim_insert_directory(syscheck->wildcards, wildcard);
                 paths = expand_wildcards(clean_path);
 
                 if (paths == NULL) {
                     os_free(clean_path);
                     continue;
+                }
+
+                // Create the wildcard directory
+                directory_t *wildcard = fim_create_directory(clean_path, opts, restrictfile, recursion_limit,
+                                                             clean_tag, tmp_diff_size, 1);
+
+                // Check directories options to determine whether to start the whodata thread or not
+                if (wildcard->options & WHODATA_ACTIVE) {
+                    syscheck->enable_whodata = 1;
                 }
 
                 for (int j = 0; paths[j]; j++) {
@@ -1062,8 +1061,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
                     fim_insert_directory(syscheck->directories, new_entry);
                 }
-
                 os_free(paths);
+
+                fim_insert_directory(syscheck->wildcards, wildcard);
             } else {
                 new_entry = fim_create_directory(clean_path, opts, restrictfile, recursion_limit,
                                      clean_tag, tmp_diff_size, 0);
