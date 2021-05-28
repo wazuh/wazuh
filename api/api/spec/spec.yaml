@@ -3995,9 +3995,9 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
-    groups_list_delete:
+    groups_list_all:
       in: query
-      name: groups_list
+      name: groups_list_all
       description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
       required: true
       schema:
@@ -6457,7 +6457,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/groups_list_delete'
+        - $ref: '#/components/parameters/groups_list_all'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
