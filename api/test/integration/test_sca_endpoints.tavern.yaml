@@ -117,7 +117,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -125,7 +125,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -347,7 +347,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/006"
@@ -355,7 +355,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -657,7 +657,7 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
@@ -665,7 +665,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -1110,7 +1110,7 @@ stages:
           failed_items: []
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
@@ -1118,7 +1118,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
