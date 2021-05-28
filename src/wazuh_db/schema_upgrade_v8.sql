@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     architecture TEXT,
     cve TEXT,
     detection_time TEXT DEFAULT '',
-    severity TEXT DEFAULT '-' CHECK (severity IN ('Critical', 'High', 'Medium', 'Low', 'None', 'Unknown', '-')),
+    severity TEXT DEFAULT '-' CHECK (severity IN ('Critical', 'High', 'Medium', 'Low', 'None', '-')),
     cvss2_score REAL DEFAULT 0,
     cvss3_score REAL DEFAULT 0,
     reference TEXT DEFAULT '' NOT NULL,
