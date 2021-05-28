@@ -621,8 +621,8 @@ components:
             $ref: '#/components/schemas/RequestError'
           example:
             title: "Wazuh Error"
-            detail: "Maximum number of request per minute reached"
-            remediation: "This limit can be changed in security.yaml file. More information here:
+            detail: "Maximum number of requests per minute reached"
+            remediation: "This limit can be changed in api.yaml file. More information here:
             https://documentation.wazuh.com/4.3/user-manual/api/security/configuration.html"
             code: 6001
 
