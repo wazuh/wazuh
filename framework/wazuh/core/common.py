@@ -179,7 +179,7 @@ agent_info_sleep = 2  # Seconds between retries
 
 # Common variables
 database_limit = 500
-maximum_database_limit = 1000
+maximum_database_limit = 100000
 limit_seconds = 1800  # 600*3
 
 _ossec_uid = None

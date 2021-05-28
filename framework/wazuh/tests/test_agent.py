@@ -1236,3 +1236,57 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
         assert len(result.dikt['data']['last_registered_agent']) == 0
     else:
         assert result.dikt['data']['last_registered_agent'][0]['id'] == last_agent
+
+
+@pytest.fixture(scope='module')
+def insert_agents_db(n_agents=100000):
+    """Insert n_agents in the global.db test database.
+
+    Parameters
+    ----------
+    n_agents : int
+        Total number of agents that must be inside the db after running this function.
+    """
+    last_inserted_id = next(map(list, test_data.cur.execute("select max(id) from agent")), 0)[0]
+    for agent_id in range(last_inserted_id+1, n_agents):
+        msg = f"INSERT INTO agent (id, name, ip, date_add) VALUES ({agent_id}, 'test_{agent_id}', 'any', 1621925385)"
+        test_data.cur.execute(msg)
+
+
+@pytest.mark.parametrize('agent_list, params, expected_ids', [
+    (range(500), {}, range(500)),
+    (range(1000), {}, range(500)),
+    (range(1000, 2000), {}, range(1000, 1500)),
+    (range(100000), {'limit': 1000}, range(1000)),
+    (range(100000), {'offset': 50000}, range(50000, 50500)),
+    (range(1000), {'limit': 100, 'offset': 500}, range(500, 600)),
+    (range(100000), {'limit': 1000, 'offset': 80000}, range(80000, 81000)),
+])
+@patch('wazuh.agent.get_agents_info', return_value=['test', 'test2'])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents_db, agent_list, params, expected_ids):
+    """Check that expected number of items is returned when limit is bigger than 500.
+
+    Tests that use 'insert_agents_db' should be run in the last place, since
+    agent's database is modified.
+
+    Parameters
+    ----------
+    agent_list : list
+        Agents to retrieve.
+    params : dict
+        Parameters to be passed to get_agents function.
+    expected_ids
+        IDs that should be returned.
+    """
+    def agent_ids_format(ids_list):
+        return [str(agent_id).zfill(3) for agent_id in ids_list]
+
+    with patch('wazuh.agent.get_agents_info', return_value=set(agent_ids_format(range(100000)))):
+        result = get_agents(agent_list=agent_ids_format(agent_list), **params).render()
+        expected_ids = agent_ids_format(expected_ids)
+        for item in result['data']['affected_items']:
+            assert item['id'] in expected_ids, f'Received ID {item["id"]} is not within expected IDs.'
+
+
