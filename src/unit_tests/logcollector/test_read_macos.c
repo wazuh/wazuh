@@ -747,7 +747,7 @@ void test_w_macos_log_getlog_split_two_logs(void ** state) {
     will_return(__wrap_can_read, 1);
 
     expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "log 2 first line\n");
+    will_return(__wrap_fgets, "log 2 first line\r\n");
 
     //test_w_macos_log_ctxt_backup_success
 
@@ -798,6 +798,116 @@ void test_w_macos_log_getlog_backup_context(void ** state) {
 
     assert_false(ret);
     assert_string_equal(macos_log_cfg.ctxt.buffer, "test\n");
+    assert_int_equal(macos_log_cfg.ctxt.timestamp, 1000);
+
+    os_free(stream);
+}
+
+void test_w_macos_log_getlog_backup_context_sierra(void ** state) {
+
+    w_macos_log_ctxt_t ctxt;
+    ctxt.buffer[0] = '\0';
+    ctxt.timestamp = 0;
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = true;
+
+    int length = OS_MAXSTR;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test\r\n");
+    will_return(__wrap_time, 1000);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    assert_false(ret);
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "test\n");
+    assert_int_equal(macos_log_cfg.ctxt.timestamp, 1000);
+
+    os_free(stream);
+}
+
+void test_w_macos_log_getlog_backup_context_sierra_multiline(void ** state) {
+
+    w_macos_log_ctxt_t ctxt;
+    ctxt.buffer[0] = '\0';
+    ctxt.timestamp = 0;
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = true;
+
+    int length = OS_MAXSTR;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test multiline line 1\r\n");
+    will_return(__wrap_time, 1000);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "test multiline line 2\r\n");
+    will_return(__wrap_w_expression_match, false);
+    will_return(__wrap_time, 1000);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    assert_false(ret);
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "test multiline line 1\ntest multiline line 2\n");
+    assert_int_equal(macos_log_cfg.ctxt.timestamp, 1000);
+
+    os_free(stream);
+}
+
+void test_w_macos_log_getlog_backup_context_sierra_new_line(void ** state) {
+
+    w_macos_log_ctxt_t ctxt;
+    ctxt.buffer[0] = '\0';
+    ctxt.timestamp = 0;
+
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    w_macos_log_config_t macos_log_cfg;
+    macos_log_cfg.ctxt = ctxt;
+    macos_log_cfg.is_header_processed = true;
+
+    int length = OS_MAXSTR;
+
+    FILE * stream;
+    os_calloc(1, sizeof(FILE *), stream);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "\r\n");
+    will_return(__wrap_time, 1000);
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    bool ret = w_macos_log_getlog(buffer, length, stream, &macos_log_cfg);
+
+    assert_false(ret);
+    assert_string_equal(macos_log_cfg.ctxt.buffer, "\n");
     assert_int_equal(macos_log_cfg.ctxt.timestamp, 1000);
 
     os_free(stream);
@@ -1511,6 +1621,9 @@ int main(void) {
         cmocka_unit_test(test_w_macos_log_getlog_discards_irrelevant_headers),
         cmocka_unit_test(test_w_macos_log_getlog_split_two_logs),
         cmocka_unit_test(test_w_macos_log_getlog_backup_context),
+        cmocka_unit_test(test_w_macos_log_getlog_backup_context_sierra),
+        cmocka_unit_test(test_w_macos_log_getlog_backup_context_sierra_multiline),
+        cmocka_unit_test(test_w_macos_log_getlog_backup_context_sierra_new_line),
         cmocka_unit_test(test_w_macos_log_getlog_cannot_read),
         cmocka_unit_test(test_w_macos_log_getlog_discard_until_eof),
         cmocka_unit_test(test_w_macos_log_getlog_discard_until_null),
