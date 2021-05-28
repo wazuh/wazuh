@@ -44,16 +44,19 @@ checks:
       Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp
       partition. See the fstab(5) manual page for more information.
       Run the following command to remount /tmp :
+
       # mount -o remount,nodev /tmp
+
       OR
       IF systemd is used to mount /tmp:
       Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp
       mount options:
       [Mount]
       Options=mode=1777,strictatime,noexec,nodev,nosuid
+
       Run the following command to restart the systemd daemon:
       # systemctl daemon-reload
-
+      
       Run the following command to restart tmp.mount
       # systemctl restart tmp.mount
     compliance:
@@ -75,17 +78,17 @@ checks:
       partition. See the fstab(5) manual page for more information.
       Run the following command to remount /tmp :
       # mount -o remount,nosuid /tmp
-
+    
       OR
       IF systemd is used to mount /tmp:
       Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp
       mount options:
       [Mount]
       Options=mode=1777,strictatime,noexec,nodev,nosuid
-
+    
       Run the following command to restart the systemd daemon:
       # systemctl daemon-reload
-
+    
       Run the following command to restart tmp.mount:
       # systemctl restart tmp.mount
     compliance:
@@ -103,27 +106,28 @@ checks:
       ensure that users cannot run executable binaries from /tmp .
     remediation: >
       Edit the /etc/fstab file OR the /etc/systemd/system/localfs.target.wants/tmp.mount file:
-
+      
       IF /etc/fstab is used to mount /tmp
       Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp
       partition. See the fstab(5) manual page for more information.
       Run the following command to remount /tmp :
-
+      
       # mount -o remount,noexec /tmp
-
+      
       OR
       IF systemd is used to mount /tmp:
       Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp
       mount options:
-
+      
       [Mount]
       Options=mode=1777,strictatime,noexec,nodev,nosuid
-
+      
       Run the following command to restart the systemd daemon:
       # systemctl daemon-reload
-
+      
       Run the following command to restart tmp.mount
       # systemctl restart tmp.mount
+
     compliance:
       - cis: ["1.1.3"]
       - cis_csc: ["2.6"]
@@ -136,7 +140,7 @@ checks:
     description: >
       The /var directory is used by daemons and other system services to temporarily store
       dynamic data. Some directories created by these processes may be world-writable.
-
+      
       Note: When modifying /var it is advisable to bring the system to emergency mode (so auditd
       is not running), rename the existing directory, mount the new file system, and migrate the
       data over before returning to multiuser mode.
@@ -164,7 +168,7 @@ checks:
       There are two important reasons to ensure that system logs are stored on a separate
       partition: protection against resource exhaustion (since logs can grow quite large) and
       protection of audit data.
-
+      
       Note: When modifying /var/log it is advisable to bring the system to emergency mode (so
       auditd is not running), rename the existing directory, mount the new file system, and migrate
       the data over before returning to multiuser mode.
@@ -186,7 +190,7 @@ checks:
     title: Ensure separate partition exists for /var/log/audit
     description: >
       The auditing daemon, auditd , stores log data in the /var/log/audit directory.
-
+      
       Note: When modifying /var/log/audit it is advisable to bring the system to emergency mode
       (so auditd is not running), rename the existing directory, mount the new file system, and
       migrate the data over before returning to multiuser mode.
@@ -235,6 +239,7 @@ checks:
     title: Ensure nodev option set on /home partition
     description: >
       The nodev mount option specifies that the filesystem cannot contain special devices.
+
       Note: The actions in this recommendation refer to the /home partition, which is the default
       user partition. If you have created other user partitions, it is recommended that the
       Remediation and Audit steps be applied to these partitions as well.
@@ -244,7 +249,7 @@ checks:
     remediation: >
       Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home
       partition. See the fstab(5) manual page for more information.
-
+      
       Run the following command to remount /home/ with the nodev mount option:
       # mount -o remount,nodev /home
     compliance:
@@ -266,7 +271,7 @@ checks:
     remediation: >
       Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the
       /dev/shm partition. See the fstab(5) manual page for more information.
-
+      
       Run the following command to remount /dev/shm:
       # mount -o remount,noexec,nodev,nosuid /dev/shm
     compliance:
@@ -280,6 +285,7 @@ checks:
     title: Ensure noexec option set on /dev/shm partition
     description: >
       The noexec mount option specifies that the filesystem cannot contain executable binaries.
+
       Note: /dev/shm is mounted automatically by systemd. /dev/shm needs to be added to
       /etc/fstab to add mount options even though it is already being mounted on boot.
     rationale: >
@@ -288,7 +294,7 @@ checks:
     remediation: >
       Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the
       /dev/shm partition. See the fstab(5) manual page for more information.
-
+      
       Run the following command to remount /dev/shm:
       # mount -o remount,noexec,nodev,nosuid /dev/shm
     compliance:
@@ -314,18 +320,18 @@ checks:
       Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/*
       file:
       * hard core 0
-
+      
       Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       fs.suid_dumpable = 0
-
+      
       Run the following command to set the active kernel parameter:
       # sysctl -w fs.suid_dumpable=0
-
+      
       If systemd-coredump is installed:
       edit /etc/systemd/coredump.conf and add/modify the following lines:
       Storage=none
       ProcessSizeMax=0
-
+      
       Run the command:
       systemctl daemon-reload
     compliance:
@@ -348,7 +354,7 @@ checks:
     remediation: >
       Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       kernel.randomize_va_space = 2
-
+      
       Run the following command to set the active kernel parameter:
       # sysctl -w kernel.randomize_va_space=2
     compliance:
@@ -426,7 +432,7 @@ checks:
       recommended SFTP be used if file transfer is required. Unless there is a need to run the
       system as a FTP server (for example, to allow anonymous downloads), it is recommended
       that the package be removed to reduce the potential attack surface.
-
+      
       Note: Additional FTP servers also exist and should be removed if not required.
     remediation: >
       Run the following command to remove vsftpd:
@@ -444,18 +450,18 @@ checks:
     rationale: >
       Unless required, the rsync package should be removed to reduce the attack surface area of
       the system.
-
+      
       The rsyncd service presents a security risk as it uses unencrypted protocols for
       communication.
-
+      
       Note: If a required dependency exists for the rsync package, but the rsyncd service is not
       required, the service should be masked.
     remediation: >
       Run the following command to remove the rsync package:
       # zypper remove rsync
-
+      
       OR
-
+      
       Run the following command to mask the rsyncd service:
       # systemctl --now mask rsyncd
     compliance:
@@ -475,7 +481,7 @@ checks:
     rationale: >
       If there are no xinetd services required, it is recommended that the package be removed to
       reduce the attack surface are of the system.
-
+      
       Note: If an xinetd service or services are required, ensure that any xinetd service not required
       is stopped and disabled
     remediation: >
@@ -579,7 +585,7 @@ checks:
       recommended SFTP be used if file transfer is required. Unless there is a need to run the
       system as a FTP server (for example, to allow anonymous downloads), it is recommended
       that the package be removed to reduce the potential attack surface.
-
+      
       Note: Additional FTP servers also exist and should be removed if not required.
     remediation: >
       Run the following command to remove vsftpd:
@@ -597,7 +603,7 @@ checks:
     rationale: >
       Unless there is a need to run the system as a web server, it is recommended that the
       package be removed to reduce the potential attack surface.
-
+      
       Notes:
         - Several http servers exist. apache, apache2, lighttpd, and nginx are example
           packages that provide an HTTP server
@@ -618,7 +624,7 @@ checks:
     rationale: >
       Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended
       that the package be removed to reduce the potential attack surface.
-
+      
       Notes:
         - Several IMAP/POP3 servers exist and can use other service names. courier-imap and
           cyrus-imap are example services that provide a mail server.
@@ -660,7 +666,7 @@ checks:
     rationale: >
       Unless a system is specifically set up to act as a proxy server, it is recommended that the
       squid package be removed to reduce the potential attack surface.
-
+      
       Note: Several HTTP proxy servers exist. These should be checked and removed unless required.
     remediation: >
       Run the following command to remove the squid package:
@@ -677,6 +683,7 @@ checks:
     description: >
       Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the
       health and welfare of network equipment, computer equipment and devices like UPSs.
+
         - Net-SNMP is a suite of applications used to implement SNMPv1 (RFC 1157),
           SNMPv2 (RFCs 1901-1908), and SNMPv3 (RFCs 3411-3418) using both IPv4 and
           IPv6.
@@ -691,7 +698,7 @@ checks:
       text password sharing used in SNMPv2 with more securely encoded parameters. If the the
       SNMP service is not required, the net-snmp package should be removed to reduce the
       attack surface of the system.
-
+      
       Note: If SNMP is required:
         - The server should be configured for SNMP v3 only. User Authentication and Message
           Encryption should be configured.
@@ -764,7 +771,7 @@ checks:
       Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv4.conf.all.send_redirects = 0
       net.ipv4.conf.default.send_redirects = 0
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv4.conf.all.send_redirects=0
       # sysctl -w net.ipv4.conf.default.send_redirects=0
@@ -793,7 +800,7 @@ checks:
       Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv4.conf.all.secure_redirects = 0
       net.ipv4.conf.default.secure_redirects = 0
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv4.conf.all.secure_redirects=0
       # sysctl -w net.ipv4.conf.default.secure_redirects=0
@@ -820,7 +827,7 @@ checks:
       Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv4.conf.all.log_martians = 1
       net.ipv4.conf.default.log_martians = 1
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv4.conf.all.log_martians=1
       # sysctl -w net.ipv4.conf.default.log_martians=1
@@ -851,7 +858,7 @@ checks:
     remediation: >
       Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv4.icmp_echo_ignore_broadcasts = 1
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1
       # sysctl -w net.ipv4.route.flush=1
@@ -875,7 +882,7 @@ checks:
     remediation: >
       Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv4.icmp_ignore_bogus_error_responses = 1
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1
       # sysctl -w net.ipv4.route.flush=1
@@ -905,7 +912,7 @@ checks:
       Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv4.conf.all.rp_filter = 1
       net.ipv4.conf.default.rp_filter = 1
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv4.conf.all.rp_filter=1
       # sysctl -w net.ipv4.conf.default.rp_filter=1
@@ -941,7 +948,7 @@ checks:
     remediation: >
       Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv4.tcp_syncookies = 1
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv4.tcp_syncookies=1
       # sysctl -w net.ipv4.route.flush=1
@@ -1052,7 +1059,7 @@ checks:
       such as Incident Response, it is important to determine when a particular user was active
       on a system. The logout record can eliminate those users who disconnected, which helps
       narrow the field.
-
+      
       VERBOSE level specifies that login and logout activity as well as the key fingerprint for any
       SSH key used for login will be logged. This information is important for SSH key
       management, especially in legacy environments.
@@ -1073,7 +1080,7 @@ checks:
     condition: any
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*VERBOSE'
-      - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*INFO'
+      - 'f:$sshd_file -> !r:^\s*\t*# && r:LogLevel\s*\t*INFO'      
 
   - id: 7546
     title: Ensure root is the only UID 0 account
@@ -1105,7 +1112,7 @@ checks:
       Example: vi /etc/modprobe.d/squashfs.conf
       and add the following line:
       install squashfs /bin/true
-
+      
       Run the following command to unload the squashfs module:
       # modprobe -r squashfs
     compliance:
@@ -1131,7 +1138,7 @@ checks:
       Example: vi /etc/modprobe.d/udf.conf
       and add the following line:
       install udf /bin/true
-
+      
       Run the following command to unload the udf module:
       # modprobe -r udf
     compliance:
@@ -1148,12 +1155,12 @@ checks:
       /dev/shm is a traditional shared memory concept. One program will create a memory
       portion, which other processes (if permitted) can access. If /dev/shm is not configured,
       tmpfs will be mounted to /dev/shm by systemd.
-
+      
       Notes:
         - An entry for /dev/shm in /etc/fstab will take precedence.
         - tmpfs can be resized using the size={size} parameter in /etc/fstab. If we don't specify
           the size, it will be half the RAM.
-
+      
       Resize tmpfs example:
       tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid,size=2G 0 0
     rationale: >
@@ -1167,7 +1174,7 @@ checks:
     remediation: >
       Edit /etc/fstab and add or edit the following line:
       tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid 0 0
-
+      
       Run the following command to remount /dev/shm:
       # mount -o remount,noexec,nodev,nosuid /dev/shm
     compliance:
@@ -1184,7 +1191,7 @@ checks:
       The /var/tmp directory is a world-writable directory used for temporary storage by all
       users and some applications and is intended for temporary files that are preserved across
       reboots.
-
+      
       Note: tmpfs should not be used for /var/tmp/. tmpfs is a temporary filesystem that resides in
       memory and/or swap partition(s). Files in tmpfs are automatically cleared at each bootup.
     rationale: >
@@ -1217,7 +1224,7 @@ checks:
     remediation: >
       Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the
       /var/tmp partition. See the fstab(5) manual page for more information.
-
+      
       Run the following command to remount /var/tmp :
       # mount -o remount,noexec /var/tmp
     compliance:
@@ -1236,7 +1243,7 @@ checks:
     remediation: >
       Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the
       /var/tmp partition. See the fstab(5) manual page for more information.
-
+      
       Run the following command to remount /var/tmp :
       # mount -o remount,nodev /var/tmp
     compliance:
@@ -1255,7 +1262,7 @@ checks:
     remediation: >
       Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the
       /var/tmp partition. See the fstab(5) manual page for more information.
-
+      
       Run the following command to remount /var/tmp :
       # mount -o remount,nosuid /var/tmp
     compliance:
@@ -1304,7 +1311,7 @@ checks:
       parties can develop and distribute their own policy and I/O logging plugins to work
       seamlessly with the sudo front end. The default security policy is sudoers, which is
       configured via the file /etc/sudoers.
-
+      
       The security policy determines what privileges, if any, a user has to run sudo. The policy
       may require that users authenticate themselves with a password or another authentication
       mechanism. If authentication is required, sudo will exit if the user's password is not
@@ -1325,7 +1332,7 @@ checks:
     title: Ensure sudo commands use pty
     description: >
       sudo can be configured to run only from a pseudo-pty
-
+      
       Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the
       sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks for
       parse errors. If the sudoers file is currently being edited you will receive a message to try
@@ -1338,7 +1345,7 @@ checks:
     remediation: >
       Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH
       TO FILE> and add the following line:
-
+      
       Defaults use_pty
     compliance:
       - cis: ["1.3.2"]
@@ -1353,7 +1360,7 @@ checks:
     title: Ensure sudo log file exists
     description: >
       sudo can use a custom log file
-
+      
       Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the
       sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks
       for parse errors. If the sudoers file is currently being edited you will receive a message to
@@ -1363,7 +1370,7 @@ checks:
       edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH
       TO FILE> and add the following line:
       Defaults logfile="<PATH TO CUSTOM LOG FILE>"
-
+      
       Example
       Defaults logfile="/var/log/sudo.log"
     compliance:
@@ -1382,7 +1389,7 @@ checks:
       AIDE takes a snapshot of filesystem state including modification times, permissions, and
       file hashes which can then be used to compare against the current state of the filesystem to
       detect modifications to the system.
-
+      
       Note: The prelinking feature can interfere with AIDE because it alters binaries to speed up
       their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus
       avoiding false positives from AIDE.
@@ -1394,7 +1401,7 @@ checks:
       options.
       Run the following command to install AIDE:
       # zypper install aide
-
+      
       Run the following commands to initialize AIDE:
       # aide --init
       # mv /var/lib/aide/aide.db.new /var/lib/aide/aide.db
@@ -1412,7 +1419,7 @@ checks:
     description: >
       Setting the boot loader password will require that anyone rebooting the system must enter
       a password before being able to set command line boot parameters
-
+      
       Notes:
         - This recommendation is designed around the grub2 bootloader, if LILO or another
           bootloader is in use in your environment enact equivalent settings. Replace
@@ -1434,11 +1441,11 @@ checks:
         Enter password: <password>
         Reenter password: <password>
         Your PBKDF2 is <encrypted-password>
-
+      
       Add the following into /etc/grub.d/40_custom
         set superusers="<username>"
         password_pbkdf2 <username> <encrypted-password>
-
+      
       Run the following command to update the grub2 configuration:
         # grub2-mkconfig -o /boot/grub2/grub.cfg
     compliance:
@@ -1457,7 +1464,7 @@ checks:
       The grub configuration file contains information on boot settings and passwords for
       unlocking boot options. The grub2 configuration is usually grub.cfg stored in
       /boot/grub2/.
-
+      
       Notes:
         - This recommendation is designed around the grub2 bootloader.
         - If LILO or another bootloader is in use in your environment:
@@ -1479,7 +1486,7 @@ checks:
       - cis_csc: ["5.1"]
     condition: all
     rules:
-      - 'c:stat /boot/grub2/grub.cfg -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /boot/grub2/grub.cfg -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7562
     title: Ensure authentication required for single user mode
@@ -1492,7 +1499,7 @@ checks:
     remediation: >
       Edit /usr/lib/systemd/system/rescue.service and add/modify the following line:
       ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue
-
+      
       Edit /usr/lib/systemd/system/emergency.service and add/modify the following line:
       ExecStart=-/usr/lib/systemd/systemd-sulogin-shell emergency
     compliance:
@@ -1516,7 +1523,7 @@ checks:
     rationale: >
       Enabling any feature that can protect against buffer overflow attacks enhances the security
       of the system.
-
+      
       Note: Ensure your system supports the XD or NX bit and has PAE support before implementing
       this recommendation as this may prevent it from booting if these are not supported by your
       hardware.
@@ -1545,7 +1552,7 @@ checks:
     remediation: >
       Run the following command to restore binaries to normal:
       # prelink -ua
-
+      
       Run the following command to uninstall prelink:
       # zypper remove prelink
     compliance:
@@ -1573,14 +1580,14 @@ checks:
       - 'c:rpm -q apparmor-parser -> r:not installed'
       - 'c:rpm -q apparmor-profiles -> r:not installed'
       - 'c:rpm -q apparmor-utils -> r:not installed'
-      - 'c:rpm -q libapparmor1 -> r:not installed'
+      - 'c:rpm -q libapparmor1 -> r:not installed'      
 
   - id: 7567
     title: Ensure message of the day is configured properly
     description: >
       The contents of the /etc/motd file are displayed to users after login and function as a
       message of the day for authenticated users.
-
+      
       Unix-based systems have typically displayed information about the OS release and patch
       level upon logging in to the system. This information can be useful to developers who are
       developing software for a particular OS platform. If mingetty(8) supports the following
@@ -1597,9 +1604,9 @@ checks:
     remediation: >
       Edit the /etc/motd file with the appropriate contents according to your site policy, remove
       any instances of \m , \r , \s , \v or references to the OS platform
-
+      
       OR
-
+      
       If the motd is not used, this file can be removed.
       Run the following command to remove the motd file:
       # rm /etc/motd
@@ -1696,7 +1703,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/motd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/motd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7571
     title: Ensure permissions on /etc/issue are configured
@@ -1733,7 +1740,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/issue.net -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7573
     title: Ensure chrony is configured
@@ -1745,13 +1752,13 @@ checks:
     rationale: >
       If chrony is in use on the system proper configuration is vital to ensuring time
       synchronization is working properly.
-
+      
       Note: This recommendation only applies if chrony is in use on the system. If another method of
       time synchronization is in use on the system, this recommendation can be skipped.
     remediation: >
       Add or edit server or pool lines to /etc/chrony.conf as appropriate:
       server <remote-server>
-
+      
       Add or edit the OPTIONS in /etc/sysconfig/chronyd to include '-u chrony':
       OPTIONS="-u chrony"
     compliance:
@@ -1772,7 +1779,7 @@ checks:
     rationale: >
       If the system does not need to print jobs or accept print jobs from other systems, it is
       recommended that CUPS be removed to reduce the potential attack surface.
-
+      
       Note: Removing CUPS will prevent printing from the system
     remediation: >
       Run the following command to remove cups:
@@ -1828,7 +1835,7 @@ checks:
       Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If
       the line already exists, change it to look like the line below:
       inet_interfaces = loopback-only
-
+      
       Run the folloing command to restart postfix:
       # systemctl restart postfix
     compliance:
@@ -1886,11 +1893,11 @@ checks:
       routes.
     remediation: >
       IF IPv6 is enabled:
-
+      
       Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:
       net.ipv6.conf.all.accept_ra = 0
       net.ipv6.conf.default.accept_ra = 0
-
+      
       Run the following commands to set the active kernel parameters:
       # sysctl -w net.ipv6.conf.all.accept_ra=0
       # sysctl -w net.ipv6.conf.default.accept_ra=0
@@ -1910,7 +1917,7 @@ checks:
     description: >
       The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that
       supports streaming media and telephony. DCCP provides a way to gain access to
-      congestion control, without having to do it at the application layer, but does not provide
+      congestion control, without having to do it at the application layer, but does not provide 
       insequence delivery.
     rationale: >
       If the protocol is not required, it is recommended that the drivers not be installed to reduce
@@ -1919,7 +1926,7 @@ checks:
       Edit or create a file in the /etc/modprobe.d/ directory ending in .conf
       Example: vim /etc/modprobe.d/dccp.conf
       and add the following line:
-
+      
       install dccp /bin/true
     compliance:
       - cis: ["3.4.1"]
@@ -1943,7 +1950,7 @@ checks:
       Edit or create a file in the /etc/modprobe.d/ directory ending in .conf
       Example: vim /etc/modprobe.d/sctp.conf
       and add the following line:
-
+      
       install sctp /bin/true
     compliance:
       - cis: ["3.4.2"]
@@ -1959,23 +1966,23 @@ checks:
       features by acting as a front-end for the Linux kernel's netfilter framework via the iptables
       backend or provides firewall features by acting as a front-end for the Linux kernel's
       netfilter framework via the nftables utility.
-
+      
       FirewallD replaces iptables as the default firewall management tool. Use the firewalld
       utility to configure a firewall for less complex firewalls. The utility is easy to use and covers
       the typical use cases scenario. FirewallD supports both IPv4 and IPv6 networks and can
       administer separate firewall zones with varying degrees of trust as defined in zone profiles.
-
+      
       Note: Starting in v0.6.0, FirewallD added support for acting as a front-end for the Linux
       kernel's netfilter framework via the nftables userspace utility, acting as an alternative to the
       nft command line program.
     rationale: >
       A firewall utility is required to configure the Linux kernel's netfilter framework via the
       iptables or nftables back-end.
-
+      
       The Linux kernel's netfilter framework host-based firewall can protect against threats
       originating from within a corporate network to include malicious mobile code and poorly
       configured software on a host.
-
+      
       Note: Only one firewall utility should be installed and configured. FirewallD is dependent on
       the iptables package.
     remediation: >
@@ -2000,7 +2007,7 @@ checks:
     remediation: >
       Run the following command to unmask firewalld
       # systemctl unmask firewalld
-
+      
       Run the following command to enable and start firewalld
       # systemctl --now enable firewalld
     compliance:
@@ -2085,14 +2092,14 @@ checks:
       will accept any packet that is not configured to be denied and the packet will continue
       transversing the network stack.
       It is easier to white list acceptable usage than to black list unacceptable usage.
-
+      
       Note: Changing firewall settings while connected over network can result in being locked
       out of the system.
     remediation: >
       Run the following command for the base chains with the input, forward, and output hooks
       to implement a default DROP policy:
       # nft chain <table family> <table name> <chain name> { policy drop \; }
-
+      
       Example:
       # nft chain inet filter input { policy drop \; }
       # nft chain inet filter forward { policy drop \; }
@@ -2172,7 +2179,7 @@ checks:
     rationale: >
       With a default accept policy the firewall will accept any packet that is not configured to be
       denied. It is easier to white list acceptable usage than to black list unacceptable usage.
-
+      
       Note: Changing firewall settings while connected over network can result in being locked
       out of the system.
     remediation: >
@@ -2199,7 +2206,7 @@ checks:
       operation of the system. The loopback interface is the only place that loopback network
       (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this
       network as an anti-spoofing measure.
-
+      
       Note: Changing firewall settings while connected over network can result in being locked
       out of the system.
     remediation: >
@@ -2256,7 +2263,7 @@ checks:
     description: >
       Configure the maximum size of the audit log file. Once the log reaches the maximum size, it
       will be rotated and a new log file will be started.
-
+      
       Notes:
         - The max_log_file parameter is measured in megabytes.
         - Other methods of log rotation may be appropriate based on site policy. One example is
@@ -2295,7 +2302,7 @@ checks:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
 
   - id: 7598
-    title: Ensure system is disabled when audit logs are full
+    title: Ensure system is disabled when audit logs are full 
     description: The auditd daemon can be configured to halt the system when the audit logs are full.
     rationale: >
       In high security contexts, the risk of detecting unauthorized access or nonrepudiation
@@ -2322,7 +2329,7 @@ checks:
       configuration) files. The parameters in this section will watch the files to see if they have
       been opened for write or have had attribute changes (e.g. permissions) and tag them with
       the identifier "identity" in the audit log file.
-
+      
       Note: Reloading the auditd config to set active settings may require a system reboot.
     rationale: >
       Unexpected changes to these files could be an indication that the system has been
@@ -2332,7 +2339,7 @@ checks:
       Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules
       Example: vi /etc/audit/rules.d/identity.rules
       and add the following lines:
-
+      
       -w /etc/group -p wa -k identity
       -w /etc/passwd -p wa -k identity
       -w /etc/gshadow -p wa -k identity
@@ -2360,7 +2367,7 @@ checks:
       Monitor SELinux mandatory access controls. The parameters below monitor any write
       access (potential additional, deletion or modification of files in the directory) or attribute
       changes to the /etc/selinux/ and /usr/share/selinux/ directories.
-
+      
       Notes:
         - If a different Mandatory Access Control method is used, changes to the corresponding
           directories should be audited.
@@ -2374,7 +2381,7 @@ checks:
       Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules
       Example: vi /etc/audit/rules.d/MAC_policy.rules
       and add the following lines:
-
+      
       -w /etc/selinux/ -p wa -k MAC-policy
       -w /usr/share/selinux/ -p wa -k MAC-policy
     compliance:
@@ -2406,7 +2413,7 @@ checks:
       Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules
       Example: vi /etc/audit/rules.d/logins.rules
       and add the following lines:
-
+      
       -w /var/log/faillog -p wa -k logins
       -w /var/log/lastlog -p wa -k logins
       -w /var/log/tallylog -p wa -k logins
@@ -2431,7 +2438,7 @@ checks:
       logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed
       login attempts and can be read by entering the command /usr/bin/last -f
       /var/log/btmp . All audit records will be tagged with the identifier "logins."
-
+      
       Notes:
         - The last command can be used to read /var/log/wtmp (last with no parameters)
           and /var/run/utmp (last -f /var/run/utmp)
@@ -2445,7 +2452,7 @@ checks:
       Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules
       Example: vi /etc/audit/rules.d/session.rules
       and add the following lines:
-
+      
       -w /var/run/utmp -p wa -k session
       -w /var/log/wtmp -p wa -k logins
       -w /var/log/btmp -p wa -k logins
@@ -2469,7 +2476,7 @@ checks:
       sudo command to execute privileged commands, it is possible to monitor changes in scope.
       The file /etc/sudoers or a file in the /etc/sudoers.d directory will be written to when the
       file or its attributes have changed.
-
+      
       Notes: Reloading the auditd config to set active settings may require a system reboot.
     rationale: >
       Changes in the /etc/sudoers file, or a file in the /etc/sudoers.d/ directory can indicate
@@ -2478,7 +2485,7 @@ checks:
       Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules
       Example: vi /etc/audit/rules.d/scope.rules
       and add the following lines:
-
+      
       -w /etc/sudoers -p wa -k scope
       -w /etc/sudoers.d/ -p wa -k scope
     compliance:
@@ -2497,7 +2504,7 @@ checks:
       Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e
       2" forces audit to be put in immutable mode. Audit changes can only be made on system
       reboot.
-
+      
       Note: This setting will require the system to be rebooted to update the active auditd
       configuration settings.
     rationale: >
@@ -2508,7 +2515,7 @@ checks:
     remediation: >
       Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the following line
       at the end of the file:
-
+      
       -e 2
     compliance:
       - cis: ["4.1.17"]
@@ -2574,7 +2581,7 @@ checks:
     remediation: >
       Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and set $FileCreateMode to
       0640 or more restrictive:
-
+      
       $FileCreateMode 0640
     compliance:
       - cis: ["4.2.1.3"]
@@ -2591,7 +2598,7 @@ checks:
       Data from journald may be stored in volatile memory or persisted locally on the server.
       Utilities exist to accept remote export of journald logs, however, use of the rsyslog service
       provides a consistent means of log collection and export.
-
+      
       Notes:
         - This recommendation assumes that recommendation 4.2.1.5, "Ensure rsyslog is
           configured to send logs to a remote log host" has been implemented.
@@ -2627,7 +2634,7 @@ checks:
     description: >
       The journald system includes the capability of compressing overly large files to avoid filling
       up the system with logs or making the log's size unmanageable.
-
+      
       Note: The main configuration file /etc/systemd/journald.conf is read before any of the
       custom *.conf files. If there are custom configs present, they override the main configuration
       parameters
@@ -2653,7 +2660,7 @@ checks:
       Data from journald may be stored in volatile memory or persisted locally on the server.
       Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the
       server they are protected from loss.
-
+      
       Note: The main configuration file /etc/systemd/journald.conf is read before any of the
       custom *.conf files. If there are custom configs present, they override the main configuration
       parameters
@@ -2684,9 +2691,9 @@ checks:
     remediation: >
       Run the following command to enable and start cron:
       # systemctl --now enable cron
-
+      
       OR
-
+      
       Run the following command to remove cron:
       # zypper remove cronie
     compliance:
@@ -2712,9 +2719,9 @@ checks:
       Run the following commands to set ownership and permissions on /etc/crontab:
       # chown root:root /etc/crontab
       # chmod u-x,og-rwx /etc/crontab
-
+      
       OR
-
+      
       Run the following command to remove cron:
       # zypper remove cronie
     compliance:
@@ -2722,7 +2729,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/crontab -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7613
     title: Ensure permissions on /etc/cron.hourly are configured
@@ -2742,9 +2749,9 @@ checks:
       directory:
       # chown root:root /etc/cron.hourly/
       # chmod og-rwx /etc/cron.hourly/
-
+      
       OR
-
+      
       Run the following command to remove cron
       # zypper remove cronie
     compliance:
@@ -2752,7 +2759,7 @@ checks:
       - cis_csc: ["5.1"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/cron.hourly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7614
     title: Ensure permissions on /etc/cron.daily are configured
@@ -2772,9 +2779,9 @@ checks:
       directory:
       # chown root:root /etc/cron.daily
       # chmod og-rwx /etc/cron.daily
-
+      
       OR
-
+      
       Run the following command to remove cron:
       # zypper remove cronie
     compliance:
@@ -2782,7 +2789,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/cron.daily/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7615
     title: Ensure permissions on /etc/cron.weekly are configured
@@ -2807,7 +2814,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7616
     title: Ensure permissions on /etc/cron.monthly are configured
@@ -2827,9 +2834,9 @@ checks:
       directory:
       # chown root:root /etc/cron.monthly
       # chmod og-rwx /etc/cron.monthly
-
+      
       OR
-
+      
       Run the following command to remove cron:
       # zypper remove cronie
     compliance:
@@ -2837,7 +2844,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/cron.monthly/ -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7617
     title: Ensure permissions on /etc/cron.d are configured
@@ -2857,9 +2864,9 @@ checks:
       Run the following commands to set ownership and permissions on /etc/cron.d directory:
       # chown root:root /etc/cron.d
       # chmod og-rwx /etc/cron.d
-
+      
       OR
-
+      
       Run the following command to remove cron:
       # zypper remove cronie
     compliance:
@@ -2867,16 +2874,16 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/cron.d -> r:^Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7618
-    title: Ensure cron is restricted to authorized users
+    title: Ensure cron is restricted to authorized users 
     description: >
       If cron is installed in the system, configure /etc/cron.allow to allow specific users to use
       these services. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any
       user not specifically defined in those files is allowed to use cron. By removing the file, only
       users in /etc/cron.allow are allowed to use cron.
-
+      
       Note: Even though a given user is not listed in cron.allow, cron jobs can still be run as that
       user. The cron.allow file only controls administrative access to the crontab command for
       scheduling and modifying cron jobs.
@@ -2888,16 +2895,16 @@ checks:
     remediation: >
       Run the following command to remove /etc/cron.deny:
       # rm /etc/cron.deny
-
+      
       Run the following command to create /etc/cron.allow
       # touch /etc/cron.allow
-
+      
       Run the following commands to set the owner and permissions on /etc/cron.allow:
       # chown root:root /etc/cron.allow
       # chmod u-x,og-rwx /etc/cron.allow
-
+      
       OR
-
+      
       Run the following command to remove cron
       # zypper remove cronie
     compliance:
@@ -2906,7 +2913,7 @@ checks:
     condition: all
     rules:
       - 'not f:/etc/cron.deny'
-      - 'c:stat /etc/cron.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/cron.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7619
     title: Ensure at is restricted to authorized users
@@ -2915,7 +2922,7 @@ checks:
       services. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not
       specifically defined in those files is allowed to use at. By removing the file, only users in
       /etc/at.allow are allowed to use at.
-
+      
       Note: Even though a given user is not listed in at.allow, at jobs can still be run as that user.
       The at.allow file only controls administrative access to the at command for scheduling and
       modifying at jobs.
@@ -2927,16 +2934,16 @@ checks:
     remediation: >
       Run the following command to remove /etc/at.deny:
       # rm /etc/at.deny
-
+      
       Run the following command to create /etc/at.allow
       # touch /etc/at.allow
-
+      
       Run the following commands to set the owner and permissions on /etc/at.allow:
       # chown root:root /etc/at.allow
       # chmod u-x,og-rwx /etc/at.allow
-
+      
       OR
-
+      
       Run the following command to remove at:
       # zypper remove at
     compliance:
@@ -2945,7 +2952,7 @@ checks:
     condition: all
     rules:
       - 'not f:/etc/at.deny'
-      - 'c:stat /etc/at.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/at.allow -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7620
     title: Ensure permissions on /etc/ssh/sshd_config are configured
@@ -2956,7 +2963,7 @@ checks:
       The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by nonprivileged users.
     remediation: >
       Run the following commands to set ownership and permissions on /etc/ssh/sshd_config:
-
+      
       # chown root:root /etc/ssh/sshd_config
       # chmod og-rwx /etc/ssh/sshd_config
     compliance:
@@ -2964,7 +2971,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7621
     title: Ensure SSH access is limited
@@ -3001,13 +3008,13 @@ checks:
     remediation: >
       Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows:
       AllowUsers <userlist>
-
+      
       OR
       AllowGroups <grouplist>
-
+      
       OR
       DenyUsers <userlist>
-
+      
       OR
       DenyGroups <grouplist>
     compliance:
@@ -3071,7 +3078,7 @@ checks:
         - CVE-2013-4548 referenced bellow applies to OpenSSH versions 6.2 and 6.3. If running
           these versions of Open SSH, Please upgrade to version 6.4 or later to fix the
           vulnerability, or disable AES-GCM in the server configuration
-
+      
       The Following are the supported ciphers in openSSH 7.9:
       3des-cbc
       aes128-cbc
@@ -3108,7 +3115,7 @@ checks:
     remediation: >
       Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma
       separated list of the site approved ciphers
-
+      
       Example:
       Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-
       gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
@@ -3140,7 +3147,7 @@ checks:
         - Some organizations may have stricter requirements for approved MACs. Ensure that
           MACs used are in compliance with site policy
         - The only "strong" MACs currently FIPS 140-2 approved are hmac-sha2-256 and hmacsha2-512
-
+      
       The Supported MACs are:
       hmac-md5
       hmac-md5-96
@@ -3167,7 +3174,7 @@ checks:
     remediation: >
       Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma
       separated list of the site approved MACs
-
+      
       Example:
       MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-
       512,hmac-sha2-256
@@ -3201,7 +3208,7 @@ checks:
       between two parties, allowing use of a cryptographic algorithm. If the sender and receiver
       wish to exchange encrypted messages, each must be equipped to encrypt messages to be
       sent and decrypt messages received
-
+      
       Notes:
       Kex algorithms have a higher preference the earlier they appear in the list
         - Some organizations may have stricter requirements for approved Key exchange
@@ -3209,7 +3216,7 @@ checks:
           policy.
         - The only Key Exchange Algorithms currently FIPS 140-2 approved are: ecdh-sha2-
           nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchangesha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffiehellman-group14-sha256
-
+      
       The Key Exchange algorithms supported by OpenSSH 7.9 are:
       curve25519-sha256
       curve25519-sha256@libssh.org
@@ -3230,7 +3237,7 @@ checks:
     remediation: >
       Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma
       separated list of the site approved key exchange algorithms
-
+      
       Example
       KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellmangroup14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-
       sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffiehellman-group-exchange-sha256
@@ -3248,6 +3255,7 @@ checks:
     description: >
       The two options ClientAliveInterval and ClientAliveCountMax control the timeout of
       ssh sessions.
+
         - ClientAliveInterval sets a timeout interval in seconds after which if no data has
           been received from the client, sshd will send a message through the encrypted
           channel to request a response from the client. The default is 0, indicating that these
@@ -3258,7 +3266,7 @@ checks:
           terminating the session. The default value is 3.
             - The client alive messages are sent through the encrypted channel
             - Setting ClientAliveCountMax to 0 disables connection termination
-
+      
       Example: If the ClientAliveInterval is set to 15 seconds and the ClientAliveCountMax is
       set to 3, the client ssh session will be terminated after 45 seconds of idle time.
     rationale: >
@@ -3324,7 +3332,7 @@ checks:
       prosecution of trespassers on the computer system.
     remediation: >
       Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-
+      
       Banner /etc/issue.net
     compliance:
       - cis: ["5.2.18"]
@@ -3347,7 +3355,7 @@ checks:
       on login or disallow access to the server
     remediation: >
       Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-
+      
       UsePAM yes
     compliance:
       - cis: ["5.2.19"]
@@ -3365,7 +3373,7 @@ checks:
       use it for opening backdoors into the internal network from their home machines
     rationale: >
       Leaving port forwarding enabled can expose the organization to security risks and backdoors.
-
+      
       SSH connections are protected with strong encryption. This makes their contents invisible
       to most deployed network monitoring and traffic filtering solutions. This invisibility carries
       considerable risk potential if it is used for malicious purposes such as data exfiltration.
@@ -3373,7 +3381,7 @@ checks:
       or to exfiltrate stolen data from the target network
     remediation: >
       Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-
+      
       AllowTcpForwarding no
     compliance:
       - cis: ["5.2.20"]
@@ -3395,7 +3403,7 @@ checks:
       sshd logins and prevent overwhelming the daemon.
     remediation: >
       Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-
+      
       maxstartups 10:30:60
     compliance:
       - cis: ["5.2.21"]
@@ -3405,7 +3413,7 @@ checks:
       - 'c:sshd -T -> r:^maxstartups\s+10:30:60\s*$'
 
   - id: 7633
-    title: Ensure SSH MaxSessions is limited
+    title: Ensure SSH MaxSessions is limited 
     description: >
       The MaxSessions parameter specifies the maximum number of open sessions permitted
       from a given connection.
@@ -3415,7 +3423,7 @@ checks:
       prevent overwhelming the daemon.
     remediation: >
       Edit the /etc/ssh/sshd_config file to set the parameter as follows:
-
+      
       MaxSessions 10
     compliance:
       - cis: ["5.2.22"]
@@ -3429,7 +3437,7 @@ checks:
     description: >
       The /etc/security/opasswd file stores the users' old passwords and can be checked to
       ensure that users are not recycling recent passwords.
-
+      
       Notes:
       - Additional module options may be set, recommendation only covers those listed here.
       - This setting only applies to local accounts.
@@ -3440,9 +3448,9 @@ checks:
     remediation: >
       Run the following command:
       # pam-config -a --pwhistory --pwhistory-remember=5
-
+      
       OR
-
+      
       Edit the file /etc/pam.d/common-password to include the remember= option and conform to
       site policy as shown:
       password required pam_pwhistory.so remember=5
@@ -3458,7 +3466,7 @@ checks:
     title: Ensure password hashing algorithm is SHA-512
     description: >
       Login passwords are hashed and stored in the /etc/shadow file.
-
+      
       Note: These changes only apply to accounts configured on the local system.
     rationale: >
       The SHA-512 algorithm provides much stronger hashing than MD5, thus providing
@@ -3467,7 +3475,7 @@ checks:
     remediation: >
       Edit the /etc/login.defs file and modify ENCRYPT_METHOD to SHA512:
       ENCRYPT_METHOD sha512
-
+      
       Notes:
         - Any system accounts that need to be expired should be carefully done separately by the
           system administrator to prevent any potential problems
@@ -3513,7 +3521,7 @@ checks:
       inadvertently or through malicious actions.
     remediation: >
       Run the following commands to set owner, group, and permissions on /etc/passwd:
-
+      
       # chown root:root /etc/passwd
       # chmod u-x,g-wx,o-wx /etc/passwd
     compliance:
@@ -3521,7 +3529,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7638
     title: Ensure permissions on /etc/shadow are configured
@@ -3536,7 +3544,7 @@ checks:
       user accounts.
     remediation: >
       Run the following commands to set owner, group, and permissions on /etc/shadow:
-
+      
       # chown root:root /etc/shadow
       # chmod u-x,g-wx,o-rwx /etc/shadow
     compliance:
@@ -3544,7 +3552,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
+      - 'c:stat -L /etc/shadow -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
 
   - id: 7639
     title: Ensure permissions on /etc/group are configured
@@ -3557,7 +3565,7 @@ checks:
       programs.
     remediation: >
       Run the following commands to set owner, group, and permissions on /etc/group :
-
+      
       # chown root:root /etc/group
       # chmod u-x,g-wx,o-wx /etc/group
     compliance:
@@ -3565,7 +3573,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/group -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7640
     title: Ensure permissions on /etc/passwd- are configured
@@ -3576,7 +3584,7 @@ checks:
       inadvertently or through malicious actions.
     remediation: >
       Run the following commands to set owner, group, and permissions on /etc/passwd- :
-
+      
       # chown root:root /etc/passwd-
       # chmod u-x,go-wx /etc/passwd
     compliance:
@@ -3584,7 +3592,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/passwd -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7641
     title: Ensure permissions on /etc/shadow- are configured
@@ -3598,7 +3606,7 @@ checks:
       inadvertently or through malicious actions.
     remediation: >
       Run the following commands to set owner, group, and permissions on /etc/shadow-:
-
+      
       # chown root:shadow /etc/shadow-
       # chmod u-x,g-wx,o-rwx /etc/shadow
     compliance:
@@ -3606,7 +3614,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
+      - 'c:stat -L /etc/shadow- -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*15/\s*shadow\)'
 
   - id: 7642
     title: Ensure permissions on /etc/group- are configured
@@ -3617,7 +3625,7 @@ checks:
       inadvertently or through malicious actions.
     remediation: >
       Run the following commands to set owner, group, and permissions on /etc/group-:
-
+      
       # chown root:root /etc/group-
       # chmod u-x,go-wx /etc/group-
     compliance:
@@ -3625,7 +3633,7 @@ checks:
       - cis_csc: ["14.6"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
+      - 'c:stat -L /etc/group- -> r:^Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)'
 
   - id: 7643
     title: Ensure accounts in /etc/passwd use shadowed passwords
@@ -3642,7 +3650,7 @@ checks:
       file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write.
       This helps mitigate the risk of an attacker gaining access to the encoded passwords with
       which to perform a dictionary attack.
-
+      
       Notes:
         - All accounts must have passwords or be locked to prevent the account from being used
           by an unauthorized user.
@@ -3651,9 +3659,9 @@ checks:
     remediation: >
       If any accounts in the /etc/passwd file do not have a single x in the password field, run the
       following command to set these accounts to use shadowed passwords:
-
+      
       # sed -e 's/^\([a-zA-Z0-9_]*\):[^:]*:/\1:x:/' -i /etc/passwd
-
+      
       Investigate to determine if the account is logged in and what it is being used for, to
       determine if it needs to be forced off.
     compliance:
@@ -3674,9 +3682,9 @@ checks:
     remediation: >
       If any accounts in the /etc/shadow file do not have a password, run the following command
       to lock the account until it can be determined why it does not have a password:
-
+      
       # passwd -l <username>
-
+      
       Also, check to see if the account is logged in and investigate what it is being used for to
       determine if it needs to be forced off.
     compliance:
@@ -3686,16 +3694,17 @@ checks:
     rules:
       - 'c:grep -E ^[^:]+:: /etc/shadow -> r:::'
 
-#  - id:
-#    title:
-#    description:
-#    rationale:
-#    remediation:
+#  - id: 
+#    title: 
+#    description: 
+#    rationale: 
+#    remediation: 
 #    compliance:
 #      - cis: [""]
 #      - cis_csc: [""]
 #    references:
-#      -
-#    condition:
+#      - 
+#    condition: 
 #    rules:
 #      - ''
+
