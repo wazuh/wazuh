@@ -1,5 +1,5 @@
 ---
-name: Ruleset issue 
+name: Ruleset issue
 about: Report a bug or make a feature request.
 title: ''
 labels: ''
@@ -9,7 +9,7 @@ assignees: ''
 
 |Wazuh version| Component | Action type |
 |---| --- | --- |
-| X.Y.Z-rev | Rules/Decoders/SCA | Add new/Error/Improve |
+| X.Y.Z-rev | Rules/Decoders | New/Error/Improve |
 
 <!--
 This template reflects sections that must be included in new issues
@@ -19,10 +19,13 @@ Contributions from the community are really appreciated. If this is the case, pl
 
 ## Description
 <!-- Add a detailed description of your issue -->
-
-### Reason
 <!-- Detail the reason that motivates this proposed change on the ruleset -->
 
+### Service
+<!-- Add a description of the service you are targeting with the ruleset -->
+<!-- Add any URL or doc related to vendor and/or service -->
+
+## Error/Improve
 ### Current results
 <!--  Include current results -->
 
@@ -30,18 +33,16 @@ Contributions from the community are really appreciated. If this is the case, pl
 <!--  Include expected results -->
 
 ## Resources
-### Log / Alert examples
-<!-- Add any known log, or log source to be managed -->
+### Log source / integration
+<!-- Especify where the logs come from and/or if integration is required-->
 
-### Log format reference 
-<!-- Add any URL or doc related to vendor or provider log format -->
+### Log reference
+<!-- Add any URL or doc related to log format -->
+<!-- Add any URL or doc related to log events -->
 
-## Tests
-<!-- Depending on tests performed manually, the following checks should be selected and marked. -->
+### Log examples
+<!-- Add any logs examples available -->
 
-- [ ] Added .ini test file for covering related rules
-- [ ] Executed unit tests (runtests.py) for checking ruleset integrity
-- [ ] Verified mitre.db integrity
-- [ ] Verified compliance mapping 
-- [ ] Verified no errors/warnings related in ossec.log
-- [ ] Kibana shows alerts
+### Threats and compliance
+<!-- List specific threats and compliance to be covered -->
+<!-- Include any related URL or doc -->
