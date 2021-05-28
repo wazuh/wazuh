@@ -1531,27 +1531,6 @@ def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
         agent.get_stats('logcollector')
 
 
-@pytest.mark.parametrize('last_keep_alive, pending, expected_status', [
-    (10, False, 'active'),
-    (1900, False, 'disconnected'),
-    (10, True, 'pending'),
-])
-def test_calculate_status(last_keep_alive, pending, expected_status):
-    """Test calculate_status returns expected status according to last_keep_alive.
-
-    Parameters
-    ----------
-    last_keep_alive : int
-        Seconds since last connection.
-    pending : bool
-        Return pending if status is not disconnected.
-    expected_status : str
-        Expected status to be returned.
-    """
-    result = calculate_status(int(time()) - last_keep_alive, pending)
-    assert result == expected_status, 'Result message is not as expected.'
-
-
 @pytest.mark.parametrize('agents_list, versions_list', [
     (['001', '002', '003', '004'],
      [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])

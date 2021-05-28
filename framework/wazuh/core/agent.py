@@ -1216,17 +1216,6 @@ def format_fields(field_name, value):
         return value
 
 
-def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
-    """Calculates state based on last keep alive
-    """
-    if not last_keep_alive or last_keep_alive == 'unknown':
-        return "never_connected"
-    else:
-        last_date = datetime.utcfromtimestamp(last_keep_alive)
-        difference = (today - last_date).total_seconds()
-        return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
-
-
 def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
     """Send restart command to an agent.
 
