@@ -41,15 +41,6 @@ void fim_send_msg(char mq, const char * location, const char * msg);
 #ifdef WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
 
-typedef struct _win32rtfim {
-    HANDLE h;
-    OVERLAPPED overlap;
-
-    char *dir;
-    TCHAR buffer[65536];
-    unsigned int watch_status;
-} win32rtfim;
-
 extern void free_win32rtfim_data(win32rtfim *data);
 
 #else

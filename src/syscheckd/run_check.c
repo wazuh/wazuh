@@ -402,6 +402,7 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
         }
         w_rwlock_unlock(&syscheck.directories_lock);
     }
+    return 0;
 }
 
 #elif defined INOTIFY_ENABLED

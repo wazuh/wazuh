@@ -370,15 +370,6 @@ void realtime_sanitize_watch_map() {
 
 #elif defined(WIN32)
 
-typedef struct _win32rtfim {
-    HANDLE h;
-    OVERLAPPED overlap;
-
-    char *dir;
-    TCHAR buffer[65536];
-    unsigned int watch_status;
-} win32rtfim;
-
 void free_win32rtfim_data(win32rtfim *data);
 int realtime_win32read(win32rtfim *rtlocald);
 int fim_check_realtime_directory(win32rtfim *rtlocald);
@@ -527,7 +518,6 @@ int realtime_win32read(win32rtfim *rtlocald)
 
 int realtime_adddir(const char *dir, directory_t *configuration) {
     char wdchar[260 + 1];
-    int retval = 1;
     win32rtfim *rtlocald;
 
     assert(configuration != NULL);
@@ -572,12 +562,6 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     }
     w_mutex_lock(&syscheck.fim_realtime_mutex);
 
-    if (!syscheck.realtime) {
-        if (realtime_start() < 0 ) {
-            return (-1);
-        }
-    }
-
     /* Set key for hash */
     wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", dir);
@@ -594,14 +578,17 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
                 rtlocald->watch_status = FIM_RT_HANDLE_CLOSED;
             }
         }
-        goto end;
+
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 1;
     }
 
     /* Maximum limit for realtime on Windows */
     if (OSHash_Get_Elem_ex(syscheck.realtime->dirtb) >= syscheck.max_fd_win_rt) {
         merror(FIM_ERROR_REALTIME_MAXNUM_WATCHES, dir);
-        retval = 0;
-        goto end;
+
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 0;
     }
 
     os_calloc(1, sizeof(win32rtfim), rtlocald);
@@ -613,8 +600,8 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
         os_free(rtlocald);
         mdebug2(FIM_REALTIME_ADD, dir);
 
-        retval = 0;
-        goto end;
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 0;
     }
 
     /* Add final elements to the hash */
@@ -626,10 +613,10 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     if(realtime_win32read(rtlocald) == 0) {
         mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
         free_win32rtfim_data(rtlocald);
-        retval = 0;
-        goto end;
+
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 0;
     }
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) {
         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
@@ -637,10 +624,8 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
 
     mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
 
-end:
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
-
-    return retval;
+    return 1;
 }
 
 // LCOV_EXCL_START

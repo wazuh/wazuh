@@ -37,14 +37,6 @@
 
 #ifdef TEST_WINAGENT
 // This struct should always reflect the one defined in run_realtime.c
-typedef struct _win32rtfim {
-    HANDLE h;
-    OVERLAPPED overlap;
-
-    char *dir;
-    TCHAR buffer[65536];
-    unsigned int watch_status;
-} win32rtfim;
 
 int realtime_win32read(win32rtfim *rtlocald);
 void free_win32rtfim_data(win32rtfim *data);
