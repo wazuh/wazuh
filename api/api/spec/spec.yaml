@@ -3997,7 +3997,7 @@ components:
           $ref: '#/components/schemas/GroupID'
     groups_list_all:
       in: query
-      name: groups_list_all
+      name: groups_list
       description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
       required: true
       schema:
