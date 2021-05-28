@@ -408,14 +408,13 @@ public:
 
     uint32_t mtu() const override
     {
-        std::string retVal;
-        const auto name { this->name() };
-        if (!name.empty())
+        uint32_t retVal { 0 };
+        const auto mtuFileContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/mtu") };
+        if (!mtuFileContent.empty())
         {
-            const auto mtuFileContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + name + "/mtu") };
-            retVal = Utils::splitIndex(mtuFileContent, '\n', 0);
+            retVal =  std::stol(Utils::splitIndex(mtuFileContent, '\n', 0));
         }
-        return std::stol(retVal);
+        return retVal;
     }
 
     LinkStats stats() const override
@@ -426,20 +425,36 @@ public:
     std::string type() const override
     {
         const auto networkTypeCode { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/type") };
-        const auto type { Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE) };
-        return type.empty() ? UNKNOWN_VALUE : type;
+        std::string type { UNKNOWN_VALUE };
+        if (!networkTypeCode.empty())
+        {
+            type = Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE);
+        }
+        return type;
     }
 
     std::string state() const override
     {
-        const auto operationalState { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/operstate") };
-        return Utils::splitIndex(operationalState, '\n', 0);
+        const std::string operationalState { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/operstate") };
+
+        std::string state { UNKNOWN_VALUE };
+        if (!operationalState.empty())
+        {
+             state = Utils::splitIndex(operationalState, '\n', 0);
+        }
+        return state;
     }
 
     std::string MAC() const override
     {
-        const auto mac { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/address")};
-        return Utils::splitIndex(mac, '\n', 0);
+        const std::string macContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/address")};
+
+        std::string mac { UNKNOWN_VALUE };
+        if (!macContent.empty())
+        {
+            mac = Utils::splitIndex(macContent, '\n', 0);
+        }
+        return mac;
     }
 };
 
