@@ -48,20 +48,22 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(interval: int = 10, build: bool = True):
+def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool = True):
     """Build all Docker environments needed for the current test.
 
     Parameters
     ----------
     interval : int
-        Time interval between every healthcheck
+        Time interval between every healthcheck.
+    interval_build_env : int
+        Time interval between every docker environment healthcheck.
     build : bool
-        Flag to indicate if images need to be built
+        Flag to indicate if images need to be built.
 
     Returns
     -------
     dict
-        Dict with healthchecks parameters
+        Dict with healthchecks parameters.
     """
     pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
     os.chdir(pwd)
@@ -70,14 +72,27 @@ def build_and_up(interval: int = 10, build: bool = True):
         'max_retries': 30,
         'retries': 0
     }
+    values_build_env = {
+        'interval': interval_build_env,
+        'max_retries': 3,
+        'retries': 0
+    }
     # Get current branch
     current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
-    if build:
-        current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
-                                            f"WAZUH_BRANCH={current_branch}"])
+    while values_build_env['retries'] < values_build_env['max_retries']:
+        if build:
+            current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
+                                                f"WAZUH_BRANCH={current_branch}"])
+            current_process.wait()
+        current_process = subprocess.Popen(["docker-compose", "up", "-d"])
         current_process.wait()
-    current_process = subprocess.Popen(["docker-compose", "up", "-d"])
-    current_process.wait()
+
+        if current_process.returncode == 0:
+            time.sleep(values_build_env['interval'])
+            break
+        else:
+            time.sleep(values_build_env['interval'])
+            values_build_env['retries'] += 1
 
     return values
 
