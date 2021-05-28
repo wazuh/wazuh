@@ -210,6 +210,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\restart-wazuh.exe restart-wazuh.exe
     File /oname=active-response\bin\netsh.exe netsh.exe
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
+    File /oname=libgcc_s_sjlj-1.dll libgcc_s_sjlj-1.dll
     File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
     File /oname=libwazuhext.dll ..\libwazuhext.dll
@@ -497,14 +498,8 @@ Section "Uninstall"
     Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR\incoming\*"
     Delete "$INSTDIR\wodles\*"
-    Delete "$INSTDIR\libwazuhext.dll"
-    Delete "$INSTDIR\libwazuhshared.dll"
-    Delete "$INSTDIR\dbsync.dll"
-    Delete "$INSTDIR\rsync.dll"
-    Delete "$INSTDIR\sysinfo.dll"
-    Delete "$INSTDIR\syscollector.dll"
-    Delete "$INSTDIR\queue\syscollector\db\local.db"
-    Delete "$INSTDIR\queue\syscollector\norm_config.json"
+    Delete "$INSTDIR\queue\syscollector\db\*"
+    Delete "$INSTDIR\queue\syscollector\*"
     Delete "$INSTDIR\ruleset\sca\*"
     Delete "$INSTDIR\ruleset\*"
 
@@ -527,6 +522,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\queue\logcollector"
     RMDir "$INSTDIR\incoming"
     RMDir /r "$INSTDIR\upgrade"
+    RMDir /r "$INSTDIR\queue\syscollector"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
     RMDir "$INSTDIR\ruleset\sca"
