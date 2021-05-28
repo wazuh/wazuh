@@ -1242,6 +1242,9 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
 def insert_agents_db(n_agents=100000):
     """Insert n_agents in the global.db test database.
 
+    All the tests using this fixture should be run in the last place, since
+    agent's database is modified.
+
     Parameters
     ----------
     n_agents : int
@@ -1266,10 +1269,7 @@ def insert_agents_db(n_agents=100000):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents_db, agent_list, params, expected_ids):
-    """Check that expected number of items is returned when limit is bigger than 500.
-
-    Tests that use 'insert_agents_db' should be run in the last place, since
-    agent's database is modified.
+    """Check that the expected number of items is returned when limit is greater than 500.
 
     Parameters
     ----------
