@@ -1652,13 +1652,17 @@ void update_wildcards_config(){
         for (int i = 0; paths[i]; i++) {
             new_entry = fim_copy_directory(dir_it);
             os_free(new_entry->path);
-            new_entry->path = paths[i];
-            new_entry->is_expanded = 1;
+
 #ifndef WIN32
             if (CHECK_FOLLOW & new_entry->options) {
                 new_entry->symbolic_links = realpath(new_entry->path, NULL);
             }
+#else
+            str_lowercase(paths[i]);
 #endif
+            new_entry->path = paths[i];
+            new_entry->is_expanded = 1;
+
             if (new_entry->diff_size_limit == -1) {
                 new_entry->diff_size_limit = syscheck.file_size_limit;
             }
