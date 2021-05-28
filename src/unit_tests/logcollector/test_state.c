@@ -35,6 +35,9 @@ void w_logcollector_state_update_target(char * fpath, char * target, bool droppe
 void w_logcollector_state_generate();
 void w_logcollector_state_dump();
 void * w_logcollector_state_main(__attribute__((unused)) void * args);
+void _w_logcollector_state_delete_file(w_lc_state_storage_t * state, char * fpath);
+void w_logcollector_state_delete_file(char * fpath);
+
 extern cJSON * g_lc_json_stats;
 extern w_lc_state_storage_t * g_lc_states_global;
 extern w_lc_state_storage_t * g_lc_states_interval;
@@ -49,6 +52,22 @@ static int setup_group(void ** state) {
 
 static int teardown_group(void ** state) {
     test_mode = 0;
+    return 0;
+}
+
+static int setup_global(void ** state) {
+    char **array = calloc(10, sizeof(char*));
+
+    if(array == NULL)
+        return -1;
+
+    *state = array;
+
+    return 0;
+}
+
+static int teardown_global(void ** state) {
+
     return 0;
 }
 
@@ -1053,6 +1072,7 @@ void test__w_logcollector_state_delete_file_no_data(void ** state) {
     os_free(storage.states);
 
 }
+
 void test__w_logcollector_state_delete_file_ok(void ** state) {
 
     w_lc_state_storage_t storage = {0};
@@ -1072,6 +1092,102 @@ void test__w_logcollector_state_delete_file_ok(void ** state) {
 
     _w_logcollector_state_delete_file(&storage, "test_path");
     os_free(storage.states);
+}
+
+/* w_logcollector_state_delete_file */
+
+void test_w_logcollector_state_delete_file_fpath_NULL(void ** state) {
+
+    char * fpath = NULL;
+
+    w_logcollector_state_delete_file(fpath);
+
+}
+
+void test_w_logcollector_state_delete_file_global(void ** state) {
+
+    char * fpath = NULL;
+
+    os_strdup("test", fpath);
+
+    g_lc_state_type = 1;
+
+    os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_global);
+    g_lc_states_global->states = (OSHash *) 2;
+
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_logcollector_state_delete_file(fpath);
+
+    os_free(fpath);
+    os_free(g_lc_states_global);
+
+}
+
+void test_w_logcollector_state_delete_file_interval(void ** state) {
+
+    char * fpath = NULL;
+
+    os_strdup("test", fpath);
+
+    g_lc_state_type = 2;
+
+    os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_interval);
+    g_lc_states_interval->states = (OSHash *) 2;
+
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_logcollector_state_delete_file(fpath);
+
+    os_free(fpath);
+    os_free(g_lc_states_interval);
+
+}
+
+void test_w_logcollector_state_delete_file_global_interval(void ** state) {
+
+    char * fpath = NULL;
+
+    os_strdup("test", fpath);
+
+    g_lc_state_type = 3;
+
+    os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_global);
+    g_lc_states_global->states = (OSHash *) 2;
+
+    os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_interval);
+    g_lc_states_interval->states = (OSHash *) 2;
+
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
+
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_logcollector_state_delete_file(fpath);
+
+    os_free(fpath);
+    os_free(g_lc_states_global);
+    os_free(g_lc_states_interval);
+
 }
 
 int main(void) {
@@ -1129,6 +1245,13 @@ int main(void) {
         // Test _w_logcollector_state_delete_file
         cmocka_unit_test(test__w_logcollector_state_delete_file_no_data),
         cmocka_unit_test(test__w_logcollector_state_delete_file_ok),
+
+        // Test _w_logcollector_state_delete_file
+        cmocka_unit_test(test_w_logcollector_state_delete_file_fpath_NULL),
+        cmocka_unit_test(test_w_logcollector_state_delete_file_global),
+        cmocka_unit_test(test_w_logcollector_state_delete_file_interval),
+        cmocka_unit_test(test_w_logcollector_state_delete_file_global_interval),
+
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
