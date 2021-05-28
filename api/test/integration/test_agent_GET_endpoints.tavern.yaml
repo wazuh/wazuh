@@ -152,12 +152,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try to show agents with limit 9999
+  - name: Try to show agents with limit 999999
     request:
       verify: False
       <<: *get_agents
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -2168,12 +2168,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show groups with limit 9999
+  - name: Try show groups with limit 999999
     request:
       verify: False
       <<: *get_agents_groups
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -2407,12 +2407,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *groups_id_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -2855,12 +2855,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *groups_id_config_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -2976,12 +2976,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try get the files of a group with limit 9999
+  - name: Try get the files of a group with limit 999999
     request:
       verify: False
       <<: *groups_id_files_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -3399,12 +3399,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *no_group_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -3649,12 +3649,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *agents_outdated_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -3926,12 +3926,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *distinct_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
