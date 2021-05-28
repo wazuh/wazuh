@@ -1501,7 +1501,7 @@ components:
       description: "Agent ID"
       format: numbers
 
-    AgentID_LIST_ALL:
+    AgentIDListAll:
       type: string
       minLength: 3
       description: "Agent ID|all"
@@ -1517,7 +1517,7 @@ components:
       description: "Group name"
       format: group_names
 
-    GroupID_LIST_ALL:
+    GroupIDListAll:
       type: string
       minLength: 1
       description: "Group name|all"
@@ -3980,13 +3980,13 @@ components:
         maxItems: 100
     agents_list_all:
       in: query
-      name: agents_list_all
+      name: agents_list
       description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
       required: true
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentID_LIST_ALL'
+          $ref: '#/components/schemas/AgentIDListAll'
     groups_list:
       in: query
       name: groups_list
@@ -4003,7 +4003,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/GroupID_LIST_ALL'
+          $ref: '#/components/schemas/GroupIDListAll'
     node:
       in: query
       name: node
