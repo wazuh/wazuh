@@ -162,7 +162,7 @@ checks:
       - cis_csc: ["5.1"]
     condition: all
     rules:
-      - 'c:stat /etc/nginx | grep "Access: (" -> r:Uid:\s+\(\.+root\)\s+Gid:\s+\(\.+root\)$'
+      - 'c:stat -L /etc/nginx | grep "Access: (" -> r:Uid:\s+\(\.+root\)\s+Gid:\s+\(\.+root\)$'
 
 # 2.3.2 Ensure access to NGINX directories and files is restricted (Scored)
   - id: 23012
