@@ -65,7 +65,7 @@ def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_
                                       none_msg=f"Could not read logs"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    logs = get_ossec_logs(limit=limit)
+    logs = get_ossec_logs()
 
     query = []
     level and query.append(f'level={level}')
