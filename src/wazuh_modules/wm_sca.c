@@ -1066,16 +1066,18 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                 os_strdup(value, file_list);
 
-                /* Replace the variables by their respective values */
-                for (int i = 0; list_variables[i]; i++) {
-                    if (strstr(value, list_variables[i])) {
-                        aux = wstr_replace(file_list, list_variables[i], OSStore_Get(vars, list_variables[i]));
-                        os_free(file_list);
-                        file_list = aux;
-                        if (!file_list) {
-                            merror("Invalid variable replacement: '%s'. Skipping check.", list_variables[i]);
-                            break;
-                        } 
+                /* If any, replace the variables by their respective values */
+                if (list_variables) {
+                    for (int i = 0; list_variables[i]; i++) {
+                        if (strstr(value, list_variables[i])) {
+                            aux = wstr_replace(file_list, list_variables[i], OSStore_Get(vars, list_variables[i]));
+                            os_free(file_list);
+                            file_list = aux;
+                            if (!file_list) {
+                                merror("Invalid variable replacement: '%s'. Skipping check.", list_variables[i]);
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -1111,16 +1113,18 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                     found = RETURN_INVALID;
 
                 } else {
-                    /* Replace the variables by their respective values */
-                    for (int i = 0; list_variables[i]; i++) {
-                        if (strstr(value,list_variables[i])) {
-                            aux = wstr_replace(f_value, list_variables[i], OSStore_Get(vars, list_variables[i]));
-                            os_free(f_value);
-                            f_value = aux;
-                            if (!f_value) {
-                                merror("Invalid variable: '%s'. Skipping check.", list_variables[i]);
-                                break;
-                            } 
+                    /* If any, replace the variables by their respective values */
+                    if (list_variables) {
+                        for (int i = 0; list_variables[i]; i++) {
+                            if (strstr(value,list_variables[i])) {
+                                aux = wstr_replace(f_value, list_variables[i], OSStore_Get(vars, list_variables[i]));
+                                os_free(f_value);
+                                f_value = aux;
+                                if (!f_value) {
+                                    merror("Invalid variable: '%s'. Skipping check.", list_variables[i]);
+                                    break;
+                                }
+                            }
                         }
                     }
 
@@ -1154,16 +1158,18 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                 os_strdup(value, f_value);
 
-                /* Replace the variables by their respective values */
-                for (int i = 0; list_variables[i]; i++) {
-                    if (strstr(value, list_variables[i])) {
-                        aux = wstr_replace(f_value, list_variables[i], OSStore_Get(vars, list_variables[i]));
-                        os_free(f_value);
-                        f_value = aux;
-                        if (!f_value) {
-                            merror("Invalid variable: '%s'. Skipping check.", list_variables[i]);
-                            break;
-                        } 
+                /* If any, replace the variables by their respective values */
+                if (list_variables) {
+                    for (int i = 0; list_variables[i]; i++) {
+                        if (strstr(value, list_variables[i])) {
+                            aux = wstr_replace(f_value, list_variables[i], OSStore_Get(vars, list_variables[i]));
+                            os_free(f_value);
+                            f_value = aux;
+                            if (!f_value) {
+                                merror("Invalid variable: '%s'. Skipping check.", list_variables[i]);
+                                break;
+                            }
+                        }
                     }
                 }
 
