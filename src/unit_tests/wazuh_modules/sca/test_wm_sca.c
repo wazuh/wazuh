@@ -295,7 +295,7 @@ void test_read_scheduling_interval_configuration(void **state) {
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
-/* wm_sort_to_array tests */
+/* wm_sort_variables tests */
 
 const char *variables_json_mock = "{\n \
     	\"variables\": {\n \
@@ -305,14 +305,14 @@ const char *variables_json_mock = "{\n \
     	}\n \
     }";
 
-void test_sort_to_array(void **state)
+void test_wm_sort_variables(void **state)
 {
     char **ret;
     char *expected_ret[] = {"$ssh_&_ssl_path", "$system_root", "$file"};
 
     cJSON *variables_list = cJSON_Parse(variables_json_mock);
     cJSON *variables_policy = cJSON_GetObjectItem(variables_list, "variables");
-    ret = wm_sort_to_array(variables_policy);
+    ret = wm_sort_variables(variables_policy);
 
     for (int i = 0; ret[i]; i++) {
         assert_string_equal(ret[i], expected_ret[i]);
@@ -334,7 +334,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test(test_sort_to_array)
+        cmocka_unit_test(test_wm_sort_variables)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
