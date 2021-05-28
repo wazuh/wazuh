@@ -20,7 +20,7 @@ _boolean = re.compile(r'^true$|^false$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _group_names = re.compile(r'^[A-Za-z0-9.\-_]+\b(?<!\ball)$')
-_group_names_delete = re.compile(r'^[A-Za-z0-9.\-_]+$')
+_group_names_or_all = re.compile(r'^[A-Za-z0-9.\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:[\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
     r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
@@ -29,7 +29,7 @@ _iso8601_date_time = (
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
 _names = re.compile(r'^[\w\-\.%]+$')
 _numbers = re.compile(r'^\d+$')
-_numbers_delete = re.compile(r'^\d+|all$')
+_numbers_or_all = re.compile(r'^\d+|all$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _cdb_filename_path = re.compile(r'^[\-\w]+$')
@@ -246,9 +246,9 @@ def format_numbers(value):
     return check_exp(value, _numbers)
 
 
-@draft4_format_checker.checks("numbers_delete")
-def format_numbers_delete(value):
-    return check_exp(value, _numbers_delete)
+@draft4_format_checker.checks("numbers_or_all")
+def format_numbers_or_all(value):
+    return check_exp(value, _numbers_or_all)
 
 
 @draft4_format_checker.checks("cdb_filename_path")
@@ -345,6 +345,6 @@ def format_group_names(value):
     return check_exp(value, _group_names)
 
 
-@draft4_format_checker.checks("group_names_delete")
-def format_group_names_delete(value):
-    return check_exp(value, _group_names_delete)
+@draft4_format_checker.checks("group_names_or_all")
+def format_group_names_or_all(value):
+    return check_exp(value, _group_names_or_all)

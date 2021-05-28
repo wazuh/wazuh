@@ -1501,11 +1501,11 @@ components:
       description: "Agent ID"
       format: numbers
 
-    AgentID_LIST:
+    AgentID_LIST_ALL:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: numbers_delete
+      format: numbers_or_all
 
     NodeID:
       type: string
@@ -1517,11 +1517,11 @@ components:
       description: "Group name"
       format: group_names
 
-    GroupID_DELETE:
+    GroupID_LIST_ALL:
       type: string
       minLength: 1
       description: "Group name|all"
-      format: group_names_delete
+      format: group_names_or_all
 
     AgentConfiguration:
       type: object
@@ -1748,14 +1748,14 @@ components:
     Role_id_DELETE:
       type: string
       description: "Role ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     Security_rule_id:
       type: string
       format: numbers
       description: "Security rule ID"
     Security_rule_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "Security rule ID|all"
     Task_id:
       type: string
@@ -1768,14 +1768,14 @@ components:
     Policy_id_DELETE:
       type: string
       description: "Policy ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     User_id:
       type: string
       format: numbers
       description: "User ID"
     User_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "User ID|all"
     PoliciesRequest:
       type: object
@@ -3978,15 +3978,15 @@ components:
         items:
           $ref: '#/components/schemas/AgentID'
         maxItems: 100
-    agents_list:
+    agents_list_all:
       in: query
-      name: agents_list
+      name: agents_list_all
       description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
       required: true
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentID_LIST'
+          $ref: '#/components/schemas/AgentID_LIST_ALL'
     groups_list:
       in: query
       name: groups_list
@@ -4003,7 +4003,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/GroupID_DELETE'
+          $ref: '#/components/schemas/GroupID_LIST_ALL'
     node:
       in: query
       name: node
@@ -4624,7 +4624,7 @@ components:
         - socket
         - syscheck
         - syslog_output
-        - Wodle sections
+        # Wodle sections
         - agent-key-polling
         - aws-s3
         - azure-logs
@@ -5473,7 +5473,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -6291,7 +6291,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -12703,7 +12703,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
+        - $ref: '#/components/parameters/agents_list_all'
       responses:
         '200':
           description: "Delete syscheck database"
