@@ -493,51 +493,28 @@ void SQLiteDBEngine::addTableRelationship(const nlohmann::json& data)
 void SQLiteDBEngine::initialize(const std::string& path,
                                 const std::string& tableStmtCreation)
 {
-    if (!path.empty())
-    {
-        constexpr auto MAX_RETRY { 10 };
-        constexpr auto SECONDS_TO_RETRY { 10 };
-        const auto dbInitialization
-        {
-            [this, &tableStmtCreation](const std::string & dbPath) -> bool
-            {
-                const bool previousDbRemoved { cleanDB(dbPath) };
-
-                if (previousDbRemoved)
-                {
-                    m_sqliteConnection = m_sqliteFactory->createConnection(dbPath);
-                    const auto createDBQueryList { Utils::split(tableStmtCreation, ';') };
-                    m_sqliteConnection->execute("PRAGMA temp_store = memory;");
-                    m_sqliteConnection->execute("PRAGMA journal_mode = memory;");
-                    m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
-
-                    for (const auto& query : createDBQueryList)
-                    {
-                        const auto& stmt { getStatement(query) };
-
-                        if (SQLITE_DONE != stmt->step())
-                        {
-                            throw dbengine_error { STEP_ERROR_CREATE_STMT };
-                        }
-                    }
-                }
-
-                return previousDbRemoved;
-            }
-        };
-
-        auto initialized { dbInitialization(path) };
-
-        for (int i = 0; i < MAX_RETRY && !initialized; ++i)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(SECONDS_TO_RETRY));
-            initialized = dbInitialization(path);
-        }
-    }
-
-    else
+    if (path.empty())
     {
         throw dbengine_error { EMPTY_DATABASE_PATH };
+    }
+    if (!cleanDB(path))
+    {
+        throw dbengine_error { DELETE_OLD_DB_ERROR };
+    }
+    m_sqliteConnection = m_sqliteFactory->createConnection(path);
+    const auto createDBQueryList { Utils::split(tableStmtCreation, ';') };
+    m_sqliteConnection->execute("PRAGMA temp_store = memory;");
+    m_sqliteConnection->execute("PRAGMA journal_mode = memory;");
+    m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
+
+    for (const auto& query : createDBQueryList)
+    {
+        const auto& stmt { getStatement(query) };
+
+        if (SQLITE_DONE != stmt->step())
+        {
+            throw dbengine_error { STEP_ERROR_CREATE_STMT };
+        }
     }
 }
 
