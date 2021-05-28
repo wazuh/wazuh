@@ -236,9 +236,10 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
 
         /* Deletes CR from macOS Sierra */
         if (is_endline && offset >= 2 && *(str - 2) == '\r') {
-            *(str - 1) = '\0';
-            *(str - 2) = '\n';
+            str--;
             offset--;
+            *str = '\0';
+            *(str - 1) = '\n';
         }
 
         /* Avoid fgets infinite loop behavior when size parameter is 1
