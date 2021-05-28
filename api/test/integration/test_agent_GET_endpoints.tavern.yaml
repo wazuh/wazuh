@@ -3852,7 +3852,7 @@ stages:
       json:
         error: 1724
 
-  - name: Select is different to filter fields
+  - name: Select is different from filter fields
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
