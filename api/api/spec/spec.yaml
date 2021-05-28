@@ -10762,8 +10762,8 @@ paths:
                       - name: "master-node"
                         status: "OK"
                     total_affected_items: 1
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "Validation was successfully checked in all nodes"
                   error: 0
         '400':
@@ -10802,15 +10802,29 @@ paths:
               example:
                 data:
                   affected_items:
-                    - remote:
-                        connection: "secure"
-                        ipv6: "no"
-                        protocol: "tcp"
-                        port: 1514
-                        queue_size: 131072
+                    - global:
+                        email_notification: "no"
+                        logall: "no"
+                        logall_json: "no"
+                        integrity_checking: 8
+                        rootkit_detection: 8
+                        host_information: 8
+                        prelude_output: "no"
+                        zeromq_output: "no"
+                        jsonout_output: "yes"
+                        alerts_log: "yes"
+                        stats: 4
+                        memory_size: 8192
+                        white_list:
+                          - "127.0.0.1"
+                          - "80.58.61.250"
+                          - "80.58.61.254"
+                          - "localhost.localdomain"
+                        rotate_interval: 0
+                        max_output_size: 0
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Active configuration was successfully read in specified node"
                 error: 0
         '400':
@@ -10860,14 +10874,14 @@ paths:
                   affected_items:
                     - mitre_version: '1.2'
                       deprecated: 0
-                      name: APT38
-                      id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
-                      modified_time: '2020-03-30 18:50:43.737000'
-                      created_time: '2019-01-29 21:27:24.793000'
                       description: |-
                         [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
 
-                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group.
+                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group
+                      name: APT38
+                      id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
+                      modified_time: '2020-03-30 18:50:43.737000'
+                      created_time: '2019-01-29 21:27:24.793000'.
                       software:
                         - tool--03342581-f790-4f03-ba41-e82e67392e23
                         - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
@@ -10907,7 +10921,7 @@ paths:
                           source: "mitre-attack"
                   total_affected_items: 111
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
                 message: MITRE groups information was returned
                 error: 0
         '400':
@@ -10948,13 +10962,13 @@ paths:
               example:
                 data:
                   affected_items:
-                    - value: "1"
-                      key: "db_version"
-                    - value: "2.0"
-                      key: "mitre_version"
+                    - key: "db_version"
+                      value: "1"
+                    - key: "mitre_version"
+                      value: "2.0"
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "MITRE metadata information was returned"
                 error: 0
         '400':
@@ -11002,25 +11016,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: "course-of-action--00d7d21b-69d6-4797-88a2-c86f3fc97651"
-                      modified_time: '2019-07-25 11:22:19.139000'
+                    - mitre_version: "1.0"
                       deprecated: 1
+                      description: "Prevent files from having a trailing space after the extension."
+                      name: "Space after Filename Mitigation"
+                      id: "course-of-action--02f0f92a-0a51-4c94-9bda-6437b9a93f22"
+                      modified_time: '2019-07-25 11:46:32.010000'
                       created_time: '2018-10-17 00:14:20.652000'
-                      name: "Password Filter DLL Mitigation"
-                      mitre_version: "1.0"
-                      description: "Ensure only valid password filters are registered. Filter DLLs must be present in Windows installation directory (<code>C:\\Windows\\System32\\</code> by default) of a domain controller and/or local computer with a corresponding entry in <code>HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Notification Packages</code>. (Citation: Microsoft Install Password Filter n.d)"
                       techniques:
-                        - "attack-pattern--b8c5c9dd-a662-479d-9428-ae745872537c"
+                        - "attack-pattern--e2907cea-4b43-4ed7-a570-0fdf0fbeea00"
                       references:
-                        - source: "Microsoft Install Password Filter n.d"
-                          description: "Microsoft. (n.d.). Installing and Registering a Password Filter DLL. Retrieved November 21, 2017."
-                          url": "https://msdn.microsoft.com/library/windows/desktop/ms721766.aspx"
-                        - source: "mitre-attack"
-                          external_id: "T1174"
-                          url: "https://attack.mitre.org/mitigations/T1174"
-                  total_affected_items: 267
+                        - url: "https://attack.mitre.org/mitigations/T1151"
+                          source: "mitre-attack"
+                          external_id": "T1151"
+                  total_affected_items: 266
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
                 message: "MITRE mitigations information was returned"
                 error: 0
         '400':
@@ -11068,14 +11079,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "Hosseini, A. (2017, July 18). Ten Process Injection Techniques: A Technical Survey Of Common And Trending Process Injection Techniques. Retrieved December 7, 2017."
-                      type: "technique"
+                    - url: "https://www.endgame.com/blog/technical-blog/ten-process-injection-techniques-technical-survey-common-and-trending-process"
+                      description: "Hosseini, A. (2017, July 18). Ten Process Injection Techniques: A Technical Survey Of Common And Trending Process Injection Techniques. Retrieved December 7, 2017."
                       source: "Endgame Process Injection July 2017"
-                      url: "https://www.endgame.com/blog/technical-blog/ten-process-injection-techniques-technical-survey-common-and-trending-process"
                       id: "attack-pattern--0042a9f5-f053-4769-b3ef-9ad018dfa298"
+                      type: "technique"
                   total_affected_items: 5212
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "MITRE references information was returned"
                 error: 0
         '400':
@@ -11123,31 +11134,31 @@ paths:
               example:
                 data:
                   affected_items:
-                    - deprecated: 0
-                      mitre_version: '1.0'
-                      created_time: '2017-05-31 21:32:40.801000'
-                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
-                      name: HDoor
-                      modified_time: '2019-04-25 02:33:53.419000'
+                    - mitre_version: '1.0'
+                      deprecated: 0
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
                         group. (Citation: Baumgartner Naikon 2015)"
+                      name: HDoor
+                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
+                      modified_time: '2019-04-25 02:33:53.419000'
+                      created_time: '2017-05-31 21:32:40.801000'
                       groups:
                         - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
                       techniques:
                         - attack-pattern--ac08589e-ee59-4935-8667-d845e38fe579
                         - attack-pattern--e3a12395-188d-4051-9a16-ea8e14d07b88
                       references:
-                        - source: "Baumgartner Naikon 2015"
+                        - url: "https://media.kasperskycontenthub.com/wp-content/uploads/sites/43/2018/03/07205555/TheNaikonAPT-MsnMM1.pdf"
                           description: "Baumgartner, K., Golovkin, M.. (2015, May). The MsnMM Campaigns: The Earliest Naikon APT Campaigns. Retrieved April 10, 2019."
-                          url: "https://media.kasperskycontenthub.com/wp-content/uploads/sites/43/2018/03/07205555/TheNaikonAPT-MsnMM1.pdf"
-                        - source: "mitre-attack"
+                          source: "Baumgartner Naikon 2015"
+                        - url: "https://attack.mitre.org/software/S0061"
+                          source: "mitre-attack"
                           external_id: "S0061"
-                          url: "https://attack.mitre.org/software/S0061"
                   total_affected_items: 444
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: MITRE software information was returned
+                  failed_items: []
+                message: "MITRE software information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -11194,11 +11205,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
-                      created_time: "2018-10-17 00:14:20.652000"
-                      modified_time: "2019-07-19 17:44:36.953000"
-                      description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
+                    - description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
                       name: "Lateral Movement"
+                      id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
+                      modified_time: "2019-07-19 17:44:36.953000"
+                      created_time: "2018-10-17 00:14:20.652000"
                       short_name: "lateral-movement"
                       techniques:
                         - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
@@ -11225,12 +11236,12 @@ paths:
                         - "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf"
                         - "attack-pattern--f005e783-57d4-4837-88ad-dbe7faee1c51"
                       references:
-                        - source: "mitre-attack"
+                        - url: "https://attack.mitre.org/tactics/TA0008"
+                          source: "mitre-attack"
                           external_id: "TA0008"
-                          url: "https://attack.mitre.org/tactics/TA0008"
                   total_affected_items: 14
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All tactics information was returned"
                 error: 0
         '400':
@@ -11278,45 +11289,45 @@ paths:
               example:
                 data:
                   affected_items:
-                    - network_requirements: 0
-                      mitre_version: '1.0'
-                      remote_support: 0
-                      mitre_detection: |-
-                        Much of this activity may have a very high occurrence and associated false positive rate, as well as potentially taking place outside the visibility of the target organization, making detection difficult for defenders.
+                      - mitre_version: '1.0'
+                        network_requirements: 0
+                        remote_support: 0
+                        mitre_detection: |-
+                          Much of this activity may have a very high occurrence and associated false positive rate, as well as potentially taking place outside the visibility of the target organization, making detection difficult for defenders.
 
-                        Detection efforts may be focused on related stages of the adversary lifecycle, such as during Initial Access.
-                      id: attack-pattern--9d48cab2-7929-4812-ad22-f536665f0109
-                      modified_time: '2020-10-25 22:58:23.086000'
-                      deprecated: 0
-                      created_time: '2020-10-02 15:45:17.628000'
-                      name: Gather Victim Network Information
-                      description: |-
-                        Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
+                          Detection efforts may be focused on related stages of the adversary lifecycle, such as during Initial Access.
+                        id: attack-pattern--9d48cab2-7929-4812-ad22-f536665f0109
+                        modified_time: '2020-10-25 22:58:23.086000'
+                        deprecated: 0
+                        created_time: '2020-10-02 15:45:17.628000'
+                        name: Gather Victim Network Information
+                        description: |-
+                          Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
 
-                        Adversaries may gather this information in various ways, such as direct collection actions via [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Phishing for Information](https://attack.mitre.org/techniques/T1598). Information about networks may also be exposed to adversaries via online or other accessible data sets (ex: [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)).(Citation: WHOIS)(Citation: DNS Dumpster)(Citation: Circl Passive DNS) Gathering this information may reveal opportunities for other forms of reconnaissance (ex: [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593)), establishing operational resources (ex: [Acquire Infrastructure](https://attack.mitre.org/techniques/T1583) or [Compromise Infrastructure](https://attack.mitre.org/techniques/T1584)), and/or initial access (ex: [Trusted Relationship](https://attack.mitre.org/techniques/T1199)).
-                      tactics:
-                        - "x-mitre-tactic--daa4cbb1-b4f4-4723-a824-7f1efd6e0592"
-                      mitigations:
-                        - "course-of-action--78bb71be-92b4-46de-acd6-5f998fedf1cc"
-                      software: []
-                      groups: []
-                      references:
-                        - source: "Circl Passive DNS"
-                          description: "CIRCL Computer Incident Response Center. (n.d.). Passive DNS. Retrieved October 20, 2020."
-                          url: "https://www.circl.lu/services/passive-dns/"
-                        - source: "DNS Dumpster"
-                          description: "Hacker Target. (n.d.). DNS Dumpster. Retrieved October 20, 2020."
-                          url: "https://dnsdumpster.com/"
-                        - source: "WHOIS"
-                          description: "NTT America. (n.d.). Whois Lookup. Retrieved October 20, 2020."
-                          url: "https://www.whois.net/"
-                        - source: "mitre-attack"
-                          external_id: "T1590"
-                          url: "https://attack.mitre.org/techniques/T1590"
+                          Adversaries may gather this information in various ways, such as direct collection actions via [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Phishing for Information](https://attack.mitre.org/techniques/T1598). Information about networks may also be exposed to adversaries via online or other accessible data sets (ex: [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)).(Citation: WHOIS)(Citation: DNS Dumpster)(Citation: Circl Passive DNS) Gathering this information may reveal opportunities for other forms of reconnaissance (ex: [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593)), establishing operational resources (ex: [Acquire Infrastructure](https://attack.mitre.org/techniques/T1583) or [Compromise Infrastructure](https://attack.mitre.org/techniques/T1584)), and/or initial access (ex: [Trusted Relationship](https://attack.mitre.org/techniques/T1199)).
+                        tactics:
+                          - "x-mitre-tactic--daa4cbb1-b4f4-4723-a824-7f1efd6e0592"
+                        mitigations:
+                          - "course-of-action--78bb71be-92b4-46de-acd6-5f998fedf1cc"
+                        software: []
+                        groups: []
+                        references:
+                          - source: "Circl Passive DNS"
+                            description: "CIRCL Computer Incident Response Center. (n.d.). Passive DNS. Retrieved October 20, 2020."
+                            url: "https://www.circl.lu/services/passive-dns/"
+                          - source: "DNS Dumpster"
+                            description: "Hacker Target. (n.d.). DNS Dumpster. Retrieved October 20, 2020."
+                            url: "https://dnsdumpster.com/"
+                          - source: "WHOIS"
+                            description: "NTT America. (n.d.). Whois Lookup. Retrieved October 20, 2020."
+                            url: "https://www.whois.net/"
+                          - source: "mitre-attack"
+                            external_id: "T1590"
+                            url: "https://attack.mitre.org/techniques/T1590"
                   total_affected_items: 1
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: MITRE techniques information was returned
+                  failed_items: []
+                message: "MITRE techniques information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -11357,11 +11368,13 @@ paths:
               example:
                 data:
                   affected_items:
+                    - "000"
+                    - "001"
                     - "002"
                     - "003"
-                  total_affected_items: 2
-                  failed_items: []
+                  total_affected_items: 4
                   total_failed_items: 0
+                  failed_items: []
                 message: "Rootcheck database was cleared on returned agents"
                 error: 0
         '400':
@@ -11407,8 +11420,8 @@ paths:
                     - "002"
                     - "003"
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Rootcheck scan was restarted on returned agents"
                 error: 0
         '400':
@@ -11469,8 +11482,8 @@ paths:
                       date_last: "2020-10-23 10:33:49"
                       status: "outstanding"
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected rootcheck information was returned"
                 error: 0
         '400':
@@ -11512,11 +11525,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - end: "2020-10-23 11:53:47"
-                      start: "2020-10-23 11:53:39"
+                    - start: "2021-05-28 11:49:50"
+                      end: "2021-05-28 11:49:59"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Last rootcheck scan of the agent was returned"
                 error: 0
         '400':
@@ -11577,43 +11590,38 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "Generic template for all syslog rules"
+                    - filename: "0020-syslog_rules.xml"
+                      relative_dirname: "ruleset/rules"
+                      id: 1001
+                      level: 2
+                      status: enabled
                       details:
-                        category: syslog
-                        noalert: '1'
-                      file: 0010-rules_config.xml
-                      gdpr: []
-                      gpg13: []
+                        match:
+                          pattern: "^Couldn't open /etc/securetty"
+                      pci_dss:
+                        - "0.2.4"
+                      gpg13:
+                        - "4.1"
+                      gdpr:
+                        - "IV_35.7.d"
+                      hipaa:
+                        - "164.312.b"
+                      nist_800_53:
+                        - "AU.14"
+                        - "AC.7"
+                      tsc:
+                        - "CC6.1"
+                        - "CC6.8"
+                        - "CC7.2"
+                        - "CC7.3"
+                      mitre: []
                       groups:
                         - syslog
-                      hipaa: []
-                      id: 1
-                      level: 0
-                      nist_800_53: []
-                      tsc: []
-                      path: ruleset/rules
-                      pci_dss: []
-                      status: enabled
-                    - description: "Generic template for all web proxy rules"
-                      details:
-                        category: squid
-                        noalert: '1'
-                      file: 0010-rules_config.xml
-                      gdpr: []
-                      gpg13: []
-                      groups:
-                        - squid
-                      hipaa: []
-                      id: 5
-                      level: 0
-                      nist_800_53: []
-                      tsc: []
-                      path: ruleset/rules
-                      pci_dss: []
-                      status: enabled
-                  total_affected_items: 54
-                  failed_items: []
+                        - errors
+                      description: "File missing. Root access unrestricted."
+                  total_affected_items: 707
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected rules were returned"
                 error: 0
         '400':
@@ -11665,8 +11673,8 @@ paths:
                     - gdpr_II_5.1.f
                     - gdpr_IV_30.1.g
                   total_affected_items: 6
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All groups in rules were returned"
                 error: 0
         '400':
@@ -11720,8 +11728,8 @@ paths:
                     - 11.4
                     - 11.5
                   total_affected_items: 7
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected rules were returned"
                 error: 0
         '400':
@@ -11770,20 +11778,20 @@ paths:
                 data:
                   affected_items:
                     - file: 0010-rules_config.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0015-ossec_rules.xml
                       path: ruleset/rules
                       status: enabled
                     - file: 0016-wazuh_rules.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0020-syslog_rules.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All rules files were returned"
                 error: 0
         '400':
@@ -12081,35 +12089,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "This document provides prescriptive guidance for establishing a secure
-                    configuration posture for Debian Linux 9"
-                      end_scan: '2019-11-13T10:57:09Z'
-                      fail: 26
-                      hash_file: c5ada687e0c2ae9504be13b965074cc262e62be4e68fe550d464018def4af61c
-                      invalid: 1
-                      name: CIS benchmark for Debian/Linux 9 L2
-                      pass: 2
-                      policy_id: cis_debian9_L2
-                      references: https://www.cisecurity.org/cis-benchmarks/
-                      score: 7
-                      start_scan: '2019-11-13T10:57:09Z'
-                      total_checks: 29
-                    - description: "This document provides prescriptive guidance for establishing a secure
-                    configuration posture for Debian Linux 9"
-                      end_scan: '2019-11-13T10:57:06Z'
-                      fail: 48
-                      hash_file: b44ecda10d854ecad25476ed99b5dfd9481e8a846c8d8a7684a1cc3b29f12993
-                      invalid: 16
-                      name: CIS benchmark for Debian/Linux 9 L1
-                      pass: 35
-                      policy_id: cis_debian9_L1
-                      references: https://www.cisecurity.org/cis-benchmarks/
-                      score: 42
-                      start_scan: '2019-11-13T10:57:06Z'
-                      total_checks: 99
-                  total_affected_items: 2
-                  failed_items: []
+                    - total_checks: 192
+                      name: "CIS Benchmark for Debian/Linux 10"
+                      score: 39
+                      pass: 61
+                      description: "This document provides prescriptive guidance for establishing a secure configuration
+                       posture for Debian Linux 10."
+                      start_scan: "2021-05-28T11:16:14Z"
+                      policy_id: "cis_debian10"
+                      invalid: 37
+                      fail: 94
+                      references: "https://www.cisecurity.org/cis-benchmarks/"
+                      hash_file: "f9bc11bb3e2cfa4017da658e833a38840f180cc339c07c01a6239c4d947d1bbe"
+                      end_scan: "2021-05-28T11:16:14Z"
+                  total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected sca information was returned"
                 error: 0
         '400':
@@ -12172,15 +12167,15 @@ paths:
                 data:
                   affected_items:
                   - remediation: "For new installations, during installation create a custom partition setup and specify
-                   a separate partition for /var. For systems that were previously installed, create a new partition and
-                    configure /etc/fstab as appropriate"
+                      a separate partition for /var. For systems that were previously installed, create a new partition
+                      and configure /etc/fstab as appropriate"
                     rationale: "Since the /var directory may contain world-writable files and directories, there is a
-                    risk of resource exhaustion if it is not bound to a separate partition"
+                      risk of resource exhaustion if it is not bound to a separate partition"
                     title: "Ensure separate partition exists for /var"
                     policy_id: cis_debian
                     file: /etc/fstab
                     description: "The /var directory is used by daemons and other system services to temporarily store
-                    dynamic data. Some directories created by these processes may be world-writable"
+                      dynamic data. Some directories created by these processes may be world-writable"
                     id: 5003
                     result: failed
                     condition: all
@@ -12191,9 +12186,9 @@ paths:
                     - key: cis_csc
                       value: "5"
                   - remediation: "Run the following commands to remove exim: # apt-get remove exim4; # apt-get purge
-                  exim4"
+                      exim4"
                     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended
-                    that the package be removed to reduce the potential attack surface"
+                      that the package be removed to reduce the potential attack surface"
                     title: "Ensure IMAP and POP3 server is not enabled (POP3)"
                     policy_id: cis_debian
                     file: /etc/inetd.conf
@@ -12208,9 +12203,9 @@ paths:
                       value: "9"
                     - key: pci_dss
                       value: "2.2.2"
-                  failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected sca/policy information was returned"
                 error: 0
         '400':
@@ -12256,9 +12251,9 @@ paths:
                     - '001'
                     - '002'
                     - '003'
-                  failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
+                  failed_items: []
                 message: "Syscheck scan was restarted on returned agents"
                 error: 0
         '400':
@@ -12317,39 +12312,24 @@ paths:
               example:
                 data:
                   affected_items:
-                    - changes: 1
-                      date: '2019-11-22T10:24:52Z'
-                      file: "/etc/dpkg/origins/debian"
-                      gid: '0'
-                      gname: root
-                      inode: 1459742
-                      md5: 731423fa8ba067262f8ef37882d1e742
-                      mtime: '2009-02-02T23:06:58Z'
-                      perm: '100644'
-                      sha1: b65f7f2af66c53b51765877bbe91a22bc6fca1e2
-                      sha256: 50f35af8ac4a5df3690991a4b428fa49d56580b0020fcc6e38283b3b1b2e6c74
-                      size: 82
-                      type: file
-                      uid: '0'
-                      uname: root
-                    - changes: 1
-                      date: '2019-11-22T10:24:56Z'
-                      file: "/etc/sgml/xml-core.cat"
-                      gid: '0'
-                      gname: root
-                      inode: 2896763
-                      md5: 055ba0bd3154c0a58b9bf8a0c9ecf2fa
-                      mtime: '2012-11-07T21:44:21Z'
-                      perm: '100644'
-                      sha1: 3dec5570307472381671ff18bbe4d4be09951690
-                      sha256: 3c46704b553c4b55ce928ffe89badfcfd08a02f0e6558211dfd57d9ae1e72aa4
-                      size: 45
-                      type: file
-                      uid: '0'
-                      uname: root
-                  total_affected_items: 1433
-                  failed_items: []
+                    - gid: "0"
+                      type: "file"
+                      size: 428
+                      sha256: "999b40b67f690638f601d76b756d529dd40a4325f42dfd9fd2e629ad0a91947c"
+                      uname: "root"
+                      file: "/usr/bin/c89-gcc"
+                      perm: "rwxr-xr-x"
+                      uid: "0"
+                      inode: 19661776
+                      gname: "root"
+                      sha1: "c70119483d984a7c2300947679663fffd5df1419"
+                      date: "2021-05-28T11:16:11Z"
+                      mtime: "2006-05-07T09:28:01Z"
+                      md5: "ddef29c39d1a5d5ac6a5380627309ad5"
+                      changes: 1
+                  total_affected_items: 1330
                   total_failed_items: 0
+                  failed_items: []
                 message: "FIM findings of the agent were returned"
                 error: 0
         '400':
@@ -12392,8 +12372,8 @@ paths:
                   affected_items:
                     - '000'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Syscheck database was cleared on returned agents"
                 error: 0
         '400':
@@ -12436,11 +12416,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - end: '2019-11-22T10:47:56Z'
-                      start: '2019-11-22T10:47:32Z'
+                    - start: '2021-05-28T12:11:33Z'
+                      end: '2021-05-28T12:11:33Z'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Last syscheck scan of the agent was returned"
                 error: 0
         '400':
@@ -12492,29 +12472,31 @@ paths:
               example:
                 data:
                   affected_items:
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
+                    - filename: "0005-wazuh_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: wazuh
                       position: 0
                       details:
                         prematch:
                           pattern: "^wazuh: "
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
+                    - filename: "0005-wazuh_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: agent-buffer
                       position: 1
                       details:
                         parent: wazuh
                         prematch:
-                          pattern: "^Agent buffer:"
+                          pattern: "^wazuh: "
+                          offset: after_parent
                         regex:
                           pattern: "^ '(\\S+)'."
+                          offset: after_prematch
                         order: level
-                  total_affected_items: 2
-                  failed_items: []
+                  total_affected_items: 1140
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected decoders were returned"
                 error: 0
         '400':
@@ -12573,8 +12555,8 @@ paths:
                       relative_dirname: ruleset/decoders
                       status: enabled
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All decoder files were returned"
                 error: 0
         '400':
@@ -12670,7 +12652,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: Selected decoder was returned
+                message: "Selected decoder was returned"
                 error: 0
             application/xml:
               schema:
@@ -12771,9 +12753,9 @@ paths:
                 data:
                   affected_items:
                     - "etc/decoders/new_decoder.xml"
-                  failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "Decoder was successfully uploaded"
                 error: 0
         '400':
@@ -12816,9 +12798,9 @@ paths:
                 data:
                   affected_items:
                     - "etc/decoders/new_decoder.xml"
-                  failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "Decoder file was successfully deleted"
                 error: 0
         '400':
@@ -12865,24 +12847,26 @@ paths:
               example:
                 data:
                   affected_items:
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
+                    - filename: "0005-wazuh_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: wazuh
                       position: 0
                       details:
-                        prematch: "^wazuh: "
-                    - filename: 0006-json_decoders.xml
-                      relative_dirname: ruleset/decoders
+                        prematch:
+                          pattern: "^wazuh: "
+                    - filename: "0006-json_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: json
                       position: 0
                       details:
-                        prematch: ^{\s*"
+                        prematch:
+                          patten: ^{\\s*\"
                         plugin_decoder: JSON_Decoder
-                  total_affected_items: 2
-                  failed_items: []
+                  total_affected_items: 182
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected decoders were returned"
                 error: 0
         '400':
@@ -12937,9 +12921,9 @@ paths:
                     - '010'
                     - '011'
                     - '012'
-                  failed_items: []
                   total_affected_items: 13
                   total_failed_items: 0
+                  failed_items: []
                 message: Cleared syscheck database on shown agents
                 error: 0
         '400':
@@ -13889,9 +13873,9 @@ paths:
                       scan:
                         id: 1708048541
                         time: '2019-10-30T16:19:39Z'
-                  failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -13934,23 +13918,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - inode: 15952431
-                      local:
-                        ip: 127.0.0.11
-                        port: 45363
-                      protocol: tcp
-                      remote:
-                        ip: 0.0.0.0
-                        port: 0
-                      rx_queue: 0
+                    - cpu:
+                        cores: 4
+                        mhz: 1101
+                        name: "Intel(R) Core(TM) i5-7600K CPU @ 3.80GHz"
+                      ram:
+                        free: 12401548
+                        total: 32852420
+                        usage: 63
                       scan:
-                        id: 1708048540
-                        time: '2019-10-30T16:09:35Z'
-                      state: listening
-                      tx_queue: 0
+                        id: 0
+                        time: "2021-05-28T12:16:14Z"
+                      board_serial: "HA16934652"
+                      agent_id: "001"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14004,8 +13987,8 @@ paths:
                         id: 1708048540
                         time: '2019-10-30T16:09:35Z'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14025,7 +14008,7 @@ paths:
         - Syscollector
       summary: "Get agent netaddr"
       description: "Return the agent's network address info. This information include used IP protocol, interface, IP
-      address  among others"
+        address  among others"
       operationId: api.controllers.syscollector_controller.get_network_address_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14060,15 +14043,14 @@ paths:
                 data:
                   affected_items:
                     - address: 172.26.0.7
-                      broadcast: 172.26.255.255
                       iface: eth0
                       netmask: 255.255.0.0
+                      broadcast: 172.26.255.255
                       proto: ipv4
-                      scan:
-                        id: 476539860
+                      agent_id: 001
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14088,7 +14070,7 @@ paths:
         - Syscollector
       summary: "Get agent netiface"
       description: "Return the agent's network interface info. This information include rx, scan, tx info and some
-      network information among others"
+        network information among others"
       operationId: api.controllers.syscollector_controller.get_network_interface_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14131,27 +14113,27 @@ paths:
                 data:
                   affected_items:
                     - rx:
-                        bytes: 7774
+                        bytes: 679529
                         dropped: 0
                         errors: 0
-                        packets: 59
+                        packets: 3638
                       scan:
-                        id: 1248412797
-                        time: '2020-04-15T11:02:03Z'
+                        id: 0
+                        time: '2021-05-28T12:16:14Z'
                       tx:
-                        bytes: 211
+                        bytes: 1326491
                         dropped: 0
                         errors: 0
-                        packets: 4
-                      name: eth0
-                      state: up
+                        packets: 3828
                       type: ethernet
-                      mac: 02:42:ac:18:00:02
+                      name: eth0
                       mtu: 1500
-                      agent_id: '000'
+                      state: up
+                      mac: 02:42:ac:18:00:02
+                      agent_id: '001'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14204,15 +14186,15 @@ paths:
                 data:
                   affected_items:
                     - scan:
-                        id: 1248412797
-                      iface: eth0
-                      type: ipv4
+                        id: 0
                       gateway: 172.24.0.1
                       dhcp: "enabled"
-                      agent_id: '000'
+                      iface: eth0
+                      type: ipv4
+                      agent_id: '001'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14232,7 +14214,7 @@ paths:
         - Syscollector
       summary: "Get agent OS"
       description: "Return the agent's OS info. This information include os information, architecture information among
-      others of all agents"
+        others of all agents"
       operationId: api.controllers.syscollector_controller.get_os_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14257,24 +14239,24 @@ paths:
                 data:
                   affected_items:
                     - os:
-                        codename: Bionic Beaver
-                        major: '18'
+                        codename: "focal"
+                        major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 18.04.4 LTS (Bionic Beaver)
+                        version: "20.04.2 LTS (Focal Fossa)"
                       scan:
-                        id: 496386874
-                        time: '2020-04-15T11:02:03Z'
+                        id: 0
+                        time: '22021-05-28T12:16:14Z'
                       sysname: Linux
-                      hostname: wazuh-master
-                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
-                      release: 5.3.0-7642-generic
+                      release: 5.8.0-45-generic
+                      version: "#51~20.04.1-Ubuntu SMP Tue Feb 23 13:46:31 UTC 2021"
                       architecture: x86_64
-                      agent_id: '000'
+                      hostname: wazuh-master
+                      agent_id: '001'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14329,53 +14311,52 @@ paths:
                 data:
                   affected_items:
                     - scan:
-                        id: 1137251326
-                        time: '2020-04-15T11:02:03Z'
+                        id: 0
+                        time: '2021-05-28T11:16:15Z'
+                      multiarch: same
+                      description: "GCC Quad-Precision Math Library"
+                      source: krb5
                       name: libquadmath0
-                      size: 269
-                      version: 8.4.0-1ubuntu1~18.04
-                      source: gcc-8
+                      architecture: amd64
+                      vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                      size: 426
                       format: deb
+                      version: "8.4.0-1ubuntu1~18.04"
                       section: libs
-                      architecture: amd64
-                      multiarch: same
-                      description: GCC Quad-Precision Math Library
                       priority: optional
-                      vendor: Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
+                      agent_id: '002'
                     - scan:
-                        id: 1137251326
-                        time: '2020-04-15T11:02:03Z'
-                      name: libnpth0
-                      size: 32
-                      version: 1.5-3
-                      source: npth
-                      format: deb
-                      section: libs
-                      architecture: amd64
-                      multiarch: same
-                      description: replacement for GNU Pth using system threads
-                      priority: optional
-                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
-                    - scan:
-                        id: 1137251326
-                        time: '2020-04-15T11:02:03Z'
-                      name: fdisk
-                      size: 427
-                      version: 2.31.1-0.4ubuntu3.5
-                      source: util-linux
-                      format: deb
-                      section: utils
-                      architecture: amd64
+                        id: 0
+                        time: '2021-05-28T11:16:15Z'
                       multiarch: foreign
-                      description: collection of partitioning utilities
-                      priority: important
-                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
-                  total_affected_items: 3
-                  failed_items: []
+                      description: "secure shell (SSH) client, for secure access to remote machines"
+                      source: openssh
+                      name: openssh-client
+                      architecture: amd64
+                      vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                      size: 4117
+                      format: deb
+                      version: "1:8.2p1-4ubuntu0.2"
+                      section: net
+                      priority: standard
+                      agent_id: '002'
+                    - scan:
+                        id: 0
+                        time: '2021-05-28T11:16:16Z'
+                      description: "Foreign Function Interface for Python calling C code - backend"
+                      source: python-cffi
+                      name: lpython-cffi-backend
+                      architecture: amd64
+                      vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                      size: 210
+                      format: deb
+                      version: "1.14.0-1build1"
+                      section: python
+                      priority: optional
+                      agent_id: '002'
+                  total_affected_items: 307
                   total_failed_items: 0
+                  failed_items: []
                   message: "All specified syscollector information was returned"
                   error: 0
         '400':
@@ -14395,7 +14376,7 @@ paths:
         - Syscollector
       summary: "Get agent ports"
       description: "Return the agent's ports info. This information include local IP, Remote IP, protocol information
-      among others"
+        among others"
       operationId: api.controllers.syscollector_controller.get_ports_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14439,14 +14420,14 @@ paths:
                         ip: 0.0.0.0
                         port: 0
                       scan:
-                        id: 315935312
-                        time: '2020-04-15T11:02:07Z'
-                      rx_queue: 0
-                      state: listening
-                      protocol: tcp
+                        id: 0
+                        time: '2021-05-28T11:16:14Z'
                       inode: 12387152
+                      rx_queue: 0
+                      protocol: tcp
+                      pid: 0
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                     - local:
                         ip: 0.0.0.0
                         port: 1514
@@ -14454,14 +14435,15 @@ paths:
                         ip: 0.0.0.0
                         port: 0
                       scan:
-                        id: 315935312
-                        time: '2020-04-15T11:02:07Z'
-                      rx_queue: 0
+                        id: 0
+                        time: '2021-05-28T11:16:14Z'
                       state: listening
-                      protocol: tcp
                       inode: 12397927
+                      rx_queue: 0
+                      protocol: tcp
+                      pid: 0
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                     - local:
                         ip: 0.0.0.0
                         port: 1515
@@ -14471,15 +14453,15 @@ paths:
                       scan:
                         id: 315935312
                         time: '2020-04-15T11:02:07Z'
-                      rx_queue: 0
                       state: listening
-                      protocol: tcp
                       inode: 12397153
+                      rx_queue: 0
+                      protocol: tcp
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14542,74 +14524,42 @@ paths:
                 data:
                   affected_items:
                     - scan:
-                        id: 28643647
-                        time: '2020-04-15T11:02:07Z'
-                      name: bash
-                      suser: root
-                      nlwp: 1
-                      pgrp: 1
-                      state: S
-                      session: 1
-                      utime: 23
-                      egroup: root
-                      ruser: root
-                      argvs: "/scripts/entrypoint.sh,wazuh-master,master-node,master"
-                      size: 4593
-                      euser: root
-                      processor: 3
-                      resident: 793
-                      tty: 0
+                        id: 0
+                        time: 2021-05-28T12:16:15Z
                       nice: 0
-                      pid: '1'
-                      vm_size: 18372
-                      sgroup: root
-                      rgroup: root
-                      fgroup: root
-                      start_time: 1093372
+                      name: "bash"
+                      resident: 788
+                      egroup: "root"
+                      sgroup: "root"
+                      euser: "root"
+                      size: 996
                       tgid: 1
-                      stime: 1
-                      ppid: 0
-                      share: 726
+                      share: 729
+                      rgroup: "root"
+                      argvs: "/scripts/entrypoint.sh nginx-lb 4.3"
+                      start_time: 1217866
+                      stime: 0
+                      vm_size: 3984
                       priority: 20
-                      cmd: bash
-                      agent_id: '000'
-                    - scan:
-                        id: 28643647
-                        time: '2020-04-15T11:02:07Z'
-                      name: wazuh-control
-                      suser: root
+                      utime: 2
                       nlwp: 1
-                      pgrp: 1
-                      state: S
                       session: 1
-                      utime: 0
-                      egroup: root
-                      ruser: root
-                      argvs: "/var/ossec/bin/wazuh-control,restart"
-                      size: 1156
-                      euser: root
-                      processor: 6
-                      resident: 457
+                      processor: 2
+                      pgrp: 1
+                      suser: "root"
+                      state: "S"
+                      ppid: 0
+                      cmd: "bash"
                       tty: 0
-                      nice: 0
-                      pid: '15'
-                      vm_size: 4624
-                      sgroup: root
-                      rgroup: root
-                      fgroup: root
-                      start_time: 1093547
-                      tgid: 15
-                      stime: 3
-                      ppid: 1
-                      share: 417
-                      priority: 20
-                      cmd: "/bin/sh"
-                      agent_id: '000'
+                      pid: "1"
+                      fgroup: "root"
+                      ruser: "root"
+                      agent_id: "001"
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
-                  message: "All specified syscollector information was returned"
-                  error: 0
+                  failed_items: []
+                message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14627,7 +14577,7 @@ paths:
         - Security
       summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
-      auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
+        auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/raw'
@@ -14647,6 +14597,7 @@ paths:
                         $ref: '#/components/schemas/Token'
               example:
                 token: "<generated_token>"
+                error: 0
             text/plain:
               schema:
                 type: string
