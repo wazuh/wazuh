@@ -576,7 +576,7 @@ void test__w_logcollector_state_update_target_OSHash_Add_fail(void ** state) {
     w_lc_state_target_t * target;
     os_calloc(1, sizeof(w_lc_state_target_t), target);
     target->drops = 10;
-    target->name = "test";
+    os_strdup("test", target->name);
 
     w_lc_state_target_t ** target_array;
     os_calloc(2, sizeof(w_lc_state_target_t *), target_array);
@@ -1038,6 +1038,42 @@ void test_w_logcollector_state_main_ok(void ** state) {
     os_free(g_lc_states_interval);
 }
 
+/* _test_w_logcollector_state_delete_file */
+
+void test__w_logcollector_state_delete_file_no_data(void ** state) {
+
+    w_lc_state_storage_t storage = {0};
+    os_calloc(1, sizeof(OSHash), storage.states);
+
+    expect_value(__wrap_OSHash_Delete, self, storage.states);
+    expect_string(__wrap_OSHash_Delete, key, "test_path");
+    will_return(__wrap_OSHash_Delete, NULL);
+
+    _w_logcollector_state_delete_file(&storage, "test_path");
+    os_free(storage.states);
+
+}
+void test__w_logcollector_state_delete_file_ok(void ** state) {
+
+    w_lc_state_storage_t storage = {0};
+    os_calloc(1, sizeof(OSHash), storage.states);
+
+    w_lc_state_file_t * data = NULL;
+    os_calloc(1, sizeof(w_lc_state_file_t), data);
+    os_calloc(3, sizeof(w_lc_state_target_t *), data->targets);
+    os_calloc(1, sizeof(w_lc_state_target_t), data->targets[0]);
+    os_strdup("target name 1", data->targets[0]->name);
+    os_calloc(1, sizeof(w_lc_state_target_t), data->targets[1]);
+    os_strdup("target name 2", data->targets[1]->name);
+
+    expect_value(__wrap_OSHash_Delete, self, storage.states);
+    expect_string(__wrap_OSHash_Delete, key, "test_path");
+    will_return(__wrap_OSHash_Delete, data);
+
+    _w_logcollector_state_delete_file(&storage, "test_path");
+    os_free(storage.states);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Tests w_logcollector_state_init
@@ -1088,7 +1124,11 @@ int main(void) {
 
         // Tests w_logcollector_state_main
         cmocka_unit_test(test_w_logcollector_state_main_bad_interval),
-        cmocka_unit_test(test_w_logcollector_state_main_ok)
+        cmocka_unit_test(test_w_logcollector_state_main_ok),
+
+        // Test _w_logcollector_state_delete_file
+        cmocka_unit_test(test__w_logcollector_state_delete_file_no_data),
+        cmocka_unit_test(test__w_logcollector_state_delete_file_ok),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
