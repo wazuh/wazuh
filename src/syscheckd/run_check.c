@@ -60,7 +60,6 @@ STATIC void fim_link_check_delete(directory_t *configuration);
 STATIC void fim_link_delete_range(directory_t *configuration);
 STATIC void fim_link_silent_scan(const char *path, directory_t *configuration);
 STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration);
-STATIC void fim_delete_realtime_watches(const directory_t *configuration);
 #endif
 
 // Send a message
@@ -769,7 +768,7 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
     }
 }
 
-STATIC void fim_delete_realtime_watches(__attribute__((unused)) const directory_t *configuration) {
+void fim_delete_realtime_watches(__attribute__((unused)) const directory_t *configuration) {
 #ifdef INOTIFY_ENABLED
     OSHashNode *hash_node;
     char *data;

@@ -69,8 +69,12 @@ void fim_insert_directory(OSList *config_list,
         int cmp = strcmp(dir_it->path, new_entry->path);
         if (cmp == 0) {
             // Duplicated entry, replace existing with new one
-            free_directory(dir_it);
-            node_it->data = new_entry;
+            if (dir_it->is_wildcard == new_entry->is_wildcard || new_entry->is_wildcard == 0) {
+                free_directory(dir_it);
+                node_it->data = new_entry;
+            } else {
+                free_directory(new_entry);
+            }
             return;
         } else if (cmp > 0) {
             // Insert the new entry before the current node.

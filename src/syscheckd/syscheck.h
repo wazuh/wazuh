@@ -344,6 +344,8 @@ int realtime_start(void);
  */
 int realtime_adddir(const char *dir, directory_t *configuration, int followsl);
 
+void fim_delete_realtime_watches(const directory_t *configuration);
+
 /**
  * @brief Process events in the real time queue
  *

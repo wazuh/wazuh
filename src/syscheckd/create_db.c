@@ -1683,6 +1683,17 @@ void update_wildcards_config(){
             // Send event if needed before delete this node entry
             fim_process_missing_entry(dir_it->path, FIM_SCHEDULED, NULL);
 
+#if INOTIFY_ENABLED
+            if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+                fim_delete_realtime_watches(dir_it);
+            }
+#endif
+#if ENABLE_AUDIT
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+                remove_audit_rule_syscheck(dir_it->path);
+            }
+#endif
+
             // Delete node
             mdebug2(FIM_WILDCARDS_REMOVE_DIRECTORY, dir_it->path);
             aux_it = OSList_GetNext(syscheck.directories, node_it);
