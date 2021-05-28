@@ -234,6 +234,13 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
         is_endline = (*(str - 1) == '\n');
         do_split = false;
 
+        /* Deletes CR from macOS Sierra */
+        if (is_endline && offset >= 2 && *(str - 2) == '\r') {
+            *(str - 1) = '\0';
+            *(str - 2) = '\n';
+            offset--;
+        }
+
         /* Avoid fgets infinite loop behavior when size parameter is 1
          * If we didn't get the new line, because the size is large, send what we got so far.
          */
