@@ -339,10 +339,9 @@ int realtime_start(void);
  *
  * @param dir Path to file or directory
  * @param configuration Configuration associated with the file or directory
- * @param followsl If the path is configured with follow sym link option
  * @return 1 on success, -1 on realtime_start failure, -2 on set_winsacl failure, and 0 on other errors
  */
-int realtime_adddir(const char *dir, directory_t *configuration, int followsl);
+int realtime_adddir(const char *dir, directory_t *configuration);
 
 void fim_delete_realtime_watches(const directory_t *configuration);
 

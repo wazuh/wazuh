@@ -1045,11 +1045,11 @@ void test_audit_no_rules_to_realtime(void **state) {
     char error_msg[OS_SIZE_128];
 
     // Mutex
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     will_return(__wrap_search_audit_rule, 0);
 

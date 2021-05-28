@@ -14,8 +14,7 @@
 #include <cmocka.h>
 
 int __wrap_realtime_adddir(const char *dir,
-                           __attribute__((unused)) directory_t *configuration,
-                           __attribute__((unused)) int followsl) {
+                           __attribute__((unused)) directory_t *configuration) {
     check_expected(dir);
 
     return mock();

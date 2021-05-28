@@ -138,7 +138,7 @@ if(${TARGET} STREQUAL "winagent")
 else()
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
-                                          -Wl,--wrap,atexit")
+                                          -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
 endif()
 
 add_test(NAME test_create_db COMMAND test_create_db)

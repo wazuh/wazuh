@@ -378,9 +378,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
                 w_mutex_lock(&syscheck.fim_realtime_mutex);
-                realtime_adddir(dir_it->path, dir_it, 0);
+                realtime_adddir(dir_it->path, dir_it);
                 w_mutex_unlock(&syscheck.fim_realtime_mutex);
-            }
         }
         w_rwlock_unlock(&syscheck.directories_lock);
 #endif
@@ -502,7 +501,7 @@ int fim_whodata_initialize() {
         }
 
         w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (realtime_adddir(dir_it->path, dir_it, 0) == -2) {
+        if (realtime_adddir(dir_it->path, dir_it) == -2) {
             dir_it->dirs_status.status &= ~WD_CHECK_WHODATA;
             dir_it->dirs_status.status |= WD_CHECK_REALTIME;
             dir_it->options &= ~WHODATA_ACTIVE;
@@ -846,17 +845,15 @@ STATIC void fim_link_silent_scan(const char *path, directory_t *configuration) {
 
     fim_checker(path, &evt_data, configuration);
 
-    if (configuration->options & REALTIME_ACTIVE) {
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        realtime_adddir(path, configuration, 1);    // This is acting always on links, so `followsl` will always be `1`
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-    } else if (configuration->options & WHODATA_ACTIVE) {
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    realtime_adddir(path, configuration);
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 #ifdef ENABLE_AUDIT
+    if (configuration->options & WHODATA_ACTIVE) {
         // Just in case, we need to remove the configured directory if it was previously monitored
         remove_audit_rule_syscheck(configuration->path);
-        add_whodata_directory(path);
-#endif
     }
+#endif
 }
 
 STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration) {
@@ -902,8 +899,7 @@ void set_whodata_mode_changes() {
             dir_it->dirs_status.status &= ~WD_CHECK_REALTIME;
             dir_it->options |= REALTIME_ACTIVE;
             w_mutex_lock(&syscheck.fim_realtime_mutex);
-            if (realtime_adddir(dir_it->path, dir_it, 0) != 1) {
-                merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, dir_it->path);
+            if (realtime_adddir(dir_it->path, dir_it) != 1) {
             } else {
                 mdebug1(FIM_REALTIME_MONITORING, dir_it->path);
             }

@@ -6704,7 +6704,6 @@ void test_state_checker_no_files_to_check(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     OSList_CleanNodes(syscheck.directories);
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
@@ -6754,9 +6753,9 @@ void test_state_checker_file_does_not_exist(void **state) {
     st.wMonth = 3;
     st.wDay = 3;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -6791,9 +6790,9 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
     acl.AceCount = 1;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -6899,9 +6898,9 @@ void test_state_checker_file_with_valid_sacl(void **state) {
 
     acl.AceCount = 1;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
@@ -7193,7 +7192,6 @@ void test_state_checker_dir_readded_succesful(void **state) {
 void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
     int ret;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
@@ -7215,7 +7213,6 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     whodata_directory * w_dir;
     FILETIME current_time;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
@@ -7248,7 +7245,6 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     int ret;
     whodata_directory * w_dir;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
@@ -7280,7 +7276,6 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
     FILETIME current_time;
     int i;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
@@ -7323,7 +7318,6 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
     FILETIME current_time;
     int i;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
@@ -7370,7 +7364,6 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
     int ret;
     int i;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 

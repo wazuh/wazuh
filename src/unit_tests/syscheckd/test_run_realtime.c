@@ -350,37 +350,34 @@ void test_realtime_start_failure_inotify(void **state) {
     assert_int_equal(ret, -1);
 }
 
-void test_realtime_adddir_realtime_start_failure(void **state)
-{
-    (void) state;
+void test_realtime_adddir_realtime_start_failure(void **state) {
     int ret;
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     const char * path = "/etc/folder";
 
-    ret = realtime_adddir(path, 0, 0);
+    ret = realtime_adddir(path, &config);
 
     assert_int_equal(ret, -1);
 }
 
-void test_realtime_adddir_realtime_failure(void **state)
-{
-    (void) state;
+void test_realtime_adddir_realtime_failure(void **state) {
     int ret;
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     const char * path = "/etc/folder";
 
     syscheck.realtime->fd = -1;
 
-    ret = realtime_adddir(path, 0, 0);
+    ret = realtime_adddir(path, &config);
 
     assert_int_equal(ret, -1);
 }
 
 
-void test_realtime_adddir_realtime_watch_max_reached_failure(void **state)
-{
-    (void) state;
+void test_realtime_adddir_realtime_watch_max_reached_failure(void **state) {
     int ret;
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     const char * path = "/etc/folder";
 
@@ -390,7 +387,7 @@ void test_realtime_adddir_realtime_watch_max_reached_failure(void **state)
                                                 "The maximum limit of inotify watches has been reached.");
     errno = 28;
 
-    ret = realtime_adddir(path, 0, 0);
+    ret = realtime_adddir(path, &config);
 
     errno = 0;
 
@@ -398,10 +395,9 @@ void test_realtime_adddir_realtime_watch_max_reached_failure(void **state)
 }
 
 
-void test_realtime_adddir_realtime_watch_generic_failure(void **state)
-{
-    (void) state;
+void test_realtime_adddir_realtime_watch_generic_failure(void **state) {
     int ret;
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     const char * path = "/etc/folder";
 
@@ -409,7 +405,7 @@ void test_realtime_adddir_realtime_watch_generic_failure(void **state)
     will_return(__wrap_inotify_add_watch, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "(6272): Unable to add inotify watch to real time monitoring: '/etc/folder'. '-1' '0':'Success'");
 
-    ret = realtime_adddir(path, 0, 0);
+    ret = realtime_adddir(path, &config);
 
     assert_int_equal(ret, 1);
 }
@@ -418,6 +414,7 @@ void test_realtime_adddir_realtime_watch_generic_failure(void **state)
 void test_realtime_adddir_realtime_add(void **state) {
     int ret;
     const char * path = "/etc/folder";
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     syscheck.realtime->fd = 1;
     syscheck.realtime->dirtb = *state;
@@ -437,7 +434,9 @@ void test_realtime_adddir_realtime_add(void **state) {
     test_mode = 0;
     OSHash_Add_ex(syscheck.realtime->dirtb, "1", "/etc/folder"); // Duplicate simulation
 
-    ret = realtime_adddir(path, 0, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = realtime_adddir(path, &config);
     test_mode = 1;
 
     assert_int_equal(ret, 1);
@@ -446,8 +445,8 @@ void test_realtime_adddir_realtime_add(void **state) {
 
 void test_realtime_adddir_realtime_add_hash_failure(void **state) {
     int ret;
-
     const char * path = "/etc/folder";
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, 1);
@@ -465,7 +464,7 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
     test_mode = 1;
-    ret = realtime_adddir(path, 0, 0);
+    ret = realtime_adddir(path, &config);
     test_mode = 0;
 
     assert_int_equal(ret, 1);
@@ -474,8 +473,8 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state) {
 
 void test_realtime_adddir_realtime_update(void **state) {
     int ret;
-
     const char * path = "/etc/folder";
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, 1);
@@ -486,7 +485,9 @@ void test_realtime_adddir_realtime_update(void **state) {
 
     will_return(__wrap_OSHash_Update_ex, 1);
 
-    ret = realtime_adddir(path, 0, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = realtime_adddir(path, &config);
 
     assert_int_equal(ret, 1);
 }
@@ -494,8 +495,8 @@ void test_realtime_adddir_realtime_update(void **state) {
 
 void test_realtime_adddir_realtime_update_failure(void **state) {
     int ret;
-
     const char * path = "/etc/folder";
+    directory_t config = { .options = REALTIME_ACTIVE };
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, 1);
@@ -508,7 +509,9 @@ void test_realtime_adddir_realtime_update_failure(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
 
-    ret = realtime_adddir(path, 0, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = realtime_adddir(path, &config);
 
     assert_int_equal(ret, -1);
 }
@@ -573,9 +576,6 @@ void test_realtime_process_len(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -612,9 +612,6 @@ void test_realtime_process_len_zero(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -649,9 +646,6 @@ void test_realtime_process_len_path_separator(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
     will_return(__wrap_rbtree_keys, paths);
@@ -676,9 +670,6 @@ void test_realtime_process_overflow(void **state) {
     will_return(__wrap_read, event);
     will_return(__wrap_read, 21);
     expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     expect_string(__wrap_send_log_msg, msg, "ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
@@ -724,9 +715,6 @@ void test_realtime_process_delete(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
@@ -788,9 +776,6 @@ void test_realtime_process_move_self(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
@@ -1358,111 +1343,119 @@ void test_free_win32rtfim_data_full_data(void **state) {
 
 void test_realtime_adddir_whodata_non_existent_file(void **state) {
     int ret;
+    directory_t *configuration;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
+    configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9)), 0);
+    ret = realtime_adddir("C:\\a\\path", configuration);
 
     assert_int_equal(ret, 0);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_WHODATA);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_REALTIME);
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.object_type, WD_STATUS_UNK_TYPE);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(configuration->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(configuration->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(configuration->dirs_status.object_type, WD_STATUS_UNK_TYPE);
+    assert_null(configuration->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     int ret;
+    directory_t *configuration;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
+    configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 2);
 
     expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
-    expect_value(__wrap_set_winsacl, configuration, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9)));
+    expect_value(__wrap_set_winsacl, configuration, configuration);
     will_return(__wrap_set_winsacl, 1);
 
     expect_string(__wrap__merror, formatted_msg,
         "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'. It will be monitored in Realtime");
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9)), 0);
+    ret = realtime_adddir("C:\\a\\path", configuration);
 
     assert_int_equal(ret, -2);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_WHODATA);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_REALTIME);
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.object_type, WD_STATUS_DIR_TYPE);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(configuration->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(configuration->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(configuration->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(configuration->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_whodata_file_success(void **state) {
     int ret;
+    directory_t *configuration;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
+    configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 1);
 
     expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
-    expect_value(__wrap_set_winsacl, configuration, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9)));
+    expect_value(__wrap_set_winsacl, configuration, configuration);
     will_return(__wrap_set_winsacl, 0);
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9)), 0);
+    ret = realtime_adddir("C:\\a\\path", configuration);
 
     assert_int_equal(ret, 1);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_WHODATA);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_REALTIME);
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(configuration->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(configuration->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(configuration->dirs_status.object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(configuration->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_whodata_dir_success(void **state) {
     int ret;
+    directory_t *configuration;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status &= ~WD_CHECK_WHODATA;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status |= WD_CHECK_REALTIME;
+    configuration = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9));
+    configuration->dirs_status.status &= ~WD_CHECK_WHODATA;
+    configuration->dirs_status.status |= WD_CHECK_REALTIME;
 
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 2);
 
     expect_string(__wrap_set_winsacl, dir, "C:\\a\\path");
-    expect_value(__wrap_set_winsacl, configuration, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9)));
+    expect_value(__wrap_set_winsacl, configuration, configuration);
     will_return(__wrap_set_winsacl, 0);
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9)), 0);
+    ret = realtime_adddir("C:\\a\\path", configuration);
 
     assert_int_equal(ret, 1);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_WHODATA);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_CHECK_REALTIME);
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.object_type, WD_STATUS_DIR_TYPE);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 9))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(configuration->dirs_status.status & WD_CHECK_WHODATA);
+    assert_null(configuration->dirs_status.status & WD_CHECK_REALTIME);
+    assert_int_equal(configuration->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(configuration->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_realtime_adddir_max_limit_reached(void **state) {
@@ -1478,7 +1471,7 @@ void test_realtime_adddir_max_limit_reached(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
+    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 0);
 }
@@ -1501,7 +1494,7 @@ void test_realtime_adddir_duplicate_entry(void **state) {
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 1);
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
+    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -1527,7 +1520,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(vo
     expect_value(wrap_CloseHandle, hObject, 1234);
     will_return(wrap_CloseHandle, 0);
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
+    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 
@@ -1574,7 +1567,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     snprintf(debug_msg, OS_SIZE_128, FIM_REALTIME_CALLBACK, "C:\\a\\path");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
+    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -1597,7 +1590,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(
     expect_string(__wrap_w_directory_exists, path, "C:\\a\\path");
     will_return(__wrap_w_directory_exists, 0);
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
+    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -1622,7 +1615,7 @@ void test_realtime_adddir_handle_error(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
 
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
+    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 0);
 }
@@ -1650,7 +1643,7 @@ void test_realtime_adddir_success(void **state) {
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
 
     test_mode = 0;
-    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)), 0);
+    ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
     test_mode = 1;
 
     assert_int_equal(ret, 1);

@@ -54,26 +54,29 @@ int realtime_start() {
     return (0);
 
 error:
-    foreach_array(dir_it, syscheck.directories) {
+    pthread_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(dir_it, syscheck.directories) {
         if (dir_it->options & REALTIME_ACTIVE) {
             dir_it->options &= ~ REALTIME_ACTIVE;
             dir_it->options |= SCHEDULED_ACTIVE;
         }
     }
+    pthread_rwlock_unlock(&syscheck.directories_lock);
     return -1;
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *configuration, int followsl) {
+int fim_add_inotify_watch(const char *dir, const directory_t *configuration) {
     /* Check if it is ready to use */
     if (syscheck.realtime->fd < 0) {
         return (-1);
     } else {
         int wd = 0;
 
-        wd = inotify_add_watch(syscheck.realtime->fd,
-                                dir,
-                                (0 == followsl) ? (REALTIME_MONITOR_FLAGS|IN_DONT_FOLLOW) : REALTIME_MONITOR_FLAGS);
+        wd =
+        inotify_add_watch(syscheck.realtime->fd, dir,
+                          (0 == (configuration->options & CHECK_FOLLOW)) ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
+                                                                           REALTIME_MONITOR_FLAGS);
         if (wd < 0) {
             if (errno == 28) {
                 merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
@@ -110,7 +113,26 @@ int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *config
         }
     }
 
-    return (1);
+    return 1;
+}
+
+/* Add a directory to real time checking */
+int realtime_adddir(const char *dir, directory_t *configuration) {
+    int mode = FIM_MODE(configuration->options);
+
+#ifdef ENABLE_AUDIT
+    if (mode == FIM_WHODATA){
+        add_whodata_directory(dir);
+        return 1;
+    }
+#endif
+
+    if (mode == FIM_REALTIME) {
+        return fim_add_inotify_watch(dir, configuration);
+    }
+
+    // Nothing to do here
+    return 1;
 }
 
 /* Process events in the real time queue */
@@ -494,7 +516,7 @@ int realtime_win32read(win32rtfim *rtlocald)
     return rc;
 }
 
-int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((unused)) int followsl) {
+int realtime_adddir(const char *dir, directory_t *configuration) {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
@@ -634,8 +656,7 @@ int realtime_start() {
 }
 
 int realtime_adddir(__attribute__((unused)) const char *dir,
-                    __attribute__((unused)) directory_t *configuration,
-                    __attribute__((unused)) int followsl) {
+                    __attribute__((unused)) directory_t *configuration) {
     return (0);
 }
 

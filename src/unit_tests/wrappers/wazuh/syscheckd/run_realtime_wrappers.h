@@ -12,8 +12,7 @@
 #include "config/syscheck-config.h"
 
 int __wrap_realtime_adddir(const char *dir,
-                           directory_t *configuration,
-                           int followsl);
+                           directory_t *configuration);
 
 int __wrap_realtime_start();
 

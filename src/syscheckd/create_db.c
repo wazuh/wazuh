@@ -158,11 +158,14 @@ time_t fim_scan() {
         char *path = fim_get_real_path(dir_it);
 
         fim_checker(path, &evt_data, dir_it);
+
 #ifndef WIN32
-        if (dir_it->options & REALTIME_ACTIVE) {
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
-            realtime_adddir(path, dir_it, (dir_it->options & CHECK_FOLLOW) ? 1 : 0);
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        realtime_adddir(path, dir_it);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+#elif defined WIN_WHODATA
+        if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            realtime_adddir(path, dir_it);
         }
 #endif
         os_free(path);
@@ -204,6 +207,14 @@ time_t fim_scan() {
 
             fim_checker(path, &evt_data, dir_it);
 
+            // Verify the directory is being monitored correctly
+#ifndef WIN32
+            realtime_adddir(path, dir_it);
+#elif defined WIN_WHODATA
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+                realtime_adddir(path, dir_it);
+            }
+#endif
             os_free(path);
         }
         w_rwlock_unlock(&syscheck.directories_lock);
@@ -352,14 +363,13 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
             return;
         }
-#ifndef WIN32
-        if (configuration->options & REALTIME_ACTIVE) {
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
-            realtime_adddir(path, configuration, (configuration->options & CHECK_FOLLOW) ? 1 : 0);
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        }
-#endif
         fim_directory(path, evt_data, configuration);
+
+#ifndef WIN32
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        realtime_adddir(path, configuration);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+#endif
         break;
     }
 }
@@ -1665,14 +1675,6 @@ void update_wildcards_config(){
 
             if (new_entry->diff_size_limit == -1) {
                 new_entry->diff_size_limit = syscheck.file_size_limit;
-            }
-
-            if (FIM_MODE(new_entry->options) == FIM_WHODATA) {
-#ifdef WIN32
-                realtime_adddir(new_entry->path, new_entry, 0);
-#else
-                add_whodata_directory(new_entry->path);
-#endif
             }
 
             fim_insert_directory(syscheck.directories, new_entry);

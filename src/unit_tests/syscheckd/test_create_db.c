@@ -40,6 +40,8 @@
 
 extern fim_state_db _db_state;
 
+void update_wildcards_config();
+
 /* auxiliary structs */
 typedef struct __fim_data_s {
     event_data_t *evt_data;
@@ -1927,9 +1929,9 @@ static void test_fim_checker_fim_directory(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/media/test");
     will_return_always(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap_realtime_adddir, dir, "/media/");
-    will_return(__wrap_realtime_adddir, 0);
     expect_string(__wrap_realtime_adddir, dir, "/media/test");
+    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_realtime_adddir, dir, "/media/");
     will_return(__wrap_realtime_adddir, 0);
 
     strcpy(fim_data->entry->d_name, "test");
@@ -2081,10 +2083,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
-        }
+        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
+        will_return_count(__wrap_realtime_adddir, 0, 2);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2106,8 +2106,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap_realtime_adddir, dir, "/boot");
-    will_return(__wrap_realtime_adddir, 0);
+    expect_string_count(__wrap_realtime_adddir, dir, "/boot", 2);
+    will_return_count(__wrap_realtime_adddir, 0, 2);
 
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, file);
@@ -2128,13 +2128,13 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_get_user(0, strdup("user"));
         expect_get_group(0, strdup("group"));
 
+        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_get_path, file_path, "/boot/test_file");
+        will_return(__wrap_fim_db_get_path, NULL);
+
         expect_value(__wrap_fim_db_data_exists, inode, 0);
         expect_value(__wrap_fim_db_data_exists, dev, 0);
         will_return(__wrap_fim_db_data_exists, 0);
-
-        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_get_path, file_path, "/boot/test_file");
-        will_return(__wrap_fim_db_get_path, FIMDB_OK);
 
         expect_fim_db_insert(syscheck.database, "/boot/test_file", FIMDB_FULL);
     }
@@ -2190,10 +2190,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
-        }
+        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
+        will_return_count(__wrap_realtime_adddir, 0, 2);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2255,10 +2253,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
-        }
+        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
+        will_return_count(__wrap_realtime_adddir, 0, 2);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2330,10 +2326,9 @@ static void test_fim_scan_db_free(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
-        }
+        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
+        will_return_count(__wrap_realtime_adddir, 0, 2);
+
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
     }
@@ -2394,10 +2389,8 @@ static void test_fim_scan_no_limit(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
-        }
+        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
+        will_return_count(__wrap_realtime_adddir, 0, 2);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -4294,14 +4287,13 @@ static void test_fim_realtime_event_file_exists(void **state) {
     fim_data_t *fim_data = *state;
     struct stat buf = { .st_mode = 0 };
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 #ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 #else
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
@@ -4345,8 +4337,10 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
 static void test_fim_realtime_event_file_missing(void **state) {
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     struct stat stat_buf = { .st_mode = 0 };
 #ifdef TEST_WINAGENT
@@ -4677,11 +4671,11 @@ static void test_fim_process_file_from_db_deleted_file_not_in_configuration(void
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4719,11 +4713,11 @@ static void test_fim_process_file_from_db_deleted_file_fail_to_remove_entry_from
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4760,11 +4754,11 @@ static void test_fim_process_file_from_db_deleted_file_event_generated(void **st
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4808,11 +4802,11 @@ static void test_fim_process_file_from_db_file_without_conflict(void **state) {
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4848,11 +4842,11 @@ static void test_fim_process_file_from_db_conflicting_file_current_inode_free_in
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4937,11 +4931,11 @@ static void test_fim_process_file_from_db_conflicting_file_infinite_loop(void **
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     entry->file_entry.data->perm = strdup("rw-r--r--");
 
@@ -5185,7 +5179,6 @@ static void test_fim_resolve_db_collision_error_on_db(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
     expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
@@ -5473,15 +5466,6 @@ static void test_fim_update_db_data_modified() {
 
 #endif
 
-static void test_update_wildcards_config_list_null() {
-    if (syscheck.wildcards) {
-        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
-        OSList_Destroy(syscheck.wildcards);
-        syscheck.wildcards = NULL;
-    }
-    update_wildcards_config();
-}
-
 static void test_update_wildcards_config() {
     char **paths;
 #ifndef TEST_WINAGENT
@@ -5522,16 +5506,6 @@ static void test_update_wildcards_config() {
     will_return(__wrap_realpath, NULL);
     expect_string(__wrap_realpath, path, resolvedpath2);
     will_return(__wrap_realpath, NULL);
-#endif
-
-#ifdef WIN32
-    expect_string(__wrap_realtime_adddir, dir, resolvedpath1);
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, resolvedpath2);
-    will_return(__wrap_realtime_adddir, 0);
-#else
-    expect_string(__wrap_add_whodata_directory, path, resolvedpath1);
-    expect_string(__wrap_add_whodata_directory, path, resolvedpath2);
 #endif
 
     update_wildcards_config();
@@ -5586,17 +5560,37 @@ static void test_update_wildcards_config_remove_config() {
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
     will_return(__wrap_fim_db_get_path, NULL);
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath1);
+#endif
     expect_fim_db_get_path_from_pattern(syscheck.database, pattern1, NULL, FIM_DB_DISK, FIMDB_ERR);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
     will_return(__wrap_fim_db_get_path, NULL);
     expect_fim_db_get_path_from_pattern(syscheck.database, pattern2, NULL, FIM_DB_DISK, FIMDB_ERR);
-
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath2);
+#endif
     update_wildcards_config();
 
     // Empty config
     directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
     assert_null(directory0);
+}
+
+static void test_update_wildcards_config_list_null() {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    if (syscheck.wildcards) {
+        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
+        OSList_Destroy(syscheck.wildcards);
+        syscheck.wildcards = NULL;
+    }
+    update_wildcards_config();
 }
 
 int main(void) {
