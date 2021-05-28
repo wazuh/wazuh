@@ -23,6 +23,35 @@
 STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "", .settings = NULL};
 
 /**
+ * @brief Check if agent is running on macOS Sierra
+ * 
+ * @return true if agent is running in macOS Sierra. false otherwise
+ */
+STATIC bool w_is_macos_sierra() {
+
+    os_info *os_version = get_unix_version();
+
+    if (os_version != NULL  && strcmp(os_version->os_codename, MACOS_SIERRA_CODENAME_STR) == 0) {
+        free_osinfo(os_version);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @brief Prepend `script` command arguments when macOS Sierra is being used
+ * 
+ * @param log_cmd_array array of arguments
+ * @param log_cmd_array_idx index of the array
+ */
+STATIC INLINE void w_macos_add_sierra_support(char ** log_cmd_array, size_t * log_cmd_array_idx) {
+
+        w_strdup(SCRIPT_CMD_STR, log_cmd_array[(*log_cmd_array_idx)++]);
+        w_strdup(SCRIPT_CMD_ARGS, log_cmd_array[(*log_cmd_array_idx)++]);
+        w_strdup(SCRIPT_CMD_SINK, log_cmd_array[(*log_cmd_array_idx)++]);
+}
+
+/**
  * @brief Validates whether the predicate is valid or not
  * @param predicate Contains the `log`'s predicate filter to be used as a string
  * @return true if valid, otherwise false
@@ -146,6 +175,10 @@ STATIC INLINE char ** w_macos_create_log_show_array(char * start_date, char * qu
 
     os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
 
+    if (w_is_macos_sierra()) {
+        w_macos_add_sierra_support(log_cmd_array, &log_cmd_array_idx);
+    }
+
     /* Adding `log` and `show` to the array */
     w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
     w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
@@ -242,6 +275,10 @@ STATIC char ** w_macos_create_log_stream_array(char * predicate, char * level, i
 
     os_calloc(MAX_LOG_STREAM_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
 
+    if (w_is_macos_sierra()) {
+        w_macos_add_sierra_support(log_cmd_array, &log_cmd_array_idx);
+    }
+
     /* Adding `log` and `stream` to the array */
     w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
     w_strdup(LOG_STREAM_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
@@ -307,10 +344,16 @@ STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
 
 /**
  * @brief Checks whether the `log` command can be executed or not by using the access() function
- * 
+ * @warning if macOS Sierra is beeing used, also `script` command will be checked.
  * @return true when `log` command can be executed, false otherwise.
  */
 STATIC INLINE bool w_macos_is_log_executable(void) {
+
+
+    if (w_is_macos_sierra() && access(SCRIPT_CMD_STR, X_OK) != 0) {
+        merror(ACCESS_ERROR, LOG_CMD_STR, strerror(errno), errno);
+        return false;
+    }
 
     const int retval = access(LOG_CMD_STR, X_OK);
     if (retval == 0) {
