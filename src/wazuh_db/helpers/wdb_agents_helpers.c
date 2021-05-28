@@ -95,6 +95,9 @@ cJSON* wdb_insert_vuln_cves(int id,
                             const char *version,
                             const char *architecture,
                             const char *cve,
+                            const char *severity,
+                            double cvss2_score,
+                            double cvss3_score,
                             const char *reference,
                             const char *type,
                             const char *status,
@@ -116,6 +119,9 @@ cJSON* wdb_insert_vuln_cves(int id,
     cJSON_AddStringToObject(data_in, "version", version);
     cJSON_AddStringToObject(data_in, "architecture", architecture);
     cJSON_AddStringToObject(data_in, "cve", cve);
+    cJSON_AddStringToObject(data_in, "severity", severity);
+    cJSON_AddNumberToObject(data_in, "cvss2_score", cvss2_score);
+    cJSON_AddNumberToObject(data_in, "cvss3_score", cvss3_score);
     cJSON_AddStringToObject(data_in, "reference", reference);
     cJSON_AddStringToObject(data_in, "type", type);
     cJSON_AddStringToObject(data_in, "status", status);
