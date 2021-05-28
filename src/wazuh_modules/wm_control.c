@@ -26,6 +26,7 @@ const wm_context WM_CONTROL_CONTEXT = {
     (wm_routine)wm_control_main,
     (wm_routine)(void *)wm_control_destroy,
     (cJSON * (*)(const void *))wm_control_dump,
+    NULL,
     NULL
 };
 void *sysinfo_module = NULL;
