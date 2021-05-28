@@ -1030,12 +1030,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                         continue;
                     }
                 }
-                paths = expand_wildcards(clean_path);
-
-                if (paths == NULL) {
-                    os_free(clean_path);
-                    continue;
-                }
 
                 // Create the wildcard directory
                 directory_t *wildcard = fim_create_directory(clean_path, opts, restrictfile, recursion_limit,
@@ -1046,22 +1040,25 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     syscheck->enable_whodata = 1;
                 }
 
-                for (int j = 0; paths[j]; j++) {
-                    new_entry = fim_copy_directory(wildcard);
-                    os_free(new_entry->path);
-                    new_entry->path = paths[j];
+                paths = expand_wildcards(clean_path);
+                if (paths) {
+                    for (int j = 0; paths[j]; j++) {
+                        new_entry = fim_copy_directory(wildcard);
+                        os_free(new_entry->path);
+                        new_entry->path = paths[j];
 #ifndef WIN32
-                    if (CHECK_FOLLOW & new_entry->options) {
-                        new_entry->symbolic_links = realpath(new_entry->path, NULL);
-                    }
+                        if (CHECK_FOLLOW & new_entry->options) {
+                            new_entry->symbolic_links = realpath(new_entry->path, NULL);
+                        }
 #endif
-                    if (new_entry->diff_size_limit == -1) {
-                        new_entry->diff_size_limit = syscheck->file_size_limit;
-                    }
+                        if (new_entry->diff_size_limit == -1) {
+                            new_entry->diff_size_limit = syscheck->file_size_limit;
+                        }
 
-                    fim_insert_directory(syscheck->directories, new_entry);
+                        fim_insert_directory(syscheck->directories, new_entry);
+                    }
+                    os_free(paths);
                 }
-                os_free(paths);
 
                 fim_insert_directory(syscheck->wildcards, wildcard);
             } else {
