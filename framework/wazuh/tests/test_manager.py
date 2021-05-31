@@ -56,11 +56,11 @@ def test_manager():
 
 
 manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', 'wazuh-authd': 'running',
- 'wazuh-csyslogd': 'running', 'wazuh-dbd': 'running', 'wazuh-monitord': 'running',
- 'wazuh-execd': 'running', 'wazuh-integratord': 'running', 'wazuh-logcollector': 'running',
- 'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
- 'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
- 'wazuh-db': 'running', 'wazuh-apid': 'running'}
+                  'wazuh-csyslogd': 'running', 'wazuh-dbd': 'running', 'wazuh-monitord': 'running',
+                  'wazuh-integratord': 'running',
+                  'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
+                  'wazuh-clusterd': 'running',
+                  'wazuh-modulesd': 'running', 'wazuh-db': 'running', 'wazuh-apid': 'running'}
 
 
 @patch('wazuh.core.manager.status', return_value=manager_status)
@@ -80,7 +80,7 @@ def test_get_status(mock_status):
     ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
     ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
     ('wazuh-modulesd:aws-s3', None, 5, None, None, ''),
-    ('wazuh-execd', None, 1, None, None, ''),
+    ('wazuh-modulesd:execd', None, 1, None, None, ''),
     ('wazuh-csyslogd', None, 2, None, None, ''),
     ('random', None, 0, ['timestamp'], True, ''),
     (None, 'info', 7, ['timestamp'], False, ''),
@@ -130,7 +130,7 @@ def test_ossec_log_summary():
     """Tests ossec_log_summary function works and returned data match with expected"""
     expected_result = {
         'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
-        'wazuh-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-modulesd:execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
         'wazuh-modulesd:aws-s3': {'all': 5, 'info': 2, 'error': 1, 'critical': 0, 'warning': 2, 'debug': 0},
         'wazuh-modulesd:database': {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 2},
         'wazuh-modulesd:syscollector': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
@@ -146,6 +146,7 @@ def test_ossec_log_summary():
         assert result.render()['data']['total_affected_items'] == 6
         assert all(all(value == expected_result[key] for key, value in item.items())
                    for item in result.render()['data']['affected_items'])
+
 
 def test_get_api_config():
     """Checks that get_api_config method is returning current api_conf dict."""
@@ -280,6 +281,7 @@ def test_read_ossec_con_ko():
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
+
 @patch('builtins.open')
 def test_get_basic_info(mock_open):
     """Tests get_basic_info() function works as expected"""
@@ -316,7 +318,8 @@ def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prett
 @patch('wazuh.manager.exists', return_value=True)
 @patch('wazuh.manager.remove')
 @patch('wazuh.manager.safe_move')
-def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock, new_conf):
+def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock,
+                              new_conf):
     """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
     is not valid."""
     result = update_ossec_conf(new_conf=new_conf)

@@ -25,14 +25,11 @@ stages:
               wazuh-authd: !anystr
               wazuh-csyslogd: !anystr
               wazuh-dbd: !anystr
-              wazuh-execd: !anystr
               wazuh-integratord: !anystr
-              wazuh-logcollector: !anystr
               wazuh-maild: !anystr
               wazuh-monitord: !anystr
               wazuh-remoted: !anystr
               wazuh-reportd: !anystr
-              wazuh-syscheckd: !anystr
               wazuh-apid: !anystr
               wazuh-clusterd: !anystr
               wazuh-db: !anystr
@@ -625,7 +622,7 @@ stages:
             total_failed_items: 0
 
   # GET /manager/logs
-  - name: Filters -> tag=wazuh-syscheckd, limit=1
+  - name: Filters -> tag=wazuh-modulesd:syscheck, limit=1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
@@ -633,7 +630,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        tag: wazuh-syscheckd
+        tag: "wazuh-modulesd:syscheck"
         limit: 1
     response:
         status_code: 200
@@ -646,7 +643,7 @@ stages:
             total_affected_items: !anyint
             total_failed_items: 0
 
-  - name: Filters by query (tag=wazuh-syscheckd, level=info)
+  - name: Filters by query (tag=wazuh-modulesd:syscheck, level=info)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
@@ -654,14 +651,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        q: tag=wazuh-syscheckd;level=info
+        q: "tag=wazuh-modulesd:syscheck;level=info"
     response:
       status_code: 200
       verify_response_with:
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "tag"
-            expected_values: "wazuh-syscheckd"
+            expected_values: "wazuh-modulesd:syscheck"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "level"
@@ -693,22 +690,21 @@ stages:
             - wazuh-csyslogd: !anything
             - wazuh-db: !anything
             - wazuh-dbd: !anything
-            - wazuh-execd: !anything
             - wazuh-integratord: !anything
-            - wazuh-logcollector: !anything
             - wazuh-modulesd: !anything
             - wazuh-modulesd:agent-upgrade: !anything
             - wazuh-modulesd:ciscat: !anything
             - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
+            - wazuh-modulesd:logcollector: !anything
             - wazuh-modulesd:osquery: !anything
+            - wazuh-modulesd:syscheck: !anything
             - wazuh-modulesd:syscollector: !anything
             - wazuh-modulesd:task-manager: !anything
             - wazuh-monitord: !anything
             - wazuh-remoted: !anything
             - wazuh-rootcheck: !anything
-            - wazuh-syscheckd: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
