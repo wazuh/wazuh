@@ -346,16 +346,6 @@ def test_WazuhDBQueryGroupByAgents(mock_socket_conn, send_mock, filter_fields, e
     assert result['items'] == expected_response
 
 
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_WazuhDBQueryGroupByAgents_ko(mock_socket_conn, send_mock):
-    """Tests if WazuhDBQueryGroupByAgents raises expected exception."""
-    with pytest.raises(WazuhError, match=r'\b1760\b'):
-        query_group = WazuhDBQueryGroupByAgents(filter_fields=['manager'], offset=0, limit=None, sort=None,
-                                                search=None, select=['id'], query=None, count=5, get_data=True)
-
-
-
 @patch('socket.socket.connect')
 def test_WazuhDBQueryMultigroups__init__(mock_socket_conn):
     """Tests if method __init__ of WazuhDBQueryMultigroups works properly."""

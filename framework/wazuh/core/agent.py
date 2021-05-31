@@ -257,8 +257,6 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     def __init__(self, filter_fields, *args, **kwargs):
-        if filter_fields and kwargs.get('select', None) and not set(kwargs['select']).issubset(set(filter_fields)):
-            raise WazuhError(1760, extra_message=f"select fields: {kwargs['select']}, filter fields: {filter_fields}")
 
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
@@ -368,7 +366,7 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def _acquire_client_keys_lock(timeout=get_cluster_items()['intervals']['communication']['timeout_api_exe']-1):
+    def _acquire_client_keys_lock(timeout=get_cluster_items()['intervals']['communication']['timeout_api_exe'] - 1):
         if mutex.acquire(timeout=timeout):
             global lock_file
             lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')

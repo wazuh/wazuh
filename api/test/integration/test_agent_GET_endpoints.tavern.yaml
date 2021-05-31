@@ -3765,8 +3765,8 @@ stages:
               os:
                 platform: !anystr
             - count: !anyint
-                os:
-                  platform: unknown
+              os:
+                platform: unknown
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -3837,37 +3837,6 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Invalid select
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 2
-        select: invalid
-    response:
-      status_code: 400
-      json:
-        error: 1724
-
-  - name: Select is different from filter fields
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 2
-        fields: os.platform
-        select: manager
-    response:
-      status_code: 400
-      json:
-        error: 1760
-
   - name: Pagination
     request:
       verify: False
@@ -3886,7 +3855,7 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Try show agents with offset -1
+  - name: Try to show agents with offset -1
     request:
       verify: False
       <<: *distinct_request
@@ -3897,7 +3866,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with offset not integer value
+  - name: Try to show agents with offset not integer value
     request:
       verify: False
       <<: *distinct_request
@@ -3908,7 +3877,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with offset too large 9999999999999999999
+  - name: Try to show agents with offset too large 9999999999999999999
     request:
       verify: False
       <<: *distinct_request
@@ -3919,7 +3888,7 @@ stages:
       json:
         error: 2003
 
-  - name: Try show agents with limit 0
+  - name: Try to show agents with limit 0
     request:
       verify: False
       <<: *distinct_request
@@ -3930,7 +3899,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit not integer value
+  - name: Try to show agents with limit not integer value
     request:
       verify: False
       <<: *distinct_request
@@ -3941,7 +3910,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try to show agents with limit 9999
     request:
       verify: False
       <<: *distinct_request
@@ -3961,7 +3930,7 @@ stages:
       json:
         <<: *basic_response_inverse
 
-  - name: Try show agents with wrong sort
+  - name: Try to show agents with wrong sort
     request:
       verify: False
       <<: *distinct_request
@@ -3991,7 +3960,7 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
 
-  - name: Try show agents with wrong search
+  - name: Try to show agents with wrong search
     request:
       verify: False
       <<: *distinct_request
@@ -4004,7 +3973,7 @@ stages:
         data:
           <<: *affected_empty_answer
 
-  - name: Try show agents with bad query
+  - name: Try to show agents with bad query
     request:
       verify: False
       <<: *distinct_request
@@ -4015,7 +3984,7 @@ stages:
       json:
         error: 1408
 
-  - name: Try show agents with bad query (invalid character)
+  - name: Try to show agents with bad query (invalid character)
     request:
       verify: False
       <<: *distinct_request
@@ -4026,7 +3995,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with complex query
+  - name: Try to show agents with complex query
     request:
       verify: False
       <<: *distinct_request
