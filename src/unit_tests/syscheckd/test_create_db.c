@@ -1929,10 +1929,10 @@ static void test_fim_checker_fim_directory(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/media/test");
     will_return_always(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap_realtime_adddir, dir, "/media/test");
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/media/");
-    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_fim_add_inotify_watch, dir, "/media/test");
+    will_return(__wrap_fim_add_inotify_watch, 0);
+    expect_string(__wrap_fim_add_inotify_watch, dir, "/media/");
+    will_return(__wrap_fim_add_inotify_watch, 0);
 
     strcpy(fim_data->entry->d_name, "test");
 
@@ -1967,8 +1967,8 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
     expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap_realtime_adddir, dir, path);
-    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_fim_add_inotify_watch, dir, path);
+    will_return(__wrap_fim_add_inotify_watch, 0);
 
     will_return(__wrap_opendir, 1);
     strcpy(fim_data->entry->d_name, "test");
@@ -2083,8 +2083,13 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-        will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
+        }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2106,8 +2111,10 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_string_count(__wrap_realtime_adddir, dir, "/boot", 2);
-    will_return_count(__wrap_realtime_adddir, 0, 2);
+    expect_string(__wrap_fim_add_inotify_watch, dir, "/boot");
+    will_return(__wrap_fim_add_inotify_watch, 0);
+    expect_string(__wrap_realtime_adddir, dir, "/boot");
+    will_return(__wrap_realtime_adddir, 0);
 
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, file);
@@ -2190,8 +2197,13 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-        will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
+        }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2253,8 +2265,13 @@ static void test_fim_scan_realtime_enabled(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-        will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
+        }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2326,8 +2343,13 @@ static void test_fim_scan_db_free(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-        will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
+        }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2389,8 +2411,13 @@ static void test_fim_scan_no_limit(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-        will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
+        }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);

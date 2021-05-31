@@ -365,10 +365,12 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
         }
         fim_directory(path, evt_data, configuration);
 
-#ifndef WIN32
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        realtime_adddir(path, configuration);
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+#ifdef INOTIFY_ENABLED
+        if (FIM_MODE(configuration->options) == FIM_REALTIME) {
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            fim_add_inotify_watch(path, configuration);
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        }
 #endif
         break;
     }

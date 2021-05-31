@@ -343,6 +343,22 @@ int realtime_start(void);
  */
 int realtime_adddir(const char *dir, directory_t *configuration);
 
+#ifdef INOTIFY_ENABLED
+/**
+ * @brief Add an inotify watch to monitoring directory
+ *
+ * @param dir Path to file or directory
+ * @param configuration Configuration associated with the file or directory
+ * @return 1 on success, -1 on failure
+ */
+int fim_add_inotify_watch(const char *dir, const directory_t *configuration);
+#endif
+
+/**
+ * @brief Remove an inotify watch
+ *
+ * @param configuration Configuration associated with the file or directory
+ */
 void fim_delete_realtime_watches(const directory_t *configuration);
 
 /**

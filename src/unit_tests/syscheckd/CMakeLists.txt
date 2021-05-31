@@ -127,14 +127,14 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,fim_db_append_paths_from_inode -Wl,--wrap,pthread_rwlock_wrlock \
                           -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
                           -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                          -Wl,--wrap,expand_wildcards")
+                          -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch")
 
 target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
                                           -Wl,--wrap=decode_win_permissions,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
-                                          -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,realtime_adddir")
+                                          -Wl,--wrap,get_UTC_modification_time")
 else()
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
