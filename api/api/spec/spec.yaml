@@ -1501,11 +1501,11 @@ components:
       description: "Agent ID"
       format: numbers
 
-    AgentID_DELETE:
+    AgentIDListAll:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: numbers_delete
+      format: numbers_or_all
 
     NodeID:
       type: string
@@ -1517,11 +1517,11 @@ components:
       description: "Group name"
       format: group_names
 
-    GroupID_DELETE:
+    GroupIDListAll:
       type: string
       minLength: 1
       description: "Group name|all"
-      format: group_names_delete
+      format: group_names_or_all
 
     AgentConfiguration:
       type: object
@@ -1748,14 +1748,14 @@ components:
     Role_id_DELETE:
       type: string
       description: "Role ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     Security_rule_id:
       type: string
       format: numbers
       description: "Security rule ID"
     Security_rule_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "Security rule ID|all"
     Task_id:
       type: string
@@ -1768,14 +1768,14 @@ components:
     Policy_id_DELETE:
       type: string
       description: "Policy ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     User_id:
       type: string
       format: numbers
       description: "User ID"
     User_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "User ID|all"
     PoliciesRequest:
       type: object
@@ -3543,7 +3543,7 @@ components:
     agent_name:
       in: query
       name: agent_name
-      description: "Agent name"
+      description: "Agent name. The special characters allowed are: '-','_','.' "
       required: true
       schema:
         type: string
@@ -3978,7 +3978,7 @@ components:
         items:
           $ref: '#/components/schemas/AgentID'
         maxItems: 100
-    agents_list_delete:
+    agents_list_all:
       in: query
       name: agents_list
       description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
@@ -3986,7 +3986,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentID_DELETE'
+          $ref: '#/components/schemas/AgentIDListAll'
     groups_list:
       in: query
       name: groups_list
@@ -3995,7 +3995,7 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
-    groups_list_delete:
+    groups_list_all:
       in: query
       name: groups_list
       description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
@@ -4003,7 +4003,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/GroupID_DELETE'
+          $ref: '#/components/schemas/GroupIDListAll'
     node:
       in: query
       name: node
@@ -4237,13 +4237,6 @@ components:
       required: False
       schema:
         type: boolean
-    raw_conf:
-      in: query
-      name: raw
-      description: "Format response in plain text"
-      required: False
-      schema:
-        type: boolean
     registry:
       in: query
       name: registry
@@ -4395,7 +4388,7 @@ components:
       in: query
       name: search
       description: "Look for elements containing the specified string. To obtain a complementary search, use '-' at the
-      beggining"
+      beginning"
       schema:
         type: string
         format: search
@@ -4515,7 +4508,7 @@ components:
     typesys:
       in: query
       name: type
-      description: "Type of file"
+      description: "Type of interface"
       schema:
         type: string
     allow_run_as:
@@ -5213,7 +5206,7 @@ components:
     package_version:
       in: query
       name: version
-      description: "Filter by version name"
+      description: "Filter by package version"
       schema:
         type: string
     older_than:
@@ -5244,7 +5237,7 @@ components:
     force_single_group:
       in: query
       name: force_single_group
-      description: "Whether to append the new group to current agent's multigroup or replace it"
+      description: "Removes the agent from all groups to which it belongs and assigns it to the specified group"
       schema:
         type: boolean
     wpk_repo:
@@ -5480,7 +5473,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -5881,8 +5874,8 @@ paths:
       tags:
         - Agents
       summary: "Remove agent from group"
-      description: "Remove an agent from an specified group. If the agent has multigroups, it will preserve all
-      previous groups except the last one"
+      description: "Remove an agent from a specified group. If the agent belongs to several groups, only the specified
+      group will be deleted."
       operationId: api.controllers.agent_controller.delete_single_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
@@ -6298,7 +6291,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -6464,7 +6457,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/groups_list_delete'
+        - $ref: '#/components/parameters/groups_list_all'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
@@ -8265,7 +8258,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -9693,7 +9686,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -12711,7 +12704,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
       responses:
         '200':
           description: "Delete syscheck database"
