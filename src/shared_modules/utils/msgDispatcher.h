@@ -22,68 +22,74 @@ namespace Utils
 
     template
     <
-    typename Key,
-    typename Value,
-    typename RawValue,
-    typename RawValueDecoder,
-    template <class, class> class ThreadDispatcher = AsyncDispatcher
-    >
+        typename Key,
+        typename Value,
+        typename RawValue,
+        typename RawValueDecoder,
+        template <class, class> class ThreadDispatcher = AsyncDispatcher
+        >
     class MsgDispatcher final : public ThreadDispatcher<RawValue, std::function<void(const RawValue&)>>
-                              , public RawValueDecoder
+        , public RawValueDecoder
     {
-    public:
-        MsgDispatcher()
-        : ThreadType{std::bind(&DispatcherType::dispatch, this, std::placeholders::_1)}
-        {
-        }
-        // LCOV_EXCL_START
-        ~MsgDispatcher() = default;
-        // LCOV_EXCL_STOP
-        bool addCallback(const Key& key, const std::function<void(Value)>& callback)
-        {
-            std::lock_guard<std::mutex> lock{ m_mutex };
-            const auto ret{ m_callbacks.find(key) == m_callbacks.end() };
-            if (ret)
+        public:
+            MsgDispatcher()
+                : ThreadType{std::bind(&DispatcherType::dispatch, this, std::placeholders::_1)}
             {
-                m_callbacks[key] = callback;
             }
-            return ret;
-        }
-        void removeCallback(const Key& key)
-        {
-            std::lock_guard<std::mutex> lock{ m_mutex };
-            const auto it{ m_callbacks.find(key) };
-            if (it != m_callbacks.end())
+            // LCOV_EXCL_START
+            ~MsgDispatcher() = default;
+            // LCOV_EXCL_STOP
+            bool addCallback(const Key& key, const std::function<void(Value)>& callback)
             {
-                m_callbacks.erase(it);
-            }
-        }
-        void dispatch(const RawValue& raw)
-        {
-            const auto& data{ RawValueDecoder::decode(raw) };
-            const auto& callback{ findCallback(data.first) };
-            if (callback)
-            {
-                callback(data.second);
-            }
-        }
-    private:
-        using ThreadType = ThreadDispatcher<RawValue, std::function<void(const RawValue&)>>;
-        using DispatcherType = MsgDispatcher<Key, Value, RawValue, RawValueDecoder, ThreadDispatcher>;
+                std::lock_guard<std::mutex> lock{ m_mutex };
+                const auto ret{ m_callbacks.find(key) == m_callbacks.end() };
 
-        std::function<void(Value)> findCallback(const Key& key)
-        {
-            std::function<void(Value)> ret;
-            std::lock_guard<std::mutex> lock{ m_mutex };
-            const auto it { m_callbacks.find(key) };
-            if (it != m_callbacks.end())
-            {
-                return it->second;
+                if (ret)
+                {
+                    m_callbacks[key] = callback;
+                }
+
+                return ret;
             }
-            return {};
-        }
-        std::map<Key, std::function<void(Value)>> m_callbacks;
-        std::mutex                                m_mutex;
+            void removeCallback(const Key& key)
+            {
+                std::lock_guard<std::mutex> lock{ m_mutex };
+                const auto it{ m_callbacks.find(key) };
+
+                if (it != m_callbacks.end())
+                {
+                    m_callbacks.erase(it);
+                }
+            }
+            void dispatch(const RawValue& raw)
+            {
+                const auto& data{ RawValueDecoder::decode(raw) };
+                const auto& callback{ findCallback(data.first) };
+
+                if (callback)
+                {
+                    callback(data.second);
+                }
+            }
+        private:
+            using ThreadType = ThreadDispatcher<RawValue, std::function<void(const RawValue&)>>;
+            using DispatcherType = MsgDispatcher<Key, Value, RawValue, RawValueDecoder, ThreadDispatcher>;
+
+            std::function<void(Value)> findCallback(const Key& key)
+            {
+                std::function<void(Value)> ret;
+                std::lock_guard<std::mutex> lock{ m_mutex };
+                const auto it { m_callbacks.find(key) };
+
+                if (it != m_callbacks.end())
+                {
+                    return it->second;
+                }
+
+                return {};
+            }
+            std::map<Key, std::function<void(Value)>> m_callbacks;
+            std::mutex                                m_mutex;
     };
 }
 

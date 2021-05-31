@@ -29,12 +29,13 @@ namespace PackageLinuxHelper
     static nlohmann::json parseRpm(const std::string& packageInfo)
     {
         nlohmann::json ret;
-        const auto fields { Utils::split(packageInfo,'\t') };
+        const auto fields { Utils::split(packageInfo, '\t') };
         constexpr auto DEFAULT_VALUE { "(none)" };
 
         if (RPMFields::RPM_FIELDS_SIZE <= fields.size())
         {
             std::string name             { fields.at(RPMFields::RPM_FIELDS_NAME) };
+
             if (name.compare("gpg-pubkey") != 0 && !name.empty())
             {
                 std::string size         { fields.at(RPMFields::RPM_FIELDS_PACKAGE_SIZE) };
@@ -69,6 +70,7 @@ namespace PackageLinuxHelper
                 ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? "" : description;
             }
         }
+
         return ret;
     }
 
@@ -76,9 +78,11 @@ namespace PackageLinuxHelper
     {
         std::map<std::string, std::string> info;
         nlohmann::json ret;
-        for (const auto& entry: entries)
+
+        for (const auto& entry : entries)
         {
             const auto pos{entry.find(":")};
+
             if (pos != std::string::npos)
             {
                 const auto key{Utils::trim(entry.substr(0, pos))};
@@ -86,6 +90,7 @@ namespace PackageLinuxHelper
                 info[key] = value;
             }
         }
+
         if (!info.empty() && info.at("Status") == "install ok installed")
         {
             ret["name"] = info.at("Package");
@@ -101,46 +106,63 @@ namespace PackageLinuxHelper
             int size                 { 0 };
 
             auto it{info.find("Priority")};
+
             if (it != info.end())
             {
                 priority = it->second;
             }
+
             it = info.find("Section");
+
             if (it != info.end())
             {
                 groups = it->second;
             }
+
             it = info.find("Installed-Size");
+
             if (it != info.end())
             {
                 size = stol(it->second);
             }
+
             it = info.find("Multi-Arch");
+
             if (it != info.end())
             {
                 multiarch = it->second;
             }
+
             it = info.find("Architecture");
+
             if (it != info.end())
             {
                 architecture = it->second;
             }
+
             it = info.find("Source");
+
             if (it != info.end())
             {
                 source = it->second;
             }
+
             it = info.find("Version");
+
             if (it != info.end())
             {
                 version = it->second;
             }
+
             it = info.find("Maintainer");
+
             if (it != info.end())
             {
                 vendor = it->second;
             }
+
             it = info.find("Description");
+
             if (it != info.end())
             {
                 description = Utils::substrOnFirstOccurrence(it->second, "\n");
@@ -157,6 +179,7 @@ namespace PackageLinuxHelper
             ret["vendor"]       = vendor;
             ret["description"]  = description;
         }
+
         return ret;
     }
 

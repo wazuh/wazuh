@@ -21,6 +21,7 @@ void getRpmInfo(nlohmann::json& packages)
     for (std::string row{db.getNext()}; !row.empty() ; row = db.getNext())
     {
         const auto& package{ PackageLinuxHelper::parseRpm(row) };
+
         if (!package.empty())
         {
             packages.push_back(package);
@@ -31,16 +32,19 @@ void getRpmInfo(nlohmann::json& packages)
 void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
 {
     std::fstream file{fileName, std::ios_base::in};
+
     if (file.is_open())
     {
-        while(file.good())
+        while (file.good())
         {
             std::string line;
             std::vector<std::string> data;
+
             do
             {
                 std::getline(file, line);
-                if(line.front() == ' ')//additional info
+
+                if (line.front() == ' ') //additional info
                 {
                     data.back() = data.back() + line + "\n";
                 }
@@ -49,8 +53,10 @@ void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
                     data.push_back(line + "\n");
                 }
             }
-            while(!line.empty());//end of package item info
+            while (!line.empty()); //end of package item info
+
             const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
+
             if (!packageInfo.empty())
             {
                 packages.push_back(packageInfo);

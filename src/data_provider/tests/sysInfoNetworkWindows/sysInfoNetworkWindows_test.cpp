@@ -23,27 +23,27 @@ using ::testing::Return;
 
 class SysInfoNetworkWindowsWrapperMock: public INetworkInterfaceWrapper
 {
-public:
-    SysInfoNetworkWindowsWrapperMock() = default;
-    virtual ~SysInfoNetworkWindowsWrapperMock() = default;
-    MOCK_METHOD(int, family, (), (const override));
-    MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, adapter, (), (const override));
-    MOCK_METHOD(std::string, address, (), (const override));
-    MOCK_METHOD(std::string, netmask, (), (const override));
-    MOCK_METHOD(std::string, broadcast, (), (const override));
-    MOCK_METHOD(std::string, addressV6, (), (const override));
-    MOCK_METHOD(std::string, netmaskV6, (), (const override));
-    MOCK_METHOD(std::string, broadcastV6, (), (const override));
-    MOCK_METHOD(std::string, gateway, (), (const override));
-    MOCK_METHOD(std::string, metrics, (), (const override));
-    MOCK_METHOD(std::string, metricsV6, (), (const override));
-    MOCK_METHOD(std::string, dhcp, (), (const override));
-    MOCK_METHOD(uint32_t, mtu, (), (const override));
-    MOCK_METHOD(LinkStats, stats, (), (const override));
-    MOCK_METHOD(std::string, type, (), (const override));
-    MOCK_METHOD(std::string, state, (), (const override));
-    MOCK_METHOD(std::string, MAC, (), (const override));
+    public:
+        SysInfoNetworkWindowsWrapperMock() = default;
+        virtual ~SysInfoNetworkWindowsWrapperMock() = default;
+        MOCK_METHOD(int, family, (), (const override));
+        MOCK_METHOD(std::string, name, (), (const override));
+        MOCK_METHOD(std::string, adapter, (), (const override));
+        MOCK_METHOD(std::string, address, (), (const override));
+        MOCK_METHOD(std::string, netmask, (), (const override));
+        MOCK_METHOD(std::string, broadcast, (), (const override));
+        MOCK_METHOD(std::string, addressV6, (), (const override));
+        MOCK_METHOD(std::string, netmaskV6, (), (const override));
+        MOCK_METHOD(std::string, broadcastV6, (), (const override));
+        MOCK_METHOD(std::string, gateway, (), (const override));
+        MOCK_METHOD(std::string, metrics, (), (const override));
+        MOCK_METHOD(std::string, metricsV6, (), (const override));
+        MOCK_METHOD(std::string, dhcp, (), (const override));
+        MOCK_METHOD(uint32_t, mtu, (), (const override));
+        MOCK_METHOD(LinkStats, stats, (), (const override));
+        MOCK_METHOD(std::string, type, (), (const override));
+        MOCK_METHOD(std::string, state, (), (const override));
+        MOCK_METHOD(std::string, MAC, (), (const override));
 };
 
 TEST_F(SysInfoNetworkWindowsTest, Test_IPV4_THROW)
@@ -131,7 +131,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_CALL(*mock, type()).Times(1).WillOnce(Return(type));
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return(state));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return(MAC));
-    EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
+    EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(mtu));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return(gateway));
 
