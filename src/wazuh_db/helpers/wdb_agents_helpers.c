@@ -36,6 +36,7 @@ cJSON* wdb_get_agent_sys_osinfo(int id,
     if (!result || !result->child) {
         merror("Agents DB (%d) Error querying Wazuh DB to get OS information", id);
         cJSON_Delete(result);
+        result = NULL;
     }
 
     os_free(wdbquery);
@@ -389,6 +390,7 @@ cJSON* wdb_remove_vuln_cves_by_status(int id,
 
     if (WDBC_ERROR == wdb_res) {
         cJSON_Delete(data_out);
+        data_out = NULL;
     }
 
     if (!sock) {
