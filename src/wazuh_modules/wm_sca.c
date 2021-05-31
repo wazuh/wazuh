@@ -1054,56 +1054,56 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
             if (type == WM_SCA_TYPE_FILE) {
                 /* Check files */
                 char *pattern = wm_sca_get_pattern(value);
-                char *file_list = NULL;
+                char *rule_location = NULL;
                 char *aux = NULL;
 
-                os_strdup(value, file_list);
+                os_strdup(value, rule_location);
 
                 /* If any, replace the variables by their respective values */
                 if (sorted_variables) {
                     for (int i = 0; sorted_variables[i]; i++) {
-                        if (strstr(value, sorted_variables[i])) {
-                            mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], file_list);
-                            aux = wstr_replace(file_list, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
-                            os_free(file_list);
-                            file_list = aux;
-                            if (!file_list) {
+                        if (strstr(rule_location, sorted_variables[i])) {
+                            mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], rule_location);
+                            aux = wstr_replace(rule_location, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
+                            os_free(rule_location);
+                            rule_location = aux;
+                            if (!rule_location) {
                                 merror("Invalid variable replacement: '%s'. Skipping check.", sorted_variables[i]);
                                 break;
                             }
-                            mdebug2("Variable replaced: '%s'", file_list);
+                            mdebug2("Variable replaced: '%s'", rule_location);
                         }
                     }
                 }
 
-                if (!file_list) {
+                if (!rule_location) {
                     continue;
                 }                   
 
-                const int result = wm_sca_check_file_list(file_list, pattern, &reason);
+                const int result = wm_sca_check_file_list(rule_location, pattern, &reason);
                 if (result == RETURN_FOUND || result == RETURN_INVALID) {
                     found = result;
                 }
 
                 char _b_msg[OS_SIZE_1024 + 1];
                 _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " File: %s", file_list);
+                snprintf(_b_msg, OS_SIZE_1024, " File: %s", rule_location);
                 append_msg_to_vm_scat(data, _b_msg);
-                os_free(file_list);
+                os_free(rule_location);
 
             } else if (type == WM_SCA_TYPE_COMMAND) {
                 /* Check command output */
                 char *pattern = wm_sca_get_pattern(value);
-                char *f_value = NULL;
+                char *rule_location = NULL;
                 char *aux = NULL;
 
-                os_strdup(value, f_value);
+                os_strdup(value, rule_location);
                 
                 if (!data->remote_commands && remote_policy) {
                     mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                     if (reason == NULL) {
                         os_malloc(OS_MAXSTR, reason);
-                        sprintf(reason, "Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
+                        sprintf(reason, "Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", rule_location);
                     }
                     found = RETURN_INVALID;
 
@@ -1111,26 +1111,26 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
                     /* If any, replace the variables by their respective values */
                     if (sorted_variables) {
                         for (int i = 0; sorted_variables[i]; i++) {
-                            if (strstr(value,sorted_variables[i])) {
-                                mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], f_value);
-                                aux = wstr_replace(f_value, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
-                                os_free(f_value);
-                                f_value = aux;
-                                if (!f_value) {
+                            if (strstr(rule_location, sorted_variables[i])) {
+                                mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], rule_location);
+                                aux = wstr_replace(rule_location, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
+                                os_free(rule_location);
+                                rule_location = aux;
+                                if (!rule_location) {
                                     merror("Invalid variable: '%s'. Skipping check.", sorted_variables[i]);
                                     break;
                                 }
-                                mdebug2("Variable replaced: '%s'", f_value);
+                                mdebug2("Variable replaced: '%s'", rule_location);
                             }
                         }
                     }
 
-                    if (!f_value) {
+                    if (!rule_location) {
                         continue;
                     }    
 
-                    mdebug2("Running command: '%s'", f_value);
-                    const int val = wm_sca_read_command(f_value, pattern, data, &reason);
+                    mdebug2("Running command: '%s'", rule_location);
+                    const int val = wm_sca_read_command(rule_location, pattern, data, &reason);
                     if (val == RETURN_FOUND) {
                         mdebug2("Command output matched.");
                         found = RETURN_FOUND;
@@ -1142,44 +1142,44 @@ static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,
 
                 char _b_msg[OS_SIZE_1024 + 1];
                 _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
+                snprintf(_b_msg, OS_SIZE_1024, " Command: %s", rule_location);
                 append_msg_to_vm_scat(data, _b_msg);
-                os_free(f_value);
+                os_free(rule_location);
 
             } else if (type == WM_SCA_TYPE_DIR) {
                 /* Check directory */
                 mdebug2("Processing directory rule '%s'", value);
                 char * const file = wm_sca_get_pattern(value);
-                char *f_value = NULL;
+                char *rule_location = NULL;
                 char *aux = NULL;
 
-                os_strdup(value, f_value);
+                os_strdup(value, rule_location);
 
                 /* If any, replace the variables by their respective values */
                 if (sorted_variables) {
                     for (int i = 0; sorted_variables[i]; i++) {
-                        if (strstr(value, sorted_variables[i])) {
-                            mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], f_value);
-                            aux = wstr_replace(f_value, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
-                            os_free(f_value);
-                            f_value = aux;
-                            if (!f_value) {
+                        if (strstr(rule_location, sorted_variables[i])) {
+                            mdebug2("Variable '%s' found at rule '%s'. Replacing it.", sorted_variables[i], rule_location);
+                            aux = wstr_replace(rule_location, sorted_variables[i], OSStore_Get(vars, sorted_variables[i]));
+                            os_free(rule_location);
+                            rule_location = aux;
+                            if (!rule_location) {
                                 merror("Invalid variable: '%s'. Skipping check.", sorted_variables[i]);
                                 break;
                             }
-                            mdebug2("Variable replaced: '%s'", f_value);
+                            mdebug2("Variable replaced: '%s'", rule_location);
                         }
                     }
                 }
 
-                if (!f_value) {
+                if (!rule_location) {
                     continue;
                 }    
 
                 char * const pattern = wm_sca_get_pattern(file);
-                found = wm_sca_check_dir_list(data, f_value, file, pattern, &reason);
+                found = wm_sca_check_dir_list(data, rule_location, file, pattern, &reason);
                 mdebug2("Check directory rule result: %d", found);
-                os_free(f_value);
+                os_free(rule_location);
 
             } else if (type == WM_SCA_TYPE_PROCESS) {
                 /* Check process existence */
