@@ -22,8 +22,9 @@ Contributions from the community are really appreciated. If this is the case, pl
 <!-- Detail the reason that motivates this proposed change on the ruleset -->
 
 ### Service
-<!-- Add a description of the service you are targeting with the ruleset -->
-<!-- Add any URL or doc related to vendor and/or service -->
+<!-- Add a description of the service you are targeting with the ruleset, indicating vendor and/or module if available -->
+<!-- Add any URL or doc related to service and/or vendor/module -->
+
 
 ## Error/Improve
 ### Current results
@@ -44,5 +45,6 @@ Contributions from the community are really appreciated. If this is the case, pl
 <!-- Add any logs examples available -->
 
 ### Threats and compliance
-<!-- List specific threats and compliance to be covered -->
-<!-- Include any related URL or doc -->
+<!-- We analyze in search of applicable threats (MITRE) and add  applicable commpliance (PCI DSS, GDPR) -->
+<!-- Optionally list specific threats and compliance to be covered if desired -->
+<!-- Include any related URL or documentation -->
