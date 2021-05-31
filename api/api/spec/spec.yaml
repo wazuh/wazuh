@@ -14601,7 +14601,10 @@ paths:
             text/plain:
               schema:
                 type: string
-              example: "<generated_token>"
+              example:
+                data:
+                  token: "<generated_token>"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14625,8 +14628,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "User wazuh was successfully logged out"
-                error: 0
+                data:
+                  message: "User wazuh was successfully logged out"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14667,7 +14671,9 @@ paths:
                   token:
                     type: string
               example:
-                token: "<generated_token>"
+                data:
+                  token: "<generated_token>"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14710,17 +14716,13 @@ paths:
                         roles:
                           - id: 1
                             name: administrator
-                            rule:
-                              FIND:
-                                r'^auth[a-zA-Z]+$':
-                                  - full_admin
                             policies:
                               - id: 1
                                 name: agents_all_resourceless
                                 policy:
                                   actions:
-                                    - agent:create
-                                    - group:create
+                                    - "agent:create"
+                                    - "group:create"
                                   resources:
                                     - "*:*:*"
                                   effect: allow
@@ -14728,16 +14730,214 @@ paths:
                                 name: agents_all_agents
                                 policy:
                                   actions:
-                                    - agent:read
-                                    - agent:delete
-                                    - agent:modify_group
-                                    - agent:reconnect
-                                    - agent:restart
-                                    - agent:upgrade
+                                    - "agent:read"
+                                    - "agent:delete"
+                                    - "agent:modify_group"
+                                    - "agent:reconnect"
+                                    - "agent:restart"
+                                    - "agent:upgrade"
                                   resources:
-                                    - agent:id:*
-                                    - agent:group:*
+                                    - "agent:id:*"
+                                    - "agent:group:*"
                                   effect: allow
+                              - id: 3
+                                name: agents_all_groups
+                                policy:
+                                  actions:
+                                    - "group:read"
+                                    - "group:delete"
+                                    - "group:update_config"
+                                    - "group:modify_assignments"
+                                  resources:
+                                    - "group:id:*"
+                                  effect: allow
+                              - id: 6
+                                name: agents_commands_agents
+                                policy:
+                                  actions:
+                                    - "active-response:command"
+                                  resources:
+                                    - "agent:id:*"
+                                  effect: allow
+                              - id: 7
+                                name: security_all_resourceless
+                                policy:
+                                  actions:
+                                    - "security:create"
+                                    - "security:create_user"
+                                    - "security:read_config"
+                                    - "security:update_config"
+                                    - "security:revoke"
+                                    - "security:edit_run_as"
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 8
+                                name: security_all_security
+                                policy:
+                                  actions:
+                                    - "security:read"
+                                    - "security:update"
+                                    - "security:delete"
+                                  resources:
+                                    - "role:id:*"
+                                    - "policy:id:*"
+                                    - "user:id:*"
+                                    - "rule:id:*"
+                                  effect: allow
+                              - id: 29
+                                name: cluster_all_resourceless
+                                policy:
+                                  actions:
+                                    - "cluster:status"
+                                    - "manager:read"
+                                    - "manager:read_api_config"
+                                    - "manager:update_config"
+                                    - "manager:restart"
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 30
+                                name: cluster_all_nodes
+                                policy:
+                                  actions:
+                                    - "cluster:read_api_config"
+                                    - "cluster:read"
+                                    - "cluster:restart"
+                                    - "cluster:update_config"
+                                  resources:
+                                    - "node:id:*"
+                                  effect: allow
+                              - id: 12
+                                name: ciscat_read_ciscat
+                                policy:
+                                  actions:
+                                    - "ciscat:read"
+                                  resources:
+                                    - "agent:id:*"
+                                  effect: allow
+                              - id: 14
+                                name: decoders_all_files
+                                policy:
+                                  actions:
+                                    - "decoders:read"
+                                    - "decoders:delete"
+                                  resources:
+                                    - "decoder:file:*"
+                                  effect: allow
+                              - id: 15
+                                name: decoders_all_resourceless
+                                policy:
+                                  actions:
+                                    - "decoders:update"
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 18
+                                name: lists_all_rules
+                                policy:
+                                  actions:
+                                    - "lists:read"
+                                    - "lists:delete"
+                                  resources:
+                                    - "list:file:*"
+                                  effect: allow
+                              - id: 19
+                                name: lists_all_resourceless
+                                policy:
+                                  actions:
+                                    - "lists:update"
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 21
+                                name: rootcheck_all_rootcheck
+                                policy:
+                                  actions:
+                                    - "rootcheck:clear"
+                                    - "rootcheck:read"
+                                    - "rootcheck:run"
+                                  resources:
+                                    - "agent:id:*"
+                                  effect: allow
+                              - id: 23
+                                name: rules_all_files
+                                policy:
+                                  actions:
+                                    - "rules:read"
+                                    - "rules:delete"
+                                  resources:
+                                    - "rule:file:*"
+                                  effect: allow
+                              - id: 24
+                                name: rules_all_resourceless
+                                policy:
+                                  actions:
+                                    - "rules:update"
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 16
+                                name: mitre_read_mitre
+                                policy:
+                                  actions:
+                                    - "mitre:read"
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 25
+                                name: sca_read_sca
+                                policy:
+                                  actions:
+                                    - "sca:read"
+                                  resources:
+                                    - "agent:id:*"
+                                  effect: allow
+                              - id: 27
+                                name: syscheck_all_syscheck
+                                policy:
+                                  actions:
+                                    - "syscheck:clear"
+                                    - "syscheck:read"
+                                    - "syscheck:run"
+                                  resources:
+                                    - "agent:id:*"
+                                  effect: allow
+                              - id: 28
+                                name: syscollector_read_syscollector
+                                policy:
+                                  actions:
+                                    - "syscollector:read"
+                                  resources:
+                                    - "agent:id:*"
+                                  effect: allow
+                              - id: 34
+                                name: task_status_task
+                                policy:
+                                  actions:
+                                    - "task:status"
+                                  resources:
+                                    - "*:*:*"
+                                  effect: allow
+                              - id: 35
+                                name: vulnerability_read_vulnerability
+                                policy:
+                                  actions:
+                                    - "vulnerability:read"
+                                  resources:
+                                    - "agent:id:*"
+                                  effect: allow
+                            rules:
+                              - id: 1
+                                name: wui_elastic_admin
+                                rule:
+                                  FIND:
+                                    username: elastic
+                              - id: 2
+                                name: wui_opendistro_admin
+                                rule:
+                                  FIND:
+                                    username: admin
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
@@ -14772,11 +14972,128 @@ paths:
                 $ref: "#/components/schemas/ApiResponse"
               example:
                 data:
-                  syscheck:run:
-                    agent:id:*: allow
-                  syscollector:read:
-                    agent:id:*: allow
-                  rbac_mode: black
+                  agent:create:
+                    "*:*:*": "allow"
+                  group:create":
+                    "*:*:*": "allow"
+                  agent:read:
+                    "agent:id:*": "allow"
+                    "agent:group:*": "allow"
+                  "agent:delete":
+                    "agent:id:*": "allow"
+                    "agent:group:*": "allow"
+                  "agent:modify_group":
+                    "agent:id:*": "allow"
+                    "agent:group:*": "allow"
+                  "agent:reconnect":
+                    "agent:id:*": "allow"
+                    "agent:group:*": "allow"
+                  "agent:restart":
+                    "agent:id:*": "allow"
+                    "agent:group:*": "allow"
+                  "agent:upgrade":
+                    "agent:id:*": "allow"
+                    "agent:group:*": "allow"
+                  "group:read":
+                    "group:id:*": "allow"
+                  "group:delete":
+                    "group:id:*": "allow"
+                  "group:update_config":
+                    "group:id:*": "allow"
+                  "group:modify_assignments":
+                    "group:id:*": "allow"
+                  "active-response:command":
+                    "agent:id:*": "allow"
+                  "security:create":
+                    "*:*:*": "allow"
+                  "security:create_user":
+                    "*:*:*": "allow"
+                  "security:read_config":
+                    "*:*:*": "allow"
+                  "security:update_config":
+                    "*:*:*": "allow"
+                  "security:revoke":
+                    "*:*:*": "allow"
+                  "security:edit_run_as":
+                    "*:*:*": "allow"
+                  "security:read":
+                    "role:id:*": "allow"
+                    "policy:id:*": "allow"
+                    "user:id:*": "allow"
+                    "rule:id:*": "allow"
+                  "security:update":
+                    "role:id:*": "allow"
+                    "policy:id:*": "allow"
+                    "user:id:*": "allow"
+                    "rule:id:*": "allow"
+                  "security:delete":
+                    "role:id:*": "allow"
+                    "policy:id:*": "allow"
+                    "user:id:*": "allow"
+                    "rule:id:*": "allow"
+                  "cluster:status":
+                    "*:*:*": "allow"
+                  "manager:read":
+                    "*:*:*": "allow"
+                  "manager:read_api_config":
+                    "*:*:*": "allow"
+                  "manager:update_config":
+                    "*:*:*": "allow"
+                  "manager:restart":
+                    "*:*:*": "allow"
+                  "cluster:read_api_config":
+                    "node:id:*": "allow"
+                  "cluster:read":
+                    "node:id:*": "allow"
+                  "cluster:restart":
+                    "node:id:*": "allow"
+                  "cluster:update_config":
+                    "node:id:*": "allow"
+                  "ciscat:read":
+                    "agent:id:*": "allow"
+                  "decoders:read":
+                    "decoder:file:*": "allow"
+                  "decoders:delete":
+                    "decoder:file:*": "allow"
+                  "decoders:update":
+                    "*:*:*": "allow"
+                  "lists:read":
+                    "list:file:*": "allow"
+                  "lists:delete":
+                    "list:file:*": "allow"
+                  "lists:update":
+                    "*:*:*": "allow"
+                  "rootcheck:clear":
+                    "agent:id:*": "allow"
+                  "rootcheck:read":
+                    "agent:id:*": "allow"
+                  "rootcheck:run":
+                    "agent:id:*": "allow"
+                  "rules:read":
+                    "rule:file:*": "allow"
+                  "rules:delete":
+                    "rule:file:*": "allow"
+                  "rules:update":
+                    "*:*:*": "allow"
+                  "mitre:read":
+                    "*:*:*": "allow"
+                  "sca:read":
+                    "agent:id:*": "allow"
+                  "syscheck:clear":
+                    "agent:id:*": "allow"
+                  "syscheck:read":
+                    "agent:id:*": "allow"
+                  "syscheck:run":
+                    "agent:id:*": "allow"
+                  "syscollector:read":
+                    "agent:id:*": "allow"
+                  "logtest:run":
+                    "*:*:*": "allow"
+                  "task:status":
+                    "*:*:*": "allow"
+                  "vulnerability:read":
+                    "agent:id:*": "allow"
+                  "rbac_mode": "white"
                 message: "Current user processed policies information was returned"
                 error: 0
         '400':
@@ -14847,13 +15164,13 @@ paths:
                     affected_items:
                       - id: 1
                         username: wazuh
-                        allow_run_as: true
+                        allow_run_as: false
                         roles:
                           - 1
                     total_affected_items: 1
                     total_failed_items: 0
-                    failed_items: [ ]
-                  message: Parameter allow_run_as has been enabled for the user
+                    failed_items: []
+                  message: "Parameter allow_run_as has been enabled for the user"
                   error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -14887,14 +15204,16 @@ paths:
                   - type: object
               example:
                 active-response:command:
-                  description: Allow to execute active response commands in the agents
+                  description: "Execute active response commands in the agents"
                   resources:
                   - "agent:id"
+                  - "agent:group"
                   example:
                     actions:
-                      - active-response:command
+                      - "active-response:command"
                     resources:
-                      - agent:id:001
+                      - "agent:id:001"
+                      - "agent:group:atlantic"
                     effect: allow
                   related_endpoints:
                     - PUT /active-response
@@ -14904,14 +15223,14 @@ paths:
                   - "*:*"
                   example:
                     actions:
-                      - agent:create
+                      - "agent:create"
                     resources:
                       - "*:*:*"
                     effect: allow
                   related_endpoints:
-                    - POST /agents
-                    - POST /agents/insert
-                    - POST /agents/insert/quick
+                    - "POST /agents"
+                    - "POST /agents/insert"
+                    - "POST /agents/insert/quick"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14943,29 +15262,33 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
               example:
-                "*:*":
-                  description: "Resource applied in functions acting on resources that do not yet exist in the system.
-                                We call these functions, resourceless functions"
-                'agent:group':
-                  description: "Reference agents via group name (i.e. agent:group:web)"
-                agent:id:
-                  description: 'Reference agents via agent ID (i.e. agent:id:001)'
-                group:id:
-                  description: 'Reference agent groups via group ID (i.e. group:id:default)'
-                node:id:
-                  description: 'Reference cluster node via node ID (i.e. node:id:worker1)'
-                decoder:file:
-                  description: 'Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)'
-                list:file:
-                  description: 'Reference list file via its path (i.e. list:file:audit-keys)'
-                rule:file:
-                  description: 'Reference rule file via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)'
-                policy:id:
-                  description: 'Reference security policy via its id (i.e. policy:id:1)'
-                role:id:
-                  description: 'Reference security role via its id (i.e. role:id:1)'
-                user:id:
-                  description: 'Reference security user via its id (i.e. user:id:1)'
+                data:
+                  "*:*":
+                    description: "Resource applied in functions acting on resources that do not yet exist in the system.
+                      We call these functions, resourceless functions"
+                  "agent:group":
+                    description: "Reference agents via group name (i.e. agent:group:web)"
+                  "agent:id":
+                    description: "Reference agents via agent ID (i.e. agent:id:001)"
+                  "group:id":
+                    description: "Reference agent groups via group ID (i.e. group:id:default)"
+                  "node:id":
+                    description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
+                  "decoder:file":
+                    description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
+                  "list:file":
+                    description: "Reference list files via its filename (i.e. list:file:audit-keys)"
+                  "rule:file":
+                    description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
+                  "policy:id":
+                    description: "Reference security policies via its id (i.e. policy:id:1)"
+                  "role:id":
+                    description: "Reference security roles via its id (i.e. role:id:1)"
+                  "rule:id":
+                    description: "Reference security rules via its id (i.e. rule:id:1)"
+                  "user:id":
+                    description: "Reference security users via its id (i.e. user:id:1)"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -15010,50 +15333,19 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - id: 3
-                        username: administrator
-                        allow_run_as: true
-                        roles:
-                          - 2
-                      - id: 4
-                        username: guest
-                        allow_run_as: false
-                        roles: []
-                      - id: 5
-                        username: normal
-                        allow_run_as: false
-                        roles:
-                          - 4
-                          - 5
-                          - 6
-                      - id: 6
-                        username: ossec
-                        allow_run_as: true
-                        roles:
-                          - 2
-                          - 5
-                      - username: python
-                        allow_run_as: true
-                        roles: []
-                      - id: 7
-                        username: rbac
-                        allow_run_as: false
-                        roles:
-                          - 3
-                          - 4
-                          - 5
                       - id: 1
-                        username: wazuh
+                        username: "wazuh"
                         allow_run_as: true
                         roles:
                           - 1
                       - id: 2
-                        username: wazuh-wui
+                        username: "wazuh-wui"
                         allow_run_as: true
-                        roles: []
-                    failed_items: []
-                    total_affected_items: 8
+                        roles:
+                          - 1
+                    total_affected_items: 2
                     total_failed_items: 0
+                    failed_items: []
                   message: "All specified users were returned"
                   error: 0
         '400':
@@ -15110,11 +15402,13 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - roles: []
-                        username: wazuh1
-                    failed_items: []
+                      - id: 100
+                        username: TestWazuh
+                        allow_run_as: false
+                        roles: []
                     total_affected_items: 1
                     total_failed_items: 0
+                    failed_items: []
                   message: "User was successfully created"
                   error: 0
         '400':
@@ -15156,17 +15450,12 @@ paths:
                   data:
                     affected_items:
                       - id: 100
-                        username: new_user
+                        username: TestWazuh
                         allow_run_as: false
                         roles: []
-                      - id: 102
-                        username: another_user
-                        allow_run_as: true
-                        roles:
-                          - 6
                     total_affected_items: 2
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "Users were successfully deleted"
                   error: 0
         '400':
@@ -15223,8 +15512,8 @@ paths:
                         roles:
                           - 2
                     total_affected_items: 1
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "User was successfully updated"
                   error: 0
         '400':
@@ -15275,20 +15564,56 @@ paths:
                       name: 'administrator'
                       policies:
                         - 1
+                        - 2
+                        - 3
+                        - 6
+                        - 7
+                        - 8
+                        - 29
+                        - 30
+                        - 12
+                        - 14
+                        - 15
+                        - 18
+                        - 19
+                        - 21
+                        - 23
+                        - 24
+                        - 16
+                        - 25
+                        - 27
+                        - 28
+                        - 33
+                        - 34
+                        - 35
                       users:
                         - 1
+                        - 2
                       rules:
                         - 1
+                        - 2
                     - id: 2
-                      name: 'normal_user'
+                      name: 'readonly'
                       policies:
                         - 4
                         - 5
-                      users:
-                        - 3
-                      rules:
-                        - 3
-                  total_affected_items: 2
+                        - 12
+                        - 31
+                        - 32
+                        - 13
+                        - 17
+                        - 20
+                        - 22
+                        - 16
+                        - 25
+                        - 26
+                        - 28
+                        - 35
+                      users: []
+                      rules: []
+                  total_affected_items: 7
+                  total_failed_items: 0
+                  failed_items: []
                 message: "All specified roles were returned"
                 error: 0
         '400':
@@ -15335,9 +15660,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 2
-                      name: normal_user
+                    - id: 100
+                      name: TestWazuhRole
+                      policies: []
+                      users: []
+                      rules: []
                   total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
                 message: "Role was successfully created"
                 error: 0
         '400':
@@ -15382,20 +15712,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 4
-                      name: administrator
-                      policies:
-                        - 4
-                        - 5
-                      rules:
-                        - 8
-                      users:
-                        - 101
-                        - 104
-                  failed_items: []
+                    - id: 100
+                      name: TestWazuhRole
+                      policies: []
+                      users: []
+                      rules: []
                   total_affected_items: 1
                   total_failed_items: 0
-                message: All specified roles were deleted
+                  failed_items: []
+                message: "All specified roles were deleted"
                 error: 0
 
         '400':
@@ -15445,12 +15770,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 5
-                      name: normal8
+                    - id: 100
+                      name: TestWazuhRole
                       policies: []
-                      rules:
-                        - 100
+                      users: []
+                      rules: []
                   total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
                 message: "Role was successfully updated"
                 error: 0
         '400':
@@ -15504,17 +15831,22 @@ paths:
                 data:
                   affected_items:
                     - id: 1
-                      name: "admin_rule"
+                      name: wui_elastic_admin
                       rule:
                         FIND:
-                          r'^auth[a-zA-Z]+$':
-                            - "administrator"
+                          username: elastic
+                      roles:
+                        - 1
                     - id: 2
-                      name: "limit_access_rule"
+                      name: wui_opendistro_admin
                       rule:
-                        MATCH:
-                          privileges: 'limit_access'
+                        FIND:
+                          username: admin
+                      roles:
+                        - 1
                   total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
                 message: "All specified security rules were returned"
                 error: 0
         '400':
@@ -15565,15 +15897,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: "new_rule"
+                    - id: 100
+                      name: "TestWazuhRule"
                       rule:
                         MATCH:
-                          definition: "normalRule"
+                          definition: "test_rule"
                       roles: []
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Security rule was successfully created"
                 error: 0
         '400':
@@ -15619,15 +15951,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: "new_rule"
+                    - id: 100
+                      name: "TestWazuhRule"
                       rule:
                         MATCH:
-                          definition: "normalRule"
+                          definition: "test_rule"
                       roles: []
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified security rules were deleted"
                 error: 0
         '400':
@@ -15679,15 +16011,15 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - id: 3
-                        name: "new_name"
+                      - id: 100
+                        name: "TestWazuhRule"
                         rule:
                           MATCH:
-                            definition: "updated_rule"
+                            definition: "test_rule"
                         roles: []
                     total_affected_items: 1
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "Security rule was successfully updated"
                   error: 0
         '400':
@@ -15735,24 +16067,37 @@ paths:
                 data:
                   affected_items:
                     - id: 1
-                      name: wazuhPolicy
+                      name: agents_all_resourceless
                       policy:
                         actions:
-                          - "*:*"
-                        effect: allow
+                          - "agent:create"
+                          - "group:create"
                         resources:
-                          - "*:*"
+                          - "*:*:*"
+                        effect: allow
+                      roles:
+                        - 1
+                        - 5
                     - id: 2
-                      name: test_i
+                      name: agents_all_agents
                       policy:
                         actions:
-                          - agent:delete
-                        effect: allow
+                          - "agent:read"
+                          - "agent:delete"
+                          - "agent:modify_group"
+                          - "agent:reconnect"
+                          - "agent:restart"
+                          - "agent:upgrade"
                         resources:
-                          - agent:id:004
-                          - agent:id:005
-                          - agent:id:006
-                  total_affected_items: 2
+                          - "agent:id:*"
+                          - "agent:id:*"
+                        effect: allow
+                      roles:
+                        - 1
+                        - 5
+                  total_affected_items: 35
+                  total_failed_items: 0
+                  failed_items: []
                 message: "All specified policies were returned"
                 error: 0
         '400':
@@ -15807,18 +16152,18 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 2
-                      name: 'normal_policy'
+                    - id: 100
+                      name: "TestWazuhPolicy"
                       policy:
                         actions:
-                          - "agent:delete"
+                          - "security:delete"
                         resources:
-                          - "agent:id:001"
-                        effect: "allow"
+                          - "user:id:*"
+                        effect: deny
                       roles: []
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Policy was successfully created"
                 error: 0
         '400':
@@ -15864,20 +16209,18 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 8
-                      name: policy2
+                    - id: 100
+                      name: "TestWazuhPolicy"
                       policy:
                         actions:
-                          - role:read
-                        effect: allow
+                          - "security:delete"
                         resources:
-                          - role:id:1
-                      roles:
-                        - 3
-                        - 6
-                  failed_items: []
+                          - "user:id:*"
+                        effect: deny
+                      roles: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified policies were deleted"
                 error: 0
         '400':
@@ -15934,18 +16277,18 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 2
-                      name: wazuhPolicy
+                    - id: 100
+                      name: TestWazuhPolicy
                       policy:
                         actions:
-                          - agent:delete
-                        effect: allow
+                          - "security:delete"
                         resources:
-                          - agent:id:001
-                          - agent:id:002
-                          - agent:id:003
+                          - "user:id:*"
+                        effect: deny
                       roles: []
                   total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
                 message: "Policy was successfully updated"
                 error: 0
 
@@ -15994,15 +16337,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      username: string
+                    - id: 100
+                      username: TestWazuhUsername
+                      allow_run_as: false
                       roles:
-                        - 9
-                        - 8
-                  total_affected_items: 2
+                        - 1
+                  total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: All roles were linked to user 3
+                message: "All roles were linked to TestWazuhUsername"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16043,13 +16386,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      username: string
+                    - id: 100
+                      username: TestWazuhUsername
+                      allow_run_as: false
                       roles: []
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: All roles were unlinked from user 3
+                message: "All roles were unlinked from user TestWazuhUsername"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16088,18 +16432,16 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: normal
+                    - id: 100
+                      name: TestWazuhRole
                       policies:
-                        - 2
-                        - 3
-                      rules:
-                        - 5
+                        - 100
                       users: []
-                  failed_items: []
+                      rules: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All policies were linked to role 3
+                  failed_items: []
+                message: "All policies were linked to role 100"
                 error: 0
 
         '400':
@@ -16137,16 +16479,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: normal
+                    - id: 100
+                      name: TestWazuhRole
                       policies: []
-                      rules:
-                        - 1
                       users: []
-                  failed_items: []
+                      rules: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All policies were unlinked from role 3
+                  failed_items: []
+                message: "All policies were unlinked from role 100"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16184,18 +16525,16 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 5
-                      name: normal
-                      policies:
-                        - 2
-                        - 3
-                      rules:
-                        - 3
+                    - id: 100
+                      name: TestWazuhRole
+                      policies: []
                       users: []
-                  failed_items: []
+                      rules:
+                        - 100
                   total_affected_items: 1
                   total_failed_items: 0
-                message: "All security rules were linked to role 5"
+                  failed_items: []
+                message: "All security rules were linked to role 100"
                 error: 0
 
         '400':
@@ -16233,15 +16572,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: normal
+                    - id: 100
+                      name: TestWazuhRole
                       policies: []
-                      rules: []
                       users: []
-                  failed_items: []
+                      rules: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: "All security rules were unlinked from role 3"
+                  failed_items: []
+                message: "All security rules were unlinked from role 100"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16282,65 +16621,58 @@ paths:
               example:
                 data:
                   nodes:
-                    items:
-                      - count: 1
-                        node_name: master-node
-                      - count: 1
-                        node_name: worker1
-                    totalItems: 2
+                    - node_name: "worker1"
+                      count: 1
+                    - node_name: "worker2"
+                      count: 1
+                    - node_name: "master-node"
+                      count: 1
                   groups:
-                    items:
-                      - count: 5
-                        name: default
-                        mergedSum: 8cf9a9972b793548a1bb6fbb00e58af6
-                        configSum: ab73af41699f13fdd81903b5f23d8d00
-                    totalItems: 1
+                    - name: "default"
+                      count: 6
+                      mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
+                      configSum: "ab73af41699f13fdd81903b5f23d8d00"
                   agent_os:
-                    items:
-                      - os:
-                          name: Ubuntu
-                          platform: ubuntu
-                          version: 18.04.2 LTS
-                        count: 6
-                    totalItems: 6
+                    - os:
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: "20.04.02 LTS"
+                      count: 6
                   agent_status:
-                    total: 6
                     active: 6
-                    disconnected: 0
+                    disconected: 0
                     never_connected: 0
                     pending: 0
+                    total: 6
                   agent_version:
-                    items:
-                      - version: Wazuh v4.0.0
-                        count: 1
-                      - version: Wazuh v3.11.0
-                        count: 5
-                    totalItems: 6
+                    - version: "Wazuh v4.3.0"
+                      count: 6
                   last_registered_agent:
-                    os:
-                      arch: x86_64
-                      codename: Bionic Beaver
-                      minor: "18"
-                      major: "04"
-                      name: Ubuntu
-                      platform: ubuntu
-                      uname: "Linux |ee7d4f51c0ae |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb 12 13:35:51 UTC
-                      2019 |x86_64"
-                      version: 18.04.2 LTS
-                    version: Wazuh v3.9.5
-                    dateAdd: "2019-08-20 11:42:14"
-                    node_name: master-node
-                    status: active
-                    group:
-                      - default
-                    mergedSum: 8cf9a9972b793548a1bb6fbb00e58af6
-                    name: ee7d4f51c0ae
-                    lastKeepAlive: "2019-08-20 11:48:20"
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
-                    registerIP: any
-                    ip: "172.20.0.8"
-                    id: "005"
-                    manager: 1a683501f77f
+                    - os:
+                        arch: "x86_64"
+                        codename: "Focal Fossa"
+                        major: 20
+                        minor: 04
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: "Linux |77000bae7bd0 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                         23 13:46:31 UTC 2021 |x86_64"
+                        version: "20.04.02 LTS"
+                      node_name: worker1
+                      lastKeepAlive: "2021-05-31T10:56:52Z"
+                      configSum: "ab73af41699f13fdd81903b5f23d8d00"
+                      status: active
+                      ip: "172.18.0.7"
+                      group:
+                        - default
+                      name: "77000bae7bd0"
+                      registerIP: "any"
+                      dateAdd: "2021-05-31T09:49:28Z"
+                      manager: "wazuh-worker1"
+                      id: "004"
+                      mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
+                      version: "Wazuh v4.3.0"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -16372,8 +16704,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 900
-                rbac_mode: white
+                data:
+                  auth_token_exp_timeout: 900
+                  rbac_mode: white
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -16409,7 +16743,7 @@ paths:
               schema:
                 type: object
               example:
-                message: 'Configuration successfully updated'
+                message: "Configuration was successfully updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16441,7 +16775,7 @@ paths:
               schema:
                 type: object
               example:
-                message: 'Configuration successfully updated'
+                message: "Configuration was successfully updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16497,8 +16831,9 @@ paths:
                       update_time: 2020/11/10 11:55:36
                   total_affected_items: 1
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: All specified task's status were returned
+                  failed_items: []
+                message: "All specified task's status were returned"
+                error: 0
 
   /vulnerability/{agent_id}:
     get:
@@ -16544,8 +16879,8 @@ paths:
                       name: bash
                   total_affected_items: 2
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: All selected vulnerabilities were returned
+                  failed_items: []
+                message: "All selected vulnerabilities were returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
