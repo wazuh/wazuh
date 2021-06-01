@@ -122,7 +122,7 @@ fdb_t *fim_db_init(int storage) {
     }
 
     char *error;
-    sqlite3_exec(fim->db, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;", NULL, NULL, &error);
+    sqlite3_exec(fim->db, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode= TRUNCATE;", NULL, NULL, &error);
 
     if (error) {
         merror("SQL error turning off synchronous mode: %s", error);

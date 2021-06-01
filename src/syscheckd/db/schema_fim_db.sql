@@ -6,9 +6,6 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-PRAGMA synchronous = NORMAL;
-PRAGMA journal_mode= TRUNCATE;
-
 CREATE TABLE IF NOT EXISTS file_entry (
     path TEXT NOT NULL,
     inode_id INTEGER,
