@@ -43,13 +43,13 @@ static int teardown_test_read(void **state) {
     test_structure *test = *state;
     OS_ClearNode(test->nodes);
     OS_ClearXML(&(test->xml));
-    if((wm_office365*)test->module->data){
-        if(((wm_office365*)test->module->data)->auth){
+    if ((wm_office365*)test->module->data) {
+        if (((wm_office365*)test->module->data)->auth) {
             os_free(((wm_office365*)test->module->data)->auth->tenant_id);
             os_free(((wm_office365*)test->module->data)->auth->client_id);
             os_free(((wm_office365*)test->module->data)->auth->client_secret_path);
             os_free(((wm_office365*)test->module->data)->auth->client_secret);
-            if(((wm_office365*)test->module->data)->auth->next) {
+            if (((wm_office365*)test->module->data)->auth->next) {
                 os_free(((wm_office365*)test->module->data)->auth->next->tenant_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_id);
                 os_free(((wm_office365*)test->module->data)->auth->next->client_secret_path);
@@ -58,6 +58,26 @@ static int teardown_test_read(void **state) {
             }
             os_free(((wm_office365*)test->module->data)->auth->next);
             os_free(((wm_office365*)test->module->data)->auth);
+        }
+        if (((wm_office365*)test->module->data)->subscription) {
+            os_free(((wm_office365*)test->module->data)->subscription->subscription_name);
+            if (((wm_office365*)test->module->data)->subscription->next) {
+                os_free(((wm_office365*)test->module->data)->subscription->next->subscription_name);
+            }
+            if (((wm_office365*)test->module->data)->subscription->next->next) {
+                os_free(((wm_office365*)test->module->data)->subscription->next->next->subscription_name);
+            }
+            if (((wm_office365*)test->module->data)->subscription->next->next->next) {
+                os_free(((wm_office365*)test->module->data)->subscription->next->next->next->subscription_name);
+            }
+            if (((wm_office365*)test->module->data)->subscription->next->next->next->next) {
+                os_free(((wm_office365*)test->module->data)->subscription->next->next->next->next->subscription_name);
+            }
+            os_free(((wm_office365*)test->module->data)->subscription->next->next->next->next);
+            os_free(((wm_office365*)test->module->data)->subscription->next->next->next);
+            os_free(((wm_office365*)test->module->data)->subscription->next->next);
+            os_free(((wm_office365*)test->module->data)->subscription->next);
+            os_free(((wm_office365*)test->module->data)->subscription);
         }
     }
     os_free(test->module->data);
@@ -95,11 +115,11 @@ void test_read_configuration(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_int_equal(module_data->subscription.azure, 1);
-    assert_int_equal(module_data->subscription.exchange, 1);
-    assert_int_equal(module_data->subscription.sharepoint, 1);
-    assert_int_equal(module_data->subscription.general, 1);
-    assert_int_equal(module_data->subscription.dlp, 1);
+    assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
+    assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
+    assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
+    assert_string_equal(module_data->subscription->next->next->next->subscription_name, "Audit.General");
+    assert_string_equal(module_data->subscription->next->next->next->next->subscription_name, "DLP.All");
 }
 
 void test_read_configuration_1(void **state) {
@@ -140,11 +160,11 @@ void test_read_configuration_1(void **state) {
     assert_string_equal(module_data->auth->next->tenant_id, "your_tenant_id_1");
     assert_string_equal(module_data->auth->next->client_id, "your_client_id_1");
     assert_string_equal(module_data->auth->next->client_secret_path, "/path/to/secret");
-    assert_int_equal(module_data->subscription.azure, 1);
-    assert_int_equal(module_data->subscription.exchange, 1);
-    assert_int_equal(module_data->subscription.sharepoint, 1);
-    assert_int_equal(module_data->subscription.general, 1);
-    assert_int_equal(module_data->subscription.dlp, 1);
+    assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
+    assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
+    assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
+    assert_string_equal(module_data->subscription->next->next->next->subscription_name, "Audit.General");
+    assert_string_equal(module_data->subscription->next->next->next->next->subscription_name, "DLP.All");
 }
 
 void test_read_default_configuration(void **state) {
@@ -156,21 +176,9 @@ void test_read_default_configuration(void **state) {
         "</api_auth>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__mwarn, formatted_msg, "At module 'office365': No subscription was provided, everything will be monitored by default.");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'subscriptions' at module 'office365'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
-    wm_office365 *module_data = (wm_office365*)test->module->data;
-    assert_int_equal(module_data->enabled, 1);
-    assert_int_equal(module_data->only_future_events, 1);
-    assert_int_equal(module_data->interval, 600);
-    assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
-    assert_string_equal(module_data->auth->client_id, "your_client_id");
-    assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_int_equal(module_data->subscription.azure, 1);
-    assert_int_equal(module_data->subscription.exchange, 1);
-    assert_int_equal(module_data->subscription.sharepoint, 1);
-    assert_int_equal(module_data->subscription.general, 1);
-    assert_int_equal(module_data->subscription.dlp, 1);
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
 void test_read_interval(void **state) {
@@ -201,11 +209,11 @@ void test_read_interval(void **state) {
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
-    assert_int_equal(module_data->subscription.azure, 1);
-    assert_int_equal(module_data->subscription.exchange, 1);
-    assert_int_equal(module_data->subscription.sharepoint, 1);
-    assert_int_equal(module_data->subscription.general, 1);
-    assert_int_equal(module_data->subscription.dlp, 1);
+    assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
+    assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
+    assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
+    assert_string_equal(module_data->subscription->next->next->next->subscription_name, "Audit.General");
+    assert_string_equal(module_data->subscription->next->next->next->next->subscription_name, "DLP.All");
 }
 
 void test_read_interval_s(void **state) {
@@ -480,7 +488,7 @@ void test_invalid_content_1(void **state) {
             "<client_secret>your_secret</client_secret>"
         "</api_auth>"
         "<subscriptions>"
-            "<subscription>invalid</subscription>"
+            "<subscription></subscription>"
             "<subscription>Audit.Exchange</subscription>"
             "<subscription>Audit.SharePoint</subscription>"
             "<subscription>Audit.General</subscription>"
@@ -488,7 +496,7 @@ void test_invalid_content_1(void **state) {
         "</subscriptions>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'subscription' at module 'office365'.");
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'subscription' at module 'office365'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
