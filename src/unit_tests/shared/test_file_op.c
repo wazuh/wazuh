@@ -37,7 +37,39 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-#ifndef TEST_WINAGENT
+#ifdef TEST_WINAGENT
+
+#define N_PATHS 5
+
+static void expect_find_first_file(const char *file_path, const char *name, DWORD attrs, HANDLE handle) {
+    expect_string(wrap_FindFirstFile, lpFileName, file_path);
+    will_return(wrap_FindFirstFile, name);
+    if (name != NULL) {
+        will_return(wrap_FindFirstFile, attrs);
+    }
+
+    will_return(wrap_FindFirstFile, handle);
+}
+
+static void expect_find_next_file(HANDLE handle, const char *name, DWORD attrs, BOOL ret) {
+    expect_value(wrap_FindNextFile, hFindFile, handle);
+    will_return(wrap_FindNextFile, name);
+    if (name != NULL) {
+        will_return(wrap_FindNextFile, attrs);
+    }
+    will_return(wrap_FindNextFile, ret);
+}
+
+static int teardown_win32_wildcards(void **state) {
+    char **vector = *state;
+
+    for (int i = 0; vector[i]; i++) {
+        free(vector[i]);
+    }
+    free(vector);
+    return 0;
+}
+#else
 
 extern char * __real_getenv(const char *name);
 char * __wrap_getenv(const char *name) {
@@ -787,6 +819,125 @@ void test_get_UTC_modification_time_fail_get_filetime(void **state) {
     time_t ret = get_UTC_modification_time(path);
     assert_int_equal(ret, 0);
 }
+
+void test_expand_win32_wildcards_no_wildcards(void **state) {
+    char *path = "C:\\path\\without\\wildcards";
+    char **result;
+
+    result = expand_win32_wildcards(path);
+
+    *state = result;
+    assert_string_equal(path, result[0]);
+    assert_null(result[1]);
+}
+
+void test_expand_win32_wildcards_invalid_handle(void **state) {
+    char *path = "C:\\wildcards*";
+    char **result;
+    expect_find_first_file(path, NULL, (DWORD) 0,  INVALID_HANDLE_VALUE);
+    result = expand_win32_wildcards(path);
+    *state = result;
+
+    assert_null(result[0]);
+}
+
+void test_expand_win32_wildcards_back_link(void **state) {
+    char *path = "C:\\.*";
+    char **result;
+
+    expect_find_first_file(path, ".", (DWORD) 0, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, "..", (DWORD) 0, (BOOL) 1);
+    expect_find_next_file((HANDLE) 1, NULL, (DWORD) 0, (BOOL) 0);
+
+    result = expand_win32_wildcards(path);
+    *state = result;
+
+    assert_null(result[0]);
+}
+
+void test_expand_win32_wildcards_directories(void **state) {
+    char *path = "C:\\test*";
+    char **result;
+    char vectors[N_PATHS][MAX_PATH] = { '\0' };
+    char buffer[OS_SIZE_128] = {0};
+
+    snprintf(vectors[0], OS_SIZE_128, "testdir_%d", 0);
+    expect_find_first_file(path, vectors[0], FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+
+
+    for (int i = 1; i < N_PATHS; i++) {
+        snprintf(vectors[i], OS_SIZE_128, "testdir_%d", i);
+        expect_find_next_file((HANDLE) 1, vectors[i], FILE_ATTRIBUTE_DIRECTORY, (BOOL) 1);
+    }
+
+    expect_find_next_file((HANDLE) 1, NULL, (DWORD) 0, (BOOL) 0);
+
+
+    result = expand_win32_wildcards(path);
+    *state = result;
+    int i;
+    for (i = 0; result[i]; i++) {
+        snprintf(buffer, OS_SIZE_128, "%s%s", "C:\\", vectors[i]);
+        assert_string_equal(buffer, result[i]);
+    }
+    assert_int_equal(N_PATHS, i);
+}
+
+void test_expand_win32_wildcards_directories_reparse_point(void **state) {
+    char *path = "C:\\reparse*";
+    char **result;
+    char vectors[N_PATHS][MAX_PATH] = { '\0' };
+
+    snprintf(vectors[0], OS_SIZE_128, "reparse_%d", 0);
+    expect_find_first_file(path, vectors[0], FILE_ATTRIBUTE_REPARSE_POINT, (HANDLE) 1);
+
+    for (int i = 1; i < 5; i++) {
+        snprintf(vectors[i], OS_SIZE_128, "reparse_%d", i);
+        expect_find_next_file((HANDLE) 1, vectors[i], FILE_ATTRIBUTE_REPARSE_POINT, (BOOL) 1);
+    }
+
+    expect_find_next_file((HANDLE) 1, NULL, (DWORD) 0, (BOOL) 0);
+
+    result = expand_win32_wildcards(path);
+    *state = result;
+
+    assert_null(result[0]);
+}
+
+void test_expand_win32_wildcards_file_with_next_glob(void **state) {
+    char *path = "C:\\ignored_*\\test?";
+    char **result;
+    char vectors[N_PATHS][MAX_PATH] = { '\0' };
+    char buffer[OS_SIZE_128] = {0};
+
+    // Begining to expand the first wildcard
+    // files that matches the first wildcard must be ignored
+    expect_find_first_file("C:\\ignored_*", "ignored_file", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+
+    expect_find_next_file((HANDLE) 1, "test_folder", FILE_ATTRIBUTE_DIRECTORY, (BOOL) 1);
+    // Ending to expand the first wildcard
+    expect_find_next_file((HANDLE) 1, NULL, 0, (BOOL) 0);
+
+
+    // Beggining to expand the second wildcard
+    snprintf(vectors[0], OS_SIZE_128, "test_%d", 0);
+    expect_find_first_file("C:\\test_folder\\test?", vectors[0], FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+
+    for (int i = 1; i < N_PATHS; i++) {
+        snprintf(vectors[i], OS_SIZE_128, "test_%d", i);
+        expect_find_next_file((HANDLE) 1, vectors[i], FILE_ATTRIBUTE_DIRECTORY, (BOOL) 1);
+    }
+    // Ending to expand the second wildcard
+    expect_find_next_file((HANDLE) 1, NULL, 0, (BOOL) 0);
+
+    result = expand_win32_wildcards(path);
+    *state = result;
+    for (int i = 0; result[i]; i++) {
+        snprintf(buffer, OS_SIZE_128, "C:\\test_folder\\%s", vectors[i]);
+        assert_string_equal(buffer, result[i]);
+    }
+}
+
 #endif
 
 int main(void) {
@@ -826,6 +977,13 @@ int main(void) {
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_filetime),
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_no_wildcards, teardown_win32_wildcards),
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_invalid_handle, teardown_win32_wildcards),
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_back_link, teardown_win32_wildcards),
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_directories, teardown_win32_wildcards),
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_directories_reparse_point, teardown_win32_wildcards),
+        cmocka_unit_test_teardown(test_expand_win32_wildcards_file_with_next_glob, teardown_win32_wildcards)
+
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

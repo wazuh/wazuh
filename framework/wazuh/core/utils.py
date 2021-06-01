@@ -783,8 +783,8 @@ def load_wazuh_xml(xml_path, data=None):
     # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
-    # replace \< by &lt;
-    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
+    # replace \< by &lt, only outside xml tags;
+    data = re.sub(r'^&backslash;<(.*[^>])$', '&backslash;&lt;\g<1>', data)
 
     # replace \> by &gt;
     data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
@@ -1204,11 +1204,11 @@ class WazuhDBQuery(object):
     def _add_sort_to_query(self):
         if self.sort:
             if self.sort['fields']:
-                sort_fields, allowed_sort_fields = set(self.sort['fields']), set(self.fields.keys())
-                # check every element in sort['fields'] is in allowed_sort_fields
-                if not sort_fields.issubset(allowed_sort_fields):
-                    raise WazuhError(1403, "Allowerd sort fields: {}. Fields: {}".format(
-                        sorted(allowed_sort_fields, key=str), ', '.join(sort_fields - allowed_sort_fields)
+                sort_fields, allowed_sort_fields = self.sort['fields'], set(self.fields.keys())
+                # Check every element in sort['fields'] is in allowed_sort_fields
+                if not set(sort_fields).issubset(allowed_sort_fields):
+                    raise WazuhError(1403, "Allowed sort fields: {}. Fields: {}".format(
+                        sorted(allowed_sort_fields, key=str), ', '.join(set(sort_fields) - allowed_sort_fields)
                     ))
                 self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
             else:

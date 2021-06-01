@@ -504,7 +504,7 @@ LEEF:1.0|Panda Security|paps|02.47.00.0000|exec|sev=4	devTime=2019-05-09 22:00:5
 
 <decoder name="paps">
   <parent>paps</parent>
-  <regex>MWName=\t*(\.*)\t|(\.*)$</regex>
+  <regex>MWName=\t*(\.*)\t|MWName=\t*(\.*)$</regex>
   <order>MWName</order>
 </decoder>
 

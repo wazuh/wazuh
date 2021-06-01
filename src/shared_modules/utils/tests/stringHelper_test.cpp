@@ -157,7 +157,7 @@ TEST_F(StringUtilsTest, EndsWith)
 
 TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
 {
-    const char buffer[]{'h','e','l','l','o','\0','w','o','r','l','d','\0','\0'};
+    const char buffer[] {'h', 'e', 'l', 'l', 'o', '\0', 'w', 'o', 'r', 'l', 'd', '\0', '\0'};
     const auto tokens{Utils::splitNullTerminatedStrings(buffer)};
     EXPECT_EQ(2ull, tokens.size());
     EXPECT_EQ(tokens[0], "hello");

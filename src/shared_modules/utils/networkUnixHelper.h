@@ -34,32 +34,37 @@ namespace Utils
 
     class NetworkUnixHelper final
     {
-    public:
-        static void getNetworks(std::unique_ptr<ifaddrs, IfAddressSmartDeleter>& interfacesAddress, std::map<std::string, std::vector<ifaddrs*>>& networkInterfaces)
-        {
-            struct ifaddrs *ifaddr { nullptr };
-            const auto ret{getifaddrs(&ifaddr)};
-            if (ret != -1)
+        public:
+            static void getNetworks(std::unique_ptr<ifaddrs, IfAddressSmartDeleter>& interfacesAddress, std::map<std::string, std::vector<ifaddrs*>>& networkInterfaces)
             {
-                interfacesAddress.reset(ifaddr);
-                for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
+                struct ifaddrs* ifaddr
                 {
-                    if (!(ifa->ifa_flags & IFF_LOOPBACK))
+                    nullptr
+                };
+                const auto ret{getifaddrs(&ifaddr)};
+
+                if (ret != -1)
+                {
+                    interfacesAddress.reset(ifaddr);
+
+                    for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
                     {
-                        networkInterfaces[ifa->ifa_name].push_back(ifa); 
+                        if (!(ifa->ifa_flags & IFF_LOOPBACK))
+                        {
+                            networkInterfaces[ifa->ifa_name].push_back(ifa);
+                        }
                     }
                 }
-            }
-            else
-            {
-                throw std::system_error
+                else
                 {
-                    ret,
-                    std::system_category(),
-                    "Error reading networks"
-                };
+                    throw std::system_error
+                    {
+                        ret,
+                        std::system_category(),
+                        "Error reading networks"
+                    };
+                }
             }
-        }
     };
 }
 

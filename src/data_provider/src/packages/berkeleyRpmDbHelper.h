@@ -33,15 +33,14 @@
 #define TAG_ARCH        1022
 
 constexpr auto RPM_DATABASE {"/var/lib/rpm/Packages"};
-constexpr auto FIRST_ENTRY_OFFSET { 8u };
-constexpr auto ENTRY_SIZE { 16u };
-
-constexpr auto INT32_TYPE {4};
-constexpr auto STRING_TYPE {6};
-constexpr auto STRING_VECTOR_TYPE {9};
+constexpr unsigned int FIRST_ENTRY_OFFSET { 8u };
+constexpr unsigned int ENTRY_SIZE { 16u };
+constexpr int INT32_TYPE { 4 };
+constexpr int STRING_TYPE { 6 };
+constexpr int STRING_VECTOR_TYPE { 9 };
 
 //This constant is defined with this value in the RPM source code (header.c)
-constexpr auto HEADER_TAGS_MAX { 65535 };
+constexpr int HEADER_TAGS_MAX { 65535 };
 
 struct BerkeleyHeaderEntry final
 {
@@ -71,9 +70,9 @@ class BerkeleyRpmDBReader final
         bool m_firstIteration;
         std::shared_ptr<IBerkeleyDbWrapper> m_dbWrapper;
 
-        std::vector<BerkeleyHeaderEntry> parseHeader(const DBT & data)
+        std::vector<BerkeleyHeaderEntry> parseHeader(const DBT& data)
         {
-            auto bytes { reinterpret_cast<uint8_t *>(data.data) };
+            auto bytes { reinterpret_cast<uint8_t*>(data.data) };
             std::vector<BerkeleyHeaderEntry> retVal;
             constexpr auto BYTE_SIZE_INT32{ sizeof(int32_t) };
 
@@ -83,7 +82,7 @@ class BerkeleyRpmDBReader final
 
                 const auto dataSize { Utils::toInt32BE(bytes + BYTE_SIZE_INT32) };
 
-                const auto estimatedHeaderTagSize { FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize };
+                const auto estimatedHeaderTagSize { FIRST_ENTRY_OFFSET + indexSize* ENTRY_SIZE + dataSize };
 
                 if (indexSize > 0 && indexSize < HEADER_TAGS_MAX && estimatedHeaderTagSize <= data.size)
                 {
@@ -91,7 +90,8 @@ class BerkeleyRpmDBReader final
 
                     retVal.resize(indexSize);
 
-                    auto ucp { reinterpret_cast<uint8_t *>(bytes) };
+                    auto ucp { reinterpret_cast<uint8_t*>(bytes) };
+
                     // Read all indexes
                     for (auto i = 0; i < indexSize; ++i)
                     {
@@ -101,11 +101,11 @@ class BerkeleyRpmDBReader final
                         const auto it
                         {
                             std::find_if(TAG_NAMES.begin(),
-                                            TAG_NAMES.end(),
-                                            [tag](const auto & pair)
-                                            {
-                                            return tag == pair.first;
-                                            })
+                                         TAG_NAMES.end(),
+                                         [tag](const auto & pair)
+                            {
+                                return tag == pair.first;
+                            })
                         };
 
                         if (TAG_NAMES.end() != it)
@@ -128,27 +128,28 @@ class BerkeleyRpmDBReader final
                     }
                 }
             }
+
             return retVal;
         }
 
-        std::string parseBody(const std::vector<BerkeleyHeaderEntry> & header, const DBT & data)
+        std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
         {
             std::string retVal;
 
             if (!header.empty())
             {
-                auto bytes { reinterpret_cast<char *>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
+                auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
 
-                for (const auto & TAG : TAG_NAMES)
+                for (const auto& TAG : TAG_NAMES)
                 {
                     const auto it
                     {
                         std::find_if(header.begin(),
-                                    header.end(),
-                                    [&TAG](const auto & headerEntry)
-                                    {
-                                        return TAG.second.compare(headerEntry.tag) == 0;
-                                    })
+                                     header.end(),
+                                     [&TAG](const auto & headerEntry)
+                        {
+                            return TAG.second.compare(headerEntry.tag) == 0;
+                        })
                     };
 
                     if (it != header.end())
@@ -161,17 +162,20 @@ class BerkeleyRpmDBReader final
                         }
                         else if (INT32_TYPE == it->type)
                         {
-                            retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t *>(ucp)));
+                            retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
                         }
                         else if (STRING_VECTOR_TYPE == it->type)
                         {
                             retVal += ucp;
                         }
                     }
+
                     retVal += "\t";
                 }
+
                 retVal += "\n";
             }
+
             return retVal;
         }
 
@@ -182,7 +186,7 @@ class BerkeleyRpmDBReader final
             DBT key, data;
             int cursorRet;
 
-            if(m_firstIteration)
+            if (m_firstIteration)
             {
                 if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
                 {

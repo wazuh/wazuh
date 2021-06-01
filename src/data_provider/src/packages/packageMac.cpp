@@ -18,11 +18,11 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
 {
     std::shared_ptr<IPackage> ret;
 
-    if(ctx.second == BREW)
+    if (ctx.second == BREW)
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<BrewWrapper>(ctx.first));
     }
-    else if(ctx.second == PKG)
+    else if (ctx.second == PKG)
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<PKGWrapper>(ctx.first));
     }
@@ -30,11 +30,12 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     {
         throw std::runtime_error { "Error creating BSD package data retriever." };
     }
+
     return ret;
 }
 
 BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
-: m_packageWrapper(packageWrapper)
+    : m_packageWrapper(packageWrapper)
 { }
 
 void BSDPackageImpl::buildPackageData(nlohmann::json& package)

@@ -20,7 +20,8 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
     if (interfaceWrapper)
     {
         const auto family { interfaceWrapper->family() };
-        if(AF_INET == family)
+
+        if (AF_INET == family)
         {
             ret = std::make_shared<BSDNetworkImpl<AF_INET>>(interfaceWrapper);
         }
@@ -32,15 +33,14 @@ std::shared_ptr<IOSNetwork> FactoryBSDNetwork::create(const std::shared_ptr<INet
         {
             ret = std::make_shared<BSDNetworkImpl<AF_LINK>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating BSD network data retriever." };
-        }
+
+        // else: The current interface family is not supported
     }
     else
     {
         throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
     }
+
     return ret;
 }
 
@@ -49,6 +49,7 @@ void BSDNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
 {
     // Get IPv4 address
     const auto address { m_interfaceAddress->address() };
+
     if (!address.empty())
     {
         network["IPv4"]["address"] = address;
@@ -66,6 +67,7 @@ template <>
 void BSDNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
 {
     const auto address { m_interfaceAddress->addressV6() };
+
     if (!address.empty())
     {
         network["IPv6"]["address"] = address;

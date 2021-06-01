@@ -24,6 +24,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from wazuh.core.common import wazuh_uid, wazuh_gid
+from wazuh.rbac.utils import clear_cache
 
 # Max reserved ID value
 max_id_reserved = 99
@@ -564,6 +565,7 @@ class TokenManager:
                 self.session.add(RunAsTokenBlacklist())
                 self.session.commit()
 
+            clear_cache()
             return True
         except IntegrityError:
             self.session.rollback()
