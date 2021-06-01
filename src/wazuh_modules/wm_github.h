@@ -20,7 +20,6 @@
 #define WM_GITHUB_DEFAULT_DELAY 1
 #define WM_GITHUB_MSG_DELAY 1000000 / wm_max_eps
 
-#define CHUNK_SIZE 2048
 #define ITEM_PER_PAGE 100
 #define RETRIES_TO_SEND_ERROR 3
 
@@ -48,7 +47,6 @@ typedef struct wm_github {
     time_t interval;                        // Interval betweeen events in seconds
     time_t time_delay;
     wm_github_auth *auth;
-    // api_parameters
     char *event_type;                       // Event types to include: web/git/all
     wm_github_fail *fails;
     int queue_fd;
