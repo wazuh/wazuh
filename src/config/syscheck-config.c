@@ -93,11 +93,9 @@ directory_t *fim_copy_directory(const directory_t *_dir) {
     }
     char *filerestrict = NULL;
 
-#ifndef WIN32
     if (_dir->filerestrict) {
         filerestrict = _dir->filerestrict->raw;
     }
-#endif
 
     return fim_create_directory(_dir->path, _dir->options, filerestrict, _dir->recursion_level,
                                 _dir->tag, _dir->diff_size_limit, _dir->is_wildcard);
@@ -1029,6 +1027,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                         merror(MEM_ERROR, errno, strerror(errno));
                         continue;
                     }
+                    OSList_SetFreeDataPointer(syscheck->wildcards, (void (*)(void *))free_directory);
                 }
 
                 // Create the wildcard directory
@@ -2117,8 +2116,6 @@ void free_directory(directory_t *dir) {
 }
 
 void Free_Syscheck(syscheck_config * config) {
-    OSListNode *node_it;
-
     if (config) {
         int i;
         if (config->scan_day) {
@@ -2154,18 +2151,10 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->nodiff_regex);
         }
         if (config->directories) {
-            OSList_foreach(node_it, config->directories) {
-                free_directory(node_it->data);
-                node_it->data = NULL;
-            }
             OSList_Destroy(config->directories);
             config->directories = NULL;
         }
         if (config->wildcards) {
-            OSList_foreach(node_it, config->wildcards) {
-                free_directory(node_it->data);
-                node_it->data = NULL;
-            }
             OSList_Destroy(config->wildcards);
             config->wildcards = NULL;
         }

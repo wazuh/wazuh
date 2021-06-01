@@ -151,6 +151,16 @@ int fim_db_process_missing_entry(fdb_t *fim_sql,
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage, evt_data, NULL,
                                     NULL);
 }
+
+int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data,
+                                 directory_t *configuration) {
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_generate_delete_event, storage, evt_data,
+                                    configuration, NULL);
+}
 // LCOV_EXCL_STOP
 
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {

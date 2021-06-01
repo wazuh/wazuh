@@ -47,6 +47,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     if (syscheck.directories == NULL) {
         return (OS_INVALID);
     }
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
     syscheck.wildcards = NULL;
     syscheck.enable_synchronization = 1;
     syscheck.restart_audit  = 1;

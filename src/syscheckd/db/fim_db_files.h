@@ -187,6 +187,25 @@ int fim_db_process_missing_entry(fdb_t *fim_sql,
                                  event_data_t *evt_data);
 
 /**
+ * @brief Remove a wildcard directory that were not expanded from the configuration
+ *
+ * @param fim_sql FIM database struct.
+ * @param file Structure of the file which contains all the paths.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param evt_data Information on how the event was triggered.
+ * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data,
+                                 directory_t *configuration);
+
+/**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.
  *
  * @param stmt The statement to be decoded.

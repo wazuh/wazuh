@@ -949,4 +949,22 @@ void fim_delete_file_event(fdb_t *fim_sql,
                            void *_unused_field_1,
                            void *_unused_field_2);
 
+/**
+ * @brief Create a delete event and removes the entry from the database.
+ *
+ * @param fim_sql  FIM database struct.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param evt_data Information associated to the triggered event.
+ * @param configuration Directory configuration to be deleted.
+ * @param _unused_field Unused field, required to use this function as a callback.
+ *
+ */
+void fim_generate_delete_event(fdb_t *fim_sql,
+                               fim_entry *entry,
+                               pthread_mutex_t *mutex,
+                               void *evt_data,
+                               void *configuration,
+                               void *_unused_field);
+
 #endif /* SYSCHECK_H */
