@@ -87,7 +87,7 @@ void test_github_main_fail_StartMQ(void **state) {
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub started.");
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:osquery");
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "Can't connect to queue. Closing module.");
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);

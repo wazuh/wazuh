@@ -49,7 +49,7 @@ void * wm_github_main(wm_github* github_config) {
         // Connect to queue
         github_config->queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
         if (github_config->queue_fd < 0) {
-            mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
+            mterror(WM_GITHUB_LOGTAG, "Can't connect to queue. Closing module.");
             return NULL;
         }
 #endif

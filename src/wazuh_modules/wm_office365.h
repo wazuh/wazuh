@@ -45,6 +45,7 @@ typedef struct wm_office365 {
     time_t interval;                        // Interval betweeen events in seconds
     wm_office365_auth *auth;
     subscription_flags_t subscription;
+    int queue_fd;
 } wm_office365;
 
 extern const wm_context WM_OFFICE365_CONTEXT;  // Context

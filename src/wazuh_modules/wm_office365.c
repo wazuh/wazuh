@@ -22,6 +22,8 @@
 STATIC void* wm_office365_main(wm_office365* office365_config);    // Module main function. It won't return
 STATIC void wm_office365_destroy(wm_office365* office365_config);
 STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
+STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan);
+
 cJSON *wm_office365_dump(const wm_office365* office365_config);
 
 /* Context definition */
@@ -36,9 +38,29 @@ const wm_context WM_OFFICE365_CONTEXT = {
 void * wm_office365_main(wm_office365* office365_config) {
 
     if (office365_config->enabled) {
-        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 started");
+        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 started.");
+
+#ifndef WIN32
+        // Connect to queue
+        office365_config->queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+        if (office365_config->queue_fd < 0) {
+            mterror(WM_OFFICE365_LOGTAG, "Can't connect to queue. Closing module.");
+            return NULL;
+        }
+#endif
+
+        // Execute initial scan
+        wm_office365_execute_scan(office365_config, 1);
+
+        while (1) {
+            sleep(office365_config->interval);
+            wm_office365_execute_scan(office365_config, 0);
+            #ifdef WAZUH_UNIT_TESTING
+                break;
+            #endif
+        }
     } else {
-        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 disabled");
+        mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 disabled.");
     }
 
     return NULL;
@@ -137,4 +159,21 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
     return root;
 }
 
+STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan) {
+    wm_office365_auth* next = NULL;
+    wm_office365_auth* current = office365_config->auth;
+
+    while (current != NULL)
+    {
+        next = current->next;
+
+        mtdebug1(WM_OFFICE365_LOGTAG, "Scanning tenant: '%s'", current->tenant_id);
+
+        // TODO
+
+        current = next;
+    }
+
+    return 0;
+}
 #endif
