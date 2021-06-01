@@ -1376,10 +1376,8 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         if (name) {
             wm_strcat(&msg, name->valuestring, '|');
             fillData(lf,"program.name",name->valuestring);
-            os_strdup(name->valuestring, fields_to_hash[0]);
         } else {
             wm_strcat(&msg, "NULL", '|');
-            os_strdup("", fields_to_hash[0]);
         }
 
         if (priority) {
@@ -1422,19 +1420,15 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         if (version) {
             wm_strcat(&msg, version->valuestring, '|');
             fillData(lf,"program.version",version->valuestring);
-            os_strdup(version->valuestring, fields_to_hash[1]);
         } else {
             wm_strcat(&msg, "NULL", '|');
-            os_strdup("", fields_to_hash[1]);
         }
 
         if (architecture) {
             wm_strcat(&msg, architecture->valuestring, '|');
             fillData(lf,"program.architecture",architecture->valuestring);
-            os_strdup(architecture->valuestring, fields_to_hash[2]);
         } else {
             wm_strcat(&msg, "NULL", '|');
-            os_strdup("", fields_to_hash[2]);
         }
 
         if (multiarch) {
