@@ -343,4 +343,10 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
  */
 char * w_logtest_generate_error_response(char * msg);
 
+bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg);
+
+bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _Config * ruleset_config, OSList * list_msg);
+
+void w_logtest_ruleset_free_config(_Config * ruleset_config);
+
 #endif

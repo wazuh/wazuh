@@ -11,6 +11,7 @@
 #include "config.h"
 #include "shared.h"
 #include "global-config.h"
+#include "logmsg.h"
 
 #ifndef WIN32
 
@@ -56,7 +57,7 @@ static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char
     return (0);
 }
 
-int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Rules(XML_NODE node, void *configp, void * list)
 {
     int i = 0;
     int retval = 0;
@@ -106,6 +107,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     _Config *Config;
 
     Config = (_Config *)configp;
+    OSList * list_msg = list;
 
     /* Initialize OSRegex */
     memset(&regex, 0, sizeof(OSRegex));
@@ -118,11 +120,11 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     if (node) {
         while (node[i]) {
             if (!node[i]->element) {
-                merror(XML_ELEMNULL);
+                smerror(list_msg, XML_ELEMNULL);
                 retval = OS_INVALID;
                 goto cleanup;
             } else if (!node[i]->content) {
-                merror(XML_VALUENULL, node[i]->element);
+                smerror(list_msg, XML_VALUENULL, node[i]->element);
                 retval = OS_INVALID;
                 goto cleanup;
             }
@@ -210,7 +212,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 os_realloc(rules_dirs_pattern, sizeof(char *)*rul_dirs_size, rules_dirs_pattern);
 
                 if (!rules_dirs) {
-                    merror(MEM_ERROR, errno, strerror(errno));
+                    smerror(list_msg, MEM_ERROR, errno, strerror(errno));
                     retval = OS_INVALID;
                     goto cleanup;
                 }
@@ -234,7 +236,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                     os_strdup(".xml$", rules_dirs_pattern[rul_dirs_size - 2]);
                 }
             } else {
-                merror(XML_INVELEM, node[i]->element);
+                smerror(list_msg, XML_INVELEM, node[i]->element);
                 OSRegex_FreePattern(&regex);
                 retval = OS_INVALID;
                 goto cleanup;

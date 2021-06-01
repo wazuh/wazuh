@@ -41,7 +41,7 @@ typedef struct os_analysisd_log_msg_t {
  *                   resulting string replacing their respective specifiers.
  */
 void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func, 
-                                const char * file, char * msg, ...) __attribute__((nonnull));
+                                const char * file, char * msg, ...);
 
 /**
  * @brief Create string message with the information from \ref os_analysisd_log_msg_t.

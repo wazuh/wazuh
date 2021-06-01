@@ -15,6 +15,27 @@ void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * f
 
     va_list args;
     os_analysisd_log_msg_t * new_msg;
+
+    if (list == NULL) {
+        va_start(args, msg);
+        switch (level) {
+
+        case LOGLEVEL_ERROR:
+            _merror(file, line, func, msg, args);
+            break;
+
+        case LOGLEVEL_WARNING:
+            _mwarn(file, line, func, msg, args);
+            break;
+
+        default:
+            _minfo(file, line, func, msg, args);
+            break;
+        }
+        va_end(args);
+        return;
+    }
+
     os_malloc(sizeof(os_analysisd_log_msg_t), new_msg);
 
     /* Debug information */
