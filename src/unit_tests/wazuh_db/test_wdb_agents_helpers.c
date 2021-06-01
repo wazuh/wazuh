@@ -81,7 +81,7 @@ void test_wdb_get_sys_osinfo_success(void ** state)
 }
 
 /* Tests wdb_insert_vuln_cves */
-#if 0
+
 void test_wdb_insert_vuln_cves_error_json(void **state)
 {
     cJSON *ret = NULL;
@@ -90,6 +90,9 @@ void test_wdb_insert_vuln_cves_error_json(void **state)
     const char *version = "1.0";
     const char *architecture = "x86";
     const char *cve = "CVE-2021-1001";
+    const char* severity = "High";
+    double cvss2_score = 6.9;
+    double cvss3_score = 3.6;
     const char *reference = "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7";
     const char *type = "PACKAGE";
     const char *status = "VALID";
@@ -99,7 +102,7 @@ void test_wdb_insert_vuln_cves_error_json(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_insert_vuln_cves(id, name, version, architecture, cve, reference, type, status, check_pkg_existence, NULL);
+    ret = wdb_insert_vuln_cves(id, name, version, architecture, cve, severity, cvss2_score, cvss3_score, reference, type, status, check_pkg_existence, NULL);
 
     assert_null(ret);
 }
@@ -112,13 +115,16 @@ void test_wdb_insert_vuln_cves_error_sql_execution(void **state)
     const char *version = "1.0";
     const char *architecture = "x86";
     const char *cve = "CVE-2021-1001";
+    const char* severity = "High";
+    double cvss2_score = 6.9;
+    double cvss3_score = 3.6;
     const char *reference = "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7";
     const char *type = "PACKAGE";
     const char *status = "VALID";
     bool check_pkg_existence = true;
 
     const char *json_str = NULL;
-    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", json_str);
+    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"severity\":\"High\",\"cvss2_score\":6.9,\"cvss3_score\":3.6,\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", json_str);
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -132,6 +138,14 @@ void test_wdb_insert_vuln_cves_error_sql_execution(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "x86");
     expect_string(__wrap_cJSON_AddStringToObject, name, "cve");
     expect_string(__wrap_cJSON_AddStringToObject, string, "CVE-2021-1001");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "severity");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "High");
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "cvss2_score");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 6.9);
+    will_return(__wrap_cJSON_AddNumberToObject, NULL);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "cvss3_score");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 3.6);
+    will_return(__wrap_cJSON_AddNumberToObject, NULL);
     expect_string(__wrap_cJSON_AddStringToObject, name, "reference");
     expect_string(__wrap_cJSON_AddStringToObject, string, "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7");
     expect_string(__wrap_cJSON_AddStringToObject, name, "type");
@@ -153,7 +167,7 @@ void test_wdb_insert_vuln_cves_error_sql_execution(void **state)
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "Agents DB (1) Error querying Wazuh DB to insert vuln_cves");
 
-    ret = wdb_insert_vuln_cves(id, name, version, architecture, cve, reference, type, status, check_pkg_existence, NULL);
+    ret = wdb_insert_vuln_cves(id, name, version, architecture, cve, severity, cvss2_score, cvss3_score, reference, type, status, check_pkg_existence, NULL);
 
     assert_null(ret);
 }
@@ -166,13 +180,16 @@ void test_wdb_insert_vuln_cves_success(void **state)
     const char *version = "1.0";
     const char *architecture = "x86";
     const char *cve = "CVE-2021-1001";
+    const char* severity = "High";
+    double cvss2_score = 6.9;
+    double cvss3_score = 3.6;
     const char *reference = "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7";
     const char *type = "PACKAGE";
     const char *status = "VALID";
     bool check_pkg_existence = true;
 
     const char *json_str = NULL;
-    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", json_str);
+    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"severity\":\"High\",\"cvss2_score\":6.9,\"cvss3_score\":3.6,\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", json_str);
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -186,6 +203,14 @@ void test_wdb_insert_vuln_cves_success(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "x86");
     expect_string(__wrap_cJSON_AddStringToObject, name, "cve");
     expect_string(__wrap_cJSON_AddStringToObject, string, "CVE-2021-1001");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "severity");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "High");
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "cvss2_score");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 6.9);
+    will_return(__wrap_cJSON_AddNumberToObject, NULL);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "cvss3_score");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 3.6);
+    will_return(__wrap_cJSON_AddNumberToObject, NULL);
     expect_string(__wrap_cJSON_AddStringToObject, name, "reference");
     expect_string(__wrap_cJSON_AddStringToObject, string, "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7");
     expect_string(__wrap_cJSON_AddStringToObject, name, "type");
@@ -204,11 +229,11 @@ void test_wdb_insert_vuln_cves_success(void **state)
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_insert_vuln_cves(id, name, version, architecture, cve, reference, type, status, check_pkg_existence, NULL);
+    ret = wdb_insert_vuln_cves(id, name, version, architecture, cve, severity, cvss2_score, cvss3_score, reference, type, status, check_pkg_existence, NULL);
 
     assert_ptr_equal(1, ret);
 }
-#endif
+
 /* Tests wdb_update_vuln_cves_status */
 
 void test_wdb_update_vuln_cves_status_error_json(void **state){
@@ -1229,9 +1254,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_sys_osinfo_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_sys_osinfo_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_insert_vuln_cves*/
-        /*cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),*/
+        cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_update_vuln_cves_status*/
         cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_vuln_cves_status_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
