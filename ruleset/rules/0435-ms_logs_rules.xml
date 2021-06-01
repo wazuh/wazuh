@@ -13,14 +13,15 @@
     2017 Mar 28 10:08:59 WinEvtLog: Security: INFORMATION(1102): Microsoft-Windows-Eventlog: (no user): no domain: WIN-P57C9KN929H: The audit log was cleared.  Subject:   Security ID: S-1-5-21-2895701376-138392475-4243184240-1000   Account Name: Alberto   Domain Name: WIN-P57C9KN929H   Logon ID: 0x18709
     -->
     <rule id="83200" level="5">
-        <if_sid>18101</if_sid>
-        <id>1102</id>
-        <description>The audit log was cleared</description>
-        <mitre>
-            <id>T1070</id>
-        </mitre>
-        <group>log_clearing_auditlog,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
-    </rule>
+       <if_sid>18101</if_sid>
+       <id>^1102$</id>
+       <field name="type">Security</field>
+       <description>The audit log was cleared</description>
+       <mitre>
+           <id>T1070</id>
+       </mitre>
+       <group>log_clearing_auditlog,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
+     </rule>
 
     <!--
     2017 Mar 28 09:46:17 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: Alberto: WIN-P57C9KN929H: WIN-P57C9KN929H: The Internet Explorer log file was cleared.
@@ -55,4 +56,3 @@
     </rule>
 
 </group>
-
