@@ -490,6 +490,9 @@ void LogCollectorStart()
                     if (current->file && current->exists) {
                         if (reload_file(current) == -1) {
                             minfo(FORGET_FILE, current->file);
+                            os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            os_free(old_file_status);
+                            w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
                             current->ign++;
 
@@ -565,6 +568,9 @@ void LogCollectorStart()
                         if (errno == ENOENT) {
                             if(current->exists==1){
                                 minfo(FORGET_FILE, current->file);
+                                os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                                os_free(old_file_status);
+                                w_logcollector_state_delete_file(current->file);
                                 current->exists = 0;
                             }
                             current->ign++;
@@ -620,6 +626,9 @@ void LogCollectorStart()
                     if (!current->fp) {
                         if(current->exists==1){
                             minfo(FORGET_FILE, current->file);
+                            os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            os_free(old_file_status);
+                            w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
                         }
                         current->ign++;
@@ -662,9 +671,8 @@ void LogCollectorStart()
                                current->file);
 
                         os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                        if (old_file_status != NULL) {
-                            os_free(old_file_status);
-                        }
+                        os_free(old_file_status);
+                        w_logcollector_state_delete_file(current->file);
 
                         fclose(current->fp);
 
@@ -698,9 +706,8 @@ void LogCollectorStart()
 
                         /* Get new file */
                         os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                        if (old_file_status != NULL) {
-                            os_free(old_file_status);
-                        }
+                        os_free(old_file_status);
+                        w_logcollector_state_delete_file(current->file);
 
                         fclose(current->fp);
 
@@ -2617,7 +2624,7 @@ STATIC void w_initialize_file_status() {
 
         fclose(fd);
     } else if (errno != ENOENT) {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
 }
 
