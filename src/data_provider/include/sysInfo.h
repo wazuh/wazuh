@@ -122,6 +122,8 @@ EXPORTED int sysinfo_hotfixes(cJSON** js_result);
 
 
 typedef int(*sysinfo_networks_func)(cJSON** jsresult);
+typedef int(*sysinfo_os_func)(cJSON** jsresult);
+typedef int(*sysinfo_processes_func)(cJSON** jsresult);
 typedef void(*sysinfo_free_result_func)(cJSON** jsresult);
 
 #ifdef __cplusplus
