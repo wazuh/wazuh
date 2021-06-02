@@ -25,6 +25,8 @@
 #define WM_OFFICE365_API_SUBSCRIPTION_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/start?contentType=%s"
 #define WM_OFFICE365_API_CONTENT_BLOB_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/content?contentType=%s&startTime=%s&endTime=%s"
 
+#define WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD "client_id=%s&scope=https://manage.office.com/.default&grant_type=client_credentials&client_secret=%s"
+
 typedef struct wm_office365_auth {
     char *tenant_id;
     char *client_id;

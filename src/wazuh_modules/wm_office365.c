@@ -166,9 +166,11 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
 }
 
 STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan) {
-    //char url[OS_SIZE_8192];
+    char url[OS_SIZE_8192];
+    char auth_header[OS_SIZE_8192];
+    char auth_payload[OS_SIZE_8192];
+    char auth_secret[OS_SIZE_1024];
     char tenant_state_name[OS_SIZE_1024];
-    //char auth_header[PATH_MAX];
     //time_t last_scan_time;
     time_t new_scan_time;
     //curl_response *response;
@@ -182,7 +184,33 @@ STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial
 
         mtdebug1(WM_OFFICE365_LOGTAG, "Scanning tenant: '%s'", current_auth->tenant_id);
 
-        // TODO: Obtain access token
+        memset(auth_header, '\0', OS_SIZE_8192);
+        snprintf(auth_header, OS_SIZE_8192 -1, "Content-Type: application/x-www-form-urlencoded");
+
+        memset(auth_secret, '\0', OS_SIZE_1024);
+        if (current_auth->client_secret) {
+            snprintf(auth_secret, OS_SIZE_1024 -1, "%s", current_auth->client_secret);
+        } else if (current_auth->client_secret_path) {
+            FILE *fd = NULL;
+            if (fd = fopen(current_auth->client_secret_path, "r"), fd) {
+                char str[OS_SIZE_1024 -1];
+                memset(str, '\0', OS_SIZE_1024 -1);
+                if (fread(str, 1, OS_SIZE_1024 -1, fd) > 0) {
+                    snprintf(auth_secret, OS_SIZE_1024 -1, "%s", str);
+                }
+                fclose(fd);
+            }
+        }
+
+        memset(auth_payload, '\0', OS_SIZE_8192);
+        snprintf(auth_payload, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD, current_auth->client_id, auth_secret);
+
+        memset(url, '\0', OS_SIZE_8192);
+        snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_URL, current_auth->tenant_id);
+
+        mtdebug1(WM_OFFICE365_LOGTAG, "Office 365 API access token URL: '%s'", url);
+
+        // TODO: Post request
 
         wm_office365_subscription* next_subscription = NULL;
         wm_office365_subscription* current_subscription = office365_config->subscription;
