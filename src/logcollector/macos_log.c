@@ -22,17 +22,16 @@
 
 STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "", .settings = NULL};
 
+STATIC char * macos_codename = NULL;
+
 /**
  * @brief Check if agent is running on macOS Sierra
  * 
  * @return true if agent is running in macOS Sierra. false otherwise
  */
-STATIC bool w_is_macos_sierra() {
+STATIC INLINE bool w_is_macos_sierra() {
 
-    os_info *os_version = get_unix_version();
-
-    if (os_version != NULL  && strcmp(os_version->os_codename, MACOS_SIERRA_CODENAME_STR) == 0) {
-        free_osinfo(os_version);
+    if (macos_codename != NULL  && strcmp(macos_codename, MACOS_SIERRA_CODENAME_STR) == 0) {
         return true;
     }
     return false;
@@ -429,9 +428,11 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
     free_strarray(log_stream_array);
 }
 
-void w_macos_create_log_env(logreader * lf) {
+void w_macos_create_log_env(logreader * lf, char * current_macos_codename) {
 
     lf->macos_log->state = LOG_NOT_RUNNING;
+
+    w_strdup(current_macos_codename, macos_codename);
 
     if (w_macos_is_log_executable()) {
 
