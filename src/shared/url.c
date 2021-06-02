@@ -13,6 +13,14 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
 
+#ifdef WAZUH_UNIT_TESTING
+    #ifdef WIN32
+        #include "unit_tests/wrappers/windows/url_wrappers.h"
+    #else
+        #include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
+    #endif
+#endif
+
 struct MemoryStruct {
   char *memory;
   size_t size;
@@ -468,7 +476,7 @@ curl_response* wurl_http_get_with_header(const char *header, const char* url) {
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
-    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
 
     res = curl_easy_perform(curl);
 
