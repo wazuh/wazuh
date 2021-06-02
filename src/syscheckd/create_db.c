@@ -325,8 +325,6 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             return;
         }
 
-        check_max_fps();
-
         fim_file(path, configuration, evt_data);
         break;
 
@@ -480,6 +478,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
                                        tree) == 0) {
         // We have somehow reached a point an infinite loop could happen, we will need to update the current file
         // forcefully which will generate a false positive alert
+        check_max_fps();
         configuration = fim_configuration_directory(path);
         if (configuration == NULL) {
             // This should not happen
@@ -498,6 +497,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
 end:
     // Once here, either the used row was cleared and is available or this file is a hardlink to other file
     // either way the only thing left to do is to process the file
+    check_max_fps();
     configuration = fim_configuration_directory(path);
     if (configuration == NULL) {
         // This should not happen
@@ -696,6 +696,7 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
         }
     }
 
+    check_max_fps();
     new.file_entry.path = (char *)path;
     new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
     if (new.file_entry.data == NULL) {
