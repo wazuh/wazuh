@@ -108,12 +108,9 @@ static void successful_whodata_event_render(EVT_HANDLE event, PEVT_VARIANT raw_d
 int syscheck_teardown(void ** state) {
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    if (syscheck.directories->first_node != NULL) {
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    }
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     // Free wdata
     if (syscheck.wdata.fd) {

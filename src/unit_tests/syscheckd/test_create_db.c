@@ -272,10 +272,9 @@ static int teardown_group(void **state) {
     test_mode = 0;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     if(teardown_fim_data(state) != 0)
         return -1;
@@ -4698,11 +4697,11 @@ static void test_fim_process_file_from_db_deleted_file_not_in_configuration(void
         fail_msg("Failed to set an invalid path.");
     }
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4740,11 +4739,11 @@ static void test_fim_process_file_from_db_deleted_file_fail_to_remove_entry_from
         fail_msg("Failed to set an invalid path.");
     }
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4781,11 +4780,11 @@ static void test_fim_process_file_from_db_deleted_file_event_generated(void **st
         fail_msg("Failed to set an invalid path.");
     }
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -5582,23 +5581,15 @@ static void test_update_wildcards_config_remove_config() {
     will_return(__wrap_expand_wildcards, NULL);
     expect_string(__wrap_expand_wildcards, path, wildcard2);
     will_return(__wrap_expand_wildcards, NULL);
-
-    // Inside fim_process_missing_entry
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
-    will_return(__wrap_fim_db_get_path, NULL);
 #ifndef TEST_WINAGENT
     expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath1);
-#endif
-    expect_fim_db_get_path_from_pattern(syscheck.database, pattern1, NULL, FIM_DB_DISK, FIMDB_ERR);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
-    will_return(__wrap_fim_db_get_path, NULL);
-    expect_fim_db_get_path_from_pattern(syscheck.database, pattern2, NULL, FIM_DB_DISK, FIMDB_ERR);
-#ifndef TEST_WINAGENT
     expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath2);
 #endif
+
+    // Remove configuration loop
+    expect_fim_db_get_path_from_pattern(syscheck.database, pattern1, NULL, FIM_DB_DISK, FIMDB_ERR);
+    expect_fim_db_get_path_from_pattern(syscheck.database, pattern2, NULL, FIM_DB_DISK, FIMDB_ERR);
+
     update_wildcards_config();
 
     // Empty config

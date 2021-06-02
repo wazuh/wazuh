@@ -26,18 +26,10 @@
 
 static int restart_syscheck(void **state)
 {
-    if(syscheck.directories->first_node){
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-    }else{
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-    }
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     cJSON *data = *state;
     if (data) {
