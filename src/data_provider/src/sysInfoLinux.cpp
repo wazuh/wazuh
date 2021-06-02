@@ -45,6 +45,7 @@ using SysInfoProcess        = std::unique_ptr<proc_t, ProcTableDeleter>;
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
     const auto pos{line.find(separator)};
+
     if (pos != std::string::npos)
     {
         const auto key{Utils::trim(line.substr(0, pos), " \t\"")};
@@ -58,15 +59,18 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
     std::string info;
     std::fstream file{fileName, std::ios_base::in};
     const bool ret{file.is_open()};
+
     if (ret)
     {
         std::string line;
-        while(file.good())
+
+        while (file.good())
         {
             std::getline(file, line);
             parseLineAndFillMap(line, separator, systemInfo);
         }
     }
+
     return ret;
 }
 
@@ -86,13 +90,16 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     if (process->cmdline && process->cmdline[0])
     {
         commandLine = process->cmdline[0];
+
         for (int idx = 1; process->cmdline[idx]; ++idx)
         {
             const auto cmdlineArgSize { sizeof(process->cmdline[idx]) };
-            if(strnlen(process->cmdline[idx], cmdlineArgSize) != 0)
+
+            if (strnlen(process->cmdline[idx], cmdlineArgSize) != 0)
             {
                 commandLineArgs += process->cmdline[idx];
-                if (process->cmdline[idx+1])
+
+                if (process->cmdline[idx + 1])
                 {
                     commandLineArgs += " ";
                 }
@@ -129,6 +136,7 @@ std::string SysInfo::getSerialNumber() const
 {
     std::string serial;
     std::fstream file{WM_SYS_HW_DIR, std::ios_base::in};
+
     if (file.is_open())
     {
         file >> serial;
@@ -137,6 +145,7 @@ std::string SysInfo::getSerialNumber() const
     {
         serial = UNKNOWN_VALUE;
     }
+
     return serial;
 }
 
@@ -146,10 +155,12 @@ std::string SysInfo::getCpuName() const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     const auto& it { systemInfo.find("model name") };
+
     if (it != systemInfo.end())
     {
         retVal = it->second;
     }
+
     return retVal;
 }
 
@@ -159,6 +170,7 @@ int SysInfo::getCpuCores() const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     const auto& it { systemInfo.find("processor") };
+
     if (it != systemInfo.end())
     {
         retVal = std::stoi(it->second) + 1;
@@ -174,6 +186,7 @@ int SysInfo::getCpuMHz() const
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
 
     const auto& it { systemInfo.find("cpu MHz") };
+
     if (it != systemInfo.end())
     {
         retVal = std::stoi(it->second) + 1;
@@ -187,25 +200,27 @@ void SysInfo::getMemory(nlohmann::json& info) const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
 
-    auto memTotal{ 1 };
-    auto memFree{ 0 };
+    auto memTotal{ 1l };
+    auto memFree{ 0l };
 
     const auto& itTotal { systemInfo.find("MemTotal") };
+
     if (itTotal != systemInfo.end())
     {
-        memTotal = std::stoi(itTotal->second);
+        memTotal = std::stol(itTotal->second);
     }
 
     const auto& itFree { systemInfo.find("MemFree") };
+
     if (itFree != systemInfo.end())
     {
-        memFree = std::stoi(itFree->second);
+        memFree = std::stol(itFree->second);
     }
 
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };
     info["ram_total"] = ramTotal;
     info["ram_free"] = memFree;
-    info["ram_usage"] = 100 - (100*memFree/ramTotal);
+    info["ram_usage"] = 100 - (100 * memFree / ramTotal);
 }
 
 
@@ -235,21 +250,25 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     };
     const auto parseFnc
     {
-        [&info](const std::string& fileName, const std::string& platform)
+        [&info](const std::string & fileName, const std::string & platform)
         {
             std::fstream file{fileName, std::ios_base::in};
+
             if (file.is_open())
             {
                 const auto spParser{FactorySysOsParser::create(platform)};
                 return spParser->parseFile(file, info);
             }
+
             return false;
         }
     };
+
     for (const auto& unixReleaseFile : UNIX_RELEASE_FILES)
     {
         ret |= parseFnc(unixReleaseFile, "unix");
     }
+
     if (ret)
     {
         ret |= parseFnc(CENTOS_RELEASE_FILE, "centos");
@@ -258,26 +277,29 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     {
         for (const auto& platform : PLATFORMS_RELEASE_FILES)
         {
-            if(parseFnc(platform.second, platform.first))
+            if (parseFnc(platform.second, platform.first))
             {
                 ret = true;
                 break;
             }
         }
     }
+
     return ret;
 }
 
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
-    struct utsname uts{};
+    struct utsname uts {};
+
     if (!getOsInfoFromFiles(ret))
     {
         ret["os_name"] = "Linux";
         ret["os_platform"] = "linux";
         ret["os_version"] = UNKNOWN_VALUE;
     }
+
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
@@ -286,6 +308,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
     }
+
     return ret;
 }
 
@@ -299,12 +322,14 @@ nlohmann::json SysInfo::getProcessesInfo() const
     };
 
     SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
+
     while (nullptr != spProcInfo)
     {
         // Append the current json process object to the list of processes
         jsProcessesList.push_back(getProcessInfo(spProcInfo));
         spProcInfo.reset(readproc(spProcTable.get(), nullptr));
     }
+
     return jsProcessesList;
 }
 
@@ -316,18 +341,20 @@ nlohmann::json SysInfo::getNetworks() const
     std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
 
-    for(const auto& interface : networkInterfaces)
+    for (const auto& interface : networkInterfaces)
     {
         nlohmann::json ifaddr {};
 
         for (auto addr : interface.second)
         {
             const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
+
             if (networkInterfacePtr)
             {
                 networkInterfacePtr->buildNetworkData(ifaddr);
             }
         }
+
         networks["iface"].push_back(ifaddr);
     }
 
@@ -337,14 +364,17 @@ nlohmann::json SysInfo::getNetworks() const
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports;
-    for (const auto &portType : PORTS_TYPE)
+
+    for (const auto& portType : PORTS_TYPE)
     {
-        const auto fileContent { Utils::getFileContent(WM_SYS_NET_DIR+portType.second) };
-        const auto rows { Utils::split(fileContent,'\n') };
+        const auto fileContent { Utils::getFileContent(WM_SYS_NET_DIR + portType.second) };
+        const auto rows { Utils::split(fileContent, '\n') };
         auto fileBody { false };
+
         for (auto row : rows)
         {
             nlohmann::json port {};
+
             if (fileBody)
             {
                 row = Utils::trim(row);
@@ -353,8 +383,10 @@ nlohmann::json SysInfo::getPorts() const
                 std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
                 ports["ports"].push_back(port);
             }
+
             fileBody = true;
         }
     }
+
     return ports;
 }

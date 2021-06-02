@@ -16,36 +16,36 @@
 #include "makeUnique.h"
 class ISQLiteFactory
 {
-public:
-    virtual ~ISQLiteFactory() = default;
-    virtual std::shared_ptr<SQLite::IConnection> createConnection(const std::string& path) = 0;
-    virtual std::unique_ptr<SQLite::ITransaction> createTransaction(std::shared_ptr<SQLite::IConnection>& connection) = 0;
-    virtual std::unique_ptr<SQLite::IStatement> createStatement(std::shared_ptr<SQLite::IConnection>& connection,
-                                                                const std::string& query) = 0;
+    public:
+        virtual ~ISQLiteFactory() = default;
+        virtual std::shared_ptr<SQLite::IConnection> createConnection(const std::string& path) = 0;
+        virtual std::unique_ptr<SQLite::ITransaction> createTransaction(std::shared_ptr<SQLite::IConnection>& connection) = 0;
+        virtual std::unique_ptr<SQLite::IStatement> createStatement(std::shared_ptr<SQLite::IConnection>& connection,
+                                                                    const std::string& query) = 0;
 };
 
 class SQLiteFactory : public ISQLiteFactory
 {
-public:
-    SQLiteFactory() = default;
-    ~SQLiteFactory() = default;
-    SQLiteFactory(const SQLiteFactory&) = delete;
-    SQLiteFactory& operator=(const SQLiteFactory&) = delete;
+    public:
+        SQLiteFactory() = default;
+        ~SQLiteFactory() = default;
+        SQLiteFactory(const SQLiteFactory&) = delete;
+        SQLiteFactory& operator=(const SQLiteFactory&) = delete;
 
-    std::shared_ptr<SQLite::IConnection> createConnection(const std::string& path) override
-    {
-        return std::make_shared<SQLite::Connection>(path);
-    }
-    std::unique_ptr<SQLite::ITransaction> createTransaction(std::shared_ptr<SQLite::IConnection>& connection) override
-    {
-        return std::make_unique<SQLite::Transaction>(connection);
-    }
+        std::shared_ptr<SQLite::IConnection> createConnection(const std::string& path) override
+        {
+            return std::make_shared<SQLite::Connection>(path);
+        }
+        std::unique_ptr<SQLite::ITransaction> createTransaction(std::shared_ptr<SQLite::IConnection>& connection) override
+        {
+            return std::make_unique<SQLite::Transaction>(connection);
+        }
 
-    std::unique_ptr<SQLite::IStatement> createStatement(std::shared_ptr<SQLite::IConnection>& connection,
-                                                        const std::string& query) override
-    {
-        return std::make_unique<SQLite::Statement>(connection, query);
-    }
+        std::unique_ptr<SQLite::IStatement> createStatement(std::shared_ptr<SQLite::IConnection>& connection,
+                                                            const std::string& query) override
+        {
+            return std::make_unique<SQLite::Statement>(connection, query);
+        }
 };
 
 #endif // _SQLITE_WRAPPER_FACTORY_H

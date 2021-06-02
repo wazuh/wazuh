@@ -1,3 +1,12 @@
+# Copyright (C) 2015-2021, Wazuh Inc.
+# All right reserved.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+
 import sys
 import argparse
 import os
@@ -26,6 +35,7 @@ headerDic = {\
 'clean':            '=================== Cleaning library    ===================',\
 'rtr':              '=================== Running RTR checks  ===================',\
 'coverage':         '=================== Running Coverage    ===================',\
+'AStyle':           '=================== Running AStyle      ===================',\
 }
 
 smokeTestsDic = {\
@@ -80,7 +90,7 @@ def makeLib(moduleName):
     """
     Builds the 'moduleName' lib.
 
-    :param moduleName: Lib to be built.    
+    :param moduleName: Lib to be built.
     """
     printHeader("<"+moduleName+">"+headerDic['make']+"<"+moduleName+">")
     currentDir = currentDirPathBuild(moduleName)
@@ -97,7 +107,7 @@ def runTests(moduleName):
     """
     Executes the 'moduleName' lib tests.
 
-    :param moduleName: Lib representing the tests to be executed.    
+    :param moduleName: Lib representing the tests to be executed.
     """
     printHeader("<"+moduleName+">"+headerDic['tests']+"<"+moduleName+">")
     tests = []
@@ -339,10 +349,72 @@ def runASAN(moduleName):
     configureCMake(str(moduleName), True, False, True)
     makeLib(str(moduleName))
     for element in smokeTestsDic[moduleName]:
-        testToolCommand = currentDirPathBuild(moduleName) + "/bin/" + element['test_tool_name'] + " " + element['args'] 
+        testToolCommand = currentDirPathBuild(moduleName) + "/bin/" + element['test_tool_name'] + " " + element['args']
         runTestTool(str(moduleName), testToolCommand, element['is_smoke_with_configuration'])
 
     printGreen("<"+moduleName+">"+"[ASAN: PASSED]"+"<"+moduleName+">")
+
+def _getFoldersToAStyle(moduleName):
+    """
+    Returns the folders to be analyzed with AStyle coding style analysis tool.
+
+    :param moduleName: Lib to be analyzed using AStyle coding style analysis tool.
+    :return specific folders and files to be analyzed.
+    """
+    printHeader("<"+moduleName+">"+headerDic['AStyle']+"<"+moduleName+">")
+    cleanFolder(str(moduleName), "/build")
+
+    foldersToScan = ""
+    if str(moduleName) == 'shared_modules/utils':
+        foldersToScan = moduleName + "/../*.h " + moduleName + "/*.cpp"
+    else:
+        foldersToScan = moduleName + "/*.h " + moduleName + "/*.cpp"
+    return foldersToScan
+
+def runAStyleCheck(moduleName):
+    """
+    Executes AStyle coding style analysis tool under 'moduleName' lib code failing when
+    one or more files need to be modified.
+
+    :param moduleName: Lib to be analyzed using AStyle coding style analysis tool.
+    """
+    foldersToScan = _getFoldersToAStyle(moduleName)
+    astyleCommand = "astyle --options=ci/input/astyle.config --dry-run " + foldersToScan
+    out = subprocess.run(astyleCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+    if out.returncode == 0 and not out.stderr:
+        stdoutString = str(out.stdout)
+        if (stdoutString.find("Formatted") != -1):
+            printFail('One or more files do not follow the Coding Style convention.')
+            printFail('Execute astyle --options=ci/input/astyle.config moduleName/*.h moduleName/*.cpp for further information.')
+            printFail('[AStyle: FAILED]')
+            raise ValueError("Code is not complaint with the expected guidelines")
+        else:
+            printGreen("<"+moduleName+">"+"[AStyle Check: PASSED]"+"<"+moduleName+">")
+    else:
+        print(out.stderr)
+        printFail('[AStyle Check: FAILED]')
+        errorString = 'Error Running AStyle: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def runAStyleFormat(moduleName):
+    """
+    Executes AStyle coding style analysis tool under 'moduleName' lib code formatting
+    all needed files.
+
+    :param moduleName: Lib to be analyzed using AStyle coding style analysis tool.
+    """
+    foldersToScan = _getFoldersToAStyle(moduleName)
+    astyleCommand = "astyle --options=ci/input/astyle.config " + foldersToScan
+    out = subprocess.run(astyleCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+    if out.returncode == 0 and not out.stderr:
+        printGreen("<"+moduleName+">"+"[AStyle Format: PASSED]"+"<"+moduleName+">")
+    else:
+        print(out.stderr)
+        printFail('[AStyle Format: FAILED]')
+        errorString = 'Error Running AStyle Format: ' + str(out.returncode)
+        raise ValueError(errorString)
 
 def runReadyToReview(moduleName):
     """
@@ -358,6 +430,7 @@ def runReadyToReview(moduleName):
     runTests(str(moduleName))
     runValgrind(str(moduleName))
     runCoverage(str(moduleName))
+    runAStyleCheck(str(moduleName))
     if str(moduleName) != 'shared_modules/utils':
         runASAN(moduleName)
 

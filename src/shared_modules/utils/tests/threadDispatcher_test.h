@@ -16,12 +16,12 @@
 
 class ThreadDispatcherTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    ThreadDispatcherTest() = default;
-    virtual ~ThreadDispatcherTest() = default;
+        ThreadDispatcherTest() = default;
+        virtual ~ThreadDispatcherTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //THREAD_DISPATCHER_TESTS_H
