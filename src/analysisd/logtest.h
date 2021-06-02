@@ -102,6 +102,7 @@ typedef struct w_logtest_session_t {
     time_t acm_purge_ts;                    ///< Counter of the time interval of last purge. Option accumulate
     regex_matching decoder_match;           ///< Used for decoding phase
     regex_matching rule_match;              ///< Used for rules matching phase
+    u_int8_t logbylevel;                    ///< Custom severity level for generate alerts 
 
 } w_logtest_session_t;
 

@@ -107,7 +107,7 @@ int Read_Rules(XML_NODE node, void *configp, void * list)
     _Config *Config;
 
     Config = (_Config *)configp;
-    OSList * list_msg = list;
+    OSList * list_msg = (OSList *) list;
 
     /* Initialize OSRegex */
     memset(&regex, 0, sizeof(OSRegex));

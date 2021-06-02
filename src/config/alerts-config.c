@@ -11,9 +11,10 @@
 #include "shared.h"
 #include "global-config.h"
 #include "config.h"
+#include "logmsg.h"
 
 
-int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
+int Read_Alerts(XML_NODE node, void *configp, void * list)
 {
     int i = 0;
 
@@ -28,24 +29,25 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
 
     _Config *Config;
     Config = (_Config *)configp;
+    OSList * list_msg = (OSList *) list;
 
     if (!Config) {
-        merror("Configuration handle is NULL.");
+        smerror(list_msg, "Configuration handle is NULL.");
         return (OS_INVALID);
     }
 
     while (node[i]) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            smerror(list_msg, XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            smerror(list_msg, XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         }
         /* Mail notification */
         else if (strcmp(node[i]->element, xml_email_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                smerror(list_msg, XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
@@ -54,7 +56,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
         /* Log alerts */
         else if (strcmp(node[i]->element, xml_log_level) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                smerror(list_msg, XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
             Config->logbylevel  = (u_int8_t) atoi(node[i]->content);
@@ -74,7 +76,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
         }
 #endif
         else {
-            merror(XML_INVELEM, node[i]->element);
+            smerror(list_msg, XML_INVELEM, node[i]->element);
             return (OS_INVALID);
         }
         i++;
