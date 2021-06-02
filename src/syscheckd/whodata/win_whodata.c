@@ -674,6 +674,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     char is_directory;
     whodata_directory *w_dir;
     unsigned long mask = 0;
+    directory_t *configuration;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -709,8 +710,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 w_rwlock_rdlock(&syscheck.directories_lock);
-                w_evt->config_node = fim_configuration_directory(w_evt->path);
-                if (w_evt->config_node == NULL && !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
+                configuration = fim_configuration_directory(w_evt->path);
+                if (configuration == NULL && !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                     // Discard the file or directory if its monitoring has not been activated
                     mdebug2(FIM_WHODATA_NOT_ACTIVE, w_evt->path);
                     free_whodata_event(w_evt);
@@ -718,9 +719,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
-                if (w_evt->config_node != NULL) {
+                if (configuration != NULL) {
                     // Ignore the file if belongs to a non-whodata directory
-                    if (!(w_evt->config_node->dirs_status.status & WD_CHECK_WHODATA) &&
+                    if (!(configuration->dirs_status.status & WD_CHECK_WHODATA) &&
                         !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                         mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
                         free_whodata_event(w_evt);
@@ -729,9 +730,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     }
 
                     // Ignore any and all events that are beyond the configured recursion level.
-                    int depth = fim_check_depth(w_evt->path, w_evt->config_node);
-                    if (depth > w_evt->config_node->recursion_level) {
-                        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, w_evt->config_node->recursion_level, w_evt->path);
+                    int depth = fim_check_depth(w_evt->path, configuration);
+                    if (depth > configuration->recursion_level) {
+                        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, w_evt->path);
                         free_whodata_event(w_evt);
                         w_rwlock_unlock(&syscheck.directories_lock);
                         goto clean;
@@ -819,11 +820,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 // Check if is a valid directory
-                if (w_evt->config_node == NULL) {
+                w_rwlock_rdlock(&syscheck.directories_lock);
+                if (fim_configuration_directory(w_evt->path) == NULL) {
                     mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
                     w_evt->scan_directory = 2;
+                    w_rwlock_unlock(&syscheck.directories_lock);
                     break;
                 }
+                w_rwlock_unlock(&syscheck.directories_lock);
 
                 w_rwlock_wrlock(&syscheck.wdata.directories->mutex);
 

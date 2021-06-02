@@ -42,6 +42,13 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   void *configuration,
                                   void *_unused_patameter);
 
+void fim_db_wildcard_delete_event(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *evt_data,
+                                  void *_configuration,
+                                  void *_unused_patameter);
+
 #ifndef TEST_WINAGENT
 extern unsigned long __real_time();
 unsigned long __wrap_time() {
@@ -1115,7 +1122,7 @@ static void test_fim_db_remove_validated_path_invalid_path(void **state) {
 
     fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 
-    // Last commit time should change
+    // Last commit time should not change
     assert_int_equal(fim_sql.transaction.last_commit, 1);
 }
 
@@ -1161,6 +1168,77 @@ static void test_fim_db_remove_validated_path_valid_path(void **state) {
 
     fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
 
+    // Last commit time should change
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
+}
+
+/*----------fim_db_wildcard_delete_event()------------*/
+static void test_fim_db_wildcard_delete_event_path_founded_in_config(void **state) {
+    fim_file_data data = DEFAULT_FILE_DATA;
+#ifndef TEST_WINAGENT
+    char *entry_path = "/media/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
+
+    fim_db_wildcard_delete_event(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
+
+    // Last commit time should not change
+    assert_int_equal(fim_sql.transaction.last_commit, 1);
+}
+
+static void test_fim_db_wildcard_delete_event_path_not_founded(void **state) {
+    fim_file_data data = DEFAULT_FILE_DATA;
+#ifndef TEST_WINAGENT
+    char *entry_path = "/not/exists/path";
+#else
+    char *entry_path = "c:\\not\\exists\\path";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
+#ifndef TEST_WINAGENT
+    directory_t *configuration = fim_create_directory("/media/some/path", REALTIME_ACTIVE, NULL, 512, NULL, -1, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/not/exists/path'");
+#else
+    directory_t *configuration = fim_create_directory("c:\\windows\\system32\\wbem\\some\\path", REALTIME_ACTIVE, NULL, 512, NULL, -1, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'c:\\not\\exists\\path'");
+#endif
+
+    syscheck.database = &fim_sql;
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path(entry_path);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_delete_data_id(1);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_bind_path(entry_path);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_wildcard_delete_event(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+
+    free_directory(configuration);
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
@@ -1439,6 +1517,10 @@ int main(void) {
         // fim_db_remove_validated_path
         cmocka_unit_test(test_fim_db_remove_validated_path_invalid_path),
         cmocka_unit_test(test_fim_db_remove_validated_path_valid_path),
+
+        // fim_db_wildcard_delete_event
+        cmocka_unit_test(test_fim_db_wildcard_delete_event_path_founded_in_config),
+        cmocka_unit_test(test_fim_db_wildcard_delete_event_path_not_founded),
 
         // fim_db_append_paths_from_inode
 #ifndef TEST_WINAGENT

@@ -480,7 +480,6 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         configuration = fim_configuration_directory(path);
         if (configuration == NULL) {
             // This should not happen
-            w_rwlock_unlock(&syscheck.directories_lock);
             free_entry(entry);
             return FIM_FILE_ERROR;
         }
@@ -490,7 +489,6 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         }
 
         if (fim_db_remove_path(syscheck.database, entry->file_entry.path) == FIMDB_ERR) {
-            w_rwlock_unlock(&syscheck.directories_lock);
             free_entry(entry);
             return FIM_FILE_ERROR;
         }

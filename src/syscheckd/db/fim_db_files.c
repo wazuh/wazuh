@@ -109,6 +109,22 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   void *configuration,
                                   void *_unused_patameter);
 
+/**
+ * @brief Removes paths from the FIM DB if its configuration matches with the one provided
+ *
+ * @param fim_sql FIM database structure.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param evt_data Information on how the event was triggered.
+ * @param _configuration Position of the configuration that triggered the deletion of entries.
+ * @param _unused_parameter Needed for this function to be a valid FIM DB callback.
+ */
+void fim_db_wildcard_delete_event(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *evt_data,
+                                  void *_configuration,
+                                  void *_unused_patameter);
 
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
@@ -158,7 +174,7 @@ int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
                                  int storage,
                                  event_data_t *evt_data,
                                  directory_t *configuration) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_generate_delete_event, storage, evt_data,
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_wildcard_delete_event, storage, evt_data,
                                     configuration, NULL);
 }
 // LCOV_EXCL_STOP
@@ -526,6 +542,18 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
     if (validated_configuration == original_configuration) {
         fim_delete_file_event(fim_sql, entry, mutex, evt_data, NULL, NULL);
     }
+}
+
+void fim_db_wildcard_delete_event(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *evt_data,
+                                  void *_configuration,
+                                  __attribute__((unused)) void *_unused_patameter) {
+    if (fim_configuration_directory(entry->file_entry.path) != NULL) {
+        return;
+    }
+    fim_generate_delete_event(fim_sql, entry, mutex, evt_data, _configuration, NULL);
 }
 
 int fim_db_set_all_unscanned(fdb_t *fim_sql) {
