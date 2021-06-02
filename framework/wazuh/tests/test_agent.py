@@ -47,7 +47,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 short_agent_list = ['000', '001', '002', '003', '004', '005']
 
 
-def send_msg_to_wdb(msg, raw=False):
+def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
     query = ' '.join(msg.split(' ')[2:])
     result = test_data.cur.execute(query).fetchall()
     return list(map(remove_nones_to_dict, map(dict, result)))
