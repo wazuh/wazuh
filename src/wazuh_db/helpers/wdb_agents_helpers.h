@@ -32,7 +32,7 @@ typedef enum agents_db_access {
  *                 The cJSON object must be freed by the caller.
  */
 cJSON* wdb_get_agent_sys_osinfo(int id,
-                          int *sock);
+                                int *sock);
 
 /**
  * @brief Sets the triaged status in the sys_osinfo table of the specified agent's database.
@@ -42,7 +42,7 @@ cJSON* wdb_get_agent_sys_osinfo(int id,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_set_agent_sys_osinfo_triaged(int id,
-                               int *sock);
+                                     int *sock);
 
 /**
  * @brief Insert or update a vulnerability to the vuln_cves table in the agents database.
@@ -52,6 +52,9 @@ int wdb_set_agent_sys_osinfo_triaged(int id,
  * @param[in] version The affected package version.
  * @param[in] architecture The affected package architecture.
  * @param[in] cve The vulnerability ID.
+ * @param [in] severity A string representing the severity of the vulnerability.
+ * @param [in] cvss2_score The vulnerability score according to CVSS v2.
+ * @param [in] cvss3_score The vulnerability score according to CVSS v3.
  * @param[in] reference The package reference.
  * @param[in] type The package type.
  * @param[in] status The vulnerability status.
