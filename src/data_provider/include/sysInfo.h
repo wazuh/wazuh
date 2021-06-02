@@ -93,6 +93,8 @@ EXPORTED int sysinfo_ports(cJSON** js_result);
 EXPORTED void sysinfo_free_result(cJSON** js_data);
 
 typedef int(*sysinfo_networks_func)(cJSON** jsresult);
+typedef int(*sysinfo_os_func)(cJSON** jsresult);
+typedef int(*sysinfo_processes_func)(cJSON** jsresult);
 typedef void(*sysinfo_free_result_func)(cJSON** jsresult);
 
 #ifdef __cplusplus

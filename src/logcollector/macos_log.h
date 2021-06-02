@@ -89,7 +89,7 @@ typedef struct {
  * @brief Creates the environment for collecting logs on macOS Systems
  * @param current logreader structure with `log`'s input arguments and w_macos_log_config_t structure to be set
  */
-void w_macos_create_log_env(logreader * current);
+void w_macos_create_log_env(logreader * current, char * macos_codename);
 
 /**
  * @brief Set string containing the last recorded timestamp.

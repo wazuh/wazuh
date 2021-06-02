@@ -13,6 +13,8 @@
 #include "state.h"
 #include <math.h>
 #include <pthread.h>
+#include "sysInfo.h"
+#include "sym_load.h"
 
 // Remove STATIC qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
@@ -82,6 +84,14 @@ STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
  */
 STATIC int w_update_hash_node(char * path, int64_t pos);
 
+/**
+ * @brief Retrive first child process for specific process
+ * 
+ * @param pid pid of parent process
+ * @return pid_t pid of child proces. Zero on error
+ */
+pid_t w_get_children_pid_by_ppid(pid_t pid);
+
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -98,6 +108,8 @@ int reload_delay;
 int free_excluded_files_interval;
 int state_interval;
 OSHash * msg_queues_table;
+void *sysinfo_module;
+
 
 ///< To asociate the path, the position to read, and the hash key of lines read.
 OSHash * files_status;
@@ -129,10 +141,20 @@ static OSHash *excluded_binaries = NULL;
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 typedef struct{
     wfd_t * show;
+    pid_t show_child;
     wfd_t * stream;
+    pid_t stream_child;
 } w_macos_log_wfd_t;
 
-STATIC w_macos_log_wfd_t macos_log_wfd = { .show = NULL, .stream = NULL };
+
+STATIC w_macos_log_wfd_t macos_log_wfd = { .show = NULL, .show_child = 0, .stream = NULL, .stream_child = 0};
+
+/**
+ * @brief Return current macOS codename
+ * 
+ * @return char* Allocated codename string. NULL on error
+ */
+char * w_macos_get_codename();
 #endif
 
 /* Handle file management */
@@ -145,6 +167,9 @@ void LogCollectorStart()
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
     logreader *current;
+
+    /* Hook to sysinfo providers */
+    sysinfo_module = so_get_module_handle("sysinfo");
 
     /* Create store data */
     excluded_files = OSHash_Create();
@@ -341,11 +366,21 @@ void LogCollectorStart()
         }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
         else if (strcmp(current->logformat, MACOS) == 0) {
-            w_macos_create_log_env(current);
+            /* Get macOS version */
+            char * codename = w_macos_get_codename();
+            w_macos_create_log_env(current, codename);
+            os_free(codename);
             current->read = read_macos;
             if (current->macos_log->state != LOG_NOT_RUNNING) {
                 if (atexit(w_macos_release_log_execution)) {
                     merror(ATEXIT_ERROR);
+                }
+                /* Retrieve pid of child process */
+                if (current->macos_log->show_wfd != NULL) {
+                    macos_log_wfd.show_child = w_get_children_pid_by_ppid(current->macos_log->show_wfd->pid);
+                }
+                if (current->macos_log->stream_wfd) {
+                    macos_log_wfd.stream_child = w_get_children_pid_by_ppid(current->macos_log->stream_wfd->pid);
                 }
                 /* macOS log's resources need to be globally reachable to be released */
                 macos_log_wfd.show = current->macos_log->show_wfd;
@@ -2955,6 +2990,9 @@ void w_macos_release_log_show(void) {
         if (macos_log_wfd.show->pid > 0) {
             kill(macos_log_wfd.show->pid, SIGTERM);
         }
+        if (macos_log_wfd.show_child > 0) {
+            kill(macos_log_wfd.show_child, SIGTERM);
+        }
         wpclose(macos_log_wfd.show);
         macos_log_wfd.show = NULL;
     }
@@ -2967,6 +3005,9 @@ void w_macos_release_log_stream(void) {
         if (macos_log_wfd.stream->pid > 0) {
             kill(macos_log_wfd.stream->pid, SIGTERM);
         }
+        if (macos_log_wfd.stream_child > 0) {
+            kill(macos_log_wfd.stream_child, SIGTERM);
+        }
         wpclose(macos_log_wfd.stream);
         macos_log_wfd.stream = NULL;
     }
@@ -2977,4 +3018,74 @@ void w_macos_release_log_execution(void) {
     w_macos_release_log_show();
     w_macos_release_log_stream();
 }
+
+
+char * w_macos_get_codename() {
+
+    char * codename = NULL;
+    sysinfo_os_func sysinfo_os_ptr = NULL;
+    sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
+    cJSON * os_info;
+    
+    if (sysinfo_module != NULL) {
+        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
+        sysinfo_os_ptr = so_get_function_sym(sysinfo_module, "sysinfo_os");
+        if (sysinfo_os_ptr != NULL && sysinfo_free_result_ptr != NULL) {
+            const int error_code = sysinfo_os_ptr(&os_info);
+            if (error_code == 0) {
+                if (os_info != NULL) {
+                    w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(os_info, "os_codename")), codename);
+                }
+                sysinfo_free_result_ptr(&os_info);
+            }
+        }
+    }
+    return codename;
+}
+
+
+
+pid_t w_get_children_pid_by_ppid(pid_t ppid) {
+
+
+    cJSON * processes = NULL;
+    char * target_ppid_str = NULL;
+    char * process_ppid_str = NULL;
+    char * process_pid_str = NULL;
+    pid_t result_pid = 0;
+
+    asprintf(&target_ppid_str, "%i", ppid);
+
+    sysinfo_processes_func sysinfo_processes_ptr = NULL;
+    sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
+
+    if (sysinfo_module != NULL) {
+        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
+        sysinfo_processes_ptr = so_get_function_sym(sysinfo_module, "sysinfo_processes");
+        if (sysinfo_processes_ptr != NULL && sysinfo_free_result_ptr != NULL) {
+            const int error_code = sysinfo_processes_ptr(&processes);
+            if (error_code == 0) {
+                 if (processes != NULL) {
+                    cJSON * process;
+                    cJSON_ArrayForEach(process, processes) {
+                        process_ppid_str = cJSON_GetStringValue(cJSON_GetObjectItem(process, "ppid"));
+                        if (process_ppid_str != NULL && strcmp(target_ppid_str, process_ppid_str) == 0) {
+                            process_pid_str = cJSON_GetStringValue(cJSON_GetObjectItem(process, "pid"));
+                            if(process_pid_str != NULL) {
+                                if (result_pid = (pid_t) strtol(process_pid_str, NULL, 10), result_pid > 0) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                sysinfo_free_result_ptr(&processes);
+            }
+        }
+    }
+
+    os_free(target_ppid_str);
+    return result_pid;
+}
+
 #endif
