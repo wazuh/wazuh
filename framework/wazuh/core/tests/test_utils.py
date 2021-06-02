@@ -177,7 +177,7 @@ def test_execute(mock_output):
 
 @pytest.mark.parametrize('error_effect, expected_exception', [
     (CalledProcessError(returncode=1000, cmd='Unexpected error', output='{"data":"Some data", "message":"Error", '
-                                                                       '"error":1000}'), 1000),
+                                                                        '"error":1000}'), 1000),
     (Exception, 1002),
     (CalledProcessError(returncode=1, cmd='Unexpected error', output={}), 1003),
     (CalledProcessError(returncode=1, cmd='Unexpected error', output='{"error":1000}'), 1004),
@@ -212,6 +212,7 @@ def test_cut_array(array, limit):
     assert isinstance(result, list)
 
 
+@pytest.mark.xfail(reason='Pending rework for process_array tests: https://github.com/wazuh/wazuh/issues/8249')
 @pytest.mark.parametrize('array, limit, search_text, sort_by, q', [
     (['one', 'two', 'three'], 3, None, None, ''),
     (['one', 'two', 'three'], 2, 'one', [''], 'contains=one'),
@@ -767,31 +768,39 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_isfile, mock_c
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('sort, error, expected_exception', [
-    (None, False, None),
-    ({'order': 'asc', 'fields': None}, False, None),
-    ({'order': 'asc', 'fields': ['1']}, False, None),
-    ({'order': 'asc', 'fields': ['bad_field']}, True, 1403)
+@pytest.mark.parametrize('sort, expected_exception', [
+    (None, None),
+    ({'order': 'asc', 'fields': None}, None),
+    ({'order': 'asc', 'fields': ['1']}, None),
+    ({'order': 'asc', 'fields': ['bad_field']}, 1403),
+    ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None)
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, sort,
-                                                  error, expected_exception):
+                                                  expected_exception):
     """Test WazuhDBQuery._add_sort_to_query function."""
+    fields = {'1': 'one', '2': 'two', '3': 'three', '4': 'four'}
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=sort,
                          search=None, select=None, filters=None,
-                         fields={'1': None, '2': None},
+                         fields=fields,
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=1),
                          count=5, get_data=None)
 
-    if error:
+    if expected_exception:
         with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
             query._add_sort_to_query()
     else:
         query._add_sort_to_query()
+
+    # Check the fields list maintains its original order after adding it to the query
+    if not expected_exception and sort:
+        sort_string_added = ','.join(f"{fields[field]} {sort['order']}" for field in sort['fields']) if sort['fields'] \
+            else f"None {sort['order']}"
+        assert query.query.endswith(f"ORDER BY {sort_string_added}")
 
     mock_conn_db.assert_called_once_with()
 
@@ -1496,13 +1505,13 @@ def test_filter_array_by_query(q, return_length):
 
 @pytest.mark.parametrize('select, required_fields, expected_result', [
     (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
-                                                                   'single_select': None,
-                                                                   'nested1': {
-                                                                       'nested12': {
-                                                                           'nested121': None
-                                                                       }
-                                                                   }}),
-    (['single_select', 'noexists'], None, None),
+                                                                     'single_select': None,
+                                                                     'nested1': {
+                                                                         'nested12': {
+                                                                             'nested121': None
+                                                                         }
+                                                                     }}),
+    (['single_select', 'noexists'], None, {'single_select': None}),
     (['required.noexists1.noexists2'], None, None)
 ])
 def test_select_array(select, required_fields, expected_result):
@@ -1634,8 +1643,8 @@ def test_expand_rules():
 @patch('wazuh.core.utils.common.user_decoders_path', new=test_files_path)
 def test_expand_decoders():
     decoders = expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.DECODERS_EXTENSION}'))))
-
+    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
+                                                                        f'*{common.DECODERS_EXTENSION}'))))
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
 @patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)

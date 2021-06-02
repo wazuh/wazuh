@@ -33,28 +33,32 @@
     (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
      CHECK_MTIME | CHECK_INODE)
 
-
-static char *directories[] = { "/testdir0", "/testdir1", "/testdir2", "/testdir3", "/etc", NULL };
-static char *symbolic_links[] = { NULL, NULL, NULL, NULL, NULL, NULL };
-
-static int opts[] = { (CHECK_ALL | WHODATA_ACTIVE),
-                      (CHECK_ALL | WHODATA_ACTIVE),
-                      (CHECK_ALL | WHODATA_ACTIVE),
-                      (CHECK_ALL | WHODATA_ACTIVE),
-                      (CHECK_ALL | WHODATA_ACTIVE),
-                      (CHECK_ALL | WHODATA_ACTIVE),
-                      0 };
-
-static char *directories_reload_tests[] = { "/testdir0", "/testdir1", "/testdir2", "/testdir3",
-                                            "/testdir4", "/testdir5", "/etc",      NULL };
-static char *symbolic_links_reload_tests[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-
-static int opts_reload_tests[] = {
-    (CHECK_ALL | WHODATA_ACTIVE), (CHECK_ALL | WHODATA_ACTIVE), (CHECK_ALL | WHODATA_ACTIVE),
-    (CHECK_ALL | WHODATA_ACTIVE), (CHECK_ALL | WHODATA_ACTIVE), (CHECK_ALL | WHODATA_ACTIVE),
-    (CHECK_ALL | WHODATA_ACTIVE), (CHECK_ALL | WHODATA_ACTIVE), 0
+static directory_t DIRECTORIES[] = {
+    [0] = { .path = "/testdir0", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [1] = { .path = "/testdir1", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [2] = { .path = "/testdir2", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [3] = { .path = "/testdir3", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [4] = { .path = "/etc", .options = CHECK_ALL | WHODATA_ACTIVE },
 };
 
+static directory_t *GENERAL_CONFIG[] = { [0] = &DIRECTORIES[0], [1] = &DIRECTORIES[1], [2] = &DIRECTORIES[2],
+                                         [3] = &DIRECTORIES[3], [4] = &DIRECTORIES[4], NULL };
+
+
+static directory_t DIRECTORIES_RELOAD[] = {
+    [0] = { .path = "/testdir0", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [1] = { .path = "/testdir1", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [2] = { .path = "/testdir2", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [3] = { .path = "/testdir3", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [4] = { .path = "/testdir4", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [5] = { .path = "/testdir5", .options = CHECK_ALL | WHODATA_ACTIVE },
+    [6] = { .path = "/etc", .options = CHECK_ALL | WHODATA_ACTIVE },
+};
+
+static directory_t *RELOAD_CONFIG[] = { [0] = &DIRECTORIES_RELOAD[0], [1] = &DIRECTORIES_RELOAD[1],
+                                        [2] = &DIRECTORIES_RELOAD[2], [3] = &DIRECTORIES_RELOAD[3],
+                                        [4] = &DIRECTORIES_RELOAD[4], [5] = &DIRECTORIES_RELOAD[5],
+                                        [6] = &DIRECTORIES_RELOAD[6], NULL };
 
 extern OSList *whodata_directories;
 
@@ -62,9 +66,7 @@ extern int audit_rule_manipulation;
 
 /* setup/teardown */
 static int setup_group(void **state) {
-    syscheck.dir = directories;
-    syscheck.symbolic_links = symbolic_links;
-    syscheck.opts = opts;
+    syscheck.directories = GENERAL_CONFIG;
 
     // The basic list needs to be created, we won't test this function.
     fim_audit_rules_init();
@@ -88,21 +90,21 @@ static int teardown_clean_rules_list(void **state) {
 }
 
 static int setup_add_directories_to_whodata_list(void **state) {
-    int i;
+    directory_t *dir_it;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    for (i = 0; directories_reload_tests[i]; i++) {
+    foreach_array(dir_it, RELOAD_CONFIG) {
         whodata_directory_t *dir = calloc(1, sizeof(whodata_directory_t));
 
         if (dir == NULL) {
             return -1;
         }
 
-        dir->path = strdup(directories_reload_tests[i]);
+        dir->path = strdup(dir_it->path);
 
         if (dir->path == NULL) {
             return -1;
@@ -111,19 +113,15 @@ static int setup_add_directories_to_whodata_list(void **state) {
         OSList_AddData(whodata_directories, dir);
     }
 
-    syscheck.max_audit_entries = i;
+    syscheck.max_audit_entries = whodata_directories->currently_size;
 
-    syscheck.dir = directories_reload_tests;
-    syscheck.symbolic_links = symbolic_links_reload_tests;
-    syscheck.opts = opts_reload_tests;
+    syscheck.directories = RELOAD_CONFIG;
 
     return 0;
 }
 
 static int teardown_reload_rules(void **state) {
-    syscheck.dir = directories;
-    syscheck.symbolic_links = symbolic_links;
-    syscheck.opts = opts;
+    syscheck.directories = GENERAL_CONFIG;
 
     syscheck.max_audit_entries = 256;
 
@@ -218,24 +216,24 @@ void test_rules_initial_load_new_rules(void **state) {
     // First directory will be added
     will_return(__wrap_search_audit_rule, 0);
     will_return(__wrap_audit_add_rule, 15);
-    snprintf(log_messages[0], OS_SIZE_512, FIM_AUDIT_NEWRULE, directories[0]);
+    snprintf(log_messages[0], OS_SIZE_512, FIM_AUDIT_NEWRULE, GENERAL_CONFIG[0]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[0]);
 
     // Second directory will have the rule already configured
     will_return(__wrap_search_audit_rule, 0);
     will_return(__wrap_audit_add_rule, -EEXIST);
-    snprintf(log_messages[1], OS_SIZE_512, FIM_AUDIT_ALREADY_ADDED, directories[1]);
+    snprintf(log_messages[1], OS_SIZE_512, FIM_AUDIT_ALREADY_ADDED, GENERAL_CONFIG[1]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[1]);
 
     // Third directory will encounter an error
     will_return(__wrap_search_audit_rule, 0);
     will_return(__wrap_audit_add_rule, -1);
-    snprintf(log_messages[2], OS_SIZE_512, FIM_WARN_WHODATA_ADD_RULE, directories[2]);
+    snprintf(log_messages[2], OS_SIZE_512, FIM_WARN_WHODATA_ADD_RULE, GENERAL_CONFIG[2]->path);
     expect_string(__wrap__mwarn, formatted_msg, log_messages[2]);
 
     // Fourth directory will be duplicated on the audit_op list
     will_return(__wrap_search_audit_rule, 1);
-    snprintf(log_messages[3], OS_SIZE_512, FIM_AUDIT_RULEDUP, directories[3]);
+    snprintf(log_messages[3], OS_SIZE_512, FIM_AUDIT_RULEDUP, GENERAL_CONFIG[3]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[3]);
 
     // Fifth directory will encounter an error
@@ -266,11 +264,11 @@ void test_rules_initial_load_max_audit_entries(void **state) {
     // First directory will be added
     will_return(__wrap_search_audit_rule, 0);
     will_return(__wrap_audit_add_rule, 15);
-    snprintf(log_messages[0], OS_SIZE_512, FIM_AUDIT_NEWRULE, directories[0]);
+    snprintf(log_messages[0], OS_SIZE_512, FIM_AUDIT_NEWRULE, GENERAL_CONFIG[0]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[0]);
 
     // Second directory will be ignored, since we have room for 1 entry
-    snprintf(log_messages[1], OS_SIZE_512, FIM_ERROR_WHODATA_MAXNUM_WATCHES, directories[1],
+    snprintf(log_messages[1], OS_SIZE_512, FIM_ERROR_WHODATA_MAXNUM_WATCHES, GENERAL_CONFIG[1]->path,
              syscheck.max_audit_entries);
     expect_string(__wrap__merror, formatted_msg, log_messages[1]);
 
@@ -333,31 +331,31 @@ static void test_fim_audit_reload_rules(void **state) {
     // Second directory will be added to audit
     will_return(__wrap_search_audit_rule, 0);
     will_return(__wrap_audit_add_rule, 15);
-    snprintf(log_messages[1], OS_SIZE_512, FIM_AUDIT_NEWRULE, directories_reload_tests[1]);
+    snprintf(log_messages[1], OS_SIZE_512, FIM_AUDIT_NEWRULE, RELOAD_CONFIG[1]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[1]);
 
     // Third directory will be removed from audit
     will_return(__wrap_search_audit_rule, 1);
-    expect_string(__wrap_audit_delete_rule, path, directories_reload_tests[2]);
+    expect_string(__wrap_audit_delete_rule, path, RELOAD_CONFIG[2]->path);
     expect_value(__wrap_audit_delete_rule, perms, PERMS);
     expect_string(__wrap_audit_delete_rule, key, AUDIT_KEY);
     will_return(__wrap_audit_delete_rule, 1);
 
     // Fourth directory will be a rule that is already added to audit
     will_return(__wrap_search_audit_rule, 1);
-    snprintf(log_messages[3], OS_SIZE_512, FIM_AUDIT_RULEDUP, directories_reload_tests[3]);
+    snprintf(log_messages[3], OS_SIZE_512, FIM_AUDIT_RULEDUP, RELOAD_CONFIG[3]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[3]);
 
     // Fifth directory will fail to be added
     will_return(__wrap_search_audit_rule, 0);
     will_return(__wrap_audit_add_rule, -1);
-    snprintf(log_messages[4], OS_SIZE_512, FIM_WARN_WHODATA_ADD_RULE, directories_reload_tests[4]);
+    snprintf(log_messages[4], OS_SIZE_512, FIM_WARN_WHODATA_ADD_RULE, RELOAD_CONFIG[4]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[4]);
 
     // Sixth directory will attempt to be added, but find it's duplicated
     will_return(__wrap_search_audit_rule, 0);
     will_return(__wrap_audit_add_rule, -EEXIST);
-    snprintf(log_messages[5], OS_SIZE_512, FIM_AUDIT_ALREADY_ADDED, directories_reload_tests[5]);
+    snprintf(log_messages[5], OS_SIZE_512, FIM_AUDIT_ALREADY_ADDED, RELOAD_CONFIG[5]->path);
     expect_string(__wrap__mdebug1, formatted_msg, log_messages[5]);
 
     // Seventh directory will encounter an error when searching the rule
@@ -396,12 +394,12 @@ static void test_fim_audit_reload_rules_full(void **state) {
     will_return_always(__wrap_search_audit_rule, 0);
 
     // First directory will cause an error message
-    snprintf(log_messages[0], OS_SIZE_512, FIM_ERROR_WHODATA_MAXNUM_WATCHES, directories_reload_tests[0], 0);
+    snprintf(log_messages[0], OS_SIZE_512, FIM_ERROR_WHODATA_MAXNUM_WATCHES, RELOAD_CONFIG[0]->path, 0);
     expect_string(__wrap__merror, formatted_msg, log_messages[0]);
 
     // The rest of them will trigger debug messages
-    for (i = 1; directories_reload_tests[i]; i++) {
-        snprintf(log_messages[i], OS_SIZE_512, FIM_ERROR_WHODATA_MAXNUM_WATCHES, directories_reload_tests[i], 0);
+    for (i = 1; RELOAD_CONFIG[i]; i++) {
+        snprintf(log_messages[i], OS_SIZE_512, FIM_ERROR_WHODATA_MAXNUM_WATCHES, RELOAD_CONFIG[i]->path, 0);
         expect_string(__wrap__mdebug1, formatted_msg, log_messages[i]);
     }
 

@@ -77,7 +77,7 @@
     <mitre>
       <id>T1078</id>
     </mitre>
-    <group>authentication_success,pci_dss_10.2.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>pci_dss_10.2.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Rules based on AUDIT SUCCESS -->
@@ -212,7 +212,6 @@
 
   <rule id="60119" level="3">
     <if_sid>60106</if_sid>
-    <options>alert_by_email</options>
     <if_fts />
     <description>First time this user logged in this system</description>
     <options>no_full_log</options>
@@ -1037,26 +1036,6 @@
     </mitre>
     <options>no_full_log</options>
     <group>authentication_failed,attacks,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-  </rule>
-
-  <!-- MS SQL rules -->
-  <rule id="60198" level="5">
-    <if_sid>60104</if_sid>
-    <field name="win.system.eventID">^18456$</field>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>MS SQL Server Logon Failure</description>
-    <options>no_full_log</options>
-  </rule>
-
-  <rule id="60199" level="3">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^18454$|^18453$</field>
-    <description>MS SQL Server Logon Success</description>
-    <options>no_full_log</options>
-    <mitre>
-      <id>T1078</id>
-    </mitre>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 <!-- Detail logon rules -->

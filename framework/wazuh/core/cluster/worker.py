@@ -670,6 +670,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if isinstance(self.sync_tasks[name].filename, Exception):
             raise self.sync_tasks[name].filename
 
+        zip_path = ""
         # Path of the zip containing a JSON with metadata and files to be updated in this worker node.
         received_filename = self.sync_tasks[name].filename
         try:
@@ -688,6 +689,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid']))
             )
 
+            date_end = 0
             if ko_files['shared'] or ko_files['missing'] or ko_files['extra']:
                 # Update or remove files in this worker node according to their status (missing, extra or shared).
                 logger.debug("Worker does not meet integrity checks. Actions required.")
@@ -701,10 +703,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Master requires some worker files.")
                 asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
             else:
-                logger.info(f"Finished in {date_end:.3f}s.")
+                date_end and logger.info(f"Finished in {date_end:.3f}s.")
 
         finally:
-            shutil.rmtree(zip_path)
+            zip_path and shutil.rmtree(zip_path)
 
     @staticmethod
     def remove_bulk_agents(agent_ids_list: KeysView, logger):

@@ -7,7 +7,7 @@ from os.path import join, split, exists, isfile, dirname as path_dirname
 
 from wazuh.core import common
 from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, delete_list, \
-    get_filenames_paths, validate_cdb_list
+    get_filenames_paths, validate_cdb_list, LIST_FIELDS
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array, safe_move, delete_file_with_backup, upload_file, to_relative_path
@@ -64,7 +64,7 @@ def get_lists(filename=None, offset=0, limit=common.database_limit, select=None,
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit, select=select, allowed_sort_fields=SORT_FIELDS,
-                         required_fields=REQUIRED_FIELDS)
+                         required_fields=REQUIRED_FIELDS, allowed_select_fields=LIST_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

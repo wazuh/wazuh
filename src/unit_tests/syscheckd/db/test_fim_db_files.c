@@ -38,9 +38,9 @@
 void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   fim_entry *entry,
                                   pthread_mutex_t *mutex,
-                                  void *alert,
-                                  void *fim_ev_mode,
-                                  void *configuration);
+                                  void *evt_data,
+                                  void *configuration,
+                                  void *_unused_patameter);
 
 #ifndef TEST_WINAGENT
 extern unsigned long __real_time();
@@ -1111,10 +1111,9 @@ static void test_fim_db_remove_validated_path_invalid_path(void **state) {
 #endif
     fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
-    int configuration = fim_configuration_directory(entry_path) + 1;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
 
-    fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, (void *)false, (void *)FIM_REALTIME,
-                                 &configuration);
+    fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 1);
@@ -1129,7 +1128,8 @@ static void test_fim_db_remove_validated_path_valid_path(void **state) {
 #endif
     fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
-    int configuration = fim_configuration_directory(entry_path);
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
+    directory_t *configuration = fim_configuration_directory(entry_path);
 
     syscheck.database = &fim_sql;
 
@@ -1159,8 +1159,7 @@ static void test_fim_db_remove_validated_path_valid_path(void **state) {
 
     expect_fim_db_check_transaction();
 
-    fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, (void *)false, (void *)FIM_REALTIME,
-                                 &configuration);
+    fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
 
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);

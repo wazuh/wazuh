@@ -281,7 +281,7 @@ x-rbac-catalog:
         resources: ['*:*:*']
         effect: "deny"
     'mitre:read':
-      description: "Access attacks information from MITRE database"
+      description: "Access information from MITRE database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -1719,6 +1719,26 @@ components:
         event:
           type: string
           description: "Event to look for"
+
+    # MITRE models
+    Mitre_reference_id:
+      type: string
+      description: "MITRE Reference ID"
+    Mitre_mitigation_id:
+      type: string
+      description: "MITRE mitigation ID"
+    Mitre_tactic_id:
+      type: string
+      description: "MITRE tactic ID"
+    Mitre_group_id:
+      type: string
+      description: "MITRE group ID"
+    Mitre_software_id:
+      type: string
+      description: "MITRE software ID"
+    Mitre_technique_id:
+      type: string
+      description: "MITRE technique ID"
 
     # Security models
     Role_id:
@@ -3513,13 +3533,6 @@ components:
       x-bearerInfoFunc: api.authentication.decode_token
 
   parameters:
-    attack_id:
-      in: query
-      name: id
-      description: "MITRE attack ID"
-      schema:
-        type: string
-        format: alphanumeric
     agent_id:
       in: path
       name: agent_id
@@ -4020,6 +4033,54 @@ components:
       schema:
         type: string
         format: alphanumeric
+    mitre_mitigation_ids:
+      in: query
+      name: 'mitigation_ids'
+      description: "List of MITRE's mitigations IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_mitigation_id'
+    mitre_reference_ids:
+      in: query
+      name: 'reference_ids'
+      description: "List of MITRE's references IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_reference_id'
+    mitre_tactic_ids:
+      in: query
+      name: 'tactic_ids'
+      description: "List of MITRE's tactics IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_tactic_id'
+    mitre_group_ids:
+      in: query
+      name: 'group_ids'
+      description: "List of MITRE's group IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_group_id'
+    mitre_software_ids:
+      in: query
+      name: 'software_ids'
+      description: "List of MITRE's software IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_software_id'
+    mitre_technique_ids:
+      in: query
+      name: 'technique_ids'
+      description: "List of MITRE's techniques IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_technique_id'
     name:
       in: query
       name: name
@@ -4717,7 +4778,7 @@ components:
     mitre:
       in: query
       name: mitre
-      description: "Filters by MITRE attack ID"
+      description: "Filters by MITRE technique ID"
       schema:
         type: string
         format: alphanumeric
@@ -5304,8 +5365,8 @@ tags:
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
     description: "Wazuh manager management"
-  - name: Mitre
-    description: "Attacks information from MITRE database"
+  - name: MITRE
+    description: "Technique information from MITRE database"
   - name: Overview
     description: "Overview of Wazuh"
   - name: Rootcheck
@@ -10565,79 +10626,499 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /mitre:
+  /mitre/groups:
     get:
       tags:
-        - Mitre
-      summary: "Get MITRE attacks"
-      description: "Return the requested attacks from MITRE database"
-      operationId: api.controllers.mitre_controller.get_attack
+        - MITRE
+      summary: "Get MITRE groups"
+      description: "Return the groups from MITRE database"
+      operationId: api.controllers.mitre_controller.get_groups
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_group_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE groups information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - mitre_version: '1.2'
+                      deprecated: 0
+                      name: APT38
+                      id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
+                      modified_time: '2020-03-30 18:50:43.737000'
+                      created_time: '2019-01-29 21:27:24.793000'
+                      description: |-
+                        [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
+
+                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group.
+                      software:
+                        - tool--03342581-f790-4f03-ba41-e82e67392e23
+                        - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
+                        - malware--53ab35c2-d00e-491a-8753-41d35ae7e547
+                      techniques:
+                        - attack-pattern--df8b2a25-8bdf-4856-953c-a04372b1c161
+                        - attack-pattern--09a60ea3-a8d1-4ae5-976e-5783248b72a4
+                        - attack-pattern--8f4a33ec-8b1f-4b80-a2f6-642b2e479580
+                        - attack-pattern--57340c81-c025-4189-8fa0-fc7ede51bae4
+                        - attack-pattern--d742a578-d70e-4d0e-96a6-02a9c30204e6
+                        - attack-pattern--30973a08-aed9-4edf-8604-9084ce1b5c4f
+                        - attack-pattern--deb98323-e13f-4b0c-8d94-175379069062
+                        - attack-pattern--d1fcf083-a721-4223-aedf-bf8960798d62
+                        - attack-pattern--e6919abc-99f9-4c6c-95a5-14761e7b2add
+                        - attack-pattern--d63a3fb8-9452-4e9d-a60a-54be68d5998c
+                        - attack-pattern--6495ae23-3ab4-43c5-a94f-5638a2c31fd2
+                        - attack-pattern--32ad5c86-2bcf-47d8-8fdc-d7f3d79a7490
+                        - attack-pattern--d0613359-5781-4fd2-b5be-c269270be1f6
+                        - attack-pattern--1cfcb312-b8d7-47a4-b560-4b16cc677292
+                        - attack-pattern--0af0ca99-357d-4ba1-805f-674fdfb7bef9
+                        - attack-pattern--b80d107d-fa0d-4b60-9684-b0433e8bdba0
+                        - attack-pattern--d45a3d09-b3cf-48f4-9f0f-f521ee5cb05c
+                        - attack-pattern--7e150503-88e7-4861-866b-ff1ac82c4475
+                        - attack-pattern--ff73aa03-0090-4464-83ac-f89e233c02bc
+                      references:
+                        - url: "https://content.fireeye.com/apt/rpt-apt38"
+                          description: "FireEye. (2018, October 03). APT38: Un-usual Suspects. Retrieved November 6, 2018."
+                          source: "FireEye APT38 Oct 2018"
+                        - url: "https://securelist.com/lazarus-under-the-hood/77908/"
+                          description: "GReAT. (2017, April 3). Lazarus Under the Hood. Retrieved April 17, 2019."
+                          source: "Kaspersky Lazarus Under The Hood Blog 2017"
+                        - url: "https://www.us-cert.gov/ncas/alerts/TA17-164A"
+                          description: "US-CERT. (2017, June 13). Alert (TA17-164A) HIDDEN COBRA – North Korea’s DDoS Botnet Infrastructure. Retrieved July 13, 2017."
+                          source: "US-CERT HIDDEN COBRA June 2017"
+                        - url: "https://attack.mitre.org/groups/G0082"
+                          external_id: "G0082"
+                          source: "mitre-attack"
+                  total_affected_items: 111
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: MITRE groups information was returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/metadata:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE metadata"
+      description: "Return the metadata from MITRE database"
+      operationId: api.controllers.mitre_controller.get_metadata
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/mitre:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/attack_id'
-        - $ref: '#/components/parameters/phase_name'
-        - $ref: '#/components/parameters/platform_name'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
       responses:
         '200':
-          description: "List of attacks or error description"
+          description: "Get MITRE metadata information"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
                 data:
                   affected_items:
-                    json:
-                      x_mitre_data_sources:
-                        - "Packet capture"
-                        - "Process use of network"
-                      name: "Data Obfuscation"
-                      description: "Command and control (C2) communications are hidden (but not necessarily encrypted)
-                      ..."
-                      id: "attack-pattern--ad255bfe-a9e6-4b52-a258-8d3462abe842"
-                      x_mitre_platforms:
-                        - "Linux"
-                        - "macOS"
-                        - "Windows"
-                      object_marking_refs":
-                        - "marking-definition--fa42a846-8d90-4e51-bc29-71d5b4802168"
-                      x_mitre_version: "1.0"
-                      type: "attack-pattern"
-                      x_mitre_detection: "Analyze network data for uncommon data flows (e.g., a client sending cious..."
-                      created_by_ref: "identity--c78cb6e5-0c4b-4611-8297-d1b8b55e40b5"
-                      x_mitre_network_requirements: true
-                      created: "2017-05-31T21:30:18.931Z"
-                      kill_chain_phases:
-                        - kill_chain_name: "mitre-attack"
-                        - phase_name: "Command and Control"
-                      external_references":
-                        - external_id: "T1001"
-                          source_name: "mitre-attack"
-                          url: "https://attack.mitre.org/techniques/T1001"
-                        - source_name: "University of Birmingham C2"
-                          description: "Gardiner, J.,  Cova, M., Nagaraja, S. (2014, February)..."
-                          url: "https://arxiv.org/ftp/arxiv/papers/1408/1408.1136.pdf"
-                      modified: "2019-07-17T18:54:32.478Z"
-                      phase_name:
-                        - "Command and Control"
-                      platform_name:
-                        - "Linux"
-                        - "Windows"
-                        - "macOS"
-                    id: "T1001"
-                  total_affected_items: 1
+                    - value: "1"
+                      key: "db_version"
+                    - value: "2.0"
+                      key: "mitre_version"
+                  total_affected_items: 2
                   failed_items: []
                   total_failed_items: 0
-                message: "All selected MITRE information was returned"
+                message: "MITRE metadata information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/mitigations:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE mitigations"
+      description: "Return the mitigations from MITRE database"
+      operationId: api.controllers.mitre_controller.get_mitigations
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_mitigation_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE mitigations information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: "course-of-action--00d7d21b-69d6-4797-88a2-c86f3fc97651"
+                      modified_time: '2019-07-25 11:22:19.139000'
+                      deprecated: 1
+                      created_time: '2018-10-17 00:14:20.652000'
+                      name: "Password Filter DLL Mitigation"
+                      mitre_version: "1.0"
+                      description: "Ensure only valid password filters are registered. Filter DLLs must be present in Windows installation directory (<code>C:\\Windows\\System32\\</code> by default) of a domain controller and/or local computer with a corresponding entry in <code>HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Notification Packages</code>. (Citation: Microsoft Install Password Filter n.d)"
+                      techniques:
+                        - "attack-pattern--b8c5c9dd-a662-479d-9428-ae745872537c"
+                      references:
+                        - source: "Microsoft Install Password Filter n.d"
+                          description: "Microsoft. (n.d.). Installing and Registering a Password Filter DLL. Retrieved November 21, 2017."
+                          url": "https://msdn.microsoft.com/library/windows/desktop/ms721766.aspx"
+                        - source: "mitre-attack"
+                          external_id: "T1174"
+                          url: "https://attack.mitre.org/mitigations/T1174"
+                  total_affected_items: 267
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "MITRE mitigations information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/references:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE references"
+      description: "Return the references from MITRE database"
+      operationId: api.controllers.mitre_controller.get_references
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_reference_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE references"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - description: "Hosseini, A. (2017, July 18). Ten Process Injection Techniques: A Technical Survey Of Common And Trending Process Injection Techniques. Retrieved December 7, 2017."
+                      type: "technique"
+                      source: "Endgame Process Injection July 2017"
+                      url: "https://www.endgame.com/blog/technical-blog/ten-process-injection-techniques-technical-survey-common-and-trending-process"
+                      id: "attack-pattern--0042a9f5-f053-4769-b3ef-9ad018dfa298"
+                  total_affected_items: 5212
+                  failed_items: []
+                  total_failed_items: 0
+                message: "MITRE references information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/software:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE software"
+      description: "Return the software from MITRE database"
+      operationId: api.controllers.mitre_controller.get_software
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_software_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE software information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - deprecated: 0
+                      mitre_version: '1.0'
+                      created_time: '2017-05-31 21:32:40.801000'
+                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
+                      name: HDoor
+                      modified_time: '2019-04-25 02:33:53.419000'
+                      description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
+                        has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
+                        group. (Citation: Baumgartner Naikon 2015)"
+                      groups:
+                        - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
+                      techniques:
+                        - attack-pattern--ac08589e-ee59-4935-8667-d845e38fe579
+                        - attack-pattern--e3a12395-188d-4051-9a16-ea8e14d07b88
+                      references:
+                        - source: "Baumgartner Naikon 2015"
+                          description: "Baumgartner, K., Golovkin, M.. (2015, May). The MsnMM Campaigns: The Earliest Naikon APT Campaigns. Retrieved April 10, 2019."
+                          url: "https://media.kasperskycontenthub.com/wp-content/uploads/sites/43/2018/03/07205555/TheNaikonAPT-MsnMM1.pdf"
+                        - source: "mitre-attack"
+                          external_id: "S0061"
+                          url: "https://attack.mitre.org/software/S0061"
+                  total_affected_items: 444
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: MITRE software information was returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/tactics:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE tactics"
+      description: "Return the tactics from MITRE database"
+      operationId: api.controllers.mitre_controller.get_tactics
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_tactic_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE tactics information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
+                      created_time: "2018-10-17 00:14:20.652000"
+                      modified_time: "2019-07-19 17:44:36.953000"
+                      description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
+                      name: "Lateral Movement"
+                      short_name: "lateral-movement"
+                      techniques:
+                        - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
+                        - "attack-pattern--246fd3c7-f5e3-466d-8787-4c13d9e3b61c"
+                        - "attack-pattern--2db31dcd-54da-405d-acef-b9129b816ed6"
+                        - "attack-pattern--3b744087-9945-4a6f-91e8-9dbceda417a4"
+                        - "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8"
+                        - "attack-pattern--4f9ca633-15c5-463c-9724-bdcd54fde541"
+                        - "attack-pattern--51a14c76-dd3b-440b-9c20-2bf91d25a814"
+                        - "attack-pattern--54a649ff-439a-41a4-9856-8d144a2551ba"
+                        - "attack-pattern--5b0ad6f8-6a16-4966-a4ef-d09ea6e2a9f5"
+                        - "attack-pattern--60d0c01d-e2bf-49dd-a453-f8a9c9fa6f65"
+                        - "attack-pattern--68a0c5ed-bee2-4513-830d-5b0d650139bd"
+                        - "attack-pattern--772bc7a8-a157-42cc-8728-d648e25c7fe7"
+                        - "attack-pattern--7b211ac6-c815-4189-93a9-ab415deca926"
+                        - "attack-pattern--804c042c-cfe6-449e-bc1a-ba0a998a70db"
+                        - "attack-pattern--92a78814-b191-47ca-909c-1ccfe3777414"
+                        - "attack-pattern--9db0cf3a-a3c9-4012-8268-123b9db6fd82"
+                        - "attack-pattern--9e7452df-5144-4b6e-b04a-b66dd4016747"
+                        - "attack-pattern--bf90d72c-c00b-45e3-b3aa-68560560d4c5"
+                        - "attack-pattern--c3c8c916-2f3c-4e71-94b2-240bdfc996f0"
+                        - "attack-pattern--e0033c16-a07e-48aa-8204-7c3ca669998c"
+                        - "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e"
+                        - "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf"
+                        - "attack-pattern--f005e783-57d4-4837-88ad-dbe7faee1c51"
+                      references:
+                        - source: "mitre-attack"
+                          external_id: "TA0008"
+                          url: "https://attack.mitre.org/tactics/TA0008"
+                  total_affected_items: 14
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All tactics information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/techniques:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE techniques"
+      description: "Return the techniques from MITRE database"
+      operationId: api.controllers.mitre_controller.get_techniques
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_technique_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE techniques information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - network_requirements: 0
+                      mitre_version: '1.0'
+                      remote_support: 0
+                      mitre_detection: |-
+                        Much of this activity may have a very high occurrence and associated false positive rate, as well as potentially taking place outside the visibility of the target organization, making detection difficult for defenders.
+
+                        Detection efforts may be focused on related stages of the adversary lifecycle, such as during Initial Access.
+                      id: attack-pattern--9d48cab2-7929-4812-ad22-f536665f0109
+                      modified_time: '2020-10-25 22:58:23.086000'
+                      deprecated: 0
+                      created_time: '2020-10-02 15:45:17.628000'
+                      name: Gather Victim Network Information
+                      description: |-
+                        Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
+
+                        Adversaries may gather this information in various ways, such as direct collection actions via [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Phishing for Information](https://attack.mitre.org/techniques/T1598). Information about networks may also be exposed to adversaries via online or other accessible data sets (ex: [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)).(Citation: WHOIS)(Citation: DNS Dumpster)(Citation: Circl Passive DNS) Gathering this information may reveal opportunities for other forms of reconnaissance (ex: [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593)), establishing operational resources (ex: [Acquire Infrastructure](https://attack.mitre.org/techniques/T1583) or [Compromise Infrastructure](https://attack.mitre.org/techniques/T1584)), and/or initial access (ex: [Trusted Relationship](https://attack.mitre.org/techniques/T1199)).
+                      tactics:
+                        - "x-mitre-tactic--daa4cbb1-b4f4-4723-a824-7f1efd6e0592"
+                      mitigations:
+                        - "course-of-action--78bb71be-92b4-46de-acd6-5f998fedf1cc"
+                      software: []
+                      groups: []
+                      references:
+                        - source: "Circl Passive DNS"
+                          description: "CIRCL Computer Incident Response Center. (n.d.). Passive DNS. Retrieved October 20, 2020."
+                          url: "https://www.circl.lu/services/passive-dns/"
+                        - source: "DNS Dumpster"
+                          description: "Hacker Target. (n.d.). DNS Dumpster. Retrieved October 20, 2020."
+                          url: "https://dnsdumpster.com/"
+                        - source: "WHOIS"
+                          description: "NTT America. (n.d.). Whois Lookup. Retrieved October 20, 2020."
+                          url: "https://www.whois.net/"
+                        - source: "mitre-attack"
+                          external_id: "T1590"
+                          url: "https://attack.mitre.org/techniques/T1590"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: MITRE techniques information was returned
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

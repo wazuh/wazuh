@@ -64,7 +64,6 @@ int main(int argc, char **argv)
     int csv_output = 0;
     int json_output = 0;
     int list_responses = 0;
-    int end_time = 0;
     int restart_agent = 0;
     int inactive_only = 0;
 
@@ -101,7 +100,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:Rn")) != -1) {
+    while ((c = getopt(argc, argv, "VhdlLcsjarmu:i:b:f:Rn")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -114,9 +113,6 @@ int main(int argc, char **argv)
                 break;
             case 'L':
                 list_responses = 1;
-                break;
-            case 'e':
-                end_time = 1;
                 break;
             case 'r':
                 restart_syscheck = 1;
@@ -364,9 +360,7 @@ int main(int argc, char **argv)
         }
 
         if (agt_id != -1) {
-            agt_info = get_agent_info(keys.keyentries[agt_id]->name,
-                                      keys.keyentries[agt_id]->ip->ip,
-                                      agent_id);
+            agt_info = get_agent_info(agent_id);
             if (!agt_info) {
                 printf("\n Unable to get agent info\n\n");
                 exit(0);
@@ -395,7 +389,7 @@ int main(int argc, char **argv)
                        print_agent_status(agt_info->connection_status));
             }
         } else {
-            agt_info = get_agent_info(NULL, "127.0.0.1", "000");
+            agt_info = get_agent_info("000");
             if (!agt_info) {
                 printf("\n Unable to get agent info\n\n");
                 exit(0);
@@ -425,13 +419,6 @@ int main(int argc, char **argv)
 
             printf("   Syscheck last started at:  %s\n", agt_info->syscheck_time);
             printf("   Syscheck last ended at:    %s\n", agt_info->syscheck_endtime);
-
-            if (end_time) {
-                printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
-                printf("   Rootcheck last ended at:   %s\n\n", agt_info->rootcheck_endtime);
-            } else {
-                printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
-            }
         } else if (json_output) {
             cJSON_AddStringToObject(json_data, "os", agt_info->os);
             cJSON_AddStringToObject(json_data, "version", agt_info->version);
@@ -440,18 +427,12 @@ int main(int argc, char **argv)
             cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
             cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
             cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
-            cJSON_AddStringToObject(json_data, "rootcheckTime", agt_info->rootcheck_time);
-
-            if (end_time) {
-                cJSON_AddStringToObject(json_data, "rootcheckEndTime", agt_info->rootcheck_endtime);
-            }
         } else {
-            printf("%s,%s,%s,%s,%s,\n",
+            printf("%s,%s,%s,%s,\n",
                    agt_info->os,
                    agt_info->version,
                    agt_info->last_keepalive,
-                   agt_info->syscheck_time,
-                   agt_info->rootcheck_time);
+                   agt_info->syscheck_time);
         }
 
         if(json_output){
