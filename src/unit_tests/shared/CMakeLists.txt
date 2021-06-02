@@ -150,7 +150,7 @@ list(APPEND shared_tests_names "test_keys")
 list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
 
 list(APPEND shared_tests_names "test_url")
-list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup -Wl,--wrap,curl_easy_init -Wl,--wrap,_mdebug1 -Wl,--wrap,curl_easy_setopt -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform")
+list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup -Wl,--wrap,curl_easy_init -Wl,--wrap,_mdebug1 -Wl,--wrap,curl_easy_setopt -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform -Wl,--wrap,curl_easy_getinfo")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

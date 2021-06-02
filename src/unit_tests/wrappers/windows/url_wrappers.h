@@ -18,6 +18,8 @@
 #define curl_slist_append wrap_curl_slist_append
 #define curl_easy_perform wrap_curl_easy_perform
 #define curl_slist_free_all wrap_curl_slist_free_all
+#undef curl_easy_getinfo
+#define curl_easy_getinfo wrap_curl_easy_getinfo
 
 CURL* wrap_curl_easy_init();
 
@@ -36,5 +38,7 @@ int wrap_wurl_request(const char * url, const char * dest, const char *header, c
 char* wrap_wurl_http_get(const char * url);
 
 curl_response* wrap_wurl_http_get_with_header(const char *header, const char* url);
+
+CURLcode wrap_curl_easy_getinfo(CURL *curl, CURLoption option, void *parameter);
 
 #endif

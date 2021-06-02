@@ -31,4 +31,6 @@ CURLcode __wrap_curl_easy_perform(CURL *curl);
 
 void __wrap_curl_slist_free_all(struct curl_slist *list);
 
+CURLcode __wrap_curl_easy_getinfo(CURL *curl, CURLoption option, void *parameter);
+
 #endif

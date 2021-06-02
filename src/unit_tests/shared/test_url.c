@@ -262,6 +262,122 @@ void test_wurl_http_get_with_header_perform_fail(void **state)
     assert_null(response);
 }
 
+void test_wurl_http_get_with_header_success(void **state)
+{
+    curl_response *response = NULL;
+    struct curl_slist* headers = (struct curl_slist *) 1;
+    struct curl_slist* headers_tmp = (struct curl_slist *) 1;
+    CURL *curl = (CURL *) 1;
+
+    #ifdef TEST_WINAGENT
+        will_return(wrap_curl_easy_init, curl);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_string(wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_value(wrap_curl_slist_append, list, NULL);
+        will_return(wrap_curl_slist_append, headers);
+
+        expect_string(wrap_curl_slist_append, string, "headers");
+        expect_value(wrap_curl_slist_append, list, headers);
+        will_return(wrap_curl_slist_append, headers_tmp);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_WRITEFUNCTION);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_WRITEDATA);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_HTTPHEADER);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_HEADERFUNCTION);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_HEADERDATA);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(wrap_curl_easy_perform, curl, curl);
+        will_return(wrap_curl_easy_perform, CURLE_OK);
+
+        expect_value(wrap_curl_easy_getinfo, curl, curl);
+        expect_value(wrap_curl_easy_getinfo, option, CURLINFO_RESPONSE_CODE);
+        will_return(wrap_curl_easy_getinfo, CURLE_OK);
+
+        expect_value(wrap_curl_slist_free_all, list, headers);
+        expect_value(wrap_curl_easy_cleanup, curl, curl);
+
+    #else
+
+        will_return(__wrap_curl_easy_init, curl);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CAINFO);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_string(__wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_value(__wrap_curl_slist_append, list, NULL);
+        will_return(__wrap_curl_slist_append, headers);
+
+        expect_string(__wrap_curl_slist_append, string, "headers");
+        expect_value(__wrap_curl_slist_append, list, headers);
+        will_return(__wrap_curl_slist_append, headers_tmp);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_WRITEFUNCTION);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_WRITEDATA);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_HTTPHEADER);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_HEADERFUNCTION);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_HEADERDATA);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_URL);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_perform, curl, curl);
+        will_return(__wrap_curl_easy_perform, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_getinfo, curl, curl);
+        expect_value(__wrap_curl_easy_getinfo, option, CURLINFO_RESPONSE_CODE);
+        will_return(__wrap_curl_easy_getinfo, CURLE_OK);
+
+        expect_value(__wrap_curl_slist_free_all, list, headers);
+        expect_value(__wrap_curl_easy_cleanup, curl, curl);
+
+    #endif
+
+    response = wurl_http_get_with_header("headers", "https://test.com");
+    assert_non_null(response);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -271,6 +387,7 @@ int main(void)
         cmocka_unit_test(test_wurl_http_get_with_header_no_https_add_header_error),
         cmocka_unit_test(test_wurl_http_get_with_header_no_https_add_headertmp_error),
         cmocka_unit_test(test_wurl_http_get_with_header_perform_fail),
+        cmocka_unit_test(test_wurl_http_get_with_header_success),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

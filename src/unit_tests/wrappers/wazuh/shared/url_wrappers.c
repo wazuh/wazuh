@@ -86,3 +86,11 @@ CURLcode __wrap_curl_easy_perform(CURL *curl) {
 void __wrap_curl_slist_free_all(struct curl_slist *list) {
     check_expected_ptr(list);
 }
+
+CURLcode __wrap_curl_easy_getinfo(CURL *curl, CURLoption option, __attribute__ ((__unused__)) void *parameter) {
+
+    check_expected(option);
+    check_expected_ptr(curl);
+
+    return mock_type(CURLcode);
+}
