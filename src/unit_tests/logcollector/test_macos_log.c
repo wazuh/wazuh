@@ -26,7 +26,7 @@
 bool w_macos_is_log_predicate_valid(char * predicate);
 char ** w_macos_create_log_stream_array(char * predicate, char * level, int type);
 wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags);
-void w_macos_create_log_env(logreader * current);
+void w_macos_create_log_env(logreader * current, char * macos_codename);
 bool w_macos_is_log_executable(void);
 void w_macos_create_log_stream_env(logreader * lf);
 void w_macos_log_show_array_add_level(char ** log_cmd_array, size_t * log_cmd_array_idx, char * level);
