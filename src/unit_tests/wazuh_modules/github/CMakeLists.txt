@@ -53,16 +53,25 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        GITHUB_O
-        -lcmocka
-        -ldl
-        -fprofile-arcs
-        -ftest-coverage
-    )
+    if(${TARGET} STREQUAL "server")
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            GITHUB_O
+            -lcmocka
+            -ldl
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    else()
+        target_link_libraries(
+            ${test_name}
+            ${TEST_DEPS}
+        )
+    endif()
+
+
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             ${test_name}
