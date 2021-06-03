@@ -1319,30 +1319,34 @@ nlohmann::json Syscollector::getNetworkData()
 
                 if (item.find("IPv4") != item.end())
                 {
-                    nlohmann::json addressTableData(item.at("IPv4"));
-                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                    protoTableData["metric"]  = addressTableData.at("metric");
+                    for (auto addressTableData : item.at("IPv4"))
+                    {
+                        protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                        protoTableData["metric"]  = addressTableData.at("metric");
 
-                    // "dbsync_network_address" table data to update and notify
-                    addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = 0;
-                    addressTableData["checksum"]  = getItemChecksum(addressTableData);
-                    addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                    addressTableDataList.push_back(addressTableData);
+                        // "dbsync_network_address" table data to update and notify
+                        addressTableData["iface"]     = item.at("name");
+                        addressTableData["proto"]     = 0;
+                        addressTableData["checksum"]  = getItemChecksum(addressTableData);
+                        addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        addressTableDataList.push_back(addressTableData);
+                    }
                 }
 
                 if (item.find("IPv6") != item.end())
                 {
-                    nlohmann::json addressTableData(item.at("IPv6"));
-                    protoTableData["dhcp"]    = addressTableData.at("dhcp");
-                    protoTableData["metric"]  = addressTableData.at("metric");
+                    for (auto addressTableData : item.at("IPv6"))
+                    {
+                        protoTableData["dhcp"]    = addressTableData.at("dhcp");
+                        protoTableData["metric"]  = addressTableData.at("metric");
 
-                    // "dbsync_network_address" table data to update and notify
-                    addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = 1;
-                    addressTableData["checksum"]  = getItemChecksum(addressTableData);
-                    addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                    addressTableDataList.push_back(addressTableData);
+                        // "dbsync_network_address" table data to update and notify
+                        addressTableData["iface"]     = item.at("name");
+                        addressTableData["proto"]     = 1;
+                        addressTableData["checksum"]  = getItemChecksum(addressTableData);
+                        addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        addressTableDataList.push_back(addressTableData);
+                    }
                 }
 
                 protoTableData["checksum"]  = getItemChecksum(protoTableData);

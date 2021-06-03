@@ -35,6 +35,7 @@ const wm_context WM_AWS_CONTEXT = {
     (wm_routine)wm_aws_main,
     (wm_routine)(void *)wm_aws_destroy,
     (cJSON * (*)(const void *))wm_aws_dump,
+    NULL,
     NULL
 };
 

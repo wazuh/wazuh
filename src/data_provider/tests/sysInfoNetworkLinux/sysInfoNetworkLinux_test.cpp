@@ -67,11 +67,15 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET)
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("8.8.8.8"));
     EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return("100"));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
-    EXPECT_EQ("192.168.0.1", ifaddr.at("IPv4").at("address").get_ref<const std::string&>());
-    EXPECT_EQ("255.255.255.0", ifaddr.at("IPv4").at("netmask").get_ref<const std::string&>());
-    EXPECT_EQ("192.168.0.255", ifaddr.at("IPv4").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ("8.8.8.8", ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ("100", ifaddr.at("IPv4").at("metric").get_ref<const std::string&>());
+
+    for (auto& element : ifaddr.at("IPv4"))
+    {
+        EXPECT_EQ("192.168.0.1", element.at("address").get_ref<const std::string&>());
+        EXPECT_EQ("255.255.255.0", element.at("netmask").get_ref<const std::string&>());
+        EXPECT_EQ("192.168.0.255", element.at("broadcast").get_ref<const std::string&>());
+        EXPECT_EQ("8.8.8.8", element.at("dhcp").get_ref<const std::string&>());
+        EXPECT_EQ("100", element.at("metric").get_ref<const std::string&>());
+    }
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET6_THROW)
@@ -94,11 +98,15 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET6)
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("8.8.8.8"));
     EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return("100"));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
-    EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348", ifaddr.at("IPv6").at("address").get_ref<const std::string&>());
-    EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff", ifaddr.at("IPv6").at("netmask").get_ref<const std::string&>());
-    EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000", ifaddr.at("IPv6").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ("8.8.8.8", ifaddr.at("IPv6").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ("100", ifaddr.at("IPv6").at("metric").get_ref<const std::string&>());
+
+    for (auto& element : ifaddr.at("IPv6"))
+    {
+        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348", element.at("address").get_ref<const std::string&>());
+        EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff", element.at("netmask").get_ref<const std::string&>());
+        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000", element.at("broadcast").get_ref<const std::string&>());
+        EXPECT_EQ("8.8.8.8", element.at("dhcp").get_ref<const std::string&>());
+        EXPECT_EQ("100", element.at("metric").get_ref<const std::string&>());
+    }
 }
 
 
