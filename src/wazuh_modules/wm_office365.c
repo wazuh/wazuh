@@ -23,7 +23,9 @@ STATIC void* wm_office365_main(wm_office365* office365_config);    // Module mai
 STATIC void wm_office365_destroy(wm_office365* office365_config);
 STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
 STATIC void wm_office365_subscription_destroy(wm_office365_subscription* office365_subscription);
-STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan);
+STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan);
+STATIC char* wm_office365_get_access_token(wm_office365_auth* office365_auth, char** error_msg);
+STATIC void wm_office365_scan_failure_action(char *tenant_id, char *error_msg, int queue_fd);
 
 cJSON *wm_office365_dump(const wm_office365* office365_config);
 
@@ -165,18 +167,19 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
     return root;
 }
 
-STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan) {
-    char url[OS_SIZE_8192];
-    char auth_header[OS_SIZE_8192];
-    char auth_payload[OS_SIZE_8192];
-    char auth_secret[OS_SIZE_1024];
+STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan) {
+    //char url[OS_SIZE_8192];
     char tenant_state_name[OS_SIZE_1024];
+    char *access_token = NULL;
+    char *error_msg = NULL;
     //time_t last_scan_time;
     time_t new_scan_time;
     //curl_response *response;
     wm_office365_state tenant_state_struc;
     wm_office365_auth* next_auth = NULL;
     wm_office365_auth* current_auth = office365_config->auth;
+    wm_office365_subscription* next_subscription = NULL;
+    wm_office365_subscription* current_subscription = NULL;
 
     while (current_auth != NULL)
     {
@@ -184,36 +187,15 @@ STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial
 
         mtdebug1(WM_OFFICE365_LOGTAG, "Scanning tenant: '%s'", current_auth->tenant_id);
 
-        memset(auth_header, '\0', OS_SIZE_8192);
-        snprintf(auth_header, OS_SIZE_8192 -1, "Content-Type: application/x-www-form-urlencoded");
-
-        memset(auth_secret, '\0', OS_SIZE_1024);
-        if (current_auth->client_secret) {
-            snprintf(auth_secret, OS_SIZE_1024 -1, "%s", current_auth->client_secret);
-        } else if (current_auth->client_secret_path) {
-            FILE *fd = NULL;
-            if (fd = fopen(current_auth->client_secret_path, "r"), fd) {
-                char str[OS_SIZE_1024 -1];
-                memset(str, '\0', OS_SIZE_1024 -1);
-                if (fread(str, 1, OS_SIZE_1024 -1, fd) > 0) {
-                    snprintf(auth_secret, OS_SIZE_1024 -1, "%s", str);
-                }
-                fclose(fd);
-            }
+        if (access_token = wm_office365_get_access_token(current_auth, &error_msg), !access_token) {
+            wm_office365_scan_failure_action(current_auth->tenant_id, error_msg, office365_config->queue_fd);
+            current_auth = next_auth;
+            os_free(error_msg);
+            continue;
         }
 
-        memset(auth_payload, '\0', OS_SIZE_8192);
-        snprintf(auth_payload, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD, current_auth->client_id, auth_secret);
-
-        memset(url, '\0', OS_SIZE_8192);
-        snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_URL, current_auth->tenant_id);
-
-        mtdebug1(WM_OFFICE365_LOGTAG, "Office 365 API access token URL: '%s'", url);
-
-        // TODO: Post request
-
-        wm_office365_subscription* next_subscription = NULL;
-        wm_office365_subscription* current_subscription = office365_config->subscription;
+        next_subscription = NULL;
+        current_subscription = office365_config->subscription;
 
         while (current_subscription != NULL)
         {
@@ -246,8 +228,103 @@ STATIC int wm_office365_execute_scan(wm_office365 *office365_config, int initial
         }
 
         current_auth = next_auth;
+        os_free(access_token);
+        os_free(error_msg);
+    }
+}
+
+STATIC char* wm_office365_get_access_token(wm_office365_auth* office365_auth, char** error_msg) {
+    char url[OS_SIZE_8192];
+    char auth_header[OS_SIZE_8192];
+    char auth_payload[OS_SIZE_8192];
+    char auth_secret[OS_SIZE_1024];
+    char *access_token = NULL;
+    curl_response *response;
+
+    memset(auth_header, '\0', OS_SIZE_8192);
+    snprintf(auth_header, OS_SIZE_8192 -1, "Content-Type: application/x-www-form-urlencoded");
+
+    memset(auth_secret, '\0', OS_SIZE_1024);
+    if (office365_auth->client_secret) {
+        snprintf(auth_secret, OS_SIZE_1024 -1, "%s", office365_auth->client_secret);
+    } else if (office365_auth->client_secret_path) {
+        FILE *fd = NULL;
+
+        if (fd = fopen(office365_auth->client_secret_path, "r"), fd) {
+            char str[OS_SIZE_1024 -1];
+
+            memset(str, '\0', OS_SIZE_1024 -1);
+            if (fread(str, 1, OS_SIZE_1024 -1, fd) > 0) {
+                snprintf(auth_secret, OS_SIZE_1024 -1, "%s", str);
+            }
+            fclose(fd);
+        }
     }
 
-    return 0;
+    memset(auth_payload, '\0', OS_SIZE_8192);
+    snprintf(auth_payload, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD, office365_auth->client_id, auth_secret);
+
+    memset(url, '\0', OS_SIZE_8192);
+    snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_ACCESS_TOKEN_URL, office365_auth->tenant_id);
+
+    mtdebug1(WM_OFFICE365_LOGTAG, "Office 365 API access token URL: '%s'", url);
+
+    response = wurl_http_request(auth_header, url, auth_payload);
+
+    if (response) {
+        cJSON *response_json = NULL;
+
+        if (response_json = cJSON_Parse(response->body), response_json) {
+            cJSON *access_token_json = cJSON_GetObjectItem(response_json, "access_token");
+
+            if ((response->status_code == 200) && access_token_json && (access_token_json->type == cJSON_String)) {
+                os_strdup(access_token_json->valuestring, access_token);
+            } else {
+                os_strdup(response->body, *error_msg);
+            }
+
+            cJSON_Delete(response_json);
+        }
+
+        wurl_free_response(response);
+    }
+
+    return access_token;
+}
+
+STATIC void wm_office365_scan_failure_action(char *tenant_id, char *error_msg, int queue_fd) {
+    char *payload;
+
+    // TODO: Check retries
+
+    // Send fail message
+    cJSON *msg_obj = cJSON_Parse(error_msg);
+    cJSON *fail_object = cJSON_CreateObject();
+    cJSON *fail_office365 = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(fail_object, "actor", "wazuh");
+    cJSON_AddStringToObject(fail_object, "tenant_id", tenant_id);
+
+    if (msg_obj) {
+        payload = cJSON_PrintUnformatted(msg_obj);
+        cJSON_AddStringToObject(fail_object, "response", payload);
+        os_free(payload);
+    } else {
+        cJSON_AddStringToObject(fail_object, "response", "Unknown error");
+    }
+
+    cJSON_AddStringToObject(fail_office365, "integration", WM_OFFICE365_CONTEXT.name);
+    cJSON_AddItemToObject(fail_office365, "office_365", fail_object);
+
+    payload = cJSON_PrintUnformatted(fail_office365);
+    mtdebug2(WM_OFFICE365_LOGTAG, "Sending Office365 internal message: '%s'", payload);
+
+    if (wm_sendmsg(WM_OFFICE365_MSG_DELAY, queue_fd, payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ) < 0) {
+        mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    }
+
+    os_free(payload);
+    cJSON_Delete(fail_office365);
+    cJSON_Delete(msg_obj);
 }
 #endif

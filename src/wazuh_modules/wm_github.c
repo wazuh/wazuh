@@ -25,7 +25,7 @@ STATIC void wm_github_destroy(wm_github* github_config);
 STATIC void wm_github_auth_destroy(wm_github_auth* github_auth);
 STATIC void wm_github_fail_destroy(wm_github_fail* github_fails);
 STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
-STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan);
+STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan);
 STATIC char* wm_github_get_next_page(char *header);
 STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
 
@@ -108,13 +108,6 @@ void wm_github_fail_destroy(wm_github_fail* github_fails)
     github_fails = NULL;
 }
 
-void wm_github_free_response(curl_response* response)
-{
-    os_free(response->header);
-    os_free(response->body);
-    os_free(response);
-}
-
 cJSON *wm_github_dump(const wm_github* github_config) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_info = cJSON_CreateObject();
@@ -162,7 +155,7 @@ cJSON *wm_github_dump(const wm_github* github_config) {
     return root;
 }
 
-STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
+STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     int scan_finished = 0;
     int fail = 0;
     char *payload;
@@ -230,7 +223,7 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         snprintf(auth_header, PATH_MAX -1, "Authorization: token %s", current->api_token);
 
         while (!scan_finished) {
-            response = wurl_http_get_with_header(auth_header, url);
+            response = wurl_http_request(auth_header, url, NULL);
 
             if (response) {
                 if (response->status_code == 200) {
@@ -238,7 +231,7 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     cJSON *array_logs_json = NULL;
 
                     if (array_logs_json = cJSON_Parse(response->body), !array_logs_json) {
-                        mtdebug1(WM_GITHUB_LOGTAG,"Error parsing response body.");
+                        mtdebug1(WM_GITHUB_LOGTAG, "Error parsing response body.");
                         scan_finished = 1;
                         fail = 1;
                     } else {
@@ -289,7 +282,7 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     fail = 1;
                 }
 
-                wm_github_free_response(response);
+                wurl_free_response(response);
             } else {
                 scan_finished = 1;
                 fail = 1;
@@ -313,8 +306,6 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         current = next;
         os_free(error_msg);
     }
-
-    return 0;
 }
 
 STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name) {

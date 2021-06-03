@@ -17,6 +17,6 @@ int __wrap_wurl_request(const char * url, const char * dest, const char *header,
 
 char* __wrap_wurl_http_get(const char * url);
 
-curl_response* __wrap_wurl_http_get_with_header(const char *header, const char* url);
+curl_response* __wrap_wurl_http_request(const char *header, const char* url, const char *payload);
 
 #endif

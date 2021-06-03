@@ -30,7 +30,8 @@ int w_download_status(int status,const char *url,const char *dest);
 int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
 int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
 char * wurl_http_get(const char * url);
-curl_response *wurl_http_get_with_header(const char *header, const char *url);
+curl_response *wurl_http_request(const char *header, const char *url, const char *payload);
+void wurl_free_response(curl_response* response);
 #ifndef CLIENT
 int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
 int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
