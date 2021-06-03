@@ -31,7 +31,7 @@ list(APPEND logcollector_flags "-Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Add -
                                 -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
                                 -Wl,--wrap,stat -Wl,--wrap=fgetc -Wl,--wrap=w_fseek -Wl,--wrap,w_ftell \
                                 -Wl,--wrap,OS_SHA1_File_Nbytes_with_fp_check -Wl,--wrap,wpclose \
-                                -Wl,--wrap,kill -Wl,--wrap,_mdebug1")
+                                -Wl,--wrap,kill -Wl,--wrap,_mdebug1 -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle")
 
 list(APPEND logcollector_names "test_read_multiline_regex")
 list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
@@ -74,7 +74,8 @@ list(APPEND logcollector_flags "-Wl,--wrap,wpopenv -Wl,--wrap,fileno -Wl,--wrap,
                                 -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
                                 -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,wpclose -Wl,--wrap,access \
                                 -Wl,--wrap,getpid -Wl,--wrap,_minfo -Wl,--wrap,pthread_rwlock_wrlock \
-                                -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock")
+                                -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
+                                -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle")
 
 list(APPEND logcollector_names "test_read_macos")
 list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_read -Wl,--wrap,fgets \
@@ -83,7 +84,7 @@ list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_rea
                                 -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,_merror -Wl,--wrap,waitpid \
                                 -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,_mdebug1 -Wl,--wrap,_minfo \
                                 -Wl,--wrap,kill -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,strerror \
-                                -Wl,--wrap,time")
+                                -Wl,--wrap,time -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")

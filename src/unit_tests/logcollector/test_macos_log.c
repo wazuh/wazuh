@@ -2057,8 +2057,8 @@ void test_w_macos_create_log_stream_env_not_executable(void ** state) {
     os_strdup("debug", current->query_level);
     current->query_type = 7;
 
-    os_calloc(1, sizeof(wfd_t), current->macos_log->stream_wfd);
-    current->macos_log->stream_wfd->file = (FILE*)1;
+    os_calloc(1, sizeof(wfd_t), current->macos_log->processes.stream.wfd);
+    current->macos_log->processes.stream.wfd->file = (FILE*)1;
 
     // test_w_macos_is_log_executable_error
     expect_string(__wrap_access, __name, "/usr/bin/log");
@@ -2072,7 +2072,7 @@ void test_w_macos_create_log_stream_env_not_executable(void ** state) {
     os_free(current->file);
     os_free(current->query);
     os_free(current->query_level);
-    os_free(current->macos_log->stream_wfd);
+    os_free(current->macos_log->processes.stream.wfd);
     os_free(current->macos_log);
     os_free(current);
 
@@ -2110,7 +2110,7 @@ void test_w_macos_create_log_stream_env_log_wfd_NULL(void ** state) {
     os_free(current->file);
     os_free(current->query);
     os_free(current->query_level);
-    os_free(current->macos_log->stream_wfd);
+    os_free(current->macos_log->processes.stream.wfd);
     os_free(current->macos_log);
     os_free(current);
 
@@ -2792,7 +2792,7 @@ void test_w_macos_create_log_show_env_show_wfd_NULL(void ** state) {
 
     w_macos_create_log_show_env(lf);
 
-    os_free(lf->macos_log->show_wfd);
+    os_free(lf->macos_log->processes.show.wfd);
     os_free(lf->query_level);
     os_free(lf->query);
     os_free(lf->macos_log);
@@ -2863,7 +2863,7 @@ void test_w_macos_create_log_stream_env_show_wfd_NULL(void ** state) {
 
     w_macos_create_log_stream_env(lf);
 
-    os_free(lf->macos_log->show_wfd);
+    os_free(lf->macos_log->processes.show.wfd);
     os_free(lf->query_level);
     os_free(lf->query);
     os_free(lf->macos_log);
