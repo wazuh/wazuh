@@ -288,7 +288,7 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session) {
         decodernode = session->decoderlist_nopname;
     }
 
-    DecodeEvent(lf, Config.g_rules_hash, &session->decoder_match, decodernode);
+    DecodeEvent(lf, session->g_rules_hash, &session->decoder_match, decodernode);
 }
 
 
