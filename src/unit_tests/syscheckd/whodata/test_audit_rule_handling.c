@@ -64,6 +64,8 @@ extern OSList *whodata_directories;
 
 extern int audit_rule_manipulation;
 
+extern atomic_int_t audit_thread_active;
+
 /* setup/teardown */
 static int setup_group(void **state) {
     syscheck.directories = GENERAL_CONFIG;
@@ -288,6 +290,9 @@ static void test_clean_rules(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug2, formatted_msg, FIM_AUDIT_DELETE_RULE);
+
+    expect_value(__wrap_atomic_int_set, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_set, 0);
 
     expect_any_count(__wrap_audit_delete_rule, path, whodata_directories->currently_size);
     expect_any_count(__wrap_audit_delete_rule, perms, whodata_directories->currently_size);

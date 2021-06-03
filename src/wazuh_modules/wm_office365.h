@@ -15,15 +15,17 @@
 #define WM_OFFICE365_LOGTAG ARGV0 ":" OFFICE365_WM_NAME
 
 #define WM_OFFICE365_DEFAULT_ENABLED 1
-#define WM_OFFICE365_DEFAULT_RUN_ON_START 1
-#define WM_OFFICE365_DEFAULT_SKIP_ON_ERROR 0
 #define WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS 1
 #define WM_OFFICE365_DEFAULT_INTERVAL 600
-#define WM_OFFICE365_DEFAULT_AZURE 0
-#define WM_OFFICE365_DEFAULT_EXCHANGE 0
-#define WM_OFFICE365_DEFAULT_SHAREPOINT 0
-#define WM_OFFICE365_DEFAULT_GENERAL 0
-#define WM_OFFICE365_DEFAULT_DLP 0
+
+#define WM_OFFICE365_MSG_DELAY 1000000 / wm_max_eps
+#define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
+
+#define WM_OFFICE365_API_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+#define WM_OFFICE365_API_SUBSCRIPTION_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/start?contentType=%s"
+#define WM_OFFICE365_API_CONTENT_BLOB_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/content?contentType=%s&startTime=%s&endTime=%s"
+
+#define WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD "client_id=%s&scope=https://manage.office.com/.default&grant_type=client_credentials&client_secret=%s"
 
 typedef struct wm_office365_auth {
     char *tenant_id;
@@ -33,22 +35,22 @@ typedef struct wm_office365_auth {
     struct wm_office365_auth *next;
 } wm_office365_auth;
 
-typedef struct subscription_flags_t {
-    unsigned short azure:1;
-    unsigned short exchange:1;
-    unsigned short sharepoint:1;
-    unsigned short general:1;
-    unsigned short dlp:1;
-} subscription_flags_t;
+typedef struct wm_office365_subscription {
+    char *subscription_name;
+    struct wm_office365_subscription *next;
+} wm_office365_subscription;
+
+typedef struct wm_office365_state {
+    time_t last_log_time;
+} wm_office365_state;
 
 typedef struct wm_office365 {
     int enabled;
-    int run_on_start;
-    int skip_on_error;
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
     wm_office365_auth *auth;
-    subscription_flags_t subscription;
+    wm_office365_subscription *subscription;
+    int queue_fd;
 } wm_office365;
 
 extern const wm_context WM_OFFICE365_CONTEXT;  // Context

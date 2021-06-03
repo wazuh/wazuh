@@ -19,78 +19,79 @@
 
 class BrewWrapper final : public IPackageWrapper
 {
-public:
-    explicit BrewWrapper(const PackageContext& ctx)
-      : m_name{ctx.package}
-      , m_version{Utils::splitIndex(ctx.version, '_', 0)}
-      , m_format{"pkg"}
-      , m_source{"homebrew"}
-      , m_location{ctx.filePath}
-    {
-        const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
-        for (const auto& row : rows)
+    public:
+        explicit BrewWrapper(const PackageContext& ctx)
+            : m_name{ctx.package}
+            , m_version{Utils::splitIndex(ctx.version, '_', 0)}
+            , m_format{"pkg"}
+            , m_source{"homebrew"}
+            , m_location{ctx.filePath}
         {
-            auto rowParsed { Utils::trim(row) };
+            const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
 
-            if (Utils::startsWith(rowParsed, "desc "))
+            for (const auto& row : rows)
             {
-                Utils::replaceFirst(rowParsed, "desc ", "");
-                Utils::replaceAll(rowParsed, "\"","");
-                m_description = rowParsed;
-                break;
+                auto rowParsed { Utils::trim(row) };
+
+                if (Utils::startsWith(rowParsed, "desc "))
+                {
+                    Utils::replaceFirst(rowParsed, "desc ", "");
+                    Utils::replaceAll(rowParsed, "\"", "");
+                    m_description = rowParsed;
+                    break;
+                }
             }
         }
-    }
 
-    ~BrewWrapper() = default;
+        ~BrewWrapper() = default;
 
-    std::string name() const override
-    {
-        return m_name;
-    }
-    std::string version() const override
-    {
-        return m_version;
-    }
-    std::string groups() const override
-    {
-        return m_groups;
-    }
-    std::string description() const override
-    {
-        return m_description;
-    }
-    std::string architecture() const override
-    {
-        return m_architecture;
-    }
-    std::string format() const override
-    {
-        return m_format;
-    }
-    std::string osPatch() const override
-    {
-        return m_osPatch;
-    }
-    std::string source() const override
-    {
-        return m_source;
-    }
-    std::string location() const override
-    {
-        return m_location;
-    }
+        std::string name() const override
+        {
+            return m_name;
+        }
+        std::string version() const override
+        {
+            return m_version;
+        }
+        std::string groups() const override
+        {
+            return m_groups;
+        }
+        std::string description() const override
+        {
+            return m_description;
+        }
+        std::string architecture() const override
+        {
+            return m_architecture;
+        }
+        std::string format() const override
+        {
+            return m_format;
+        }
+        std::string osPatch() const override
+        {
+            return m_osPatch;
+        }
+        std::string source() const override
+        {
+            return m_source;
+        }
+        std::string location() const override
+        {
+            return m_location;
+        }
 
-private:
-    std::string m_name;
-    std::string m_version;
-    std::string m_groups;
-    std::string m_description;
-    std::string m_architecture;
-    const std::string m_format;
-    std::string m_osPatch;
-    const std::string m_source;
-    const std::string m_location;
+    private:
+        std::string m_name;
+        std::string m_version;
+        std::string m_groups;
+        std::string m_description;
+        std::string m_architecture;
+        const std::string m_format;
+        std::string m_osPatch;
+        const std::string m_source;
+        const std::string m_location;
 };
 
 

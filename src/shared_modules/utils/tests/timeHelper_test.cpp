@@ -17,7 +17,7 @@ void TimeUtilsTest::SetUp() {};
 
 void TimeUtilsTest::TearDown() {};
 
-TEST_F(TimeUtilsTest, CheckTimestamp) 
+TEST_F(TimeUtilsTest, CheckTimestamp)
 {
     const auto currentTimestamp { Utils::getCurrentTimestamp() };
     const auto timestamp { Utils::getTimestamp(std::time(nullptr)) };

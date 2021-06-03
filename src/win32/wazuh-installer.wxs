@@ -75,7 +75,7 @@
         <Property Id="BUILDVERSION" Value="0">
             <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
         </Property>
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
@@ -92,6 +92,8 @@
 
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
+
+        <CustomAction Id="CheckSvcRunning_OssecSvc" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no" />
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
@@ -181,13 +183,9 @@
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
         <CustomAction Id="DepStartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
 
-        <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
-        <!-- Otherwise, the locked files and directories will not be deleted. -->
-        <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
-
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
-        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
-        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="deferred" Return="ignore" Impersonate="no" />
+        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
@@ -197,6 +195,7 @@
         </UI>
         <InstallExecuteSequence>
             <!-- Delete OSSEC service if it exist -->
+            <Custom Action="CheckSvcRunning_OssecSvc" After="AppSearch">OSSECINSTALLED</Custom>
             <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
@@ -205,7 +204,6 @@
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StopWinService" After="DeleteOssecService">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
 
@@ -304,6 +302,9 @@
                     <Component Id="REPLACECONF.VBS" DiskId="1" Guid="D2CA93FD-4B3C-4147-B7D8-503487E23D16">
                         <File Id="REPLACECONF.VBS" Name="ReplaceConf.vbs" Source="ReplaceConf.vbs" />
                     </Component>
+                    <Component Id="LIBWAZUHSHARED_DLL" DiskId="1" Guid="A40D7FB4-8D7B-440E-B7CB-1D8CB1E277E6">
+                        <File Id="LIBWAZUHSHARED_DLL" Name="libwazuhshared.dll" Source="..\libwazuhshared.dll" />
+                    </Component>
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
                         <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
                     </Component>
@@ -335,6 +336,9 @@
                     <Component Id="LIBWINPTHREAD_1.DLL" DiskId="1" Guid="C15C5883-00FB-41D7-B9E6-53C8BC30761F">
                         <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="libwinpthread-1.dll" />
                     </Component>
+                    <Component Id="LIBGCC_S_SJLJ_1.DLL" DiskId="1" Guid="27BDCB9A-F89F-4009-A789-1F779EB05697">
+                        <File Id="LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" Source="libgcc_s_sjlj-1.dll" />
+                    </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
                     </Component>
@@ -347,8 +351,14 @@
                     <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
                         <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
-                        <ServiceControl Id="svc_uninstall" Name="WazuhSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
-                        <Condition>VersionNT &lt; 600</Condition>
+                        <ServiceControl Id="ServiceControl" Name="WazuhSvc" Stop="both" Remove="uninstall" Wait="yes" />
+                        <Condition>NOT(OSSECINSTALLED) AND (VersionNT &lt; 600)</Condition>
+                    </Component>
+                    <Component Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" DiskId="1" Guid="FB49A2F0-3433-47D4-A668-4139718AFDAC">
+                        <File Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
+                        <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec" />
+                        <ServiceControl Id="ServiceControl_ossec_upgrade" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
+                        <Condition>OSSECINSTALLED AND (OSSECRUNNING = "Running") AND (VersionNT &gt;= 600)</Condition>
                     </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
@@ -373,6 +383,7 @@
                         <RemoveFile Id="NSIS_WIN32UI_EXE" Name="win32ui.exe" On="install" />
                         <RemoveFile Id="NSIS_AGENT_AUTH_EXE" Name="agent-auth.exe" On="install" />
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
+                        <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_STATE" Name="ossec-agent.state" On="install" />
@@ -701,6 +712,7 @@
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="REPLACECONF.VBS" />
+            <ComponentRef Id="LIBWAZUHSHARED_DLL" />
             <ComponentRef Id="RSYNC_DLL" />
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
@@ -709,9 +721,11 @@
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
+            <ComponentRef Id="LIBGCC_S_SJLJ_1.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
+            <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_WAZUH.EXE" />
             <ComponentRef Id="ROUTE_NULL.EXE" />

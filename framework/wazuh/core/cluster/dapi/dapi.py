@@ -30,7 +30,7 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-threadpool = ThreadPoolExecutor()
+threadpool = ThreadPoolExecutor(max_workers=1)
 
 
 class DistributedAPI:

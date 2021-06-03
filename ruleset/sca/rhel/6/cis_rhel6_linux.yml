@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for RHEL 6
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -545,7 +545,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.conf -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /boot/grub/grub.conf -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 1.4.2 Set Boot Loader Password (Scored)
   - id: 4030
@@ -841,7 +841,7 @@ checks:
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 1.7.1.5 Configure /etc/issue permissions (Scored)
   - id: 4048
@@ -860,7 +860,7 @@ checks:
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 # 1.7.1.6 Configure /etc/issue.net permissions (Not Scored)
   - id: 4049
     title: "Ensure permissions on /etc/issue.net are configured"
@@ -878,7 +878,7 @@ checks:
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 1.7.2 Ensure GDM login banner is configured (Scored)
   - id: 4050
@@ -1850,7 +1850,7 @@ checks:
       - pci_dss: ["1.3.5"]
     condition: all
     rules:
-      - 'c:stat /etc/hosts.allow -> r:^Access: \(0644/-rw-r--r--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)'
+      - 'c:stat -L /etc/hosts.allow -> r:^Access: \(0644/-rw-r--r--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)'
 
 
 # 3.4.5 Ensure permissions on /etc/hosts.deny are configured (Scored)
@@ -1867,7 +1867,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/hosts.deny -> r:^Access: \(0644/-rw-r--r--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/hosts.deny -> r:^Access: \(0644/-rw-r--r--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 ###############################################
@@ -2534,7 +2534,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Scored)
   - id: 4139
@@ -2550,7 +2550,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Scored)
   - id: 4140
@@ -2566,7 +2566,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Scored)
   - id: 4141
@@ -2582,7 +2582,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Scored)
@@ -2599,7 +2599,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.7 Ensure permissions on /etc/cron.d are configured (Scored)
   - id: 4143
@@ -2615,7 +2615,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.8 Ensure at/cron is restricted to authorized users (Scored)
   - id: 4144
@@ -2631,10 +2631,10 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.deny -> r:No such file or directory$'
-      - 'c:stat /etc/at.deny -> r:No such file or directory$'
-      - 'c:stat /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.deny -> r:No such file or directory$'
+      - 'c:stat -L /etc/at.deny -> r:No such file or directory$'
+      - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 ###############################################
 # 5.2 Configure SSH
@@ -2653,7 +2653,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.2.2 Set SSH Protocol to 2 (Scored)
   - id: 4146
@@ -3062,7 +3062,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 
 # 6.1.3 Configure /etc/shadow permissions (Scored)
@@ -3079,7 +3079,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.4 Configure /etc/group permissions (Scored)
   - id: 4171
@@ -3095,7 +3095,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.5 Configure /etc/gshadow permissions (Scored)
   - id: 4172
@@ -3111,7 +3111,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.6 Configure /etc/passwd- permissions (Scored)
   - id: 4173
@@ -3127,7 +3127,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.7 Configure /etc/shadow- permissions (Scored)
   - id: 4174
@@ -3143,7 +3143,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.8 Configure /etc/group- permissions (Scored)
   - id: 4175
@@ -3159,7 +3159,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.9 Configure /etc/gshadow- permissions (Scored)
   - id: 4176
@@ -3175,7 +3175,7 @@ the potential attack surface."
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 ###############################################
 # 6.2 Review User and Group Settings

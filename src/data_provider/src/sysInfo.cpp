@@ -53,6 +53,7 @@ extern "C" {
 int sysinfo_hardware(cJSON** js_result)
 {
     auto retVal { -1 };
+
     try
     {
         if (js_result)
@@ -64,14 +65,16 @@ int sysinfo_hardware(cJSON** js_result)
         }
     }
     // LCOV_EXCL_START
-    catch(...)
+    catch (...)
     {}
+
     // LCOV_EXCL_STOP
     return retVal;
 }
 int sysinfo_packages(cJSON** js_result)
 {
     auto retVal { -1 };
+
     try
     {
         if (js_result)
@@ -83,14 +86,16 @@ int sysinfo_packages(cJSON** js_result)
         }
     }
     // LCOV_EXCL_START
-    catch(...)
+    catch (...)
     {}
+
     // LCOV_EXCL_STOP
     return retVal;
 }
 int sysinfo_os(cJSON** js_result)
 {
     auto retVal { -1 };
+
     try
     {
         if (js_result)
@@ -102,14 +107,16 @@ int sysinfo_os(cJSON** js_result)
         }
     }
     // LCOV_EXCL_START
-    catch(...)
+    catch (...)
     {}
+
     // LCOV_EXCL_STOP
     return retVal;
 }
 int sysinfo_processes(cJSON** js_result)
 {
     auto retVal { -1 };
+
     try
     {
         if (js_result)
@@ -121,14 +128,16 @@ int sysinfo_processes(cJSON** js_result)
         }
     }
     // LCOV_EXCL_START
-    catch(...)
+    catch (...)
     {}
+
     // LCOV_EXCL_STOP
     return retVal;
 }
 int sysinfo_networks(cJSON** js_result)
 {
     auto retVal { -1 };
+
     try
     {
         if (js_result)
@@ -140,14 +149,16 @@ int sysinfo_networks(cJSON** js_result)
         }
     }
     // LCOV_EXCL_START
-    catch(...)
+    catch (...)
     {}
+
     // LCOV_EXCL_STOP
     return retVal;
 }
 int sysinfo_ports(cJSON** js_result)
 {
     auto retVal { -1 };
+
     try
     {
         if (js_result)
@@ -159,8 +170,9 @@ int sysinfo_ports(cJSON** js_result)
         }
     }
     // LCOV_EXCL_START
-    catch(...)
+    catch (...)
     {}
+
     // LCOV_EXCL_STOP
     return retVal;
 }
