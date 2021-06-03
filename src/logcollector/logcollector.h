@@ -118,6 +118,15 @@ void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_macos(logreader *lf, int *rc, int drop_it);
+
+/**
+ * @brief Search the first process with certain pid as ppid
+ * 
+ * @param ppid pid that process must have as ppid
+ * @return pid_t pid of found process. Zero otherwise
+ */
+pid_t w_get_children_pid_by_ppid(pid_t ppid);
+
 #endif
 
 /* Read DJB multilog format */

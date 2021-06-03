@@ -135,6 +135,24 @@ typedef struct {
 } w_macos_log_ctxt_t;
 
 /**
+ * @brief 
+ * 
+ */
+typedef struct {
+    wfd_t * wfd;        ///< IPC connector
+    pid_t child;        ///< Child PID
+} w_macos_log_pinfo_t;
+
+/**
+ * @brief 
+ * 
+ */
+typedef struct {
+    w_macos_log_pinfo_t stream;     ///< `log stream` process info
+    w_macos_log_pinfo_t show;       ///< `log show` process info
+} w_macos_log_procceses_t;
+
+/**
  * @brief An instance of w_macos_log_config_t represents the state of macOS log command
  */
 typedef struct {
@@ -142,8 +160,7 @@ typedef struct {
     bool is_header_processed;           ///< True if the stream header was processed
     w_macos_log_state_t state;          ///< Stores the current macOS log running state
     w_macos_log_ctxt_t ctxt;            ///< Stores current status when read log is in process
-    wfd_t * stream_wfd;                 ///< `log stream` IPC connector
-    wfd_t * show_wfd;                   ///< `log show` IPC connector
+    w_macos_log_procceses_t processes;  ///< Related `log` processes information
     char * current_settings;            ///< Stores `log stream` full command.
     bool store_current_settings;        ///< True if current_settings is stored in vault
 } w_macos_log_config_t;

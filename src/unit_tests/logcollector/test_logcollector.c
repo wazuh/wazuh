@@ -42,12 +42,8 @@ void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 
-typedef struct{
-    wfd_t * show;
-    wfd_t * stream;
-} w_macos_log_wfd_t;
 extern w_macos_log_vault_t macos_log_vault;
-extern w_macos_log_wfd_t macos_log_wfd;
+extern w_macos_log_procceses_t * macos_processes;
 
 
 /* setup/teardown */
@@ -2125,17 +2121,22 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
 /* _macos_release_log_show */
 
 void test_w_macos_release_log_show_not_launched(void ** state) {
-
-    macos_log_wfd.show = NULL;
+    w_macos_log_procceses_t * tmp_processes;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    macos_processes = tmp_processes;
     w_macos_release_log_show();
+    os_free(tmp_processes);
 }
 
 void test_w_macos_release_log_show_launched_and_running(void ** state) {
 
-    wfd_t * process_status;
-    os_calloc(1, sizeof(wfd_t), process_status);
-    process_status->pid = 10;
-    macos_log_wfd.show = process_status;
+    w_macos_log_procceses_t * tmp_processes;
+    wfd_t * tmp_show;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    os_calloc(1, sizeof(wfd_t), tmp_show);
+    tmp_processes->show.wfd = tmp_show; //Workarround for __wrap_wpclose that dereferences the pointer
+    tmp_processes->show.wfd->pid = 10;
+    macos_processes = tmp_processes;
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
     expect_value(__wrap_kill, pid, 10);
@@ -2144,39 +2145,50 @@ void test_w_macos_release_log_show_launched_and_running(void ** state) {
 
     w_macos_release_log_show();
 
-    assert_null(macos_log_wfd.show);
-    os_free(process_status);
+    assert_null(macos_processes->show.wfd);
+    os_free(tmp_show);
+    os_free(tmp_processes);
 }
 
 void test_w_macos_release_log_show_launched_and_not_running(void ** state) {
 
-    wfd_t * process_status;
-    os_calloc(1, sizeof(wfd_t), process_status);
-    process_status->pid = 0;
-    macos_log_wfd.show = process_status;
+    w_macos_log_procceses_t * tmp_processes;
+    wfd_t * tmp_show;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    os_calloc(1, sizeof(wfd_t), tmp_show);
+    tmp_processes->show.wfd = tmp_show; //Workarround for __wrap_wpclose that dereferences the pointer
+    tmp_processes->show.wfd->pid = 0;
+    macos_processes = tmp_processes;
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
     will_return(__wrap_wpclose, 0);
 
     w_macos_release_log_show();
 
-    assert_null(macos_log_wfd.show);
-    os_free(process_status);
+    assert_null(macos_processes->show.wfd);
+    os_free(tmp_show);
+    os_free(tmp_processes);
 }
 
 /* w_macos_release_log_stream */
 
 void test_w_macos_release_log_stream_not_launched(void ** state) {
 
-    macos_log_wfd.stream = NULL;
+    w_macos_log_procceses_t * tmp_processes;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    macos_processes = tmp_processes;
     w_macos_release_log_stream();
+    os_free(tmp_processes);
 }
 
 void test_w_macos_release_log_stream_launched_and_running(void ** state) {
 
-    wfd_t * process_status;
-    os_calloc(1, sizeof(wfd_t), process_status);
-    process_status->pid = 10;
-    macos_log_wfd.stream = process_status;
+    w_macos_log_procceses_t * tmp_processes;
+    wfd_t * tmp_stream;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    os_calloc(1, sizeof(wfd_t), tmp_stream);
+    tmp_processes->stream.wfd = tmp_stream; //Workarround for __wrap_wpclose that dereferences the pointer
+    tmp_processes->stream.wfd->pid = 10;
+    macos_processes = tmp_processes;
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
     expect_value(__wrap_kill, pid, 10);
@@ -2185,47 +2197,58 @@ void test_w_macos_release_log_stream_launched_and_running(void ** state) {
 
     w_macos_release_log_stream();
 
-    assert_null(macos_log_wfd.stream);
-    os_free(process_status);
+    assert_null(macos_processes->stream.wfd);
+    os_free(tmp_stream);
+    os_free(tmp_processes);
 }
 
 void test_w_macos_release_log_stream_launched_and_not_running(void ** state) {
 
-    wfd_t * process_status;
-    os_calloc(1, sizeof(wfd_t), process_status);
-    process_status->pid = 0;
-    macos_log_wfd.stream = process_status;
+    w_macos_log_procceses_t * tmp_processes;
+    wfd_t * tmp_stream;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    os_calloc(1, sizeof(wfd_t), tmp_stream);
+    tmp_processes->stream.wfd = tmp_stream; //Workarround for __wrap_wpclose that dereferences the pointer
+    tmp_processes->stream.wfd->pid = 0;
+    macos_processes = tmp_processes;
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
     will_return(__wrap_wpclose, 0);
 
     w_macos_release_log_stream();
 
-    assert_null(macos_log_wfd.stream);
-    os_free(process_status);
+    assert_null(macos_processes->stream.wfd);
+    os_free(tmp_processes->stream.wfd);
+    os_free(tmp_stream);
+    os_free(tmp_processes);
 }
 
 /* w_macos_release_log_execution */
 
 void test_w_macos_release_log_execution_log_stream_and_show_not_launched(void ** state) {
     
-    macos_log_wfd.stream = NULL;
-    macos_log_wfd.show = NULL;
+    w_macos_log_procceses_t * tmp_processes;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    macos_processes = tmp_processes;
 
     w_macos_release_log_execution();
+
+    os_free(tmp_processes);
 }
 
 void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running(void ** state) {
-    wfd_t * show_process_status;
-    wfd_t * stream_process_status;
 
-    os_calloc(1, sizeof(wfd_t), show_process_status);
-    os_calloc(1, sizeof(wfd_t), stream_process_status);
+    w_macos_log_procceses_t * tmp_processes;
+    wfd_t * tmp_stream, * tmp_show;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    os_calloc(1, sizeof(wfd_t), tmp_stream);
+    os_calloc(1, sizeof(wfd_t), tmp_show);
+    tmp_processes->stream.wfd = tmp_stream; //Workarround for __wrap_wpclose that dereferences the pointer
+    tmp_processes->show.wfd = tmp_show; //Workarround for __wrap_wpclose that dereferences the pointer
 
-    show_process_status->pid = 10;
-    stream_process_status->pid = 11;
+    tmp_processes->show.wfd->pid = 10;
+    tmp_processes->stream.wfd->pid = 11;
 
-    macos_log_wfd.stream = stream_process_status;
-    macos_log_wfd.show = show_process_status;
+    macos_processes = tmp_processes;
 
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
@@ -2241,23 +2264,24 @@ void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running
 
     w_macos_release_log_execution();
 
-    assert_null(macos_log_wfd.stream);
-    assert_null(macos_log_wfd.show);
+    assert_null(macos_processes->stream.wfd);
+    assert_null(macos_processes->show.wfd);
 
-    os_free(stream_process_status);
-    os_free(show_process_status);
+    os_free(tmp_stream);
+    os_free(tmp_show);
+    os_free(tmp_processes);
+
 }
 
 void test_w_macos_release_log_execution_log_stream_launched_and_show_not_launched(void ** state) {
-    macos_log_wfd.show = NULL;
+    w_macos_log_procceses_t * tmp_processes;
+    wfd_t * tmp_stream;
 
-    wfd_t * stream_process_status;
-
-    os_calloc(1, sizeof(wfd_t), stream_process_status);
-
-    stream_process_status->pid = 10;
-
-    macos_log_wfd.stream = stream_process_status;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    os_calloc(1, sizeof(wfd_t), tmp_stream);
+    tmp_processes->stream.wfd = tmp_stream; //Workarround for __wrap_wpclose that dereferences the pointer
+    tmp_processes->stream.wfd->pid = 10;
+    macos_processes = tmp_processes;
 
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
@@ -2267,20 +2291,20 @@ void test_w_macos_release_log_execution_log_stream_launched_and_show_not_launche
 
     w_macos_release_log_execution();
 
-    assert_null(macos_log_wfd.stream);
-    os_free(stream_process_status);
+    assert_null(tmp_processes->stream.wfd);
+    os_free(tmp_stream);
+    os_free(tmp_processes);
 }
 
 void test_w_macos_release_log_execution_log_stream_not_launched_and_show_launched(void ** state) {
-    macos_log_wfd.stream = NULL;
 
-    wfd_t * show_process_status;
-
-    os_calloc(1, sizeof(wfd_t), show_process_status);
-
-    show_process_status->pid = 10;
-
-    macos_log_wfd.show = show_process_status;
+    w_macos_log_procceses_t * tmp_processes;
+    wfd_t * tmp_show;
+    os_calloc(1, sizeof(w_macos_log_procceses_t), tmp_processes);
+    os_calloc(1, sizeof(wfd_t), tmp_show);
+    tmp_processes->show.wfd = tmp_show; //Workarround for __wrap_wpclose that dereferences the pointer
+    tmp_processes->show.wfd->pid = 10;
+    macos_processes = tmp_processes;
 
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
@@ -2290,8 +2314,9 @@ void test_w_macos_release_log_execution_log_stream_not_launched_and_show_launche
 
     w_macos_release_log_execution();
 
-    assert_null(macos_log_wfd.show);
-    os_free(show_process_status);
+    assert_null(tmp_processes->show.wfd);
+    os_free(tmp_show);
+    os_free(tmp_processes);
 }
 
 int main(void) {

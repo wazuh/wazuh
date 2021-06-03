@@ -139,15 +139,9 @@ static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-typedef struct{
-    wfd_t * show;
-    pid_t show_child;
-    wfd_t * stream;
-    pid_t stream_child;
-} w_macos_log_wfd_t;
 
+STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
-STATIC w_macos_log_wfd_t macos_log_wfd = { .show = NULL, .show_child = 0, .stream = NULL, .stream_child = 0};
 
 /**
  * @brief Return current macOS codename
@@ -375,16 +369,8 @@ void LogCollectorStart()
                 if (atexit(w_macos_release_log_execution)) {
                     merror(ATEXIT_ERROR);
                 }
-                /* Retrieve pid of child process */
-                if (current->macos_log->show_wfd != NULL) {
-                    macos_log_wfd.show_child = w_get_children_pid_by_ppid(current->macos_log->show_wfd->pid);
-                }
-                if (current->macos_log->stream_wfd) {
-                    macos_log_wfd.stream_child = w_get_children_pid_by_ppid(current->macos_log->stream_wfd->pid);
-                }
                 /* macOS log's resources need to be globally reachable to be released */
-                macos_log_wfd.show = current->macos_log->show_wfd;
-                macos_log_wfd.stream = current->macos_log->stream_wfd;
+                macos_processes = &current->macos_log->processes;
 
                 for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
                     mdebug1("Socket target for '%s' -> %s", MACOS_LOG_NAME, current->target[tg_idx]);
@@ -2985,31 +2971,33 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 void w_macos_release_log_show(void) {
 
-    if (macos_log_wfd.show != NULL) {
+    if (macos_processes != NULL && macos_processes->show.wfd != NULL) {
         mdebug1("macOS ULS: Releasing macOS `log show` resources.");
-        if (macos_log_wfd.show->pid > 0) {
-            kill(macos_log_wfd.show->pid, SIGTERM);
+        if (macos_processes->show.wfd->pid > 0) {
+            kill(macos_processes->show.wfd->pid, SIGTERM);
         }
-        if (macos_log_wfd.show_child > 0) {
-            kill(macos_log_wfd.show_child, SIGTERM);
+        if (macos_processes->show.child > 0) {
+            kill(macos_processes->show.child, SIGTERM);
         }
-        wpclose(macos_log_wfd.show);
-        macos_log_wfd.show = NULL;
+        wpclose(macos_processes->show.wfd);
+        macos_processes->show.wfd = NULL;
+        macos_processes->show.child = 0;
     }
 }
 
 void w_macos_release_log_stream(void) {
 
-    if (macos_log_wfd.stream != NULL) {
+    if (macos_processes != NULL && macos_processes->stream.wfd != NULL) {
         mdebug1("macOS ULS: Releasing macOS `log stream` resources.");
-        if (macos_log_wfd.stream->pid > 0) {
-            kill(macos_log_wfd.stream->pid, SIGTERM);
+        if (macos_processes->stream.wfd->pid > 0) {
+            kill(macos_processes->stream.wfd->pid, SIGTERM);
         }
-        if (macos_log_wfd.stream_child > 0) {
-            kill(macos_log_wfd.stream_child, SIGTERM);
+        if (macos_processes->stream.child > 0) {
+            kill(macos_processes->stream.child, SIGTERM);
         }
-        wpclose(macos_log_wfd.stream);
-        macos_log_wfd.stream = NULL;
+        wpclose(macos_processes->stream.wfd);
+        macos_processes->stream.wfd = NULL;
+        macos_processes->stream.child = 0;
     }
 }
 
@@ -3049,12 +3037,8 @@ pid_t w_get_children_pid_by_ppid(pid_t ppid) {
 
 
     cJSON * processes = NULL;
-    char * target_ppid_str = NULL;
-    char * process_ppid_str = NULL;
     char * process_pid_str = NULL;
     pid_t result_pid = 0;
-
-    asprintf(&target_ppid_str, "%i", ppid);
 
     sysinfo_processes_func sysinfo_processes_ptr = NULL;
     sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
@@ -3068,8 +3052,8 @@ pid_t w_get_children_pid_by_ppid(pid_t ppid) {
                  if (processes != NULL) {
                     cJSON * process;
                     cJSON_ArrayForEach(process, processes) {
-                        process_ppid_str = cJSON_GetStringValue(cJSON_GetObjectItem(process, "ppid"));
-                        if (process_ppid_str != NULL && strcmp(target_ppid_str, process_ppid_str) == 0) {
+                        cJSON * ppid_object = cJSON_GetObjectItem(process, "ppid");
+                        if (cJSON_IsNumber(ppid_object) && (pid_t)ppid_object->valuedouble == ppid) {
                             process_pid_str = cJSON_GetStringValue(cJSON_GetObjectItem(process, "pid"));
                             if(process_pid_str != NULL) {
                                 if (result_pid = (pid_t) strtol(process_pid_str, NULL, 10), result_pid > 0) {
@@ -3083,8 +3067,7 @@ pid_t w_get_children_pid_by_ppid(pid_t ppid) {
             }
         }
     }
-
-    os_free(target_ppid_str);
+    mdebug2("macOS ULS: Looking child of PID:%i and found PID:%i", ppid, result_pid);
     return result_pid;
 }
 
