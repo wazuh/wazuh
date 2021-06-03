@@ -22,10 +22,13 @@
 #define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
 
 #define WM_OFFICE365_API_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
-#define WM_OFFICE365_API_SUBSCRIPTION_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/start?contentType=%s"
+#define WM_OFFICE365_API_SUBSCRIPTION_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/%s?contentType=%s"
 #define WM_OFFICE365_API_CONTENT_BLOB_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/content?contentType=%s&startTime=%s&endTime=%s"
 
 #define WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD "client_id=%s&scope=https://manage.office.com/.default&grant_type=client_credentials&client_secret=%s"
+
+#define WM_OFFICE365_API_SUBSCRIPTION_START "start"
+#define WM_OFFICE365_API_SUBSCRIPTION_STOP "stop"
 
 typedef struct wm_office365_auth {
     char *tenant_id;

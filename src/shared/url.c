@@ -404,9 +404,9 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
-curl_response* wurl_http_request(const char *header, const char* url, const char *payload) {
+curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload) {
     curl_response *response;
-    struct curl_slist* headers = NULL;
+    struct curl_slist* headers_list = NULL;
     struct curl_slist* headers_tmp = NULL;
     CURLcode res;
     struct MemoryStruct req;
@@ -416,12 +416,6 @@ curl_response* wurl_http_request(const char *header, const char* url, const char
 
     if (!curl) {
         mdebug1("curl initialization failure");
-        return NULL;
-    }
-
-    if (!header) {
-        mdebug1("curl header NULL");
-        curl_easy_cleanup(curl);
         return NULL;
     }
 
@@ -436,30 +430,30 @@ curl_response* wurl_http_request(const char *header, const char* url, const char
     }
 #endif
 
-    if (payload) {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
-    } else {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
-    }
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
 
-    headers = curl_slist_append(headers, "User-Agent: curl/7.58.0");
+    headers_list = curl_slist_append(headers_list, "User-Agent: curl/7.58.0");
 
-    if (headers == NULL) {
+    if (headers_list == NULL) {
         curl_easy_cleanup(curl);
         mdebug1("curl append header failure");
         return NULL;
     }
 
-    headers_tmp = curl_slist_append(headers, header);
+    // Append custom headers
+    char** ptr = headers;
+    for (char* header = *ptr; header; header=*++ptr) {
+        headers_tmp = curl_slist_append(headers_list, header);
 
-    if (headers_tmp == NULL) {
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-        mdebug1("curl append header failure");
-        return NULL;
+        if (headers_tmp == NULL) {
+            curl_slist_free_all(headers_list);
+            curl_easy_cleanup(curl);
+            mdebug1("curl append header failure");
+            return NULL;
+        }
+
+        headers_list = headers_tmp;
     }
-
-    headers = headers_tmp;
 
     req.memory = malloc(1);  /* will be grown as needed by the realloc above */
     req.size = 0;    /* no data at this point */
@@ -469,7 +463,7 @@ curl_response* wurl_http_request(const char *header, const char* url, const char
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers_list);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -483,7 +477,7 @@ curl_response* wurl_http_request(const char *header, const char* url, const char
 
     if (res != CURLE_OK) {
         mdebug1("curl_easy_perform() failed: %s", curl_easy_strerror(res));
-        curl_slist_free_all(headers);
+        curl_slist_free_all(headers_list);
         curl_easy_cleanup(curl);
         os_free(req.memory);
         os_free(req_header.memory);
@@ -495,7 +489,7 @@ curl_response* wurl_http_request(const char *header, const char* url, const char
     response->header = req_header.memory;
     response->body = req.memory;
 
-    curl_slist_free_all(headers);
+    curl_slist_free_all(headers_list);
     curl_easy_cleanup(curl);
 
     return response;

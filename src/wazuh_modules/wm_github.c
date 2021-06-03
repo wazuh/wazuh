@@ -37,6 +37,7 @@ const wm_context WM_GITHUB_CONTEXT = {
     (wm_routine)wm_github_main,
     (wm_routine)(void *)wm_github_destroy,
     (cJSON * (*)(const void *))wm_github_dump,
+    NULL,
     NULL
 };
 
@@ -158,12 +159,12 @@ cJSON *wm_github_dump(const wm_github* github_config) {
 STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     int scan_finished = 0;
     int fail = 0;
-    char *payload;
+    char **headers = NULL;
+    char *payload = NULL;
     char *error_msg = NULL;
     char *next_page = NULL;
     char url[OS_SIZE_8192];
     char org_state_name[OS_SIZE_1024];
-    char auth_header[PATH_MAX];
     time_t last_scan_time;
     time_t new_scan_time;
     curl_response *response;
@@ -219,11 +220,15 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
         mtdebug1(WM_GITHUB_LOGTAG, "GitHub API URL: '%s'", url);
 
-        memset(auth_header, '\0', PATH_MAX);
-        snprintf(auth_header, PATH_MAX -1, "Authorization: token %s", current->api_token);
+        char auth_header[OS_SIZE_8192];
+        snprintf(auth_header, OS_SIZE_8192 -1, "Authorization: token %s", current->api_token);
+
+        os_calloc(2, sizeof(char*), headers);
+        headers[0] = auth_header;
+        headers[1] = NULL;
 
         while (!scan_finished) {
-            response = wurl_http_request(auth_header, url, NULL);
+            response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL);
 
             if (response) {
                 if (response->status_code == 200) {
@@ -304,7 +309,9 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         }
 
         current = next;
+
         os_free(error_msg);
+        os_free(headers);
     }
 }
 
