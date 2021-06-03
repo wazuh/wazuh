@@ -115,7 +115,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     int count_logs = 0;
 
     wfd_t * log_mode_wfd = (lf->macos_log->state == LOG_RUNNING_SHOW) ? 
-                            lf->macos_log->show_wfd : lf->macos_log->stream_wfd;
+                            lf->macos_log->processes.show.wfd : lf->macos_log->processes.stream.wfd;
 
     if (can_read() == 0) {
         return NULL;
@@ -165,7 +165,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
                     merror(MACOS_LOG_SHOW_CHILD_EXITED, log_mode_wfd->pid, status);
                 }
                 w_macos_release_log_show();
-                if (lf->macos_log->stream_wfd != NULL) {
+                if (lf->macos_log->processes.stream.wfd != NULL) {
                     /* This variable is reseted as, by changing the log mode, stream header must be processed as well */
                     /* In case a multi-line context is still stored, it is forced to send it */
                     lf->macos_log->is_header_processed = false;
@@ -258,6 +258,17 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
 
         /* Checks if the first line is the header or an error in the predicate. */
         if (!macos_log_cfg->is_header_processed) {
+            /* Get child PID in case of macOS Sierra */
+            if (w_is_macos_sierra()) {
+                if (macos_log_cfg->processes.show.wfd != NULL && macos_log_cfg->processes.show.child == 0) {
+                    macos_log_cfg->processes.show.child =
+                        w_get_children_pid_by_ppid(macos_log_cfg->processes.show.wfd->pid);
+                }
+                if (macos_log_cfg->processes.stream.wfd != NULL && macos_log_cfg->processes.stream.child == 0) {
+                    macos_log_cfg->processes.stream.child =
+                        w_get_children_pid_by_ppid(macos_log_cfg->processes.stream.wfd->pid);
+                }
+            }
             /* Processes and discards lines up to the first log */
             if (w_macos_is_log_header(macos_log_cfg, buffer)) {
                 // Forces to continue reading

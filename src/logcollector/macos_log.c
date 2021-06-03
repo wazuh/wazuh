@@ -29,7 +29,7 @@ STATIC char * macos_codename = NULL;
  * 
  * @return true if agent is running in macOS Sierra. false otherwise
  */
-STATIC INLINE bool w_is_macos_sierra() {
+bool w_is_macos_sierra() {
 
     if (macos_codename != NULL  && strcmp(macos_codename, MACOS_SIERRA_CODENAME_STR) == 0) {
         return true;
@@ -373,7 +373,7 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
     char * timestamp = w_macos_get_last_log_timestamp();
 
-    lf->macos_log->show_wfd = NULL;
+    lf->macos_log->processes.show.wfd = NULL;
 
     if (timestamp[0] == '\0') {
         os_free(timestamp);
@@ -382,11 +382,11 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
     log_show_array = w_macos_create_log_show_array(timestamp, lf->query, lf->query_level, lf->query_type);
 
-    lf->macos_log->show_wfd = w_macos_log_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
+    lf->macos_log->processes.show.wfd = w_macos_log_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
 
     char * log_show_str = w_strcat_list(log_show_array, ' ');
 
-    if (lf->macos_log->show_wfd != NULL) {
+    if (lf->macos_log->processes.show.wfd != NULL) {
         lf->macos_log->state = LOG_RUNNING_SHOW;
         minfo(LOGCOLLECTOR_MACOS_LOG_SHOW_INFO, log_show_str);
     } else {
@@ -407,15 +407,15 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
 
     char ** log_stream_array = NULL;
 
-    lf->macos_log->stream_wfd = NULL;
+    lf->macos_log->processes.stream.wfd = NULL;
 
     log_stream_array = w_macos_create_log_stream_array(lf->query, lf->query_level, lf->query_type);
 
-    lf->macos_log->stream_wfd = w_macos_log_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+    lf->macos_log->processes.stream.wfd = w_macos_log_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
     char * log_stream_str = w_strcat_list(log_stream_array, ' ');
 
-    if (lf->macos_log->stream_wfd != NULL) {
+    if (lf->macos_log->processes.stream.wfd != NULL) {
         if (lf->macos_log->state == LOG_NOT_RUNNING) {
             lf->macos_log->state = LOG_RUNNING_STREAM;
         }

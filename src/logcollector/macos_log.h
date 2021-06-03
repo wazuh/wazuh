@@ -133,4 +133,10 @@ cJSON * w_macos_get_status_as_JSON(void);
  */
 void w_macos_set_status_from_JSON(cJSON * global_json);
 
+/**
+ * @brief Check if curret macOS codename is Sierra
+ * 
+ * @return true if Sierra. false otherwise
+ */
+bool w_is_macos_sierra();
 #endif /* MACOS_LOG_H */
