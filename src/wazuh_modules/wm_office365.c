@@ -282,10 +282,8 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* office365_auth, ch
             } else {
                 os_strdup(response->body, *error_msg);
             }
-
             cJSON_Delete(response_json);
         }
-
         wurl_free_response(response);
     }
 
@@ -314,7 +312,7 @@ STATIC void wm_office365_scan_failure_action(char *tenant_id, char *error_msg, i
     }
 
     cJSON_AddStringToObject(fail_office365, "integration", WM_OFFICE365_CONTEXT.name);
-    cJSON_AddItemToObject(fail_office365, "office_365", fail_object);
+    cJSON_AddItemToObject(fail_office365, "office365", fail_object);
 
     payload = cJSON_PrintUnformatted(fail_office365);
     mtdebug2(WM_OFFICE365_LOGTAG, "Sending Office365 internal message: '%s'", payload);
