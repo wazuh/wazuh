@@ -364,7 +364,6 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
     expect_function_call(__wrap_os_wait);
-
     expect_function_call(__wrap_start_daemon);
 
     Start_win32_Syscheck();

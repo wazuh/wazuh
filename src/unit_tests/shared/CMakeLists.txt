@@ -149,6 +149,9 @@ endif()
 list(APPEND shared_tests_names "test_keys")
 list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
 
+list(APPEND shared_tests_names "test_atomic")
+list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
