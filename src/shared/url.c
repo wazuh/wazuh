@@ -24,7 +24,7 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
   char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-  if(ptr == NULL) {
+  if (ptr == NULL) {
     return 0;
   }
 
@@ -77,7 +77,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         char const *cert = find_cert_list();
 
         old_mask = umask(0006);
-        fp = fopen(dest,"wb");
+        fp = fopen(dest, "wb");
         umask(old_mask);
         if (!fp) {
             mdebug1(FOPEN_ERROR, dest, errno, strerror(errno));
@@ -103,7 +103,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         }
 
         // Enable SSL check if url is HTTPS
-        if (!strncmp(url,"https",5)) {
+        if (!strncmp(url, "https", 5)) {
             if (NULL != cert) {
                 res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
             }
@@ -146,9 +146,9 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     return 0;
 }
 
-int w_download_status(int status,const char *url,const char *dest){
+int w_download_status(int status,const char *url,const char *dest) {
 
-    switch(status){
+    switch(status) {
         case OS_FILERR:
             mwarn(WURL_WRITE_FILE_ERROR,dest);
             break;
@@ -310,7 +310,7 @@ char * wurl_http_get(const char * url) {
     chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
     chunk.size = 0;    /* no data at this point */
 
-    if (curl){
+    if (curl) {
         char const *cert = find_cert_list();
 
         res = curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -318,7 +318,7 @@ char * wurl_http_get(const char * url) {
         res += curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
 
         // Enable SSL check if url is HTTPS
-        if(!strncmp(url,"https",5)){
+        if (!strncmp(url, "https", 5)) {
             if (NULL != cert) {
                 res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
             }
@@ -336,7 +336,7 @@ char * wurl_http_get(const char * url) {
 
         res = curl_easy_perform(curl);
 
-        if(res){
+        if (res) {
             mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             free(chunk.memory);
@@ -404,7 +404,7 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
-curl_response* wurl_http_get_with_header(const char *header, const char* url) {
+curl_response* wurl_http_request(const char *header, const char* url, const char *payload) {
     curl_response *response;
     struct curl_slist* headers = NULL;
     struct curl_slist* headers_tmp = NULL;
@@ -429,14 +429,18 @@ curl_response* wurl_http_get_with_header(const char *header, const char* url) {
     char const *cert = find_cert_list();
 
     // Enable SSL check if url is HTTPS
-    if(!strncmp(url,"https",5)){
+    if (!strncmp(url, "https", 5)) {
         if (NULL != cert) {
             curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
         }
     }
 #endif
 
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+    if (payload) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+    } else {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+    }
 
     headers = curl_slist_append(headers, "User-Agent: curl/7.58.0");
 
@@ -470,6 +474,11 @@ curl_response* wurl_http_get_with_header(const char *header, const char* url) {
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
+    if (payload) {
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
+    }
+
     res = curl_easy_perform(curl);
 
     if (res != CURLE_OK) {
@@ -490,4 +499,10 @@ curl_response* wurl_http_get_with_header(const char *header, const char* url) {
     curl_easy_cleanup(curl);
 
     return response;
+}
+
+void wurl_free_response(curl_response* response) {
+    os_free(response->header);
+    os_free(response->body);
+    os_free(response);
 }

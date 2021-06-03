@@ -343,7 +343,7 @@ void test_github_execute_scan_current_null(void **state) {
 
     int initial_scan = 1;
 
-    assert_int_equal(wm_github_execute_scan(data->github_config, initial_scan), 0);
+    wm_github_execute_scan(data->github_config, initial_scan);
 }
 
 void test_github_execute_scan_no_initial_scan(void **state) {
@@ -388,9 +388,9 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
-    expect_any(__wrap_wurl_http_get_with_header, header);
-    expect_any(__wrap_wurl_http_get_with_header, url);
-    will_return(__wrap_wurl_http_get_with_header, data->response);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
 
@@ -443,9 +443,9 @@ void test_github_execute_scan_status_code_200(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
-    expect_any(__wrap_wurl_http_get_with_header, header);
-    expect_any(__wrap_wurl_http_get_with_header, url);
-    will_return(__wrap_wurl_http_get_with_header, data->response);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
 
@@ -493,9 +493,9 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    expect_any(__wrap_wurl_http_get_with_header, header);
-    expect_any(__wrap_wurl_http_get_with_header, url);
-    will_return(__wrap_wurl_http_get_with_header, data->response);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");

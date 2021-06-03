@@ -23,17 +23,12 @@ static const char *XML_CLIENT_SECRET        = "client_secret";
 
 static const char *XML_SUBSCRIPTIONS                = "subscriptions";
 static const char *XML_SUBSCRIPTION                 = "subscription";
-static const char *SUBSCRIPTIONS_TYPE_AZURE_AD      = "Audit.AzureActiveDirectory";
-static const char *SUBSCRIPTIONS_TYPE_EXCHANGE      = "Audit.Exchange";
-static const char *SUBSCRIPTIONS_TYPE_SHAREPOINT    = "Audit.SharePoint";
-static const char *SUBSCRIPTIONS_TYPE_GENERAL       = "Audit.General";
-static const char *SUBSCRIPTIONS_TYPE_ALL           = "DLP.All";
 
 time_t time_convert_1d(const char *time_c) {
     char *endptr;
     time_t time_i = strtoul(time_c, &endptr, 0);
 
-    if (time_i <= 0 || time_i >= UINT_MAX) {
+    if (time_i <= 0 || time_i >= INT_MAX) {
         return OS_INVALID;
     }
 
@@ -77,6 +72,7 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
     xml_node **children = NULL;
     wm_office365* office365_config = NULL;
     wm_office365_auth *office365_auth = NULL;
+    wm_office365_subscription *office365_subscription = NULL;
 
     if (!module->data) {
         // Default initialization
@@ -87,12 +83,6 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
         office365_config->enabled =            WM_OFFICE365_DEFAULT_ENABLED;
         office365_config->only_future_events = WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS;
         office365_config->interval =           WM_OFFICE365_DEFAULT_INTERVAL;
-
-        office365_config->subscription.azure        = WM_OFFICE365_DEFAULT_AZURE;
-        office365_config->subscription.exchange     = WM_OFFICE365_DEFAULT_EXCHANGE;
-        office365_config->subscription.sharepoint   = WM_OFFICE365_DEFAULT_SHAREPOINT;
-        office365_config->subscription.general      = WM_OFFICE365_DEFAULT_GENERAL;
-        office365_config->subscription.dlp          = WM_OFFICE365_DEFAULT_DLP;
 
         module->data = office365_config;
     } else {
@@ -213,22 +203,21 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 continue;
             }
             for (j = 0; children[j]; j++) {
+
                 if (!strcmp(children[j]->element, XML_SUBSCRIPTION)) {
-                    if (!strcmp(children[j]->content, SUBSCRIPTIONS_TYPE_AZURE_AD)) {
-                        office365_config->subscription.azure = 1;
-                    } else if (!strcmp(children[j]->content, SUBSCRIPTIONS_TYPE_EXCHANGE)) {
-                        office365_config->subscription.exchange = 1;
-                    } else if (!strcmp(children[j]->content, SUBSCRIPTIONS_TYPE_SHAREPOINT)) {
-                        office365_config->subscription.sharepoint = 1;
-                    } else if (!strcmp(children[j]->content, SUBSCRIPTIONS_TYPE_GENERAL)) {
-                        office365_config->subscription.general = 1;
-                    } else if (!strcmp(children[j]->content, SUBSCRIPTIONS_TYPE_ALL)) {
-                        office365_config->subscription.dlp = 1;
-                    } else {
-                        merror("Invalid content for tag '%s' at module '%s'.", children[j]->element, WM_OFFICE365_CONTEXT.name);
+                    if (strlen(children[j]->content) == 0) {
+                        merror("Empty content for tag '%s' at module '%s'.", XML_SUBSCRIPTION, WM_OFFICE365_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
+                    if (office365_subscription) {
+                        os_calloc(1, sizeof(wm_office365_subscription), office365_subscription->next);
+                        office365_subscription = office365_subscription->next;
+                    } else {
+                        os_calloc(1, sizeof(wm_office365_subscription), office365_subscription);
+                        office365_config->subscription = office365_subscription;
+                    }
+                    os_strdup(children[j]->content, office365_subscription->subscription_name);
                 } else {
                     merror("No such tag '%s' at module '%s'.", children[j]->element, WM_OFFICE365_CONTEXT.name);
                     OS_ClearNode(children);
@@ -247,18 +236,9 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
         merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_OFFICE365_CONTEXT.name);
         return OS_INVALID;
     }
-    if (!office365_config->subscription.azure &&
-        !office365_config->subscription.exchange &&
-        !office365_config->subscription.general &&
-        !office365_config->subscription.sharepoint &&
-        !office365_config->subscription.dlp)
-    {
-        mwarn("At module '%s': No subscription was provided, everything will be monitored by default.", WM_OFFICE365_CONTEXT.name);
-        office365_config->subscription.azure = 1;
-        office365_config->subscription.exchange = 1;
-        office365_config->subscription.sharepoint = 1;
-        office365_config->subscription.general = 1;
-        office365_config->subscription.dlp = 1;
+    if (!office365_subscription) {
+        merror("Empty content for tag '%s' at module '%s'.", XML_SUBSCRIPTIONS, WM_OFFICE365_CONTEXT.name);
+        return OS_INVALID;
     }
 
     return OS_SUCCESS;
