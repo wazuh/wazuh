@@ -49,7 +49,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if filters is None:
             filters = {}
         if min_select_fields is None:
-            min_select_fields = {'lastKeepAlive', 'version', 'id'}
+            min_select_fields = {'id'}
         backend = WazuhDBBackend(query_format='global')
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
@@ -64,13 +64,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         self.query = self.query[:-1] + ' AND id != 0'
 
     def _sort_query(self, field):
-        if field == 'status':
-            # Order by status ASC is the same that order by last_keepalive DESC.
-            return '{} {}'.format('last_keepAlive', self.sort['order'])
-        elif field == 'os.version':
+        if field == 'os.version':
+            # Order by os major version and os minor version
             return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
-        else:
-            return WazuhDBQuery._sort_query(self, field)
+        return WazuhDBQuery._sort_query(self, field)
 
     def _add_search_to_query(self):
         # since id are stored in database as integers, id searches must be turned into integers to work as expected.
@@ -88,7 +85,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
-        selected_fields |= {'id'}
+        selected_fields |= self.min_select_fields
         aux = list()
         for item in self._data:
             aux_dict = dict()
@@ -267,7 +264,8 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
-                                     default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
+                                     default_sort_field=self.default_sort_field,
+                                     min_select_fields=self.min_select_fields, backend=self.backend, **kwargs)
         self.remove_extra_fields = True
 
     def _format_data_into_dictionary(self):
@@ -277,7 +275,12 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
                 if field not in result.keys():
                     result[field] = 'unknown'
 
-        fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
+            # compute 'status' field, format id with zero padding and remove non-user-requested fields.
+            # Also remove, extra fields (internal key and registration IP)
+            selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
+            selected_fields |= self.min_select_fields
+            self._data = [{key: format_fields(key, value)
+                           for key, value in item.items() if key in selected_fields} for item in self._data]
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)

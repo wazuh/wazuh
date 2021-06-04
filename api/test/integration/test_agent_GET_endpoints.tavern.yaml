@@ -252,9 +252,14 @@ stages:
         select: 'os.platform'
         limit: 2
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'os.platform'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -276,9 +281,14 @@ stages:
         limit: 2
         offset: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'dateAdd,mergedSum'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -973,9 +983,14 @@ stages:
         select: 'os.platform'
         agents_list: '000'
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'os.platform'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -994,9 +1009,14 @@ stages:
         select: 'dateAdd,status'
         agents_list: '000'
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'dateAdd,status'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -2530,9 +2550,14 @@ stages:
       params:
         select: 'os.platform'
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'os.platform'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '003'
@@ -2560,9 +2585,14 @@ stages:
         limit: 1
         offset: 2
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'dateAdd,mergedSum'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '007'
@@ -2721,9 +2751,14 @@ stages:
       params:
         select: "{field}"
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field}"
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '003'
@@ -3283,9 +3318,14 @@ stages:
         select: name
         name: wazuh-agent1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *get_agents_by_name_response
 
@@ -3297,9 +3337,14 @@ stages:
         select: name,id,status
         name: wazuh-agent1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name,id,status'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -3560,6 +3605,11 @@ stages:
       params:
         select: "{field}"
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field}"
       status_code: 200
       json:
         <<: *no_group_response
