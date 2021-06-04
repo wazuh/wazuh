@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef SYM_LOAD_WRAPPERS_H
 #define SYM_LOAD_WRAPPERS_H
 #include "sym_load.h"

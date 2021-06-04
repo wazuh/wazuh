@@ -12,7 +12,6 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include <sys/mman.h>
 #include <errno.h>
 #include "../../common.h"
 
@@ -21,9 +20,6 @@ void*  __wrap_so_get_module_handle_on_path(const char *path, const char *so){
         check_expected(path);
         check_expected(so);
         void *ret = mock_type(void*);
-        if (ret == MAP_FAILED) {
-            errno = ESRCH;
-        }
 
         return ret;
         
@@ -35,9 +31,6 @@ void*  __wrap_so_get_module_handle(const char *so){
     if (test_mode) {
         check_expected(so);
         void *ret = mock_type(void*);
-        if (ret == MAP_FAILED) {
-            errno = ESRCH;
-        }
 
         return ret;
         
@@ -50,9 +43,6 @@ void*  __wrap_so_get_function_sym(void *handle, const char *function_name){
         check_expected(handle);
         check_expected(function_name);
         void *ret = mock_type(void*);
-        if (ret == MAP_FAILED) {
-            errno = ESRCH;
-        }
 
         return ret;
         
