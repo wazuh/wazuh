@@ -25,7 +25,8 @@ STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
 STATIC void wm_office365_subscription_destroy(wm_office365_subscription* office365_subscription);
 STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan);
 STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error_msg);
-STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, char* client_id, char* token, char** error_msg, int start);
+STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* client_id, const char* token, char** error_msg, int start);
+STATIC cJSON* wm_office365_get_content_blob(const char* url, const char* token, char** next_page, char** error_msg);
 STATIC void wm_office365_scan_failure_action(char *tenant_id, char *error_msg, int queue_fd);
 
 cJSON *wm_office365_dump(const wm_office365* office365_config);
@@ -170,14 +171,14 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
 }
 
 STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan) {
-    //char url[OS_SIZE_8192];
-    //char auth_header[OS_SIZE_8192];
+    int scan_finished = 0;
+    char url[OS_SIZE_8192];
     char tenant_state_name[OS_SIZE_1024];
     char *access_token = NULL;
     char *error_msg = NULL;
-    //time_t last_scan_time;
+    char *next_page = NULL;
+    time_t last_scan_time;
     time_t new_scan_time;
-    //curl_response *response;
     wm_office365_state tenant_state_struc;
     wm_office365_auth* next_auth = NULL;
     wm_office365_auth* current_auth = office365_config->auth;
@@ -225,7 +226,8 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
 
             new_scan_time = time(0);
 
-            if (initial_scan && (!tenant_state_struc.last_log_time || office365_config->only_future_events)) {
+            if ((initial_scan && (!tenant_state_struc.last_log_time || office365_config->only_future_events)) ||
+                (!initial_scan && !tenant_state_struc.last_log_time)) {
                 tenant_state_struc.last_log_time = new_scan_time;
                 if (wm_state_io(tenant_state_name, WM_IO_WRITE, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
                     mterror(WM_OFFICE365_LOGTAG, "Couldn't save running state.");
@@ -234,14 +236,56 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                 continue;
             }
 
-            // TODO: Get logs
+            last_scan_time = (time_t)tenant_state_struc.last_log_time;
+
+            char last_scan_time_str[80];
+            memset(last_scan_time_str, '\0', 80);
+            struct tm tm_last_scan = { .tm_sec = 0 };
+            localtime_r(&last_scan_time, &tm_last_scan);
+            strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_last_scan);
+
+            char new_scan_time_str[80];
+            memset(new_scan_time_str, '\0', 80);
+            struct tm tm_new_scan = { .tm_sec = 0 };
+            localtime_r(&new_scan_time, &tm_new_scan);
+            strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_new_scan);
+
+            // TODO: Check time < 24h
+
+            memset(url, '\0', OS_SIZE_8192);
+            snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_CONTENT_BLOB_URL, current_auth->client_id, current_subscription->subscription_name,
+                last_scan_time_str, new_scan_time_str);
+
+            scan_finished = 0;
+
+            while (!scan_finished) {
+                cJSON *blob_array = NULL;
+
+                if (blob_array = wm_office365_get_content_blob(url, access_token, &error_msg, &next_page), blob_array) {
+
+                    // TODO: Get logs
+
+                    if (next_page == NULL) {
+                        scan_finished = 1;
+                    } else {
+                        memset(url, '\0', OS_SIZE_8192);
+                        strncpy(url, next_page, strlen(next_page));
+                        os_free(next_page);
+                    }
+
+                    cJSON_Delete(blob_array);
+                } else {
+                    wm_office365_scan_failure_action(current_auth->tenant_id, error_msg, office365_config->queue_fd);
+                    os_free(error_msg);
+                    scan_finished = 1;
+                }
+            }
 
             current_subscription = next_subscription;
         }
 
         current_auth = next_auth;
         os_free(access_token);
-        os_free(error_msg);
     }
 }
 
@@ -308,7 +352,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error
     return access_token;
 }
 
-STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, char* client_id, char* token, char** error_msg, int start) {
+STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* client_id, const char* token, char** error_msg, int start) {
     char **headers = NULL;
     char url[OS_SIZE_8192];
     curl_response *response;
@@ -357,6 +401,49 @@ STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscript
     os_free(headers);
 
     return ret_value;
+}
+
+STATIC cJSON* wm_office365_get_content_blob(const char* url, const char* token, char** next_page, char** error_msg) {
+    char **headers = NULL;
+    curl_response *response;
+    cJSON *blob_array = NULL;
+
+    mtdebug1(WM_OFFICE365_LOGTAG, "Office 365 API content blob URL: '%s'", url);
+
+    char auth_header1[OS_SIZE_8192];
+    snprintf(auth_header1, OS_SIZE_8192 -1, "Content-Type: application/json");
+
+    char auth_header2[OS_SIZE_8192];
+    snprintf(auth_header2, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    os_calloc(3, sizeof(char*), headers);
+    headers[0] = auth_header1;
+    headers[1] = auth_header2;
+    headers[2] = NULL;
+
+    response = wurl_http_request(WURL_GET_METHOD, headers, url, "");
+
+    if (response) {
+        cJSON *response_json = NULL;
+
+        if (response_json = cJSON_Parse(response->body), response_json) {
+            if ((response->status_code == 200) && (response_json->type == cJSON_Array)) {
+                blob_array = cJSON_Duplicate(response_json, true);
+
+                if (cJSON_GetArraySize(blob_array) > 0) {
+                    *next_page = wm_read_http_header_element(response->header, WM_OFFICE365_NEXT_PAGE_REGEX);
+                }
+            } else {
+                os_strdup(response->body, *error_msg);
+            }
+            cJSON_Delete(response_json);
+        }
+        wurl_free_response(response);
+    }
+
+    os_free(headers);
+
+    return blob_array;
 }
 
 STATIC void wm_office365_scan_failure_action(char *tenant_id, char *error_msg, int queue_fd) {

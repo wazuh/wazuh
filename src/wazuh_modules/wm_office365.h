@@ -20,6 +20,7 @@
 
 #define WM_OFFICE365_MSG_DELAY 1000000 / wm_max_eps
 #define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
+#define WM_OFFICE365_NEXT_PAGE_REGEX "NextPageUrl:\\s*(\\S+)"
 
 #define WM_OFFICE365_API_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
 #define WM_OFFICE365_API_SUBSCRIPTION_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/%s?contentType=%s"
