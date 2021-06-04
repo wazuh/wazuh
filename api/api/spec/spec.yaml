@@ -3945,7 +3945,17 @@ components:
     limit:
       in: query
       name: limit
-      description: "Maximum number of elements to return"
+      description: "Maximum number of elements to return. Although up to 100.000 can be specified, it is recommended not to exceed 500 elements. Responses may be slower the more this number is exceeded. "
+      schema:
+        type: integer
+        format: int32
+        default: 500
+        minimum: 1
+        maximum: 100000
+    log_lines:
+      in: query
+      name: limit
+      description: "Maximum number of lines to return."
       schema:
         type: integer
         format: int32
@@ -8893,7 +8903,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
         - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/log_lines'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/tag'
@@ -10314,7 +10324,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/log_lines'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/tag'

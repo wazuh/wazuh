@@ -30,7 +30,7 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-threadpool = ThreadPoolExecutor()
+threadpool = ThreadPoolExecutor(max_workers=1)
 
 
 class DistributedAPI:
@@ -410,7 +410,7 @@ class DistributedAPI:
                     kcopy = deepcopy(self.to_dict())
                     if agent_list:
                         kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
-                    result = json.loads(await client.execute(b'dapi_forward',
+                    result = json.loads(await client.execute(b'dapi_fwd',
                                                              "{} {}".format(node_name,
                                                                             json.dumps(kcopy,
                                                                                        cls=c_common.WazuhJSONEncoder)
@@ -697,8 +697,8 @@ class SendSyncRequestQueue(WazuhRequestQueue):
 
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id.decode())
-                result = await node.send_request(b'sendsync_err', name_2.encode() + task_id)
+                result = await node.send_request(b'sendsyn_err', name_2.encode() + task_id)
             else:
-                result = await node.send_request(b'sendsync_res', name_2.encode() + task_id)
+                result = await node.send_request(b'sendsyn_res', name_2.encode() + task_id)
             if isinstance(result, WazuhException):
                 self.logger.error(result.message)

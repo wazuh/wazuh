@@ -114,6 +114,7 @@ const wm_context WM_SCA_CONTEXT = {
     (wm_routine)wm_sca_main,
     (wm_routine)(void *)wm_sca_destroy,
     (cJSON * (*)(const void *))wm_sca_dump,
+    NULL,
     NULL
 };
 

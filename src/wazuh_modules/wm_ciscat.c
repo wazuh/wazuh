@@ -46,6 +46,7 @@ const wm_context WM_CISCAT_CONTEXT = {
     (wm_routine)wm_ciscat_main,
     (wm_routine)(void *)wm_ciscat_destroy,
     (cJSON * (*)(const void *))wm_ciscat_dump,
+    NULL,
     NULL
 };
 
@@ -115,6 +116,8 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     // Define path where CIS-CAT is installed
 
     if (ciscat->ciscat_path) {
+        char pwd[PATH_MAX];
+
         switch (wm_relative_path(ciscat->ciscat_path)) {
             case 0:
                 // Full path
@@ -127,7 +130,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
                 }
             #else
-                snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
+                if (getcwd(pwd, sizeof(pwd)) == NULL) {
+                    mterror(WM_CISCAT_LOGTAG, "Could not get the current working directory: %s (%d)", strerror(errno), errno);
+                    ciscat->flags.error = 1;
+                } else {
+                    os_snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", pwd, ciscat->ciscat_path);
+                }
             #endif
                 break;
             default:
@@ -420,6 +428,12 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     char msg[OS_MAXSTR];
     char *ciscat_script = "./CIS-CAT.sh";
     wm_scan_data *scan_info = NULL;
+    char pwd[PATH_MAX];
+
+    if (getcwd(pwd, sizeof(pwd)) == NULL) {
+        mterror(WM_CISCAT_LOGTAG, "Could not get the current working directory: %s (%d)", strerror(errno), errno);
+        pthread_exit(NULL);
+    }
 
     // Create arguments
 
@@ -453,7 +467,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     // Specify location for reports
 
     wm_strcat(&command, "-r", ' ');
-    wm_strcat(&command, WM_CISCAT_REPORTS, ' ');
+    char reports_path[PATH_MAX];
+    os_snprintf(reports_path, sizeof(reports_path), "%s/%s", pwd, WM_CISCAT_REPORTS);
+    wm_strcat(&command, reports_path, ' ');
 
     // Set reports file name
 
