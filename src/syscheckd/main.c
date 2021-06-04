@@ -248,6 +248,20 @@ int main(int argc, char **argv)
 #endif
             }
         }
+
+        OSList_foreach(node_it, syscheck.wildcards) {
+            dir_it = node_it->data;
+            if (dir_it->options & REALTIME_ACTIVE) {
+#if defined (INOTIFY_ENABLED) || defined (WIN32)
+                minfo(FIM_REALTIME_MONITORING_DIRECTORY, dir_it->path);
+                start_realtime = 1;
+#else
+                mwarn(FIM_WARN_REALTIME_DISABLED, dir_it->path);
+                dir_it->options &= ~REALTIME_ACTIVE;
+                dir_it->options |= SCHEDULED_ACTIVE;
+#endif
+            }
+        }
     }
 
     fim_initialize();

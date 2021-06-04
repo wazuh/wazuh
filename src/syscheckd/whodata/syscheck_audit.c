@@ -333,7 +333,7 @@ void *audit_main(audit_data_t *audit_data) {
     // Clean regexes used for parsing events
     clean_regex();
     // Change Audit monitored folders to Inotify.
-    w_rwlock_rdlock(&syscheck.directories_lock);
+    w_rwlock_wrlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
@@ -352,11 +352,30 @@ void *audit_main(audit_data_t *audit_data) {
         if (syscheck.realtime == NULL) {
             realtime_start();
         }
-        realtime_adddir(path, dir_it);
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        realtime_adddir(path, dir_it);
         free(path);
     }
+
+    OSList_foreach(node_it, syscheck.wildcards) {
+        dir_it = node_it->data;
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
+            continue;
+        }
+
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        if (syscheck.realtime == NULL) {
+            realtime_start();
+        }
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
+        dir_it->options &= ~ WHODATA_ACTIVE;
+        dir_it->options |= REALTIME_ACTIVE;
+    }
+
     w_rwlock_unlock(&syscheck.directories_lock);
+
+
 
     // Clean Audit added rules.
     if (audit_data->mode == AUDIT_ENABLED) {

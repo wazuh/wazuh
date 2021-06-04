@@ -172,9 +172,7 @@ time_t fim_scan() {
         fim_checker(path, &evt_data, dir_it);
 
 #ifndef WIN32
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
         realtime_adddir(path, dir_it);
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
 #elif defined WIN_WHODATA
         if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
             realtime_adddir(path, dir_it);
@@ -379,9 +377,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
 
 #ifdef INOTIFY_ENABLED
         if (FIM_MODE(configuration->options) == FIM_REALTIME) {
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
             fim_add_inotify_watch(path, configuration);
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
         }
 #endif
         break;

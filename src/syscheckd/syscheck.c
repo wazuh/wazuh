@@ -257,12 +257,15 @@ int Start_win32_Syscheck() {
 
         /* Start up message */
         minfo(STARTUP_MSG, getpid());
-        foreach_array(dir_it, syscheck.directories) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
                 realtime_start();
                 break;
             }
         }
+        w_rwlock_unlock(&syscheck.directories_lock);
     }
 
     /* Some sync time */
