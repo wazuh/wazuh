@@ -172,6 +172,7 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
 
 STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan) {
     int scan_finished = 0;
+    int fail = 0;
     char url[OS_SIZE_8192];
     char tenant_state_name[OS_SIZE_1024];
     char *access_token = NULL;
@@ -179,6 +180,8 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
     char *next_page = NULL;
     time_t last_scan_time;
     time_t new_scan_time;
+    time_t start_time;
+    time_t end_time;
     wm_office365_state tenant_state_struc;
     wm_office365_auth* next_auth = NULL;
     wm_office365_auth* current_auth = office365_config->auth;
@@ -238,53 +241,75 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
 
             last_scan_time = (time_t)tenant_state_struc.last_log_time;
 
-            char last_scan_time_str[80];
-            memset(last_scan_time_str, '\0', 80);
-            struct tm tm_last_scan = { .tm_sec = 0 };
-            localtime_r(&last_scan_time, &tm_last_scan);
-            strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_last_scan);
+            start_time = last_scan_time;
+            end_time = new_scan_time;
 
-            char new_scan_time_str[80];
-            memset(new_scan_time_str, '\0', 80);
-            struct tm tm_new_scan = { .tm_sec = 0 };
-            localtime_r(&new_scan_time, &tm_new_scan);
-            strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_new_scan);
+            while ((end_time - start_time) > 0) {
+                char start_time_str[80];
+                memset(start_time_str, '\0', 80);
+                struct tm tm_start = { .tm_sec = 0 };
+                localtime_r(&start_time, &tm_start);
+                strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_start);
 
-            // TODO: Check time < 24h
+                if ((end_time - start_time) > DAY_SEC) {
+                    end_time = start_time + DAY_SEC;
+                }
 
-            memset(url, '\0', OS_SIZE_8192);
-            snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_CONTENT_BLOB_URL, current_auth->client_id, current_subscription->subscription_name,
-                last_scan_time_str, new_scan_time_str);
+                char end_time_str[80];
+                memset(end_time_str, '\0', 80);
+                struct tm tm_end = { .tm_sec = 0 };
+                localtime_r(&end_time, &tm_end);
+                strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_end);
 
-            scan_finished = 0;
+                memset(url, '\0', OS_SIZE_8192);
+                snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_CONTENT_BLOB_URL, current_auth->client_id, current_subscription->subscription_name,
+                    start_time_str, end_time_str);
 
-            while (!scan_finished) {
-                cJSON *blob_array = NULL;
+                scan_finished = 0;
+                fail = 0;
 
-                if (blob_array = wm_office365_get_content_blob(url, access_token, &error_msg, &next_page), blob_array) {
+                while (!scan_finished) {
+                    cJSON *blob_array = NULL;
 
-                    // TODO: Get logs
+                    if (blob_array = wm_office365_get_content_blob(url, access_token, &next_page, &error_msg), blob_array) {
 
-                    if (next_page == NULL) {
-                        scan_finished = 1;
+                        // TODO: Get logs
+
+                        if (next_page == NULL) {
+                            scan_finished = 1;
+                        } else {
+                            memset(url, '\0', OS_SIZE_8192);
+                            strncpy(url, next_page, strlen(next_page));
+                            os_free(next_page);
+                        }
+
+                        cJSON_Delete(blob_array);
                     } else {
-                        memset(url, '\0', OS_SIZE_8192);
-                        strncpy(url, next_page, strlen(next_page));
-                        os_free(next_page);
+                        scan_finished = 1;
+                        fail = 1;
                     }
+                }
 
-                    cJSON_Delete(blob_array);
-                } else {
+                if (fail) {
                     wm_office365_scan_failure_action(current_auth->tenant_id, error_msg, office365_config->queue_fd);
                     os_free(error_msg);
-                    scan_finished = 1;
+                    break;
+                } else {
+                    tenant_state_struc.last_log_time = end_time;
+                    if (wm_state_io(tenant_state_name, WM_IO_WRITE, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
+                        mterror(WM_OFFICE365_LOGTAG, "Couldn't save running state.");
+                    }
                 }
+
+                start_time = end_time;
+                end_time = new_scan_time;
             }
 
             current_subscription = next_subscription;
         }
 
         current_auth = next_auth;
+
         os_free(access_token);
     }
 }
@@ -427,12 +452,18 @@ STATIC cJSON* wm_office365_get_content_blob(const char* url, const char* token, 
         cJSON *response_json = NULL;
 
         if (response_json = cJSON_Parse(response->body), response_json) {
+            cJSON *code_json = cJSON_GetObjectItem(cJSON_GetObjectItem(response_json, "error"), "code");
+
             if ((response->status_code == 200) && (response_json->type == cJSON_Array)) {
                 blob_array = cJSON_Duplicate(response_json, true);
 
                 if (cJSON_GetArraySize(blob_array) > 0) {
                     *next_page = wm_read_http_header_element(response->header, WM_OFFICE365_NEXT_PAGE_REGEX);
                 }
+            } else if ((response->status_code == 400) && code_json && (code_json->type == cJSON_String) && !strncmp(code_json->valuestring, "AF20055", 7)) {
+                // Error AF20055: Start time and end time must both be specified (or both omitted) and must be less than or equal to 24 hours apart,
+                // with the start time prior to end time and start time no more than 7 days in the past.
+                blob_array = cJSON_CreateArray();
             } else {
                 os_strdup(response->body, *error_msg);
             }
