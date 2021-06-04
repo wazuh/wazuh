@@ -53,6 +53,13 @@ static const char *FIM_EVENT_MODE[] = {
  */
 void update_wildcards_config();
 
+/**
+ * @brief Process a path coming from a wildcard that has been deleted
+ *
+ * @param configuration Configuration associated with the file
+ */
+void fim_process_wildcard_removed(directory_t *configuration);
+
 static cJSON *
 _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data);
 
@@ -908,6 +915,17 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 void fim_process_wildcard_removed(directory_t *configuration) {
     fim_tmp_file *files = NULL;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_entry *entry = fim_db_get_path(syscheck.database, configuration->path);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (entry != NULL) {
+        fim_generate_delete_event(syscheck.database, entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+        free_entry(entry);
+        return;
+    }
 
     // Since the file doesn't exist, research if it's directory and have files in DB.
     char pattern[PATH_MAX] = {0};
@@ -920,7 +938,6 @@ void fim_process_wildcard_removed(directory_t *configuration) {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (files && files->elements) {
-        event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
         if (fim_db_remove_wildcard_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store,
                                          &evt_data, configuration) != FIMDB_OK) {
             merror(FIM_DB_ERROR_RM_PATTERN, pattern);

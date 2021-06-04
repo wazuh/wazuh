@@ -253,8 +253,8 @@ int main(int argc, char **argv)
             dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
-                minfo(FIM_REALTIME_MONITORING_DIRECTORY, dir_it->path);
                 start_realtime = 1;
+                break;
 #else
                 mwarn(FIM_WARN_REALTIME_DISABLED, dir_it->path);
                 dir_it->options &= ~REALTIME_ACTIVE;

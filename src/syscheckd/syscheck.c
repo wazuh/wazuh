@@ -257,7 +257,6 @@ int Start_win32_Syscheck() {
 
         /* Start up message */
         minfo(STARTUP_MSG, getpid());
-        w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
@@ -265,7 +264,17 @@ int Start_win32_Syscheck() {
                 break;
             }
         }
-        w_rwlock_unlock(&syscheck.directories_lock);
+
+        if (syscheck.realtime == NULL) {
+            // Check if a wildcard might require realtime later
+            OSList_foreach(node_it, syscheck.wildcards) {
+                dir_it = node_it->data;
+                if (dir_it->options & REALTIME_ACTIVE) {
+                    realtime_start();
+                    break;
+                }
+            }
+        }
     }
 
     /* Some sync time */

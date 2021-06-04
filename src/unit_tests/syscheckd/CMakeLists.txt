@@ -127,7 +127,8 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,fim_db_append_paths_from_inode -Wl,--wrap,pthread_rwlock_wrlock \
                           -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
                           -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                          -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch")
+                          -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
+                          -Wl,--wrap,fim_db_remove_wildcard_entry")
 
 target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")

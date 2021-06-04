@@ -5400,7 +5400,12 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
         fail();
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = NULL;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5408,6 +5413,8 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6319): No configuration found for (file):'c:\\a\\path'");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6243): The 'c:\\a\\path' directory has been discarded because it is not being monitored in whodata mode.");
 
@@ -5434,18 +5441,16 @@ void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
     unsigned long result;
     whodata_evt *w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-
-    w_evt->config_node = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0));
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5454,17 +5459,17 @@ void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
     will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, NULL);
 
     // Inside whodata_hash_add
     {
         expect_value(__wrap_OSHash_Add_ex, self, syscheck.wdata.directories);
-        expect_string(__wrap_OSHash_Add_ex, key, "c:\\a\\path");
+        expect_string(__wrap_OSHash_Add_ex, key, "c:\\windows");
         will_return(__wrap_OSHash_Add_ex, 0);
 
         expect_string(__wrap__merror, formatted_msg,
-            "(6631): The event could not be added to the 'directories' hash table. Target: 'c:\\a\\path'.");
+            "(6631): The event could not be added to the 'directories' hash table. Target: 'c:\\windows'.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -5490,17 +5495,16 @@ void test_whodata_callback_4663_new_files_added(void **state) {
     unsigned long result;
     whodata_evt *w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0));
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5509,18 +5513,18 @@ void test_whodata_callback_4663_new_files_added(void **state) {
     will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, NULL);
 
     // Inside whodata_hash_add
     {
         expect_value(__wrap_OSHash_Add_ex, self, syscheck.wdata.directories);
-        expect_string(__wrap_OSHash_Add_ex, key, "c:\\a\\path");
+        expect_string(__wrap_OSHash_Add_ex, key, "c:\\windows");
         will_return(__wrap_OSHash_Add_ex, 2);
     }
 
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6244): New files have been detected in the 'c:\\a\\path' directory and will be scanned.");
+        "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5545,7 +5549,7 @@ void test_whodata_callback_4663_wrong_time_type(void **state) {
     unsigned long result;
     whodata_evt *w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5582,17 +5586,17 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     whodata_evt *w_evt = *state;
     whodata_directory w_dir;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0));
+
     memset(&w_dir, 0, sizeof(whodata_directory));
     w_dir.QuadPart = 133022717170000000;
 
@@ -5603,10 +5607,10 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\a\\path' directory has been scanned. It does not need to be scanned again.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\windows' directory has been scanned. It does not need to be scanned again.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5632,17 +5636,17 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
     whodata_evt *w_evt = *state;
     whodata_directory w_dir;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0));
+
     memset(&w_dir, 0, sizeof(whodata_directory));
 
     successful_whodata_event_render(event, raw_data);
@@ -5652,10 +5656,10 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
     will_return(__wrap_OSHash_Get, w_evt);
 
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6244): New files have been detected in the 'c:\\a\\path' directory and will be scanned.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);

@@ -41,6 +41,7 @@
 extern fim_state_db _db_state;
 
 void update_wildcards_config();
+void fim_process_wildcard_removed(directory_t *configuration);
 
 /* auxiliary structs */
 typedef struct __fim_data_s {
@@ -63,6 +64,8 @@ const struct stat DEFAULT_STATBUF = { .st_mode = S_IFREG | 00444,
                                       .st_ino = 1234,
                                       .st_dev = 2345,
                                       .st_mtime = 3456 };
+
+static OSList *removed_entries;
 
 /* redefinitons/wrapping */
 
@@ -195,6 +198,22 @@ static int setup_group(void **state) {
 
     test_mode = 1;
 
+    removed_entries = OSList_Create();
+    if (removed_entries == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return -1;
+    }
+    OSList_SetFreeDataPointer(removed_entries, (void (*)(void *))free_directory);
+
+#ifdef TEST_WINAGENT
+    char *path = "C:\\a\\random\\path";
+#else
+    char *path = "/a/random/path";
+#endif
+    directory_t *directory0 = fim_create_directory(path, WHODATA_ACTIVE, NULL, 512, NULL, 1024, 1);
+
+    OSList_InsertData(removed_entries, NULL, directory0);
+
     return 0;
 }
 
@@ -209,6 +228,7 @@ static int setup_wildcards(void **state) {
     if (syscheck.wildcards == NULL) {
         return -1;
     }
+    OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap_realpath, path, "/testdir?");
@@ -4583,6 +4603,105 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
 }
 
+static void test_fim_process_wildcard_removed_no_data(void **state) {
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
+
+    char buff[OS_SIZE_128] = {0};
+    snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
+
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_fim_db_get_path_from_pattern(syscheck.database, buff, NULL, FIM_DB_DISK, FIMDB_ERR);
+
+
+    fim_process_wildcard_removed(directory0);
+}
+
+static void test_fim_process_wildcard_removed_failure(void **state) {
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
+
+    char buff[OS_SIZE_128] = {0};
+    char error_msg[OS_SIZE_256] = {0};
+
+    snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
+    snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_fim_db_get_path_from_pattern(syscheck.database, buff, file, FIM_DB_DISK, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_remove_wildcard_entry, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_remove_wildcard_entry, file, file);
+    expect_value(__wrap_fim_db_remove_wildcard_entry, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_remove_wildcard_entry, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    fim_process_wildcard_removed(directory0);
+
+    free(file);
+}
+
+static void test_fim_process_wildcard_removed_data_exists(void **state) {
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    fim_data_t *fim_data = *state;
+    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
+
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
+
+    fim_process_wildcard_removed(directory0);
+}
+
 void test_fim_diff_folder_size(void **state) {
     (void) state;
     char *diff_local;
@@ -5587,7 +5706,16 @@ static void test_update_wildcards_config_remove_config() {
 #endif
 
     // Remove configuration loop
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
+    will_return(__wrap_fim_db_get_path, NULL);
+
     expect_fim_db_get_path_from_pattern(syscheck.database, pattern1, NULL, FIM_DB_DISK, FIMDB_ERR);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
+    will_return(__wrap_fim_db_get_path, NULL);
+
     expect_fim_db_get_path_from_pattern(syscheck.database, pattern2, NULL, FIM_DB_DISK, FIMDB_ERR);
 
     update_wildcards_config();
@@ -5604,7 +5732,6 @@ static void test_update_wildcards_config_list_null() {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     if (syscheck.wildcards) {
-        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
         OSList_Destroy(syscheck.wildcards);
         syscheck.wildcards = NULL;
     }
@@ -5760,6 +5887,11 @@ int main(void) {
         cmocka_unit_test(test_fim_process_missing_entry_no_data),
         cmocka_unit_test(test_fim_process_missing_entry_failure),
         cmocka_unit_test_setup(test_fim_process_missing_entry_data_exists, setup_fim_entry),
+
+        /* fim_process_wildcard_removed */
+        cmocka_unit_test(test_fim_process_wildcard_removed_no_data),
+        cmocka_unit_test(test_fim_process_wildcard_removed_failure),
+        cmocka_unit_test_setup(test_fim_process_wildcard_removed_data_exists, setup_fim_entry),
 
         /* fim_diff_folder_size */
         cmocka_unit_test(test_fim_diff_folder_size),
