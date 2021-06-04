@@ -47,11 +47,19 @@ char* __wrap_wurl_http_get(const char * url) {
     return mock_type(char *);
 }
 
-curl_response* __wrap_wurl_http_request(const char *header, const char* url, const char *payload) {
-    check_expected(header);
+curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload) {
+    check_expected(method);
+
+    char** ptr = headers;
+    for (char* header = *ptr; header; header=*++ptr) {
+        check_expected(header);
+    }
+
     check_expected(url);
+
     if (payload) {
         check_expected(payload);
     }
+
     return mock_type(curl_response*);
 }
