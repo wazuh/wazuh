@@ -264,8 +264,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
-                                     default_sort_field=self.default_sort_field,
-                                     min_select_fields=self.min_select_fields, backend=self.backend, **kwargs)
+                                     default_sort_field=self.default_sort_field, backend=self.backend, **kwargs)
         self.remove_extra_fields = True
 
     def _format_data_into_dictionary(self):
