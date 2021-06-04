@@ -14,7 +14,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror")
+    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror,--wrap,mdebug2")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
@@ -56,7 +56,7 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
                                 -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                                 -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
                                 -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                                -Wl,--wrap=fgets -Wl,--wrap,getpid")
+                                -Wl,--wrap=fgets -Wl,--wrap,getpid -Wl,--wrap,OS_CloseSocket")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()
@@ -148,6 +148,9 @@ endif()
 
 list(APPEND shared_tests_names "test_keys")
 list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
+
+list(APPEND shared_tests_names "test_atomic")
+list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

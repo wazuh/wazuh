@@ -621,8 +621,8 @@ components:
             $ref: '#/components/schemas/RequestError'
           example:
             title: "Wazuh Error"
-            detail: "Maximum number of request per minute reached"
-            remediation: "This limit can be changed in security.yaml file. More information here:
+            detail: "Maximum number of requests per minute reached"
+            remediation: "This limit can be changed in api.yaml file. More information here:
             https://documentation.wazuh.com/5.0/user-manual/api/security/configuration.html"
             code: 6001
 
@@ -1501,11 +1501,11 @@ components:
       description: "Agent ID"
       format: numbers
 
-    AgentID_DELETE:
+    AgentIDListAll:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: numbers_delete
+      format: numbers_or_all
 
     NodeID:
       type: string
@@ -1517,11 +1517,11 @@ components:
       description: "Group name"
       format: group_names
 
-    GroupID_DELETE:
+    GroupIDListAll:
       type: string
       minLength: 1
       description: "Group name|all"
-      format: group_names_delete
+      format: group_names_or_all
 
     AgentConfiguration:
       type: object
@@ -1748,14 +1748,14 @@ components:
     Role_id_DELETE:
       type: string
       description: "Role ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     Security_rule_id:
       type: string
       format: numbers
       description: "Security rule ID"
     Security_rule_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "Security rule ID|all"
     Task_id:
       type: string
@@ -1768,14 +1768,14 @@ components:
     Policy_id_DELETE:
       type: string
       description: "Policy ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     User_id:
       type: string
       format: numbers
       description: "User ID"
     User_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "User ID|all"
     PoliciesRequest:
       type: object
@@ -3543,7 +3543,7 @@ components:
     agent_name:
       in: query
       name: agent_name
-      description: "Agent name"
+      description: "Agent name. The special characters allowed are: '-','_','.' "
       required: true
       schema:
         type: string
@@ -3945,7 +3945,17 @@ components:
     limit:
       in: query
       name: limit
-      description: "Maximum number of elements to return"
+      description: "Maximum number of elements to return. Although up to 100.000 can be specified, it is recommended not to exceed 500 elements. Responses may be slower the more this number is exceeded. "
+      schema:
+        type: integer
+        format: int32
+        default: 500
+        minimum: 1
+        maximum: 100000
+    log_lines:
+      in: query
+      name: limit
+      description: "Maximum number of lines to return."
       schema:
         type: integer
         format: int32
@@ -3978,7 +3988,7 @@ components:
         items:
           $ref: '#/components/schemas/AgentID'
         maxItems: 100
-    agents_list_delete:
+    agents_list_all:
       in: query
       name: agents_list
       description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
@@ -3986,7 +3996,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentID_DELETE'
+          $ref: '#/components/schemas/AgentIDListAll'
     groups_list:
       in: query
       name: groups_list
@@ -3995,7 +4005,7 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
-    groups_list_delete:
+    groups_list_all:
       in: query
       name: groups_list
       description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
@@ -4003,7 +4013,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/GroupID_DELETE'
+          $ref: '#/components/schemas/GroupIDListAll'
     node:
       in: query
       name: node
@@ -4237,13 +4247,6 @@ components:
       required: False
       schema:
         type: boolean
-    raw_conf:
-      in: query
-      name: raw
-      description: "Format response in plain text"
-      required: False
-      schema:
-        type: boolean
     registry:
       in: query
       name: registry
@@ -4395,7 +4398,7 @@ components:
       in: query
       name: search
       description: "Look for elements containing the specified string. To obtain a complementary search, use '-' at the
-      beggining"
+      beginning"
       schema:
         type: string
         format: search
@@ -4515,7 +4518,7 @@ components:
     typesys:
       in: query
       name: type
-      description: "Type of file"
+      description: "Type of interface"
       schema:
         type: string
     allow_run_as:
@@ -5213,7 +5216,7 @@ components:
     package_version:
       in: query
       name: version
-      description: "Filter by version name"
+      description: "Filter by package version"
       schema:
         type: string
     older_than:
@@ -5244,7 +5247,7 @@ components:
     force_single_group:
       in: query
       name: force_single_group
-      description: "Whether to append the new group to current agent's multigroup or replace it"
+      description: "Removes the agent from all groups to which it belongs and assigns it to the specified group"
       schema:
         type: boolean
     wpk_repo:
@@ -5480,7 +5483,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -5687,7 +5690,8 @@ paths:
                     type: string
                     format: alphanumeric
                   force_time:
-                    description: "Remove the old agent with the same IP if disconnected since <force_time> seconds"
+                    description: "Remove the old agent with the same name or IP if disconnected for <force_time>
+                    seconds"
                     type: integer
                     format: int32
                     minimum: 0
@@ -5881,8 +5885,8 @@ paths:
       tags:
         - Agents
       summary: "Remove agent from group"
-      description: "Remove an agent from an specified group. If the agent has multigroups, it will preserve all
-      previous groups except the last one"
+      description: "Remove an agent from a specified group. If the agent belongs to several groups, only the specified
+      group will be deleted."
       operationId: api.controllers.agent_controller.delete_single_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
@@ -6298,7 +6302,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -6464,7 +6468,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/groups_list_delete'
+        - $ref: '#/components/parameters/groups_list_all'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
@@ -7033,8 +7037,8 @@ paths:
       tags:
         - Agents
       summary: "Add agent full"
-      description: "Add an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace
-      it using `force` parameter"
+      description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
+      same IP already exists, replace it using `force_time` parameter"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
@@ -7065,7 +7069,8 @@ paths:
                     type: string
                     format: alphanumeric
                   force_time:
-                    description: "Remove the old agent with the same IP if disconnected for <force_time> seconds"
+                    description: "Remove the old agent with the same name, ID or IP if disconnected for <force_time>
+                    seconds"
                     type: integer
                     format: int32
                     minimum: 0
@@ -8265,7 +8270,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -8898,7 +8903,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
         - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/log_lines'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/tag'
@@ -9693,7 +9698,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -10319,7 +10324,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/log_lines'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/tag'
@@ -10464,7 +10469,8 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                          ssl_cipher: "TLSv1.2"
+                          ssl_protocol: "TLSv1.2"
+                          ssl_ciphers: ""
                         access:
                           max_login_attempts: 50
                           block_time: 300
@@ -12710,7 +12716,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
       responses:
         '200':
           description: "Delete syscheck database"

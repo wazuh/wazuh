@@ -21,32 +21,59 @@ void SysInfoTest::TearDown()
 using ::testing::_;
 using ::testing::Return;
 
-std::string SysInfo::getSerialNumber() const {return "";}
-std::string SysInfo::getCpuName() const {return "";}
-int SysInfo::getCpuMHz() const {return 0;}
-int SysInfo::getCpuCores() const {return 0;}
+std::string SysInfo::getSerialNumber() const
+{
+    return "";
+}
+std::string SysInfo::getCpuName() const
+{
+    return "";
+}
+int SysInfo::getCpuMHz() const
+{
+    return 0;
+}
+int SysInfo::getCpuCores() const
+{
+    return 0;
+}
 void SysInfo::getMemory(nlohmann::json&) const {}
-nlohmann::json SysInfo::getPackages() const {return "";}
-nlohmann::json SysInfo::getOsInfo() const {return "";}
-nlohmann::json SysInfo::getProcessesInfo() const {return {};}
-nlohmann::json SysInfo::getNetworks() const {return {};}
-nlohmann::json SysInfo::getPorts() const {return {};}
+nlohmann::json SysInfo::getPackages() const
+{
+    return "";
+}
+nlohmann::json SysInfo::getOsInfo() const
+{
+    return "";
+}
+nlohmann::json SysInfo::getProcessesInfo() const
+{
+    return {};
+}
+nlohmann::json SysInfo::getNetworks() const
+{
+    return {};
+}
+nlohmann::json SysInfo::getPorts() const
+{
+    return {};
+}
 
 class SysInfoWrapper: public SysInfo
 {
-public:
-    SysInfoWrapper() = default;
-    ~SysInfoWrapper() = default;
-    MOCK_METHOD(std::string, getSerialNumber, (), (const override));
-    MOCK_METHOD(std::string, getCpuName, (), (const override));
-    MOCK_METHOD(int, getCpuMHz, (), (const override));
-    MOCK_METHOD(int, getCpuCores, (), (const override));
-    MOCK_METHOD(void, getMemory, (nlohmann::json&), (const override));
-    MOCK_METHOD(nlohmann::json, getPackages, (), (const override));
-    MOCK_METHOD(nlohmann::json, getOsInfo, (), (const override));
-    MOCK_METHOD(nlohmann::json, getProcessesInfo, (), (const override));
-    MOCK_METHOD(nlohmann::json, getNetworks, (), (const override));
-    MOCK_METHOD(nlohmann::json, getPorts, (), (const override));
+    public:
+        SysInfoWrapper() = default;
+        ~SysInfoWrapper() = default;
+        MOCK_METHOD(std::string, getSerialNumber, (), (const override));
+        MOCK_METHOD(std::string, getCpuName, (), (const override));
+        MOCK_METHOD(int, getCpuMHz, (), (const override));
+        MOCK_METHOD(int, getCpuCores, (), (const override));
+        MOCK_METHOD(void, getMemory, (nlohmann::json&), (const override));
+        MOCK_METHOD(nlohmann::json, getPackages, (), (const override));
+        MOCK_METHOD(nlohmann::json, getOsInfo, (), (const override));
+        MOCK_METHOD(nlohmann::json, getProcessesInfo, (), (const override));
+        MOCK_METHOD(nlohmann::json, getNetworks, (), (const override));
+        MOCK_METHOD(nlohmann::json, getPorts, (), (const override));
 };
 
 TEST_F(SysInfoTest, hardware)
@@ -103,7 +130,7 @@ TEST_F(SysInfoTest, os)
 
 TEST_F(SysInfoTest, hardware_c_interface)
 {
-    cJSON *object = NULL;
+    cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_hardware(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
@@ -111,7 +138,7 @@ TEST_F(SysInfoTest, hardware_c_interface)
 
 TEST_F(SysInfoTest, packages_c_interface)
 {
-    cJSON *object = NULL;
+    cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_packages(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
@@ -119,7 +146,7 @@ TEST_F(SysInfoTest, packages_c_interface)
 
 TEST_F(SysInfoTest, processes_c_interface)
 {
-    cJSON *object = NULL;
+    cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_processes(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
@@ -127,7 +154,7 @@ TEST_F(SysInfoTest, processes_c_interface)
 
 TEST_F(SysInfoTest, network_c_interface)
 {
-    cJSON *object = NULL;
+    cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_networks(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
@@ -135,7 +162,7 @@ TEST_F(SysInfoTest, network_c_interface)
 
 TEST_F(SysInfoTest, ports_c_interface)
 {
-    cJSON *object = NULL;
+    cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_ports(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
@@ -143,7 +170,7 @@ TEST_F(SysInfoTest, ports_c_interface)
 
 TEST_F(SysInfoTest, os_c_interface)
 {
-    cJSON *object = NULL;
+    cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_os(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));

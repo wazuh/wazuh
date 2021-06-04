@@ -86,80 +86,80 @@ namespace RSync
 
     class RSyncImplementation final
     {
-    public:
-        static RSyncImplementation& instance()
-        {
-            static RSyncImplementation s_instance;
-            return s_instance;
-        }
+        public:
+            static RSyncImplementation& instance()
+            {
+                static RSyncImplementation s_instance;
+                return s_instance;
+            }
 
-        void release();
+            void release();
 
-        void releaseContext(const RSYNC_HANDLE handle);
+            void releaseContext(const RSYNC_HANDLE handle);
 
-        RSYNC_HANDLE create();
+            RSYNC_HANDLE create();
 
-        void startRSync(const RSYNC_HANDLE handle,
-                        const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                        const nlohmann::json& startConfiguration,
-                        const ResultCallback callbackWrapper);
-
-        void registerSyncId(const RSYNC_HANDLE handle,
-                            const std::string& messageHeaderId,
+            void startRSync(const RSYNC_HANDLE handle,
                             const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                            const nlohmann::json& syncConfiguration,
+                            const nlohmann::json& startConfiguration,
                             const ResultCallback callbackWrapper);
 
-        void push(const RSYNC_HANDLE handle,
-                  const std::vector<unsigned char>& data);
+            void registerSyncId(const RSYNC_HANDLE handle,
+                                const std::string& messageHeaderId,
+                                const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                                const nlohmann::json& syncConfiguration,
+                                const ResultCallback callbackWrapper);
+
+            void push(const RSYNC_HANDLE handle,
+                      const std::vector<unsigned char>& data);
 
 
-    private:
+        private:
 
-        class RSyncContext final
-        {
-            public:
-                RSyncContext() = default;
-                MsgDispatcher m_msgDispatcher;
-        };
+            class RSyncContext final
+            {
+                public:
+                    RSyncContext() = default;
+                    MsgDispatcher m_msgDispatcher;
+            };
 
-        std::shared_ptr<RSyncContext> remoteSyncContext(const RSYNC_HANDLE handle);
+            std::shared_ptr<RSyncContext> remoteSyncContext(const RSYNC_HANDLE handle);
 
-        static size_t getRangeCount(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+            static size_t getRangeCount(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                                        const nlohmann::json& jsonSyncConfiguration,
+                                        const SyncInputData& syncData);
+
+            static void fillChecksum(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                                     const nlohmann::json& jsonConfiguration,
+                                     const std::string& begin,
+                                     const std::string& end,
+                                     ChecksumContext& ctx);
+
+            static nlohmann::json getRowData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                                             const nlohmann::json& jsonSyncConfiguration,
+                                             const std::string& index = "");
+
+            static nlohmann::json executeSelectQuery(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                                                     const std::string& table,
+                                                     const nlohmann::json& jsFirstQuery,
+                                                     const nlohmann::json& jsLastQuery);
+
+            static void sendAllData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                     const nlohmann::json& jsonSyncConfiguration,
-                                    const SyncInputData& syncData);
+                                    const ResultCallback callbackWrapper,
+                                    const SyncInputData& ctx);
 
-        static void fillChecksum(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                       const nlohmann::json& jsonConfiguration,
-                                       const std::string& begin,
-                                       const std::string& end,
-                                       ChecksumContext& ctx);
-
-        static nlohmann::json getRowData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+            static void sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                          const nlohmann::json& jsonSyncConfiguration,
-                                         const std::string& index = "");
+                                         const ResultCallback callbackWrapper,
+                                         const SyncInputData syncData);
 
-        static nlohmann::json executeSelectQuery(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                                 const std::string& table,
-                                                 const nlohmann::json& jsFirstQuery,
-                                                 const nlohmann::json& jsLastQuery);
-
-        static void sendAllData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                const nlohmann::json& jsonSyncConfiguration,
-                                const ResultCallback callbackWrapper,
-                                const SyncInputData& ctx);
-
-        static void sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                     const nlohmann::json& jsonSyncConfiguration,
-                                     const ResultCallback callbackWrapper,
-                                     const SyncInputData syncData);
-
-        RSyncImplementation() = default;
-        ~RSyncImplementation() = default;
-        RSyncImplementation(const RSyncImplementation&) = delete;
-        RSyncImplementation& operator=(const RSyncImplementation&) = delete;
-        std::map<RSYNC_HANDLE, std::shared_ptr<RSyncContext>> m_remoteSyncContexts;
-        std::mutex m_mutex;
+            RSyncImplementation() = default;
+            ~RSyncImplementation() = default;
+            RSyncImplementation(const RSyncImplementation&) = delete;
+            RSyncImplementation& operator=(const RSyncImplementation&) = delete;
+            std::map<RSYNC_HANDLE, std::shared_ptr<RSyncContext>> m_remoteSyncContexts;
+            std::mutex m_mutex;
     };
 }// namespace RSync
 

@@ -12,8 +12,8 @@
 #include "registryHelper_test.h"
 #include "registryHelper.h"
 
-constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor"};
-constexpr auto CENTRAL_PROCESSOR_REGISTRY_0{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
+constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor"};
+constexpr auto CENTRAL_PROCESSOR_REGISTRY_0 {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 
 void RegistryUtilsTest::SetUp() {};
 

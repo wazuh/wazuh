@@ -253,6 +253,12 @@ int Start_win32_Syscheck()
 
         /* Start up message */
         minfo(STARTUP_MSG, getpid());
+        foreach_array(dir_it, syscheck.directories) {
+            if (dir_it->options & REALTIME_ACTIVE) {
+                realtime_start();
+                break;
+            }
+        }
     }
 
     /* Some sync time */

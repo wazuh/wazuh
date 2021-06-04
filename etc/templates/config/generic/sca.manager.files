@@ -13,6 +13,9 @@ centos/8/cis_centos8_linux.yml
 darwin/15/cis_apple_macOS_10.11.yml
 darwin/16/cis_apple_macOS_10.12.yml
 darwin/17/cis_apple_macOS_10.13.yml
+darwin/18/cis_apple_macOS_10.14.yml
+darwin/19/cis_apple_macOS_10.15.yml
+darwin/20/cis_apple_macOS_11.1.yml
 debian/cis_debian7.yml
 debian/cis_debian8.yml
 debian/cis_debian9.yml

@@ -12,6 +12,7 @@ import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
+from xml.etree.ElementTree import tostring
 
 from defusedxml.minidom import parseString
 
@@ -203,7 +204,11 @@ def _read_option(section_name, opt):
             opt_value[a] = opt.attrib[a]
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
-        opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
+        regex = rf'<{opt_name}>(.*)</{opt_name}>'
+        opt_value = re.match(regex,
+                             re.sub('(?:(\n) +)', '',
+                                    tostring(opt, encoding='unicode').replace('\\<', '<').replace('\\>', '>')
+                                    ).strip()).group(1)
     elif section_name == 'remote' and opt_name == 'protocol':
         opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:

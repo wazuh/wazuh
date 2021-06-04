@@ -30,9 +30,10 @@
 
 #include "external/procps/readproc.h"
 
-extern volatile int audit_health_check_creation;
-extern volatile int hc_thread_active;
-extern volatile int audit_thread_active;
+extern atomic_int_t audit_health_check_creation;
+extern atomic_int_t hc_thread_active;
+extern atomic_int_t audit_thread_active;
+
 int hc_success = 0;
 
 int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
@@ -55,6 +56,9 @@ int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
 static int setup_group(void **state) {
     (void) state;
     test_mode = 1;
+    w_mutex_init(&(audit_health_check_creation.mutex), NULL);
+    w_mutex_init(&(hc_thread_active.mutex), NULL);
+    w_mutex_init(&(audit_thread_active.mutex), NULL);
     return 0;
 }
 
@@ -719,24 +723,28 @@ void test_init_regex(void **state) {
 void test_audit_read_events_select_error(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
+
+    audit_thread_active.data = 1;
     errno = EEXIST;
 
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 0);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 1);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
 
     // Switch
     will_return(__wrap_select, -1);
     expect_string(__wrap__merror, formatted_msg, "(1114): Error during select()-call due to [(17)-(File exists)].");
     expect_value(__wrap_sleep, seconds, 1);
 
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 }
 
 void test_audit_read_events_select_case_0(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=2 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\"\n\
@@ -745,9 +753,15 @@ void test_audit_read_events_select_case_0(void **state) {
         type=PATH msg=audit(1571914029.306:3004254): item=1 name=\"test\" inode=19 dev=08:02 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=DELETE cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0\n\
         type=PROCTITLE msg=audit(1571914029.306:3004254): proctitle=726D0074657374\n";
 
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 0);
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 1);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
+
     // Switch
     will_return(__wrap_select, 1);
     will_return(__wrap_select, 0);
@@ -758,19 +772,22 @@ void test_audit_read_events_select_case_0(void **state) {
     will_return(__wrap_recv, buffer);
 
     expect_function_call(__wrap_audit_parse);
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 }
 
 void test_audit_read_events_select_success_recv_error_audit_connection_closed(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
+    audit_thread_active.data = 1;
     errno = EEXIST;
     int counter = 0;
     int max_retries = 5;
     char buffer[OS_SIZE_128] = {0};
 
-    will_return(__wrap_FOREVER, 1);
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
+
+
 
     // Switch
     will_return(__wrap_select, 1);
@@ -805,18 +822,21 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
 
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 }
 
 void test_audit_read_events_select_success_recv_error_audit_reconnect(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
+    audit_thread_active.data = 1;
     char buffer[OS_SIZE_128] = {0};
     errno = EEXIST;
 
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 0);
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
 
     // Switch
     will_return(__wrap_select, 1);
@@ -849,13 +869,13 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
 
     // In audit_reload_rules()
     expect_function_call(__wrap_fim_audit_reload_rules);
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 }
 
 void test_audit_read_events_select_success_recv_success(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
+    audit_thread_active.data = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c5f8170490 a2=0 a3=7ff365c5eca0 items=2 ppid=3211 pid=44082 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"test\" exe=\"74657374C3B1\" key=\"wazuh_fim\"\n\
@@ -871,9 +891,11 @@ void test_audit_read_events_select_success_recv_success(void **state) {
         type=PROCTITLE msg=audit(1571914029.306:3004255): proctitle=726D0074657374\n\
         type=EOE msg=audit(1571914029.306:3004255):\n";
 
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 0);
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
 
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
     // Switch
     will_return(__wrap_select, 1);
 
@@ -884,20 +906,23 @@ void test_audit_read_events_select_success_recv_success(void **state) {
 
     expect_function_calls(__wrap_audit_parse, 2);
 
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 }
 
 void test_audit_read_events_select_success_recv_success_no_endline(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
+    audit_thread_active.data = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSCALL msg=audit(1571914029.306:3004254): arch=c000003e syscall=263 success=yes exit\
     ";
 
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 0);
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
 
     // Switch
     will_return(__wrap_select, 1);
@@ -907,20 +932,23 @@ void test_audit_read_events_select_success_recv_success_no_endline(void **state)
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 }
 
 void test_audit_read_events_select_success_recv_success_no_id(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
+    audit_thread_active.data = 1;
     errno = EEXIST;
     char * buffer = " \
         type=SYSC arch=c000003e syscall=263 success=yes exit\n\
     ";
 
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 0);
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
 
     // Switch
     will_return(__wrap_select, 1);
@@ -932,19 +960,23 @@ void test_audit_read_events_select_success_recv_success_no_id(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "(6928): Couldn't get event ID from Audit message. Line: '         type=SYSC arch=c000003e syscall=263 success=yes exit'.");
 
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 }
 
 void test_audit_read_events_select_success_recv_success_too_long(void **state) {
     (void) state;
     int *audit_sock = *state;
-    audit_thread_active = 1;
+    audit_thread_active.data = 1;
     errno = EEXIST;
 
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_FOREVER, 0);
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
 
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
+    will_return_count(__wrap_atomic_int_get, 1, 2);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
     // Event too long, 65535 char
     char * buffer = malloc(65530 * sizeof(char));
     char * extra_buffer = "aaaaaaaaaa";
@@ -974,7 +1006,7 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "(6929): Caching Audit message: event too long. Event with ID: '1571914029.306:3004254' will be discarded.");
 
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_sock, &audit_thread_active);
 
     os_free(buffer);
 }

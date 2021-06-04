@@ -20,24 +20,24 @@
 template <OSType osType>
 class FactoryPackageFamilyCreator final
 {
-public:
-    static std::shared_ptr<IPackage> create(const std::pair<PackageContext, int>& /*ctx*/)
-    {
-        throw std::runtime_error
+    public:
+        static std::shared_ptr<IPackage> create(const std::pair<PackageContext, int>& /*ctx*/)
         {
-            "Error creating package data retriever."
-        };
-    }
+            throw std::runtime_error
+            {
+                "Error creating package data retriever."
+            };
+        }
 };
 
 template <>
 class FactoryPackageFamilyCreator<OSType::BSDBASED> final
 {
-public:
-    static std::shared_ptr<IPackage> create(const std::pair<PackageContext, int>& ctx)
-    {
-        return FactoryBSDPackage::create(ctx);
-    }
+    public:
+        static std::shared_ptr<IPackage> create(const std::pair<PackageContext, int>& ctx)
+        {
+            return FactoryBSDPackage::create(ctx);
+        }
 };
 
 #endif // _PACKAGE_FAMILY_DATA_AFACTORY_H
