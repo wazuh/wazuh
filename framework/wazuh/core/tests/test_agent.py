@@ -159,8 +159,8 @@ def test_WazuhDBQueryAgents_filter_date(mock_socket_conn):
 
 
 @pytest.mark.parametrize('field, expected_query', [
-    ('status', 'last_keepAlive asc'),
     ('os.version', 'CAST(os_major AS INTEGER) asc, CAST(os_minor AS INTEGER) asc'),
+    ('status', 'status asc'),
     ('id', 'id asc'),
 ])
 @patch('socket.socket.connect')
@@ -198,7 +198,7 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn):
     query_agent = WazuhDBQueryAgents(offset=0, limit=1, sort=None,
                                      search=None, select={'id', 'status', 'group', 'dateAdd', 'manager'},
                                      default_sort_field=None, query=None, count=5,
-                                     get_data=None, min_select_fields='os.version')
+                                     get_data=None, min_select_fields={'os.version'})
 
     # Mock _data variable with our own data
     query_agent._data = data
