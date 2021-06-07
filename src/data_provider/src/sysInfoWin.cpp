@@ -47,24 +47,17 @@ constexpr auto SYSTEM_PROCESS_NAME{"System"};
 class SysInfoProcess final
 {
 public:
-    SysInfoProcess(const DWORD pId)
+    SysInfoProcess(const DWORD pId, const HANDLE processHandle)
         : m_pId{ pId },
-          m_hProcess{ OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, m_pId) },
+          m_hProcess{ processHandle },
           m_kernelModeTime{},
           m_userModeTime{}
     {
-        if (m_hProcess)
-        {
-            setProcessTimes();
-            setProcessMemInfo();
-        }
-        // else: Unable to open current process
+        setProcessTimes();
+        setProcessMemInfo();
     }
 
-    ~SysInfoProcess()
-    {
-        CloseHandle(m_hProcess);
-    }
+    ~SysInfoProcess() = default;
 
     std::string cmd()
     {
@@ -314,21 +307,26 @@ static std::string processName(const PROCESSENTRY32& processEntry)
 static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 {
     nlohmann::json jsProcessInfo{};
-    const DWORD pId { processEntry.th32ProcessID };
-    SysInfoProcess process(pId);
+    const auto pId { processEntry.th32ProcessID };
+    const auto processHandle { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pId) };
+    if (processHandle)
+    {
+        SysInfoProcess process(pId, processHandle);
 
-    // Current process information
-    jsProcessInfo["name"]       = processName(processEntry);
-    jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
-    jsProcessInfo["stime"]      = process.kernelModeTime();
-    jsProcessInfo["size"]       = process.pageFileUsage();
-    jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
-    jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
-    jsProcessInfo["pid"]        = std::to_string(pId);
-    jsProcessInfo["session"]    = process.sessionId();
-    jsProcessInfo["nlwp"]       = processEntry.cntThreads;
-    jsProcessInfo["utime"]      = process.userModeTime();
-    jsProcessInfo["vm_size"]    = process.virtualSize();
+        // Current process information
+        jsProcessInfo["name"]       = processName(processEntry);
+        jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
+        jsProcessInfo["stime"]      = process.kernelModeTime();
+        jsProcessInfo["size"]       = process.pageFileUsage();
+        jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
+        jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
+        jsProcessInfo["pid"]        = std::to_string(pId);
+        jsProcessInfo["session"]    = process.sessionId();
+        jsProcessInfo["nlwp"]       = processEntry.cntThreads;
+        jsProcessInfo["utime"]      = process.userModeTime();
+        jsProcessInfo["vm_size"]    = process.virtualSize();
+        CloseHandle(processHandle);
+    }
     return jsProcessInfo;
 }
 
@@ -527,7 +525,11 @@ nlohmann::json SysInfo::getProcessesInfo() const
     nlohmann::json jsProcessesList{};
     fillProcessesData([&jsProcessesList](const auto& processEntry)
         {
-            jsProcessesList.push_back(getProcessInfo(processEntry));
+            const auto& processInfo { getProcessInfo(processEntry) };
+            if (!processInfo.empty())
+            {
+                jsProcessesList.push_back(processInfo);
+            }
         });
 
     return jsProcessesList;
