@@ -221,11 +221,9 @@ void realtime_process() {
 
     char ** paths = rbtree_keys(tree);
 
-    w_rwlock_rdlock(&syscheck.directories_lock);
     for (int i = 0; paths[i] != NULL; i++) {
         fim_realtime_event(paths[i]);
     }
-    w_rwlock_unlock(&syscheck.directories_lock);
 
     free_strarray(paths);
     rbtree_destroy(tree);

@@ -607,10 +607,8 @@ void test_realtime_process_len(void **state) {
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
-    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -646,10 +644,8 @@ void test_realtime_process_len_zero(void **state) {
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
-    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -683,10 +679,8 @@ void test_realtime_process_len_path_separator(void **state) {
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
-    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -715,10 +709,8 @@ void test_realtime_process_overflow(void **state) {
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
-    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     realtime_process();
 
@@ -759,10 +751,8 @@ void test_realtime_process_delete(void **state) {
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
-    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -823,10 +813,8 @@ void test_realtime_process_move_self(void **state) {
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
 
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
     will_return(__wrap_rbtree_keys, paths);
     expect_string(__wrap_fim_realtime_event, file, "/test");
-    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();

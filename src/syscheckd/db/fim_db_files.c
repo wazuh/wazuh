@@ -550,9 +550,12 @@ void fim_db_wildcard_delete_event(fdb_t *fim_sql,
                                   void *evt_data,
                                   void *_configuration,
                                   __attribute__((unused)) void *_unused_patameter) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
     if (fim_configuration_directory(entry->file_entry.path) != NULL) {
+        w_rwlock_unlock(&syscheck.directories_lock);
         return;
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
     fim_generate_delete_event(fim_sql, entry, mutex, evt_data, _configuration, NULL);
 }
 

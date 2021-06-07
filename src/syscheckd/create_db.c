@@ -524,7 +524,6 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
     // The inode is currently being used, scan those files first
     if (fim_db_append_paths_from_inode(syscheck.database, evt_data.statbuf.st_ino, evt_data.statbuf.st_dev, stack,
                                        tree) == 0) {
-        w_rwlock_rdlock(&syscheck.directories_lock);
         // We have somehow reached a point an infinite loop could happen, we will need to update the current file
         // forcefully which will generate a false positive alert
         check_max_fps();
@@ -537,7 +536,6 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         }
 
         *event = _fim_file_force_update(entry, configuration, &evt_data);
-        w_rwlock_unlock(&syscheck.directories_lock);
         free_entry(entry);
 
         return FIM_FILE_UPDATED;
@@ -551,7 +549,6 @@ end:
     // either way the only thing left to do is to process the file
     check_max_fps();
 
-    w_rwlock_rdlock(&syscheck.directories_lock);
     configuration = fim_configuration_directory(path);
     if (configuration == NULL) {
         // This should not happen
@@ -561,7 +558,6 @@ end:
     }
 
     *event = _fim_file(path, configuration, &evt_data);
-    w_rwlock_unlock(&syscheck.directories_lock);
     free_entry(entry);
 
     return FIM_FILE_UPDATED;
@@ -606,9 +602,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
-        int ret = fim_process_file_from_db(current_path, stack, tree, &event);
-
-        switch (ret) {
+        switch (fim_process_file_from_db(current_path, stack, tree, &event)) {
         case FIM_FILE_UPDATED:
         case FIM_FILE_DELETED:
             OSList_DeleteCurrentlyNode(stack);
@@ -1326,7 +1320,9 @@ void check_deleted_files() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (file && file->elements) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
+        w_rwlock_unlock(&syscheck.directories_lock);
     }
 }
 

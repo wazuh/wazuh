@@ -373,7 +373,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     while (1) {
 #ifdef WIN32
         // Directories in Windows configured with real-time add recursive watches
-        w_rwlock_rdlock(&syscheck.directories_lock);
+        w_rwlock_wrlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
             dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
