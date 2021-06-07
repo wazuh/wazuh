@@ -629,6 +629,9 @@
 #define MOD_TASK_INVALID_ELEMENT_ERROR              "(8260): Invalid element in array."
 #define MOD_TASK_DB_ERROR                           "(8261): Database error."
 
+/* Sysinfo */
+#define SYSINFO_DYNAMIC_INIT_ERROR                  "(9000): Error loading sysinfo module."
+
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
 #define PRIVSEP_MSG "Chrooted to directory: %s, using user: %s"

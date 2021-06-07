@@ -13,8 +13,7 @@
 #include "state.h"
 #include <math.h>
 #include <pthread.h>
-#include "sysInfo.h"
-#include "sym_load.h"
+#include "sysinfo_utils.h"
 
 // Remove STATIC qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
@@ -108,8 +107,6 @@ int reload_delay;
 int free_excluded_files_interval;
 int state_interval;
 OSHash * msg_queues_table;
-void *sysinfo_module;
-
 
 ///< To asociate the path, the position to read, and the hash key of lines read.
 OSHash * files_status;
@@ -142,13 +139,6 @@ static OSHash *excluded_binaries = NULL;
 
 STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
-
-/**
- * @brief Return current macOS codename
- * 
- * @return char* Allocated codename string. NULL on error
- */
-char * w_macos_get_codename();
 #endif
 
 /* Handle file management */
@@ -162,8 +152,11 @@ void LogCollectorStart()
     IT_control duplicates_removed = 0;
     logreader *current;
 
-    /* Hook to sysinfo providers */
-    sysinfo_module = so_get_module_handle("sysinfo");
+    w_sysinfo_helpers_t * sysinfo = NULL;
+    os_calloc(1, sizeof(w_sysinfo_helpers_t), sysinfo);
+    if (!w_sysinfo_init(sysinfo)) {
+        merror(SYSINFO_DYNAMIC_INIT_ERROR);
+    }
 
     /* Create store data */
     excluded_files = OSHash_Create();
@@ -361,9 +354,7 @@ void LogCollectorStart()
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
         else if (strcmp(current->logformat, MACOS) == 0) {
             /* Get macOS version */
-            char * codename = w_macos_get_codename();
-            w_macos_create_log_env(current, codename);
-            os_free(codename);
+            w_macos_create_log_env(current, sysinfo);
             current->read = read_macos;
             if (current->macos_log->state != LOG_NOT_RUNNING) {
                 if (atexit(w_macos_release_log_execution)) {
@@ -3005,70 +2996,6 @@ void w_macos_release_log_execution(void) {
     
     w_macos_release_log_show();
     w_macos_release_log_stream();
-}
-
-
-char * w_macos_get_codename() {
-
-    char * codename = NULL;
-    sysinfo_os_func sysinfo_os_ptr = NULL;
-    sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
-    cJSON * os_info;
-    
-    if (sysinfo_module != NULL) {
-        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
-        sysinfo_os_ptr = so_get_function_sym(sysinfo_module, "sysinfo_os");
-        if (sysinfo_os_ptr != NULL && sysinfo_free_result_ptr != NULL) {
-            const int error_code = sysinfo_os_ptr(&os_info);
-            if (error_code == 0) {
-                if (os_info != NULL) {
-                    w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(os_info, "os_codename")), codename);
-                }
-                sysinfo_free_result_ptr(&os_info);
-            }
-        }
-    }
-    return codename;
-}
-
-
-
-pid_t w_get_children_pid_by_ppid(pid_t ppid) {
-
-
-    cJSON * processes = NULL;
-    char * process_pid_str = NULL;
-    pid_t result_pid = 0;
-
-    sysinfo_processes_func sysinfo_processes_ptr = NULL;
-    sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
-
-    if (sysinfo_module != NULL) {
-        sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");
-        sysinfo_processes_ptr = so_get_function_sym(sysinfo_module, "sysinfo_processes");
-        if (sysinfo_processes_ptr != NULL && sysinfo_free_result_ptr != NULL) {
-            const int error_code = sysinfo_processes_ptr(&processes);
-            if (error_code == 0) {
-                 if (processes != NULL) {
-                    cJSON * process;
-                    cJSON_ArrayForEach(process, processes) {
-                        cJSON * ppid_object = cJSON_GetObjectItem(process, "ppid");
-                        if (cJSON_IsNumber(ppid_object) && (pid_t)ppid_object->valuedouble == ppid) {
-                            process_pid_str = cJSON_GetStringValue(cJSON_GetObjectItem(process, "pid"));
-                            if(process_pid_str != NULL) {
-                                if (result_pid = (pid_t) strtol(process_pid_str, NULL, 10), result_pid > 0) {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                sysinfo_free_result_ptr(&processes);
-            }
-        }
-    }
-    mdebug2("macOS ULS: Looking child of PID:%i and found PID:%i", ppid, result_pid);
-    return result_pid;
 }
 
 #endif
