@@ -433,9 +433,9 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
 
     lf->macos_log->state = LOG_NOT_RUNNING;
 
-    w_strdup(w_get_os_codename(sysinfo), macos_codename);
-
     sysinfo = global_sysinfo;
+
+    w_strdup(w_get_os_codename(sysinfo), macos_codename);
 
     if (w_macos_is_log_executable()) {
 

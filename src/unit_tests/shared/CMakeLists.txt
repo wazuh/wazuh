@@ -173,6 +173,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_e
                                 -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
                                 -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize")
 
+list(APPEND shared_tests_names "test_sysinfo_utils")
+list(APPEND shared_tests_flags "")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
