@@ -6950,7 +6950,7 @@ paths:
       tags:
         - Groups
       summary: "Get a file in group"
-      description: "Return the contents of the specified group file parsed to JSON"
+      description: "Return the content of the specified group file parsed to JSON"
       operationId: api.controllers.agent_controller.get_group_file_json
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
@@ -6977,12 +6977,17 @@ paths:
                 data:
                   vars: None
                   controls:
-                    - condition: all required
-                      name: CIS - Testing against the CIS Debian Linux Benchmark v1
-                      reference: CIS_Debian_Benchmark_v1.0pdf
+                    - name: "CIS - Testing against the CIS Debian Linux Benchmark v1."
+                      cis: []
+                      pci: []
+                      condition: "all required"
+                      reference: "CIS_Debian_Benchmark_v1.0pdf"
                       checks:
-                        - f:/etc/debian_version
+                        - "f:/etc/debian_version;"
+                        - "f:/proc/sys/kernel/ostype -> Linux;"
                     - name: "CIS - Debian Linux - 1.4 - Robust partition scheme - /tmp is not on its own partition"
+                      cis: []
+                      pci: []
                       condition: "any"
                       reference: "https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf"
                       checks:
@@ -9349,7 +9354,6 @@ paths:
         - $ref: '#/components/parameters/node_id'
         - $ref: '#/components/parameters/component'
         - $ref: '#/components/parameters/configuration'
-
       responses:
         '200':
           description: "Cluster configuration on-demand"
@@ -9358,24 +9362,24 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-
               example:
                 data:
                   affected_items:
-                    - bind_addr: "0.0.0.0"
-                      disabled: "false"
-                      hidden: "no"
-                      key: "9d273b53510fef702b54a92e9cffc82e"
-                      name: "wazuh"
+                    - name: "wazuh"
                       node_name: "master-node"
                       node_type: "master"
-                      nodes: [
-                        "wazuh-master"
-                      ]
+                      key: "9d273b53510fef702b54a92e9cffc82e"
                       port: 1516
+                      bind_addr: "0.0.0.0"
+                      nodes:
+                        - "wazuh-master"
+                      hidden: "no"
+                      disabled: "false"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Active configuration was successfully read in specified node"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -12947,7 +12951,7 @@ paths:
                   total_affected_items: 13
                   total_failed_items: 0
                   failed_items: []
-                message: Cleared syscheck database on shown agents
+                message: "Syscheck database was cleared on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
