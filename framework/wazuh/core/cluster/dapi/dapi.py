@@ -18,6 +18,7 @@ from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
+import api.constants as api_constants
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -40,7 +41,7 @@ class DistributedAPI:
                  debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None):
+                 rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None):
         """Class constructor.
 
         Parameters
@@ -75,6 +76,8 @@ class DistributedAPI:
             Default `None`, list of system nodes
         current_user : str
             User who started the request
+        api_timeout : int
+            Timeout set in source API for the request
         """
         self.logger = logger
         self.f = f
@@ -100,6 +103,8 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
+        if api_timeout:
+            api_constants.API_REQUEST_TIMEOUT = api_timeout
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -234,9 +239,6 @@ class DistributedAPI:
             before = time.time()
             self.check_wazuh_status()
 
-            timeout = None if self.wait_for_complete \
-                else self.cluster_items['intervals']['communication']['timeout_api_exe']
-
             # LocalClient only for control functions
             if self.local_client_arg is not None:
                 lc = local_client.LocalClient()
@@ -248,7 +250,7 @@ class DistributedAPI:
                 loop = asyncio.get_running_loop()
                 task = loop.run_in_executor(threadpool, run_local)
             try:
-                data = await asyncio.wait_for(task, timeout=timeout)
+                data = await asyncio.wait_for(task, timeout=api_constants.API_REQUEST_TIMEOUT)
             except asyncio.TimeoutError:
                 raise exception.WazuhInternalError(3021)
             except OperationalError:
@@ -301,7 +303,8 @@ class DistributedAPI:
                 "rbac_permissions": self.rbac_permissions,
                 "current_user": self.current_user,
                 "broadcasting": self.broadcasting,
-                "nodes": self.nodes
+                "nodes": self.nodes,
+                "api_timeout": api_constants.API_REQUEST_TIMEOUT
                 }
 
     def get_error_info(self, e) -> Dict:

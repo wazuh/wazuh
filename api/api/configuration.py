@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from jsonschema import validate, ValidationError
 
+import api.constants as api_constants
 from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH
 from api.validator import api_config_schema, security_config_schema
@@ -32,6 +33,9 @@ default_api_configuration = {
     "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "intervals": {
+        "request_timeout": 20
+    },
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
@@ -214,6 +218,7 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     :return: API configuration
     """
+
     def replace_bools(conf):
         """Replace 'yes' and 'no' strings in configuration for actual booleans.
 
@@ -256,6 +261,10 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     # Append wazuh_path to all paths in configuration
     append_wazuh_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
+
+    # Assign API request timeout
+    if config_file == api_constants.CONFIG_FILE_PATH:
+        api_constants.API_REQUEST_TIMEOUT = configuration['intervals']['request_timeout']
 
     return configuration
 

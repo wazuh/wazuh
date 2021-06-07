@@ -48,6 +48,10 @@
 # Enable features under development
 # experimental_features: no
 
+# Modify API's intervals (time in seconds)
+# intervals:
+#   request_timeout: 20
+
 # Enable remote commands
 # remote_commands:
 #   localfile:
