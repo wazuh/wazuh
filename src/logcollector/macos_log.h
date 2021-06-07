@@ -15,6 +15,7 @@
 
 #include "shared.h"
 #include "config/localfile-config.h"
+#include "sysinfo_utils.h"
 
 /* ******************  DEFINES  ****************** */
 
@@ -86,10 +87,11 @@ typedef struct {
 /* ******************  PROTOTYPES  ****************** */
 
 /**
- * @brief Creates the environment for collecting logs on macOS Systems
+* @brief Creates the environment for collecting logs on macOS Systems
  * @param current logreader structure with `log`'s input arguments and w_macos_log_config_t structure to be set
+ * @param global_sysinfo sysinfo reference used to get useful information
  */
-void w_macos_create_log_env(logreader * current, char * macos_codename);
+void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo);
 
 /**
  * @brief Set string containing the last recorded timestamp.
@@ -139,4 +141,12 @@ void w_macos_set_status_from_JSON(cJSON * global_json);
  * @return true if Sierra. false otherwise
  */
 bool w_is_macos_sierra();
+
+/**
+ * @brief Get first child process found
+ * 
+ * @param parent_pid parent pid
+ * @return pid_t found child. Zero otherwise
+ */
+pid_t w_get_first_child(pid_t parent_pid);
 #endif /* MACOS_LOG_H */

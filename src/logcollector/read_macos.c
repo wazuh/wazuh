@@ -262,11 +262,11 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
             if (w_is_macos_sierra()) {
                 if (macos_log_cfg->processes.show.wfd != NULL && macos_log_cfg->processes.show.child == 0) {
                     macos_log_cfg->processes.show.child =
-                        w_get_children_pid_by_ppid(macos_log_cfg->processes.show.wfd->pid);
+                        w_get_first_child(macos_log_cfg->processes.show.wfd->pid);
                 }
                 if (macos_log_cfg->processes.stream.wfd != NULL && macos_log_cfg->processes.stream.child == 0) {
                     macos_log_cfg->processes.stream.child =
-                        w_get_children_pid_by_ppid(macos_log_cfg->processes.stream.wfd->pid);
+                        w_get_first_child(macos_log_cfg->processes.stream.wfd->pid);
                 }
             }
             /* Processes and discards lines up to the first log */
