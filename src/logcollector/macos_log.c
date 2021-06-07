@@ -24,6 +24,7 @@ STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZ
 
 STATIC char * macos_codename = NULL;
 
+STATIC w_sysinfo_helpers_t * sysinfo = NULL;
 /**
  * @brief Check if agent is running on macOS Sierra
  * 
@@ -428,11 +429,13 @@ STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
     free_strarray(log_stream_array);
 }
 
-void w_macos_create_log_env(logreader * lf, char * current_macos_codename) {
+void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo) {
 
     lf->macos_log->state = LOG_NOT_RUNNING;
 
-    w_strdup(current_macos_codename, macos_codename);
+    w_strdup(w_get_os_codename(sysinfo), macos_codename);
+
+    sysinfo = global_sysinfo;
 
     if (w_macos_is_log_executable()) {
 
@@ -460,6 +463,19 @@ void w_macos_create_log_env(logreader * lf, char * current_macos_codename) {
     }
     os_free(lf->file);
     lf->fp = NULL;
+}
+
+pid_t w_get_first_child(pid_t parent_pid) {
+
+    pid_t * childs = NULL;
+    pid_t first_child = 0;
+    int child_count = w_get_process_childs(sysinfo, parent_pid, childs, 1);
+    if (child_count > 0){
+        first_child = *childs;
+        os_free(childs);
+    }
+
+    return first_child;
 }
 
 void w_macos_set_last_log_timestamp(char * timestamp) {

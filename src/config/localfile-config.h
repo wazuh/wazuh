@@ -135,7 +135,7 @@ typedef struct {
 } w_macos_log_ctxt_t;
 
 /**
- * @brief 
+ * @brief Stores `log` process instance info.
  * 
  */
 typedef struct {
@@ -144,7 +144,7 @@ typedef struct {
 } w_macos_log_pinfo_t;
 
 /**
- * @brief 
+ * @brief Store references of two main excecution of `log` process.
  * 
  */
 typedef struct {
