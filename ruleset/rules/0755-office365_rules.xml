@@ -932,7 +932,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^FileMalwareDetected$</field>
         <description>Office 365: Detected Malware in file.</description>
         <options>no_full_log</options>
-        <group>OneDrive</group>
+        <group>OneDrive,SharePoint</group>
     </rule>
 
 </group>
