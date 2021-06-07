@@ -239,6 +239,8 @@ class DistributedAPI:
             before = time.time()
             self.check_wazuh_status()
 
+            timeout = api_constants.API_REQUEST_TIMEOUT if not self.wait_for_complete else None
+
             # LocalClient only for control functions
             if self.local_client_arg is not None:
                 lc = local_client.LocalClient()
@@ -250,7 +252,7 @@ class DistributedAPI:
                 loop = asyncio.get_running_loop()
                 task = loop.run_in_executor(threadpool, run_local)
             try:
-                data = await asyncio.wait_for(task, timeout=api_constants.API_REQUEST_TIMEOUT)
+                data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
                 raise exception.WazuhInternalError(3021)
             except OperationalError:
