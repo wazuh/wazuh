@@ -924,4 +924,15 @@ ID: 91531 - 91650
         <group>MipExactDataMatch</group>
     </rule>
 
+    <!--
+    ID: 91700 - 91799
+    -->
+    <rule id="91700" level="14">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^FileMalwareDetected$</field>
+        <description>Office 365: Detected Malware in file.</description>
+        <options>no_full_log</options>
+        <group>OneDrive</group>
+    </rule>
+
 </group>
