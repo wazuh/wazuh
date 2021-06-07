@@ -60,6 +60,28 @@ def provisionDR():
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?)_decoders.xml$',file):
             shutil.copy2(file_fullpath , args.wazuh_home + "/etc/decoders")
 
+def overwrite_folder(dir_path):
+    '''
+    Function to create a new rules or decoders folder.
+    It's expected that the folder to be copied has a name as 'rules' or 'decoders' to work properly
+    '''
+    custom_rules_dir = os.path.realpath(dir_path)
+    dir_name = os.path.basename(custom_rules_dir)
+    original_rules = os.path.join(args.wazuh_home, "ruleset", dir_name)
+    #Backup original rules
+    os.rename(original_rules, os.path.join(args.wazuh_home, "ruleset", "original_" + dir_name))
+    #Copying files
+    shutil.copytree(custom_rules_dir, original_rules)
+
+def rollback_folder(dir_path):
+    custom_rules_dir = os.path.realpath(dir_path)
+    dir_name = os.path.basename(custom_rules_dir)
+    original_rules = os.path.join(args.wazuh_home, "ruleset", dir_name)
+    #Removing custom ruleset
+    shutil.rmtree(original_rules)
+    #Restoring backup
+    os.rename(os.path.join(args.wazuh_home, "ruleset", "original_" + dir_name), original_rules)
+
 def cleanDR():
     rules_dir = args.wazuh_home + "/etc/rules"
     decoders_dir = args.wazuh_home + "/etc/decoders"
@@ -167,6 +189,11 @@ if __name__ == "__main__":
                         help='Use -t or --testfile to pass the ini file to test')
     parser.add_argument('--custom-ruleset', '-c', action='store_true', dest='custom',
                         help='Use -c or --custom-ruleset to test custom rules and decoders. WARNING: This will cause wazuh-manager restart')
+    parser.add_argument('--custom-rules', '-r', action='store', dest='custom_rules',
+                        help='Use -r or --custom-rules to test a custom rules folder giving a path. WARNING: This will cause wazuh-manager restart')
+    parser.add_argument('--custom-decoders', '-d', action='store', dest='custom_decoders',
+                        help='Use -d or --custom-decoders to test a custom decoders folder giving a path. WARNING: This will cause wazuh-manager restart')
+    
     args = parser.parse_args()
     selective_test = False
     if args.testfile:
@@ -182,11 +209,31 @@ if __name__ == "__main__":
         signal.signal(sig, cleanup)
     if args.custom:
         provisionDR()
+    #Moving rules to wazuh_home
+    if args.custom_rules:
+        overwrite_folder(args.custom_rules)
+    #Moving decoders to wazuh_home
+    if args.custom_decoders:
+        overwrite_folder(args.custom_decoders)
+    # Restart if it's needed
+    if args.custom or args.custom_rules or args.custom_decoders:
         restart_analysisd()
+
     OT = OssecTester(args.wazuh_home)
     error = OT.run(selective_test, args.geoip, args.custom)
     if args.custom:
         cleanDR()
         restart_analysisd()
+
+    #Moving rules to wazuh_home
+    if args.custom_rules:
+        rollback_folder(args.custom_rules)
+    #Moving decoders to wazuh_home
+    if args.custom_decoders:
+        rollback_folder(args.custom_decoders)
+    # Restart if it's needed
+    if args.custom or args.custom_rules or args.custom_decoders:
+        restart_analysisd()
+
     if error:
         sys.exit(1)
