@@ -5518,7 +5518,7 @@ paths:
                     - '002'
                     - '003'
                   total_affected_items: 3
-                  total_failed_items: 0,
+                  total_failed_items: 0
                   failed_items: []
                 message: 'All selected agents were deleted'
                 error: 0
@@ -5676,6 +5676,7 @@ paths:
         content:
           application/json:
               schema:
+                type: object
                 properties:
                   name:
                     description: "Agent name"
@@ -5714,6 +5715,7 @@ paths:
                   id: "009"
                   key: "MDA5IE5ld0hvc3RfMiAxMC4wLjEwLjExIDhkNjllMzRiYTM2ZjcwMzgzZmVkNTIyNzk4MzFiZDg2NWQzZGRkZjJhMTkwZWR
                     jMjY5YmRhOTY1ODU4M2JkMjg="
+                message: "User was successfully created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5823,11 +5825,13 @@ paths:
                       allOf:
                         - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
               example:
-                affected_items: [ "test" ]
-                total_affected_items: 1
-                total_failed_items: 0
-                failed_items: [ ]
-                message: "Specified agent was removed from returned groups"
+                data:
+                  affected_items:
+                    - group1
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: 'Specified agent was removed from returned groups'
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5911,9 +5915,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Agent 001 removed from 'group_test'."
+                message: "Agent '004' removed from 'dmz'."
                 error: 0
-
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5926,7 +5929,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     put:
       tags:
         - Agents
@@ -5952,11 +5954,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "004"
+                    - "003"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "All selected agents were assigned to test_group"
+                message: "All selected agents were assigned to group3"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5999,9 +6001,9 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: '005'
-                      key: "MDA1IDUxNTI2YTZiNzcyMCBhbnkgMzMyNmRlYTM2Y2U2MTk2OTljMzRmMGRmOWE1YzYzNWMwYzEwYTk2ZTBmMmE4M2Rl
-                        NWIzNjZmMTcyNzZmZjA4OQ=="
+                    - id: '002'
+                      key: "MDAyIHdhenVoLWFnZW50MiBhbnkgMzAxYzk0Y2I3NDc5MzliMjAyYTg0OGE3NGIwMTNkODQwZWJkNWUyZmIxMjQ3Nzhl
+                      NDhjYzUxOGE4MWQyNDFkYw=="
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -6046,7 +6048,7 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - "001"
+                      - "002"
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
@@ -6331,11 +6333,13 @@ paths:
                 data:
                   affected_items:
                     - '002'
-                    - '003'
-                  total_affected_items: 2
+                    - '006'
+                    - '008'
+                    - '010'
+                  total_affected_items: 4
                   total_failed_items: 0
                   failed_items: []
-                message: "All selected agents were removed from group test_wazuh"
+                message: "All selected agents were removed from group group1"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6381,14 +6385,25 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '004'
-                    - '005'
-                    - '006'
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: All selected agents were assigned to test_wazuh
-                error: 0
+                    - '001'
+                    - '002'
+                  failed_items:
+                    - error:
+                        code: 1701
+                        message: Agent does not exist
+                        remediation: Please, use `GET /agents?select=id,name` to find all available agents
+                      id:
+                        - '999'
+                    - error:
+                        code: 1753
+                        message: Could not assign group. Agent status is never_connected
+                        remediation: Please select another agent or connect your agent before assigning groups
+                      id:
+                        - '011'
+                  total_affected_items: 2
+                  total_failed_items: 2
+                  message: Some agents were not assigned to group2 and removed from the other groups
+                  error: 2
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6430,9 +6445,9 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - '004'
+                      - '002'
+                      - '003'
                       - '005'
-                      - '006'
                     total_affected_items: 3
                     total_failed_items: 0
                     failed_items: []
@@ -6482,15 +6497,16 @@ paths:
                       - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
                 data:
-                  affected:items:
-                    - 'test_wazuh'
-                  total_affected_items: 1
+                  affected_items:
+                    - 'webserver'
+                    - 'dataserver'
+                  total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
                   affected_agents:
-                    - '004'
+                    - '002'
+                    - '003'
                     - '005'
-                    - '006'
                   message: "All selected groups were deleted"
                   error: 0
         '400':
@@ -6539,10 +6555,18 @@ paths:
                 data:
                   affected_items:
                     - name: default
-                      count: 8
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      count: 2
+                      mergedSum: f8d49771911ed9d5c45b03a40babd065
                       configSum: ab73af41699f13fdd81903b5f23d8d00
-                  total_affected_items: 1
+                    - name: dmz
+                      count: 3
+                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
+                      configSum: cfbae9ecc10eb15f1b4fc736de6758cc
+                    - name: pciserver
+                      count: 0
+                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected groups information was returned"
@@ -6573,6 +6597,7 @@ paths:
         content:
           application/json:
             schema:
+              type: object
               properties:
                 group_id:
                   description: "Group name"
@@ -6590,7 +6615,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Group 'test_wazuh' created"
+                message: "Group 'pciserver' created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6654,7 +6679,9 @@ paths:
                       ip: 172.20.0.7
                       id: 004
                       manager: wazuh-worker1
-                      group: ["default", "test_wazuh"]
+                      group:
+                        - default
+                        - group1
                       name: b2497efbf876
                       configSum: 052374472f3a0d5c8508241dcc455ea7
                       status: active
@@ -6677,7 +6704,9 @@ paths:
                       ip: 172.20.0.9
                       id: 005
                       manager: wazuh-worker1
-                      group: ["default", "test_wazuh"]
+                      group:
+                        - default
+                        - group2
                       name: 600e27371700
                       configSum: ab73af41699f13fdd81903b5f23d8d00
                       status: active
@@ -6700,7 +6729,9 @@ paths:
                       ip: 172.20.0.10
                       id: 006
                       manager: wazuh-worker2
-                      group: ["default", "test_wazuh"]
+                      group:
+                        - default
+                        - group3
                       name: 4bdac19ce5e3
                       configSum: ab73af41699f13fdd81903b5f23d8d00
                       status: active
@@ -7032,6 +7063,7 @@ paths:
         content:
           application/json:
               schema:
+                type: object
                 properties:
                   id:
                     $ref: '#/components/schemas/AgentID'
@@ -7454,31 +7486,13 @@ paths:
               example:
                 data:
                   affected_items:
-                    - count: 1
-                      id: 000
-                    - count: 1
-                      id: 001
-                    - count: 1
-                      id: 002
-                    - count: 1
-                      id: 003
-                    - count: 1
-                      id: 004
-                    - count: 1
-                      id: 005
-                    - count: 1
-                      id: 006
-                    - count: 1
-                      id: 007
-                    - count: 1
-                      id: 008
-                    - count: 1
-                      id: 009
-                    - count: 1
-                      id: 010
-                    - count: 1
-                      id: 011
-                  total_affected_items: 12
+                    - os:
+                        version: "20.04.2 LTS"
+                      count: 2
+                    - os:
+                        version: "unknown"
+                      count: 1
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: 'All selected agents information was returned'
@@ -7806,26 +7820,26 @@ paths:
                         version: 4.3.0
                         ip: 172.21.0.7
                         n_active_agents: 3
-                    - status:
+                      status:
                         sync_integrity_free: true
                         sync_extravalid_free: true
-                        - last_check_integrity:
-                            date_start_master: 2021-05-27 10:50:51.325656
-                            date_end_master: 2021-05-27 10:50:51.342140
-                        - last_sync_integrity:
-                            date_start_master: 2021-05-27 10:48:54.086973
-                            tmp_date_start_master: 2021-05-27 10:48:54.086973
-                            date_end_master: 2021-05-27 10:48:54.093328
-                            total_extra_valid: 0
-                            - total_files:
-                                missing: 2
-                                extra: 0
-                                extra_valid: 0
-                                shared: 0
-                        - last_sync_agentinfo:
-                            date_start_master: 2021-05-27 10:50:49.174463
-                            date_end_master: 2021-05-27 10:50:49.175921
-                            n_synced_chunks: 1
+                        last_check_integrity:
+                          date_start_master: 2021-05-27 10:50:51.325656
+                          date_end_master: 2021-05-27 10:50:51.342140
+                        last_sync_integrity:
+                          date_start_master: 2021-05-27 10:48:54.086973
+                          tmp_date_start_master: 2021-05-27 10:48:54.086973
+                          date_end_master: 2021-05-27 10:48:54.093328
+                          total_extra_valid: 0
+                          total_files:
+                            missing: 2
+                            extra: 0
+                            extra_valid: 0
+                            shared: 0
+                        last_sync_agentinfo:
+                          date_start_master: 2021-05-27 10:50:49.174463
+                          date_end_master: 2021-05-27 10:50:49.175921
+                          n_synced_chunks: 1
                         last_keep_alive: 2021-05-27 10:50:08.985208
                     - info:
                         name: worker2
@@ -7833,26 +7847,26 @@ paths:
                         version: 4.3.0
                         ip: 172.21.0.6
                         n_active_agents: 1
-                    - status:
+                      status:
                         sync_integrity_free: true
                         sync_extravalid_free: true
-                        - last_check_integrity:
-                            date_start_master: 2021-05-27 10:50:51.939323
-                            date_end_master: 2021-05-27 10:50:51.955007
-                        - last_sync_integrity:
-                            date_start_master: 2021-05-27 10:48:54.706395
-                            tmp_date_start_master: 2021-05-27 10:48:54.706395
-                            date_end_master: 2021-05-27 10:48:54.726944
-                            total_extra_valid: 0
-                            total_files:
-                              - missing: 2
-                                extra: 0
-                                extra_valid: 0
-                                shared: 0
-                        - last_sync_agentinfo:
-                            date_start_master: 2021-05-27 10:50:48.832800
-                            date_end_master: 2021-05-27 10:50:48.833854
-                            n_synced_chunks: 1
+                        last_check_integrity:
+                          date_start_master: 2021-05-27 10:50:51.939323
+                          date_end_master: 2021-05-27 10:50:51.955007
+                        last_sync_integrity:
+                          date_start_master: 2021-05-27 10:48:54.706395
+                          tmp_date_start_master: 2021-05-27 10:48:54.706395
+                          date_end_master: 2021-05-27 10:48:54.726944
+                          total_extra_valid: 0
+                          total_files:
+                            missing: 2
+                            extra: 0
+                            extra_valid: 0
+                            shared: 0
+                        last_sync_agentinfo:
+                          date_start_master: 2021-05-27 10:50:48.832800
+                          date_end_master: 2021-05-27 10:50:48.833854
+                          n_synced_chunks: 1
                         last_keep_alive: 2021-05-27 10:50:18.650204
                   total_affected_items: 3
                   total_failed_items: 0
@@ -8350,7 +8364,7 @@ paths:
                       cis-cat:
                         disabled: yes
                         timeout: 1800
-                        interval: "1d"
+                        interval: 1d
                         scan-on-start: yes
                         java_path: wodles/java
                         ciscat_path: wodles/ciscat
@@ -8682,30 +8696,30 @@ paths:
                 data:
                   affected_items:
                     - averages:
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
-                        - 0
+                        - 40
+                        - 24
+                        - 67
+                        - 234
+                        - 66
+                        - 24
+                        - 634
+                        - 66
+                        - 123
+                        - 56
+                        - 65
+                        - 23
+                        - 666
+                        - 233
+                        - 646
+                        - 44
+                        - 64
+                        - 99
+                        - 34
+                        - 235
+                        - 653
+                        - 25
+                        - 65
+                        - 23
                       interactions: 0
                   total_affected_items: 1
                   total_failed_items: 0
@@ -8985,58 +8999,52 @@ paths:
               example:
                 data:
                   affected_items:
-                  - total_events_decoded: 0.0
-                    syscheck_events_decoded: 0.0
-                    syscheck_edps: 0.0
-                    syscollector_events_decoded: 0.0
-                    syscollector_edps: 0.0
-                    rootcheck_events_decoded: 0.0
-                    rootcheck_edps: 0.0
-                    sca_events_decoded: 0.0
-                    sca_edps: 0.0
-                    hostinfo_events_decoded: 0.0
-                    hostinfo_edps: 0.0
-                    winevt_events_decoded: 0.0
-                    winevt_edps: 0.0
-                    dbsync_messages_dispatched: 0.0
-                    dbsync_mdps: 0.0
-                    other_events_decoded: 0.0
-                    other_events_edps: 0.0
-                    events_processed: 0.0
-                    events_edps: 0.0
-                    events_received: 0.0
-                    events_dropped: 0.0
-                    alerts_written: 0.0
-                    firewall_written: 0.0
-                    fts_written: 0.0
-                    syscheck_queue_usage: 0.0
-                    syscheck_queue_size: 16384.0
-                    syscollector_queue_usage: 0.0
-                    syscollector_queue_size: 16384.0
-                    rootcheck_queue_usage: 0.0
-                    rootcheck_queue_size: 16384.0
-                    sca_queue_usage: 0.0
-                    sca_queue_size: 16384.0
-                    hostinfo_queue_usage: 0.0
-                    hostinfo_queue_size: 16384.0
-                    winevt_queue_usage: 0.0
-                    winevt_queue_size: 16384.0
-                    dbsync_queue_usage: 0.0
-                    dbsync_queue_size: 16384.0
-                    upgrade_queue_usage: 0.0
-                    upgrade_queue_size: 16384.0
-                    event_queue_usage: 0.0
-                    event_queue_size: 16384.0
-                    rule_matching_queue_usage: 0.0
-                    rule_matching_queue_size: 16384.0
-                    alerts_queue_usage: 0.0
-                    alerts_queue_size: 16384.0
-                    firewall_queue_usage: 0.0
-                    firewall_queue_size: 16384.0
-                    statistical_queue_usage: 0.0
-                    statistical_queue_size: 16384.0
-                    archives_queue_usage: 0.0
-                    archives_queue_size: 16384.0
+                    - total_events_decoded: 5
+                      syscheck_events_decoded: 0
+                      syscheck_edps: 0
+                      syscollector_events_decoded: 0
+                      syscollector_edps: 0
+                      rootcheck_events_decoded: 0
+                      rootcheck_edps: 0
+                      sca_events_decoded: 0
+                      sca_edps: 0
+                      hostinfo_events_decoded: 0
+                      hostinfo_edps: 0
+                      winevt_events_decoded: 0
+                      winevt_edps: 0
+                      other_events_decoded: 5
+                      other_events_edps: 1
+                      events_processed: 5
+                      events_edps: 1
+                      events_received: 5
+                      events_dropped: 0
+                      alerts_written: 0
+                      firewall_written: 0
+                      fts_written: 0
+                      syscheck_queue_usage: 0
+                      syscheck_queue_size: 16384
+                      syscollector_queue_usage: 0
+                      syscollector_queue_size: 16384
+                      rootcheck_queue_usage: 0
+                      rootcheck_queue_size: 16384
+                      sca_queue_usage: 0
+                      sca_queue_size: 16384
+                      hostinfo_queue_usage: 0
+                      hostinfo_queue_size: 16384
+                      winevt_queue_usage: 0
+                      winevt_queue_size: 16384
+                      event_queue_usage: 0
+                      event_queue_size: 16384
+                      rule_matching_queue_usage: 0
+                      rule_matching_queue_size: 16384
+                      alerts_queue_usage: 0
+                      alerts_queue_size: 16384
+                      firewall_queue_usage: 0
+                      firewall_queue_size: 16384
+                      statistical_queue_usage: 0
+                      statistical_queue_size: 16384
+                      archives_queue_usage: 0
+                      archives_queue_size: 16384
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -11289,41 +11297,41 @@ paths:
               example:
                 data:
                   affected_items:
-                      - mitre_version: '1.0'
-                        network_requirements: 0
-                        remote_support: 0
-                        mitre_detection: |-
-                          Much of this activity may have a very high occurrence and associated false positive rate, as well as potentially taking place outside the visibility of the target organization, making detection difficult for defenders.
+                    - mitre_version: '1.0'
+                      network_requirements: 0
+                      remote_support: 0
+                      mitre_detection: |-
+                        Much of this activity may have a very high occurrence and associated false positive rate, as well as potentially taking place outside the visibility of the target organization, making detection difficult for defenders.
 
-                          Detection efforts may be focused on related stages of the adversary lifecycle, such as during Initial Access.
-                        id: attack-pattern--9d48cab2-7929-4812-ad22-f536665f0109
-                        modified_time: '2020-10-25 22:58:23.086000'
-                        deprecated: 0
-                        created_time: '2020-10-02 15:45:17.628000'
-                        name: Gather Victim Network Information
-                        description: |-
-                          Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
+                        Detection efforts may be focused on related stages of the adversary lifecycle, such as during Initial Access.
+                      id: attack-pattern--9d48cab2-7929-4812-ad22-f536665f0109
+                      modified_time: '2020-10-25 22:58:23.086000'
+                      deprecated: 0
+                      created_time: '2020-10-02 15:45:17.628000'
+                      name: Gather Victim Network Information
+                      description: |-
+                        Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
 
-                          Adversaries may gather this information in various ways, such as direct collection actions via [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Phishing for Information](https://attack.mitre.org/techniques/T1598). Information about networks may also be exposed to adversaries via online or other accessible data sets (ex: [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)).(Citation: WHOIS)(Citation: DNS Dumpster)(Citation: Circl Passive DNS) Gathering this information may reveal opportunities for other forms of reconnaissance (ex: [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593)), establishing operational resources (ex: [Acquire Infrastructure](https://attack.mitre.org/techniques/T1583) or [Compromise Infrastructure](https://attack.mitre.org/techniques/T1584)), and/or initial access (ex: [Trusted Relationship](https://attack.mitre.org/techniques/T1199)).
-                        tactics:
-                          - "x-mitre-tactic--daa4cbb1-b4f4-4723-a824-7f1efd6e0592"
-                        mitigations:
-                          - "course-of-action--78bb71be-92b4-46de-acd6-5f998fedf1cc"
-                        software: []
-                        groups: []
-                        references:
-                          - source: "Circl Passive DNS"
-                            description: "CIRCL Computer Incident Response Center. (n.d.). Passive DNS. Retrieved October 20, 2020."
-                            url: "https://www.circl.lu/services/passive-dns/"
-                          - source: "DNS Dumpster"
-                            description: "Hacker Target. (n.d.). DNS Dumpster. Retrieved October 20, 2020."
-                            url: "https://dnsdumpster.com/"
-                          - source: "WHOIS"
-                            description: "NTT America. (n.d.). Whois Lookup. Retrieved October 20, 2020."
-                            url: "https://www.whois.net/"
-                          - source: "mitre-attack"
-                            external_id: "T1590"
-                            url: "https://attack.mitre.org/techniques/T1590"
+                        Adversaries may gather this information in various ways, such as direct collection actions via [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Phishing for Information](https://attack.mitre.org/techniques/T1598). Information about networks may also be exposed to adversaries via online or other accessible data sets (ex: [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)).(Citation: WHOIS)(Citation: DNS Dumpster)(Citation: Circl Passive DNS) Gathering this information may reveal opportunities for other forms of reconnaissance (ex: [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593)), establishing operational resources (ex: [Acquire Infrastructure](https://attack.mitre.org/techniques/T1583) or [Compromise Infrastructure](https://attack.mitre.org/techniques/T1584)), and/or initial access (ex: [Trusted Relationship](https://attack.mitre.org/techniques/T1199)).
+                      tactics:
+                        - "x-mitre-tactic--daa4cbb1-b4f4-4723-a824-7f1efd6e0592"
+                      mitigations:
+                        - "course-of-action--78bb71be-92b4-46de-acd6-5f998fedf1cc"
+                      software: []
+                      groups: []
+                      references:
+                        - source: "Circl Passive DNS"
+                          description: "CIRCL Computer Incident Response Center. (n.d.). Passive DNS. Retrieved October 20, 2020."
+                          url: "https://www.circl.lu/services/passive-dns/"
+                        - source: "DNS Dumpster"
+                          description: "Hacker Target. (n.d.). DNS Dumpster. Retrieved October 20, 2020."
+                          url: "https://dnsdumpster.com/"
+                        - source: "WHOIS"
+                          description: "NTT America. (n.d.). Whois Lookup. Retrieved October 20, 2020."
+                          url: "https://www.whois.net/"
+                        - source: "mitre-attack"
+                          external_id: "T1590"
+                          url: "https://attack.mitre.org/techniques/T1590"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -12167,15 +12175,15 @@ paths:
                 data:
                   affected_items:
                   - remediation: "For new installations, during installation create a custom partition setup and specify
-                      a separate partition for /var. For systems that were previously installed, create a new partition
-                      and configure /etc/fstab as appropriate"
+                   a separate partition for /var. For systems that were previously installed, create a new partition and
+                    configure /etc/fstab as appropriate"
                     rationale: "Since the /var directory may contain world-writable files and directories, there is a
-                      risk of resource exhaustion if it is not bound to a separate partition"
+                    risk of resource exhaustion if it is not bound to a separate partition"
                     title: "Ensure separate partition exists for /var"
                     policy_id: cis_debian
                     file: /etc/fstab
                     description: "The /var directory is used by daemons and other system services to temporarily store
-                      dynamic data. Some directories created by these processes may be world-writable"
+                    dynamic data. Some directories created by these processes may be world-writable"
                     id: 5003
                     result: failed
                     condition: all
@@ -12186,9 +12194,9 @@ paths:
                     - key: cis_csc
                       value: "5"
                   - remediation: "Run the following commands to remove exim: # apt-get remove exim4; # apt-get purge
-                      exim4"
+                  exim4"
                     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended
-                      that the package be removed to reduce the potential attack surface"
+                    that the package be removed to reduce the potential attack surface"
                     title: "Ensure IMAP and POP3 server is not enabled (POP3)"
                     policy_id: cis_debian
                     file: /etc/inetd.conf
@@ -12312,22 +12320,37 @@ paths:
               example:
                 data:
                   affected_items:
-                    - gid: "0"
-                      type: "file"
-                      size: 428
-                      sha256: "999b40b67f690638f601d76b756d529dd40a4325f42dfd9fd2e629ad0a91947c"
-                      uname: "root"
-                      file: "/usr/bin/c89-gcc"
-                      perm: "rwxr-xr-x"
-                      uid: "0"
-                      inode: 19661776
-                      gname: "root"
-                      sha1: "c70119483d984a7c2300947679663fffd5df1419"
-                      date: "2021-05-28T11:16:11Z"
-                      mtime: "2006-05-07T09:28:01Z"
-                      md5: "ddef29c39d1a5d5ac6a5380627309ad5"
-                      changes: 1
-                  total_affected_items: 1330
+                    - changes: 1
+                      date: '2019-11-22T10:24:52Z'
+                      file: "/etc/dpkg/origins/debian"
+                      gid: '0'
+                      gname: root
+                      inode: 1459742
+                      md5: 731423fa8ba067262f8ef37882d1e742
+                      mtime: '2009-02-02T23:06:58Z'
+                      perm: '100644'
+                      sha1: b65f7f2af66c53b51765877bbe91a22bc6fca1e2
+                      sha256: 50f35af8ac4a5df3690991a4b428fa49d56580b0020fcc6e38283b3b1b2e6c74
+                      size: 82
+                      type: file
+                      uid: '0'
+                      uname: root
+                    - changes: 1
+                      date: '2019-11-22T10:24:56Z'
+                      file: "/etc/sgml/xml-core.cat"
+                      gid: '0'
+                      gname: root
+                      inode: 2896763
+                      md5: 055ba0bd3154c0a58b9bf8a0c9ecf2fa
+                      mtime: '2012-11-07T21:44:21Z'
+                      perm: '100644'
+                      sha1: 3dec5570307472381671ff18bbe4d4be09951690
+                      sha256: 3c46704b553c4b55ce928ffe89badfcfd08a02f0e6558211dfd57d9ae1e72aa4
+                      size: 45
+                      type: file
+                      uid: '0'
+                      uname: root
+                  total_affected_items: 1433
                   total_failed_items: 0
                   failed_items: []
                 message: "FIM findings of the agent were returned"
@@ -14008,7 +14031,7 @@ paths:
         - Syscollector
       summary: "Get agent netaddr"
       description: "Return the agent's network address info. This information include used IP protocol, interface, IP
-        address  among others"
+      address  among others"
       operationId: api.controllers.syscollector_controller.get_network_address_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14070,7 +14093,7 @@ paths:
         - Syscollector
       summary: "Get agent netiface"
       description: "Return the agent's network interface info. This information include rx, scan, tx info and some
-        network information among others"
+      network information among others"
       operationId: api.controllers.syscollector_controller.get_network_interface_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14214,7 +14237,7 @@ paths:
         - Syscollector
       summary: "Get agent OS"
       description: "Return the agent's OS info. This information include os information, architecture information among
-        others of all agents"
+      others of all agents"
       operationId: api.controllers.syscollector_controller.get_os_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14376,7 +14399,7 @@ paths:
         - Syscollector
       summary: "Get agent ports"
       description: "Return the agent's ports info. This information include local IP, Remote IP, protocol information
-        among others"
+      among others"
       operationId: api.controllers.syscollector_controller.get_ports_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
@@ -14577,7 +14600,7 @@ paths:
         - Security
       summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
-        auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
+      auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/raw'
@@ -14596,15 +14619,13 @@ paths:
                       data:
                         $ref: '#/components/schemas/Token'
               example:
-                token: "<generated_token>"
-                error: 0
-            text/plain:
-              schema:
-                type: string
-              example:
                 data:
                   token: "<generated_token>"
                   error: 0
+            text/plain:
+              schema:
+                type: string
+              example: "<generated_token>"
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14660,6 +14681,14 @@ paths:
           application/json:
             schema:
               type: object
+            example:
+              name: "Initial_auth"
+              auth:
+                name: "Wazuh"
+                office:
+                  - "20"
+                  - "21"
+                  - "30"
       responses:
         '200':
           description: "Login successful"
@@ -14716,13 +14745,17 @@ paths:
                         roles:
                           - id: 1
                             name: administrator
+                            rule:
+                              FIND:
+                                r'^auth[a-zA-Z]+$':
+                                  - full_admin
                             policies:
                               - id: 1
                                 name: agents_all_resourceless
                                 policy:
                                   actions:
-                                    - "agent:create"
-                                    - "group:create"
+                                    - agent:create
+                                    - group:create
                                   resources:
                                     - "*:*:*"
                                   effect: allow
@@ -14730,214 +14763,16 @@ paths:
                                 name: agents_all_agents
                                 policy:
                                   actions:
-                                    - "agent:read"
-                                    - "agent:delete"
-                                    - "agent:modify_group"
-                                    - "agent:reconnect"
-                                    - "agent:restart"
-                                    - "agent:upgrade"
+                                    - agent:read
+                                    - agent:delete
+                                    - agent:modify_group
+                                    - agent:reconnect
+                                    - agent:restart
+                                    - agent:upgrade
                                   resources:
-                                    - "agent:id:*"
-                                    - "agent:group:*"
+                                    - agent:id:*
+                                    - agent:group:*
                                   effect: allow
-                              - id: 3
-                                name: agents_all_groups
-                                policy:
-                                  actions:
-                                    - "group:read"
-                                    - "group:delete"
-                                    - "group:update_config"
-                                    - "group:modify_assignments"
-                                  resources:
-                                    - "group:id:*"
-                                  effect: allow
-                              - id: 6
-                                name: agents_commands_agents
-                                policy:
-                                  actions:
-                                    - "active-response:command"
-                                  resources:
-                                    - "agent:id:*"
-                                  effect: allow
-                              - id: 7
-                                name: security_all_resourceless
-                                policy:
-                                  actions:
-                                    - "security:create"
-                                    - "security:create_user"
-                                    - "security:read_config"
-                                    - "security:update_config"
-                                    - "security:revoke"
-                                    - "security:edit_run_as"
-                                  resources:
-                                    - "*:*:*"
-                                  effect: allow
-                              - id: 8
-                                name: security_all_security
-                                policy:
-                                  actions:
-                                    - "security:read"
-                                    - "security:update"
-                                    - "security:delete"
-                                  resources:
-                                    - "role:id:*"
-                                    - "policy:id:*"
-                                    - "user:id:*"
-                                    - "rule:id:*"
-                                  effect: allow
-                              - id: 29
-                                name: cluster_all_resourceless
-                                policy:
-                                  actions:
-                                    - "cluster:status"
-                                    - "manager:read"
-                                    - "manager:read_api_config"
-                                    - "manager:update_config"
-                                    - "manager:restart"
-                                  resources:
-                                    - "*:*:*"
-                                  effect: allow
-                              - id: 30
-                                name: cluster_all_nodes
-                                policy:
-                                  actions:
-                                    - "cluster:read_api_config"
-                                    - "cluster:read"
-                                    - "cluster:restart"
-                                    - "cluster:update_config"
-                                  resources:
-                                    - "node:id:*"
-                                  effect: allow
-                              - id: 12
-                                name: ciscat_read_ciscat
-                                policy:
-                                  actions:
-                                    - "ciscat:read"
-                                  resources:
-                                    - "agent:id:*"
-                                  effect: allow
-                              - id: 14
-                                name: decoders_all_files
-                                policy:
-                                  actions:
-                                    - "decoders:read"
-                                    - "decoders:delete"
-                                  resources:
-                                    - "decoder:file:*"
-                                  effect: allow
-                              - id: 15
-                                name: decoders_all_resourceless
-                                policy:
-                                  actions:
-                                    - "decoders:update"
-                                  resources:
-                                    - "*:*:*"
-                                  effect: allow
-                              - id: 18
-                                name: lists_all_rules
-                                policy:
-                                  actions:
-                                    - "lists:read"
-                                    - "lists:delete"
-                                  resources:
-                                    - "list:file:*"
-                                  effect: allow
-                              - id: 19
-                                name: lists_all_resourceless
-                                policy:
-                                  actions:
-                                    - "lists:update"
-                                  resources:
-                                    - "*:*:*"
-                                  effect: allow
-                              - id: 21
-                                name: rootcheck_all_rootcheck
-                                policy:
-                                  actions:
-                                    - "rootcheck:clear"
-                                    - "rootcheck:read"
-                                    - "rootcheck:run"
-                                  resources:
-                                    - "agent:id:*"
-                                  effect: allow
-                              - id: 23
-                                name: rules_all_files
-                                policy:
-                                  actions:
-                                    - "rules:read"
-                                    - "rules:delete"
-                                  resources:
-                                    - "rule:file:*"
-                                  effect: allow
-                              - id: 24
-                                name: rules_all_resourceless
-                                policy:
-                                  actions:
-                                    - "rules:update"
-                                  resources:
-                                    - "*:*:*"
-                                  effect: allow
-                              - id: 16
-                                name: mitre_read_mitre
-                                policy:
-                                  actions:
-                                    - "mitre:read"
-                                  resources:
-                                    - "*:*:*"
-                                  effect: allow
-                              - id: 25
-                                name: sca_read_sca
-                                policy:
-                                  actions:
-                                    - "sca:read"
-                                  resources:
-                                    - "agent:id:*"
-                                  effect: allow
-                              - id: 27
-                                name: syscheck_all_syscheck
-                                policy:
-                                  actions:
-                                    - "syscheck:clear"
-                                    - "syscheck:read"
-                                    - "syscheck:run"
-                                  resources:
-                                    - "agent:id:*"
-                                  effect: allow
-                              - id: 28
-                                name: syscollector_read_syscollector
-                                policy:
-                                  actions:
-                                    - "syscollector:read"
-                                  resources:
-                                    - "agent:id:*"
-                                  effect: allow
-                              - id: 34
-                                name: task_status_task
-                                policy:
-                                  actions:
-                                    - "task:status"
-                                  resources:
-                                    - "*:*:*"
-                                  effect: allow
-                              - id: 35
-                                name: vulnerability_read_vulnerability
-                                policy:
-                                  actions:
-                                    - "vulnerability:read"
-                                  resources:
-                                    - "agent:id:*"
-                                  effect: allow
-                            rules:
-                              - id: 1
-                                name: wui_elastic_admin
-                                rule:
-                                  FIND:
-                                    username: elastic
-                              - id: 2
-                                name: wui_opendistro_admin
-                                rule:
-                                  FIND:
-                                    username: admin
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
@@ -14972,128 +14807,11 @@ paths:
                 $ref: "#/components/schemas/ApiResponse"
               example:
                 data:
-                  agent:create:
-                    "*:*:*": "allow"
-                  group:create":
-                    "*:*:*": "allow"
-                  agent:read:
-                    "agent:id:*": "allow"
-                    "agent:group:*": "allow"
-                  "agent:delete":
-                    "agent:id:*": "allow"
-                    "agent:group:*": "allow"
-                  "agent:modify_group":
-                    "agent:id:*": "allow"
-                    "agent:group:*": "allow"
-                  "agent:reconnect":
-                    "agent:id:*": "allow"
-                    "agent:group:*": "allow"
-                  "agent:restart":
-                    "agent:id:*": "allow"
-                    "agent:group:*": "allow"
-                  "agent:upgrade":
-                    "agent:id:*": "allow"
-                    "agent:group:*": "allow"
-                  "group:read":
-                    "group:id:*": "allow"
-                  "group:delete":
-                    "group:id:*": "allow"
-                  "group:update_config":
-                    "group:id:*": "allow"
-                  "group:modify_assignments":
-                    "group:id:*": "allow"
-                  "active-response:command":
-                    "agent:id:*": "allow"
-                  "security:create":
-                    "*:*:*": "allow"
-                  "security:create_user":
-                    "*:*:*": "allow"
-                  "security:read_config":
-                    "*:*:*": "allow"
-                  "security:update_config":
-                    "*:*:*": "allow"
-                  "security:revoke":
-                    "*:*:*": "allow"
-                  "security:edit_run_as":
-                    "*:*:*": "allow"
-                  "security:read":
-                    "role:id:*": "allow"
-                    "policy:id:*": "allow"
-                    "user:id:*": "allow"
-                    "rule:id:*": "allow"
-                  "security:update":
-                    "role:id:*": "allow"
-                    "policy:id:*": "allow"
-                    "user:id:*": "allow"
-                    "rule:id:*": "allow"
-                  "security:delete":
-                    "role:id:*": "allow"
-                    "policy:id:*": "allow"
-                    "user:id:*": "allow"
-                    "rule:id:*": "allow"
-                  "cluster:status":
-                    "*:*:*": "allow"
-                  "manager:read":
-                    "*:*:*": "allow"
-                  "manager:read_api_config":
-                    "*:*:*": "allow"
-                  "manager:update_config":
-                    "*:*:*": "allow"
-                  "manager:restart":
-                    "*:*:*": "allow"
-                  "cluster:read_api_config":
-                    "node:id:*": "allow"
-                  "cluster:read":
-                    "node:id:*": "allow"
-                  "cluster:restart":
-                    "node:id:*": "allow"
-                  "cluster:update_config":
-                    "node:id:*": "allow"
-                  "ciscat:read":
-                    "agent:id:*": "allow"
-                  "decoders:read":
-                    "decoder:file:*": "allow"
-                  "decoders:delete":
-                    "decoder:file:*": "allow"
-                  "decoders:update":
-                    "*:*:*": "allow"
-                  "lists:read":
-                    "list:file:*": "allow"
-                  "lists:delete":
-                    "list:file:*": "allow"
-                  "lists:update":
-                    "*:*:*": "allow"
-                  "rootcheck:clear":
-                    "agent:id:*": "allow"
-                  "rootcheck:read":
-                    "agent:id:*": "allow"
-                  "rootcheck:run":
-                    "agent:id:*": "allow"
-                  "rules:read":
-                    "rule:file:*": "allow"
-                  "rules:delete":
-                    "rule:file:*": "allow"
-                  "rules:update":
-                    "*:*:*": "allow"
-                  "mitre:read":
-                    "*:*:*": "allow"
-                  "sca:read":
-                    "agent:id:*": "allow"
-                  "syscheck:clear":
-                    "agent:id:*": "allow"
-                  "syscheck:read":
-                    "agent:id:*": "allow"
-                  "syscheck:run":
-                    "agent:id:*": "allow"
-                  "syscollector:read":
-                    "agent:id:*": "allow"
-                  "logtest:run":
-                    "*:*:*": "allow"
-                  "task:status":
-                    "*:*:*": "allow"
-                  "vulnerability:read":
-                    "agent:id:*": "allow"
-                  "rbac_mode": "white"
+                  syscheck:run:
+                    agent:id:*: allow
+                  syscollector:read:
+                    agent:id:*: allow
+                  rbac_mode: black
                 message: "Current user processed policies information was returned"
                 error: 0
         '400':
@@ -15164,7 +14882,7 @@ paths:
                     affected_items:
                       - id: 1
                         username: wazuh
-                        allow_run_as: false
+                        allow_run_as: true
                         roles:
                           - 1
                     total_affected_items: 1
@@ -15204,16 +14922,14 @@ paths:
                   - type: object
               example:
                 active-response:command:
-                  description: "Execute active response commands in the agents"
+                  description: Allow to execute active response commands in the agents
                   resources:
                   - "agent:id"
-                  - "agent:group"
                   example:
                     actions:
-                      - "active-response:command"
+                      - active-response:command
                     resources:
-                      - "agent:id:001"
-                      - "agent:group:atlantic"
+                      - agent:id:001
                     effect: allow
                   related_endpoints:
                     - PUT /active-response
@@ -15223,14 +14939,14 @@ paths:
                   - "*:*"
                   example:
                     actions:
-                      - "agent:create"
+                      - agent:create
                     resources:
                       - "*:*:*"
                     effect: allow
                   related_endpoints:
-                    - "POST /agents"
-                    - "POST /agents/insert"
-                    - "POST /agents/insert/quick"
+                    - POST /agents
+                    - POST /agents/insert
+                    - POST /agents/insert/quick
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -15333,17 +15049,48 @@ paths:
                 example:
                   data:
                     affected_items:
+                      - id: 3
+                        username: administrator
+                        allow_run_as: true
+                        roles:
+                          - 2
+                      - id: 4
+                        username: guest
+                        allow_run_as: false
+                        roles: []
+                      - id: 5
+                        username: normal
+                        allow_run_as: false
+                        roles:
+                          - 4
+                          - 5
+                          - 6
+                      - id: 6
+                        username: ossec
+                        allow_run_as: true
+                        roles:
+                          - 2
+                          - 5
+                      - username: python
+                        allow_run_as: true
+                        roles: []
+                      - id: 7
+                        username: rbac
+                        allow_run_as: false
+                        roles:
+                          - 3
+                          - 4
+                          - 5
                       - id: 1
-                        username: "wazuh"
+                        username: wazuh
                         allow_run_as: true
                         roles:
                           - 1
                       - id: 2
-                        username: "wazuh-wui"
+                        username: wazuh-wui
                         allow_run_as: true
-                        roles:
-                          - 1
-                    total_affected_items: 2
+                        roles: []
+                    total_affected_items: 8
                     total_failed_items: 0
                     failed_items: []
                   message: "All specified users were returned"
@@ -15450,9 +15197,14 @@ paths:
                   data:
                     affected_items:
                       - id: 100
-                        username: TestWazuh
+                        username: new_user
                         allow_run_as: false
                         roles: []
+                      - id: 102
+                        username: another_user
+                        allow_run_as: true
+                        roles:
+                          - 6
                     total_affected_items: 2
                     total_failed_items: 0
                     failed_items: []
@@ -15712,15 +15464,20 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 100
-                      name: TestWazuhRole
-                      policies: []
-                      users: []
-                      rules: []
+                    - id: 4
+                      name: administrator
+                      policies:
+                        - 4
+                        - 5
+                      rules:
+                        - 8
+                      users:
+                        - 101
+                        - 104
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "All specified roles were deleted"
+                message: All specified roles were deleted
                 error: 0
 
         '400':
@@ -15770,11 +15527,12 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 100
-                      name: TestWazuhRole
+                    - id: 5
+                      name: normal8
                       policies: []
+                      rules:
+                        - 100
                       users: []
-                      rules: []
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -16015,7 +15773,7 @@ paths:
                         name: "TestWazuhRule"
                         rule:
                           MATCH:
-                            definition: "test_rule"
+                            definition: "test_rule_updated"
                         roles: []
                     total_affected_items: 1
                     total_failed_items: 0
