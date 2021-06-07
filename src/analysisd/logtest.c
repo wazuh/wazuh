@@ -1186,8 +1186,7 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
 
 bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
 
-    //const char * FILE_CONFIG = OSSECCONF;
-    const char * FILE_CONFIG = "etc/ossec_test.conf";
+    const char * FILE_CONFIG = OSSECCONF;
     const char * XML_MAIN_NODE = "ossec_config";
     bool retval = true;
 
