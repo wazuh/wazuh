@@ -48,12 +48,20 @@ typedef struct wm_office365_state {
     time_t last_log_time;
 } wm_office365_state;
 
+typedef struct wm_office365_fail {
+    int fails;
+    char *tenant_id;
+    char *subscription_name;
+    struct wm_office365_fail *next;
+} wm_office365_fail;
+
 typedef struct wm_office365 {
     int enabled;
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
     wm_office365_auth *auth;
     wm_office365_subscription *subscription;
+    wm_office365_fail *fails;
     int queue_fd;
 } wm_office365;
 

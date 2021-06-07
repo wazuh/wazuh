@@ -322,7 +322,6 @@ STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
     while (!target_org)
     {
         if (current == NULL) {
-            mtdebug1(WM_GITHUB_LOGTAG, "No record for this organization: '%s'", org_name);
             target_org = 1;
             continue;
         }
@@ -344,7 +343,6 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
     org_fail = wm_github_get_fail_by_org(*current_fails, org_name);
 
     if (org_fail == NULL) {
-
         os_calloc(1, sizeof(wm_github_fail), org_fail);
 
         if (*current_fails) {
@@ -357,7 +355,6 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
         } else {
             // First wm_github_fail
             *current_fails = org_fail;
-
         }
 
         os_strdup(org_name, org_fail->org_name);
@@ -387,6 +384,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
             cJSON_AddItemToObject(fail_github, "github", fail_object);
 
             payload = cJSON_PrintUnformatted(fail_github);
+
             mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
 
             if (wm_sendmsg(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
