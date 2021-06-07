@@ -157,6 +157,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
 list(APPEND shared_tests_names "test_atomic")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
+list(APPEND shared_tests_names "test_sysinfo_utils")
+list(APPEND shared_tests_flags "")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
