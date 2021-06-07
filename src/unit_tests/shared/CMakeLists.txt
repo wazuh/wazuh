@@ -149,6 +149,9 @@ endif()
 list(APPEND shared_tests_names "test_keys")
 list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
 
+list(APPEND shared_tests_names "test_sysinfo_utils")
+list(APPEND shared_tests_flags "")
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")

@@ -11,12 +11,12 @@
 #define SYM_LOAD_WRAPPERS_H
 #include "sym_load.h"
 
-void*  __wrap_so_get_module_handle_on_path(const char *path, const char *so);
+void* __wrap_so_get_module_handle_on_path(const char *path, const char *so);
 
-void*  __wrap_so_get_module_handle(const char *so);
+void* __wrap_so_get_module_handle(const char *so);
 
-void*  __wrap_so_get_function_sym(void *handle, const char *function_name);
+void* __wrap_so_get_function_sym(void *handle, const char *function_name);
 
-int  __wrap_so_free_library(void *handle);
+int __wrap_so_free_library(void *handle);
 
 #endif
