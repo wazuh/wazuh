@@ -386,16 +386,11 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
 w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
-    w_logtest_session_t * session;
+    w_logtest_session_t * session = NULL;
     _Config ruleset_config = {0};
     bool retval = true;
 
-    char ** files;
-
-    /* Get ruleset files */
-    if (!w_logtest_ruleset_load(&ruleset_config, list_msg)) {
-        goto cleanup;
-    }
+    char ** files = NULL;
 
     /*Generate session token*/
     char *token = w_logtest_generate_token();
@@ -417,6 +412,11 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
     os_calloc(1, sizeof(EventList), session->eventlist);
     OS_CreateEventList(Config.memorysize, session->eventlist);
 
+    /* Get ruleset files */
+    if (!w_logtest_ruleset_load(&ruleset_config, list_msg)) {
+        goto cleanup;
+    }
+
     /* Load decoders */
     session->decoderlist_forpname = NULL;
     session->decoderlist_nopname = NULL;
@@ -424,15 +424,18 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
     files = ruleset_config.decoders;
 
-    while (files && *files) {
-        if (!ReadDecodeXML(*files, &session->decoderlist_forpname,
-            &session->decoderlist_nopname, &session->decoder_store, list_msg)) {
+    while (files != NULL && *files != NULL) {
+        if (ReadDecodeXML(*files, &session->decoderlist_forpname,
+            &session->decoderlist_nopname, &session->decoder_store, list_msg) == 0) {
             goto cleanup;
         }
         files++;
     }
 
-    SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, &session->decoderlist_forpname);
+    if (SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, 
+                     &session->decoderlist_forpname) == 0) {
+        goto cleanup;
+    }
 
     /* Load CDB list */
     session->cdblistnode = NULL;
@@ -440,7 +443,7 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
     files = ruleset_config.lists;
 
-    while (files && *files) {
+    while (files != NULL && *files != NULL) {
         if (Lists_OP_LoadList(*files, &session->cdblistnode, list_msg) < 0) {
             goto cleanup;
         }
@@ -454,7 +457,7 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
 
     files = ruleset_config.includes;
 
-    while (files && *files) {
+    while (files != NULL && *files != NULL) {
         if (Rules_OP_ReadRules(*files, &session->rule_list, &session->cdblistnode,
                             &session->eventlist, &session->decoder_store, list_msg) < 0) {
             goto cleanup;
@@ -509,7 +512,9 @@ cleanup:
 
         /* Remove decoder lists */
         os_remove_decoders_list(session->decoderlist_forpname, session->decoderlist_nopname);
-        OSStore_Free(session->decoder_store);
+        if (session->decoder_store != NULL) {
+            OSStore_Free(session->decoder_store);
+        }
 
         /* Remove cdblistnode and cdblistrule */
         os_remove_cdblist(&session->cdblistnode);
@@ -1181,7 +1186,8 @@ int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_
 
 bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
 
-    const char * FILE_CONFIG = OSSECCONF;
+    //const char * FILE_CONFIG = OSSECCONF;
+    const char * FILE_CONFIG = "etc/ossec_test.conf";
     const char * XML_MAIN_NODE = "ossec_config";
     bool retval = true;
 
@@ -1194,7 +1200,7 @@ bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
         return false;
     } else if (node = OS_GetElementsbyNode(&xml, NULL), node == NULL) {
         OS_ClearXML(&xml);
-        smerror(list_msg, "Empty el archivo");
+        smerror(list_msg, "ossec.conf its empty");
         return false;
     }
 
@@ -1224,7 +1230,7 @@ bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
             } 
             /* Empty node */
             else {
-                smwarn(list_msg, "<ossec_config> ossec vacio, puede ser </ossec_config>");
+                smwarn(list_msg, "empty 'ossec_config' label");
             }
         }
     }
