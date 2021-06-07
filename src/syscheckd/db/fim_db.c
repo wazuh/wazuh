@@ -422,7 +422,6 @@ end:
 
 void fim_db_check_transaction(fdb_t *fim_sql) {
     time_t now = time(NULL);
-    int query_result = FIMDB_OK;
 
     if (fim_sql->transaction.last_commit + fim_sql->transaction.interval <= now) {
         if (!fim_sql->transaction.last_commit) {
@@ -432,17 +431,17 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
 
         if (!sqlite3_get_autocommit(fim_sql->db)) {
             // A transaction has been initiated by a BEGIN command and it's in progress
-            if (query_result = fim_db_exec_simple_wquery(fim_sql, "END;"), query_result != FIMDB_ERR) {
-                // Updating timestamp only after a successful transaction end
-                mdebug1("Database transaction completed.");
-                fim_sql->transaction.last_commit = now;
+            if (fim_db_exec_simple_wquery(fim_sql, "END;") == FIMDB_ERR) {
+                return;
             }
+
+            // Updating timestamp only after a successful transaction end
+            mdebug1("Database transaction completed.");
+            fim_sql->transaction.last_commit = now;
         }
 
         // A new transaction begins after a successful END or if there wasn't one in progress
-        if (FIMDB_OK == query_result) {
-            while (fim_db_exec_simple_wquery(fim_sql, "BEGIN;") == FIMDB_ERR);
-        }
+        while (fim_db_exec_simple_wquery(fim_sql, "BEGIN;") == FIMDB_ERR);
     }
 }
 
