@@ -70,6 +70,15 @@ void fim_insert_directory(OSList *config_list,
         if (cmp == 0) {
             // Duplicated entry, replace existing with new one
             if (dir_it->is_wildcard == new_entry->is_wildcard || new_entry->is_wildcard == 0) {
+                // Before replacing the configuration, we will keep the previous symbolic_links,
+                // this value should only be changed by symlink_checker_thread.
+                // TODO: unify symlink update logic with wildcards.
+                os_free(new_entry->symbolic_links);
+
+                if (dir_it->symbolic_links != NULL) {
+                    os_strdup(dir_it->symbolic_links, new_entry->symbolic_links);
+                }
+
                 free_directory(dir_it);
                 node_it->data = new_entry;
             } else {

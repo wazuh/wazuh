@@ -5645,14 +5645,8 @@ static void test_update_wildcards_config() {
     will_return(__wrap_expand_wildcards, NULL);
 
 #ifndef WIN32
-    expect_string(__wrap_realpath, path, wildcard1);
-    will_return(__wrap_realpath, NULL);
-    expect_string(__wrap_realpath, path, resolvedpath1);
-    will_return(__wrap_realpath, NULL);
-    expect_string(__wrap_realpath, path, wildcard1);
-    will_return(__wrap_realpath, NULL);
-    expect_string(__wrap_realpath, path, resolvedpath2);
-    will_return(__wrap_realpath, NULL);
+    expect_string_count(__wrap_realpath, path, wildcard1, 2);
+    will_return_count(__wrap_realpath, NULL, 2);
 #endif
 
     update_wildcards_config();
