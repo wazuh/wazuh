@@ -924,6 +924,16 @@ ID: 91531 - 91650
         <group>MipExactDataMatch</group>
     </rule>
 
+    <!-- This rule capture internal event, 3 request fail.
+        {"integration":"office365","office365":{"actor":"wazuh","tenant_id":"8CE4AF1D-20DC-4E7E-B306-1CEF89A3B898","subscription_name":"Audit.Exchange"}}
+    -->
+    <rule id="91648" level="3">
+        <if_sid>91531</if_sid>
+        <field name="office365.actor">wazuh</field>
+        <description>Office 365 module internal event, 3 request fail.</description>
+        <options>no_full_log</options>
+    </rule>
+
     <!--
     ID: 91700 - 91799
     -->
