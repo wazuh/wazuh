@@ -20,19 +20,19 @@
 #define INLINE inline
 #endif
 
-STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "", .settings = NULL};
+STATIC w_macos_log_vault_t macos_log_vault = {.mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "", .settings = NULL};
 
 STATIC char * macos_codename = NULL;
 
 STATIC w_sysinfo_helpers_t * sysinfo = NULL;
 /**
  * @brief Check if agent is running on macOS Sierra
- * 
+ *
  * @return true if agent is running in macOS Sierra. false otherwise
  */
 bool w_is_macos_sierra() {
 
-    if (macos_codename != NULL  && strcmp(macos_codename, MACOS_SIERRA_CODENAME_STR) == 0) {
+    if (macos_codename != NULL && strcmp(macos_codename, MACOS_SIERRA_CODENAME_STR) == 0) {
         return true;
     }
     return false;
@@ -40,15 +40,15 @@ bool w_is_macos_sierra() {
 
 /**
  * @brief Prepend `script` command arguments when macOS Sierra is being used
- * 
+ *
  * @param log_cmd_array array of arguments
  * @param log_cmd_array_idx index of the array
  */
 STATIC INLINE void w_macos_add_sierra_support(char ** log_cmd_array, size_t * log_cmd_array_idx) {
 
-        w_strdup(SCRIPT_CMD_STR, log_cmd_array[(*log_cmd_array_idx)++]);
-        w_strdup(SCRIPT_CMD_ARGS, log_cmd_array[(*log_cmd_array_idx)++]);
-        w_strdup(SCRIPT_CMD_SINK, log_cmd_array[(*log_cmd_array_idx)++]);
+    w_strdup(SCRIPT_CMD_STR, log_cmd_array[(*log_cmd_array_idx)++]);
+    w_strdup(SCRIPT_CMD_ARGS, log_cmd_array[(*log_cmd_array_idx)++]);
+    w_strdup(SCRIPT_CMD_SINK, log_cmd_array[(*log_cmd_array_idx)++]);
 }
 
 /**
@@ -66,7 +66,7 @@ STATIC INLINE bool w_macos_is_log_predicate_valid(char * predicate) {
 
 /**
  * @brief Adds to the `log show` aguments array the level arguments
- * 
+ *
  * @param log_cmd_array `log show` array of arguments
  * @param log_cmd_array_idx Index of the `log show` array
  * @param level String that contains the `log show` levels
@@ -80,7 +80,7 @@ STATIC INLINE void w_macos_log_show_array_add_level(char ** log_cmd_array, size_
         w_strdup(SHOW_INFO_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
 
         if (strcmp(level, MACOS_LOG_LEVEL_DEBUG_STR) == 0) {
-        /* Only when the level is set to `debug` the debug logs are acquired */
+            /* Only when the level is set to `debug` the debug logs are acquired */
             w_strdup(SHOW_DEBUG_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
         }
     }
@@ -88,7 +88,7 @@ STATIC INLINE void w_macos_log_show_array_add_level(char ** log_cmd_array, size_
 
 /**
  * @brief Creates the predicate fragment related to the type that will be then concatenated with the rest of the filter
- * 
+ *
  * @param type Contains the `log show`'s type filters to be used (as combined bit flags)
  * @return char * containing a string with the predicate fragment related to the type or NULL if no type filter was set
  */
@@ -119,16 +119,14 @@ STATIC INLINE char * w_macos_log_show_create_type_predicate(int type) {
 
 /**
  * @brief Adds to the `log show` aguments array the predicate arguments by joining user's predicate with the "type" one
- * 
+ *
  * @param log_cmd_array `log show` array of arguments
  * @param log_cmd_array_idx index of the `log show` array
  * @param query String containing the user's raw predicate
  * @param type_predicate String containing the predicate's type fragment
  */
-STATIC INLINE void w_macos_log_show_array_add_predicate(char ** log_cmd_array, 
-                                                    size_t * log_cmd_array_idx,
-                                                    char * query, 
-                                                    char * type_predicate) {
+STATIC INLINE void w_macos_log_show_array_add_predicate(char ** log_cmd_array, size_t * log_cmd_array_idx, char * query,
+                                                        char * type_predicate) {
 
     char * predicate = NULL;
 
@@ -150,7 +148,6 @@ STATIC INLINE void w_macos_log_show_array_add_predicate(char ** log_cmd_array,
         } else if (type_predicate != NULL) {
             w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
             w_strdup(type_predicate, log_cmd_array[(*log_cmd_array_idx)++]);
-
         }
     } else if (type_predicate != NULL) {
         w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
@@ -160,7 +157,7 @@ STATIC INLINE void w_macos_log_show_array_add_predicate(char ** log_cmd_array,
 
 /**
  * @brief Generates the `log show` command array with its arguments
- * 
+ *
  * @param predicate Contains the `log show`'s predicate filter to be used as a string
  * @param level Contains, or not, the `log show`'s level filter to be used as a string (default/info/debug)
  * @param type Contains the `log show`'s type filters to be used (as combined bit flags)
@@ -204,7 +201,7 @@ STATIC INLINE char ** w_macos_create_log_show_array(char * start_date, char * qu
 
 /**
  * @brief Adds to the `log stream` aguments array the level arguments
- * 
+ *
  * @param log_cmd_array `log stream` array of arguments
  * @param log_cmd_array_idx index of the `log stream` array
  * @param level string that contains the `log stream` levels
@@ -219,7 +216,7 @@ STATIC INLINE void w_macos_log_stream_array_add_level(char ** log_cmd_array, siz
 
 /**
  * @brief Adds to the `log stream` aguments array the type arguments
- * 
+ *
  * @param log_cmd_array `log stream` array of arguments
  * @param log_cmd_array_idx index of the `log stream` array
  * @param type Contains the `log stream`'s type filters to be used (as combined bit flags)
@@ -244,14 +241,13 @@ STATIC INLINE void w_macos_log_stream_array_add_type(char ** log_cmd_array, size
 
 /**
  * @brief Adds to the `log stream` aguments array the predicate arguments
- * 
+ *
  * @param log_cmd_array `log stream` array of arguments
  * @param log_cmd_array_idx index of the `log stream` array
  * @param predicate string that contains the `log stream` predicate
  */
-STATIC INLINE void w_macos_log_stream_array_add_predicate(char ** log_cmd_array, 
-                                                    size_t * log_cmd_array_idx, 
-                                                    char * predicate) {
+STATIC INLINE void w_macos_log_stream_array_add_predicate(char ** log_cmd_array, size_t * log_cmd_array_idx,
+                                                          char * predicate) {
 
     if (predicate != NULL && w_macos_is_log_predicate_valid(predicate)) {
         w_strdup(PREDICATE_OPT_STR, log_cmd_array[(*log_cmd_array_idx)++]);
@@ -262,7 +258,7 @@ STATIC INLINE void w_macos_log_stream_array_add_predicate(char ** log_cmd_array,
 
 /**
  * @brief Generates the `log stream` command array with its arguments
- * 
+ *
  * @param predicate Contains the `log stream`'s predicate filter to be used as a string
  * @param level Contains, or not, the `log stream`'s level filter to be used as a string (default/info/debug)
  * @param type Contains the `log stream`'s type filters to be used (as combined bit flags)
@@ -298,7 +294,7 @@ STATIC char ** w_macos_create_log_stream_array(char * predicate, char * level, i
 
 /**
  * @brief Executes the `log stream/show` command with its arguments and sets to non-blocking the output pipe
- * 
+ *
  * @param log_cmd_array Contains the arguments of the command to be executed
  * @param flags Are the flags to be used along with wpopenv()
  * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
@@ -313,22 +309,22 @@ STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
         merror(WPOPENV_ERROR, strerror(errno), errno);
     } else {
         /* The file descriptor, from which the output of `log stream` will be read, is set to non-blocking */
-        log_pipe_fd = fileno(macos_log_wfd->file);                  // Gets the file descriptor from a file pointer
+        log_pipe_fd = fileno(macos_log_wfd->file); // Gets the file descriptor from a file pointer
 
         if (log_pipe_fd <= 0) {
             merror(FP_TO_FD_ERROR, strerror(errno), errno);
             wpclose(macos_log_wfd);
             macos_log_wfd = NULL;
         } else {
-            log_pipe_fd_flags = fcntl(log_pipe_fd, F_GETFL, 0);     // Gets current flags
+            log_pipe_fd_flags = fcntl(log_pipe_fd, F_GETFL, 0); // Gets current flags
 
             if (log_pipe_fd_flags < 0) {
                 merror(GET_FLAGS_ERROR, strerror(errno), errno);
                 wpclose(macos_log_wfd);
                 macos_log_wfd = NULL;
             } else {
-                log_pipe_fd_flags |= O_NONBLOCK;                    // Adds the NON-BLOCKING flag to current flags
-                const int set_flags_retval = fcntl(log_pipe_fd, F_SETFL, log_pipe_fd_flags);  // Sets the new Flags
+                log_pipe_fd_flags |= O_NONBLOCK; // Adds the NON-BLOCKING flag to current flags
+                const int set_flags_retval = fcntl(log_pipe_fd, F_SETFL, log_pipe_fd_flags); // Sets the new Flags
 
                 if (set_flags_retval < 0) {
                     merror(SET_FLAGS_ERROR, strerror(errno), errno);
@@ -349,7 +345,6 @@ STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
  */
 STATIC INLINE bool w_macos_is_log_executable(void) {
 
-
     if (w_is_macos_sierra() && access(SCRIPT_CMD_STR, X_OK) != 0) {
         merror(ACCESS_ERROR, LOG_CMD_STR, strerror(errno), errno);
         return false;
@@ -365,7 +360,7 @@ STATIC INLINE bool w_macos_is_log_executable(void) {
 
 /**
  * @brief Creates the environment for collecting "show" logs on macOS Systems
- * 
+ *
  * @param lf localfile's logreader structure with `log show`'s arguments and its configuration structure to be set
  */
 STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
@@ -401,7 +396,7 @@ STATIC INLINE void w_macos_create_log_show_env(logreader * lf) {
 
 /**
  * @brief Creates the environment for collecting "stream" logs on MacOS Systems
- * 
+ *
  * @param lf localfile's logreader structure with `log stream`'s arguments and its configuration structure to be set
  */
 STATIC INLINE void w_macos_create_log_stream_env(logreader * lf) {
@@ -467,10 +462,9 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
 
 pid_t w_get_first_child(pid_t parent_pid) {
 
-    pid_t * childs = NULL;
     pid_t first_child = 0;
-    int child_count = w_get_process_childs(sysinfo, parent_pid, childs, 1);
-    if (child_count > 0){
+    pid_t * childs = w_get_process_childs(sysinfo, parent_pid, 1);
+    if (childs != NULL && *childs != 0) {
         first_child = *childs;
         os_free(childs);
     }
@@ -497,7 +491,7 @@ char * w_macos_get_last_log_timestamp(void) {
 void w_macos_set_log_settings(char * settings) {
 
     w_rwlock_wrlock(&macos_log_vault.mutex);
-    os_free(macos_log_vault.settings)
+    os_free(macos_log_vault.settings);
     w_strdup(settings, macos_log_vault.settings);
     w_rwlock_unlock(&macos_log_vault.mutex);
 }

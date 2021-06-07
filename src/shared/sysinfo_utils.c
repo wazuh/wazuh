@@ -12,7 +12,7 @@
 #include "sym_load.h"
 
 bool w_sysinfo_init(w_sysinfo_helpers_t * sysinfo) {
-    
+
     bool result = false;
     sysinfo->module = so_get_module_handle("sysinfo");
 
@@ -60,42 +60,39 @@ cJSON * w_sysinfo_get_os(w_sysinfo_helpers_t * sysinfo) {
     return os_info;
 }
 
-unsigned int w_get_process_childs(w_sysinfo_helpers_t * sysinfo, pid_t parent_pid, pid_t * childs, unsigned int max_count) {
+pid_t * w_get_process_childs(w_sysinfo_helpers_t * sysinfo, pid_t parent_pid, unsigned int max_count) {
 
+    const unsigned int CHILDS_CHUNKS = 10;
     unsigned int childs_count = 0;
     cJSON * processes = NULL;
     cJSON * process = NULL;
     char * process_pid_str = NULL;
+    pid_t * childs_list = NULL;
     pid_t process_pid = 0;
-    if (max_count > 0){
-        processes = w_sysinfo_get_processes(sysinfo);
-        if (processes != NULL) {
-            os_calloc(max_count, sizeof(pid_t), childs);
-            cJSON_ArrayForEach(process, processes) {
-                cJSON * ppid_object = cJSON_GetObjectItem(process, "ppid");
-                if (cJSON_IsNumber(ppid_object) && (pid_t) ppid_object->valuedouble == parent_pid) {
-                    process_pid_str = cJSON_GetStringValue(cJSON_GetObjectItem(process, "pid"));
-                    if (process_pid_str != NULL) {
-                        if (process_pid = (pid_t) strtol(process_pid_str, NULL, 10), process_pid > 0) {
-                            childs[childs_count++] = process_pid;
-                            if (childs_count == max_count) {
-                                break;
-                            }
+    processes = w_sysinfo_get_processes(sysinfo);
+    if (processes != NULL) {
+        cJSON_ArrayForEach(process, processes) {
+            cJSON * ppid_object = cJSON_GetObjectItem(process, "ppid");
+            if (cJSON_IsNumber(ppid_object) && (pid_t) ppid_object->valuedouble == parent_pid) {
+                process_pid_str = cJSON_GetStringValue(cJSON_GetObjectItem(process, "pid"));
+                if (process_pid_str != NULL) {
+                    if (process_pid = (pid_t) strtol(process_pid_str, NULL, 10), process_pid > 0) {
+                        if (childs_count % CHILDS_CHUNKS == 0) {
+                            os_realloc(childs_list, sizeof(pid_t) * (childs_count + CHILDS_CHUNKS + 1), childs_list);
+                            memset(childs_list + childs_count, 0, sizeof(pid_t) * (CHILDS_CHUNKS + 1));
+                        }
+                        childs_list[childs_count++] = process_pid;
+                        if (max_count > 0 && childs_count == max_count) {
+                            break;
                         }
                     }
                 }
             }
-            sysinfo->free_result(&processes);
         }
-        if (childs_count < max_count) {
-            os_realloc(childs, sizeof(pid_t) * childs_count, childs);
-            if (childs_count == 0){
-                childs = NULL;
-            }
-        }
+        sysinfo->free_result(&processes);
     }
 
-    return childs_count;
+    return childs_list;
 }
 
 char * w_get_os_codename(w_sysinfo_helpers_t * sysinfo) {
