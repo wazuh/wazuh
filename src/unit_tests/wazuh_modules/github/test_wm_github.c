@@ -197,12 +197,13 @@ void test_github_dump_yes_options(void **state) {
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 2;
     os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
     os_strdup("all", data->github_config->event_type);
 
-    char *test = "{\"github\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"time_delay\":1,\"api_auth\":[{\"org_name\":\"test_org\",\"api_token\":\"test_token\"}],\"event_type\":\"all\"}}";
+    char *test = "{\"github\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"time_delay\":1,\"curl_max_size\":2,\"api_auth\":[{\"org_name\":\"test_org\",\"api_token\":\"test_token\"}],\"event_type\":\"all\"}}";
 
     cJSON *root = wm_github_dump(data->github_config);
     data->root_c = cJSON_PrintUnformatted(root);
@@ -311,6 +312,7 @@ void test_github_execute_scan(void **state) {
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 2;
     os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
@@ -352,6 +354,7 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 2;
     os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
@@ -391,6 +394,7 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
@@ -405,6 +409,7 @@ void test_github_execute_scan_status_code_200(void **state) {
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 2;
     os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
@@ -447,6 +452,7 @@ void test_github_execute_scan_status_code_200(void **state) {
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     wm_github_execute_scan(data->github_config, initial_scan);
@@ -461,6 +467,7 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     data->github_config->only_future_events = 1;
     data->github_config->interval = 10;
     data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 2;
     os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
@@ -498,6 +505,7 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
@@ -523,6 +531,68 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
     wm_github_execute_scan(data->github_config, initial_scan);
+}
+
+void test_github_execute_scan_max_size_reached(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->github_config->enabled = 1;
+    data->github_config->only_future_events = 1;
+    data->github_config->interval = 10;
+    data->github_config->time_delay = 1;
+    data->github_config->curl_max_size = 2;
+    os_calloc(1, sizeof(wm_github_auth), data->github_config->auth);
+    os_strdup("test_token", data->github_config->auth->api_token);
+    os_strdup("test_org", data->github_config->auth->org_name);
+    data->github_config->auth->next = NULL;
+    os_strdup("all", data->github_config->event_type);
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    data->response->max_size_reached = true;
+
+    int initial_scan = 0;
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
+
+    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    will_return(__wrap_localtime_r, 1);
+
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+
+    will_return(__wrap_localtime_r, 1);
+
+    will_return(__wrap_strftime,"2021-05-07 12:34:56");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Libcurl error, reached maximum response size.");
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
+
+    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    wm_github_execute_scan(data->github_config, initial_scan);
+
 }
 
 ////////////////  test wmodules-github /////////////////
@@ -565,6 +635,7 @@ void test_read_configuration(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -581,6 +652,7 @@ void test_read_configuration(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_int_equal(module_data->only_future_events, 0);
     assert_string_equal(module_data->auth->org_name, "Wazuh");
     assert_string_equal(module_data->auth->api_token, "Wazuh_token");
@@ -592,6 +664,7 @@ void test_read_configuration_1(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -612,6 +685,7 @@ void test_read_configuration_1(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_int_equal(module_data->only_future_events, 0);
     assert_string_equal(module_data->auth->org_name, "Wazuh");
     assert_string_equal(module_data->auth->api_token, "Wazuh_token");
@@ -745,11 +819,34 @@ void test_read_interval_d(void **state) {
     assert_int_equal(module_data->interval, 259200);
 }
 
+void test_read_curl_max_size(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>\n"
+        "<interval>10</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
+    wm_github *module_data = (wm_github*)test->module->data;
+    assert_int_equal(module_data->curl_max_size, 2048);
+}
+
 void test_repeatd_tag(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -780,6 +877,7 @@ void test_fake_tag(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -801,6 +899,7 @@ void test_invalid_content_2(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>yes</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -821,6 +920,7 @@ void test_invalid_content_3(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>invalid</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -841,6 +941,7 @@ void test_invalid_content_4(void **state) {
         "<enabled>invalid</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>yes</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -861,6 +962,7 @@ void test_invalid_content_5(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>invalid</interval>\n"
         "<time_delay>1s</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>yes</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -876,11 +978,33 @@ void test_invalid_content_5(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_invalid_content_6(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<curl_max_size>invalid</curl_max_size>"
+        "<only_future_events>yes</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
 void test_invalid_time_delay_1(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>-1</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -901,6 +1025,7 @@ void test_invalid_time_delay_2(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1y</time_delay>"
+        "<curl_max_size>2</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -912,6 +1037,69 @@ void test_invalid_time_delay_2(void **state) {
     ;
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'time_delay' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_invalid_curl_max_size_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<curl_max_size>0</curl_max_size>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>invalid</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_invalid_curl_max_size_2(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<curl_max_size>-1</curl_max_size>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>invalid</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_invalid_curl_max_size_3(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<curl_max_size>invalid</curl_max_size>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>invalid</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -1071,6 +1259,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_github_execute_scan_no_initial_scan, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_status_code_200, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_status_code_200_null, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_execute_scan_max_size_reached, setup_conf, teardown_conf),
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
@@ -1081,14 +1270,19 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_m, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_h, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_d, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_repeatd_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_2, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_3, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_4, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_5, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_content_6, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_time_delay_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_time_delay_2, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_curl_max_size_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_curl_max_size_2, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_curl_max_size_3, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_auth, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_auth_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_org_name, setup_test_read, teardown_test_read),

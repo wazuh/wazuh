@@ -17,6 +17,7 @@
 #define WM_OFFICE365_DEFAULT_ENABLED 1
 #define WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS 1
 #define WM_OFFICE365_DEFAULT_INTERVAL 600
+#define WM_OFFICE365_DEFAULT_CURL_MAX_SIZE 1024000L
 
 #define WM_OFFICE365_MSG_DELAY 1000000 / wm_max_eps
 #define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
@@ -51,6 +52,7 @@ typedef struct wm_office365 {
     int enabled;
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
+    size_t curl_max_size;
     wm_office365_auth *auth;
     wm_office365_subscription *subscription;
     int queue_fd;

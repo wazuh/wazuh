@@ -16,12 +16,20 @@
 struct MemoryStruct {
   char *memory;
   size_t size;
+  size_t max_response_size;
+  bool max_size_error;
 };
 
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+  if ((mem->size + realsize) > mem->max_response_size) {
+    mwarn("Response buffer size limit reached.");
+    mem->max_size_error = true;
+    return 0;
+  }
 
   char *ptr = realloc(mem->memory, mem->size + realsize + 1);
   if (ptr == NULL) {
@@ -299,7 +307,7 @@ int wurl_check_connection() {
     }
 }
 
-char * wurl_http_get(const char * url) {
+char * wurl_http_get(const char * url, size_t max_size) {
     CURL *curl;
     CURLcode res;
     curl = curl_easy_init();
@@ -309,6 +317,8 @@ char * wurl_http_get(const char * url) {
 
     chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
     chunk.size = 0;    /* no data at this point */
+    chunk.max_response_size = max_size;
+    chunk.max_size_error = false;
 
     if (curl) {
         char const *cert = find_cert_list();
@@ -404,7 +414,7 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
-curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload) {
+curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size) {
     curl_response *response;
     struct curl_slist* headers_list = NULL;
     struct curl_slist* headers_tmp = NULL;
@@ -457,9 +467,13 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
 
     req.memory = malloc(1);  /* will be grown as needed by the realloc above */
     req.size = 0;    /* no data at this point */
+    req.max_response_size = max_size;
+    req.max_size_error = false;
 
     req_header.memory = malloc(1);  /* will be grown as needed by the realloc above */
     req_header.size = 0;    /* no data at this point */
+    req_header.max_response_size = max_size;
+    req_header.max_size_error = false;
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
@@ -475,7 +489,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
 
     res = curl_easy_perform(curl);
 
-    if (res != CURLE_OK) {
+    if (res != CURLE_OK && !(req.max_size_error || req_header.max_size_error)) {
         mdebug1("curl_easy_perform() failed: %s", curl_easy_strerror(res));
         curl_slist_free_all(headers_list);
         curl_easy_cleanup(curl);
@@ -488,6 +502,10 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &response->status_code);
     response->header = req_header.memory;
     response->body = req.memory;
+
+    if (req.max_size_error || req_header.max_size_error) {
+        response->max_size_reached = true;
+    }
 
     curl_slist_free_all(headers_list);
     curl_easy_cleanup(curl);

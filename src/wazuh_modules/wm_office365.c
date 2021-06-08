@@ -24,8 +24,8 @@ STATIC void wm_office365_destroy(wm_office365* office365_config);
 STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
 STATIC void wm_office365_subscription_destroy(wm_office365_subscription* office365_subscription);
 STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan);
-STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error_msg);
-STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, char* client_id, char* token, char** error_msg, int start);
+STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error_msg, size_t max_size);
+STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, char* client_id, char* token, char** error_msg, int start, size_t max_size);
 STATIC void wm_office365_scan_failure_action(char *tenant_id, char *error_msg, int queue_fd);
 
 cJSON *wm_office365_dump(const wm_office365* office365_config);
@@ -126,6 +126,9 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
     if (office365_config->interval) {
         cJSON_AddNumberToObject(wm_info, "interval", office365_config->interval);
     }
+    if (office365_config->curl_max_size) {
+        cJSON_AddNumberToObject(wm_info, "curl_max_size", office365_config->curl_max_size);
+    }
     if (office365_config->auth) {
         wm_office365_auth *iter;
         cJSON *arr_auth = cJSON_CreateArray();
@@ -191,7 +194,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
         mtdebug1(WM_OFFICE365_LOGTAG, "Scanning tenant: '%s'", current_auth->tenant_id);
 
         // Get access toekn
-        if (access_token = wm_office365_get_access_token(current_auth, &error_msg), !access_token) {
+        if (access_token = wm_office365_get_access_token(current_auth, &error_msg, office365_config->curl_max_size), !access_token) {
             wm_office365_scan_failure_action(current_auth->tenant_id, error_msg, office365_config->queue_fd);
             current_auth = next_auth;
             os_free(error_msg);
@@ -206,7 +209,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
             next_subscription = current_subscription->next;
 
             // Start subscription
-            if (wm_office365_manage_subscription(current_subscription, current_auth->client_id, access_token, &error_msg, 1)) {
+            if (wm_office365_manage_subscription(current_subscription, current_auth->client_id, access_token, &error_msg, 1, office365_config->curl_max_size)) {
                 wm_office365_scan_failure_action(current_auth->tenant_id, error_msg, office365_config->queue_fd);
                 current_subscription = next_subscription;
                 os_free(error_msg);
@@ -245,7 +248,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
     }
 }
 
-STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error_msg) {
+STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error_msg, size_t max_size) {
     char **headers = NULL;
     char url[OS_SIZE_8192];
     char auth_payload[OS_SIZE_8192];
@@ -285,7 +288,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error
     headers[0] = auth_header;
     headers[1] = NULL;
 
-    response = wurl_http_request(WURL_POST_METHOD, headers, url, auth_payload);
+    response = wurl_http_request(WURL_POST_METHOD, headers, url, auth_payload, max_size);
 
     if (response) {
         cJSON *response_json = NULL;
@@ -308,7 +311,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, char** error
     return access_token;
 }
 
-STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, char* client_id, char* token, char** error_msg, int start) {
+STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, char* client_id, char* token, char** error_msg, int start, size_t max_size) {
     char **headers = NULL;
     char url[OS_SIZE_8192];
     curl_response *response;
@@ -334,7 +337,7 @@ STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscript
     headers[1] = auth_header2;
     headers[2] = NULL;
 
-    response = wurl_http_request(WURL_POST_METHOD, headers, url, "");
+    response = wurl_http_request(WURL_POST_METHOD, headers, url, "", max_size);
 
     if (response) {
         cJSON *response_json = NULL;

@@ -129,6 +129,9 @@ cJSON *wm_github_dump(const wm_github* github_config) {
     if (github_config->time_delay) {
         cJSON_AddNumberToObject(wm_info, "time_delay", github_config->time_delay);
     }
+    if (github_config->curl_max_size) {
+        cJSON_AddNumberToObject(wm_info, "curl_max_size", github_config->curl_max_size);
+    }
     if (github_config->auth) {
         wm_github_auth *iter;
         cJSON *arr_auth = cJSON_CreateArray();
@@ -228,10 +231,13 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         headers[1] = NULL;
 
         while (!scan_finished) {
-            response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL);
+            response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, github_config->curl_max_size);
 
             if (response) {
-                if (response->status_code == 200) {
+                if (response->max_size_reached) {
+                    mtdebug1(WM_GITHUB_LOGTAG, "Libcurl error, reached maximum response size.");
+                    scan_finished = 1;
+                } else if (response->status_code == 200) {
                     // Load body to json and sent as localfile
                     cJSON *array_logs_json = NULL;
 
