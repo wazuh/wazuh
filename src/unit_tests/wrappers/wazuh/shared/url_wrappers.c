@@ -80,8 +80,8 @@ CURLcode __wrap_curl_easy_setopt(CURL *curl, CURLoption option, __attribute__ ((
     return mock_type(CURLcode);
 }
 
-struct curl_slist* __wrap_curl_slist_append(struct curl_slist *list, const char *string) {
-    check_expected(string);
+struct curl_slist* __wrap_curl_slist_append(struct curl_slist *list, const char *data) {
+    check_expected(data);
     check_expected_ptr(list);
 
     return mock_type(struct curl_slist *);

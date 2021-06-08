@@ -32,12 +32,12 @@ static int group_teardown(void ** state) {
 void test_wurl_http_request_url_null(void **state)
 {
     curl_response *response = NULL;
-    char *headers = NULL;
+    char **headers = NULL;
     char *url = NULL;
 
     expect_string(__wrap__mdebug1, formatted_msg, "url not defined");
 
-    response = wurl_http_request(NULL, &headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL);
     assert_null(response);
 }
 
@@ -45,7 +45,7 @@ void test_wurl_http_request_init_failure(void **state)
 {
     curl_response *response = NULL;
     CURL* curl = NULL;
-    char *headers = NULL;
+    char **headers = NULL;
     char *url = "http://test.com";
 
     #ifdef TEST_WINAGENT
@@ -56,7 +56,7 @@ void test_wurl_http_request_init_failure(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl initialization failure");
 
-    response = wurl_http_request(NULL, &headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL);
     assert_null(response);
 }
 
@@ -64,7 +64,7 @@ void test_wurl_http_request_headers_list_null(void **state)
 {
     curl_response *response = NULL;
     CURL *curl = (CURL *) 1;
-    char *headers = NULL;
+    char **headers = NULL;
     char *url = "http://test.com";
 
     #ifdef TEST_WINAGENT
@@ -95,7 +95,7 @@ void test_wurl_http_request_headers_list_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl append header failure");
 
-    response = wurl_http_request(NULL, &headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL);
     assert_null(response);
 }
 
@@ -218,7 +218,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
 
-        expect_string(__wrap_curl_slist_append, data, "headers");
+        expect_string(__wrap_curl_slist_append, data, "Content-Type: application/x-www-form-urlencoded");
         expect_value(__wrap_curl_slist_append, list, headers);
         will_return(__wrap_curl_slist_append, headers);
 
