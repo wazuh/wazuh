@@ -13,6 +13,14 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
 
+#ifdef WAZUH_UNIT_TESTING
+    #ifdef WIN32
+        #include "unit_tests/wrappers/windows/url_wrappers.h"
+    #else
+        #include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
+    #endif
+#endif
+
 struct MemoryStruct {
   char *memory;
   size_t size;
@@ -411,6 +419,11 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     CURLcode res;
     struct MemoryStruct req;
     struct MemoryStruct req_header;
+
+    if (!url) {
+        mdebug1("url not defined");
+        return NULL;
+    }
 
     CURL* curl = curl_easy_init();
 
