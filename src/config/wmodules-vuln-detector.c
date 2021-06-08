@@ -165,6 +165,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_UBUNTU;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_DEBIAN]) && version) {
         if (!strcmp(version, "10") || strcasestr(version, vu_feed_tag[FEED_BUSTER])) {
             os_index = CVE_BUSTER;
@@ -235,6 +236,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_REDHAT;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_ALAS])) {
         if (!version) {
             retval = OS_INVALID;
@@ -259,18 +261,69 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         }
         upd->dist_ref = FEED_ALAS;
         upd->json_format = 1;
+
+    } else if (strcasestr(feed, vu_feed_tag[FEED_SUSE])) {
+        if (!version) {
+            retval = OS_INVALID;
+            goto end;
+        }
+        // SLES 15
+        if (!strcmp(version, "15-server") || strcasestr(vu_feed_tag[FEED_SLES15], version)) {
+            os_index = CVE_SLES15;
+            os_strdup(vu_feed_tag[FEED_SLES15], upd->version);
+            upd->dist_tag_ref = FEED_SLES15;
+            upd->dist_ext = vu_feed_ext[FEED_SLES15];
+        // SLED 15
+        } else if (!strcmp(version, "15-desktop") || strcasestr(vu_feed_tag[FEED_SLED15], version)) {
+            os_index = CVE_SLED15;
+            os_strdup(vu_feed_tag[FEED_SLED15], upd->version);
+            upd->dist_tag_ref = FEED_SLED15;
+            upd->dist_ext = vu_feed_ext[FEED_SLED15];
+        // SLES 12
+        } else if (!strcmp(version, "12-server") || strcasestr(vu_feed_tag[FEED_SLES12], version)) {
+            os_index = CVE_SLES12;
+            os_strdup(vu_feed_tag[FEED_SLES12], upd->version);
+            upd->dist_tag_ref = FEED_SLES12;
+            upd->dist_ext = vu_feed_ext[FEED_SLES12];
+        // SLED 12
+        } else if (!strcmp(version, "12-desktop") || strcasestr(vu_feed_tag[FEED_SLED12], version)) {
+            os_index = CVE_SLED12;
+            os_strdup(vu_feed_tag[FEED_SLED12], upd->version);
+            upd->dist_tag_ref = FEED_SLED12;
+            upd->dist_ext = vu_feed_ext[FEED_SLED12];
+        // SLES 11
+        } else if (!strcmp(version, "11-server") || strcasestr(vu_feed_tag[FEED_SLES11], version)) {
+            os_index = CVE_SLES11;
+            os_strdup(vu_feed_tag[FEED_SLES11], upd->version);
+            upd->dist_tag_ref = FEED_SLES11;
+            upd->dist_ext = vu_feed_ext[FEED_SLES11];
+        // SLED 11
+        } else if (!strcmp(version, "11-desktop") || strcasestr(vu_feed_tag[FEED_SLED11], version)) {
+            os_index = CVE_SLED11;
+            os_strdup(vu_feed_tag[FEED_SLED11], upd->version);
+            upd->dist_tag_ref = FEED_SLED11;
+            upd->dist_ext = vu_feed_ext[FEED_SLED11];
+        } else {
+            merror("Invalid SUSE version '%s'", version);
+            retval = OS_INVALID;
+            goto end;
+        }
+        upd->dist_ref = FEED_SUSE;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_ARCH])) {
         os_index = CVE_ARCH;
         upd->dist_tag_ref = FEED_ARCH;
         upd->dist_ext = vu_feed_ext[FEED_ARCH];
         upd->dist_ref = FEED_ARCH;
         upd->json_format = 1;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
         upd->dist_ext = vu_feed_ext[FEED_MSU];
         upd->dist_ref = FEED_MSU;
         upd->json_format = 1;
+
     } else if (strcasestr(feed, vu_feed_tag[FEED_NVD])) {
         os_index = CVE_NVD;
         upd->dist_tag_ref = FEED_NVD;
@@ -286,6 +339,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
+
     } else {
         merror("Invalid feed '%s' at module '%s'", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
@@ -979,6 +1033,7 @@ char wm_vuldet_provider_type(char *pr_name) {
     if (strcasestr(pr_name, vu_feed_tag[FEED_CANONICAL]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_ALAS]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_SUSE]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
         return 0;
     } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||
