@@ -6353,7 +6353,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     put:
       tags:
         - Agents
@@ -6519,7 +6518,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     get:
       tags:
         - Groups
@@ -6581,7 +6579,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     post:
       tags:
         - Groups
