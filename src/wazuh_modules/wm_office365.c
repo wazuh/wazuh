@@ -194,8 +194,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
     char *access_token = NULL;
     char *next_page = NULL;
     char *payload = NULL;
-    time_t last_scan_time;
-    time_t new_scan_time;
+    time_t now;
     time_t start_time;
     time_t end_time;
     wm_office365_state tenant_state_struc;
@@ -211,15 +210,17 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
 
         mtdebug1(WM_OFFICE365_LOGTAG, "Scanning tenant: '%s'", current_auth->tenant_id);
 
-        // Get access toekn
-        if (access_token = wm_office365_get_access_token(current_auth), !access_token) {
-            wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id, NULL, office365_config->queue_fd);
-            current_auth = next_auth;
-            continue;
-        } else {
-            if (tenant_fail = wm_office365_get_fail_by_tenant_and_subscription(office365_config->fails,
-                current_auth->tenant_id, NULL), tenant_fail) {
-                tenant_fail->fails = 0;
+        // Get access token
+        if (!initial_scan || !office365_config->only_future_events) {
+            if (access_token = wm_office365_get_access_token(current_auth), !access_token) {
+                wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id, NULL, office365_config->queue_fd);
+                current_auth = next_auth;
+                continue;
+            } else {
+                if (tenant_fail = wm_office365_get_fail_by_tenant_and_subscription(office365_config->fails,
+                    current_auth->tenant_id, NULL), tenant_fail) {
+                    tenant_fail->fails = 0;
+                }
             }
         }
 
@@ -229,6 +230,29 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
         while (current_subscription != NULL)
         {
             next_subscription = current_subscription->next;
+
+            memset(tenant_state_name, '\0', OS_SIZE_1024);
+            snprintf(tenant_state_name, OS_SIZE_1024 -1, "%s-%s-%s", WM_OFFICE365_CONTEXT.name,
+                current_auth->tenant_id, current_subscription->subscription_name);
+
+            memset(&tenant_state_struc, 0, sizeof(tenant_state_struc));
+
+            // Load state for tenant
+            if (wm_state_io(tenant_state_name, WM_IO_READ, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
+                memset(&tenant_state_struc, 0, sizeof(tenant_state_struc));
+            }
+
+            now = time(0);
+
+            if ((initial_scan && (!tenant_state_struc.last_log_time || office365_config->only_future_events)) ||
+                (!initial_scan && !tenant_state_struc.last_log_time)) {
+                tenant_state_struc.last_log_time = now;
+                if (wm_state_io(tenant_state_name, WM_IO_WRITE, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
+                    mterror(WM_OFFICE365_LOGTAG, "Couldn't save running state.");
+                }
+                current_subscription = next_subscription;
+                continue;
+            }
 
             // Start subscription
             if (wm_office365_manage_subscription(current_subscription, current_auth->client_id, access_token, 1)) {
@@ -243,33 +267,8 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                 }
             }
 
-            memset(tenant_state_name, '\0', OS_SIZE_1024);
-            snprintf(tenant_state_name, OS_SIZE_1024 -1, "%s-%s-%s", WM_OFFICE365_CONTEXT.name,
-                current_auth->tenant_id, current_subscription->subscription_name);
-
-            memset(&tenant_state_struc, 0, sizeof(tenant_state_struc));
-
-            // Load state for tenant
-            if (wm_state_io(tenant_state_name, WM_IO_READ, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
-                memset(&tenant_state_struc, 0, sizeof(tenant_state_struc));
-            }
-
-            new_scan_time = time(0);
-
-            if ((initial_scan && (!tenant_state_struc.last_log_time || office365_config->only_future_events)) ||
-                (!initial_scan && !tenant_state_struc.last_log_time)) {
-                tenant_state_struc.last_log_time = new_scan_time;
-                if (wm_state_io(tenant_state_name, WM_IO_WRITE, &tenant_state_struc, sizeof(tenant_state_struc)) < 0) {
-                    mterror(WM_OFFICE365_LOGTAG, "Couldn't save running state.");
-                }
-                current_subscription = next_subscription;
-                continue;
-            }
-
-            last_scan_time = (time_t)tenant_state_struc.last_log_time;
-
-            start_time = last_scan_time;
-            end_time = new_scan_time;
+            start_time = (time_t)tenant_state_struc.last_log_time;
+            end_time = now;
 
             while ((end_time - start_time) > 0) {
                 char start_time_str[80];
@@ -376,7 +375,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                 }
 
                 start_time = end_time;
-                end_time = new_scan_time;
+                end_time = now;
             }
 
             current_subscription = next_subscription;
