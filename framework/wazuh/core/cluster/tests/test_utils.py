@@ -153,8 +153,8 @@ def test_get_cluster_items():
                                               'max_failed_keepalive_attempts': 2},
                                    'master': {'recalculate_integrity': 8, 'check_worker_lastkeepalive': 60,
                                               'max_allowed_time_without_keepalive': 120},
-                                   'communication': {'timeout_cluster_request': 20, 'timeout_api_request': 200,
-                                                     'request_timeout': 10, 'timeout_receiving_file': 120}},
+                                   'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
+                                                     'timeout_receiving_file': 120}},
                      'sync_options': {'get_agentinfo_newer_than': 1800}, 'distributed_api': {'enabled': True}}
 
 
