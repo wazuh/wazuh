@@ -567,9 +567,6 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Libcurl error, reached maximum response size.");
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
-
     expect_string(__wrap_wm_state_io, tag, "github-test_org");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);

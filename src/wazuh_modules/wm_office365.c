@@ -440,7 +440,9 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response_json = cJSON_Parse(response->body), response_json) {
+        if (response->max_size_reached) {
+            mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
+        } else if (response_json = cJSON_Parse(response->body), response_json) {
             cJSON *access_token_json = cJSON_GetObjectItem(response_json, "access_token");
 
             if ((response->status_code == 200) && access_token_json && (access_token_json->type == cJSON_String)) {
@@ -493,7 +495,9 @@ STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscript
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response_json = cJSON_Parse(response->body), response_json) {
+        if (response->max_size_reached) {
+            mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
+        } else if (response_json = cJSON_Parse(response->body), response_json) {
             cJSON *code_json = cJSON_GetObjectItem(cJSON_GetObjectItem(response_json, "error"), "code");
 
             if ((response->status_code == 200)
