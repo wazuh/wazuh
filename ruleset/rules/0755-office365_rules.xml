@@ -210,6 +210,9 @@ ID: 91531 - 91650
         <description>Office 365: Data loss protection (DLP) events in SharePoint and OneDrive for Business.</description>
         <options>no_full_log</options>
         <group>ComplianceDLPSharePoint</group>
+        <mitre>
+            <id>T1213</id>
+        </mitre>
     </rule>
 
     <rule id="91543" level="3">
@@ -226,6 +229,9 @@ ID: 91531 - 91650
         <description>Office 365: SharePoint sharing events.</description>
         <options>no_full_log</options>
         <group>SharePointSharingOperation</group>
+        <mitre>
+            <id>1213</id>
+        </mitre>
     </rule>
 
     <rule id="91545" level="3">
@@ -338,6 +344,9 @@ ID: 91531 - 91650
         <description>Office 365: Microsoft Power Automate (formerly called Microsoft Flow) events.</description>
         <options>no_full_log</options>
         <group>MicrosoftFlow</group>
+        <mitre>
+            <id>T1137</id>
+        </mitre>
     </rule>
 
     <rule id="91559" level="3">
@@ -362,6 +371,9 @@ ID: 91531 - 91650
         <description>Office 365: Events related to DLP classification in SharePoint.</description>
         <options>no_full_log</options>
         <group>ComplianceDLPSharePointClassification</group>
+        <mitre>
+            <id>T1213</id>
+        </mitre>
     </rule>
 
     <rule id="91562" level="5">
@@ -937,6 +949,9 @@ ID: 91531 - 91650
     <!--
     ID: 91700 - 91799
     -->
+    <!--
+        MUST operations to cover
+    -->
     <rule id="91700" level="14">
         <if_sid>91532</if_sid>
         <field name="office365.Operation" type="osregex">^FileMalwareDetected$</field>
@@ -961,7 +976,209 @@ ID: 91531 - 91650
         <group>OneDrive,SharePoint</group>
     </rule>
 
-    <rule id="91703" level="10" frequency="100" timeframe="60" ignore="30">
+    <rule id="91703" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^PermissionLevelAdded$</field>
+        <description>Office 365: A permission level was added to a site collection.</description>
+        <options>no_full_log</options>
+        <group>OneDrive,SharePoint</group>
+    </rule>
+
+    <rule id="91704" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^SharingInvitationBlocked$</field>
+        <description>Office 365: Blocked sharing invitation</description>
+        <options>no_full_log</options>
+        <group>OneDrive,SharePoint</group>
+        <mitre>
+            <id>T1136</id>
+        </mitre>
+    </rule>
+
+    <rule id="91705" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Add-MailboxPermission$</field>
+        <description>Office 365: Added delegate mailbox permissions</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+    </rule>
+
+    <rule id="91706" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^AddFolderPermissions$</field>
+        <description>Office 365: Added permissions to folder</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+    </rule>
+
+    <rule id="91707" level="4">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Send$</field>
+        <description>Office 365: Sent message</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+        <mitre>
+            <id>T1114</id>
+        </mitre>
+    </rule>
+
+    <rule id="91708" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^SendAs|SendOnBehalf$</field>
+        <description>Office 365: Sent message using different permissions</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+        <mitre>
+            <id>T1114</id>
+        </mitre>
+    </rule>
+
+    <rule id="91709" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Add user.$</field>
+        <description>Office 365: Added user</description>
+        <options>no_full_log</options>
+        <group>AzureActiveDirectory</group>
+        <mitre>
+            <id>T1078</id>
+            <id>T1098</id>
+        </mitre>
+    </rule>
+
+    <rule id="91710" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Update user.$</field>
+        <description>Office 365: Updated user</description>
+        <options>no_full_log</options>
+        <group>AzureActiveDirectory</group>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
+    </rule>
+
+    <rule id="91711" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Add member to role.$</field>
+        <description>Office 365: Add member to role</description>
+        <options>no_full_log</options>
+        <group>AzureActiveDirectory</group>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
+    </rule>
+
+    <rule id="91712" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Add group.$</field>
+        <description>Office 365: Added group</description>
+        <options>no_full_log</options>
+        <group>AzureActiveDirectory</group>
+    </rule>
+
+    <rule id="91713" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Add member to group.$</field>
+        <description>Office 365: Added member to group</description>
+        <options>no_full_log</options>
+        <group>AzureActiveDirectory</group>
+    </rule>
+
+    <rule id="91714" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^Add service principal credentials.$</field>
+        <description>Office 365: Added credentials to a service principal</description>
+        <options>no_full_log</options>
+        <group>AzureActiveDirectory</group>
+    </rule>
+
+    <rule id="91715" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^CaseAdminUpdated$</field>
+        <description>Office 365: Changed eDiscovery administrator membership</description>
+        <options>no_full_log</options>
+        <group>Discovery</group>
+        <mitre>
+            <id>1526</id>
+        </mitre>
+    </rule>
+
+    <rule id="91716" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^CaseAdminAdded$</field>
+        <description>Office 365: Created eDiscovery administrator</description>
+        <options>no_full_log</options>
+        <group>Discovery</group>
+        <mitre>
+            <id>1526</id>
+        </mitre>
+    </rule>
+
+    <rule id="91717" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^CaseAdded$</field>
+        <description>Office 365: Created eDiscovery case</description>
+        <options>no_full_log</options>
+        <group>Discovery</group>
+        <mitre>
+            <id>1526</id>
+        </mitre>
+    </rule>
+
+    <rule id="91718" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^SearchCreated$</field>
+        <description>Office 365: Created content search</description>
+        <options>no_full_log</options>
+        <group>Discovery</group>
+        <mitre>
+            <id>1526</id>
+        </mitre>
+    </rule>
+
+    <rule id="91719" level="4">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^QuarantineDelete$</field>
+        <description>Office 365: Deleted quarantine message</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+    </rule>
+
+    <rule id="91720" level="12">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^QuarantineExport$</field>
+        <description>Office 365: Exported quarantine message</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+    </rule>
+
+    <rule id="91721" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^QuarantinePreview$</field>
+        <description>Office 365: Previewed quarantine message</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+    </rule>
+
+    <rule id="91722" level="12">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^QuarantineRelease$</field>
+        <description>Office 365: Released quarantine message</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+    </rule>
+
+    <rule id="91723" level="6">
+        <if_sid>91532</if_sid>
+        <field name="office365.Operation" type="osregex">^QuarantineViewHeader$</field>
+        <description>Office 365: Viewed quarantine message's header</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+    </rule>
+
+    <!--
+        Advanced Detections
+    -->
+    <rule id="91724" level="10" frequency="100" timeframe="60" ignore="30">
         <if_matched_sid>91702</if_matched_sid>
         <same_field>office_365.UserId</same_field>
         <description>Office 365: Suspicious download activity by user: $(office_365.UserId)</description>
@@ -971,173 +1188,4 @@ ID: 91531 - 91650
             <id>T1213</id>
         </mitre>
     </rule>
-
-    <rule id="91704" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^PermissionLevelAdded$</field>
-        <description>Office 365: A permission level was added to a site collection.</description>
-        <options>no_full_log</options>
-        <group>OneDrive,SharePoint</group>
-    </rule>
-
-    <rule id="91705" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^SharingInvitationBlocked$</field>
-        <description>Office 365: Blocked sharing invitation</description>
-        <options>no_full_log</options>
-        <group>OneDrive,SharePoint</group>
-    </rule>
-
-    <rule id="91706" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Add-MailboxPermission$</field>
-        <description>Office 365: Added delegate mailbox permissions</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91707" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^AddFolderPermissions$</field>
-        <description>Office 365: Added permissions to folder</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91708" level="4">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Send$</field>
-        <description>Office 365: Sent message</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91709" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^SendAs|SendOnBehalf$</field>
-        <description>Office 365: Sent message using different permissions</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91710" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Add user.$</field>
-        <description>Office 365: Added user</description>
-        <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
-    </rule>
-
-    <rule id="91711" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Update user.$</field>
-        <description>Office 365: Updated user</description>
-        <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
-    </rule>
-
-    <rule id="91712" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Add member to role.$</field>
-        <description>Office 365: Add member to role</description>
-        <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
-    </rule>
-
-    <rule id="91713" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Add group.$</field>
-        <description>Office 365: Added group</description>
-        <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
-    </rule>
-
-    <rule id="91714" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Add member to group.$</field>
-        <description>Office 365: Added member to group</description>
-        <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
-    </rule>
-
-    <rule id="91715" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^Add service principal credentials.$</field>
-        <description>Office 365: Added credentials to a service principal</description>
-        <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
-    </rule>
-
-    <rule id="91716" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^CaseAdminUpdated$</field>
-        <description>Office 365: Changed eDiscovery administrator membership</description>
-        <options>no_full_log</options>
-        <group>Discovery</group>
-    </rule>
-
-    <rule id="91717" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^CaseAdminAdded$</field>
-        <description>Office 365: Created eDiscovery administrator</description>
-        <options>no_full_log</options>
-        <group>Discovery</group>
-    </rule>
-
-    <rule id="91718" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^CaseAdded$</field>
-        <description>Office 365: Created eDiscovery case</description>
-        <options>no_full_log</options>
-        <group>Discovery</group>
-    </rule>
-
-    <rule id="91719" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^SearchCreated$</field>
-        <description>Office 365: Created content search</description>
-        <options>no_full_log</options>
-        <group>Discovery</group>
-    </rule>
-
-    <rule id="91720" level="4">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^QuarantineDelete$</field>
-        <description>Office 365: Deleted quarantine message</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91721" level="12">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^QuarantineExport$</field>
-        <description>Office 365: Exported quarantine message</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91722" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^QuarantinePreview$</field>
-        <description>Office 365: Previewed quarantine message</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91723" level="12">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^QuarantineRelease$</field>
-        <description>Office 365: Released quarantine message</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
-    <rule id="91724" level="6">
-        <if_sid>91532</if_sid>
-        <field name="office365.Operation" type="osregex">^QuarantineViewHeader$</field>
-        <description>Office 365: Viewed quarantine message's header</description>
-        <options>no_full_log</options>
-        <group>Exchange</group>
-    </rule>
-
 </group>
