@@ -34,7 +34,7 @@ default_api_configuration = {
     "drop_privileges": True,
     "experimental_features": False,
     "intervals": {
-        "request_timeout": 20
+        "request_timeout": 10
     },
     "https": {
         "enabled": True,
