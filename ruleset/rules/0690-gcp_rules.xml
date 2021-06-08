@@ -361,8 +361,12 @@ ID: 65000 - 65499
         <description>GCP VPC Firewall: ALLOW rule triggered</description>
         <options>no_full_log</options>
     </rule>
-
-
-
-
+  
+    <!-- GCP VPC Flow -->
+    <rule id="65050" level="2">
+        <if_sid>65000</if_sid>
+        <field name="gcp.jsonPayload.reporter" type="pcre2">^(?!^$).*</field>
+        <description>GCP VPC Flow rules grouped</description>
+        <options>no_full_log</options>
+    </rule>
 </group>
