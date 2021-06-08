@@ -27,8 +27,8 @@ STATIC void wm_office365_fail_destroy(wm_office365_fail* office365_fails);
 STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan);
 STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_size);
 STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* client_id, const char* token, int start, size_t max_size);
-STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token, char** next_page, size_t max_size);
-STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token, size_t max_size);
+STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token, char** next_page, size_t max_size, bool* buffer_size_reached);
+STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token, size_t max_size, bool* buffer_size_reached);
 STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_office365_fail* fails, char* tenant_id, char* subscription_name);
 STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, int queue_fd);
 
@@ -300,8 +300,9 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
 
                 while (!scan_finished) {
                     cJSON *blobs_array = NULL;
+                    bool buffer_size_reached = false;
 
-                    if (blobs_array = wm_office365_get_content_blobs(url, access_token, &next_page, office365_config->curl_max_size), blobs_array) {
+                    if (blobs_array = wm_office365_get_content_blobs(url, access_token, &next_page, office365_config->curl_max_size, &buffer_size_reached), blobs_array) {
                         int size_blobs = cJSON_GetArraySize(blobs_array);
 
                         for (int i = 0; !scan_finished && (i < size_blobs); i++) {
@@ -311,7 +312,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                             if (content && (content->type == cJSON_String)) {
                                 cJSON *logs_array = NULL;
 
-                                if (logs_array = wm_office365_get_logs_from_blob(content->valuestring, access_token, office365_config->curl_max_size), logs_array) {
+                                if (logs_array = wm_office365_get_logs_from_blob(content->valuestring, access_token, office365_config->curl_max_size, &buffer_size_reached), logs_array) {
                                     int size_logs = cJSON_GetArraySize(logs_array);
 
                                     for (int i = 0 ; i < size_logs ; i++) {
@@ -340,7 +341,9 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                                     cJSON_Delete(logs_array);
                                 } else {
                                     scan_finished = 1;
-                                    fail = 1;
+                                    if (!buffer_size_reached) {
+                                        fail = 1;
+                                    }
                                 }
                             }
                         }
@@ -358,7 +361,9 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                         cJSON_Delete(blobs_array);
                     } else {
                         scan_finished = 1;
-                        fail = 1;
+                        if (!buffer_size_reached) {
+                            fail = 1;
+                        }
                     }
                 }
 
@@ -513,7 +518,7 @@ STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscript
     return ret_value;
 }
 
-STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token, char** next_page, size_t max_size) {
+STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token, char** next_page, size_t max_size, bool* buffer_size_reached) {
     char **headers = NULL;
     curl_response *response;
     cJSON *blobs_array = NULL;
@@ -536,7 +541,10 @@ STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token,
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response_json = cJSON_Parse(response->body), response_json) {
+        if (response->max_size_reached) {
+            *buffer_size_reached = true;
+            mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
+        } else if (response_json = cJSON_Parse(response->body), response_json) {
             cJSON *code_json = cJSON_GetObjectItem(cJSON_GetObjectItem(response_json, "error"), "code");
 
             if ((response->status_code == 200) && (response_json->type == cJSON_Array)) {
@@ -566,7 +574,7 @@ STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token,
     return blobs_array;
 }
 
-STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token, size_t max_size) {
+STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token, size_t max_size, bool* buffer_size_reached) {
     char **headers = NULL;
     curl_response *response;
     cJSON *logs_array = NULL;
@@ -589,7 +597,10 @@ STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token
     if (response) {
         cJSON *response_json = NULL;
 
-        if (response_json = cJSON_Parse(response->body), response_json) {
+        if (response->max_size_reached) {
+            *buffer_size_reached = true;
+            mtdebug1(WM_OFFICE365_LOGTAG, "Libcurl error, reached maximum response size.");
+        } else if (response_json = cJSON_Parse(response->body), response_json) {
             if ((response->status_code == 200) && (response_json->type == cJSON_Array)) {
                 logs_array = cJSON_Duplicate(response_json, true);
             } else {
