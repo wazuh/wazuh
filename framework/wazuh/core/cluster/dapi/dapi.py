@@ -18,7 +18,7 @@ from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
-import api.constants as api_constants
+import api.configuration as aconf
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -103,8 +103,7 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
-        if api_timeout:
-            api_constants.API_REQUEST_TIMEOUT = api_timeout
+        self.api_request_timeout = api_timeout if api_timeout else aconf.api_conf['intervals']['request_timeout']
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -239,7 +238,7 @@ class DistributedAPI:
             before = time.time()
             self.check_wazuh_status()
 
-            timeout = api_constants.API_REQUEST_TIMEOUT if not self.wait_for_complete else None
+            timeout = self.api_request_timeout if not self.wait_for_complete else None
 
             # LocalClient only for control functions
             if self.local_client_arg is not None:
@@ -306,7 +305,7 @@ class DistributedAPI:
                 "current_user": self.current_user,
                 "broadcasting": self.broadcasting,
                 "nodes": self.nodes,
-                "api_timeout": api_constants.API_REQUEST_TIMEOUT
+                "api_timeout": self.api_request_timeout
                 }
 
     def get_error_info(self, e) -> Dict:

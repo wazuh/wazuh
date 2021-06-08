@@ -16,7 +16,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from jsonschema import validate, ValidationError
 
-import api.constants as api_constants
 from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH
 from api.validator import api_config_schema, security_config_schema
@@ -261,10 +260,6 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     # Append wazuh_path to all paths in configuration
     append_wazuh_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
-
-    # Assign API request timeout
-    if config_file == api_constants.CONFIG_FILE_PATH:
-        api_constants.API_REQUEST_TIMEOUT = configuration['intervals']['request_timeout']
 
     return configuration
 

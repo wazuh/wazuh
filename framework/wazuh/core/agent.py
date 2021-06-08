@@ -20,7 +20,7 @@ from platform import platform
 from shutil import rmtree
 from time import time
 
-import api.constants as api_constants
+import api.configuration as aconf
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
@@ -375,7 +375,7 @@ class Agent:
 
     @staticmethod
     def _acquire_client_keys_lock(timeout=None):
-        timeout = api_constants.API_REQUEST_TIMEOUT - 1 if not timeout else timeout
+        timeout = aconf.api_conf['intervals']['request_timeout'] - 1 if not timeout else timeout
         if mutex.acquire(timeout=timeout):
             global lock_file
             lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')

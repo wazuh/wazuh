@@ -697,7 +697,7 @@ def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd
                                   for row in test_data.global_db.execute(
             'select id, name, register_ip, internal_key from agent where id > 0')])
 
-    with patch('api.constants.API_REQUEST_TIMEOUT', 10):
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
         with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
             if exists_backup_dir:
                 exists_mock.side_effect = [True, True, True] + [False] * 10
@@ -856,7 +856,7 @@ def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_s
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
     client_keys_text = f'001 windows-agent any {key}\n \n002 #name '
 
-    with patch('api.constants.API_REQUEST_TIMEOUT', 10):
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
         with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=client_keys_text.encode())):
             agent = Agent(1)
 
@@ -1681,7 +1681,7 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
     """
 
     def check_exception(client_keys):
-        with patch('api.constants.API_REQUEST_TIMEOUT', 10):
+        with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
             with patch(
                     'wazuh.core.agent.open',
                     mock_open(read_data=client_keys) if not isinstance(client_keys, Exception) else client_keys) as m:
@@ -1702,9 +1702,8 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
         check_exception(client_keys_text)
 
     if expected_exception == 1701:
-        with patch('api.constants.API_REQUEST_TIMEOUT', 10):
-            with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command'):
-                check_exception(client_keys_text)
+        with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command'):
+            check_exception(client_keys_text)
 
 
 @pytest.mark.parametrize('system_resources, permitted_resources, filters, expected_result', [
