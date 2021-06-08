@@ -26,7 +26,6 @@ STATIC void wm_github_auth_destroy(wm_github_auth* github_auth);
 STATIC void wm_github_fail_destroy(wm_github_fail* github_fails);
 STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
 STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan);
-STATIC char* wm_github_get_next_page(char *header);
 STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
 
 cJSON *wm_github_dump(const wm_github* github_config);
@@ -37,6 +36,7 @@ const wm_context WM_GITHUB_CONTEXT = {
     (wm_routine)wm_github_main,
     (wm_routine)(void *)wm_github_destroy,
     (cJSON * (*)(const void *))wm_github_dump,
+    NULL,
     NULL
 };
 
@@ -158,12 +158,12 @@ cJSON *wm_github_dump(const wm_github* github_config) {
 STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     int scan_finished = 0;
     int fail = 0;
-    char *payload;
+    char **headers = NULL;
+    char *payload = NULL;
     char *error_msg = NULL;
     char *next_page = NULL;
     char url[OS_SIZE_8192];
     char org_state_name[OS_SIZE_1024];
-    char auth_header[PATH_MAX];
     time_t last_scan_time;
     time_t new_scan_time;
     curl_response *response;
@@ -219,11 +219,15 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
         mtdebug1(WM_GITHUB_LOGTAG, "GitHub API URL: '%s'", url);
 
-        memset(auth_header, '\0', PATH_MAX);
-        snprintf(auth_header, PATH_MAX -1, "Authorization: token %s", current->api_token);
+        char auth_header[OS_SIZE_8192];
+        snprintf(auth_header, OS_SIZE_8192 -1, "Authorization: token %s", current->api_token);
+
+        os_calloc(2, sizeof(char*), headers);
+        headers[0] = auth_header;
+        headers[1] = NULL;
 
         while (!scan_finished) {
-            response = wurl_http_request(auth_header, url, NULL);
+            response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL);
 
             if (response) {
                 if (response->status_code == 200) {
@@ -260,7 +264,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                         }
 
                         if (response_lenght == ITEM_PER_PAGE) {
-                            next_page = wm_github_get_next_page(response->header);
+                            next_page = wm_read_http_header_element(response->header, GITHUB_NEXT_PAGE_REGEX);
                             if (next_page == NULL) {
                                 scan_finished = 1;
                             } else {
@@ -304,7 +308,9 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         }
 
         current = next;
+
         os_free(error_msg);
+        os_free(headers);
     }
 }
 
@@ -316,7 +322,6 @@ STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
     while (!target_org)
     {
         if (current == NULL) {
-            mtdebug1(WM_GITHUB_LOGTAG, "No record for this organization: '%s'", org_name);
             target_org = 1;
             continue;
         }
@@ -331,33 +336,6 @@ STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
     return current;
 }
 
-STATIC char* wm_github_get_next_page(char *header) {
-    char *next_page = NULL;
-    OSRegex regex;
-
-    if (!OSRegex_Compile("<(\\S+)>;\\s*rel=\"next\"", &regex, OS_RETURN_SUBSTRING)) {
-        mtwarn(WM_GITHUB_LOGTAG, "Cannot compile regex");
-        return NULL;
-    }
-
-    if (!OSRegex_Execute(header, &regex)) {
-        mtdebug1(WM_GITHUB_LOGTAG, "No match regex.");
-        OSRegex_FreePattern(&regex);
-        return NULL;
-    }
-
-    if (!regex.d_sub_strings[0]) {
-        mtdebug1(WM_GITHUB_LOGTAG, "No next page was captured.");
-        OSRegex_FreePattern(&regex);
-        return NULL;
-    }
-
-    os_strdup(regex.d_sub_strings[0], next_page);
-
-    OSRegex_FreePattern(&regex);
-    return next_page;
-}
-
 STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd) {
     char *payload;
     wm_github_fail *org_fail;
@@ -365,7 +343,6 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
     org_fail = wm_github_get_fail_by_org(*current_fails, org_name);
 
     if (org_fail == NULL) {
-
         os_calloc(1, sizeof(wm_github_fail), org_fail);
 
         if (*current_fails) {
@@ -378,7 +355,6 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
         } else {
             // First wm_github_fail
             *current_fails = org_fail;
-
         }
 
         os_strdup(org_name, org_fail->org_name);
@@ -408,6 +384,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
             cJSON_AddItemToObject(fail_github, "github", fail_object);
 
             payload = cJSON_PrintUnformatted(fail_github);
+
             mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
 
             if (wm_sendmsg(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {

@@ -22,6 +22,7 @@
 
 #define ITEM_PER_PAGE 100
 #define RETRIES_TO_SEND_ERROR 3
+#define GITHUB_NEXT_PAGE_REGEX "<(\\S+)>;\\s*rel=\"next\""
 
 #define GITHUB_API_URL "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d"
 
