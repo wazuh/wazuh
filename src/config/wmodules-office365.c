@@ -14,6 +14,7 @@
 static const char *XML_ENABLED                  = "enabled";
 static const char *XML_ONLY_FUTURE_EVENTS       = "only_future_events";
 static const char *XML_INTERVAL                 = "interval";
+static const char *XML_CURL_MAX_SIZE            = "curl_max_size";
 
 static const char *XML_API_AUTH             = "api_auth";
 static const char *XML_TENANT_ID            = "tenant_id";
@@ -83,6 +84,7 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
         office365_config->enabled =            WM_OFFICE365_DEFAULT_ENABLED;
         office365_config->only_future_events = WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS;
         office365_config->interval =           WM_OFFICE365_DEFAULT_INTERVAL;
+        office365_config->curl_max_size =      WM_OFFICE365_DEFAULT_CURL_MAX_SIZE;
 
         module->data = office365_config;
     } else {
@@ -121,6 +123,18 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 merror("Invalid content for tag '%s' at module '%s'. The maximum value allowed is 1 day.", XML_INTERVAL, WM_OFFICE365_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_OFFICE365_CONTEXT.name);
+                return (OS_INVALID);
+            }
+            int max_size;
+            if (max_size = atoi(nodes[i]->content), max_size < 1) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_OFFICE365_CONTEXT.name);
+                return (OS_INVALID);
+            }
+
+            office365_config->curl_max_size = (size_t)(max_size * 1024);
         } else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
             // Create auth node
             if (office365_auth) {

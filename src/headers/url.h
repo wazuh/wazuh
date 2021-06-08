@@ -25,6 +25,7 @@ typedef struct curl_response {
     char *header;               /* Response header */
     char *body;                 /* Response body */
     long status_code;           /* Response code (200, 404, 500...) */
+    bool max_size_reached;      /* Response incomplete, limit buffer reached */
 } curl_response;
 
 int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout);
@@ -32,8 +33,8 @@ int w_download_status(int status,const char *url,const char *dest);
 // Request download
 int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
 int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
-char * wurl_http_get(const char * url);
-curl_response *wurl_http_request(char *method, char **headers, const char *url, const char *payload);
+char * wurl_http_get(const char * url, size_t max_size);
+curl_response *wurl_http_request(char *method, char **headers, const char *url, const char *payload, size_t max_size);
 void wurl_free_response(curl_response* response);
 #ifndef CLIENT
 int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);

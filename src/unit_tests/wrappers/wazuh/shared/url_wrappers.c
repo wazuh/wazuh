@@ -41,13 +41,13 @@ int __wrap_wurl_request(const char * url,
     return mock();
 }
 
-char* __wrap_wurl_http_get(const char * url) {
+char* __wrap_wurl_http_get(const char * url, size_t max_size) {
     check_expected(url);
 
     return mock_type(char *);
 }
 
-curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload) {
+curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size) {
     check_expected(method);
 
     char** ptr = headers;
@@ -60,6 +60,8 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
     if (payload) {
         check_expected(payload);
     }
+
+    check_expected(max_size);
 
     return mock_type(curl_response*);
 }
