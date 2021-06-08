@@ -107,6 +107,10 @@ const unsigned char *__wrap_sqlite3_column_text(__attribute__((unused)) sqlite3_
 
 }
 
+int __wrap_sqlite3_extended_errcode(__attribute__((unused)) sqlite3* db) {
+    return mock();
+}
+
 const char *__wrap_sqlite3_errmsg(__attribute__((unused)) sqlite3* db) {
     return mock_ptr_type(const char *);
 }
@@ -194,5 +198,9 @@ const char* __wrap_sqlite3_column_name(__attribute__((unused)) sqlite3_stmt *pSt
 }
 
 int __wrap_sqlite3_changes(__attribute__((unused)) sqlite3 * db){
+    return mock();
+}
+
+int __wrap_sqlite3_get_autocommit(__attribute__((unused)) sqlite3 * db) {
     return mock();
 }
