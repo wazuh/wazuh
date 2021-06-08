@@ -116,15 +116,14 @@ void test_github_main_enable(void **state) {
 }
 
 void test_github_get_next_page_warn(void **state) {
-    char *header;
+    char *header = "test";
 
     expect_string(__wrap_OSRegex_Compile, pattern,"<(\\S+)>;\\s*rel=\"next\"");
     will_return(__wrap_OSRegex_Compile, 0);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtwarn, formatted_msg, "Cannot compile regex");
+    expect_string(__wrap__mwarn, formatted_msg, "Cannot compile regex.");
 
-    assert_null(wm_github_get_next_page(header));
+    assert_null(wm_read_http_header_element(header, GITHUB_NEXT_PAGE_REGEX));
 }
 
 void test_github_get_next_page_execute(void **state) {
@@ -138,10 +137,9 @@ void test_github_get_next_page_execute(void **state) {
 
     expect_any(__wrap_OSRegex_FreePattern, reg);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No match regex.");
+    expect_string(__wrap__mdebug1, formatted_msg, "No match regex.");
 
-    assert_null(wm_github_get_next_page(header));
+    assert_null(wm_read_http_header_element(header, GITHUB_NEXT_PAGE_REGEX));
 }
 
 void test_github_get_next_page_sub_string(void **state) {
@@ -155,10 +153,9 @@ void test_github_get_next_page_sub_string(void **state) {
 
     expect_any(__wrap_OSRegex_FreePattern, reg);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No next page was captured.");
+    expect_string(__wrap__mdebug1, formatted_msg, "No element was captured.");
 
-    assert_null(wm_github_get_next_page(header));
+    assert_null(wm_read_http_header_element(header, GITHUB_NEXT_PAGE_REGEX));
 }
 
 void test_github_get_next_page_complete(void **state) {
@@ -174,7 +171,7 @@ void test_github_get_next_page_complete(void **state) {
 
     expect_any(__wrap_OSRegex_FreePattern, reg);
 
-    next_page = wm_github_get_next_page(header);
+    next_page = wm_read_http_header_element(header, GITHUB_NEXT_PAGE_REGEX);
 
     assert_string_equal(next_page, "https://api.com/");
     os_free(next_page);
@@ -296,9 +293,6 @@ void test_github_scan_failure_action_org_null(void **state) {
     int queue_fd = 1;
     wm_max_eps = 1;
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
-
     wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
@@ -385,9 +379,6 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
-
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
@@ -440,9 +431,6 @@ void test_github_execute_scan_status_code_200(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Error parsing response body.");
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -499,9 +487,6 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     will_return(__wrap_wurl_http_request, data->response);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "No record for this organization: 'test_org'");
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, 0);
