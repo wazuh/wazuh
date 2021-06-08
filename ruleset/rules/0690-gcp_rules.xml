@@ -340,6 +340,28 @@ ID: 65000 - 65499
         <options>no_full_log</options>
     </rule>
 
+    <!-- VPC Firewall rules -->
+    <rule id="65047" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.jsonPayload.rule_details.reference" type="pcre2">^(?!^$).*</field>
+        <description>GCP VPC Firewall rules grouped</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65048" level="5">
+        <if_sid>65047</if_sid>
+        <field name="gcp.jsonPayload.rule_details.action">DENY</field>
+        <description>GCP VPC Firewall: DENY rule triggered</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65049" level="3">
+        <if_sid>65047</if_sid>
+        <field name="gcp.jsonPayload.rule_details.action">ALLOW</field>
+        <description>GCP VPC Firewall: ALLOW rule triggered</description>
+        <options>no_full_log</options>
+    </rule>
+  
     <!-- GCP VPC Flow -->
     <rule id="65050" level="2">
         <if_sid>65000</if_sid>
@@ -347,5 +369,4 @@ ID: 65000 - 65499
         <description>GCP VPC Flow rules grouped</description>
         <options>no_full_log</options>
     </rule>
-
 </group>
