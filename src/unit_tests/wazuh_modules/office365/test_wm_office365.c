@@ -92,6 +92,7 @@ void test_read_configuration(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>10m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -112,6 +113,7 @@ void test_read_configuration(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->only_future_events, 0);
     assert_int_equal(module_data->interval, 600);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
@@ -127,6 +129,7 @@ void test_read_configuration_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>yes</only_future_events>"
         "<interval>10m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -154,6 +157,7 @@ void test_read_configuration_1(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->interval, 600);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
@@ -186,6 +190,7 @@ void test_read_interval(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>10</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -206,6 +211,7 @@ void test_read_interval(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->only_future_events, 0);
     assert_int_equal(module_data->interval, 10);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
@@ -221,6 +227,7 @@ void test_read_interval_s(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>50s</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -246,6 +253,7 @@ void test_read_interval_s_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>90000s</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -270,6 +278,7 @@ void test_read_interval_m(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -295,6 +304,7 @@ void test_read_interval_m_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1500m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -319,6 +329,7 @@ void test_read_interval_h(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>2h</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -344,6 +355,7 @@ void test_read_interval_h_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>30h</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -368,6 +380,7 @@ void test_read_interval_d(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -393,6 +406,7 @@ void test_read_interval_d_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>2d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -408,6 +422,118 @@ void test_read_interval_d_fail(void **state) {
     ;
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'interval' at module 'office365'. The maximum value allowed is 1 day.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_read_curl_max_size(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>4</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
+    wm_office365 *module_data = (wm_office365*)test->module->data;
+    assert_int_equal(module_data->enabled, 0);
+    assert_int_equal(module_data->only_future_events, 0);
+    assert_int_equal(module_data->interval, 10);
+    assert_int_equal(module_data->curl_max_size, 4096);
+    assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
+    assert_string_equal(module_data->auth->client_id, "your_client_id");
+    assert_string_equal(module_data->auth->client_secret, "your_secret");
+    assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
+    assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
+    assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
+    assert_string_equal(module_data->subscription->next->next->next->subscription_name, "Audit.General");
+    assert_string_equal(module_data->subscription->next->next->next->next->subscription_name, "DLP.All");
+}
+
+void test_read_curl_max_size_invalid_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>0</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_read_curl_max_size_invalid_2(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>-1</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_read_curl_max_size_invalid_3(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>invalid</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -432,6 +558,7 @@ void test_fake_tag(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -457,6 +584,7 @@ void test_fake_tag_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -482,6 +610,7 @@ void test_invalid_content_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -506,6 +635,7 @@ void test_invalid_content_2(void **state) {
         "<enabled>invalid</enabled>\n"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -530,6 +660,7 @@ void test_invalid_content_3(void **state) {
         "<enabled>yes</enabled>\n"
         "<only_future_events>no</only_future_events>"
         "<interval>invalid</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -554,6 +685,7 @@ void test_invalid_content_4(void **state) {
         "<enabled>yes</enabled>\n"
         "<only_future_events>invalid</only_future_events>"
         "<interval>yes</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -834,6 +966,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_h_fail, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_d, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_d_fail, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size_invalid_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size_invalid_2, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size_invalid_3, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_secret_path_and_secret, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag_1, setup_test_read, teardown_test_read),

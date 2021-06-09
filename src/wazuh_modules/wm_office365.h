@@ -17,9 +17,11 @@
 #define WM_OFFICE365_DEFAULT_ENABLED 1
 #define WM_OFFICE365_DEFAULT_ONLY_FUTURE_EVENTS 1
 #define WM_OFFICE365_DEFAULT_INTERVAL 600
+#define WM_OFFICE365_DEFAULT_CURL_MAX_SIZE 1048576L
 
 #define WM_OFFICE365_MSG_DELAY 1000000 / wm_max_eps
 #define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
+#define WM_OFFICE365_NEXT_PAGE_REGEX "NextPageUri:\\s*(\\S+)"
 
 #define WM_OFFICE365_API_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
 #define WM_OFFICE365_API_SUBSCRIPTION_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/%s?contentType=%s"
@@ -47,12 +49,21 @@ typedef struct wm_office365_state {
     time_t last_log_time;
 } wm_office365_state;
 
+typedef struct wm_office365_fail {
+    int fails;
+    char *tenant_id;
+    char *subscription_name;
+    struct wm_office365_fail *next;
+} wm_office365_fail;
+
 typedef struct wm_office365 {
     int enabled;
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
+    size_t curl_max_size;
     wm_office365_auth *auth;
     wm_office365_subscription *subscription;
+    wm_office365_fail *fails;
     int queue_fd;
 } wm_office365;
 
