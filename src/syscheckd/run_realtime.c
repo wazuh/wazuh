@@ -422,7 +422,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     if(rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
         rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
-        syscheck.realtime->fd = OSHash_Get_Elem_ex(syscheck.realtime->dirtb);
         free_win32rtfim_data(rtlocald);
         mdebug1(FIM_REALTIME_CALLBACK, wdchar);
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
@@ -504,7 +503,6 @@ int realtime_start() {
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
 
-    syscheck.realtime->fd = 0;
     syscheck.realtime->evt = CreateEvent(NULL, TRUE, FALSE, NULL);
 
     return (0);
@@ -573,7 +571,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     }
     /* Maximum limit for realtime on Windows */
     w_mutex_lock(&syscheck.fim_realtime_mutex);
-    if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
+    if (OSHash_Get_Elem_ex(syscheck.realtime->dirtb) > syscheck.max_fd_win_rt) {
         merror(FIM_ERROR_REALTIME_MAXNUM_WATCHES, dir);
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return (0);
@@ -623,7 +621,6 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
             merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
         }
 
-        syscheck.realtime->fd = OSHash_Get_Elem_ex(syscheck.realtime->dirtb);
         mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
     }
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
@@ -644,7 +641,6 @@ int fim_check_realtime_directory(win32rtfim *rtlocald) {
             mdebug1(FIM_REALTIME_CALLBACK, rtlocald->dir);
             rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, rtlocald->dir);
             free_win32rtfim_data(rtlocald);
-            syscheck.realtime->fd = OSHash_Get_Elem_ex(syscheck.realtime->dirtb);
             return 1;
         }
 

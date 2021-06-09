@@ -161,10 +161,11 @@ typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
 typedef struct _rtfim {
-    int fd;
     unsigned int queue_overflow:1;
     OSHash *dirtb;
-#ifdef WIN32
+#ifndef WIN32
+    int fd;
+#else
     HANDLE evt;
 #endif
 } rtfim;
@@ -402,7 +403,7 @@ typedef struct _config {
     registry_ignore *value_ignore;                     /* List of registry values to ignore*/
     registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
     registry *registry;                                /* array of registry entries to be scanned */
-    int max_fd_win_rt;                                 /* Maximum number of descriptors in realtime */
+    unsigned int max_fd_win_rt;                        /* Maximum number of descriptors in realtime */
     whodata wdata;
     registry *registry_nodiff;                         /* list of values/registries to never output diff */
     registry_ignore_regex *registry_nodiff_regex;      /* regex of values/registries to never output diff */

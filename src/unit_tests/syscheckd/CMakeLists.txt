@@ -246,19 +246,26 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebu
                           -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_delete_range -Wl,--wrap,lstat \
                           -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch -Wl,--wrap,os_random \
                           -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap,fim_db_get_path_from_pattern -Wl,--wrap,gettime \
-                          -Wl,--wrap,remove_audit_rule_syscheck")
+                          -Wl,--wrap,remove_audit_rule_syscheck -Wl,--wrap,realtime_process -Wl,--wrap,FOREVER \
+                          -Wl,--wrap,select -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep -Wl,--wrap,time")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start \
+                                     -Wl,--wrap,WaitForSingleObjectEx -Wl,--wrap,pthread_rwlock_rdlock \
+                                     -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
-                                                                    -Wl,--wrap=audit_restore -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
-                                                                    -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_mutex_unlock")
+                                                                   -Wl,--wrap=audit_restore
+                                                                   -Wl,--wrap,pthread_rwlock_rdlock \
+                                                                   -Wl,--wrap,pthread_rwlock_unlock \
+                                                                   -Wl,--wrap,pthread_mutex_lock \
+                                                                   -Wl,--wrap,pthread_rwlock_wrlock \
+                                                                   -Wl,--wrap,pthread_mutex_unlock")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
 endif()
