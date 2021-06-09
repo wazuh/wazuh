@@ -14,16 +14,17 @@
 bool w_sysinfo_init(w_sysinfo_helpers_t * sysinfo) {
 
     bool result = false;
-    sysinfo->module = so_get_module_handle("sysinfo");
-
-    if (sysinfo->module != NULL) {
-        sysinfo->processes = so_get_function_sym(sysinfo->module, "sysinfo_processes");
-        sysinfo->os = so_get_function_sym(sysinfo->module, "sysinfo_os");
-        sysinfo->free_result = so_get_function_sym(sysinfo->module, "sysinfo_free_result");
-        if (sysinfo->processes != NULL && sysinfo->os != NULL && sysinfo->free_result != NULL) {
-            result = true;
-        } else {
-            w_sysinfo_deinit(sysinfo);
+    if (sysinfo != NULL) {
+        sysinfo->module = so_get_module_handle("sysinfo");
+        if (sysinfo->module != NULL) {
+            sysinfo->processes = so_get_function_sym(sysinfo->module, "sysinfo_processes");
+            sysinfo->os = so_get_function_sym(sysinfo->module, "sysinfo_os");
+            sysinfo->free_result = so_get_function_sym(sysinfo->module, "sysinfo_free_result");
+            if (sysinfo->processes != NULL && sysinfo->os != NULL && sysinfo->free_result != NULL) {
+                result = true;
+            } else {
+                w_sysinfo_deinit(sysinfo);
+            }
         }
     }
 
@@ -32,12 +33,16 @@ bool w_sysinfo_init(w_sysinfo_helpers_t * sysinfo) {
 
 bool w_sysinfo_deinit(w_sysinfo_helpers_t * sysinfo) {
 
-    so_free_library(sysinfo->module);
-    sysinfo->module = NULL;
-    sysinfo->processes = NULL;
-    sysinfo->free_result = NULL;
-    sysinfo->os = NULL;
-    return true;
+    bool result = false;
+    if (sysinfo != NULL) {
+        so_free_library(sysinfo->module);
+        sysinfo->module = NULL;
+        sysinfo->processes = NULL;
+        sysinfo->free_result = NULL;
+        sysinfo->os = NULL;
+        return true;
+    }
+    return result;
 }
 
 cJSON * w_sysinfo_get_processes(w_sysinfo_helpers_t * sysinfo) {

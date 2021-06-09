@@ -54,17 +54,7 @@ cJSON * w_sysinfo_get_processes(w_sysinfo_helpers_t * sysinfo);
  * @param sysinfo sysinfo helpers reference
  * @return cJSON* cJSON object containing OS information. NULL otherwise
  */
-cJSON * w_get_os(w_sysinfo_helpers_t * sysinfo);
-
-/**
- * @brief Get array of child processes
- *
- * @param sysinfo sysinfo helpers to be used
- * @param parent_pid parent process pid
- * @param childs [out] allocated array with childs found
- * @param max_count max count of processes to find
- * @return int number of processes found.
- */
+cJSON * w_sysinfo_get_os(w_sysinfo_helpers_t * sysinfo);
 
 /**
  * @brief * @brief Get array of child processes
