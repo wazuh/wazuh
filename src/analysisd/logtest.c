@@ -1259,7 +1259,6 @@ bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _C
         /* Empty configuration sections are not allowed. */
         else if (options_node = OS_GetElementsbyNode(xml, conf_section_nodes[i]), options_node == NULL) {
             smerror(list_msg, XML_ELEMNULL);
-            OS_ClearNode(options_node);
             retval = false;
             break;
         }

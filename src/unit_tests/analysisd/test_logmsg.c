@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 #include "../../headers/shared.h"
-#include "../../analysisd/logmsg.h"
+#include "../../headers/logmsg.h"
 
 void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func,
                                 const char * file, char * msg, ...) __attribute__((nonnull));
