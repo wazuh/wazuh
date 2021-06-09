@@ -102,4 +102,12 @@ int OSList_InsertData(OSList *list, OSListNode *node, void *data);
  */
 void *OSList_GetDataFromIndex(OSList *list, int index);
 
+/**
+ * @brief Insert data at the beggining of a list
+ *
+ * @param list List where the node will be inserted into
+ * @param data Data to be inserted
+ */
+int OSList_PushData(OSList *list, void *data);
+
 #endif /* OS_LIST */

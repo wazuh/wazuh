@@ -1738,8 +1738,9 @@ void update_wildcards_config() {
                 remove_audit_rule_syscheck(dir_it->path);
             }
 #endif
-            // Add node to delete list
-            OSList_AddData(removed_entries, dir_it);
+            // Inserting like this will cause the new list to have the order reversed to the one in syscheck.directories
+            // This will cause the following loop to delete "inner" directories before "outer" ones
+            OSList_PushData(removed_entries, dir_it);
 
             // Delete node
             aux_it = OSList_GetNext(syscheck.directories, node_it);

@@ -451,7 +451,7 @@ void *OSList_GetDataFromIndex(OSList *list, int index) {
 /* Add data to the list
  * Returns 0 on success and 1 on failure
  */
-int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
+static int _OSList_InsertData(OSList *list, OSListNode *node, void *data) {
     OSListNode *newnode;
 
     /* Allocate memory for new node */
@@ -462,9 +462,6 @@ int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
         return 1;
         // LCOV_EXCL_STOP
     }
-
-    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
 
     newnode->data = data;
 
@@ -494,8 +491,40 @@ int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
     /* Increment list size */
     list->currently_size++;
 
+    return 0;
+}
+
+int OSList_InsertData(OSList *list, OSListNode *node, void *data) {
+    int retval;
+
+    assert(list != NULL);
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    retval = _OSList_InsertData(list, node, data);
+
     w_mutex_unlock((pthread_mutex_t *)&list->mutex);
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 
-    return 0;
+    return retval;
+}
+
+/**
+ * Add data to the begging of the list
+ */
+int OSList_PushData(OSList *list, void *data) {
+    int retval;
+
+    assert(list != NULL);
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    retval = _OSList_InsertData(list, list->first_node, data);
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+
+    return retval;
 }

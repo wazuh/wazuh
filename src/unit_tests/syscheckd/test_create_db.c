@@ -5682,8 +5682,8 @@ static void test_update_wildcards_config_remove_config() {
     snprintf(error_msg2, OS_MAXSTR, FIM_WILDCARDS_REMOVE_DIRECTORY, resolvedpath2);
 
     expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_START);
-    expect_string(__wrap__mdebug2, formatted_msg, error_msg);
     expect_string(__wrap__mdebug2, formatted_msg, error_msg2);
+    expect_string(__wrap__mdebug2, formatted_msg, error_msg);
     expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_FINALIZE);
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -5703,16 +5703,16 @@ static void test_update_wildcards_config_remove_config() {
 
     // Remove configuration loop
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_fim_db_get_path_from_pattern(syscheck.database, pattern1, NULL, FIM_DB_DISK, FIMDB_ERR);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
     will_return(__wrap_fim_db_get_path, NULL);
 
     expect_fim_db_get_path_from_pattern(syscheck.database, pattern2, NULL, FIM_DB_DISK, FIMDB_ERR);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_fim_db_get_path_from_pattern(syscheck.database, pattern1, NULL, FIM_DB_DISK, FIMDB_ERR);
 
     update_wildcards_config();
 
