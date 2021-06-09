@@ -440,6 +440,10 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
         lf->macos_log->current_settings = w_strcat_list(current_settings_list, ' ');
         free_strarray(current_settings_list);
 
+        if (macos_codename != NULL) {
+            mdebug1("macOS ULS: Creating environment for macOS %s.", macos_codename);
+        }
+
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
         if (!lf->future) {
             char * previous_settings = w_macos_get_log_settings();
