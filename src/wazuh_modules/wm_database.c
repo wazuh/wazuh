@@ -304,7 +304,6 @@ void wm_sync_agents() {
             snprintf(id, 9, "%03d", agents[i]);
 
             if (OS_IsAllowedID(&keys, id) == -1) {
-                char full_name[FILE_SIZE + 1];
                 char *name = wdb_get_agent_name(agents[i], &wdb_wmdb_sock);
 
                 if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
@@ -317,7 +316,7 @@ void wm_sync_agents() {
                     os_malloc(WDBOUTPUT_SIZE, wdboutput);
                 }
 
-                snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id);
+                snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", id);
                 error = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
                 if (error == 0) {
@@ -331,7 +330,8 @@ void wm_sync_agents() {
                 OS_RemoveAgentTimestamp(id);
                 OS_RemoveAgentGroup(id);
 
-                if (name == NULL) {
+                if (name == NULL || *name == '\0') {
+                    os_free(name);
                     continue;
                 }
 

@@ -176,6 +176,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_AGENT_EXISTS,
     WDB_STMT_TASK_INSERT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK,
@@ -1536,6 +1537,17 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
+
+/**
+ * @brief Checks the given ID is in the agent table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] agent_id ID to check.
+ * @retval 0 if the ID was not found.
+ * @retval 1 if the ID was found.
+ * @retval -1 on error.
+ */
+int wdb_global_agent_exists(wdb_t *wdb, int agent_id);
 
 /**
  * @brief Function to reset connection_status column of every agent (excluding the manager).

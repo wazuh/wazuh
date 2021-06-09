@@ -478,7 +478,7 @@ void test_wdb_init_stmt_in_cache_invalid_statement(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // wdb_stmt_cache
-    expect_string(__wrap__merror, formatted_msg, "DB(000) SQL statement index (171) out of bounds");
+    expect_string(__wrap__merror, formatted_msg, "DB(000) SQL statement index (172) out of bounds");
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     sqlite3_stmt* result = wdb_init_stmt_in_cache(data->wdb,WDB_STMT_SIZE);
