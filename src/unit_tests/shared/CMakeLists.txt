@@ -174,7 +174,10 @@ list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_e
                                 -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize")
 
 list(APPEND shared_tests_names "test_sysinfo_utils")
-list(APPEND shared_tests_flags "")
+list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
+                                -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
+                                -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
+                                -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

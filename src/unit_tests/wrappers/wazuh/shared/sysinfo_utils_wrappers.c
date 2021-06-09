@@ -39,12 +39,12 @@ cJSON * __wrap_w_sysinfo_get_processes(__attribute__((__unused__)) w_sysinfo_hel
     return w_sysinfo_get_processes(sysinfo);
 }
 
-cJSON * __wrap_w_get_os(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo) {
+cJSON * __wrap_w_sysinfo_get_os(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo) {
     if (test_mode) {
         cJSON * ret = mock_type(cJSON *);
         return ret;
     }
-    return w_get_os(sysinfo);
+    return w_sysinfo_get_os(sysinfo);
 }
 
 pid_t * __wrap_w_get_process_childs(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo,
