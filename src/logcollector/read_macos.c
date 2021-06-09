@@ -86,17 +86,17 @@ STATIC char * w_macos_log_get_last_valid_line(char * str);
 
 /**
  * @brief Checks whether the `log stream` cli command returns a header or a log.
- * 
+ *
  * Detects predicate errors and discards filtering headers and columun descriptions.
  * @param macos_log_cfg macOS log configuration structure
  * @param buffer line to check
- * @return Returns false if the read line is a log, otherwise returns true 
+ * @return Returns false if the read line is a log, otherwise returns true
  */
 STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 
 /**
  * @brief Trim milliseconds from a macOS ULS full timestamp
- * 
+ *
  * @param full_timestamp Timestamp to trim
  * @warning @full_timestamp must be an array with \ref OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN +1 length
  * @warning @full_timestamp must be in format i.e 2020-11-09 05:45:08.000000-0800
@@ -114,7 +114,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     unsigned long size = 0;
     int count_logs = 0;
 
-    wfd_t * log_mode_wfd = (lf->macos_log->state == LOG_RUNNING_SHOW) ? 
+    wfd_t * log_mode_wfd = (lf->macos_log->state == LOG_RUNNING_SHOW) ?
                             lf->macos_log->processes.show.wfd : lf->macos_log->processes.stream.wfd;
 
     if (can_read() == 0) {
@@ -283,13 +283,22 @@ STATIC bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos
 
         last_line = w_macos_log_get_last_valid_line(buffer);
 
+        if (isDebug() == 2) {
+            char * d_str_msg = (last_line == NULL) ?  buffer : (last_line +1);
+            bool is_chunck_message = (int) w_strlen(d_str_msg) - 1 > sample_log_length;
+            int  d_str_lenght = is_chunck_message ? sample_log_length : (int) w_strlen(d_str_msg) - 1;
+
+            mdebug2("Reading macOS message: '%.*s'%s", d_str_lenght, d_str_msg, is_chunck_message  ? "..." : "");
+
+        }
+
         /* If there are 2 logs, they should be splited before sending them */
         if (is_endline && last_line != NULL) {
             do_split = w_expression_match(macos_log_cfg->log_start_regex, last_line + 1, NULL, NULL);
         }
 
         if (!do_split && is_buffer_full) {
-            /* If the buffer is full but the message is larger than the buffer size, 
+            /* If the buffer is full but the message is larger than the buffer size,
              * then the rest of the message is discarded up to the '\n' character.
              */
             if (!is_endline) {
