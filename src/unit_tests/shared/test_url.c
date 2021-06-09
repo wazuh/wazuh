@@ -34,10 +34,11 @@ void test_wurl_http_request_url_null(void **state)
     curl_response *response = NULL;
     char **headers = NULL;
     char *url = NULL;
+    size_t max_size = 1;
 
     expect_string(__wrap__mdebug1, formatted_msg, "url not defined");
 
-    response = wurl_http_request(NULL, headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -47,6 +48,7 @@ void test_wurl_http_request_init_failure(void **state)
     CURL* curl = NULL;
     char **headers = NULL;
     char *url = "http://test.com";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -56,7 +58,7 @@ void test_wurl_http_request_init_failure(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl initialization failure");
 
-    response = wurl_http_request(NULL, headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -66,6 +68,7 @@ void test_wurl_http_request_headers_list_null(void **state)
     CURL *curl = (CURL *) 1;
     char **headers = NULL;
     char *url = "http://test.com";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -95,7 +98,7 @@ void test_wurl_http_request_headers_list_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl append header failure");
 
-    response = wurl_http_request(NULL, headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -106,6 +109,7 @@ void test_wurl_http_request_headers_tmp_null(void **state)
     CURL *curl = (CURL *) 1;
     char *pheaders = "headers";
     char *url = "http://test.com";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -145,7 +149,7 @@ void test_wurl_http_request_headers_tmp_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl append header failure");
 
-    response = wurl_http_request(NULL, &pheaders, url, NULL);
+    response = wurl_http_request(NULL, &pheaders, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -155,6 +159,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
     struct curl_slist* headers = (struct curl_slist*) 1;
     CURL *curl = (CURL *) 1;
     char *url = "http://test.com";
+    size_t max_size = 1;
 
     char auth_header[OS_SIZE_8192];
     snprintf(auth_header, OS_SIZE_8192 -1, "Content-Type: application/x-www-form-urlencoded");
@@ -255,7 +260,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
-    response = wurl_http_request(NULL, pheaders, url, NULL);
+    response = wurl_http_request(NULL, pheaders, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -267,6 +272,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
     char *pheaders = NULL;
     char *url = "http://test.com";
     const char *payload = "payload test";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -368,7 +374,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
-    response = wurl_http_request(NULL, &pheaders, url, payload);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size);
     assert_null(response);
 }
 
@@ -380,6 +386,7 @@ void test_wurl_http_request_success(void **state)
     char *pheaders = NULL;
     char *url = "http://test.com";
     const char *payload = "payload test";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -488,7 +495,7 @@ void test_wurl_http_request_success(void **state)
         expect_value(__wrap_curl_easy_cleanup, curl, curl);
     #endif
 
-    response = wurl_http_request(NULL, &pheaders, url, payload);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size);
     assert_non_null(response);
 }
 

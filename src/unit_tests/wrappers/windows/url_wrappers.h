@@ -9,6 +9,7 @@
 #ifndef URL_WRAPPERS_H
 #define URL_WRAPPERS_H
 
+#include <stdbool.h>
 #include "headers/url.h"
 
 #define curl_easy_init wrap_curl_easy_init
@@ -37,7 +38,7 @@ int wrap_wurl_request(const char * url, const char * dest, const char *header, c
 
 char* wrap_wurl_http_get(const char * url);
 
-curl_response* wrap_wurl_http_request(char *method, char **headers, const char *url, const char *payload);
+curl_response* wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size);
 
 CURLcode wrap_curl_easy_getinfo(CURL *curl, CURLoption option, void *parameter);
 
