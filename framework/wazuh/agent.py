@@ -170,11 +170,24 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def restart_agents(agent_list=None):
+def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
-    :param agent_list: List of agents ID's.
-    :return: AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : list
+        List of agents IDs.
+
+    Raises
+    ------
+    WazuhError(1703)
+        If the agent to be restarted is 000.
+    WazuhError(1701)
+        If the agent to be restarted is not in the system.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
     """
     result = AffectedItemsWazuhResult(all_msg='Restart command was sent to all agents',
                                       some_msg='Restart command was not sent to some agents',
