@@ -1510,8 +1510,12 @@ void test_realtime_adddir_max_limit_reached(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Get_Elem_ex, 1024);
+    will_return(__wrap_OSHash_Get_Elem_ex, 257);
 
     expect_string(__wrap__merror, formatted_msg,
         "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
@@ -1529,9 +1533,6 @@ void test_realtime_adddir_duplicate_entry(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Get_Elem_ex, 128);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
@@ -1554,10 +1555,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(vo
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Get_Elem_ex, 128);
-
-    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+        expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, &rtlocald);
 
@@ -1609,9 +1607,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     expect_string(__wrap_OSHash_Delete_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Delete_ex, rtlocald);
 
-    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Get_Elem_ex, 127);
-
     snprintf(debug_msg, OS_SIZE_128, FIM_REALTIME_CALLBACK, "C:\\a\\path");
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
@@ -1629,8 +1624,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Get_Elem_ex, 128);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");

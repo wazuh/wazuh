@@ -356,27 +356,24 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
     directory_t *dir_it;
     OSListNode *node_it;
 
-    int _base_line = 0;
     set_priority_windows_thread();
-    while (FOREVER()) {
-        // Directories in Windows configured with real-time add recursive watches
-        w_rwlock_wrlock(&syscheck.directories_lock);
-        OSList_foreach(node_it, syscheck.directories) {
-            dir_it = node_it->data;
-            if (dir_it->options & REALTIME_ACTIVE) {
-                realtime_adddir(dir_it->path, dir_it);
-            }
+    // Directories in Windows configured with real-time add recursive watches
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            realtime_adddir(dir_it->path, dir_it);
         }
-        w_rwlock_unlock(&syscheck.directories_lock);
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (_base_line == 0) {
-            _base_line = 1;
-            if (syscheck.realtime != NULL) {
-                mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
-            }
-        }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    if (syscheck.realtime != NULL) {
+        mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
+    }
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
+    while (FOREVER()) {
 
 #ifdef WIN_WHODATA
         if (syscheck.realtime_change) {
@@ -395,23 +392,29 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
         }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
+        // Directories in Windows configured with real-time add recursive watches
+        w_rwlock_wrlock(&syscheck.directories_lock);
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
+            if (dir_it->options & REALTIME_ACTIVE) {
+                realtime_adddir(dir_it->path, dir_it);
+            }
+        }
+        w_rwlock_unlock(&syscheck.directories_lock);
     }
 }
 
 #elif defined INOTIFY_ENABLED
 void *fim_run_realtime(__attribute__((unused)) void * args) {
-    int _base_line = 0;
     int nfds = -1;
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    if (syscheck.realtime != NULL) {
+        mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
+    }
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     while (FOREVER()) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (_base_line == 0) {
-            _base_line = 1;
-            if (syscheck.realtime != NULL) {
-                mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
-            }
-        }
-
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
             nfds = syscheck.realtime->fd;
         }
@@ -429,12 +432,7 @@ void *fim_run_realtime(__attribute__((unused)) void * args) {
             // zero-out the fd_set
             FD_ZERO (&rfds);
             FD_SET(nfds, &rfds);
-            run_now = select(nfds + 1,
-                            &rfds,
-                            NULL,
-                            NULL,
-                            &selecttime);
-
+            run_now = select(nfds + 1, &rfds, NULL, NULL, &selecttime);
 
             if (run_now < 0) {
                 merror(FIM_ERROR_SELECT);
