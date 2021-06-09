@@ -1264,11 +1264,14 @@ bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _C
         }
 
         /* Load ruleset */
-        if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0 && Read_Rules(options_node, ruleset_config, list_msg) < 0) {
+        if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0 
+            && Read_Rules(options_node, ruleset_config, list_msg) < 0) {
+
             smerror(list_msg, "Read rules error");
             OS_ClearNode(options_node);
             retval = false;
             break;
+
         }
 
         /* Load alert by level */
