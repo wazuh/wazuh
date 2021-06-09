@@ -195,7 +195,7 @@ def restart_agents(agent_list=None):
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
 
-            wq.close()
+        wq.close()
 
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=int)
