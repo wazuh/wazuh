@@ -217,7 +217,7 @@ cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
     }
 
     /* Parse the alert */
-    char *output_str = Eventinfo_to_jsonstr(lf, false);
+    char *output_str = Eventinfo_to_jsonstr(lf, false, list_msg);
     output = cJSON_Parse(output_str);
     os_free(output_str);
 
