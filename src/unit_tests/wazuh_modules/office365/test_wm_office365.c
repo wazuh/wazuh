@@ -19,6 +19,7 @@
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_office365.h"
+#include "wazuh_modules/wm_office365.c"
 
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
@@ -30,6 +31,31 @@ int __wrap_access(const char *__name, int __type) {
 }
 
 ////////////////  test wmodules-office365 /////////////////
+typedef struct test_struct {
+    wm_office365 *office365_config;
+    curl_response* response;
+    char *root_c;
+} test_struct_t;
+
+static int setup_conf(void **state) {
+    test_struct_t *init_data = NULL;
+    os_calloc(1,sizeof(test_struct_t), init_data);
+    os_calloc(1, sizeof(wm_office365), init_data->office365_config);
+    test_mode = 1;
+    *state = init_data;
+    return 0;
+}
+
+static int teardown_conf(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    test_mode = 0;
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module Office365 finished.");
+    wm_office365_destroy(data->office365_config);
+    os_free(data->root_c);
+    os_free(data);
+    return 0;
+}
 
 static int setup_test_read(void **state) {
     test_structure *test;
@@ -820,6 +846,329 @@ void test_error_client_secret_path_1(void **state) {
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_wm_office365_dump_no_options(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *test = "{\"office365\":{\"enabled\":\"no\",\"only_future_events\":\"no\"}}";
+
+    cJSON *root = wm_office365_dump(data->office365_config);
+    data->root_c = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    assert_string_equal(data->root_c, test);
+}
+
+void test_wm_office365_dump_yes_options_empty_arrays(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->office365_config->enabled = 1;
+    data->office365_config->only_future_events = 1;
+    data->office365_config->interval = 10;
+    data->office365_config->queue_fd = 1;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("", data->office365_config->subscription->subscription_name);
+
+    char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{}],\"subscriptions\":[\"\"]}}";
+    
+    cJSON *root = wm_office365_dump(data->office365_config);
+    data->root_c = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    assert_string_equal(data->root_c, test);
+}
+
+void test_wm_office365_dump_yes_options(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->office365_config->enabled = 1;
+    data->office365_config->only_future_events = 1;
+    data->office365_config->interval = 10;
+    data->office365_config->queue_fd = 1;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret_path", data->office365_config->auth->client_secret_path);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+
+    char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{\"tenant_id\":\"test_tenant_id\",\"client_id\":\"test_client_id\",\"client_secret_path\":\"test_client_secret_path\",\"client_secret\":\"test_client_secret\"}],\"subscriptions\":[\"test_subscription_name\"]}}";
+    
+    cJSON *root = wm_office365_dump(data->office365_config);
+    data->root_c = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    assert_string_equal(data->root_c, test);
+}
+
+
+void test_wm_office365_get_access_token_with_auth_secret(void **state) {
+    char** error_msg = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->response = NULL;
+    char *access_token = NULL;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+
+    assert_null(access_token);
+}
+
+void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
+    char** error_msg = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->response = NULL;
+    char *access_token = NULL;
+
+    const char *filename = "test_client_secret_path";
+    FILE *outfile;
+    outfile = fopen(filename, "wb");
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret_path", data->office365_config->auth->client_secret_path);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+
+    fclose(outfile);
+
+    assert_null(access_token);
+}
+
+void test_wm_office365_get_access_token_with_auth_secret_response_fail(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *access_token = NULL;
+    char **error_msg = NULL;
+    os_calloc(2, sizeof(char*), error_msg);
+    error_msg[0] = NULL;
+    error_msg[1] = NULL;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 400;
+    os_strdup("{\"error\":\"bad_request\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+
+    assert_null(access_token);
+    assert_string_equal(error_msg[0], "{\"error\":\"bad_request\"}");
+}
+
+void test_wm_office365_get_access_token_with_auth_secret_response_200(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *access_token = NULL;
+    char **error_msg = NULL;
+    os_calloc(2, sizeof(char*), error_msg);
+    error_msg[0] = NULL;
+    error_msg[1] = NULL;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("{\"access_token\":\"wazuh\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+
+    assert_string_equal(access_token, "wazuh");
+}
+
+
+void test_wm_office365_manage_subscription_start_code_200(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int value = 0;
+
+    char **error_msg = NULL;
+    os_calloc(2, sizeof(char*), error_msg);
+    error_msg[0] = NULL;
+    error_msg[1] = NULL;
+    char *token = "test_token";
+    char* client_id = "test_client_id";
+    int start = 1;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("{\"access_token\":\"wazuh\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, error_msg, start);
+
+    assert_int_equal(value, OS_SUCCESS);
+}
+
+void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int value = 0;
+
+    char **error_msg = NULL;
+    os_calloc(2, sizeof(char*), error_msg);
+    error_msg[0] = NULL;
+    error_msg[1] = NULL;
+    char *token = "test_token";
+    char* client_id = "test_client_id";
+    int start = 0;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 400;
+    os_strdup("{\"error\":{\"code\":\"AF20024\"}}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, error_msg, start);
+
+    assert_int_equal(value, OS_SUCCESS);
+}
+
+void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int value = 0;
+
+    char **error_msg = NULL;
+    os_calloc(2, sizeof(char*), error_msg);
+    error_msg[0] = NULL;
+    error_msg[1] = NULL;
+    char *token = "test_token";
+    char* client_id = "test_client_id";
+    int start = 0;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 400;
+    os_strdup("{\"error\":{\"code\":\"AF20023\"}}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+
+    char expHeader[OS_SIZE_8192];
+    snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer %s", token);
+
+    expect_string(__wrap_wurl_http_request, header, expHeader);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, error_msg, start);
+
+    assert_int_equal(value, OS_INVALID);
+    assert_string_equal(*error_msg, data->response->body);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
@@ -852,7 +1201,18 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_client_secret_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_wm_office365_dump_no_options, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options_empty_arrays, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_access_token_with_auth_secret, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_access_token_with_auth_secret_path, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_access_token_with_auth_secret_response_fail, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_access_token_with_auth_secret_response_200, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_manage_subscription_start_code_200, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_manage_subscription_stop_code_400_error_AF20024, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024, setup_conf, teardown_conf),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
+

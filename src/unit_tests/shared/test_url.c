@@ -156,8 +156,14 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
     curl_response *response = NULL;
     struct curl_slist* headers = (struct curl_slist*) 1;
     CURL *curl = (CURL *) 1;
-    char *pheaders = "headers";
     char *url = "http://test.com";
+
+    char auth_header[OS_SIZE_8192];
+    snprintf(auth_header, OS_SIZE_128 -1, "Content-Type: application/x-www-form-urlencoded");
+    char **pheaders = NULL;
+    os_calloc(2, sizeof(char*), pheaders);
+    pheaders[0] = auth_header;
+    pheaders[1] = NULL;    
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -170,7 +176,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
         expect_value(wrap_curl_slist_append, list, NULL);
         will_return(wrap_curl_slist_append, headers);
 
-        expect_string(wrap_curl_slist_append, string, "headers");
+        expect_string(wrap_curl_slist_append, string, "Content-Type: application/x-www-form-urlencoded");
         expect_value(wrap_curl_slist_append, list, headers);
         will_return(wrap_curl_slist_append, headers);
 
@@ -214,7 +220,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
 
-        expect_string(__wrap_curl_slist_append, string, "headers");
+        expect_string(__wrap_curl_slist_append, string, "Content-Type: application/x-www-form-urlencoded");
         expect_value(__wrap_curl_slist_append, list, headers);
         will_return(__wrap_curl_slist_append, headers);
 
@@ -251,7 +257,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
-    response = wurl_http_request(NULL, &pheaders, url, NULL);
+    response = wurl_http_request(NULL, pheaders, url, NULL);
     assert_null(response);
 }
 
