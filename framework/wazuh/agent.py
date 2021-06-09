@@ -182,16 +182,20 @@ def restart_agents(agent_list=None):
                                       )
 
     system_agents = get_agents_info()
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            if agent_id == "000":
-                raise WazuhError(1703)
-            Agent(agent_id).restart()
-            result.affected_items.append(agent_id)
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
+    if agent_list:
+        wq = WazuhQueue(common.ARQUEUE)
+        for agent_id in agent_list:
+            try:
+                if agent_id == "000":
+                    raise WazuhError(1703)
+                if agent_id not in system_agents:
+                    raise WazuhResourceNotFound(1701)
+                Agent(agent_id).restart(wq)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
+
+            wq.close()
 
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=int)
