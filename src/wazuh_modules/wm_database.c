@@ -98,6 +98,7 @@ const wm_context WM_DATABASE_CONTEXT = {
     (wm_routine)wm_database_main,
     (wm_routine)wm_database_destroy,
     (cJSON * (*)(const void *))wm_database_dump,
+    NULL,
     NULL
 };
 
@@ -302,6 +303,10 @@ void wm_sync_agents() {
             if (OS_IsAllowedID(&keys, id) == -1) {
                 if (wdb_remove_agent(agents[i], &wdb_wmdb_sock) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
+                } else {
+                    // Remove agent-related files
+                    OS_RemoveCounter(id);
+                    OS_RemoveAgentGroup(id);
                 }
             }
         }

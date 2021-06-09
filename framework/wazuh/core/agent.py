@@ -6,6 +6,8 @@ import copy
 import fcntl
 import hashlib
 import ipaddress
+import mmap
+import re
 import tempfile
 import threading
 from base64 import b64encode
@@ -29,9 +31,14 @@ from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 
+detect_wrong_lines = re.compile(r'(.+ .+ .+ .+)')
+detect_valid_lines = re.compile(r'^(\d+) (.*) (.*) (.*)', re.MULTILINE)
+
 mutex = threading.Lock()
 lock_file = None
 lock_acquired = False
+
+agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -466,8 +473,6 @@ class Agent:
         ------
         WazuhError(1707)
             If the agent to be restarted is not active.
-        WazuhError(1750)
-            If the agent has active response disabled.
 
         Returns
         -------
@@ -478,11 +483,6 @@ class Agent:
         self.get_basic_information()
         if self.status.lower() != 'active':
             raise WazuhError(1707, extra_message='{0}'.format(self.status))
-
-        # Check if agent has active-response enabled
-        agent_conf = self.getconfig('com', 'active-response', self.version)
-        if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhError(1750)
 
         return send_restart_command(self.id, self.version)
 
@@ -833,13 +833,9 @@ class Agent:
             else:
                 agent_key = key
         else:
-            epoch_time = int(time())
-            str1 = "{0}{1}{2}".format(epoch_time, name, platform())
-            str2 = "{0}{1}".format(ip, agent_id)
-            hash1 = hashlib.md5(str1.encode())
-            hash1.update(urandom(64))
-            hash2 = hashlib.md5(str2.encode())
-            hash1.update(urandom(64))
+            hash1 = hashlib.md5("{0}{1}{2}".format(int(time()), name, platform()).encode())
+            hash1.update(urandom(128))
+            hash2 = hashlib.md5(f"{ip}{agent_id}".encode())
             agent_key = hash1.hexdigest() + hash2.hexdigest()
 
         force = int(force)
@@ -855,7 +851,6 @@ class Agent:
         if agent_id in get_agents_info():
             raise WazuhError(1708, agent_id)
 
-        client_keys_entries = []
         # Check if ip or name exist in client.keys
         last_id = 0
 
@@ -865,48 +860,43 @@ class Agent:
 
         try:
             with open(common.client_keys) as f_k:
-                for line in f_k.readlines():
-                    line = line.rstrip()
-                    if line:
-                        if not line.startswith('#') and not line.startswith(' '):
-                            try:
-                                entry_id, entry_name, entry_ip, entry_key = line.split(' ')
-                            except ValueError:
-                                # Bad entries will be ignored and not rewritten to the new file
-                                continue
-                        else:
-                            # Ignore void entries, but preserve them
-                            client_keys_entries.append(line)
-                            continue
+                with mmap.mmap(f_k.fileno(), length=0, access=mmap.ACCESS_READ) as file_client:
+                    content = file_client.read().decode()
+                    # Remove lines that do not follow the general scheme
+                    client_keys_entries = detect_wrong_lines.findall(content)
 
-                        # Update last_id with highest seen value
-                        if int(entry_id) > last_id:
-                            last_id = int(entry_id)
+                    # Update last_id with highest value
+                    if not agent_id:
+                        try:
+                            last_id = max(int(line[0]) for line in detect_valid_lines.findall(content))
+                        except ValueError:
+                            last_id = 0
 
-                        # Ignore void entries, but preserve them
-                        if entry_name.startswith('#') or entry_name.startswith('!'):
-                            client_keys_entries.append(line)
-                            continue
+                    # Detect entries with duplicate name or ip
+                    if (name in content and f'!{name}' not in content) or (ip != 'any' and ip in content):
+                        # Regular expression that will help us to search for the target line
+                        regex = rf'.* {name} .* .*|.* {name} {ip} .*' if name in content else rf'.* .* {ip} .*'
 
-                        # Detect entries with duplicate name or ip
-                        if name == entry_name or (ip != 'any' and ip == entry_ip):
-                            # If force is non-negative then we check to remove the agent using value of force as the max age
-                            # in seconds
-                            if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
-                                self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
-                                # We add a void entry
-                                client_keys_entries.append(
-                                    '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
-                            else:
-                                # If force is negative or the agent is not older than the max age we raise an error based
-                                # on the duplicate field.
-                                if name == entry_name:
-                                    raise WazuhError(1705, extra_message=name)
+                        for index, line in enumerate(client_keys_entries):
+                            agent_match = re.match(regex, line.rstrip())
+
+                            # Line found
+                            if agent_match:
+                                entry_id, entry_name, entry_ip, entry_key = agent_match[0].split(' ')
+
+                                # If force is non-negative then we check to remove the agent using value of force as
+                                # the max age in seconds
+                                if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
+                                    self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
+                                    # We add a void entry
+                                    client_keys_entries[index] = f'{entry_id} !{entry_name} {entry_ip} {entry_key}'
                                 else:
-                                    raise WazuhError(1706, extra_message=ip)
-                        else:
-                            # Preserve the entry if it is not a duplicate
-                            client_keys_entries.append(line)
+                                    # If force is negative or the agent is not older than the max age we raise
+                                    # an error based on the duplicate field.
+                                    if name == entry_name:
+                                        raise WazuhError(1705, extra_message=name)
+                                    else:
+                                        raise WazuhError(1706, extra_message=ip)
 
             # If id not specified then create a new id 1 greater than the last id created.
             if not agent_id:
@@ -1270,9 +1260,9 @@ def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
 def get_agents_info():
     """Get all agent IDs in the system."""
     with open(common.client_keys, 'r') as f:
-        file_content = f.readlines()
+        file_content = f.read()
 
-    result = {line.split(' ')[0] for line in file_content}
+    result = set(agent_regex.findall(file_content))
     result.add('000')
 
     return result

@@ -257,11 +257,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     data.isize         = 1;
     data.installdate   = 0;
     data.groups->next  = nullptr;
-    data.name          = const_cast<char *>(PKG_NAME);
-    data.groups->data  = const_cast<char *>(PKG_GROUP);
-    data.version       = const_cast<char *>(PKG_VERSION);
-    data.arch          = const_cast<char *>(PKG_ARCH);
-    data.desc          = const_cast<char *>(PKG_DESC);
+    data.name          = const_cast<char*>(PKG_NAME);
+    data.groups->data  = const_cast<char*>(PKG_GROUP);
+    data.version       = const_cast<char*>(PKG_VERSION);
+    data.arch          = const_cast<char*>(PKG_ARCH);
+    data.desc          = const_cast<char*>(PKG_DESC);
     mock.data          = &data;
     data.ops           = &default_pkg_ops;
 
@@ -288,13 +288,13 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
     __alpm_list_t   dataThirdGroup  {};
     __alpm_list_t   dataFourthGroup {};
 
-    dataFirstGroup.data    = const_cast<char *>("Wazuh");
+    dataFirstGroup.data    = const_cast<char*>("Wazuh");
     dataFirstGroup.next    = &dataSecondGroup;
-    dataSecondGroup.data   = const_cast<char *>("test");
+    dataSecondGroup.data   = const_cast<char*>("test");
     dataSecondGroup.next   = &dataThirdGroup;
-    dataThirdGroup.data    = const_cast<char *>("Arch");
+    dataThirdGroup.data    = const_cast<char*>("Arch");
     dataThirdGroup.next    = &dataFourthGroup;
-    dataFourthGroup.data   = const_cast<char *>("lorem");
+    dataFourthGroup.data   = const_cast<char*>("lorem");
     dataFourthGroup.next   = nullptr;
 
     data.isize             = 0;

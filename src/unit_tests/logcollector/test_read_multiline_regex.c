@@ -60,9 +60,8 @@ int __wrap_w_msg_hash_queues_push(const char * str, char * file, unsigned long s
     return mock_type(int);
 }
 
-void __wrap_w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
-    function_called();
-    return;
+bool __wrap_w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
+    return mock_type(bool);
 }
 
 int __wrap_w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
@@ -1557,7 +1556,7 @@ void test_read_multiline_regex_log_process(void ** state) {
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 5);
-    expect_function_call(__wrap_w_get_hash_context);
+    will_return(__wrap_w_get_hash_context, true);
 
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
@@ -1603,7 +1602,7 @@ void test_read_multiline_regex_no_aviable_log(void ** state) {
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 5);
-    expect_function_call(__wrap_w_get_hash_context);
+    will_return(__wrap_w_get_hash_context, true);
 
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
@@ -1634,6 +1633,51 @@ void test_read_multiline_regex_cant_read(void ** state) {
     assert_ptr_equal(retval, NULL);
     assert_null(ml_confg.ctxt);
 }
+
+void test_read_multiline_regex_invalid_context(void ** state) {
+
+    logreader lf = {0};
+    int rc = 0;
+    int drop_it = 0;
+
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = 500;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    lf.multiline = &ml_confg;
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 5);
+    will_return(__wrap_w_get_hash_context, false);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "end match\n");
+    will_return(__wrap_w_expression_match, true);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 10);
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 5);
+    will_return(__wrap_w_fseek, 0);
+
+    will_return(__wrap_fread, "test0");
+    will_return(__wrap_fread, 5);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    void * retval = read_multiline_regex(&lf, &rc, drop_it);
+    assert_ptr_equal(retval, NULL);
+    assert_null(ml_confg.ctxt);
+}
+
 // Test get_file_chunk
 void test_get_file_chunk_fseek_fail(void ** state) {
 
@@ -1773,6 +1817,7 @@ int main(void) {
         cmocka_unit_test(test_read_multiline_regex_no_aviable_log),
         cmocka_unit_test(test_read_multiline_regex_log_process),
         cmocka_unit_test(test_read_multiline_regex_cant_read),
+        cmocka_unit_test(test_read_multiline_regex_invalid_context),
         // Test get_file_chunk
         cmocka_unit_test(test_get_file_chunk_fseek_fail),
         cmocka_unit_test(test_get_file_chunk_size_reduce),

@@ -66,23 +66,26 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
 
     const auto procState { s_mapTaskInfoState.find(taskInfo.pbsd.pbi_status) };
     jsProcessInfo["state"]      = (procState != s_mapTaskInfoState.end())
-                                    ? procState->second
-                                    : "E";   // Internal error
+                                  ? procState->second
+                                  : "E";   // Internal error
     jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
 
     const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
+
     if (eUser)
     {
         jsProcessInfo["euser"]  = eUser->pw_name;
     }
 
     const auto rUser { getpwuid(taskInfo.pbsd.pbi_ruid) };
+
     if (rUser)
     {
         jsProcessInfo["ruser"]  = rUser->pw_name;
     }
 
     const auto rGroup { getgrgid(taskInfo.pbsd.pbi_rgid) };
+
     if (rGroup)
     {
         jsProcessInfo["rgroup"] = rGroup->gr_name;
@@ -102,7 +105,8 @@ void SysInfo::getMemory(nlohmann::json& info) const
     const std::vector<int> mib{CTL_HW, HW_MEMSIZE};
     size_t len{sizeof(ram)};
     auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
-    if(ret)
+
+    if (ret)
     {
         throw std::system_error
         {
@@ -111,12 +115,14 @@ void SysInfo::getMemory(nlohmann::json& info) const
             "Error reading total RAM."
         };
     }
-    const auto ramTotal{ram/KByte};
+
+    const auto ramTotal{ram / KByte};
     info["ram_total"] = ramTotal;
     u_int pageSize{0};
     len = sizeof(pageSize);
     ret = sysctlbyname(vmPageSize, &pageSize, &len, nullptr, 0);
-    if(ret)
+
+    if (ret)
     {
         throw std::system_error
         {
@@ -125,10 +131,12 @@ void SysInfo::getMemory(nlohmann::json& info) const
             "Error reading page size."
         };
     }
+
     uint64_t freePages{0};
     len = sizeof(freePages);
     ret = sysctlbyname(vmPageFreeCount, &freePages, &len, nullptr, 0);
-    if(ret)
+
+    if (ret)
     {
         throw std::system_error
         {
@@ -137,7 +145,8 @@ void SysInfo::getMemory(nlohmann::json& info) const
             "Error reading free pages."
         };
     }
-    const auto ramFree{(freePages * pageSize)/KByte};
+
+    const auto ramFree{(freePages * pageSize) / KByte};
     info["ram_free"] = ramFree;
     info["ram_usage"] = 100 - (100 * ramFree / ramTotal);
 }
@@ -149,7 +158,8 @@ int SysInfo::getCpuMHz() const
     constexpr auto clockRate{"hw.cpufrequency"};
     size_t len{sizeof(cpuMHz)};
     const auto ret{sysctlbyname(clockRate, &cpuMHz, &len, nullptr, 0)};
-    if(ret)
+
+    if (ret)
     {
         throw std::system_error
         {
@@ -158,7 +168,8 @@ int SysInfo::getCpuMHz() const
             "Error reading cpu frequency."
         };
     }
-    return cpuMHz/MHz;
+
+    return cpuMHz / MHz;
 }
 
 std::string SysInfo::getSerialNumber() const
@@ -170,33 +181,37 @@ std::string SysInfo::getSerialNumber() const
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, nlohmann::json& result)
 {
     const auto packages {Utils::enumerateDir(pkgDirectory) };
-    for(const auto& package : packages)
+
+    for (const auto& package : packages)
     {
-        if(PKG == pkgType)
+        if (PKG == pkgType)
         {
-            if(Utils::endsWith(package, ".app"))
+            if (Utils::endsWith(package, ".app"))
             {
                 nlohmann::json jsPackage;
                 FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
-                if(!jsPackage.at("name").get_ref<const std::string &>().empty())
+
+                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
                     // Only return valid content packages
                     result.push_back(jsPackage);
                 }
             }
         }
-        else if(BREW == pkgType)
+        else if (BREW == pkgType)
         {
             if (!Utils::startsWith(package, "."))
             {
                 const auto packageVersions {Utils::enumerateDir(pkgDirectory + "/" + package) };
-                for(const auto& version : packageVersions)
+
+                for (const auto& version : packageVersions)
                 {
                     if (!Utils::startsWith(version, "."))
                     {
                         nlohmann::json jsPackage;
                         FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
-                        if(!jsPackage.at("name").get_ref<const std::string &>().empty())
+
+                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                         {
                             // Only return valid content packages
                             result.push_back(jsPackage);
@@ -205,6 +220,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 }
             }
         }
+
         // else: invalid package
     }
 }
@@ -213,14 +229,16 @@ nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json jsPackages;
 
-    for(const auto& packageDirectory : s_mapPackagesDirectories)
+    for (const auto& packageDirectory : s_mapPackagesDirectories)
     {
         const auto pkgDirectory { packageDirectory.first };
+
         if (Utils::existsDir(pkgDirectory))
         {
             getPackagesFromPath(pkgDirectory, packageDirectory.second, jsPackages);
         }
     }
+
     return jsPackages;
 }
 
@@ -231,7 +249,8 @@ nlohmann::json SysInfo::getProcessesInfo() const
     int32_t maxProc{};
     size_t len { sizeof(maxProc) };
     const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
-    if(ret)
+
+    if (ret)
     {
         throw std::system_error
         {
@@ -244,7 +263,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
     const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
     const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
 
-    for(int index = 0; index < processesCount; ++index)
+    for (int index = 0; index < processesCount; ++index)
     {
         ProcessTaskInfo taskInfo{};
         const auto pid { spPids.get()[index] };
@@ -253,7 +272,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
             proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
         };
 
-        if(PROC_PIDTASKALLINFO_SIZE == sizeTask)
+        if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
         {
             jsProcessesList.push_back(getProcessInfo(taskInfo, pid));
         }
@@ -265,10 +284,11 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
-    struct utsname uts{};
+    struct utsname uts {};
     MacOsParser parser;
     parser.parseSwVersion(Utils::exec("sw_vers"), ret);
     parser.parseUname(Utils::exec("uname -r"), ret);
+
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
@@ -277,6 +297,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
     }
+
     return ret;
 }
 
@@ -284,6 +305,7 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
 {
     int32_t maxProcess { 0 };
     auto maxProcessLen { sizeof(maxProcess) };
+
     if (!sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0))
     {
         auto pids { std::make_unique<pid_t[]>(maxProcess) };
@@ -294,24 +316,28 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<std::shared_p
             const auto pid { pids[i] };
 
             proc_bsdinfo processInformation {};
+
             if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
             {
                 const std::string processName { processInformation.pbi_name };
                 const ProcessInfo processData { pid, processName };
 
                 const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
+
                 if (processFDBufferSize != -1)
                 {
                     auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
+
                     if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
                     {
-                        auto processFDInformation { reinterpret_cast<proc_fdinfo *>(processFDInformationBuffer.get())};
+                        auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
 
                         for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
                         {
                             if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
                             {
                                 auto socketInfo { std::make_shared<socket_fdinfo>() };
+
                                 if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, socketInfo.get(), PROC_PIDFDSOCKETINFO_SIZE))
                                 {
                                     if (socketInfo && std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo->psi.soi_kind) != s_validFDSock.end())
@@ -340,15 +366,22 @@ nlohmann::json SysInfo::getPorts() const
         {
             nlohmann::json port;
             std::make_unique<PortImpl>(std::make_shared<BSDPortWrapper>(processInfo.first, fdSocket))->buildPortData(port);
-            if (ports["ports"].end() == std::find_if(ports["ports"].begin(), ports["ports"].end(),
-                [&port](const auto& element)
+
+            const auto portFound
+            {
+                std::find_if(ports["ports"].begin(), ports["ports"].end(),
+                             [&port](const auto & element)
                 {
                     return 0 == port.dump().compare(element.dump());
-                }))
+                })
+            };
+
+            if (ports["ports"].end() == portFound)
             {
                 ports["ports"].push_back(port);
             }
         }
     }
+
     return ports;
 }

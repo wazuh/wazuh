@@ -202,7 +202,7 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap=rootcheck_init \
                                     -Wl,--wrap=start_daemon \
                                     -Wl,--wrap=File_DateofChange \
-                                    -Wl,--wrap,getpid")
+                                    -Wl,--wrap,getpid, -Wl,--wrap,realtime_start")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")

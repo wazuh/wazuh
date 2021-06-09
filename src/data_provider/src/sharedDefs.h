@@ -29,7 +29,10 @@ constexpr auto RPM_PATH {"/var/lib/rpm/"};
 constexpr auto PACMAN_PATH {"/var/lib/pacman"};
 
 constexpr auto UNKNOWN_VALUE { " " };
-constexpr auto MAC_ADDRESS_COUNT_SEGMENTS {6ull};
+constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
+{
+    6ull
+};
 
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 

@@ -15,18 +15,18 @@
 
 class IPackageWrapper
 {
-public:
-    // LCOV_EXCL_START
-    virtual ~IPackageWrapper() = default;
-    // LCOV_EXCL_STOP
-    virtual std::string name() const = 0;
-    virtual std::string version() const = 0;
-    virtual std::string groups() const = 0;
-    virtual std::string description() const = 0;
-    virtual std::string architecture() const = 0;
-    virtual std::string format() const = 0;
-    virtual std::string osPatch() const = 0;
-    virtual std::string source() const = 0;
-    virtual std::string location() const = 0;
+    public:
+        // LCOV_EXCL_START
+        virtual ~IPackageWrapper() = default;
+        // LCOV_EXCL_STOP
+        virtual std::string name() const = 0;
+        virtual std::string version() const = 0;
+        virtual std::string groups() const = 0;
+        virtual std::string description() const = 0;
+        virtual std::string architecture() const = 0;
+        virtual std::string format() const = 0;
+        virtual std::string osPatch() const = 0;
+        virtual std::string source() const = 0;
+        virtual std::string location() const = 0;
 };
 #endif // _PACKAGE_INTERFACE_WRAPPER_H

@@ -30,7 +30,7 @@
 
 extern OSHash *files_status;
 
-void w_get_hash_context (const char * path, SHA_CTX *context, ssize_t position);
+bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
 void w_initialize_file_status();
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
 char * w_save_files_status_to_cJSON();
@@ -58,25 +58,68 @@ static int teardown_group(void **state) {
 
 /* w_get_hash_context */
 
-void test_w_get_hash_context_NULL(void ** state) {
+void test_w_get_hash_context_NULL_file_exist(void ** state) {
 
     SHA_CTX * context;
     os_calloc(1, sizeof(SHA_CTX), context);
     int64_t position = 10;
-    const char path[] = "/test_path";
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    lf->fp = (FILE*)1;
+    os_strdup("/test_path", lf->file);
+
     int mode = OS_BINARY;
 
+    ino_t fd_check = 0;
+
     expect_any(__wrap_OSHash_Get_ex, self);
-    expect_string(__wrap_OSHash_Get_ex, key, path);
+    expect_string(__wrap_OSHash_Get_ex, key, lf->file);
     will_return(__wrap_OSHash_Get_ex, NULL);
 
-    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
-    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
-    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, position);
-    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
-    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+    expect_string(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fname, lf->file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, nbytes, position);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fd_check, fd_check);
+    will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, 0);
 
-    w_get_hash_context (path, context, position);
+    bool ret = w_get_hash_context (lf, context, position);
+
+    assert_true(ret);
+
+    os_free(context);
+}
+
+void test_w_get_hash_context_NULL_file_not_exist(void ** state) {
+
+    SHA_CTX * context;
+    os_calloc(1, sizeof(SHA_CTX), context);
+    int64_t position = 10;
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    lf->fp = (FILE*)1;
+    os_strdup("/test_path", lf->file);
+
+    int mode = OS_BINARY;
+
+    ino_t fd_check = 0;
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, lf->file);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fname, lf->file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, nbytes, position);
+    expect_value(__wrap_OS_SHA1_File_Nbytes_with_fp_check, fd_check, 0);
+    will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, -1);
+
+    bool ret = w_get_hash_context (lf, context, position);
+
+    assert_false(ret);
 
     os_free(context);
 }
@@ -86,16 +129,23 @@ void test_w_get_hash_context_done(void ** state) {
     SHA_CTX * context;
     os_calloc(1, sizeof(SHA_CTX), context);
     int64_t position = 10;
-    const char path[] = "/test_path";
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    lf->fp = (FILE*)1;
+    os_strdup("/test_path", lf->file);
+
     os_file_status_t data = {0};
     data.context.num = 123;
 
     expect_any(__wrap_OSHash_Get_ex, self);
-    expect_string(__wrap_OSHash_Get_ex, key, path);
+    expect_string(__wrap_OSHash_Get_ex, key, lf->file);
     will_return(__wrap_OSHash_Get_ex, &data);
 
-    w_get_hash_context (path, context, position);
+    bool ret = w_get_hash_context (lf, context, position);
+
     assert_memory_equal(&(data.context), context, sizeof(SHA_CTX));
+    assert_true(ret);
 
     os_free(context);
 }
@@ -825,6 +875,53 @@ void test_w_load_files_status_update_add_fail(void ** state) {
 
 }
 
+void test_w_load_files_status_update_hash_fail (void ** state) {
+
+    test_mode = 1;
+
+    char * file = "test";
+
+    cJSON *global_json = (cJSON*)1;
+
+    int mode = OS_BINARY;
+    struct stat stat_buf = { .st_mode = 0040000 };
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetArraySize, 1);
+
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    //Path
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "test");
+
+    expect_string(__wrap_stat, __file, file);
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    //Hash
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    //Offset
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(9000): File 'test' no longer exists.");
+
+    w_load_files_status(global_json);
+}
+
 void test_w_load_files_status_update_fail(void ** state) {
     test_mode = 1;
 
@@ -942,7 +1039,7 @@ void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -965,7 +1062,7 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -986,7 +1083,7 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -1126,6 +1223,27 @@ void test_w_update_hash_node_update_fail(void ** state) {
 
 }
 
+void test_w_update_hash_node_sha_fail(void ** state) {
+    test_mode = 1;
+
+    int mode = OS_BINARY;
+
+    char * path = "test";
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 0);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1969): Failure to generate the SHA1 hash from file 'test'");
+
+    int ret = w_update_hash_node(path, 0);
+
+    assert_int_equal(ret, -1);
+
+}
+
 void test_w_update_hash_node_add_fail(void ** state) {
     test_mode = 1;
 
@@ -1173,6 +1291,15 @@ void test_w_update_hash_node_OK(void ** state) {
 }
 
 /*  w_set_to_last_line_read */
+void test_w_set_to_last_line_read_null_reader(void ** state) {
+
+    test_mode = 1;
+
+    logreader lf = {0};
+    int ret = w_set_to_last_line_read(&lf);
+    assert_int_equal(ret, 0);
+
+}
 
 void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     test_mode = 1;
@@ -1285,7 +1412,7 @@ void test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Failure to generate the SHA1 hash from file 'test'");
+    expect_string(__wrap__merror, formatted_msg, "(1969): Failure to generate the SHA1 hash from file 'test'");
 
     int ret = w_set_to_last_line_read(lf);
 
@@ -1534,7 +1661,8 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_get_hash_context
-        cmocka_unit_test(test_w_get_hash_context_NULL),
+        cmocka_unit_test(test_w_get_hash_context_NULL_file_exist),
+        cmocka_unit_test(test_w_get_hash_context_NULL_file_not_exist),
         cmocka_unit_test(test_w_get_hash_context_done),
 
         // Test w_update_file_status
@@ -1568,6 +1696,7 @@ int main(void) {
         cmocka_unit_test(test_w_load_files_status_offset_str_NULL),
         cmocka_unit_test(test_w_load_files_status_invalid_offset),
         cmocka_unit_test(test_w_load_files_status_update_add_fail),
+        cmocka_unit_test(test_w_load_files_status_update_hash_fail),
         cmocka_unit_test(test_w_load_files_status_update_fail),
         cmocka_unit_test(test_w_load_files_status_OK),
 
@@ -1580,11 +1709,13 @@ int main(void) {
 
         // Test w_update_hash_node
         cmocka_unit_test(test_w_update_hash_node_path_NULL),
+        cmocka_unit_test(test_w_update_hash_node_sha_fail),
         cmocka_unit_test(test_w_update_hash_node_update_fail),
         cmocka_unit_test(test_w_update_hash_node_add_fail),
         cmocka_unit_test(test_w_update_hash_node_OK),
 
         // Test w_set_to_last_line_read
+        cmocka_unit_test(test_w_set_to_last_line_read_null_reader),
         cmocka_unit_test(test_w_set_to_last_line_read_OSHash_Get_ex_fail),
         cmocka_unit_test(test_w_set_to_last_line_read_fstat_fail),
         cmocka_unit_test(test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail),

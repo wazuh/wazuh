@@ -158,6 +158,6 @@ async def response_postprocessing(request, handler):
             problem = connexion_problem(401, "Unauthorized", type="about:blank",
                                         detail="No authorization token provided")
     finally:
-        if problem:
-            remove_unwanted_fields()
-            return problem
+        problem and remove_unwanted_fields()
+
+    return problem

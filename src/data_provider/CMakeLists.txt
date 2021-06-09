@@ -122,7 +122,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
-      LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+      LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
       POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
       # MinGW generates position-independent-code for DLL by default
   )
@@ -131,13 +131,6 @@ elseif(UNIX AND NOT APPLE)
           LINK_FLAGS "-static-libgcc -static-libstdc++")
 
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    if(DISABLE_SHARED)
-      if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_libraries(sysinfo proc db)
-      else()
-        target_link_libraries(sysinfo proc)
-      endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    endif(DISABLE_SHARED)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
@@ -148,11 +141,8 @@ elseif(APPLE)
   target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-if(DISABLE_SHARED)
-  target_link_libraries(sysinfo cjson)
-else()
-  target_link_libraries(sysinfo wazuhext)
-endif(DISABLE_SHARED)
+target_link_libraries(sysinfo wazuhext)
+
 
 if(APPLE)
   add_custom_command(TARGET sysinfo

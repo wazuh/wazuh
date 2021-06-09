@@ -590,8 +590,6 @@ char *format_path(char *dir) {
 #ifndef WIN32
 char **expand_wildcards(const char *path) {
     /* Check for glob */
-    /* The mingw32 builder used by travis.ci can't find glob.h
-     * Yet glob must work on actual win32. */
     char **paths;
 
     if (strchr(path, '*') ||
@@ -627,6 +625,7 @@ char **expand_wildcards(const char *path) {
 
     return paths;
 }
+
 #endif
 
 /* Read directories attributes */
@@ -1011,8 +1010,15 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 continue;
             }
 #ifdef WIN32
-            dump_syscheck_file(syscheck, clean_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
-                    tmp_diff_size);
+            char **paths = expand_win32_wildcards(clean_path);
+            for (int exp = 0; paths[exp]; exp++) {
+                str_lowercase(paths[exp])
+                dump_syscheck_file(syscheck, paths[exp], opts, restrictfile, recursion_limit, clean_tag,
+                                   NULL, tmp_diff_size);
+                os_free(paths[exp]);
+            }
+            os_free(paths)
+
 #else
             char **paths = expand_wildcards(clean_path);
             if (paths == NULL) {
