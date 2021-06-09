@@ -14,6 +14,7 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_TIME_DELAY = "time_delay";
 static const char *XML_ONLY_FUTURE_EVENTS = "only_future_events";
+static const char *XML_CURL_MAX_SIZE = "curl_max_size";
 
 static const char *XML_API_AUTH = "api_auth";
 static const char *XML_ORG_NAME = "org_name";
@@ -72,6 +73,7 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         github_config->only_future_events = WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS;
         github_config->interval =           WM_GITHUB_DEFAULT_INTERVAL;
         github_config->time_delay =         WM_GITHUB_DEFAULT_DELAY;
+        github_config->curl_max_size =      WM_GITHUB_DEFAULT_CURL_MAX_SIZE;
         os_strdup(EVENT_TYPE_ALL, github_config->event_type);
         module->data = github_config;
     } else {
@@ -101,6 +103,18 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_INTERVAL, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_GITHUB_CONTEXT.name);
+                return (OS_INVALID);
+            }
+            int max_size;
+            if (max_size = atoi(nodes[i]->content), max_size < 1) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_GITHUB_CONTEXT.name);
+                return (OS_INVALID);
+            }
+
+            github_config->curl_max_size = (size_t)(max_size * 1024);
         } else if (!strcmp(nodes[i]->element, XML_TIME_DELAY)) {
             github_config->time_delay = time_convert(nodes[i]->content);
             if (github_config->time_delay == OS_INVALID) {
