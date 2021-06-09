@@ -19,7 +19,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                         -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,wdb_step \
                         -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_last_insert_rowid \
                         -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_agents_insert_vuln_cve \
-                        -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cve")
+                        -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cve -Wl,--wrap,wdb_open_global \
+                        -Wl,--wrap,wdb_global_agent_exists")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \

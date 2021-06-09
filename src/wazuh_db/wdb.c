@@ -159,6 +159,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', sync_status = ? where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND connection_status = 'active' AND last_keepalive < ?;",
+    [WDB_STMT_GLOBAL_AGENT_EXISTS] = "SELECT EXISTS(SELECT 1 FROM agent WHERE id=?);",
     [WDB_STMT_TASK_INSERT_TASK] = "INSERT INTO TASKS VALUES(NULL,?,?,?,?,?,?,?,?);",
     [WDB_STMT_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ?;",
     [WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ? AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",

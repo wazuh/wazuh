@@ -842,7 +842,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
             }
 
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
             free(cur->id);

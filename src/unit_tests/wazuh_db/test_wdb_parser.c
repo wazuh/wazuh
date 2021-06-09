@@ -14,6 +14,7 @@
 
 typedef struct test_struct {
     wdb_t *wdb;
+    wdb_t *wdb_global;
     char *output;
 } test_struct_t;
 
@@ -22,6 +23,7 @@ static int test_setup(void **state) {
 
     init_data = malloc(sizeof(test_struct_t));
     init_data->wdb = malloc(sizeof(wdb_t));
+    init_data->wdb_global = malloc(sizeof(wdb_t));
     init_data->wdb->id = strdup("000");
     init_data->output = malloc(256*sizeof(char));
 
@@ -36,6 +38,7 @@ static int test_teardown(void **state){
     free(data->output);
     free(data->wdb->id);
     free(data->wdb);
+    free(data->wdb_global);
     free(data);
 
     return 0;
@@ -750,6 +753,12 @@ void test_vuln_cve_syntax_error(void **state) {
 
     os_strdup("agent 000 vuln_cve", query);
 
+    will_return(__wrap_wdb_open_global, data->wdb_global);
+
+    expect_value(__wrap_wdb_global_agent_exists, wdb, data->wdb_global);
+    expect_value(__wrap_wdb_global_agent_exists, agent_id, 0);
+    will_return(__wrap_wdb_global_agent_exists, 1);
+
     expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
     will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cve");
@@ -771,6 +780,12 @@ void test_vuln_cve_invalid_action(void **state) {
     char *query = NULL;
 
     os_strdup("agent 000 vuln_cve invalid", query);
+    will_return(__wrap_wdb_open_global, data->wdb_global);
+
+    expect_value(__wrap_wdb_global_agent_exists, wdb, data->wdb_global);
+    expect_value(__wrap_wdb_global_agent_exists, agent_id, 0);
+    will_return(__wrap_wdb_global_agent_exists, 1);
+
     expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
     will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cve invalid");
