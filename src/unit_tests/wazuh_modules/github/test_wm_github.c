@@ -1223,9 +1223,11 @@ void test_error_event_type_1(void **state) {
 int main(void) {
 
     const struct CMUnitTest tests_with_startup[] = {
+        #ifndef WIN32
+            cmocka_unit_test_setup_teardown(test_github_main_fail_StartMQ, setup_conf, teardown_conf),
+            cmocka_unit_test_setup_teardown(test_github_main_enable, setup_conf, teardown_conf),
+        #endif
         cmocka_unit_test_setup_teardown(test_github_main_disabled, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_github_main_fail_StartMQ, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_github_main_enable, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_get_next_page_warn, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_get_next_page_execute, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_get_next_page_sub_string, setup_conf, teardown_conf),
