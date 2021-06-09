@@ -348,6 +348,10 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     }
     *(check_sum++) = '\0';
 
+    if (strcmp(response, "ok") != 0) {
+        goto exit_fail;
+    }
+
     //extract changes and date_alert fields only available from wazuh_db
     sk_decode_extradata(&oldsum, check_sum);
 
@@ -1424,7 +1428,9 @@ void fim_send_db_query(int * sock, const char * query) {
     case WDBC_OK:
         break;
     case WDBC_ERROR:
-        merror("FIM decoder: Bad response from database: %s", arg);
+        if (strcmp(arg, "Agent not found") != 0) {
+            merror("FIM decoder: Bad response from database: %s", arg);
+        }
         // Fallthrough
     default:
         goto end;

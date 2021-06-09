@@ -894,7 +894,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
-            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
             gettime(&t0);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
             gettime(&t1);

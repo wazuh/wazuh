@@ -262,3 +262,9 @@ cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t 
     *status = mock();
     return mock_ptr_type(cJSON*);
 }
+
+int __wrap_wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
+    check_expected_ptr(wdb);
+    check_expected(agent_id);
+    return mock();
+}
