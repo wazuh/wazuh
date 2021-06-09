@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include "headers/shared.h"
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 /* setup/teardown */
 static int group_setup(void ** state) {
@@ -67,7 +68,7 @@ void test_wurl_http_request_headers_list_null(void **state)
     curl_response *response = NULL;
     CURL *curl = (CURL *) 1;
     char **headers = NULL;
-    char *url = "http://test.com";
+    char *url = "https://test.com";
     size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
@@ -84,6 +85,12 @@ void test_wurl_http_request_headers_list_null(void **state)
         expect_value(wrap_curl_easy_cleanup, curl, curl);
     #else
         will_return(__wrap_curl_easy_init, curl);
+
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CAINFO);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
@@ -130,6 +137,8 @@ void test_wurl_http_request_headers_tmp_null(void **state)
         expect_value(wrap_curl_easy_cleanup, curl, curl);
     #else
         will_return(__wrap_curl_easy_init, curl);
+
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
@@ -215,6 +224,8 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
@@ -261,6 +272,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
     response = wurl_http_request(NULL, pheaders, url, NULL, max_size);
+    os_free(pheaders);
     assert_null(response);
 }
 
@@ -324,6 +336,8 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         expect_value(wrap_curl_easy_cleanup, curl, curl);
     #else
         will_return(__wrap_curl_easy_init, curl);
+
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
@@ -444,6 +458,8 @@ void test_wurl_http_request_success(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
@@ -497,6 +513,9 @@ void test_wurl_http_request_success(void **state)
 
     response = wurl_http_request(NULL, &pheaders, url, payload, max_size);
     assert_non_null(response);
+    os_free(response->header);
+    os_free(response->body);
+    os_free(response);
 }
 
 int main(void)

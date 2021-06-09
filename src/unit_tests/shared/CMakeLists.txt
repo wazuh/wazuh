@@ -153,7 +153,10 @@ list(APPEND shared_tests_names "test_atomic")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 list(APPEND shared_tests_names "test_url")
-list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup -Wl,--wrap,curl_easy_init -Wl,--wrap,_mdebug1 -Wl,--wrap,curl_easy_setopt -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform -Wl,--wrap,curl_easy_getinfo")
+list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
+                                -Wl,--wrap,curl_easy_init -Wl,--wrap,_mdebug1 -Wl,--wrap,curl_easy_setopt \
+                                -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
+                                -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)
