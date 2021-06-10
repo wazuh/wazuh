@@ -233,21 +233,17 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         component = FIM_COMPONENT_FILE;
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_count_range(syscheck.database, type, start, top, &range_size) != FIMDB_OK) {
         merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
         range_size = 0;
     }
-    w_mutex_unlock(&syscheck.fim_entry_mutex)
 
     switch (range_size) {
     case 0:
         return;
 
     case 1:
-        w_mutex_lock(&syscheck.fim_entry_mutex);
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, start);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, start);
@@ -268,10 +264,8 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         EVP_DigestInit(ctx_left, EVP_sha1());
         EVP_DigestInit(ctx_right, EVP_sha1());
 
-        w_mutex_lock(&syscheck.fim_entry_mutex);
         result = fim_db_get_checksum_range(syscheck.database, type, start, top, range_size, ctx_left, ctx_right,
                                             &str_pathlh, &str_pathuh);
-        w_mutex_unlock(&syscheck.fim_entry_mutex)
 
         if (result == FIMDB_OK) {
             unsigned char digest[EVP_MAX_MD_SIZE] = {0};
@@ -321,16 +315,13 @@ void fim_sync_send_list(const char *start, const char *top) {
         component = FIM_COMPONENT_FILE;
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_path_range(syscheck.database, type, start, top, &file, syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_SYNC_DB);
         if (file != NULL) {
             fim_db_clean_file(&file, syscheck.database_store);
         }
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
         return;
     }
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (file == NULL) {
         return;
@@ -346,9 +337,7 @@ void fim_sync_send_list(const char *start, const char *top) {
         cJSON *file_data;
         char *plain;
 
-        w_mutex_lock(&syscheck.fim_entry_mutex);
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, line);
-        w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
             merror(FIM_DB_ERROR_GET_PATH, line);

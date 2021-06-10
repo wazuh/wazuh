@@ -70,15 +70,21 @@ void expect_fim_db_bind_get_inode() {
 }
 
 void expect_fim_db_insert_path_success() {
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     expect_fim_db_bind_replace_path(2);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 void expect_fim_db_insert_data_success(int row_id) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     if (row_id == 0) {
@@ -93,6 +99,8 @@ void expect_fim_db_insert_data_success(int row_id) {
     if (row_id == 0) {
         will_return(__wrap_sqlite3_last_insert_rowid, 1);
     }
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 void expect_fim_db_bind_path(const char *path) {
@@ -161,6 +169,10 @@ void expect_fim_db_decode_full_row() {
 }
 
 void expect_fim_db_decode_full_row_from_entry(const fim_entry *entry) {
+    if (entry == NULL) {
+        return;
+    }
+
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, entry->file_entry.path);
 

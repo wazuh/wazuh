@@ -19,6 +19,7 @@
 #include "wrappers/libc/stdio_wrappers.h"
 #include "wrappers/posix/stat_wrappers.h"
 #include "wrappers/posix/unistd_wrappers.h"
+#include "wrappers/posix/pthread_wrappers.h"
 #include "wrappers/wazuh/shared/file_op_wrappers.h"
 #include "wrappers/wazuh/shared/os_utils_wrappers.h"
 #include "wrappers/wazuh/shared/string_op_wrappers.h"
@@ -639,11 +640,18 @@ void test_fim_db_get_path_range_query_failed(void **state) {
 
     expect_fim_db_create_temp_file_success(FIM_DB_DISK);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
 #ifndef TEST_WINAGENT
     expect_fim_db_clean_file((FILE *)1, FIM_DB_DISK);
@@ -663,11 +671,17 @@ void test_fim_db_get_path_range_no_elements_in_range(void **state) {
 
     expect_fim_db_create_temp_file_success(FIM_DB_DISK);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
 #ifndef TEST_WINAGENT
     expect_fim_db_clean_file((FILE *)1, FIM_DB_DISK);
@@ -694,6 +708,8 @@ void test_fim_db_get_path_range_success(void **state) {
 
     expect_fim_db_create_temp_file_success(FIM_DB_DISK);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
 
@@ -705,6 +721,10 @@ void test_fim_db_get_path_range_success(void **state) {
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     int ret = fim_db_get_path_range(&fim_sql, FIM_TYPE_FILE, start, top, &file, FIM_DB_DISK);
 
@@ -721,10 +741,13 @@ void test_fim_db_get_path_range_success(void **state) {
 void test_fim_db_get_data_checksum_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
-    expect_fim_db_clean_stmt();
+    expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_fim_db_clean_stmt();
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_fim_db_check_transaction();
 
@@ -735,6 +758,8 @@ void test_fim_db_get_data_checksum_failed(void **state) {
 
 void test_fim_db_get_data_checksum_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_fim_db_clean_stmt();
 
@@ -750,6 +775,8 @@ void test_fim_db_get_data_checksum_success(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE); // Ending the loop at fim_db_process_get_query()
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     expect_fim_db_check_transaction();
 
     int ret = fim_db_get_data_checksum(test_data->fim_sql, FIM_TYPE_FILE, NULL);
@@ -763,17 +790,27 @@ void test_fim_db_get_data_checksum_success(void **state) {
 void test_fim_db_check_transaction_last_commit_is_0(void **state) {
     test_fim_db_insert_data *test_data = *state;
     test_data->fim_sql->transaction.last_commit = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     fim_db_check_transaction(test_data->fim_sql);
     assert_int_not_equal(test_data->fim_sql->transaction.last_commit, 0);
 }
 
 void test_fim_db_check_transaction_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
     will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR MESSAGE");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     const time_t commit_time = test_data->fim_sql->transaction.last_commit;
     fim_db_check_transaction(test_data->fim_sql);
     assert_int_equal(commit_time, test_data->fim_sql->transaction.last_commit);
@@ -903,11 +940,17 @@ void test_fim_db_finalize_stmt_success(void **state) {
 \**********************************************************************************************************************/
 void test_fim_db_force_commit_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
     will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR_MESSAGE");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     fim_db_force_commit(test_data->fim_sql);
     // If commit fails last_commit should still be one
     assert_int_equal(1, test_data->fim_sql->transaction.last_commit);
@@ -1030,6 +1073,8 @@ static void fim_db_get_checksum_range_fail_step_on_first_half(void **state) {
     char *lower_half_path = NULL, *higher_half_path = NULL;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
 
@@ -1040,6 +1085,8 @@ static void fim_db_get_checksum_range_fail_step_on_first_half(void **state) {
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
                   "Step error getting path range, first half 'start start' 'top top' (i:0): ERROR MESSAGE (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
@@ -1054,6 +1101,8 @@ static void fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half(
     char *lower_half_path = NULL, *higher_half_path = NULL;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
 
@@ -1063,6 +1112,8 @@ static void fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half(
     expect_fim_db_decode_string_array(-1, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Failed to decode checksum range query");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
@@ -1077,6 +1128,8 @@ static void fim_db_get_checksum_range_fail_step_on_second_half(void **state) {
     char *lower_half_path = NULL, *higher_half_path = NULL;
     const char *array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
     int retval;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
@@ -1098,6 +1151,8 @@ static void fim_db_get_checksum_range_fail_step_on_second_half(void **state) {
     expect_string(__wrap__merror, formatted_msg,
                   "Step error getting path range, second half 'start start' 'top top' (i:1): ERROR MESSAGE (111)");
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
     assert_int_equal(retval, FIMDB_ERR);
@@ -1111,6 +1166,8 @@ static void fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half
     char *lower_half_path = NULL, *higher_half_path = NULL;
     const char *array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
     int retval;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
@@ -1130,6 +1187,8 @@ static void fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half
     expect_fim_db_decode_string_array(-1, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Failed to decode checksum range query");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
@@ -1155,6 +1214,8 @@ static void fim_db_get_checksum_range_success(void **state) {
 
     *state = strarray;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_range(start, top, 0);
 
@@ -1176,6 +1237,8 @@ static void fim_db_get_checksum_range_success(void **state) {
     expect_value(__wrap_EVP_DigestUpdate, count, 40);
     will_return(__wrap_EVP_DigestUpdate, 0);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
 
@@ -1191,6 +1254,8 @@ static void fim_db_get_checksum_range_success(void **state) {
 void test_fim_db_get_count_range_error_stepping(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret, count = -1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     // Inside fim_db_clean_stmt
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1210,6 +1275,8 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
     expect_string(__wrap__merror, formatted_msg,
                   "Step error getting count range 'start begin' 'top top': Some SQLite error (111)");
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     ret = fim_db_get_count_range(test_data->fim_sql, FIM_TYPE_FILE, "begin", "top", &count);
 
     assert_int_equal(ret, FIMDB_ERR);
@@ -1219,6 +1286,8 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
 void test_fim_db_get_count_range_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret, count = -1;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     // Inside fim_db_clean_stmt
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
@@ -1235,6 +1304,8 @@ void test_fim_db_get_count_range_success(void **state) {
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 15);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     ret = fim_db_get_count_range(test_data->fim_sql, FIM_TYPE_FILE, "begin", "top", &count);
 
     assert_int_equal(ret, FIMDB_OK);
@@ -1248,6 +1319,8 @@ void test_fim_db_process_get_query_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
     will_return(__wrap_sqlite3_step, 0);
@@ -1257,7 +1330,7 @@ void test_fim_db_process_get_query_success(void **state) {
 
     expect_function_call(callback);
 
-    expect_fim_db_check_transaction();
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, callback, FIM_DB_DISK, NULL);
 
@@ -1268,10 +1341,12 @@ void test_fim_db_process_get_query_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
-    expect_fim_db_check_transaction();
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = fim_db_process_get_query(test_data->fim_sql, 0, 0, callback, FIM_DB_DISK, NULL);
 
@@ -1538,8 +1613,6 @@ static void test_fim_db_multiple_row_query_fail_to_step(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
-    expect_fim_db_check_transaction();
-
     retval =
     fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
 
@@ -1552,8 +1625,6 @@ static void test_fim_db_multiple_row_query_no_data_returned(void **state) {
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_fim_db_check_transaction();
 
     retval =
     fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
@@ -1573,8 +1644,6 @@ static void test_fim_db_multiple_row_query_fail_to_decode(void **state) {
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_fim_db_check_transaction();
 
     retval =
     fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
@@ -1599,8 +1668,6 @@ static void test_fim_db_multiple_row_query_success(void **state) {
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_fim_db_check_transaction();
 
     retval =
     fim_db_multiple_row_query(&fim_sql, 1, decode, free_row, FIM_DB_CALLBACK_TYPE(callback), FIM_DB_DISK, NULL);
@@ -1716,21 +1783,22 @@ static void test_fim_db_callback_save_string_memory(void **state) {
 \**********************************************************************************************************************/
 static void test_fim_db_get_count_invalid_index(void **state) {
     fdb_t fim_sql;
-    int retval;
 
-    retval = fim_db_get_count(&fim_sql, -1);
-
-    assert_int_equal(retval, FIMDB_ERR);
+    expect_assert_failure(fim_db_get_count(&fim_sql, -1));
 }
 
 static void test_fim_db_get_count_fail_to_query_count(void **state) {
     fdb_t fim_sql;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_count(&fim_sql, FIMDB_STMT_GET_COUNT_PATH);
 
@@ -1741,6 +1809,8 @@ static void test_fim_db_get_count_success(void **state) {
     fdb_t fim_sql;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
@@ -1748,6 +1818,8 @@ static void test_fim_db_get_count_success(void **state) {
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_count(&fim_sql, FIMDB_STMT_GET_COUNT_PATH);
 
@@ -1762,6 +1834,8 @@ static void test_fim_db_get_last_path_fail_to_step_query(void **state) {
     char *path = NULL;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
@@ -1771,6 +1845,8 @@ static void test_fim_db_get_last_path_fail_to_step_query(void **state) {
     will_return(__wrap_sqlite3_extended_errcode, 111);
 
     expect_string(__wrap__merror, formatted_msg, "Step error getting row string: SQLITE error (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
 
@@ -1783,10 +1859,14 @@ static void test_fim_db_get_last_path_query_returns_no_string(void **state) {
     char *path = NULL;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
 
@@ -1799,6 +1879,8 @@ static void test_fim_db_get_last_path_success(void **state) {
     char *path = NULL;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
@@ -1806,6 +1888,8 @@ static void test_fim_db_get_last_path_success(void **state) {
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "/some/random/path");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
 
@@ -2129,6 +2213,8 @@ static void test_fim_db_get_count_entries_query_failed(void **state) {
     fdb_t fim_sql;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
@@ -2137,6 +2223,8 @@ static void test_fim_db_get_count_entries_query_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "SQLITE some error");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: SQLITE some error (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_count_entries(&fim_sql);
 
@@ -2147,6 +2235,8 @@ static void test_fim_db_get_count_entries_success(void **state) {
     fdb_t fim_sql;
     int retval;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
@@ -2154,6 +2244,8 @@ static void test_fim_db_get_count_entries_success(void **state) {
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     retval = fim_db_get_count_entries(&fim_sql);
 
@@ -2171,6 +2263,8 @@ void test_fim_db_get_entry_from_sync_msg_get_file(void **state) {
                              .file_entry.data = &data };
     fim_entry *entry;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_path("c:\\windows\\system32\\windowspowershell\\v1.0");
 
@@ -2178,6 +2272,8 @@ void test_fim_db_get_entry_from_sync_msg_get_file(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
     expect_fim_db_decode_full_row_from_entry(&base_entry);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_FILE, "c:\\windows\\system32\\windowspowershell\\v1.0");
 
@@ -2318,6 +2414,33 @@ void test_fim_db_get_entry_from_sync_msg_wrong_str(void **state) {
 
 
 #endif
+
+/**********************************************************************************************************************\
+ * fim_db_is_full()
+\**********************************************************************************************************************/
+static void test_fim_db_is_full_db_full(void **state) {
+    fdb_t fim_sql = { .full = true };
+    int res;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    res = fim_db_is_full(&fim_sql);
+
+    assert_int_equal(res, true);
+}
+
+static void test_fim_db_is_full_db_not_full(void **state) {
+    fdb_t fim_sql = { .full = false };
+    int res;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    res = fim_db_is_full(&fim_sql);
+
+    assert_int_equal(res, false);
+}
 
 /**********************************************************************************************************************\
  * main()
@@ -2466,6 +2589,9 @@ int main(void) {
         cmocka_unit_test(test_fim_db_get_entry_from_sync_msg_wrong_str),
 
 #endif
+        // fim_db_is_full
+        cmocka_unit_test(test_fim_db_is_full_db_full),
+        cmocka_unit_test(test_fim_db_is_full_db_not_full),
     };
     return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);
 }

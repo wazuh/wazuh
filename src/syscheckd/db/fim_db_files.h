@@ -44,23 +44,6 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
 char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
 /**
- * @brief Get all the paths asociated to an inode
- *
- * @param fim_sql FIM databse struct.
- * @param inode Inode.
- * @param dev Device.
- * @param list A list to which the paths retrieved from the DB will be added to.
- * @param tree A tree which helps avoid the operation from appending paths that already exist in the list.
- *
- * @return The number of paths retrieved from the DB
- */
-int fim_db_append_paths_from_inode(fdb_t *fim_sql,
-                                   unsigned long int inode,
-                                   unsigned long int dev,
-                                   OSList *list,
-                                   rb_tree *tree);
-
-/**
  * @brief Insert or update entry data.
  *
  * @param fim_sql FIM database struct.
@@ -243,29 +226,15 @@ int fim_db_get_count_file_entry(fdb_t * fim_sql);
 int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage);
 
 /**
- * @brief Verifies if the data row identified by a given device and inode exists in file_data.
+ * @brief Makes any necessary queries to get the entry updated in the DB.
  *
  * @param fim_sql FIM database struct.
- * @param inode The inode to look for.
- * @param dev The device that must be associated with the desired inode.
- *
- * @return An integer signaling wheter the row exists or not.
- * @retval 1 if the row exists.
- * @retval 0 if the row does not exist.
- * @retval FIMDB_ERR if an error occurs when executing the query.
+ * @param path The path to the file being processed.
+ * @param data The information linked to the path to be updated
+ * @param saved If the file had information stored in the DB, that data is returned in this parameter.
+ * @return The result of the update operation.
+ * @retval Returns any of the values returned by fim_db_set_scanned and fim_db_insert.
  */
-int fim_db_data_exists(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
-
-/**
- * @brief Checks the DB to see if a given file has already been scanned.
- *
- * @param fim_sql FIM database struct.
- * @param path Path to the file we want to verify.
- * @return An integer signaling if the files was scanned or not.
- * @retval 1 if the files was scanned already.
- * @retval 0 if tha file has not been scanned or no entry was found on the DB.
- * @retval FIMDB_ERR if an error happened during the query.
- */
-int fim_db_file_is_scanned(fdb_t *fim_sql, const char *path);
+int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *data, fim_entry **saved);
 
 #endif /* FIM_DB_FILES_H */

@@ -123,12 +123,11 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
                           -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
                           -Wl,--wrap,fim_db_get_count_entries -Wl,--wrap,fim_db_get_path_from_pattern \
-                          -Wl,--wrap,fim_db_file_is_scanned -Wl,--wrap,fim_db_data_exists \
-                          -Wl,--wrap,fim_db_append_paths_from_inode -Wl,--wrap,pthread_rwlock_wrlock \
-                          -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
-                          -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                          -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
-                          -Wl,--wrap,fim_db_remove_wildcard_entry")
+                          -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
+                          -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_mutex_lock \
+                          -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
+                          -Wl,--wrap,fim_db_remove_wildcard_entry -Wl,--wrap,fim_db_file_update \
+                          -Wl,--wrap,fim_db_is_full")
 
 target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")

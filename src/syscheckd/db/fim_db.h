@@ -143,18 +143,6 @@ void fim_db_clean_file(fim_tmp_file **file, int storage);
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
 
 /**
- * @brief Get a registry key using its path.
- *
- * @param fim_sql FIM database struct.
- * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
- * @param path Path to registry key.
- * @param arch Architecture of the registry
- *
- * @return FIM registry key struct on success, NULL on error.
-*/
-fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsigned int arch);
-
-/**
  * @brief Read paths and registry paths which are stored in a temporal storage.
  *
  * @param fim_sql FIM database structure.
@@ -420,5 +408,14 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
  * @return Number of entries in the FIM DB.
  */
 int fim_db_get_count_entries(fdb_t * fim_sql);
+
+/**
+ * @brief Check if the FIM DB is full.
+ *
+ * @param fim_sql FIM database struct.
+ * @retval 0 if the DB is not full.
+ * @retval 1 if the DB is full.
+ */
+int fim_db_is_full(fdb_t *fim_sql);
 
 #endif /* FIM_DB_COMMON_H */

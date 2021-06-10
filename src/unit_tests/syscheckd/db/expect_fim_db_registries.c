@@ -97,6 +97,8 @@ void expect_fim_db_bind_registry_path(const char *path, unsigned int arch) {
 }
 
 void expect_fim_db_get_registry_key(const fim_registry_key *key) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_registry_path(key->path, key->arch);
 
@@ -104,14 +106,18 @@ void expect_fim_db_get_registry_key(const fim_registry_key *key) {
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
 
     expect_fim_db_decode_registry_key(key);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 void expect_fim_db_get_registry_key_fail(const fim_registry_key *key) {
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_registry_path(key->path, key->arch);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 void expect_fim_db_bind_registry_data_name_key_id(const char *name, int key_id) {

@@ -42,8 +42,6 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_COUNT_DATA,
     FIMDB_STMT_GET_INODE,
     FIMDB_STMT_GET_PATH_FROM_PATTERN,
-    FIMDB_STMT_DATA_ROW_EXISTS,
-    FIMDB_STMT_PATH_IS_SCANNED,
     // Registries
 #ifdef WIN32
     FIMDB_STMT_REPLACE_REG_DATA,
@@ -337,12 +335,12 @@ typedef struct fdb_transaction_t
     time_t interval;
 } fdb_transaction_t;
 
-typedef struct fdb_t
-{
+typedef struct fdb_t {
     sqlite3 *db;
     sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
     fdb_transaction_t transaction;
     volatile bool full;
+    pthread_mutex_t mutex;
 } fdb_t;
 
 typedef struct _config {
