@@ -90,7 +90,7 @@ class InitAgent:
 test_data = InitAgent()
 
 
-def send_msg_to_wdb(msg, raw=False):
+def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
     query = ' '.join(msg.split(' ')[2:])
     result = test_data.cur.execute(query).fetchall()
     return list(map(remove_nones_to_dict, map(dict, result)))
@@ -919,7 +919,7 @@ def test_agent_add_manual_content(socket_mock, delete_mock, check_delete_mock, l
 def test_get_manager_name(mock_connect, mock_send):
     get_manager_name()
     calls = [call('global sql select count(*) from agent where (id = 0)'),
-             call('global sql select name from agent where (id = 0) limit 1 offset 0')]
+             call('global sql select name from agent where (id = 0) limit 1 offset 0', update_slice=True)]
 
     mock_send.assert_has_calls(calls)
 
