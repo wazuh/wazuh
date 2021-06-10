@@ -6250,10 +6250,6 @@ void test_w_logtest_ruleset_load_config_fail_read_rules(void ** state) {
     will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
     will_return(__wrap_Read_Rules, -1);
 
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "Read rules error");
-
     retval = w_logtest_ruleset_load_config(&xml, conf_section_nodes, &ruleset_config, &list_msg);
     assert_int_equal(retval, EXPECT_RETVAL);
 
@@ -6280,10 +6276,6 @@ void test_w_logtest_ruleset_load_config_fail_read_alerts(void ** state) {
 
     will_return(__wrap_OS_GetElementsbyNode, (xml_node **) calloc(1, sizeof(xml_node *)));
     will_return(__wrap_Read_Alerts, -1);
-
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "Read alert level error");
 
     retval = w_logtest_ruleset_load_config(&xml, conf_section_nodes, &ruleset_config, &list_msg);
     assert_int_equal(retval, EXPECT_RETVAL);
@@ -6376,7 +6368,7 @@ void test_w_logtest_ruleset_empty_file(void ** state) {
 
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_ERROR);
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "ossec.conf its empty");
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "There are no configuration blocks inside of 'etc/ossec.conf'");
 
     retval = w_logtest_ruleset_load(&ruleset_config, &list_msg);
 
@@ -6423,10 +6415,6 @@ void test_w_logtest_ruleset_load_empty_ossec_label(void ** state) {
     os_strdup("ossec_config", node[0]->element);
     will_return(__wrap_OS_GetElementsbyNode, node);
     will_return(__wrap_OS_GetElementsbyNode, NULL);
-
-    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
-    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
-    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "empty 'ossec_config' label");
 
     retval = w_logtest_ruleset_load(&ruleset_config, &list_msg);
 

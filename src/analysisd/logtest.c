@@ -1199,7 +1199,7 @@ bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
         return false;
     } else if (node = OS_GetElementsbyNode(&xml, NULL), node == NULL) {
         OS_ClearXML(&xml);
-        smerror(list_msg, "ossec.conf its empty");
+        smerror(list_msg, "There are no configuration blocks inside of '%s'", FILE_CONFIG);
         return false;
     }
 
@@ -1226,10 +1226,6 @@ bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg) {
                     break;
                 }
                 OS_ClearNode(conf_section_arr);
-            } 
-            /* Empty node */
-            else {
-                smwarn(list_msg, "empty 'ossec_config' label");
             }
         }
     }
@@ -1267,7 +1263,6 @@ bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _C
         if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0 
             && Read_Rules(options_node, ruleset_config, list_msg) < 0) {
 
-            smerror(list_msg, "Read rules error");
             OS_ClearNode(options_node);
             retval = false;
             break;
@@ -1277,7 +1272,6 @@ bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _C
         /* Load alert by level */
 
         if (strcmp(conf_section_nodes[i]->element, XML_ALERTS) == 0 && Read_Alerts(options_node, ruleset_config, list_msg) < 0) {
-            smerror(list_msg, "Read alert level error");
             OS_ClearNode(options_node);
             retval = false;
             break;

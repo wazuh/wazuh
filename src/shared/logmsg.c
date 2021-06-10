@@ -21,15 +21,15 @@ void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * f
         switch (level) {
 
         case LOGLEVEL_ERROR:
-            _merror(file, line, func, msg, args);
+            _mverror(file, line, func, msg, args);
             break;
 
         case LOGLEVEL_WARNING:
-            _mwarn(file, line, func, msg, args);
+            _mvwarn(file, line, func, msg, args);
             break;
 
         default:
-            _minfo(file, line, func, msg, args);
+            _mvinfo(file, line, func, msg, args);
             break;
         }
         va_end(args);
