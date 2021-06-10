@@ -16,6 +16,7 @@
 #include <atomic>
 #include <future>
 #include <functional>
+#include <iostream>
 #include "threadSafeQueue.h"
 namespace Utils
 {
@@ -115,6 +116,7 @@ namespace Utils
         }
         void cancel()
         {
+            m_running = false;
             m_queue.cancel();
             joinThreads();
         }
@@ -135,26 +137,29 @@ namespace Utils
     private:
         void dispatch()
         {
-            while(m_running)
+            try
             {
-                std::function<void()> fnc;
-                if(m_queue.pop(fnc))
+                while(m_running)
                 {
-                    fnc();
+                    std::function<void()> fnc;
+                    if(m_queue.pop(fnc))
+                    {
+                        fnc();
+                    }
                 }
+            }
+            catch (const std::exception& ex)
+            {
+                std::cerr << "Dispatch handler error, " << ex.what() << std::endl;
             }
         }
         void joinThreads()
         {
-            if (m_running)
+            for (auto& thread : m_threads)
             {
-                m_running = false;
-                for (auto& thread : m_threads)
+                if (thread.joinable())
                 {
-                    if (thread.joinable())
-                    {
-                        thread.join();
-                    }
+                    thread.join();
                 }
             }
         }
@@ -171,18 +176,29 @@ namespace Utils
     public:
         SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/)
         : m_functor{functor}
+        , m_running{true}
         {
         }
+
+        SyncDispatcher(Functor functor)
+        : m_functor{functor}
+        , m_running{true}
+        {
+        }
+
         void push(const Input& data)
         {
             m_functor(data);
         }
         size_t size() const {return 0;}
-        void rundown(){}
-        void cancel(){}
+        void rundown(){ cancel(); }
+        void cancel(){ m_running = false; }
+        bool cancelled() const { return !m_running; }
+        unsigned int numberOfThreads() const { return 0; }
         ~SyncDispatcher() = default;
     private:
         Functor m_functor;
+        bool m_running;
     };
 }//namespace Utils
 #endif //THREAD_DISPATCHER_H

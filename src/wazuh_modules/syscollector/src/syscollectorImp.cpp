@@ -948,53 +948,44 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
     constexpr auto queueSize{4096};
     const auto callback
     {
-        [this, &table, &operationsMap](ReturnTypeCallback result, const nlohmann::json& data)
+        [this, table, operationsMap](ReturnTypeCallback result, const nlohmann::json& data)
         {
-            try
+            if(result == DB_ERROR)
             {
-                if(result == DB_ERROR)
+                m_logFunction(SYS_LOG_ERROR, data.dump());
+            }
+            else if(m_notify && !m_stopping)
+            {
+                if (data.is_array())
                 {
-                    m_logFunction(SYS_LOG_ERROR, data.dump());
-                }
-                else if(m_notify && !m_stopping)
-                {
-                    if (data.is_array())
+                    for (const auto& item : data)
                     {
-                        for (const auto& item : data)
-                        {
-                            nlohmann::json msg;
-                            msg["type"] = table;
-                            msg["operation"] = operationsMap.at(result);
-                            msg["data"] = item;
-                            msg["data"]["scan_time"] = m_scanTime;
-                            removeKeysWithEmptyValue(msg["data"]);
-                            const auto msgToSend{msg.dump()};
-                            m_reportDiffFunction(msgToSend);
-                            m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
-                        }
-                    }
-                    else
-                    {
-                        // LCOV_EXCL_START
                         nlohmann::json msg;
                         msg["type"] = table;
                         msg["operation"] = operationsMap.at(result);
-                        msg["data"] = data;
+                        msg["data"] = item;
                         msg["data"]["scan_time"] = m_scanTime;
                         removeKeysWithEmptyValue(msg["data"]);
                         const auto msgToSend{msg.dump()};
                         m_reportDiffFunction(msgToSend);
                         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
-                        // LCOV_EXCL_STOP
                     }
                 }
+                else
+                {
+                    // LCOV_EXCL_START
+                    nlohmann::json msg;
+                    msg["type"] = table;
+                    msg["operation"] = operationsMap.at(result);
+                    msg["data"] = data;
+                    msg["data"]["scan_time"] = m_scanTime;
+                    removeKeysWithEmptyValue(msg["data"]);
+                    const auto msgToSend{msg.dump()};
+                    m_reportDiffFunction(msgToSend);
+                    m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
+                    // LCOV_EXCL_STOP
+                }
             }
-            // LCOV_EXCL_START
-            catch (const std::exception& ex)
-            {
-                m_logFunction(SYS_LOG_ERROR, ex.what());
-            }
-            // LCOV_EXCL_STOP
         }
     };
     DBSyncTxn txn
