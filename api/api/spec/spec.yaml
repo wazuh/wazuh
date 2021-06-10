@@ -11349,53 +11349,6 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rootcheck:
-    delete:
-      tags:
-      - Rootcheck
-      summary: "Clear results"
-      description: "Clear rootcheck database for all agents or a list of them"
-      operationId: api.controllers.rootcheck_controller.delete_rootcheck
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-      responses:
-        '200':
-          description: "Clear rootcheck database for all agents or a list of them"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "000"
-                    - "001"
-                    - "002"
-                    - "003"
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Rootcheck database was cleared on returned agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
     put:
       tags:
         - Rootcheck
@@ -12891,6 +12844,52 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected decoders were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /experimental/rootcheck:
+    delete:
+      tags:
+        - Experimental
+      summary: "Clear rootcheck results"
+      description: "Clear rootcheck database for all agents or a list of them"
+      operationId: api.controllers.experimental_controller.clear_rootcheck_database
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list_all'
+      responses:
+        '200':
+          description: "Clear rootcheck database for all agents or a list of them"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "002"
+                    - "003"
+                  total_affected_items: 2
+                  failed_items: [ ]
+                  total_failed_items: 0
+                message: "Rootcheck database was cleared on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

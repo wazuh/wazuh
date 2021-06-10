@@ -8,6 +8,7 @@ from functools import wraps
 from aiohttp import web
 
 import wazuh.ciscat as ciscat
+import wazuh.rootcheck as rootcheck
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 from api import configuration
@@ -30,8 +31,44 @@ def check_experimental_feature_value(func):
 
 
 @check_experimental_feature_value
+async def clear_rootcheck_database(request, pretty=False, wait_for_complete=False, agents_list='*'):
+    """Clear the rootcheck database for a list of agents.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
+
+    Returns
+    -------
+    web.Response
+    """
+    if 'all' in agents_list:
+        agents_list = '*'
+
+    f_kwargs = {'agent_list': agents_list}
+
+    dapi = DistributedAPI(f=rootcheck.clear,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          broadcasting=agents_list == '*',
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+@check_experimental_feature_value
 async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, agents_list=None):
-    """ Clear the syscheck database for all agents.
+    """Clear the syscheck database for all agents.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
