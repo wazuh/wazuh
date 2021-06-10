@@ -1041,7 +1041,7 @@ ID: 91531 - 91650
         <group>AzureActiveDirectory</group>
         <mitre>
             <id>T1078</id>
-            <id>T1098</id>
+            <id>T1098.001</id>
         </mitre>
     </rule>
 
@@ -1159,7 +1159,7 @@ ID: 91531 - 91650
         <group>Exchange</group>
     </rule>
 
-    <rule id="91722" level="12">
+    <rule id="91722" level="g">
         <if_sid>91532</if_sid>
         <field name="office365.Operation" type="osregex">^QuarantineRelease$</field>
         <description>Office 365: Released quarantine message</description>
@@ -1186,6 +1186,17 @@ ID: 91531 - 91650
         <group>OneDrive,SharePoint</group>
         <mitre>
             <id>T1213</id>
+        </mitre>
+    </rule>
+
+    <rule id="91725" level="10">
+        <if_sid>91705</if_sid>
+        <field name="office365.Parameters" type="pcre2">\"Value\":\s*\"FullAccess\"</field>
+        <description>Office 365: User $(office_365.UserId) got FullAccess permissions in Exchange</description>
+        <options>no_full_log</options>
+        <group>Exchange</group>
+        <mitre>
+            <id>T1098.002</id>
         </mitre>
     </rule>
 </group>
