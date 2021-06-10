@@ -31,6 +31,21 @@ int __wrap_isDebug() {
     return mock();
 }
 
+void __wrap__mvinfo(const char * file, int line, const char * func, const char *msg, va_list args) {
+    function_called();
+    return;
+}
+
+void __wrap__mvwarn(const char * file, int line, const char * func, const char *msg, va_list args) {
+    function_called();
+    return;
+}
+
+void __wrap__mverror(const char * file, int line, const char * func, const char *msg, va_list args) {
+    function_called();
+    return;
+}
+
 void * __wrap_OSList_AddData(OSList *list, void *data) {
     os_free(((os_analysisd_log_msg_t*)data)->msg);
     os_free(((os_analysisd_log_msg_t*)data)->file);
@@ -172,6 +187,24 @@ void test__os_analysisd_add_logmsg_OK(void **state)
     os_free(message);
 }
 
+void test__os_analysisd_add_logmsg_info(void ** state) {
+
+    expect_function_call(__wrap__mvinfo);
+    _os_analysisd_add_logmsg(NULL, LOGLEVEL_INFO, 500, "TestFunction", "Test_file.c", "Test Message");
+}
+
+void test__os_analysisd_add_logmsg_warn(void ** state) {
+
+    expect_function_call(__wrap__mvwarn);
+    _os_analysisd_add_logmsg(NULL, LOGLEVEL_WARNING, 500, "TestFunction", "Test_file.c", "Test Message");
+}
+
+void test__os_analysisd_add_logmsg_error(void ** state) {
+
+    expect_function_call(__wrap__mverror);
+    _os_analysisd_add_logmsg(NULL, LOGLEVEL_ERROR, 500, "TestFunction", "Test_file.c", "Test Message");
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -183,7 +216,10 @@ int main(void)
         cmocka_unit_test(test_os_analysisd_string_log_msg_isDebug_false),
         cmocka_unit_test(test_os_analysisd_string_log_msg_isDebug_true),
         //Test _os_analysisd_add_logmsg
-        cmocka_unit_test(test__os_analysisd_add_logmsg_OK)
+        cmocka_unit_test(test__os_analysisd_add_logmsg_OK),
+        cmocka_unit_test(test__os_analysisd_add_logmsg_info),
+        cmocka_unit_test(test__os_analysisd_add_logmsg_error),
+        cmocka_unit_test(test__os_analysisd_add_logmsg_warn),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
