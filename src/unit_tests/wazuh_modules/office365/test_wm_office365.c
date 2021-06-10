@@ -22,6 +22,7 @@
 #include "wazuh_modules/wm_office365.c"
 
 #include "../../wrappers/libc/stdlib_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
 
@@ -31,6 +32,7 @@ int __wrap_access(const char *__name, int __type) {
 }
 
 ////////////////  test wmodules-office365 /////////////////
+
 typedef struct test_struct {
     wm_office365 *office365_config;
     curl_response* response;
@@ -1585,11 +1587,12 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
 void test_wm_office365_get_fail_by_tenant_and_subscription_null(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
+    wm_office365_fail *result = NULL;
     wm_office365_fail *fails = NULL;
     os_calloc(1, sizeof(wm_office365_fail), fails);
     fails->subscription_name = "subscription";
     fails->tenant_id = "tenant";
-    wm_office365_fail *result = NULL;
+
     char* subscription_name = "subscription_name";
     char* tenant_id = "tenant_id";
 
@@ -1601,17 +1604,117 @@ void test_wm_office365_get_fail_by_tenant_and_subscription_null(void **state) {
 void test_wm_office365_get_fail_by_tenant_and_subscription_not_null(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
+    wm_office365_fail *result = NULL;
     wm_office365_fail *fails = NULL;
     os_calloc(1, sizeof(wm_office365_fail), fails);
     fails->subscription_name = "subscription_name";
     fails->tenant_id = "tenant_id";
-    wm_office365_fail *result = NULL;
+
     char* subscription_name = "subscription_name";
     char* tenant_id = "tenant_id";
 
     result = wm_office365_get_fail_by_tenant_and_subscription(fails, tenant_id, subscription_name);
     assert_string_equal(result->tenant_id, tenant_id);
     assert_string_equal(result->subscription_name, subscription_name);
+
+    os_free(fails);
+}
+
+void test_wm_office365_scan_failure_action_null(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    wm_office365_fail *fails = NULL;
+    os_calloc(1, sizeof(wm_office365_fail), fails);
+    fails->subscription_name = "subscription";
+    fails->tenant_id = "tenant";
+
+    char* subscription_name = "subscription_name";
+    char* tenant_id = "tenant_id";
+    int queue_fd = 0;
+
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
+    assert_string_equal(fails->next->tenant_id, tenant_id);
+    assert_string_equal(fails->next->subscription_name, subscription_name);
+
+    os_free(fails->next->tenant_id);
+    os_free(fails->next->subscription_name);
+    os_free(fails->next);
+    os_free(fails);
+}
+
+void test_wm_office365_scan_failure_action_no_fail(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    wm_office365_fail *fails = NULL;
+
+    char* subscription_name = "subscription_name";
+    char* tenant_id = "tenant_id";
+    int queue_fd = 0;
+
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
+    assert_string_equal(fails->tenant_id, tenant_id);
+    assert_string_equal(fails->subscription_name, subscription_name);
+
+    os_free(fails->tenant_id);
+    os_free(fails->subscription_name);
+    os_free(fails);
+}
+
+void test_wm_office365_scan_failure_action_null_mult_next(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    wm_office365_fail *fails = NULL;
+    os_calloc(1, sizeof(wm_office365_fail), fails);
+    fails->subscription_name = "subscription";
+    fails->tenant_id = "tenant";
+    os_calloc(1, sizeof(wm_office365_fail), fails->next);
+    fails->next->subscription_name = "subscription1";
+    fails->next->tenant_id = "tenant1";
+
+    char* subscription_name = "subscription_name";
+    char* tenant_id = "tenant_id";
+    int queue_fd = 0;
+
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
+    assert_string_equal(fails->next->next->tenant_id, tenant_id);
+    assert_string_equal(fails->next->next->subscription_name, subscription_name);
+
+    os_free(fails->next->next->tenant_id);
+    os_free(fails->next->next->subscription_name);
+    os_free(fails->next->next);
+    os_free(fails->next);
+    os_free(fails);
+}
+
+void test_wm_office365_scan_failure_action_not_null(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    wm_office365_fail *fails = NULL;
+    os_calloc(1, sizeof(wm_office365_fail), fails);
+    fails->subscription_name = "subscription_name";
+    fails->tenant_id = "tenant_id";
+    fails->fails = 2;
+    wm_max_eps = 1;
+
+    char* subscription_name = "subscription_name";
+    char* tenant_id = "tenant_id";
+    int queue_fd = 1;
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\"}}'");
+
+    int result = -1;
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, "office365");
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
+
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
 
     os_free(fails);
 }
@@ -1672,6 +1775,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_fail_by_tenant_and_subscription_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_fail_by_tenant_and_subscription_not_null, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_null, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_no_fail, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_null_mult_next, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_not_null, setup_conf, teardown_conf),
     };
 
     int result;
