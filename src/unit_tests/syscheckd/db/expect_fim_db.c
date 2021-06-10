@@ -81,9 +81,11 @@ const fim_registry_value_data DEFAULT_REGISTRY_VALUE = {
  * */
 void expect_fim_db_check_transaction() {
     will_return(__wrap_sqlite3_get_autocommit, 0);
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_exec_simple_wquery("END;");
     expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
     expect_fim_db_exec_simple_wquery("BEGIN;");
+    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 /**
@@ -104,6 +106,8 @@ void expect_fim_db_clean_stmt() {
 }
 
 void expect_fim_db_get_count_entries(int retval) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
 
     will_return(__wrap_sqlite3_step, 0);
@@ -111,6 +115,8 @@ void expect_fim_db_get_count_entries(int retval) {
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, retval);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 void expect_fim_db_force_commit() {
@@ -146,11 +152,15 @@ void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const c
 }
 
 void expect_fim_db_get_path_success(const char *path, const fim_entry *entry) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_path(path);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_fim_db_decode_full_row_from_entry(entry);
 }
@@ -164,6 +174,8 @@ int setup_fim_db_group(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
 #ifndef TEST_SERVER
@@ -184,6 +196,8 @@ int setup_fim_db_group(void **state) {
 
 int teardown_fim_db_group(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     Free_Syscheck(&syscheck);

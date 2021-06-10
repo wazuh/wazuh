@@ -343,40 +343,34 @@ void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val) {
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
-int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path) {
+void expect_fim_db_insert(fdb_t *db, const char *file_path, int ret) {
+    expect_value(__wrap_fim_db_insert, fim_sql, db);
+    expect_string(__wrap_fim_db_insert, file_path, file_path);
+    will_return(__wrap_fim_db_insert, ret);
+}
+
+void expect_fim_db_set_scanned(fdb_t *db, const char *file_path, int ret) {
+    expect_value(__wrap_fim_db_set_scanned, fim_sql, db);
+    expect_string(__wrap_fim_db_set_scanned, path, file_path);
+    will_return(__wrap_fim_db_set_scanned, ret);
+}
+
+int __wrap_fim_db_file_update(fdb_t *fim_sql,
+                              const char *path,
+                              const __attribute__((unused)) fim_file_data *data,
+                              fim_entry **saved) {
+    check_expected_ptr(fim_sql);
     check_expected(path);
+
+    if (saved != NULL) {
+        *saved = mock_type(fim_entry *);
+    }
+
     return mock();
 }
 
-int __wrap_fim_db_data_exists(__attribute__((unused)) fdb_t *fim_sql, unsigned long int inode, unsigned long int dev) {
-    check_expected(inode);
-    check_expected(dev);
+int __wrap_fim_db_is_full(fdb_t *fim_sql) {
+    check_expected_ptr(fim_sql);
+
     return mock();
-}
-
-int __wrap_fim_db_append_paths_from_inode(__attribute__((unused)) fdb_t *fim_sql,
-                                          unsigned long int inode,
-                                          unsigned long int dev,
-                                          OSList *list,
-                                          rb_tree *tree) {
-    char **paths;
-    int i;
-
-    check_expected(inode);
-    check_expected(dev);
-    assert_non_null(list);
-    assert_non_null(tree);
-
-    paths = mock_type(char **);
-    if (paths == NULL) {
-        return 0;
-    }
-
-    for (i = 0; paths[i]; i++) {
-        rb_node *leaf = rbtree_insert(tree, paths[i], NULL);
-
-        OSList_AddData(list, leaf->key);
-    }
-
-    return i;
 }

@@ -263,6 +263,7 @@
 #define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
 #define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
 
+
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
 #define WM_UPGRADE_MODULE_DISABLED           "(8152): Module Agent Upgrade disabled. Exiting..."

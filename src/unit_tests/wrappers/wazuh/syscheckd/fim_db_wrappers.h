@@ -177,4 +177,11 @@ int __wrap_fim_db_append_paths_from_inode(fdb_t *fim_sql,
                                           OSList *list,
                                           rb_tree *tree);
 
+int __wrap_fim_db_file_update(fdb_t *fim_sql,
+                              const char *path,
+                              const __attribute__((unused)) fim_file_data *data,
+                              fim_entry **saved);
+
+int __wrap_fim_db_is_full(fdb_t *fim_sql);
+
 #endif
