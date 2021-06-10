@@ -1,8 +1,86 @@
 ---
-test_name: DELETE /experimental/syscheck
+test_name: DELETE /experimental/rootcheck
 
 marks:
   - base_tests
+
+stages:
+
+  # DELETE /experimental/rootcheck
+  - name: Try to delete rootcheck scans in agent 001
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  # DELETE /experimental/rootcheck
+  - name: Try to delete rootcheck scans in all agents
+    request:
+      verify: False
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: all
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "000"
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+            - "005"
+            - "006"
+            - "007"
+            - "008"
+            - "009"
+            - "010"
+            - "011"
+            - "012"
+          failed_items: []
+          total_affected_items: 13
+          total_failed_items: 0
+
+  # GET /rootcheck/002
+  - name: Check if data has been deleted in agent 002
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+        message: !anystr
+
+---
+test_name: DELETE /experimental/syscheck
 
 stages:
 
