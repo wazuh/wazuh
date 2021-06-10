@@ -1094,6 +1094,8 @@ static void fim_db_get_checksum_range_fail_step_on_first_half(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
     assert_int_equal(retval, FIMDB_ERR);
@@ -1156,6 +1158,8 @@ static void fim_db_get_checksum_range_fail_step_on_second_half(void **state) {
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
                   "Step error getting path range, second half 'start start' 'top top' (i:1): ERROR MESSAGE (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1280,6 +1284,8 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
 
     expect_string(__wrap__merror, formatted_msg,
                   "Step error getting count range 'start begin' 'top top': Some SQLite error (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1854,6 +1860,8 @@ static void test_fim_db_get_last_path_fail_to_step_query(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
 
     assert_int_equal(retval, FIMDB_ERR);
@@ -2229,6 +2237,8 @@ static void test_fim_db_get_count_entries_query_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "SQLITE some error");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: SQLITE some error (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 

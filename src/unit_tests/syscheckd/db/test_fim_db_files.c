@@ -109,6 +109,8 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
 
     assert_int_equal(row_id, 0);
@@ -198,6 +200,8 @@ void test_fim_db_insert_path_error(void **state) {
     will_return(__wrap_sqlite3_extended_errcode, 111);
 
     expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -467,6 +471,8 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1038,6 +1044,8 @@ void test_fim_db_get_count_file_data_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     int ret = fim_db_get_count_file_data(test_data->fim_sql);
 
     assert_int_equal(ret, -1);
@@ -1077,6 +1085,8 @@ void test_fim_db_get_count_file_entry_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: ERROR MESSAGE (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1131,6 +1141,8 @@ void test_fim_db_set_scanned_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE (111)");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
