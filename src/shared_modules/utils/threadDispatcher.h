@@ -188,7 +188,10 @@ namespace Utils
 
         void push(const Input& data)
         {
-            m_functor(data);
+            if (m_running)
+            {
+                m_functor(data);
+            }
         }
         size_t size() const {return 0;}
         void rundown(){ cancel(); }
