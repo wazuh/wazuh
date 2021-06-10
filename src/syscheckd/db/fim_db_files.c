@@ -109,7 +109,6 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   void *configuration,
                                   void *_unused_patameter);
 
-
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
@@ -150,6 +149,16 @@ int fim_db_process_missing_entry(fdb_t *fim_sql,
                                  event_data_t *evt_data) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage, evt_data, NULL,
                                     NULL);
+}
+
+int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data,
+                                 directory_t *configuration) {
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_generate_delete_event, storage, evt_data,
+                                    configuration, NULL);
 }
 // LCOV_EXCL_STOP
 

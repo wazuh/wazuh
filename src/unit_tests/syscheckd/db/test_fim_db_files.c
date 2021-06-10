@@ -114,6 +114,9 @@ static int teardown_append_inode(void **state) {
         return 0;
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     teardown_os_list((void **)&(data->list));
     teardown_rb_tree((void **)&(data->tree));
 
@@ -1109,13 +1112,18 @@ static void test_fim_db_remove_validated_path_invalid_path(void **state) {
 #else
     char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
 #endif
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
 
     fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 
-    // Last commit time should change
+    // Last commit time should not change
     assert_int_equal(fim_sql.transaction.last_commit, 1);
 }
 
@@ -1126,6 +1134,11 @@ static void test_fim_db_remove_validated_path_valid_path(void **state) {
 #else
     char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
 #endif
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
@@ -1203,6 +1216,9 @@ static void test_fim_db_append_paths_from_inode_append_paths(void **state) {
     OSList *list = ((append_inode_t *)*state)->list;
     rb_tree *tree = ((append_inode_t *)*state)->tree;
     int ret, i;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_get_inode();
