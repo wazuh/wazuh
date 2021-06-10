@@ -325,23 +325,26 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
     assert all(x['os']['name'] == 'unknown' for x in result['items'])
 
 
+@pytest.mark.parametrize('filter_fields, expected_response', [
+    (['os.codename'], [{'os': {'codename': 'Bionic Beaver'}, 'count': 3}, {'os': {'codename': 'Xenial'}, 'count': 1},
+                       {'os': {'codename': 'unknown'}, 'count': 2}, {'os': {'codename': 'XP'}, 'count': 3}]),
+    (['node_name'], [{'count': 7, 'node_name': 'node01'}, {'count': 2, 'node_name': 'unknown'}]),
+    (['status', 'os.version'], [{'os': {'version': '18.04.1 LTS'}, 'count': 2, 'status': 'active'},
+                                {'os': {'version': '16.04.1 LTS'}, 'count': 1, 'status': 'active'},
+                                {'os': {'version': 'unknown'}, 'count': 1, 'status': 'never_connected'},
+                                {'os': {'version': 'unknown'}, 'count': 1, 'status': 'pending'},
+                                {'os': {'version': '18.04.1 LTS'}, 'count': 1, 'status': 'disconnected'},
+                                {'os': {'version': '5.2'}, 'count': 2, 'status': 'active'},
+                                {'os': {'version': '7.2'}, 'count': 1, 'status': 'active'}])
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary_status(mock_socket_conn):
-    """Tests if method _format_data_into_dictionary of WazuhDBQueryGroupByAgents works properly."""
-    query_group = WazuhDBQueryGroupByAgents(filter_fields=['status', 'os.name'], offset=0, limit=1, sort=None,
-                                            search=None, select=None, query=None, count=5, get_data=None)
-
-    query_group.select = {'os.name', 'count', 'status', 'lastKeepAlive', 'version'}
-    query_group._data = [
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'disconnected',
-         'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'disconnected',
-         'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'disconnected',
-         'lastKeepAlive': 1593093976}]
-
-    result = query_group._format_data_into_dictionary()
-    assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'disconnected', 'count': 4}], 'totalItems': 0}
+def test_WazuhDBQueryGroupByAgents(mock_socket_conn, send_mock, filter_fields, expected_response):
+    """Tests if WazuhDBQueryGroupByAgents works properly."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=filter_fields, offset=0, limit=None, sort=None,
+                                            search=None, select=None, query=None, count=5, get_data=True)
+    result = query_group.run()
+    assert result['items'] == expected_response
 
 
 @patch('socket.socket.connect')

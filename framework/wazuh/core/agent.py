@@ -264,7 +264,6 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     def __init__(self, filter_fields, *args, **kwargs):
-        self.real_fields = copy.deepcopy(filter_fields)
 
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
@@ -273,47 +272,30 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
     def _format_data_into_dictionary(self):
         # Add <field>: 'unknown' when filter field is not within the response.
-        if not self.real_fields or self.filter_fields == {'fields': set(self.real_fields)}:
-            for result in self._data:
-                for field in self.filter_fields['fields']:
-                    if field not in result.keys():
-                        result[field] = 'unknown'
-            return super()._format_data_into_dictionary()
-        else:
-            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
+        for result in self._data:
+            for field in self.filter_fields['fields']:
+                if field not in result.keys():
+                    result[field] = 'unknown'
 
-            # compute 'status' field, format id with zero padding and remove non-user-requested fields.
-            # Also remove, extra fields (internal key and registration IP)
-            selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
-            selected_fields |= {'id'}
-            self._data = [{key: format_fields(key, value)
-                           for key, value in item.items() if key in selected_fields} for item in self._data]
+        fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-            # Create tuples like ({values in self.real_fields}, count) in order to keep the 'count' field and discard
-            # the values not requested by the user.
-            tuples_list = [({k: result[k] if k in result.keys() else 'unknown' for k in self.real_fields},
-                            result['count']) for result in self._data]
+        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
+        # Also remove, extra fields (internal key and registration IP)
+        selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
 
-            # Sum the 'count' value of all the dictionaries that are equal
-            result_list = list()
-            added_dicts = list()
-            for i, i_tuple in enumerate(tuples_list):
-                if i not in added_dicts:
-                    for j, j_tuple in enumerate(tuples_list):
-                        if j_tuple[0] == i_tuple[0] and j > i:
-                            tuples_list[i] = (tuples_list[i][0], tuples_list[i][1] + tuples_list[j][1])
-                            added_dicts.append(j)
-                    result_list.append(tuples_list[i])
+        aux = list()
+        for item in self._data:
+            aux_dict = dict()
+            for key, value in item.items():
+                if key in selected_fields:
+                    aux_dict[key] = format_fields(key, value)
 
-            # Append 'count' value in each dict
-            self._data = []
-            for dikt in result_list:
-                dikt[0].update({'count': dikt[1]})
-                self._data.append(dikt[0])
+            aux.append(aux_dict)
 
-            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
+        self._data = aux
+        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
-            return WazuhDBQuery._format_data_into_dictionary(self)
+        return WazuhDBQuery._format_data_into_dictionary(self)
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
@@ -391,7 +373,7 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def _acquire_client_keys_lock(timeout=get_cluster_items()['intervals']['communication']['timeout_api_exe']-1):
+    def _acquire_client_keys_lock(timeout=get_cluster_items()['intervals']['communication']['timeout_api_exe'] - 1):
         if mutex.acquire(timeout=timeout):
             global lock_file
             lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')

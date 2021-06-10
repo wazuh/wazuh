@@ -7490,7 +7490,6 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
