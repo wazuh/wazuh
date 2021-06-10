@@ -498,44 +498,6 @@ static int teardown_fim_tmp_file(void **state){
     return 0;
 }
 
-#ifndef TEST_WINAGENT
-static int setup_process_file_from_db(void **state) {
-    fim_data_t *data = *state;
-
-    if (setup_fim_entry((void **)&data)) {
-        return -1;
-    }
-
-    if (setup_os_list((void **)&(data->list))) {
-        fail_msg("Failed to allocate OSList");
-    }
-
-    if (setup_rb_tree((void **)&(data->tree))) {
-        fail_msg("Failed to allocate rb_tree");
-    }
-
-    return 0;
-}
-
-static int teardown_process_file_from_db(void **state) {
-    fim_data_t *data = *state;
-
-    if (data == NULL) {
-        return 0;
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    teardown_os_list((void **)&(data->list));
-    teardown_rb_tree((void **)&(data->tree));
-
-    return 0;
-}
-#endif
-
 /* Auxiliar functions */
 void expect_get_data (char *user, char *group, char *file_path, int calculate_checksums) {
 #ifndef TEST_WINAGENT
@@ -598,21 +560,19 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
         // fim_get_data
         expect_get_data(strdup("user"), strdup("group"), test_file_path, 0);
 
-        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_get_path, file_path, test_file_path);
-        will_return(__wrap_fim_db_get_path, NULL);
-
         expect_string(__wrap_w_get_file_attrs, file_path, test_file_path);
         will_return(__wrap_w_get_file_attrs, 123456);
 
-        expect_string(__wrap_fim_db_file_is_scanned, path, test_file_path);
-        will_return(__wrap_fim_db_file_is_scanned, 0);
-
-        expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_insert, file_path, test_file_path);
-        will_return(__wrap_fim_db_insert, FIMDB_FULL);
+        expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_file_update, path, test_file_path);
+        will_return(__wrap_fim_db_file_update, NULL);
+        will_return(__wrap_fim_db_file_update, FIMDB_FULL);
         // fim_json_event;
     }
+
+    expect_any_always(__wrap_fim_db_is_full, fim_sql);
+    will_return(__wrap_fim_db_is_full, false);
+    will_return_count(__wrap_fim_db_is_full, true, 2);
 
     will_return(__wrap_readdir, NULL);
 
@@ -1362,18 +1322,6 @@ static void test_init_fim_data_entry(void **state) {
     assert_int_equal(fim_data->local_data->hash_sha256[0], 0);
 }
 
-static void expect_fim_db_insert(fdb_t *db, const char *file_path, int ret) {
-    expect_value(__wrap_fim_db_insert, fim_sql, db);
-    expect_string(__wrap_fim_db_insert, file_path, file_path);
-    will_return(__wrap_fim_db_insert, ret);
-}
-
-static void expect_fim_db_set_scanned(fdb_t *db, const char *file_path, int ret) {
-    expect_value(__wrap_fim_db_set_scanned, fim_sql, db);
-    expect_string(__wrap_fim_db_set_scanned, path, file_path);
-    will_return(__wrap_fim_db_set_scanned, ret);
-}
-
 static void test_fim_file_add(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
@@ -1388,25 +1336,15 @@ static void test_fim_file_add(void **state) {
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
 
-    expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
-    will_return(__wrap_fim_db_file_is_scanned, 0);
-
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, file_path);
-    will_return(__wrap_fim_db_get_path, NULL);
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, file_path);
+    will_return(__wrap_fim_db_file_update, NULL);
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 0);
-
-    expect_fim_db_insert(syscheck.database, file_path, FIMDB_OK);
-
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 1234, 2345, NULL);
-#else
-    expect_fim_db_insert(syscheck.database, file_path, FIMDB_OK);
 #endif
 
     expect_fim_file_diff(file_path, strdup("diff"));
@@ -1452,9 +1390,6 @@ static void test_fim_file_modify(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
-    will_return(__wrap_fim_db_file_is_scanned, 0);
-
     // Inside fim_get_data
 #ifndef TEST_WINAGENT
     expect_get_user(0, strdup("user"));
@@ -1474,20 +1409,14 @@ static void test_fim_file_modify(void **state) {
                                         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
                                         0x400, 0);
 
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 0);
-#endif
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, file_path);
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, file_path);
+    will_return(__wrap_fim_db_file_update, fim_data->fentry);
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
 #ifndef TEST_WINAGENT
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 1234, 2345, NULL);
 #endif
-    expect_fim_db_insert(syscheck.database, file_path, FIMDB_OK);
 
 
     fim_file(file_path, &configuration, &evt_data);
@@ -1508,9 +1437,6 @@ static void test_fim_file_no_attributes(void **state) {
 #else
     char file_path[] = "/bin/ls";
 #endif
-
-    expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
-    will_return(__wrap_fim_db_file_is_scanned, 0);
 
     // Inside fim_get_data
 #ifndef TEST_WINAGENT
@@ -1582,9 +1508,6 @@ static void test_fim_file_error_on_insert(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
-    will_return(__wrap_fim_db_file_is_scanned, 0);
-
     // Inside fim_get_data
 #ifndef TEST_WINAGENT
     expect_get_user(0, strdup("user"));
@@ -1609,19 +1532,10 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, file_path);
-    will_return(__wrap_fim_db_get_path, fim_data->fentry);
-
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 0);
-#endif
-
-    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, file_path);
-    will_return(__wrap_fim_db_insert, -1);
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, file_path);
+    will_return(__wrap_fim_db_file_update, fim_data->fentry);
+    will_return(__wrap_fim_db_file_update, FIMDB_ERR);
 
     fim_file(file_path, &configuration, &evt_data);
 }
@@ -1823,13 +1737,10 @@ static void test_fim_checker_fim_regular(void **state) {
 
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 999, 1, NULL);
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, path);
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, path);
-    will_return(__wrap_fim_db_insert, 0);
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, path);
+    will_return(__wrap_fim_db_file_update, NULL);
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
     fim_checker(path, &evt_data, NULL);
 }
@@ -1865,13 +1776,10 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, "/media/test.file");
-    will_return(__wrap_fim_db_insert, -1);
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, path);
+    will_return(__wrap_fim_db_file_update, NULL);
+    will_return(__wrap_fim_db_file_update, FIMDB_ERR);
 
     fim_checker(path, &evt_data, NULL);
 }
@@ -2057,13 +1965,10 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_value(__wrap_fim_db_get_paths_from_inode, dev, statbuf.st_dev);
     will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, path);
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, path);
-    will_return(__wrap_fim_db_insert, 0);
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, path);
+    will_return(__wrap_fim_db_file_update, NULL);
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
     fim_checker(path, &evt_data, NULL);
 }
@@ -2082,6 +1987,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2123,6 +2031,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     // Second scan
+    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_is_full, false);
+
     expect_string(__wrap_lstat, filename, "/boot");
     will_return(__wrap_lstat, &directory_buf);
     will_return(__wrap_lstat, 0);
@@ -2147,29 +2058,22 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     // fim_file
     {
-        expect_string(__wrap_fim_db_file_is_scanned, path, "/boot/test_file");
-        will_return(__wrap_fim_db_file_is_scanned, 0);
-
         // fim_get_data
         expect_get_user(0, strdup("user"));
         expect_get_group(0, strdup("group"));
 
-        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_get_path, file_path, "/boot/test_file");
-        will_return(__wrap_fim_db_get_path, NULL);
-
-        expect_value(__wrap_fim_db_data_exists, inode, 0);
-        expect_value(__wrap_fim_db_data_exists, dev, 0);
-        will_return(__wrap_fim_db_data_exists, 0);
-
-        expect_fim_db_insert(syscheck.database, "/boot/test_file", FIMDB_FULL);
+        expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_file_update, path, "/boot/test_file");
+        will_return(__wrap_fim_db_file_update, NULL);
+        will_return(__wrap_fim_db_file_update, FIMDB_FULL);
     }
+
+    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_is_full, true);
 
     will_return(__wrap_readdir, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of entries to be monitored: '50000'");
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     // fim_check_db_state
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
@@ -2196,6 +2100,9 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+
+    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2236,8 +2143,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     will_return(__wrap_fim_db_get_not_scanned, NULL);
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
-    expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
-    will_return(__wrap_fim_db_set_all_unscanned, 0);
+    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_is_full, true);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of entries to be monitored: '50000'");
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
@@ -2307,6 +2214,9 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     // fim_scan
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
+
+    expect_value(__wrap_fim_db_is_full, fim_sql, syscheck.database);
+    will_return(__wrap_fim_db_is_full, true);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of entries to be monitored: '50000'");
 
@@ -2899,12 +2809,11 @@ static void test_fim_checker_fim_regular(void **state) {
 
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
-    will_return(__wrap_fim_db_get_path, NULL);
-    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, expanded_path);
-    will_return(__wrap_fim_db_insert, 0);
+
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, expanded_path);
+    will_return(__wrap_fim_db_file_update, NULL);
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
     fim_checker(expanded_path, &evt_data, NULL);
 }
@@ -3000,12 +2909,11 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
-    will_return(__wrap_fim_db_get_path, NULL);
-    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, expanded_path);
-    will_return(__wrap_fim_db_insert, -1);
+
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, expanded_path);
+    will_return(__wrap_fim_db_file_update, NULL);
+    will_return(__wrap_fim_db_file_update, FIMDB_ERR);
 
     fim_checker(expanded_path, &evt_data, NULL);
 }
@@ -3093,13 +3001,10 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_string(__wrap_w_get_file_attrs, file_path, "c:\\test.file");
     will_return(__wrap_w_get_file_attrs, 123456);
 
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "c:\\test.file");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_insert, file_path, "c:\\test.file");
-    will_return(__wrap_fim_db_insert, 0);
+    expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_file_update, path, "c:\\test.file");
+    will_return(__wrap_fim_db_file_update, NULL);
+    will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
     expect_string(__wrap_stat, __file, "c:\\test.file");
     will_return(__wrap_stat, &statbuf);
@@ -3135,10 +3040,10 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     int i;
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -3200,10 +3105,10 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     struct stat buf = { .st_mode = S_IFDIR };
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
@@ -3244,6 +3149,9 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_value(__wrap_fim_db_set_all_unscanned, fim_sql, syscheck.database);
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
+    expect_value_count(__wrap_fim_db_is_full, fim_sql, syscheck.database, 2);
+    will_return_count(__wrap_fim_db_is_full, true, 2);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of entries to be monitored: '50000'");
 
@@ -3270,10 +3178,10 @@ static void test_fim_scan_db_free(void **state) {
     struct stat buf = { .st_mode = S_IFDIR };
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
@@ -3344,10 +3252,10 @@ static void test_fim_scan_no_limit(void **state) {
     struct stat buf = { .st_mode = S_IFDIR };
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
@@ -3667,11 +3575,6 @@ void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
 
 /* fim_check_db_state */
 static void test_fim_check_db_state_normal_to_empty(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
 
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
@@ -3682,11 +3585,6 @@ static void test_fim_check_db_state_normal_to_empty(void **state) {
 }
 
 static void test_fim_check_db_state_empty_to_empty(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
     assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
 
@@ -3696,11 +3594,6 @@ static void test_fim_check_db_state_empty_to_empty(void **state) {
 }
 
 static void test_fim_check_db_state_empty_to_full(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -3714,11 +3607,6 @@ static void test_fim_check_db_state_empty_to_full(void **state) {
 }
 
 static void test_fim_check_db_state_full_to_empty(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
@@ -3732,11 +3620,6 @@ static void test_fim_check_db_state_full_to_empty(void **state) {
 }
 
 static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
@@ -3750,11 +3633,6 @@ static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
 }
 
 static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
@@ -3768,11 +3646,6 @@ static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
 }
 
 static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
@@ -3786,11 +3659,6 @@ static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
 }
 
 static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
@@ -3804,11 +3672,6 @@ static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
 }
 
 static void test_fim_check_db_state_empty_to_normal(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
     assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
 
@@ -3818,11 +3681,6 @@ static void test_fim_check_db_state_empty_to_normal(void **state) {
 }
 
 static void test_fim_check_db_state_normal_to_normal(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 20000);
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
 
@@ -3832,11 +3690,6 @@ static void test_fim_check_db_state_normal_to_normal(void **state) {
 }
 
 static void test_fim_check_db_state_normal_to_full(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -3850,11 +3703,6 @@ static void test_fim_check_db_state_normal_to_full(void **state) {
 }
 
 static void test_fim_check_db_state_full_to_normal(void **state) {
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    (void) state;
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
@@ -3869,11 +3717,6 @@ static void test_fim_check_db_state_full_to_normal(void **state) {
 }
 
 static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
@@ -3888,11 +3731,6 @@ static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
 }
 
 static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
@@ -3907,11 +3745,6 @@ static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
 }
 
 static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
@@ -3925,11 +3758,6 @@ static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
 }
 
 static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 42000);
 
     assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
@@ -3940,11 +3768,6 @@ static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state)
 }
 
 static void test_fim_check_db_state_80_percentage_to_full(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -3958,11 +3781,6 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
 }
 
 static void test_fim_check_db_state_full_to_80_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
@@ -3977,11 +3795,6 @@ static void test_fim_check_db_state_full_to_80_percentage(void **state) {
 }
 
 static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
@@ -3995,11 +3808,6 @@ static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state)
 }
 
 static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 48000);
 
     assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
@@ -4010,11 +3818,6 @@ static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state)
 }
 
 static void test_fim_check_db_state_90_percentage_to_full(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -4028,11 +3831,6 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
 }
 
 static void test_fim_check_db_state_full_to_full(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 60000);
 
     assert_int_equal(_db_state, FIM_STATE_DB_FULL);
@@ -4043,11 +3841,6 @@ static void test_fim_check_db_state_full_to_full(void **state) {
 }
 
 static void test_fim_check_db_state_full_to_90_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
 
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
@@ -4062,11 +3855,6 @@ static void test_fim_check_db_state_full_to_90_percentage(void **state) {
 }
 
 static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
@@ -4080,11 +3868,6 @@ static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state)
 }
 
 static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
@@ -4098,11 +3881,6 @@ static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
 }
 
 static void test_fim_check_db_state_nodes_count_database_error(void **state) {
-    (void) state;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_wrapper_fim_db_get_count_entries(syscheck.database, -1);
     expect_string(__wrap__mwarn, formatted_msg, "(6948): Unable to get the number of entries in database.");
 
@@ -4298,8 +4076,6 @@ static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
 static void test_check_deleted_files(void **state) {
     fim_tmp_file *file = *state;
 
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
@@ -4315,10 +4091,6 @@ static void test_check_deleted_files(void **state) {
 }
 
 static void test_check_deleted_files_error(void **state) {
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -4384,10 +4156,7 @@ static void test_fim_realtime_event_file_exists(void **state) {
 }
 
 static void test_fim_realtime_event_file_missing(void **state) {
-
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     struct stat stat_buf = { .st_mode = 0 };
@@ -4451,8 +4220,6 @@ static void test_fim_whodata_event_file_missing(void **state) {
     struct stat buf = { .st_mode = 0 };
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
 #ifndef TEST_WINAGENT
@@ -4505,10 +4272,6 @@ static void test_fim_whodata_event_file_missing(void **state) {
 }
 
 static void test_fim_process_missing_entry_no_data(void **state) {
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
 #ifdef TEST_WINAGENT
     char *path = "C:\\a\\random\\path";
 #else
@@ -4532,9 +4295,6 @@ static void test_fim_process_missing_entry_no_data(void **state) {
 static void test_fim_process_missing_entry_failure(void **state) {
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
     file->elements = 1;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
 #ifdef TEST_WINAGENT
     char *path = "C:\\a\\random\\path";
@@ -4591,11 +4351,19 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/test");
@@ -4609,8 +4377,6 @@ static void test_fim_process_wildcard_removed_no_data(void **state) {
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
 
@@ -4634,8 +4400,6 @@ static void test_fim_process_wildcard_removed_failure(void **state) {
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
 
@@ -4726,892 +4490,6 @@ void test_fim_diff_folder_size(void **state) {
         free(diff_local);
     }
 }
-
-
-#ifndef TEST_WINAGENT
-fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *stack, rb_tree *tree, cJSON **event);
-static void test_fim_process_file_from_db_null_path(void **state) {
-    cJSON *event;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    expect_assert_failure(fim_process_file_from_db(NULL, list, tree, &event));
-}
-
-static void test_fim_process_file_from_db_null_stack(void **state) {
-    cJSON *event;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    expect_assert_failure(fim_process_file_from_db("/testdir", NULL, tree, &event));
-}
-
-static void test_fim_process_file_from_db_null_tree(void **state) {
-    cJSON *event;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    expect_assert_failure(fim_process_file_from_db("/testdir", list, NULL, &event));
-}
-
-static void test_fim_process_file_from_db_null_event(void **state) {
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    expect_assert_failure(fim_process_file_from_db("/testdir", list, tree, NULL));
-}
-
-static void test_fim_process_file_from_db_fail_to_get_entry(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_sanitize_state_t ret;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testfile");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    ret = fim_process_file_from_db("/testfile", list, tree, &event);
-
-    assert_int_equal(ret, FIM_FILE_ERROR);
-    assert_null(event);
-}
-
-
-static void test_fim_process_file_from_db_stat_error(void **state) {
-    char debug_msg[OS_SIZE_256];
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf;
-    fim_sanitize_state_t ret;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, -1);
-
-    errno = EACCES;
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_STAT_FAILED, entry->file_entry.path, errno, strerror(errno));
-    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    errno = 0;
-
-    assert_int_equal(ret, FIM_FILE_ERROR);
-    assert_null(event);
-}
-
-static void test_fim_process_file_from_db_deleted_file_not_in_configuration(void **state) {
-    char debug_msg[OS_SIZE_256];
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf;
-    fim_sanitize_state_t ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/invalid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, -1);
-
-    errno = ENOENT;
-
-    snprintf(debug_msg, OS_SIZE_256, FIM_CONFIGURATION_NOTFOUND, "file", entry->file_entry.path);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    errno = 0;
-
-    assert_int_equal(ret, FIM_FILE_ERROR);
-    assert_null(event);
-}
-
-static void test_fim_process_file_from_db_deleted_file_fail_to_remove_entry_from_db(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf;
-    fim_sanitize_state_t ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, -1);
-
-    errno = ENOENT;
-
-    expect_fim_db_remove_path(syscheck.database, entry->file_entry.path, FIMDB_ERR);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    errno = 0;
-
-    assert_int_equal(ret, FIM_FILE_ERROR);
-    assert_null(event);
-}
-
-static void test_fim_process_file_from_db_deleted_file_event_generated(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf;
-    fim_sanitize_state_t ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, -1);
-
-    errno = ENOENT;
-
-    expect_fim_db_remove_path(syscheck.database, entry->file_entry.path, FIMDB_OK);
-
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, entry->file_entry.data->inode,
-                                               entry->file_entry.data->dev, NULL);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    errno = 0;
-
-    assert_int_equal(ret, FIM_FILE_DELETED);
-    assert_non_null(event);
-
-    cJSON_Delete(event);
-}
-
-static void test_fim_process_file_from_db_file_without_conflict(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_ino = entry->file_entry.data->inode,
-                        .st_dev = entry->file_entry.data->dev };
-    fim_sanitize_state_t ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_string(__wrap_fim_db_file_is_scanned, path, entry->file_entry.path);
-    will_return(__wrap_fim_db_file_is_scanned, 1);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    assert_int_equal(ret, FIM_FILE_UPDATED);
-    assert_null(event);
-}
-
-static void test_fim_process_file_from_db_conflicting_file_current_inode_free_in_db(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_ino = entry->file_entry.data->inode + 1,
-                        .st_dev = entry->file_entry.data->dev };
-    fim_sanitize_state_t ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 0);
-
-    expect_string(__wrap_fim_db_file_is_scanned, path, entry->file_entry.path);
-    will_return(__wrap_fim_db_file_is_scanned, 1);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    assert_int_equal(ret, FIM_FILE_UPDATED);
-    assert_null(event);
-}
-
-static void test_fim_process_file_from_db_conflicting_file_current_inode_taken_in_db(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_ino = entry->file_entry.data->inode + 1,
-                        .st_dev = entry->file_entry.data->dev };
-    fim_sanitize_state_t ret;
-    char *paths[] = { "/etc/another/valid", NULL };
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 1);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, buf.st_dev);
-    will_return(__wrap_fim_db_append_paths_from_inode, paths);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    assert_int_equal(ret, FIM_FILE_ADDED_PATHS);
-    assert_null(event);
-}
-
-static void test_fim_process_file_from_db_conflicting_file_infinite_loop(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_ino = entry->file_entry.data->inode + 1,
-                        .st_dev = entry->file_entry.data->dev };
-    fim_sanitize_state_t ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    entry->file_entry.data->perm = strdup("rw-r--r--");
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 1);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, buf.st_dev);
-    will_return(__wrap_fim_db_append_paths_from_inode, NULL);
-
-    // Inside fim_get_data
-    expect_get_user(0, strdup("user"));
-    expect_get_group(0, strdup("group"));
-
-    expect_fim_db_insert(syscheck.database, entry->file_entry.path, FIMDB_OK);
-
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, buf.st_ino, buf.st_dev, NULL);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    assert_int_equal(ret, FIM_FILE_UPDATED);
-    assert_non_null(event);
-}
-
-static void test_fim_process_file_from_db_conflicting_file_error_in_db(void **state) {
-    cJSON *event = NULL;
-    OSList *list = ((fim_data_t *)(*state))->list;
-    rb_tree *tree = ((fim_data_t *)(*state))->tree;
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_ino = entry->file_entry.data->inode + 1,
-                        .st_dev = entry->file_entry.data->dev };
-    fim_sanitize_state_t ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
-    will_return(__wrap_fim_db_data_exists, FIMDB_ERR);
-
-    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
-
-    assert_int_equal(ret, FIM_FILE_ERROR);
-    assert_null(event);
-}
-
-int fim_resolve_db_collision(unsigned long inode, unsigned long dev);
-static void test_fim_resolve_db_collision_no_paths_appended(void **state) {
-    int ret;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
-    will_return(__wrap_fim_db_append_paths_from_inode, NULL);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    ret = fim_resolve_db_collision(1234, 2080);
-
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_resolve_db_collision_normal_operation(void **state) {
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_ino = entry->file_entry.data->inode + 1,
-                        .st_dev = entry->file_entry.data->dev };
-    char *paths[] = { "/etc/valid", NULL };
-    int ret;
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
-    will_return(__wrap_fim_db_append_paths_from_inode, paths);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 0);
-
-    expect_string(__wrap_fim_db_file_is_scanned, path, entry->file_entry.path);
-    will_return(__wrap_fim_db_file_is_scanned, 1);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    ret = fim_resolve_db_collision(1234, 2080);
-
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_resolve_db_collision_with_appended_paths(void **state) {
-    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
-    fim_entry **disposable_entries;
-    fim_file_data disposable_data = { .inode = entry->file_entry.data->inode + 1, .dev = entry->file_entry.data->dev };
-    struct stat buf = { .st_mode = S_IFREG,
-                        .st_ino = entry->file_entry.data->inode + 1,
-                        .st_dev = entry->file_entry.data->dev };
-    char *paths[] = { "/etc/valid", NULL };
-    char *appended_paths[] = { "/etc/another/valid", NULL };
-    int ret;
-
-    disposable_entries = calloc(2, sizeof(fim_entry *));
-
-    if (disposable_entries == NULL) {
-        fail_msg("Failed to allocate disposable entry.");
-    }
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    disposable_entries[0] = calloc(1, sizeof(fim_entry));
-    disposable_entries[0]->file_entry.path = strdup("/etc/another/valid");
-    disposable_entries[0]->file_entry.data = calloc(1, sizeof(fim_file_data));
-    disposable_entries[1] = calloc(1, sizeof(fim_entry));
-    disposable_entries[1]->file_entry.path = strdup("/etc/valid");
-    disposable_entries[1]->file_entry.data = calloc(1, sizeof(fim_file_data));
-
-    memcpy(disposable_entries[0]->file_entry.data, &disposable_data, sizeof(fim_file_data));
-    memcpy(disposable_entries[1]->file_entry.data, entry->file_entry.data, sizeof(fim_file_data));
-
-    free(entry->file_entry.path);
-    entry->file_entry.path = strdup("/etc/valid");
-
-    if (entry->file_entry.path == NULL) {
-        fail_msg("Failed to set an invalid path.");
-    }
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
-    will_return(__wrap_fim_db_append_paths_from_inode, paths);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
-    will_return(__wrap_fim_db_get_path, entry);
-
-    expect_string(__wrap_lstat, filename, entry->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 1);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, entry->file_entry.data->inode + 1);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, entry->file_entry.data->dev);
-    will_return(__wrap_fim_db_append_paths_from_inode, appended_paths);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, disposable_entries[0]->file_entry.path);
-    will_return(__wrap_fim_db_get_path, disposable_entries[0]);
-
-    expect_string(__wrap_lstat, filename, disposable_entries[0]->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_string(__wrap_fim_db_file_is_scanned, path, disposable_entries[0]->file_entry.path);
-    will_return(__wrap_fim_db_file_is_scanned, 1);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, disposable_entries[1]->file_entry.path);
-    will_return(__wrap_fim_db_get_path, disposable_entries[1]);
-
-    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
-    will_return(__wrap_fim_db_data_exists, 0);
-
-    expect_string(__wrap_lstat, filename, disposable_entries[1]->file_entry.path);
-    will_return(__wrap_lstat, &buf);
-    will_return(__wrap_lstat, 0);
-
-    expect_string(__wrap_fim_db_file_is_scanned, path, disposable_entries[1]->file_entry.path);
-    will_return(__wrap_fim_db_file_is_scanned, 1);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    ret = fim_resolve_db_collision(1234, 2080);
-
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    free(disposable_entries);
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_resolve_db_collision_error_on_db(void **state) {
-    char *paths[] = { "/etc/valid", NULL };
-    int ret;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
-    will_return(__wrap_fim_db_append_paths_from_inode, paths);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/etc/valid");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-
-    ret = fim_resolve_db_collision(1234, 2080);
-
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, -1);
-}
-#endif
-
-int fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **saved, fim_event_mode event_mode);
-static void test_fim_update_db_data_null_entry(void **state) {
-    fim_file_data data;
-    expect_assert_failure(fim_update_db_data("/testpath", &data, NULL, FIM_SCHEDULED));
-}
-#ifndef TEST_WINAGENT
-static void test_fim_update_db_data_non_scheduled_mode(void **state) {
-    fim_file_data data = {.inode=1234, .dev=2080};
-    fim_entry *saved;
-    int ret;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_fim_db_insert(syscheck.database, "/testpath", FIMDB_OK);
-
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_REALTIME);
-
-    assert_int_equal(ret, FIMDB_OK);
-}
-
-static void test_fim_update_db_data_added_error_on_db(void **state) {
-    fim_file_data data;
-    fim_entry *saved;
-    int ret;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_data_exists, inode, data.inode);
-    expect_value(__wrap_fim_db_data_exists, dev, data.dev);
-    will_return(__wrap_fim_db_data_exists, FIMDB_ERR);
-
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_SCHEDULED);
-
-    assert_int_equal(ret, -1);
-}
-
-static void test_fim_update_db_data_added_file_available_data(void **state) {
-    fim_file_data data;
-    fim_entry *saved;
-    int ret;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_data_exists, inode, data.inode);
-    expect_value(__wrap_fim_db_data_exists, dev, data.dev);
-    will_return(__wrap_fim_db_data_exists, 0);
-
-    expect_fim_db_insert(syscheck.database, "/testpath", FIMDB_OK);
-
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_SCHEDULED);
-
-    assert_int_equal(ret, FIMDB_OK);
-}
-
-static void test_fim_update_db_data_added_file_data_collision(void **state) {
-    fim_file_data data = {.inode=1234, .dev=2080};
-    fim_entry *saved;
-    int ret;
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_value(__wrap_fim_db_data_exists, inode, data.inode);
-    expect_value(__wrap_fim_db_data_exists, dev, data.dev);
-    will_return(__wrap_fim_db_data_exists, 1);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, data.inode);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, data.dev);
-    will_return(__wrap_fim_db_append_paths_from_inode, NULL);
-
-    expect_fim_db_insert(syscheck.database, "/testpath", FIMDB_OK);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_SCHEDULED);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, FIMDB_OK);
-}
-
-static void test_fim_update_db_data_modified_entry_up_to_date(void **state) {
-    fim_file_data data = { .inode = 1234, .dev = 2080 };
-    fim_file_data db_data;
-    fim_entry db_entry = { .file_entry.data = &db_data };
-    fim_entry *saved;
-    int ret;
-
-    strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
-    strcpy(db_entry.file_entry.data->checksum, "0123456789abcdef0123456789abcdef01234567");
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, &db_entry);
-
-    expect_fim_db_set_scanned(syscheck.database, "/testpath", FIMDB_OK);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_SCHEDULED);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_update_db_data_modified_unchanged_inode(void **state) {
-    fim_file_data data = { .inode = 1234, .dev = 2080 };
-    fim_file_data db_data = { .inode = 1234, .dev = 2080 };
-    fim_entry db_entry = { .file_entry.data = &db_data };
-    fim_entry *saved;
-    int ret;
-
-    strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
-    strcpy(db_entry.file_entry.data->checksum, "76543210fedcba9876543210fedcba9876543210");
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, &db_entry);
-
-    expect_fim_db_insert(syscheck.database, "/testpath", FIMDB_OK);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_SCHEDULED);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_update_db_data_modified_error_on_db(void **state) {
-    fim_file_data data = { .inode = 1234, .dev = 2080 };
-    fim_file_data db_data = { .inode = 1235, .dev = 2080 };
-    fim_entry db_entry = { .file_entry.data = &db_data };
-    fim_entry *saved;
-    int ret;
-
-    strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
-    strcpy(db_entry.file_entry.data->checksum, "76543210fedcba9876543210fedcba9876543210");
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, &db_entry);
-
-    expect_value(__wrap_fim_db_data_exists, inode, data.inode);
-    expect_value(__wrap_fim_db_data_exists, dev, data.dev);
-    will_return(__wrap_fim_db_data_exists, FIMDB_ERR);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_SCHEDULED);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, -1);
-}
-
-static void test_fim_update_db_data_modified_data_collision(void **state) {
-    fim_file_data data = { .inode = 1234, .dev = 2080 };
-    fim_file_data db_data = { .inode = 1235, .dev = 2080 };
-    fim_entry db_entry = { .file_entry.data = &db_data };
-    fim_entry *saved;
-    int ret;
-
-    strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
-    strcpy(db_entry.file_entry.data->checksum, "76543210fedcba9876543210fedcba9876543210");
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
-    will_return(__wrap_fim_db_get_path, &db_entry);
-
-    expect_value(__wrap_fim_db_data_exists, inode, data.inode);
-    expect_value(__wrap_fim_db_data_exists, dev, data.dev);
-    will_return(__wrap_fim_db_data_exists, 1);
-
-    expect_value(__wrap_fim_db_append_paths_from_inode, inode, data.inode);
-    expect_value(__wrap_fim_db_append_paths_from_inode, dev, data.dev);
-    will_return(__wrap_fim_db_append_paths_from_inode, NULL);
-
-    expect_fim_db_insert(syscheck.database, "/testpath", FIMDB_OK);
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    ret = fim_update_db_data("/testpath", &data, &saved, FIM_SCHEDULED);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    assert_int_equal(ret, 0);
-}
-#else
-static void test_fim_update_db_data_added_file() {
-    fim_file_data data;
-    fim_entry *saved;
-    int ret;
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "c:\\testpath");
-    will_return(__wrap_fim_db_get_path, NULL);
-
-    expect_fim_db_insert(syscheck.database, "c:\\testpath", FIMDB_OK);
-
-    ret = fim_update_db_data("c:\\testpath", &data, &saved, FIM_SCHEDULED);
-
-    assert_int_equal(ret, FIMDB_OK);
-    assert_null(saved);
-}
-
-static void test_fim_update_db_data_modified_entry_up_to_date() {
-    fim_file_data data;
-    fim_file_data db_data;
-    fim_entry db_entry = { .file_entry.data = &db_data };
-    fim_entry *saved;
-    int ret;
-
-    strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
-    strcpy(db_entry.file_entry.data->checksum, "0123456789abcdef0123456789abcdef01234567");
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "c:\\testpath");
-    will_return(__wrap_fim_db_get_path, &db_entry);
-
-    expect_fim_db_set_scanned(syscheck.database, "c:\\testpath", FIMDB_OK);
-
-    ret = fim_update_db_data("c:\\testpath", &data, &saved, FIM_SCHEDULED);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_update_db_data_modified() {
-    fim_file_data data;
-    fim_file_data db_data;
-    fim_entry db_entry = { .file_entry.data = &db_data };
-    fim_entry *saved;
-    int ret;
-
-    strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
-    strcpy(db_entry.file_entry.data->checksum, "76543210fedcba9876543210fedcba9876543210");
-
-    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "c:\\testpath");
-    will_return(__wrap_fim_db_get_path, &db_entry);
-
-    expect_fim_db_insert(syscheck.database, "c:\\testpath", FIMDB_OK);
-
-    ret = fim_update_db_data("c:\\testpath", &data, &saved, FIM_SCHEDULED);
-
-    assert_int_equal(ret, 0);
-}
-
-#endif
 
 static void test_update_wildcards_config() {
     char **paths;
@@ -5902,47 +4780,6 @@ int main(void) {
         cmocka_unit_test_setup(test_fim_delete_file_event_different_mode_scheduled, setup_fim_entry),
         cmocka_unit_test_setup(test_fim_delete_file_event_different_mode_abort_realtime, setup_fim_entry),
         cmocka_unit_test_setup(test_fim_delete_file_event_different_mode_abort_whodata, setup_fim_entry),
-
-#ifndef TEST_WINAGENT
-        /* fim_process_file_from_db */
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_null_path, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_null_stack, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_null_tree, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_null_event, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_fail_to_get_entry, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_stat_error, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_deleted_file_not_in_configuration, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_deleted_file_fail_to_remove_entry_from_db, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_deleted_file_event_generated, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_file_without_conflict, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_current_inode_free_in_db, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_current_inode_taken_in_db, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_infinite_loop, setup_process_file_from_db, teardown_process_file_from_db),
-        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_error_in_db, setup_process_file_from_db, teardown_process_file_from_db),
-
-        /* fim_resolve_db_collision */
-        cmocka_unit_test(test_fim_resolve_db_collision_no_paths_appended),
-        cmocka_unit_test_setup(test_fim_resolve_db_collision_normal_operation, setup_fim_entry),
-        cmocka_unit_test_setup(test_fim_resolve_db_collision_with_appended_paths, setup_fim_entry),
-        cmocka_unit_test(test_fim_resolve_db_collision_error_on_db),
-#endif
-
-        /* fim_update_db_data */
-        cmocka_unit_test(test_fim_update_db_data_null_entry),
-#ifndef TEST_WINAGENT
-        cmocka_unit_test(test_fim_update_db_data_non_scheduled_mode),
-        cmocka_unit_test(test_fim_update_db_data_added_error_on_db),
-        cmocka_unit_test(test_fim_update_db_data_added_file_available_data),
-        cmocka_unit_test(test_fim_update_db_data_added_file_data_collision),
-        cmocka_unit_test(test_fim_update_db_data_modified_entry_up_to_date),
-        cmocka_unit_test(test_fim_update_db_data_modified_unchanged_inode),
-        cmocka_unit_test(test_fim_update_db_data_modified_error_on_db),
-        cmocka_unit_test(test_fim_update_db_data_modified_data_collision),
-#else
-        cmocka_unit_test(test_fim_update_db_data_added_file),
-        cmocka_unit_test(test_fim_update_db_data_modified_entry_up_to_date),
-        cmocka_unit_test(test_fim_update_db_data_modified),
-#endif
     };
     const struct CMUnitTest root_monitor_tests[] = {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),

@@ -261,6 +261,7 @@
 #define FIM_WILDCARDS_REMOVE_DIRECTORY      "(6362): Removing entry '%s' due to it has not been expanded by the wildcards"
 #define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
 
+
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
 #define WM_UPGRADE_MODULE_DISABLED           "(8152): Module Agent Upgrade disabled. Exiting..."

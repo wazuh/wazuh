@@ -15,6 +15,14 @@
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
 #define static
+
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char* const expression,
+                        const char * const file, const int line);
+
+#undef assert
+#define assert(expression) \
+    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
 const char *SQL_STMT[] = {
@@ -50,8 +58,6 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM file_data",
     [FIMDB_STMT_GET_INODE] = "SELECT inode FROM file_data where rowid=(SELECT inode_id FROM file_entry WHERE path = ?)",
     [FIMDB_STMT_GET_PATH_FROM_PATTERN] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE path LIKE ?",
-    [FIMDB_STMT_DATA_ROW_EXISTS] = "SELECT EXISTS(SELECT 1 FROM file_data WHERE inode=? AND dev=?);",
-    [FIMDB_STMT_PATH_IS_SCANNED] = "SELECT scanned FROM file_entry WHERE path = ?;",
     // Registries
 #ifdef WIN32
     [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -103,6 +109,8 @@ fdb_t *fim_db_init(int storage) {
 
     os_calloc(1, sizeof(fdb_t), fim);
     fim->transaction.interval = COMMIT_INTERVAL;
+
+    w_mutex_init(&fim->mutex, NULL);
 
     if (storage == FIM_DB_DISK) {
         fim_db_clean();
@@ -367,13 +375,16 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
 
     *finder = '\0';
 
+    w_mutex_lock(&fim_sql->mutex);
+
     value_name = filter_special_chars(finder + 1);
     key_path = filter_special_chars(full_path);
     os_calloc(1, sizeof(fim_entry), entry);
     entry->type = FIM_TYPE_REGISTRY;
-    entry->registry_entry.key = fim_db_get_registry_key(fim_sql, key_path, arch);
+    entry->registry_entry.key = _fim_db_get_registry_key(fim_sql, key_path, arch);
 
     if (entry->registry_entry.key == NULL) {
+        w_mutex_unlock(&fim_sql->mutex);
         free(key_path);
         free(full_path);
         os_free(value_name);
@@ -382,6 +393,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     }
 
     if (value_name == NULL || *value_name == '\0') {
+        w_mutex_unlock(&fim_sql->mutex);
         free(key_path);
         free(full_path);
         os_free(value_name);
@@ -391,14 +403,16 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     free(key_path);
     free(full_path);
 
-    entry->registry_entry.value = fim_db_get_registry_data(fim_sql, entry->registry_entry.key->id, value_name);
+    entry->registry_entry.value = _fim_db_get_registry_data(fim_sql, entry->registry_entry.key->id, value_name);
 
     free(value_name);
 
     if (entry->registry_entry.value == NULL) {
+        w_mutex_unlock(&fim_sql->mutex);
         fim_registry_free_entry(entry);
         return NULL;
     }
+    w_mutex_unlock(&fim_sql->mutex);
     return entry;
 }
 #endif
@@ -423,9 +437,12 @@ end:
 void fim_db_check_transaction(fdb_t *fim_sql) {
     time_t now = time(NULL);
 
+    w_mutex_lock(&fim_sql->mutex);
+
     if (fim_sql->transaction.last_commit + fim_sql->transaction.interval <= now) {
         if (!fim_sql->transaction.last_commit) {
             fim_sql->transaction.last_commit = now;
+            w_mutex_unlock(&fim_sql->mutex);
             return;
         }
 
@@ -436,6 +453,8 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
             while (fim_db_exec_simple_wquery(fim_sql, "BEGIN;") == FIMDB_ERR);
         }
     }
+
+    w_mutex_unlock(&fim_sql->mutex);
 }
 
 void fim_db_force_commit(fdb_t *fim_sql) {
@@ -467,6 +486,8 @@ int fim_db_process_get_query(fdb_t *fim_sql,
     int result;
     int i;
 
+    w_mutex_lock(&fim_sql->mutex);
+
     for (i = 0; result = sqlite3_step(fim_sql->stmt[index]), result == SQLITE_ROW; i++) {
 #ifndef WIN32
         fim_entry *entry = fim_db_decode_full_row(fim_sql->stmt[index]);
@@ -478,7 +499,7 @@ int fim_db_process_get_query(fdb_t *fim_sql,
         free_entry(entry);
     }
 
-    fim_db_check_transaction(fim_sql);
+    w_mutex_unlock(&fim_sql->mutex);
 
     return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
 }
@@ -500,8 +521,6 @@ int fim_db_multiple_row_query(fdb_t *fim_sql, int index, void *(*decode)(sqlite3
             free_row(decoded_row);
         }
     }
-
-    fim_db_check_transaction(fim_sql);
 
     return result != SQLITE_DONE ? FIMDB_ERR : FIMDB_OK;
 }
@@ -597,24 +616,25 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, 
 }
 
 int fim_db_get_count(fdb_t *fim_sql, int index) {
-
+    int retval = FIMDB_ERR;
 #ifndef WIN32
-    if (index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
-        index == FIMDB_STMT_COUNT_DB_ENTRIES) {
+    assert(index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
+           index == FIMDB_STMT_COUNT_DB_ENTRIES);
 #else
-    if (index == FIMDB_STMT_GET_COUNT_REG_KEY || index == FIMDB_STMT_GET_COUNT_REG_DATA ||
-        index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
-        index == FIMDB_STMT_COUNT_DB_ENTRIES) {
+    assert(index == FIMDB_STMT_GET_COUNT_REG_KEY || index == FIMDB_STMT_GET_COUNT_REG_DATA ||
+           index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
+           index == FIMDB_STMT_COUNT_DB_ENTRIES);
 #endif
-        fim_db_clean_stmt(fim_sql, index);
 
-        if (sqlite3_step(fim_sql->stmt[index]) == SQLITE_ROW) {
-            return sqlite3_column_int(fim_sql->stmt[index], 0);
-        } else {
-            return FIMDB_ERR;
-        }
+    w_mutex_lock(&fim_sql->mutex);
+    fim_db_clean_stmt(fim_sql, index);
+
+    if (sqlite3_step(fim_sql->stmt[index]) == SQLITE_ROW) {
+        retval = sqlite3_column_int(fim_sql->stmt[index], 0);
     }
-    return FIMDB_ERR;
+    w_mutex_unlock(&fim_sql->mutex);
+
+    return retval;
 }
 
 int fim_db_process_read_file(fdb_t *fim_sql,
@@ -638,7 +658,6 @@ int fim_db_process_read_file(fdb_t *fim_sql,
             return FIMDB_ERR;
         }
 
-        w_mutex_lock(mutex);
         fim_entry *entry = NULL;
 
 #ifndef WIN32
@@ -663,8 +682,6 @@ int fim_db_process_read_file(fdb_t *fim_sql,
         }
 #endif
 
-        w_mutex_unlock(mutex);
-
         if (entry != NULL) {
             callback(fim_sql, entry, mutex, alert, mode, w_evt);
             free_entry(entry);
@@ -683,13 +700,11 @@ int fim_db_process_read_file(fdb_t *fim_sql,
 // General use functions
 
 void fim_db_bind_range(fdb_t *fim_sql, int index, const char *start, const char *top) {
-    if (index == FIMDB_STMT_GET_PATH_RANGE ||
-        index == FIMDB_STMT_GET_REG_PATH_RANGE ||
-        index == FIMDB_STMT_GET_COUNT_RANGE ||
-        index == FIMDB_STMT_GET_REG_COUNT_RANGE ) {
-        sqlite3_bind_text(fim_sql->stmt[index], 1, start, -1, NULL);
-        sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
-    }
+    assert(index == FIMDB_STMT_GET_PATH_RANGE || index == FIMDB_STMT_GET_REG_PATH_RANGE ||
+           index == FIMDB_STMT_GET_COUNT_RANGE || index == FIMDB_STMT_GET_REG_COUNT_RANGE);
+
+    sqlite3_bind_text(fim_sql->stmt[index], 1, start, -1, NULL);
+    sqlite3_bind_text(fim_sql->stmt[index], 2, top, -1, NULL);
 }
 
 char *fim_db_decode_string(sqlite3_stmt *stmt) {
@@ -724,10 +739,14 @@ char **fim_db_decode_string_array(sqlite3_stmt *stmt) {
 int fim_db_get_string(fdb_t *fim_sql, int index, char **str) {
     int result;
 
+    w_mutex_lock(&fim_sql->mutex);
     fim_db_clean_stmt(fim_sql, index);
 
-    if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE) {
+    result = sqlite3_step(fim_sql->stmt[index]);
+
+    if (result != SQLITE_ROW && result != SQLITE_DONE) {
         merror("Step error getting row string: %s", sqlite3_errmsg(fim_sql->db));
+        w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
 
@@ -735,6 +754,8 @@ int fim_db_get_string(fdb_t *fim_sql, int index, char **str) {
         char *text = (char *)sqlite3_column_text(fim_sql->stmt[index], 0);
         sqlite_strdup(text, *str);
     }
+
+    w_mutex_unlock(&fim_sql->mutex);
 
     return FIMDB_OK;
 }
@@ -764,10 +785,19 @@ int fim_db_get_data_checksum(fdb_t *fim_sql, fim_type type, void *arg) {
         [FIM_TYPE_FILE] = FIMDB_STMT_GET_ALL_CHECKSUMS,
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_ALL_CHECKSUMS,
     };
+    int retval;
+
+    w_mutex_lock(&fim_sql->mutex);
 
     fim_db_clean_stmt(fim_sql, CHECKSUM_QUERY[type]);
-    return fim_db_multiple_row_query(fim_sql, CHECKSUM_QUERY[type], FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
+    retval = fim_db_multiple_row_query(fim_sql, CHECKSUM_QUERY[type], FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
                                      FIM_DB_CALLBACK_TYPE(fim_db_callback_calculate_checksum), 0, arg);
+
+    w_mutex_unlock(&fim_sql->mutex);
+
+    fim_db_check_transaction(fim_sql);
+
+    return retval;
 }
 
 int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, const char *top, int *count) {
@@ -776,16 +806,21 @@ int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, con
         [FIM_TYPE_REGISTRY] = FIMDB_STMT_GET_REG_COUNT_RANGE,
     };
 
+    w_mutex_lock(&fim_sql->mutex);
+
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, RANGE_QUERY[type]);
     fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
 
     if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
         merror("Step error getting count range 'start %s' 'top %s': %s", start, top, sqlite3_errmsg(fim_sql->db));
+        w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
 
     *count = sqlite3_column_int(fim_sql->stmt[RANGE_QUERY[type]], 0);
+
+    w_mutex_unlock(&fim_sql->mutex);
 
     return FIMDB_OK;
 }
@@ -811,6 +846,8 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         return FIMDB_ERR;
     }
 
+    w_mutex_lock(&fim_sql->mutex);
+
     // Clean statements
     fim_db_clean_stmt(fim_sql, RANGE_QUERY[type]);
     fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
@@ -821,6 +858,7 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
             merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s", start, top, i,
                    sqlite3_errmsg(fim_sql->db));
+            w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_ERR;
         }
 
@@ -828,6 +866,7 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
             free_strarray(decoded_row);
             merror("Failed to decode checksum range query");
+            w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_ERR;
         }
 
@@ -850,6 +889,7 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
                    sqlite3_errmsg(fim_sql->db));
             os_free(*str_pathlh);
             os_free(*str_pathuh);
+            w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_ERR;
         }
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
@@ -858,6 +898,7 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
             os_free(*str_pathlh);
             os_free(*str_pathuh);
             merror("Failed to decode checksum range query");
+            w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_ERR;
         }
 
@@ -877,8 +918,10 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
         merror("Failed to obtain required paths in order to form message");
         os_free(*str_pathlh);
         os_free(*str_pathuh);
+        w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
+    w_mutex_unlock(&fim_sql->mutex);
 
     return FIMDB_OK;
 }
@@ -897,6 +940,8 @@ int fim_db_get_path_range(fdb_t *fim_sql,
         return FIMDB_ERR;
     }
 
+    w_mutex_lock(&fim_sql->mutex);
+
     fim_db_clean_stmt(fim_sql, RANGE_QUERY[type]);
     fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
 
@@ -904,6 +949,9 @@ int fim_db_get_path_range(fdb_t *fim_sql,
                                         free, FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string), storage,
                                         (void *)*file);
 
+    w_mutex_unlock(&fim_sql->mutex);
+
+    fim_db_check_transaction(fim_sql);
 
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
@@ -966,12 +1014,12 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
 
 #ifndef WIN32
 // LCOV_EXCL_START
-inline int fim_db_get_count_entries(fdb_t * fim_sql) {
+inline int fim_db_get_count_entries(fdb_t *fim_sql) {
     return fim_db_get_count_file_entry(fim_sql);
 }
 // LCOV_EXCL_STOP
 #else
-int fim_db_get_count_entries(fdb_t * fim_sql) {
+int fim_db_get_count_entries(fdb_t *fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_COUNT_DB_ENTRIES);
 
     if(res == FIMDB_ERR) {
@@ -980,3 +1028,13 @@ int fim_db_get_count_entries(fdb_t * fim_sql) {
     return res;
 }
 #endif
+
+int fim_db_is_full(fdb_t *fim_sql) {
+    int retval;
+
+    w_mutex_lock(&fim_sql->mutex);
+    retval = fim_sql->full;
+    w_mutex_unlock(&fim_sql->mutex);
+
+    return retval;
+}

@@ -580,18 +580,14 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
         }
     }
 
-    w_mutex_lock(mutex);
     result = fim_db_get_values_from_registry_key(fim_sql, &file, syscheck.database_store, data->registry_entry.key->id);
-    w_mutex_unlock(mutex);
 
     if (result == FIMDB_OK && file && file->elements) {
         fim_db_process_read_registry_data_file(fim_sql, file, mutex, fim_registry_process_value_delete_event,
                                                syscheck.database_store, _alert, _ev_mode, _w_evt);
     }
 
-    w_mutex_lock(mutex);
     fim_db_remove_registry_key(fim_sql, data);
-    w_mutex_unlock(mutex);
 
     if (configuration->opts & CHECK_SEECHANGES) {
         fim_diff_process_delete_registry(data->registry_entry.key->path, data->registry_entry.key->arch);
@@ -606,9 +602,7 @@ void fim_registry_process_unscanned_entries() {
     fim_event_mode event_mode = FIM_SCHEDULED;
     int result;
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_keys_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
@@ -618,9 +612,7 @@ void fim_registry_process_unscanned_entries() {
                                  &event_mode, NULL);
     }
 
-    w_mutex_lock(&syscheck.fim_entry_mutex);
     result = fim_db_get_registry_data_not_scanned(syscheck.database, &file, syscheck.database_store);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
         mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
