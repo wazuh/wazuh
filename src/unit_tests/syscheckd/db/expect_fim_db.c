@@ -161,6 +161,9 @@ int setup_fim_db_group(void **state) {
     (void)state;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
 #ifndef TEST_SERVER
     will_return_always(__wrap_getDefine_Int, 0);
@@ -179,6 +182,9 @@ int setup_fim_db_group(void **state) {
 }
 
 int teardown_fim_db_group(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     Free_Syscheck(&syscheck);
     w_mutex_destroy(&syscheck.fim_entry_mutex);
     test_mode = 0;
