@@ -997,12 +997,12 @@ void test_wm_office365_dump_yes_options_empty_arrays(void **state) {
     data->office365_config->queue_fd = 1;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
-    
+
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("", data->office365_config->subscription->subscription_name);
 
     char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{}],\"subscriptions\":[\"\"]}}";
-    
+
     cJSON *root = wm_office365_dump(data->office365_config);
     data->root_c = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -1022,19 +1022,18 @@ void test_wm_office365_dump_yes_options(void **state) {
     os_strdup("test_client_id", data->office365_config->auth->client_id);
     os_strdup("test_client_secret_path", data->office365_config->auth->client_secret_path);
     os_strdup("test_client_secret", data->office365_config->auth->client_secret);
-    
+
     os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
     os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
 
     char *test = "{\"office365\":{\"enabled\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"api_auth\":[{\"tenant_id\":\"test_tenant_id\",\"client_id\":\"test_client_id\",\"client_secret_path\":\"test_client_secret_path\",\"client_secret\":\"test_client_secret\"}],\"subscriptions\":[\"test_subscription_name\"]}}";
-    
+
     cJSON *root = wm_office365_dump(data->office365_config);
     data->root_c = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
 
     assert_string_equal(data->root_c, test);
 }
-
 
 void test_wm_office365_get_access_token_with_auth_secret(void **state) {
     size_t max_size = OS_SIZE_8192;
@@ -1163,7 +1162,6 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
 
     assert_string_equal(access_token, "wazuh");
 }
-
 
 void test_wm_office365_manage_subscription_start_code_200(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
@@ -1300,8 +1298,42 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
     //assert_string_equal(*error_msg, data->response->body);
 }
 
+void test_wm_office365_get_fail_by_tenant_and_subscription_null(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    wm_office365_fail *fails = NULL;
+    os_calloc(1, sizeof(wm_office365_fail), fails);
+    fails->subscription_name = "subscription";
+    fails->tenant_id = "tenant";
+    wm_office365_fail *result = NULL;
+    char* subscription_name = "subscription_name";
+    char* tenant_id = "tenant_id";
+
+    result = wm_office365_get_fail_by_tenant_and_subscription(fails, tenant_id, subscription_name);
+    assert_null(result);
+    os_free(fails);
+}
+
+void test_wm_office365_get_fail_by_tenant_and_subscription_not_null(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    wm_office365_fail *fails = NULL;
+    os_calloc(1, sizeof(wm_office365_fail), fails);
+    fails->subscription_name = "subscription_name";
+    fails->tenant_id = "tenant_id";
+    wm_office365_fail *result = NULL;
+    char* subscription_name = "subscription_name";
+    char* tenant_id = "tenant_id";
+
+    result = wm_office365_get_fail_by_tenant_and_subscription(fails, tenant_id, subscription_name);
+    assert_string_equal(result->tenant_id, tenant_id);
+    assert_string_equal(result->subscription_name, subscription_name);
+
+    os_free(fails);
+}
+
 int main(void) {
-    const struct CMUnitTest tests[] = {
+    const struct CMUnitTest tests_configuration[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_configuration_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_default_configuration, setup_test_read, teardown_test_read),
@@ -1336,6 +1368,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_client_secret_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_client_secret_path_1, setup_test_read, teardown_test_read),
+    };
+    const struct CMUnitTest tests_functionality[] = {
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_no_options, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options_empty_arrays, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options, setup_conf, teardown_conf),
@@ -1346,8 +1380,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_manage_subscription_start_code_200, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_manage_subscription_stop_code_400_error_AF20024, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_fail_by_tenant_and_subscription_null, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_get_fail_by_tenant_and_subscription_not_null, setup_conf, teardown_conf),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    int result;
+    result = cmocka_run_group_tests(tests_configuration, NULL, NULL);
+    result += cmocka_run_group_tests(tests_functionality, NULL, NULL);
+    return result;
 }
 

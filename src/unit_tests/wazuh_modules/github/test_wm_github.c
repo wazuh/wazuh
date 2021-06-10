@@ -1222,7 +1222,7 @@ void test_error_event_type_1(void **state) {
 
 int main(void) {
 
-    const struct CMUnitTest tests_with_startup[] = {
+    const struct CMUnitTest tests_functionality[] = {
         #ifndef WIN32
             cmocka_unit_test_setup_teardown(test_github_main_fail_StartMQ, setup_conf, teardown_conf),
             cmocka_unit_test_setup_teardown(test_github_main_enable, setup_conf, teardown_conf),
@@ -1245,7 +1245,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_github_execute_scan_status_code_200_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_max_size_reached, setup_conf, teardown_conf),
     };
-    const struct CMUnitTest tests_without_startup[] = {
+    const struct CMUnitTest tests_configuration[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_configuration_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_default_configuration, setup_test_read, teardown_test_read),
@@ -1276,7 +1276,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_event_type_1, setup_test_read, teardown_test_read),
     };
     int result;
-    result = cmocka_run_group_tests(tests_with_startup, NULL, NULL);
-    result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result = cmocka_run_group_tests(tests_functionality, NULL, NULL);
+    result += cmocka_run_group_tests(tests_configuration, NULL, NULL);
     return result;
 }
