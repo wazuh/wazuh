@@ -274,12 +274,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
                 if field not in result.keys():
                     result[field] = 'unknown'
 
-            # compute 'status' field, format id with zero padding and remove non-user-requested fields.
-            # Also remove, extra fields (internal key and registration IP)
-            selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
-            selected_fields |= self.min_select_fields
-            self._data = [{key: format_fields(key, value)
-                           for key, value in item.items() if key in selected_fields} for item in self._data]
+        fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
