@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import random
+import re
 import struct
 import traceback
 from importlib import import_module
@@ -480,10 +481,14 @@ class Handler(asyncio.Protocol):
         total = len(my_str)
         task_id = await self.send_request(command=b'new_str', data=str(total).encode())
 
-        # Send chunks of the string to the destination node, indicating the ID of the string.
-        local_req_chunk = self.request_chunk - len(task_id) - 1
-        for c in range(0, total, local_req_chunk):
-            await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
+        if task_id.startswith(b'Error'):
+            self.logger.error(f'There was an error while trying to send a string: {task_id}')
+            await self.send_request(command=b'err_str', data=str(total).encode())
+        else:
+            # Send chunks of the string to the destination node, indicating the ID of the string.
+            local_req_chunk = self.request_chunk - len(task_id) - 1
+            for c in range(0, total, local_req_chunk):
+                await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str[c:c + local_req_chunk])
 
         return task_id
 
@@ -619,6 +624,8 @@ class Handler(asyncio.Protocol):
             return self.update_file(data)
         elif command == b'str_upd':
             return self.str_upd(data)
+        elif command == b'err_str':
+            return self.process_error_str(data)
         elif command == b"file_end":
             return self.end_file(data)
         else:
@@ -762,6 +769,35 @@ class Handler(asyncio.Protocol):
         name, str_data = data.split(b' ', 1)
         self.in_str[name].receive_data(str_data)
         return b"ok", b"Chunk received"
+
+    def process_error_str(self, expected_len):
+        """Search and delete item inside self.in_str.
+
+        If null byetearray is created inside self.in_str and its len is the same as 'expected_len', it can be
+        inferred that said item is garbage consequence of an incorrect communication and should be deleted.
+
+        Parameters
+        ----------
+        expected_len : bytes
+            Expected length of bytearray. If any bytearray has this length and its content is null, it will be deleted.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Task_id of deleted item, if found.
+        """
+        regex = re.compile(b'[^\x00]')
+        expected_len = int(expected_len.decode())
+
+        for item in list(self.in_str):
+            if self.in_str.get(item, None):
+                if self.in_str.get(item).total == expected_len and not regex.match(self.in_str.get(item).payload):
+                    del self.in_str[item]
+                    return b'ok', item
+
+        return b'ok', b'None'
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:
         """Define message when an unknown command is received.
