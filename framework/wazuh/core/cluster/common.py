@@ -770,7 +770,7 @@ class Handler(asyncio.Protocol):
         self.in_str[name].receive_data(str_data)
         return b"ok", b"Chunk received"
 
-    def process_error_str(self, expected_len):
+    def process_error_str(self, expected_len: bytes) -> Tuple[bytes, bytes]:
         """Search and delete item inside self.in_str.
 
         If null byetearray is created inside self.in_str and its len is the same as 'expected_len', it can be
@@ -788,14 +788,15 @@ class Handler(asyncio.Protocol):
         bytes
             Task_id of deleted item, if found.
         """
+        # Regex to find any character different to '\x00' (null) inside a string.
         regex = re.compile(b'[^\x00]')
         expected_len = int(expected_len.decode())
 
         for item in list(self.in_str):
-            if self.in_str.get(item, None):
-                if self.in_str.get(item).total == expected_len and not regex.match(self.in_str.get(item).payload):
-                    del self.in_str[item]
-                    return b'ok', item
+            if self.in_str.get(item, None) and self.in_str.get(item).total == expected_len and not \
+                    regex.match(self.in_str.get(item).payload):
+                self.in_str.pop(item, None)
+                return b'ok', item
 
         return b'ok', b'None'
 
