@@ -92,6 +92,7 @@ def read_cluster_config(config_file=common.ossec_conf, from_import=False) -> typ
     return config_cluster
 
 
+@common.context_cached('manager_status')
 def get_manager_status() -> typing.Dict:
     """Get the current status of each process of the manager.
 

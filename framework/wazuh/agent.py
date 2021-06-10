@@ -344,26 +344,34 @@ def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=Fal
 
         db_query = WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters)
         data = db_query.run()
-        can_purge_agents = list(map(operator.itemgetter('id'), data['items']))
-        for agent_id in agent_list:
-            try:
-                if agent_id == "000":
-                    raise WazuhError(1703)
-                elif agent_id not in system_agents:
-                    raise WazuhResourceNotFound(1701)
-                elif agent_id not in can_purge_agents:
-                    raise WazuhError(
+        can_purge_agents = set(map(operator.itemgetter('id'), data['items']))
+        agent_list = set(agent_list)
+
+        try:
+            agent_list.remove('000')
+            result.add_failed_item('000', WazuhError(1703))
+        except KeyError:
+            pass
+
+        # Add not existing agents to failed_items
+        not_found_agents = agent_list - system_agents
+        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhResourceNotFound(1701)), not_found_agents))
+
+        # Add non eligible agents to failed_items
+        non_eligible_agents = agent_list - not_found_agents - can_purge_agents
+        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhError(
                         1731,
                         extra_message="some of the requirements are not met -> {}".format(
                             ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
                             (f', q: {q}' if q else '')
                         )
-                    )
-                else:
-                    my_agent = Agent(agent_id)
-                    my_agent.load_info_from_db()
-                    my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
-                    result.affected_items.append(agent_id)
+                    )), non_eligible_agents))
+
+        for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
+            try:
+                my_agent = Agent(agent_id)
+                my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
+                result.affected_items.append(agent_id)
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
         result.total_affected_items = len(result.affected_items)
