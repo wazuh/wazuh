@@ -12,7 +12,7 @@ import random
 import struct
 import traceback
 from importlib import import_module
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict, Callable, List
 from uuid import uuid4
 
 import cryptography.fernet
@@ -314,7 +314,7 @@ class Handler(asyncio.Protocol):
         self.counter = (self.counter + 1) % (2 ** 32)
         return self.counter
 
-    def msg_build(self, command: bytes, counter: int, data: bytes) -> list[bytearray]:
+    def msg_build(self, command: bytes, counter: int, data: bytes) -> List[bytearray]:
         """Build messages with header + payload.
 
         Each message contains a header in self.header_format format that includes self.counter, the data size and the

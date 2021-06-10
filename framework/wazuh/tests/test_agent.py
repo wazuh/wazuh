@@ -2,7 +2,6 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import os
 import shutil
 import sys
@@ -441,12 +440,20 @@ def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, 
     key : str
         The agent key.
     """
-    try:
-        add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
-        assert add_result.dikt['data']['id'] == agent_id
-        assert add_result.dikt['data']['key']
-    except WazuhError as e:
-        assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
+    def mock_open(*args):
+        """Mock open only if .write() is used"""
+        if len(args) == 2 and args[1] in ['a', 'w']:
+            return patch('wazuh.core.agent.open')
+        else:
+            return open(*args)
+
+    with patch('wazuh.core.agent.open', new=mock_open):
+        try:
+            add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
+            assert add_result.dikt['data']['id'] == agent_id
+            assert add_result.dikt['data']['key']
+        except WazuhError as e:
+            assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list, expected_result', [
