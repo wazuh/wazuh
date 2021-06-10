@@ -15,8 +15,7 @@
 #include <stdlib.h>
 #include "headers/shared.h"
 #include "../wrappers/common.h"
-
-//curl_response *wurl_http_request(char *method, char **headers, const char *url, const char *payload);
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 /* setup/teardown */
 static int group_setup(void ** state) {
@@ -34,12 +33,13 @@ static int group_teardown(void ** state) {
 void test_wurl_http_request_url_null(void **state)
 {
     curl_response *response = NULL;
-    char *headers = NULL;
+    char **headers = NULL;
     char *url = NULL;
+    size_t max_size = 1;
 
     expect_string(__wrap__mdebug1, formatted_msg, "url not defined");
 
-    response = wurl_http_request(NULL, &headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -47,8 +47,9 @@ void test_wurl_http_request_init_failure(void **state)
 {
     curl_response *response = NULL;
     CURL* curl = NULL;
-    char *headers = NULL;
+    char **headers = NULL;
     char *url = "http://test.com";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -58,7 +59,7 @@ void test_wurl_http_request_init_failure(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl initialization failure");
 
-    response = wurl_http_request(NULL, &headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -66,8 +67,9 @@ void test_wurl_http_request_headers_list_null(void **state)
 {
     curl_response *response = NULL;
     CURL *curl = (CURL *) 1;
-    char *headers = NULL;
-    char *url = "http://test.com";
+    char **headers = NULL;
+    char *url = "https://test.com";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -76,7 +78,7 @@ void test_wurl_http_request_headers_list_null(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(wrap_curl_slist_append, list, NULL);
         will_return(wrap_curl_slist_append, headers);
 
@@ -84,11 +86,17 @@ void test_wurl_http_request_headers_list_null(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CAINFO);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(__wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(__wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
 
@@ -97,7 +105,7 @@ void test_wurl_http_request_headers_list_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl append header failure");
 
-    response = wurl_http_request(NULL, &headers, url, NULL);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size);
     assert_null(response);
 }
 
@@ -108,6 +116,7 @@ void test_wurl_http_request_headers_tmp_null(void **state)
     CURL *curl = (CURL *) 1;
     char *pheaders = "headers";
     char *url = "http://test.com";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -116,11 +125,11 @@ void test_wurl_http_request_headers_tmp_null(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(wrap_curl_slist_append, list, NULL);
         will_return(wrap_curl_slist_append, headers);
 
-        expect_string(wrap_curl_slist_append, string, "headers");
+        expect_string(wrap_curl_slist_append, data, "headers");
         expect_value(wrap_curl_slist_append, list, headers);
         will_return(wrap_curl_slist_append, NULL);
 
@@ -129,15 +138,17 @@ void test_wurl_http_request_headers_tmp_null(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(__wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(__wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
 
-        expect_string(__wrap_curl_slist_append, string, "headers");
+        expect_string(__wrap_curl_slist_append, data, "headers");
         expect_value(__wrap_curl_slist_append, list, headers);
         will_return(__wrap_curl_slist_append, NULL);
 
@@ -147,7 +158,8 @@ void test_wurl_http_request_headers_tmp_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl append custom header failure");
 
-    response = wurl_http_request(NULL, &pheaders, url, NULL);
+    response = wurl_http_request(NULL, &pheaders, url, NULL, max_size);
+
     assert_null(response);
 }
 
@@ -157,13 +169,14 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
     struct curl_slist* headers = (struct curl_slist*) 1;
     CURL *curl = (CURL *) 1;
     char *url = "http://test.com";
+    size_t max_size = 1;
 
     char auth_header[OS_SIZE_8192];
-    snprintf(auth_header, OS_SIZE_128 -1, "Content-Type: application/x-www-form-urlencoded");
+    snprintf(auth_header, OS_SIZE_8192 -1, "Content-Type: application/x-www-form-urlencoded");
     char **pheaders = NULL;
     os_calloc(2, sizeof(char*), pheaders);
     pheaders[0] = auth_header;
-    pheaders[1] = NULL;    
+    pheaders[1] = NULL;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -172,11 +185,11 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(wrap_curl_slist_append, list, NULL);
         will_return(wrap_curl_slist_append, headers);
 
-        expect_string(wrap_curl_slist_append, string, "Content-Type: application/x-www-form-urlencoded");
+        expect_string(wrap_curl_slist_append, data, "Content-Type: application/x-www-form-urlencoded");
         expect_value(wrap_curl_slist_append, list, headers);
         will_return(wrap_curl_slist_append, headers);
 
@@ -212,15 +225,17 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(__wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(__wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
 
-        expect_string(__wrap_curl_slist_append, string, "Content-Type: application/x-www-form-urlencoded");
+        expect_string(__wrap_curl_slist_append, data, "Content-Type: application/x-www-form-urlencoded");
         expect_value(__wrap_curl_slist_append, list, headers);
         will_return(__wrap_curl_slist_append, headers);
 
@@ -257,7 +272,8 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
-    response = wurl_http_request(NULL, pheaders, url, NULL);
+    response = wurl_http_request(NULL, pheaders, url, NULL, max_size);
+    os_free(pheaders);
     assert_null(response);
 }
 
@@ -268,7 +284,8 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
     CURL *curl = (CURL *) 1;
     char *pheaders = NULL;
     char *url = "http://test.com";
-    const char *payload = "payload test"; 
+    const char *payload = "payload test";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -277,7 +294,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(wrap_curl_slist_append, list, NULL);
         will_return(wrap_curl_slist_append, headers);
 
@@ -321,11 +338,13 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(__wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(__wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
 
@@ -370,7 +389,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
-    response = wurl_http_request(NULL, &pheaders, url, payload);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size);
     assert_null(response);
 }
 
@@ -381,7 +400,8 @@ void test_wurl_http_request_success(void **state)
     CURL *curl = (CURL *) 1;
     char *pheaders = NULL;
     char *url = "http://test.com";
-    const char *payload = "payload test"; 
+    const char *payload = "payload test";
+    size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
         will_return(wrap_curl_easy_init, curl);
@@ -390,7 +410,7 @@ void test_wurl_http_request_success(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(wrap_curl_slist_append, list, NULL);
         will_return(wrap_curl_slist_append, headers);
 
@@ -439,11 +459,13 @@ void test_wurl_http_request_success(void **state)
     #else
         will_return(__wrap_curl_easy_init, curl);
 
+        expect_FileSize("/etc/ssl/certs/ca-certificates.crt", 1);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_CUSTOMREQUEST);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_string(__wrap_curl_slist_append, string, "User-Agent: curl/7.58.0");
+        expect_string(__wrap_curl_slist_append, data, "User-Agent: curl/7.58.0");
         expect_value(__wrap_curl_slist_append, list, NULL);
         will_return(__wrap_curl_slist_append, headers);
 
@@ -490,8 +512,11 @@ void test_wurl_http_request_success(void **state)
         expect_value(__wrap_curl_easy_cleanup, curl, curl);
     #endif
 
-    response = wurl_http_request(NULL, &pheaders, url, payload);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size);
     assert_non_null(response);
+    os_free(response->header);
+    os_free(response->body);
+    os_free(response);
 }
 
 int main(void)
@@ -509,3 +534,4 @@ int main(void)
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
+

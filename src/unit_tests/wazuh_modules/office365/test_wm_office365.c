@@ -118,6 +118,7 @@ void test_read_configuration(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>10m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -138,6 +139,7 @@ void test_read_configuration(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->only_future_events, 0);
     assert_int_equal(module_data->interval, 600);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
@@ -153,6 +155,7 @@ void test_read_configuration_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>yes</only_future_events>"
         "<interval>10m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -180,6 +183,7 @@ void test_read_configuration_1(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->interval, 600);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
@@ -212,6 +216,7 @@ void test_read_interval(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>10</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -232,6 +237,7 @@ void test_read_interval(void **state) {
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->only_future_events, 0);
     assert_int_equal(module_data->interval, 10);
+    assert_int_equal(module_data->curl_max_size, 2048);
     assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
     assert_string_equal(module_data->auth->client_id, "your_client_id");
     assert_string_equal(module_data->auth->client_secret, "your_secret");
@@ -247,6 +253,7 @@ void test_read_interval_s(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>50s</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -272,6 +279,7 @@ void test_read_interval_s_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>90000s</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -296,6 +304,7 @@ void test_read_interval_m(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -321,6 +330,7 @@ void test_read_interval_m_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1500m</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -345,6 +355,7 @@ void test_read_interval_h(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>2h</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -370,6 +381,7 @@ void test_read_interval_h_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>30h</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -394,6 +406,7 @@ void test_read_interval_d(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -419,6 +432,7 @@ void test_read_interval_d_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>2d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -434,6 +448,118 @@ void test_read_interval_d_fail(void **state) {
     ;
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'interval' at module 'office365'. The maximum value allowed is 1 day.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_read_curl_max_size(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>4</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),0);
+    wm_office365 *module_data = (wm_office365*)test->module->data;
+    assert_int_equal(module_data->enabled, 0);
+    assert_int_equal(module_data->only_future_events, 0);
+    assert_int_equal(module_data->interval, 10);
+    assert_int_equal(module_data->curl_max_size, 4096);
+    assert_string_equal(module_data->auth->tenant_id, "your_tenant_id");
+    assert_string_equal(module_data->auth->client_id, "your_client_id");
+    assert_string_equal(module_data->auth->client_secret, "your_secret");
+    assert_string_equal(module_data->subscription->subscription_name, "Audit.AzureActiveDirectory");
+    assert_string_equal(module_data->subscription->next->subscription_name, "Audit.Exchange");
+    assert_string_equal(module_data->subscription->next->next->subscription_name, "Audit.SharePoint");
+    assert_string_equal(module_data->subscription->next->next->next->subscription_name, "Audit.General");
+    assert_string_equal(module_data->subscription->next->next->next->next->subscription_name, "DLP.All");
+}
+
+void test_read_curl_max_size_invalid_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>0</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_read_curl_max_size_invalid_2(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>-1</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_read_curl_max_size_invalid_3(void **state) {
+    const char *string =
+        "<enabled>no</enabled>"
+        "<only_future_events>no</only_future_events>"
+        "<interval>10</interval>"
+        "<curl_max_size>invalid</curl_max_size>"
+        "<api_auth>"
+            "<tenant_id>your_tenant_id</tenant_id>"
+            "<client_id>your_client_id</client_id>"
+            "<client_secret>your_secret</client_secret>"
+        "</api_auth>"
+        "<subscriptions>"
+            "<subscription>Audit.AzureActiveDirectory</subscription>"
+            "<subscription>Audit.Exchange</subscription>"
+            "<subscription>Audit.SharePoint</subscription>"
+            "<subscription>Audit.General</subscription>"
+            "<subscription>DLP.All</subscription>"
+        "</subscriptions>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -458,6 +584,7 @@ void test_fake_tag(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -483,6 +610,7 @@ void test_fake_tag_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -508,6 +636,7 @@ void test_invalid_content_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -532,6 +661,7 @@ void test_invalid_content_2(void **state) {
         "<enabled>invalid</enabled>\n"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -556,6 +686,7 @@ void test_invalid_content_3(void **state) {
         "<enabled>yes</enabled>\n"
         "<only_future_events>no</only_future_events>"
         "<interval>invalid</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -580,6 +711,7 @@ void test_invalid_content_4(void **state) {
         "<enabled>yes</enabled>\n"
         "<only_future_events>invalid</only_future_events>"
         "<interval>yes</interval>"
+        "<curl_max_size>2</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -905,7 +1037,7 @@ void test_wm_office365_dump_yes_options(void **state) {
 
 
 void test_wm_office365_get_access_token_with_auth_secret(void **state) {
-    char** error_msg = NULL;
+    size_t max_size = OS_SIZE_8192;
     test_struct_t *data  = (test_struct_t *)*state;
     data->response = NULL;
     char *access_token = NULL;
@@ -919,18 +1051,21 @@ void test_wm_office365_get_access_token_with_auth_secret(void **state) {
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_any(__wrap__mtdebug1, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
 
     assert_null(access_token);
 }
 
 void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
-    char** error_msg = NULL;
+    size_t max_size = OS_SIZE_8192;
     test_struct_t *data  = (test_struct_t *)*state;
     data->response = NULL;
     char *access_token = NULL;
@@ -948,12 +1083,15 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_any(__wrap__mtdebug1, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
 
     fclose(outfile);
 
@@ -963,10 +1101,7 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
 void test_wm_office365_get_access_token_with_auth_secret_response_fail(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *access_token = NULL;
-    char **error_msg = NULL;
-    os_calloc(2, sizeof(char*), error_msg);
-    error_msg[0] = NULL;
-    error_msg[1] = NULL;
+    size_t max_size = OS_SIZE_8192;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -982,26 +1117,25 @@ void test_wm_office365_get_access_token_with_auth_secret_response_fail(void **st
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_any(__wrap__mtdebug1, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Error while getting access token: '{\"error\":\"bad_request\"}'");
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
 
     assert_null(access_token);
-    assert_string_equal(error_msg[0], "{\"error\":\"bad_request\"}");
 }
 
 void test_wm_office365_get_access_token_with_auth_secret_response_200(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *access_token = NULL;
-    char **error_msg = NULL;
-    os_calloc(2, sizeof(char*), error_msg);
-    error_msg[0] = NULL;
-    error_msg[1] = NULL;
+    size_t max_size = OS_SIZE_8192;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -1017,6 +1151,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
     expect_any(__wrap_wurl_http_request, header);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1024,7 +1159,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, error_msg);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
 
     assert_string_equal(access_token, "wazuh");
 }
@@ -1033,11 +1168,8 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
 void test_wm_office365_manage_subscription_start_code_200(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
+    size_t max_size = OS_SIZE_8192;
 
-    char **error_msg = NULL;
-    os_calloc(2, sizeof(char*), error_msg);
-    error_msg[0] = NULL;
-    error_msg[1] = NULL;
     char *token = "test_token";
     char* client_id = "test_client_id";
     int start = 1;
@@ -1064,6 +1196,7 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
     expect_string(__wrap_wurl_http_request, header, expHeader);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1071,7 +1204,7 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, error_msg, start);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, max_size, start);
 
     assert_int_equal(value, OS_SUCCESS);
 }
@@ -1079,11 +1212,8 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
+    size_t max_size = OS_SIZE_8192;
 
-    char **error_msg = NULL;
-    os_calloc(2, sizeof(char*), error_msg);
-    error_msg[0] = NULL;
-    error_msg[1] = NULL;
     char *token = "test_token";
     char* client_id = "test_client_id";
     int start = 0;
@@ -1110,6 +1240,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
     expect_string(__wrap_wurl_http_request, header, expHeader);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
@@ -1117,7 +1248,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, error_msg, start);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, max_size, start);
 
     assert_int_equal(value, OS_SUCCESS);
 }
@@ -1125,11 +1256,8 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
+    size_t max_size = OS_SIZE_8192;
 
-    char **error_msg = NULL;
-    os_calloc(2, sizeof(char*), error_msg);
-    error_msg[0] = NULL;
-    error_msg[1] = NULL;
     char *token = "test_token";
     char* client_id = "test_client_id";
     int start = 0;
@@ -1156,17 +1284,20 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
     expect_string(__wrap_wurl_http_request, header, expHeader);
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_any(__wrap__mtdebug1, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Error while managing subscription: '{\"error\":{\"code\":\"AF20023\"}}'");
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, error_msg, start);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, max_size, start);
 
     assert_int_equal(value, OS_INVALID);
-    assert_string_equal(*error_msg, data->response->body);
+    //assert_string_equal(*error_msg, data->response->body);
 }
 
 int main(void) {
@@ -1183,6 +1314,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_h_fail, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_d, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_d_fail, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size_invalid_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size_invalid_2, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_curl_max_size_invalid_3, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_secret_path_and_secret, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag_1, setup_test_read, teardown_test_read),

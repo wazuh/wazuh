@@ -19,9 +19,11 @@
 #define WM_GITHUB_DEFAULT_INTERVAL 600
 #define WM_GITHUB_DEFAULT_DELAY 1
 #define WM_GITHUB_MSG_DELAY 1000000 / wm_max_eps
+#define WM_GITHUB_DEFAULT_CURL_MAX_SIZE 1048576L
 
 #define ITEM_PER_PAGE 100
 #define RETRIES_TO_SEND_ERROR 3
+#define GITHUB_NEXT_PAGE_REGEX "<(\\S+)>;\\s*rel=\"next\""
 
 #define GITHUB_API_URL "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d"
 
@@ -46,6 +48,7 @@ typedef struct wm_github {
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
     time_t time_delay;
+    size_t curl_max_size;
     wm_github_auth *auth;
     char *event_type;                       // Event types to include: web/git/all
     wm_github_fail *fails;

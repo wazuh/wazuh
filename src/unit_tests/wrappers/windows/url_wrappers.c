@@ -28,8 +28,8 @@ CURLcode wrap_curl_easy_setopt(CURL *curl, CURLoption option, __attribute__ ((__
     return mock_type(CURLcode);
 }
 
-struct curl_slist* wrap_curl_slist_append(struct curl_slist *list, const char *string) {
-    check_expected(string);
+struct curl_slist* wrap_curl_slist_append(struct curl_slist *list, const char *data) {
+    check_expected(data);
     check_expected_ptr(list);
 
     return mock_type(struct curl_slist *);
@@ -63,7 +63,7 @@ int wrap_wurl_request(const char * url,
     return mock();
 }
 
-char* wrap_wurl_http_get(const char * url) {
+char* wrap_wurl_http_get(const char * url, __attribute__((unused)) size_t max_size) {
     check_expected(url);
 
     return mock_type(char *);

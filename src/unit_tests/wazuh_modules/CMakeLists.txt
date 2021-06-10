@@ -24,4 +24,3 @@ endif()
 
 add_subdirectory(github)
 add_subdirectory(office365)
-

@@ -42,13 +42,13 @@ int __wrap_wurl_request(const char * url,
     return mock();
 }
 
-char* __wrap_wurl_http_get(const char * url) {
+char* __wrap_wurl_http_get(const char * url, __attribute__((unused)) size_t max_size) {
     check_expected(url);
 
     return mock_type(char *);
 }
 
-curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload) {
+curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size) {
     check_expected(method);
 
     char** ptr = headers;
@@ -62,11 +62,12 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
         check_expected(payload);
     }
 
+    check_expected(max_size);
+
     return mock_type(curl_response*);
 }
 
 CURL* __wrap_curl_easy_init() {
-    
     return mock_type(CURL *);
 }
 
@@ -81,8 +82,8 @@ CURLcode __wrap_curl_easy_setopt(CURL *curl, CURLoption option, __attribute__ ((
     return mock_type(CURLcode);
 }
 
-struct curl_slist* __wrap_curl_slist_append(struct curl_slist *list, const char *string) {
-    check_expected(string);
+struct curl_slist* __wrap_curl_slist_append(struct curl_slist *list, const char *data) {
+    check_expected(data);
     check_expected_ptr(list);
 
     return mock_type(struct curl_slist *);
