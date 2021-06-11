@@ -67,7 +67,7 @@ api_config_schema = {
             "type": "object",
             "additionalProperties": False,
             "properties": {
-                "request_timeout": {"type": "number"}
+                "request_timeout": {"type": "number", "minimum": 0}
             },
         },
         "https": {
