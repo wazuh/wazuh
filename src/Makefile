@@ -1325,6 +1325,9 @@ wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
 wrappers_data_provider_c := $(wildcard unit_tests/wrappers/wazuh/data_provider/*.c)
 wrappers_data_provider_o := $(wrappers_data_provider_c:.c=.o)
 
+wrappers_logcollector_c := $(wildcard unit_tests/wrappers/wazuh/logcollector/*.c)
+wrappers_logcollector_o := $(wrappers_logcollector_c:.c=.o)
+
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
@@ -1365,6 +1368,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
 
 	ifeq (${TARGET},winagent)
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}

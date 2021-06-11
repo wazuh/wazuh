@@ -86,7 +86,8 @@ list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_rea
                                 -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,_mdebug1 -Wl,--wrap,_minfo \
                                 -Wl,--wrap,kill -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,strerror \
                                 -Wl,--wrap,time -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle \
-                                -Wl,--wrap,isDebug")
+                                -Wl,--wrap,isDebug -Wl,--wrap,w_get_first_child -Wl,--wrap,w_is_macos_sierra \
+                                -Wl,--wrap,w_macos_set_log_settings -Wl,--wrap,w_macos_set_last_log_timestamp")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
