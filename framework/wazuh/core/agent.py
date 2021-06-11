@@ -464,7 +464,7 @@ class Agent:
 
         return ret_msg
 
-    def restart(self, wq: WazuhQueue = None) -> str:
+    def restart(self, wq: WazuhQueue) -> str:
         """Restart the agent.
 
         Parameters

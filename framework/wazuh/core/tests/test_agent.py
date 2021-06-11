@@ -6,7 +6,7 @@
 import os
 import sqlite3
 import sys
-from unittest.mock import ANY, patch, mock_open, call
+from unittest.mock import ANY, patch, mock_open, call, MagicMock
 
 import pytest
 from freezegun import freeze_time
@@ -590,12 +590,15 @@ def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_ko(socket_mock, send_mock):
-    """Test if method restart raises exception."""
+def test_agent_restart(socket_mock, send_mock):
+    """Test if restart method calls other methods with correct params and raises expected exception."""
+    agent = Agent(0)
+    agent.restart(MagicMock())
+
     # Assert exception is raised when status of agent is not 'active'
     with pytest.raises(WazuhError, match='.* 1707 .*'):
         agent = Agent(3)
-        agent.restart()
+        agent.restart(MagicMock())
 
 
 @pytest.mark.parametrize('status', [
