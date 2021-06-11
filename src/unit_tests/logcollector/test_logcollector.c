@@ -44,6 +44,8 @@ int w_set_to_last_line_read(logreader *lf);
 
 extern w_macos_log_vault_t macos_log_vault;
 extern w_macos_log_procceses_t * macos_processes;
+static wfd_t * stream_backup;
+static wfd_t * show_backup;
 
 
 /* setup/teardown */
@@ -58,21 +60,22 @@ static int teardown_group(void **state) {
 }
 
 static int setup_process(void **state) {
-    w_macos_log_procceses_t * macos_processes = calloc(1, sizeof(w_macos_log_procceses_t));
-    os_calloc(1, sizeof(wfd_t), macos_processes->show.wfd);
-    os_calloc(1, sizeof(wfd_t), macos_processes->stream.wfd);
-
-    *state = macos_processes;
+    w_macos_log_procceses_t * local_macos_processes = calloc(1, sizeof(w_macos_log_procceses_t));
+    os_calloc(1, sizeof(wfd_t), local_macos_processes->show.wfd);
+    os_calloc(1, sizeof(wfd_t), local_macos_processes->stream.wfd);
+    stream_backup = local_macos_processes->stream.wfd;
+    show_backup = local_macos_processes->show.wfd;
+    *state = local_macos_processes;
 
     return 0;
 }
 
 static int teardown_process(void **state) {
-    w_macos_log_procceses_t * macos_processes = *state;
+    w_macos_log_procceses_t * local_macos_processes = *state;
 
-    os_free(macos_processes->show.wfd);
-    os_free(macos_processes->stream.wfd);
-    free(macos_processes);
+    os_free(stream_backup);
+    os_free(show_backup);
+    os_free(local_macos_processes);
 
     return 0;
 }
@@ -2152,7 +2155,7 @@ void test_w_macos_release_log_show_launched_and_running(void ** state) {
 
     macos_processes = *state;
     macos_processes->show.wfd->pid = 10;
-    macos_processes = *state;
+
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
     expect_value(__wrap_kill, pid, 10);
@@ -2170,7 +2173,7 @@ void test_w_macos_release_log_show_launched_and_running_with_child(void ** state
     macos_processes = *state;
     macos_processes->show.wfd->pid = 10;
     macos_processes->show.child = 11;
-    macos_processes = *state;
+
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
     expect_value(__wrap_kill, pid, 10);
@@ -2214,7 +2217,6 @@ void test_w_macos_release_log_stream_launched_and_running(void ** state) {
 
     macos_processes = *state;
     macos_processes->stream.wfd->pid = 10;
-    macos_processes = *state;
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
     expect_value(__wrap_kill, pid, 10);
@@ -2232,7 +2234,6 @@ void test_w_macos_release_log_stream_launched_and_running_with_child(void ** sta
     macos_processes = *state;
     macos_processes->stream.wfd->pid = 10;
     macos_processes->stream.child = 11;
-    macos_processes = *state;
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
     expect_value(__wrap_kill, pid, 10);
