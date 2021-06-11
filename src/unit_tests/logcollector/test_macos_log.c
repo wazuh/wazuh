@@ -22,6 +22,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/wazuh/shared/sysinfo_utils_wrappers.h"
 
 bool w_macos_is_log_predicate_valid(char * predicate);
 char ** w_macos_create_log_stream_array(char * predicate, char * level, int type);
@@ -42,8 +43,12 @@ void w_macos_set_last_log_settings(char * timestamp);
 char * w_macos_get_last_log_settings();
 void w_macos_create_log_show_env(logreader * lf);
 void w_macos_create_log_stream_env(logreader * lf);
+void w_macos_add_sierra_support(char ** log_cmd_array, size_t * log_cmd_array_idx);
+pid_t w_get_first_child(pid_t parent_pid);
 
 extern w_macos_log_vault_t macos_log_vault;
+
+extern char * macos_codename;
 
 /* setup/teardown */
 
@@ -1863,8 +1868,44 @@ void test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace_pr
 
 }
 
+void test_w_macos_create_log_stream_array_on_sierra(void ** state) {
+
+    int type = 0;
+    char * level = NULL;
+    char * predicate = NULL;
+    char * backup_codename = NULL;
+
+    /* Sets the name "Sierra" to the global variable for the system to be identified as a Sierra Version of macOS */
+    if (macos_codename != NULL) {
+        /* Just in case, backups the previous codename to be restored */
+        w_strdup(macos_codename, backup_codename);
+    }
+
+    w_strdup(MACOS_SIERRA_CODENAME_STR, macos_codename);
+
+    char ** ret = w_macos_create_log_stream_array(predicate, level, type);
+
+    assert_string_equal(ret[0], SCRIPT_CMD_STR);
+    assert_string_equal(ret[1], SCRIPT_CMD_ARGS);
+    assert_string_equal(ret[2], SCRIPT_CMD_SINK);
+    assert_string_equal(ret[3], "/usr/bin/log");
+    assert_string_equal(ret[4], "stream");
+    assert_string_equal(ret[5], "--style");
+    assert_string_equal(ret[6], "syslog");
+    assert_null(ret[7]);
+
+    free_strarray(ret);
+
+    os_free(macos_codename);
+    if (backup_codename != NULL) {
+        w_strdup(backup_codename, macos_codename);
+        os_free(backup_codename);
+    }
+}
+
 /* w_macos_log_exec */
 void test_w_macos_log_exec_wpopenv_error(void ** state) {
+
     char * log_cmd_array = NULL;
     os_strdup("log stream", log_cmd_array);
     u_int32_t flags = 0;
@@ -1881,6 +1922,7 @@ void test_w_macos_log_exec_wpopenv_error(void ** state) {
 }
 
 void test_w_macos_log_exec_fileno_error(void ** state) {
+
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
@@ -2039,6 +2081,33 @@ void test_w_macos_is_log_executable_error(void ** state) {
 
     assert_false(ret);
 
+}
+
+void test_w_macos_is_log_executable_sierra_access_fail(void ** state) {
+    
+    char * backup_codename = NULL;
+
+    if (macos_codename != NULL) {
+        w_strdup(macos_codename, backup_codename);
+    }
+
+    w_strdup(MACOS_SIERRA_CODENAME_STR, macos_codename);
+
+    expect_string(__wrap_access, __name, "/usr/bin/script");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/script\": Success (0).");
+
+    bool ret = w_macos_is_log_executable();
+
+    assert_false(ret);
+
+    os_free(macos_codename);
+    if (backup_codename != NULL) {
+        w_strdup(backup_codename, macos_codename);
+        os_free(backup_codename);
+    }
 }
 
 /* w_macos_create_log_stream_env */
@@ -2561,6 +2630,49 @@ void test_w_macos_log_show_array_add_predicate_invalid_query_and_predicate_null(
 
 }
 
+void test_w_macos_log_show_array_add_predicate_invalid_query_valid_type_and_predicate_null(void ** state) {
+
+    size_t log_cmd_array_idx = 0;
+    char ** log_cmd_array = NULL;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), log_cmd_array);
+
+    /* Adding `log` and `show` to the array */
+    w_strdup(LOG_CMD_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the style lines to the array (`--style syslog`) */
+    w_strdup(STYLE_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup(SYSLOG_STR, log_cmd_array[log_cmd_array_idx++]);
+
+    /* Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`) */
+    w_strdup(SHOW_START_OPT_STR, log_cmd_array[log_cmd_array_idx++]);
+    w_strdup("2021-04-27 12:29:25-0700", log_cmd_array[log_cmd_array_idx++]);
+
+    char * query = NULL;
+    os_strdup("", query);
+
+    char * type_predicate = NULL;
+    w_strdup("message CONTAINS \"test\"", type_predicate);
+
+    w_macos_log_show_array_add_predicate(log_cmd_array, &log_cmd_array_idx, query, type_predicate);
+
+    assert_string_equal(log_cmd_array[0], "/usr/bin/log");
+    assert_string_equal(log_cmd_array[1], "show");
+    assert_string_equal(log_cmd_array[2], "--style");
+    assert_string_equal(log_cmd_array[3], "syslog");
+    assert_string_equal(log_cmd_array[4], "--start");
+    assert_string_equal(log_cmd_array[5], "2021-04-27 12:29:25-0700");
+    assert_string_equal(log_cmd_array[6], "--predicate");
+    assert_string_equal(log_cmd_array[7], "message CONTAINS \"test\"");
+    assert_null(log_cmd_array[8]);
+
+    free_strarray(log_cmd_array);
+    os_free(query);
+    os_free(type_predicate);
+
+}
+
 void test_w_macos_log_show_array_add_predicate_valid_query_and_predicate_null(void ** state) {
 
     size_t log_cmd_array_idx = 0;
@@ -2680,6 +2792,56 @@ void test_w_macos_create_log_show_array_complete(void ** state) {
     free_strarray(ret);
     os_free(query);
 
+}
+
+void test_w_macos_create_log_show_array_complete_on_sierra(void ** state) {
+
+    char start_date[24] = "2021-04-27 12:29:25-0700";
+
+    char * query = NULL;
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", query);
+
+    char * level = MACOS_LOG_LEVEL_DEBUG_STR;
+
+    int type = 7;
+
+    char * backup_codename = NULL;
+
+    if (macos_codename != NULL) {
+        w_strdup(macos_codename, backup_codename);
+    }
+
+    w_strdup(MACOS_SIERRA_CODENAME_STR, macos_codename);
+
+    char ** ret = w_macos_create_log_show_array(start_date, query, level, type);
+
+    assert_string_equal(ret[0], SCRIPT_CMD_STR);
+    assert_string_equal(ret[1], SCRIPT_CMD_ARGS);
+    assert_string_equal(ret[2], SCRIPT_CMD_SINK);
+    assert_string_equal(ret[3], "/usr/bin/log");
+    assert_string_equal(ret[4], "show");
+    assert_string_equal(ret[5], "--style");
+    assert_string_equal(ret[6], "syslog");
+    assert_string_equal(ret[7], "--start");
+    assert_string_equal(ret[8], "2021-04-27 12:29:25-0700");
+    assert_string_equal(ret[9], "--info");
+    assert_string_equal(ret[10], "--debug");
+    assert_string_equal(ret[11], "--predicate");
+    assert_string_equal(ret[12], "( processImagePath CONTAINS[c] 'com.apple.geod' ) " \
+                                "AND ( eventType == activityCreateEvent " \
+                                "OR eventType == activityTransitionEvent " \
+                                "OR eventType == userActionEvent " \
+                                "OR eventType == logEvent OR eventType == traceEvent )");
+    assert_null(ret[13]);
+
+    free_strarray(ret);
+    os_free(query);
+
+    os_free(macos_codename);
+    if (backup_codename != NULL) {
+        w_strdup(backup_codename, macos_codename);
+        os_free(backup_codename);
+    }
 }
 
 /* w_macos_set_last_log_timestamp */
@@ -2907,6 +3069,251 @@ void test_w_macos_create_log_stream_env_success(void ** state) {
 
 }
 
+void test_w_macos_create_log_env_codename_null_only_future (void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+    lf->future = 1; // No past events
+
+    will_return(__wrap_w_get_os_codename, NULL);
+
+    // test_w_macos_is_log_executable_success
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_any(__wrap__merror, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    w_macos_create_log_env(lf, NULL);
+
+    os_free(lf->macos_log->current_settings);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+}
+
+void test_w_macos_create_log_env_codename_not_null_only_future (void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+    lf->future = 1; // No past events
+
+    will_return(__wrap_w_get_os_codename, "macTEST");
+
+    // test_w_macos_is_log_executable_success
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Creating environment for macOS macTEST.");
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_any(__wrap__merror, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    w_macos_create_log_env(lf, NULL);
+
+    os_free(lf->macos_log->current_settings);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+}
+
+void test_w_macos_create_log_env_codename_null_previous_settings_null (void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+
+    lf->query_type = 0;
+    lf->future = 0; // Look for past events
+    macos_log_vault.settings = NULL;
+
+    will_return(__wrap_w_get_os_codename, NULL);
+    
+    // test_w_macos_is_log_executable_success
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_any(__wrap__merror, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    w_macos_create_log_env(lf, NULL);
+
+    os_free(lf->macos_log->current_settings);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+}
+
+void test_w_macos_create_log_env_codename_null_current_and_previous_settings_missmatch (void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+    lf->future = 0; // Look for past events
+
+    /* Forces the missmatch */
+    w_strdup("some random setting", macos_log_vault.settings);
+
+    will_return(__wrap_w_get_os_codename, NULL);
+
+    // test_w_macos_is_log_executable_success
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    /* For reading the */
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Current predicate differs from the stored one. Discarding old events.");
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_any(__wrap__merror, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    w_macos_create_log_env(lf, NULL);
+
+    os_free(macos_log_vault.settings);
+    os_free(lf->macos_log->current_settings);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+}
+
+void test_w_macos_create_log_env_codename_null_settings_match (void ** state) {
+
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    os_calloc(1, sizeof(w_macos_log_config_t), lf->macos_log);
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", lf->query);
+    os_strdup(MACOS_LOG_LEVEL_DEBUG_STR, lf->query_level);
+    lf->query_type = 0;
+    lf->future = 0; // Look for past events
+    w_strdup("/usr/bin/log stream --style syslog --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'", macos_log_vault.settings);
+
+    bzero(macos_log_vault.timestamp, OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1); // Prevents log show execution
+
+    will_return(__wrap_w_get_os_codename, NULL);
+
+    // test_w_macos_is_log_executable_success
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    // w_macos_get_log_settings locks
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    // w_macos_get_last_log_timestamp locks
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_any(__wrap__merror, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+
+    w_macos_create_log_env(lf, NULL);
+
+    os_free(macos_log_vault.settings);
+    os_free(lf->macos_log->current_settings);
+    os_free(lf->query_level);
+    os_free(lf->query);
+    os_free(lf->macos_log);
+    os_free(lf);
+}
+
+void test_w_macos_add_sierra_support(void ** state) {
+
+    size_t index = 0;
+    char ** log_cmd_array_idx = NULL;
+    os_calloc(4, sizeof(char *), log_cmd_array_idx);
+
+    w_macos_add_sierra_support(log_cmd_array_idx, &index);
+
+    assert_int_equal(index, 3);
+    assert_string_equal(log_cmd_array_idx[0], SCRIPT_CMD_STR);
+    assert_string_equal(log_cmd_array_idx[1], SCRIPT_CMD_ARGS);
+    assert_string_equal(log_cmd_array_idx[2], SCRIPT_CMD_SINK);
+
+    free_strarray(log_cmd_array_idx);
+}
+
+void test_w_get_first_child_NULL(void ** state) {
+
+    will_return(__wrap_w_get_process_childs, NULL);
+
+    assert_int_equal(w_get_first_child(0), 0);
+}
+
+void test_w_get_first_child_non_null_non_zero(void ** state) {
+
+    pid_t * pid_array = NULL;
+    
+    os_calloc(4, sizeof(pid_t), pid_array);
+
+    pid_array[0] = 7;
+    pid_array[1] = 9;
+    pid_array[2] = 11;
+    pid_array[3] = 0;
+
+    will_return(__wrap_w_get_process_childs, pid_array);
+
+    assert_int_equal(w_get_first_child(0), 7);
+}
+
+void test_w_get_first_child_non_null_zero(void ** state) {
+
+    pid_t * pid_array = NULL;
+
+    os_calloc(4, sizeof(pid_t), pid_array);
+
+    pid_array[0] = 0;
+    pid_array[1] = 9;
+    pid_array[2] = 11;
+    pid_array[3] = 20;
+    
+    will_return(__wrap_w_get_process_childs, pid_array);
+
+    assert_int_equal(w_get_first_child(0), 0);
+
+    os_free(pid_array);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -2978,6 +3385,7 @@ int main(void) {
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_trace_predicate),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_log_trace_predicate),
         cmocka_unit_test(test_w_macos_create_log_stream_array_level_debug_type_activity_log_trace_predicate),
+        cmocka_unit_test(test_w_macos_create_log_stream_array_on_sierra),
         // Test w_macos_log_exec
         cmocka_unit_test(test_w_macos_log_exec_wpopenv_error),
         cmocka_unit_test_setup_teardown(test_w_macos_log_exec_fileno_error, setup_file, teardown_file),
@@ -2988,6 +3396,7 @@ int main(void) {
         // Test w_macos_is_log_executable
         cmocka_unit_test(test_w_macos_is_log_executable_success),
         cmocka_unit_test(test_w_macos_is_log_executable_error),
+        cmocka_unit_test(test_w_macos_is_log_executable_sierra_access_fail),
         // Test w_macos_log_show_array_add_level
         cmocka_unit_test(test_w_macos_log_show_array_add_level_NULL),
         cmocka_unit_test(test_w_macos_log_show_array_add_level_default),
@@ -3006,10 +3415,12 @@ int main(void) {
         cmocka_unit_test(test_w_macos_log_show_array_add_predicate_query_and_predicate_null),
         cmocka_unit_test(test_w_macos_log_show_array_add_predicate_query_null_and_valid_predicate),
         cmocka_unit_test(test_w_macos_log_show_array_add_predicate_invalid_query_and_predicate_null),
+        cmocka_unit_test(test_w_macos_log_show_array_add_predicate_invalid_query_valid_type_and_predicate_null),
         cmocka_unit_test(test_w_macos_log_show_array_add_predicate_valid_query_and_predicate_null),
         cmocka_unit_test(test_w_macos_log_show_array_add_predicate_valid_query_and_predicate),
         // Test w_macos_create_log_show_array
         cmocka_unit_test(test_w_macos_create_log_show_array_complete),
+        cmocka_unit_test(test_w_macos_create_log_show_array_complete_on_sierra),
         // Test w_macos_set_last_log_timestamp
         cmocka_unit_test(test_w_macos_set_last_log_timestamp_complete),
         // Test w_macos_get_last_log_timestamp
@@ -3025,6 +3436,18 @@ int main(void) {
         // Test w_macos_create_log_stream_env
         cmocka_unit_test(test_w_macos_create_log_stream_env_show_wfd_NULL),
         cmocka_unit_test_setup_teardown(test_w_macos_create_log_stream_env_success, setup_file, teardown_file),
+        // Test w_macos_create_log_env
+        cmocka_unit_test(test_w_macos_create_log_env_codename_null_only_future),
+        cmocka_unit_test(test_w_macos_create_log_env_codename_not_null_only_future),
+        cmocka_unit_test(test_w_macos_create_log_env_codename_null_previous_settings_null),
+        cmocka_unit_test(test_w_macos_create_log_env_codename_null_current_and_previous_settings_missmatch),
+        cmocka_unit_test(test_w_macos_create_log_env_codename_null_settings_match),
+        // Test w_macos_add_sierra_support
+        cmocka_unit_test(test_w_macos_add_sierra_support),
+        // Test w_get_first_child
+        cmocka_unit_test(test_w_get_first_child_NULL),
+        cmocka_unit_test(test_w_get_first_child_non_null_non_zero),
+        cmocka_unit_test(test_w_get_first_child_non_null_zero),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

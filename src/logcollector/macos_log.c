@@ -346,7 +346,7 @@ STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
 STATIC INLINE bool w_macos_is_log_executable(void) {
 
     if (w_is_macos_sierra() && access(SCRIPT_CMD_STR, X_OK) != 0) {
-        merror(ACCESS_ERROR, LOG_CMD_STR, strerror(errno), errno);
+        merror(ACCESS_ERROR, SCRIPT_CMD_STR, strerror(errno), errno);
         return false;
     }
 
@@ -430,7 +430,7 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
 
     sysinfo = global_sysinfo;
 
-    w_strdup(w_get_os_codename(sysinfo), macos_codename);
+    macos_codename = w_get_os_codename(sysinfo);
 
     if (w_macos_is_log_executable()) {
 
