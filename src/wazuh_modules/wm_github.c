@@ -20,6 +20,14 @@
 #include "wmodules.h"
 #include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
 
+#ifdef WIN32
+#ifdef WAZUH_UNIT_TESTING
+#define localtime_r(x, y)
+#else
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+#endif
+
 STATIC void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
 STATIC void wm_github_destroy(wm_github* github_config);
 STATIC void wm_github_auth_destroy(wm_github_auth* github_auth);
@@ -271,7 +279,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                         if (response_lenght == ITEM_PER_PAGE) {
                             next_page = wm_read_http_header_element(response->header, GITHUB_NEXT_PAGE_REGEX);
-                            if (next_page == NULL) {
+                            if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                 scan_finished = 1;
                             } else {
                                 memset(url, '\0', OS_SIZE_8192);

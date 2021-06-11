@@ -471,7 +471,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
         if (headers_tmp == NULL) {
             curl_slist_free_all(headers_list);
             curl_easy_cleanup(curl);
-            mdebug1("curl append header failure");
+            mdebug1("curl append custom header failure");
             return NULL;
         }
 
@@ -493,11 +493,10 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers_list);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
-    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
 
     if (payload) {
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
     }
 
     res = curl_easy_perform(curl);

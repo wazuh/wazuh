@@ -156,7 +156,7 @@ void test_wurl_http_request_headers_tmp_null(void **state)
         expect_value(__wrap_curl_easy_cleanup, curl, curl);
     #endif
 
-    expect_string(__wrap__mdebug1, formatted_msg, "curl append header failure");
+    expect_string(__wrap__mdebug1, formatted_msg, "curl append custom header failure");
 
     response = wurl_http_request(NULL, &pheaders, url, NULL, max_size);
     assert_null(response);
@@ -325,10 +325,6 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
-        expect_value(wrap_curl_easy_setopt, curl, curl);
-        will_return(wrap_curl_easy_setopt, CURLE_OK);
-
         expect_value(wrap_curl_easy_perform, curl, curl);
         will_return(wrap_curl_easy_perform, (CURLcode) 9);
 
@@ -372,10 +368,6 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
-        expect_value(__wrap_curl_easy_setopt, curl, curl);
-        will_return(__wrap_curl_easy_setopt, CURLE_OK);
-
-        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
@@ -441,10 +433,6 @@ void test_wurl_http_request_success(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
-        expect_value(wrap_curl_easy_setopt, curl, curl);
-        will_return(wrap_curl_easy_setopt, CURLE_OK);
-
         expect_value(wrap_curl_easy_perform, curl, curl);
         will_return(wrap_curl_easy_perform, CURLE_OK);
 
@@ -493,10 +481,6 @@ void test_wurl_http_request_success(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
-        expect_value(__wrap_curl_easy_setopt, curl, curl);
-        will_return(__wrap_curl_easy_setopt, CURLE_OK);
-
-        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 

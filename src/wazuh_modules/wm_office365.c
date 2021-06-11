@@ -19,6 +19,14 @@
 
 #include "wmodules.h"
 
+#ifdef WIN32
+#ifdef WAZUH_UNIT_TESTING
+#define localtime_r(x, y)
+#else
+#define localtime_r(x, y) localtime_s(y, x)
+#endif
+#endif
+
 STATIC void* wm_office365_main(wm_office365* office365_config);    // Module main function. It won't return
 STATIC void wm_office365_destroy(wm_office365* office365_config);
 STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
@@ -197,6 +205,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
     char *access_token = NULL;
     char *next_page = NULL;
     char *payload = NULL;
+    time_t saved;
     time_t now;
     time_t start_time;
     time_t end_time;
@@ -270,7 +279,13 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                 }
             }
 
-            start_time = (time_t)tenant_state_struc.last_log_time;
+            saved = (time_t)tenant_state_struc.last_log_time;
+
+            if (saved > 0 && saved < now) {
+                start_time = saved;
+            } else {
+                start_time = now;
+            }
             end_time = now;
 
             while ((end_time - start_time) > 0) {
@@ -348,7 +363,7 @@ STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initia
                         }
 
                         if (!scan_finished) {
-                            if (next_page == NULL) {
+                            if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                 scan_finished = 1;
                             } else {
                                 memset(url, '\0', OS_SIZE_8192);
@@ -410,10 +425,11 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
         FILE *fd = NULL;
 
         if (fd = fopen(auth->client_secret_path, "r"), fd) {
-            char str[OS_SIZE_1024 -1];
+            char str[OS_SIZE_1024 -1] = {0};
+            size_t size_read = 0;
 
-            memset(str, '\0', OS_SIZE_1024 -1);
-            if (fread(str, 1, OS_SIZE_1024 -1, fd) > 0) {
+            if (size_read = fread(str, 1, OS_SIZE_1024 -2, fd), size_read > 0) {
+                str[size_read] = '\0';
                 snprintf(auth_secret, OS_SIZE_1024 -1, "%s", str);
             }
             fclose(fd);
