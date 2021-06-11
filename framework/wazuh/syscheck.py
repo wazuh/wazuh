@@ -2,21 +2,22 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from glob import glob
+from typing import Union
 
 from wazuh.core import common
 from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.syscheck import WazuhDBQuerySyscheck
 from wazuh.core.utils import WazuhVersion
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
-def run(agent_list=None):
+def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
     """Run a syscheck scan in the specified agents.
 
     Parameters
@@ -32,20 +33,20 @@ def run(agent_list=None):
     result = AffectedItemsWazuhResult(all_msg='Syscheck scan was restarted on returned agents',
                                       some_msg='Syscheck scan was not restarted on some agents',
                                       none_msg='No syscheck scan was restarted')
+
+    wq = WazuhQueue(common.ARQUEUE)
     for agent_id in agent_list:
         try:
-            agent_info = Agent(agent_id).get_basic_information()
-            agent_status = agent_info.get('status', 'N/A')
-            if agent_status.lower() != 'active':
-                result.add_failed_item(
-                    id_=agent_id, error=WazuhError(1601, extra_message='Status - {}'.format(agent_status)))
-            else:
-                wq = WazuhQueue(common.ARQUEUE)
+            agent_status = Agent(agent_id).get_basic_information().get('status', 'N/A')
+            if agent_status.lower() == 'active':
                 wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
                 result.affected_items.append(agent_id)
-                wq.close()
+            else:
+                result.add_failed_item(
+                    id_=agent_id, error=WazuhError(1601, extra_message='Status - {}'.format(agent_status)))
         except WazuhError as e:
             result.add_failed_item(id_=agent_id, error=e)
+    wq.close()
     result.affected_items = sorted(result.affected_items, key=int)
     result.total_affected_items = len(result.affected_items)
 
