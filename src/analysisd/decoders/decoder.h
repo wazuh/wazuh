@@ -12,7 +12,7 @@
 #define DECODER_H
 
 #include "shared.h"
-#include "logmsg.h"
+#include "../logmsg.h"
 #include "expression.h"
 
 #define AFTER_PARENT    0x001   /* 1   */

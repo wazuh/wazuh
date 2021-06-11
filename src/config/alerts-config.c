@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "global-config.h"
 #include "config.h"
-#include "logmsg.h"
+#include "../analysisd/logmsg.h"
 
 
 int Read_Alerts(XML_NODE node, void *configp, void * list)

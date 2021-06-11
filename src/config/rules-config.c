@@ -11,7 +11,7 @@
 #include "config.h"
 #include "shared.h"
 #include "global-config.h"
-#include "logmsg.h"
+#include "../analysisd/logmsg.h"
 
 #ifndef WIN32
 

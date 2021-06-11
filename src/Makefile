@@ -1527,6 +1527,9 @@ crypto_signature_o := $(crypto_signature_c:.c=.o)
 os_crypto/signature/%.o: os_crypto/signature/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
 
+analysisd/logmsg.o: analysisd/logmsg.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+
 
 crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
@@ -1542,7 +1545,7 @@ crypto_o := ${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents}
+libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os_regex_o} ${os_xml_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} os_auth/ssl.o os_auth/check_cert.o addagent/validate.o ${manage_agents} analysisd/logmsg.o
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -1986,9 +1989,7 @@ all_analysisd_o += ${output_o}
 analysisd/output/%.o: analysisd/output/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
-
-
-analysisd_c := ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}
+analysisd_c := ${filter-out analysisd/logmsg.c, ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}}
 analysisd_o := ${analysisd_c:.c=.o}
 all_analysisd_o += ${analysisd_o}
 
@@ -2005,7 +2006,7 @@ analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 wazuh-logtest-legacy: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a
+wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a analysisd/logmsg.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-modulesd ##
@@ -2318,7 +2319,7 @@ clean-internals: clean-unit-tests
 	rm -f ${syscheck_o} ${syscheck_eventchannel_o}
 	rm -f ${monitor_o}
 	rm -f ${os_auth_o}
-	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
+	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h analysisd/logmsg.o
 	rm -f ${integrator_o}
 	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
 	rm -f ${wdb_o}
