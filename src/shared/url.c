@@ -496,8 +496,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
 
     if (payload) {
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
     }
 
     res = curl_easy_perform(curl);

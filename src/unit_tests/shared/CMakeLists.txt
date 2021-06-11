@@ -149,6 +149,9 @@ endif()
 list(APPEND shared_tests_names "test_keys")
 list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
 
+list(APPEND shared_tests_names "test_atomic")
+list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+
 list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
                                 -Wl,--wrap,curl_easy_init -Wl,--wrap,_mdebug1 -Wl,--wrap,curl_easy_setopt \
