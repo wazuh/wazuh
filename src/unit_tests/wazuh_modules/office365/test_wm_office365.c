@@ -2187,6 +2187,117 @@ void test_wm_office365_get_logs_from_blob_ok(void **state) {
 
 }
 
+void test_wm_office365_execute_scan_saving_running_state_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int initial_scan = 0;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("{\"access_token\":\"access_token_value\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning tenant: 'test_tenant_id'");
+
+    /* wm_office365_get_access_token */
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+    
+    wm_office365_execute_scan(data->office365_config, initial_scan);
+
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);    
+}
+
+void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int initial_scan = 1;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    data->office365_config->only_future_events = 0;
+
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("{\"access_token\":\"access_token_value\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning tenant: 'test_tenant_id'");
+
+    /* wm_office365_get_access_token */
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    wm_office365_execute_scan(data->office365_config, initial_scan);
+
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);    
+}
+
 int main(void) {
     const struct CMUnitTest tests_configuration[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
@@ -2258,6 +2369,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_code_400, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_no_array, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_ok, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_saving_running_state_error, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_content_blobs_fail, setup_conf, teardown_conf),
     };
 
     int result;
