@@ -106,3 +106,7 @@ CURLcode __wrap_curl_easy_getinfo(CURL *curl, CURLoption option, __attribute__ (
 
     return mock_type(CURLcode);
 }
+
+void __wrap_wurl_free_response(curl_response* response) {
+    check_expected_ptr(response);
+}

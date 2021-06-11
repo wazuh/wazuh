@@ -159,6 +159,7 @@ void test_wurl_http_request_headers_tmp_null(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "curl append custom header failure");
 
     response = wurl_http_request(NULL, &pheaders, url, NULL, max_size);
+
     assert_null(response);
 }
 
@@ -517,3 +518,4 @@ int main(void)
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
+

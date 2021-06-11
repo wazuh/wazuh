@@ -13,12 +13,14 @@
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
+#ifdef WIN32
+    #include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
+#endif
 #else
 #define STATIC static
 #endif
 
 #include "wmodules.h"
-#include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
