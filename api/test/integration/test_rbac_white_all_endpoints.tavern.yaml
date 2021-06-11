@@ -979,6 +979,34 @@ stages:
       <<: *empty_response
 
 ---
+test_name: DELETE /experimental/rootcheck
+
+stages:
+  - name: Try to delete rootcheck data (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      method: DELETE
+      params:
+        agents_list: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete agent 001 rootcheck data (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      method: DELETE
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: DELETE /experimental/syscheck
 
 stages:
@@ -1897,32 +1925,6 @@ stages:
           agent_version: []
           last_registered_agent: []
         error: 0
-
----
-test_name: DELETE /rootcheck
-
-stages:
-  - name: Try to delete rootcheck data (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
-  - name: Try to delete agent 001 rootcheck data (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
-      method: DELETE
-      params:
-        agents_list: '001'
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
 
 ---
 test_name: PUT /rootcheck
