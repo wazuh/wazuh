@@ -32,11 +32,9 @@ int __wrap_wm_state_io(const char * tag,
     check_expected(op);
     check_expected_ptr(state);
     check_expected(size);
-
     int ret = mock();
     if (!ret) {
         memcpy(state, mock_type(void *), sizeof(*state));
     }
-
     return ret;
 }
