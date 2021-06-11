@@ -37,7 +37,9 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
     wq = WazuhQueue(common.ARQUEUE)
     for agent_id in agent_list:
         try:
-            agent_status = Agent(agent_id).get_basic_information().get('status', 'N/A')
+            agent = Agent(agent_id)
+            agent.load_info_from_db()
+            agent_status = agent.status
             if agent_status.lower() == 'active':
                 wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
                 result.affected_items.append(agent_id)
