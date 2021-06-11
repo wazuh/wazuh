@@ -326,10 +326,6 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
-        expect_value(wrap_curl_easy_setopt, curl, curl);
-        will_return(wrap_curl_easy_setopt, CURLE_OK);
-
         expect_value(wrap_curl_easy_perform, curl, curl);
         will_return(wrap_curl_easy_perform, (CURLcode) 9);
 
@@ -373,10 +369,6 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
-        expect_value(__wrap_curl_easy_setopt, curl, curl);
-        will_return(__wrap_curl_easy_setopt, CURLE_OK);
-
-        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
@@ -442,10 +434,6 @@ void test_wurl_http_request_success(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
-        expect_value(wrap_curl_easy_setopt, curl, curl);
-        will_return(wrap_curl_easy_setopt, CURLE_OK);
-
         expect_value(wrap_curl_easy_perform, curl, curl);
         will_return(wrap_curl_easy_perform, CURLE_OK);
 
@@ -494,10 +482,6 @@ void test_wurl_http_request_success(void **state)
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
-        expect_value(__wrap_curl_easy_setopt, curl, curl);
-        will_return(__wrap_curl_easy_setopt, CURLE_OK);
-
-        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDSIZE);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
