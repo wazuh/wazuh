@@ -21,7 +21,7 @@ namespace Utils
     <
     typename Input,
     typename Functor = std::function<void(const Input&)>,
-    template <class, class> class Dispatcher = AsyncDispatcher
+    template <class, class> class Dispatcher = SyncDispatcher
     >
     class ReadNode : public Dispatcher<Input, Functor>
     {
@@ -51,7 +51,7 @@ namespace Utils
     typename Output,
     typename Reader,
     typename Functor = std::function<Output(const Input&)>,
-    template <class, class> class Dispatcher = AsyncDispatcher
+    template <class, class> class Dispatcher = SyncDispatcher
     >
     class ReadWriteNode : public Utils::IPipelineWriter<Output, Reader>
                         , public Dispatcher<Input, std::function<void(const Input&)>>

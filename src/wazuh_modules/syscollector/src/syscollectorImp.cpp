@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "syscollector.h"
 #include "syscollector.hpp"
 #include "json.hpp"
 #include <iostream>
@@ -947,7 +948,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
     constexpr auto queueSize{4096};
     const auto callback
     {
-        [this, &table, &operationsMap](ReturnTypeCallback result, const nlohmann::json& data)
+        [this, table, operationsMap](ReturnTypeCallback result, const nlohmann::json& data)
         {
             if(result == DB_ERROR)
             {
