@@ -43,26 +43,17 @@ stages:
       params:
         sort: -id
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
       json: &basic_response_inverse
-        error: !anyint
+        error: 0
         data:
-          affected_items:
-            - id: '012'
-            - id: '011'
-            - id: '010'
-            - id: '009'
-            - id: '008'
-            - id: '007'
-            - id: '006'
-            - id: '005'
-            - id: '004'
-            - id: '003'
-            - id: '002'
-            - id: '001'
-            - id: '000'
-          failed_items: []
-          total_affected_items: 13
+          failed_items: [ ]
+          total_affected_items: !anyint
           total_failed_items: 0
 
   - name: Get all agents sorted by multiple fields
@@ -207,13 +198,15 @@ stages:
         sort: -id
         limit: 2
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items:
-            - id: '012'
-            - id: '011'
           failed_items: []
           total_affected_items: 13
           total_failed_items: 0
@@ -2242,19 +2235,15 @@ stages:
       params:
         sort: -name
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items:
-            - name: 'group3'
-              count: 4
-            - name: 'group2'
-              count: 5
-            - name: 'group1'
-              count: 5
-            - name: 'default'
-              count: 10
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
@@ -2506,14 +2495,15 @@ stages:
         sort: -id
         limit: 3
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items:
-            - id: '008'
-            - id: '007'
-            - id: '006'
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
@@ -2795,15 +2785,14 @@ stages:
       params:
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items:
-            - id: !anystr
-            - id: !anystr
-            - id: !anystr
-            - id: !anystr
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
@@ -3102,11 +3091,15 @@ stages:
       params:
         sort: -hash
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "hash"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items: !anything
           total_affected_items: !anyint
           total_failed_items: 0
           failed_items: []
@@ -3498,13 +3491,15 @@ stages:
       params:
         sort: -id
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items:
-            - id: '012'
-            - id: '011'
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
@@ -3610,6 +3605,10 @@ stages:
       params:
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
       json:
         <<: *no_group_response
@@ -3648,17 +3647,15 @@ stages:
       params:
         sort: -id
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data: &outdated_agents_response
-          affected_items:
-            - id: '010'
-            - id: '009'
-            - id: '008'
-            - id: '007'
-            - id: '006'
-            - id: '005'
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -3672,12 +3669,15 @@ stages:
         limit: 1
         sort: -id
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items:
-            - id: '009'
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -3765,13 +3765,15 @@ stages:
         q: group=default;lastKeepAlive>1d
         sort: -id
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          affected_items:
-            - id: '010'
-            - id: '009'
           failed_items: [ ]
           total_affected_items: 2
           total_failed_items: 0
