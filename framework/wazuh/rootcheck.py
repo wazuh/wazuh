@@ -2,18 +2,20 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from typing import Union
+
 from wazuh import common
 from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rootcheck import WazuhDBQueryRootcheck, last_scan
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["rootcheck:run"], resources=["agent:id:{agent_list}"])
-def run(agent_list=None):
+def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
     """Run rootcheck scan.
 
     Parameters
@@ -33,7 +35,9 @@ def run(agent_list=None):
     wq = WazuhQueue(common.ARQUEUE)
     for agent_id in agent_list:
         try:
-            agent_status = Agent(agent_id).get_basic_information().get('status', 'N/A')
+            agent = Agent(agent_id)
+            agent.load_info_from_db()
+            agent_status = agent.status if agent.status else 'N/A'
             if agent_status.lower() == 'active':
                 wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
                 result.affected_items.append(agent_id)
