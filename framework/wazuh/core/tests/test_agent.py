@@ -159,8 +159,8 @@ def test_WazuhDBQueryAgents_filter_date(mock_socket_conn):
 
 
 @pytest.mark.parametrize('field, expected_query', [
-    ('status', 'last_keepAlive asc'),
     ('os.version', 'CAST(os_major AS INTEGER) asc, CAST(os_minor AS INTEGER) asc'),
+    ('status', 'status asc'),
     ('id', 'id asc'),
 ])
 @patch('socket.socket.connect')
@@ -198,7 +198,7 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn):
     query_agent = WazuhDBQueryAgents(offset=0, limit=1, sort=None,
                                      search=None, select={'id', 'status', 'group', 'dateAdd', 'manager'},
                                      default_sort_field=None, query=None, count=5,
-                                     get_data=None, min_select_fields='os.version')
+                                     get_data=None, min_select_fields={'os.version'})
 
     # Mock _data variable with our own data
     query_agent._data = data
@@ -1529,27 +1529,6 @@ def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
         agent.get_stats('logcollector')
-
-
-@pytest.mark.parametrize('last_keep_alive, pending, expected_status', [
-    (10, False, 'active'),
-    (1900, False, 'disconnected'),
-    (10, True, 'pending'),
-])
-def test_calculate_status(last_keep_alive, pending, expected_status):
-    """Test calculate_status returns expected status according to last_keep_alive.
-
-    Parameters
-    ----------
-    last_keep_alive : int
-        Seconds since last connection.
-    pending : bool
-        Return pending if status is not disconnected.
-    expected_status : str
-        Expected status to be returned.
-    """
-    result = calculate_status(int(time()) - last_keep_alive, pending)
-    assert result == expected_status, 'Result message is not as expected.'
 
 
 @pytest.mark.parametrize('agents_list, versions_list', [
