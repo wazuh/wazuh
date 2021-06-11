@@ -16,7 +16,7 @@
 
 int __wrap_wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
 
-char* __wrap_wurl_http_get(const char * url, __attribute__((unused)) size_t max_size);
+char* __wrap_wurl_http_get(const char * url, size_t max_size);
 
 curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size);
 

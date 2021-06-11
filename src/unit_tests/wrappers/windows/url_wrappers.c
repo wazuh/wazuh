@@ -69,9 +69,22 @@ char* wrap_wurl_http_get(const char * url, __attribute__((unused)) size_t max_si
     return mock_type(char *);
 }
 
-curl_response* wrap_wurl_http_get_with_header(const char *header, const char* url) {
-    check_expected(header);
+curl_response* wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size) {
+    check_expected(method);
+
+    char** ptr = headers;
+    for (char* header = *ptr; header; header=*++ptr) {
+        check_expected(header);
+    }
+
     check_expected(url);
+
+    if (payload) {
+        check_expected(payload);
+    }
+
+    check_expected(max_size);
+
     return mock_type(curl_response*);
 }
 

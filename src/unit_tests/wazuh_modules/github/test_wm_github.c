@@ -369,12 +369,16 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
     will_return(__wrap_strftime, 20);
@@ -421,12 +425,16 @@ void test_github_execute_scan_status_code_200(void **state) {
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
     will_return(__wrap_strftime, 20);
@@ -477,12 +485,16 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
     will_return(__wrap_strftime, 20);
@@ -545,12 +557,16 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
     will_return(__wrap_localtime_r, 1);
+#endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
     will_return(__wrap_strftime, 20);
