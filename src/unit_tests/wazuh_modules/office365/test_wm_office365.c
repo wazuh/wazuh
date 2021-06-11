@@ -2656,6 +2656,135 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     os_free(data->response);
 }
 
+void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    size_t max_size = OS_SIZE_8192;
+    wm_office365_state tenant_state_struc;
+
+    tenant_state_struc.last_log_time = 123456789;
+
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+    data->office365_config->only_future_events = 0;
+
+    os_calloc(1, sizeof(curl_response), data->response);
+    data->response->status_code = 200;
+    os_strdup("{\"access_token\":\"wazuh\"}", data->response->body);
+    os_strdup("test", data->response->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning tenant: 'test_tenant_id'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, data->response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 0);
+    will_return(__wrap_wm_state_io, (void *)&tenant_state_struc);
+
+    curl_response *manage_subscription_response;
+    os_calloc(1, sizeof(curl_response), manage_subscription_response);
+    manage_subscription_response->status_code = 200;
+    manage_subscription_response->max_size_reached = false;
+    os_strdup("{\"test\":\"wazuh\"}", manage_subscription_response->body);
+    os_strdup("test", manage_subscription_response->header);
+
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, manage_subscription_response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, manage_subscription_response);
+
+    // while ((end_time - start_time) > 0)
+#ifndef WIN32
+    will_return(__wrap_localtime_r, 1);
+#endif
+
+    will_return(__wrap_strftime,"2021-06-11T12:24:56Z");
+    will_return(__wrap_strftime, 20);
+
+#ifndef WIN32
+    will_return(__wrap_localtime_r, 1);
+#endif
+
+    will_return(__wrap_strftime,"2021-06-11T12:34:56Z");
+    will_return(__wrap_strftime, 20);
+
+    // wm_office365_get_content_blobs
+    curl_response *get_content_blobs_response;
+    os_calloc(1, sizeof(curl_response), get_content_blobs_response);
+    get_content_blobs_response->status_code = 200;
+    get_content_blobs_response->max_size_reached = false;
+    os_strdup("[{\"contentUri\":\"https://contentUri1.com\"}]", get_content_blobs_response->body);
+    os_strdup("test", get_content_blobs_response->header);
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, get_content_blobs_response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
+    expect_value(__wrap_wurl_free_response, response, get_content_blobs_response);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API content URI: 'https://contentUri1.com'");
+
+    expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
+    expect_string(__wrap_wurl_http_request, header, "Authorization: Bearer wazuh");
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, NULL);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting logs from blob.");
+
+    wm_office365_execute_scan(data->office365_config, 0);
+
+    os_free(data->response->body);
+    os_free(data->response->header);
+    os_free(data->response);
+
+    os_free(manage_subscription_response->body);
+    os_free(manage_subscription_response->header);
+    os_free(manage_subscription_response);
+
+    os_free(get_content_blobs_response->body);
+    os_free(get_content_blobs_response->header);
+    os_free(get_content_blobs_response);
+    
+}
+
 int main(void) {
     const struct CMUnitTest tests_configuration[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
@@ -2738,6 +2867,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_manage_subscription_error, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_saving_running_state_error, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_content_blobs_fail, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_get_logs_from_blob_response_null, setup_conf, teardown_conf),
     };
 
     int result;
