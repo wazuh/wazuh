@@ -44,27 +44,15 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
 char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
 /**
- * @brief Insert or update entry data.
- *
- * @param fim_sql FIM database struct.
- * @param entry Entry data to be inserted.
- * @param row_id Row id to insert data.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_insert_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id);
-
-/**
- * @brief Insert or update entry path.
+ * @brief Insert or update entry.
  *
  * @param fim_sql FIM database struct.
  * @param file_path File path.
  * @param entry Entry data to be inserted.
- * @param inode_id Inode id to insert.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry, int inode_id);
+int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry);
 
 /**
  * @brief Insert an entry in the needed tables.
@@ -198,13 +186,13 @@ int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
 fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt);
 
 /**
- * @brief Get count of all entries in file_data table.
+ * @brief Get count of all inodes in file_entry table.
  *
  * @param fim_sql FIM database struct.
  *
- * @return Number of entries in file_data table.
+ * @return Number of inodes in file_entry table.
  */
-int fim_db_get_count_file_data(fdb_t * fim_sql);
+int fim_db_get_count_file_inode(fdb_t * fim_sql);
 
 /**
  * @brief Get count of all entries in file_entry table.

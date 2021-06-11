@@ -203,48 +203,6 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_ALL_ENTRIES)
     EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
 }
 
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_COUNT)
-{
-    const auto expectedResult
-    {
-        "{\"count(inode_id)\":1}"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_path",
-           "query":{"column_list":["count(inode_id) "],
-           "row_filter":"WHERE inode_id = (select inode_id from entry_path where path = '/etc/gssproxy/24-nfs-server.conf') ",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_DATA_ROW)
-{
-    const auto expectedResult
-    {
-        R"({"rowid":1276})"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_data",
-           "query":{"column_list":["rowid"],
-           "row_filter":"WHERE inode = 51436218 AND dev = 2051",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
 TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_RANGE)
 {
     const auto expectedResult
@@ -381,27 +339,6 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATHS_INODE_COUNT)
     EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
 }
 
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_INODE_ID)
-{
-    const auto expectedResult
-    {
-        R"({"inode_id":605})"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_path",
-           "query":{"column_list":["inode_id"],
-           "row_filter":"WHERE path = '/etc/yum.repos.d/CentOS-Base.repo'",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
 TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_PATH)
 {
     const auto expectedResult
@@ -422,48 +359,3 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_PATH)
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
     EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
 }
-
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_COUNT_DATA)
-{
-    const auto expectedResult
-    {
-        "{\"count(*)\":1906}"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_data",
-           "query":{"column_list":["count(*) "],
-           "row_filter":"",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-
-TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_INODE)
-{
-    const auto expectedResult
-    {
-        R"({"inode":2079})"
-    };
-    const auto selectSql
-    {
-        R"({"table":"entry_data",
-           "query":{"column_list":["inode"],
-           "row_filter":"where rowid=(SELECT inode_id FROM entry_path WHERE path ='/etc/yum.repos.d/CentOS-Base.repo' ) ",
-           "distinct_opt":false,
-           "order_by_opt":""}})"
-    };
-    const auto selectJson{nlohmann::json::parse(selectSql)};
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelect{ cJSON_Parse(selectSql) };
-    CallbackMock wrapper;
-    callback_data_t callbackData { callback, &wrapper };
-    ASSERT_NE(nullptr, jsSelect.get());
-    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(expectedResult))).Times(1);
-    EXPECT_EQ(0, dbsync_select_rows(m_dbHandle, jsSelect.get(), callbackData));
-}
-

@@ -1405,7 +1405,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
 
-    inode_items = fim_db_get_count_file_data(syscheck.database);
+    inode_items = fim_db_get_count_file_inode(syscheck.database);
     inode_paths = fim_db_get_count_file_entry(syscheck.database);
 
     mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
