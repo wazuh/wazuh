@@ -2165,6 +2165,27 @@ void test_w_macos_release_log_show_launched_and_running(void ** state) {
 
 }
 
+void test_w_macos_release_log_show_launched_and_running_with_child(void ** state) {
+
+    macos_processes = *state;
+    macos_processes->show.wfd->pid = 10;
+    macos_processes->show.child = 11;
+    macos_processes = *state;
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 11);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, 0);
+
+    w_macos_release_log_show();
+
+    assert_null(macos_processes->show.wfd);
+
+}
+
 void test_w_macos_release_log_show_launched_and_not_running(void ** state) {
 
     macos_processes = *state;
@@ -2197,6 +2218,27 @@ void test_w_macos_release_log_stream_launched_and_running(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
     expect_value(__wrap_kill, sig, SIGTERM);
     expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, 0);
+
+    w_macos_release_log_stream();
+
+    assert_null(macos_processes->stream.wfd);
+
+}
+
+void test_w_macos_release_log_stream_launched_and_running_with_child(void ** state) {
+
+    macos_processes = *state;
+    macos_processes->stream.wfd->pid = 10;
+    macos_processes->stream.child = 11;
+    macos_processes = *state;
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 11);
     will_return(__wrap_kill, 0);
     will_return(__wrap_wpclose, 0);
 
@@ -2371,11 +2413,14 @@ int main(void) {
         // Test w_macos_release_log_show
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_show_not_launched, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_show_launched_and_running, setup_process, teardown_process),
+        cmocka_unit_test_setup_teardown(test_w_macos_release_log_show_launched_and_running_with_child, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_show_launched_and_not_running, setup_process, teardown_process),
+
 
         // Test w_macos_release_log_stream
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_stream_not_launched, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_stream_launched_and_running, setup_process, teardown_process),
+        cmocka_unit_test_setup_teardown(test_w_macos_release_log_stream_launched_and_running_with_child, setup_process, teardown_process),
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_stream_launched_and_not_running, setup_process, teardown_process),
 
         // Test w_macos_release_log_execution

@@ -83,14 +83,6 @@ STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
  */
 STATIC int w_update_hash_node(char * path, int64_t pos);
 
-/**
- * @brief Retrive first child process for specific process
- * 
- * @param pid pid of parent process
- * @return pid_t pid of child proces. Zero on error
- */
-pid_t w_get_children_pid_by_ppid(pid_t pid);
-
 /* Global variables */
 int loop_timeout;
 int logr_queue;
