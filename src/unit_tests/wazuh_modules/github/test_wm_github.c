@@ -30,8 +30,6 @@
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
 #include "../../wrappers/libc/time_wrappers.h"
 
-void * wm_github_main(wm_github* github_config);
-
 unsigned int __wrap_sleep(unsigned int __seconds) {
     check_expected(__seconds);
     return mock_type(unsigned int);

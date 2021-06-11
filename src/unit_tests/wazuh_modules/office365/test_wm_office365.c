@@ -21,12 +21,13 @@
 #include "wazuh_modules/wm_office365.h"
 #include "wazuh_modules/wm_office365.c"
 
+#include "../scheduling/wmodules_scheduling_helpers.h"
+#include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
-#include "../scheduling/wmodules_scheduling_helpers.h"
-#include "../../wrappers/common.h"
+#include "../../wrappers/wazuh/shared/url_wrappers.h"
 #include "../../wrappers/libc/time_wrappers.h"
 
 int __wrap_access(const char *__name, int __type) {
@@ -2346,10 +2347,11 @@ void test_wm_office365_execute_scan_all(void **state) {
         will_return(__wrap_localtime_r, 1);
         will_return(__wrap_localtime_r, 1);
     #endif
-        will_return(__wrap_strftime,"2021-05-07 12:24:56");
-        will_return(__wrap_strftime, 20);
-        will_return(__wrap_strftime,"2021-05-07 12:24:56");
-        will_return(__wrap_strftime, 20);
+
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
+    will_return(__wrap_strftime,"2021-05-07 12:24:56");
+    will_return(__wrap_strftime, 20);
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
@@ -2596,12 +2598,12 @@ void test_wm_office365_execute_scan_saving_running_state_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
     expect_value(__wrap_wurl_free_response, response, data->response);
-    
+
     wm_office365_execute_scan(data->office365_config, initial_scan);
 
     os_free(data->response->body);
     os_free(data->response->header);
-    os_free(data->response);    
+    os_free(data->response);
 }
 
 void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
@@ -2645,7 +2647,7 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&tenant_state_struc);    
+    will_return(__wrap_wm_state_io, (void *)&tenant_state_struc);
 
     /* wm_office365_manage_subscription */
     expect_any(__wrap_wurl_http_request, method);
@@ -2828,7 +2830,6 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     os_free(get_content_blobs_response->body);
     os_free(get_content_blobs_response->header);
     os_free(get_content_blobs_response);
-    
 }
 
 int main(void) {
@@ -2907,13 +2908,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_code_400, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_no_array, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_ok, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_all, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_initial_scan_only_future_events, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_access_token_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_manage_subscription_error, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_saving_running_state_error, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_content_blobs_fail, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_get_logs_from_blob_response_null, setup_conf, teardown_conf),
+        #ifndef WIN32
+            cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_content_blobs_fail, setup_conf, teardown_conf),
+            cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_get_logs_from_blob_response_null, setup_conf, teardown_conf),
+            cmocka_unit_test_setup_teardown(test_wm_office365_execute_scan_all, setup_conf, teardown_conf),
+        #endif
     };
 
     int result;
@@ -2921,4 +2924,3 @@ int main(void) {
     result += cmocka_run_group_tests(tests_functionality, NULL, NULL);
     return result;
 }
-
