@@ -697,31 +697,32 @@ def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd
                                   for row in test_data.global_db.execute(
             'select id, name, register_ip, internal_key from agent where id > 0')])
 
-    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
-        if exists_backup_dir:
-            exists_mock.side_effect = [True, True, True] + [False] * 10
-        else:
-            exists_mock.side_effect = lambda x: not (common.backup_path in x)
-        Agent('001')._remove_manual(backup=backup)
-
-        m.assert_any_call(common.client_keys)
-        stat_mock.assert_called_once_with(common.client_keys)
-        mock_delete_agents.assert_called_once_with(['001'])
-        run_wdb_mock.assert_called_once_with('global sql DELETE FROM belongs WHERE id_agent = 001')
-        remove_mock.assert_any_call(os.path.join(common.wazuh_path, 'queue/rids/001'))
-        mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
-
-        # make sure the mock is called with a string according to a non-backup path
-        exists_mock.assert_any_call('{0}/queue/agent-groups/001'.format(test_data_path))
-        safe_move_mock.assert_called_with('mock_tmp_file', common.client_keys,
-                                          permissions=stat_mock().st_mode)
-        if backup:
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
+        with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
             if exists_backup_dir:
-                backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any-002')
+                exists_mock.side_effect = [True, True, True] + [False] * 10
             else:
-                backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
-            makedirs_mock.assert_called_once_with(backup_path)
-            chmod_r_mock.assert_called_once_with(backup_path, 0o750)
+                exists_mock.side_effect = lambda x: not (common.backup_path in x)
+            Agent('001')._remove_manual(backup=backup)
+
+            m.assert_any_call(common.client_keys)
+            stat_mock.assert_called_once_with(common.client_keys)
+            mock_delete_agents.assert_called_once_with(['001'])
+            run_wdb_mock.assert_called_once_with('global sql DELETE FROM belongs WHERE id_agent = 001')
+            remove_mock.assert_any_call(os.path.join(common.wazuh_path, 'queue/rids/001'))
+            mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
+
+            # make sure the mock is called with a string according to a non-backup path
+            exists_mock.assert_any_call('{0}/queue/agent-groups/001'.format(test_data_path))
+            safe_move_mock.assert_called_with('mock_tmp_file', common.client_keys,
+                                              permissions=stat_mock().st_mode)
+            if backup:
+                if exists_backup_dir:
+                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any-002')
+                else:
+                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
+                makedirs_mock.assert_called_once_with(backup_path)
+                chmod_r_mock.assert_called_once_with(backup_path, 0o750)
 
 
 @pytest.mark.parametrize("authd_status", [
@@ -855,17 +856,18 @@ def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_s
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
     client_keys_text = f'001 windows-agent any {key}\n \n002 #name '
 
-    with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=client_keys_text.encode())):
-        agent = Agent(1)
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
+        with patch('wazuh.core.agent.mmap.mmap', mock_open(read_data=client_keys_text.encode())):
+            agent = Agent(1)
 
-        agent._add_manual('test_agent', ip=ip, id=id, key=key, force=force)
+            agent._add_manual('test_agent', ip=ip, id=id, key=key, force=force)
 
-        assert agent.id == id if id is not None else agent.id == '002', 'ID should has been updated.'
+            assert agent.id == id if id is not None else agent.id == '002', 'ID should has been updated.'
 
-        mock_get_manager_name.assert_called_once()
-        mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
-        mock_safe_move.assert_called_once_with('mock_tmp_file', common.client_keys,
-                                               permissions=ANY)
+            mock_get_manager_name.assert_called_once()
+            mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
+            mock_safe_move.assert_called_once_with('mock_tmp_file', common.client_keys,
+                                                   permissions=ANY)
 
 
 @pytest.mark.parametrize('test_case', safe_load(open(os.path.join(os.path.dirname(__file__), 'data', 'test_agent',
@@ -1658,10 +1660,12 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
     """
 
     def check_exception(client_keys):
-        with patch('wazuh.core.agent.open',
-                   mock_open(read_data=client_keys) if not isinstance(client_keys, Exception) else client_keys) as m:
-            with pytest.raises(WazuhException, match=f".* {expected_exception} .*"):
-                Agent(agent_id)._remove_manual()
+        with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
+            with patch(
+                    'wazuh.core.agent.open',
+                    mock_open(read_data=client_keys) if not isinstance(client_keys, Exception) else client_keys) as m:
+                with pytest.raises(WazuhException, match=f".* {expected_exception} .*"):
+                    Agent(agent_id)._remove_manual()
 
     client_keys_text = '\n'.join([f'{str(row["id"]).zfill(3) if expected_exception != 1701 else "100"} '
                                   f'{row["name"]} '

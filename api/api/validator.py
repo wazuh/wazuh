@@ -63,6 +63,13 @@ api_config_schema = {
         "use_only_authd": {"type": "boolean"},
         "drop_privileges": {"type": "boolean"},
         "experimental_features": {"type": "boolean"},
+        "intervals": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "request_timeout": {"type": "number", "minimum": 0}
+            },
+        },
         "https": {
             "type": "object",
             "additionalProperties": False,

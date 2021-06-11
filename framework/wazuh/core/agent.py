@@ -20,9 +20,10 @@ from platform import platform
 from shutil import rmtree
 from time import time
 
+import api.configuration as aconf
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.cluster.utils import get_manager_status, get_cluster_items
+from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -370,7 +371,8 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def _acquire_client_keys_lock(timeout=get_cluster_items()['intervals']['communication']['timeout_api_exe'] - 1):
+    def _acquire_client_keys_lock(timeout=None):
+        timeout = aconf.api_conf['intervals']['request_timeout'] - 1 if not timeout else timeout
         if mutex.acquire(timeout=timeout):
             global lock_file
             lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')
