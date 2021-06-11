@@ -373,7 +373,7 @@ int fim_db_get_last_path(fdb_t * fim_sql, int type, char **path);
 int fim_db_get_first_path(fdb_t * fim_sql, int type, char **path);
 
 /**
- * @brief Get checksum of all file_data.
+ * @brief Get checksum of all file_entry.
  *
  * @param fim_sql FIM database struct.
  * @param type FIM_TYPE_FILE or FIM_TYPE_REGISTRY.

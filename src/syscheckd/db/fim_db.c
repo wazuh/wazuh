@@ -28,36 +28,24 @@ extern void mock_assert(const int result, const char* const expression,
 const char *SQL_STMT[] = {
     // Files
 #ifdef WIN32
-    [FIMDB_STMT_INSERT_DATA] = "INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_REPLACE_ENTRY] = "INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
 #else
-    [FIMDB_STMT_INSERT_DATA] = "INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [FIMDB_STMT_REPLACE_ENTRY] = "INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
 #endif
-    [FIMDB_STMT_REPLACE_PATH] = "INSERT OR REPLACE INTO file_entry (path, inode_id, mode, last_event, scanned, options, checksum) VALUES (?, ?, ?, ?, ?, ?, ?);",
-    [FIMDB_STMT_GET_PATH] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry INNER JOIN file_data ON path = ? AND file_data.rowid = file_entry.inode_id;",
-    [FIMDB_STMT_UPDATE_DATA] = "UPDATE file_data SET size = ?, perm = ?, attributes = ?, uid = ?, gid = ?, user_name = ?, group_name = ?, hash_md5 = ?, hash_sha1 = ?, hash_sha256 = ?, mtime = ? WHERE rowid = ?;",
-    [FIMDB_STMT_UPDATE_PATH] = "UPDATE file_entry SET inode_id = ?, mode = ?, last_event = ? = ?, scanned = ?, options = ?, checksum = ? WHERE path = ?;",
+    [FIMDB_STMT_GET_PATH] = "SELECT path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry WHERE path = ?;",
     [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM file_entry ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM file_entry ORDER BY path ASC LIMIT 1;",
     [FIMDB_STMT_GET_ALL_CHECKSUMS] = "SELECT checksum FROM file_entry ORDER BY path ASC;",
-    [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, inode_id, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_data INNER JOIN file_entry ON inode_id = file_data.rowid WHERE scanned = 0 ORDER BY PATH ASC;",
+    [FIMDB_STMT_GET_NOT_SCANNED] = "SELECT path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry WHERE scanned = 0 ORDER BY PATH ASC;",
     [FIMDB_STMT_SET_ALL_UNSCANNED] = "UPDATE file_entry SET scanned = 0;",
-    [FIMDB_STMT_GET_PATH_COUNT] = "SELECT count(inode_id), inode_id FROM file_entry WHERE inode_id = (select inode_id from file_entry where path = ?);",
-#ifndef WIN32
-    [FIMDB_STMT_GET_DATA_ROW] = "SELECT rowid FROM file_data WHERE inode = ? AND dev = ?;",
-#else
-    [FIMDB_STMT_GET_DATA_ROW] = "SELECT inode_id FROM file_entry WHERE path = ?",
-#endif
-    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid = file_entry.inode_id WHERE path BETWEEN ? and ? ORDER BY path;",
+    [FIMDB_STMT_GET_COUNT_RANGE] = "SELECT count(*) FROM file_entry WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_GET_PATH_RANGE] = "SELECT path, checksum FROM file_entry WHERE path BETWEEN ? and ? ORDER BY path;",
     [FIMDB_STMT_DELETE_PATH] = "DELETE FROM file_entry WHERE path = ?;",
-    [FIMDB_STMT_DELETE_DATA] = "DELETE FROM file_data WHERE rowid = ?;",
-    [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
+    [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry WHERE inode=? AND dev=?;",
     [FIMDB_STMT_SET_SCANNED] = "UPDATE file_entry SET scanned = 1 WHERE path = ?;",
-    [FIMDB_STMT_GET_INODE_ID] = "SELECT inode_id FROM file_entry WHERE path = ?",
     [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM file_entry",
-    [FIMDB_STMT_GET_COUNT_DATA] = "SELECT count(*) FROM file_data",
-    [FIMDB_STMT_GET_INODE] = "SELECT inode FROM file_data where rowid=(SELECT inode_id FROM file_entry WHERE path = ?)",
-    [FIMDB_STMT_GET_PATH_FROM_PATTERN] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE path LIKE ?",
+    [FIMDB_STMT_GET_COUNT_INODE] = "SELECT count(inode) FROM file_entry",
+    [FIMDB_STMT_GET_PATH_FROM_PATTERN] = "SELECT path FROM file_entry WHERE path LIKE ?",
     // Registries
 #ifdef WIN32
     [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -626,11 +614,11 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, 
 int fim_db_get_count(fdb_t *fim_sql, int index) {
     int retval = FIMDB_ERR;
 #ifndef WIN32
-    assert(index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
+    assert(index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_INODE ||
            index == FIMDB_STMT_COUNT_DB_ENTRIES);
 #else
     assert(index == FIMDB_STMT_GET_COUNT_REG_KEY || index == FIMDB_STMT_GET_COUNT_REG_DATA ||
-           index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_DATA ||
+           index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_INODE ||
            index == FIMDB_STMT_COUNT_DB_ENTRIES);
 #endif
 
