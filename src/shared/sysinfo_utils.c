@@ -67,7 +67,7 @@ cJSON * w_sysinfo_get_os(w_sysinfo_helpers_t * sysinfo) {
 
 pid_t * w_get_process_childs(w_sysinfo_helpers_t * sysinfo, pid_t parent_pid, unsigned int max_count) {
 
-    const unsigned int CHILDS_CHUNKS = 10;
+    const unsigned int CHILDS_CHUNKS = 5;
     unsigned int childs_count = 0;
     cJSON * processes = NULL;
     cJSON * process = NULL;
