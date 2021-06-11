@@ -22,6 +22,7 @@
 #include "wazuh_modules/wm_office365.c"
 
 #include "../../wrappers/libc/stdlib_wrappers.h"
+#include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
@@ -2187,6 +2188,86 @@ void test_wm_office365_get_logs_from_blob_ok(void **state) {
 
 }
 
+void test_wm_office365_main_disabled(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->office365_config->enabled = 0;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module Office365 disabled.");
+
+    wm_office365_main(data->office365_config);
+}
+
+void test_wm_office365_main_fail_StartMQ(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->office365_config->enabled = 1;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module Office365 started.");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mterror, formatted_msg, "Can't connect to queue. Closing module.");
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, -1);
+
+    wm_office365_main(data->office365_config);
+}
+
+void test_wm_office365_main_enable(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    size_t max_size = OS_SIZE_8192;
+
+    data->office365_config->enabled = 1;
+    os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
+    os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
+    os_strdup("test_client_id", data->office365_config->auth->client_id);
+    os_strdup("test_client_secret", data->office365_config->auth->client_secret);
+    os_calloc(1, sizeof(wm_office365_subscription), data->office365_config->subscription);
+    os_strdup("test_subscription_name", data->office365_config->subscription->subscription_name);
+    data->office365_config->only_future_events = 1;
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 1);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module Office365 started.");
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning tenant: 'test_tenant_id'");
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap_wm_state_io, tag, "office365-test_tenant_id-test_subscription_name");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Scanning tenant: 'test_tenant_id'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    will_return(__wrap_wurl_http_request, NULL);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_any(__wrap__mtdebug1, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
+
+    wm_office365_main(data->office365_config);
+}
+
 void test_wm_office365_execute_scan_initial_scan_only_future_events(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     size_t max_size = OS_SIZE_8192;
@@ -2360,6 +2441,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_client_secret_path_1, setup_test_read, teardown_test_read),
     };
     const struct CMUnitTest tests_functionality[] = {
+        cmocka_unit_test_setup_teardown(test_wm_office365_main_disabled, setup_conf, teardown_conf),
+        #ifndef WIN32
+            cmocka_unit_test_setup_teardown(test_wm_office365_main_fail_StartMQ, setup_conf, teardown_conf),
+            cmocka_unit_test_setup_teardown(test_wm_office365_main_enable, setup_conf, teardown_conf),
+        #endif
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_no_options, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options_empty_arrays, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_dump_yes_options, setup_conf, teardown_conf),
