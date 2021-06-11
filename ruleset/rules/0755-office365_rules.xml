@@ -211,7 +211,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>ComplianceDLPSharePoint</group>
         <mitre>
-            <id>T1213</id>
+            <id>T1213.002</id>
         </mitre>
     </rule>
 
@@ -230,7 +230,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>SharePointSharingOperation</group>
         <mitre>
-            <id>1213</id>
+            <id>T1213.002</id>
         </mitre>
     </rule>
 
@@ -345,7 +345,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>MicrosoftFlow</group>
         <mitre>
-            <id>T1137</id>
+            <id>T1137.006</id>
         </mitre>
     </rule>
 
@@ -372,7 +372,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>ComplianceDLPSharePointClassification</group>
         <mitre>
-            <id>T1213</id>
+            <id>T1213.002</id>
         </mitre>
     </rule>
 
@@ -1018,7 +1018,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>Exchange</group>
         <mitre>
-            <id>T1114</id>
+            <id>T1114.003</id>
         </mitre>
     </rule>
 
@@ -1029,7 +1029,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>Exchange</group>
         <mitre>
-            <id>T1114</id>
+            <id>T1114.003</id>
         </mitre>
     </rule>
 
@@ -1098,7 +1098,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>Discovery</group>
         <mitre>
-            <id>1526</id>
+            <id>T1526</id>
         </mitre>
     </rule>
 
@@ -1109,7 +1109,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>Discovery</group>
         <mitre>
-            <id>1526</id>
+            <id>T1526</id>
         </mitre>
     </rule>
 
@@ -1120,7 +1120,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>Discovery</group>
         <mitre>
-            <id>1526</id>
+            <id>T1526</id>
         </mitre>
     </rule>
 
@@ -1131,7 +1131,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>Discovery</group>
         <mitre>
-            <id>1526</id>
+            <id>T1526</id>
         </mitre>
     </rule>
 
@@ -1159,7 +1159,7 @@ ID: 91531 - 91650
         <group>Exchange</group>
     </rule>
 
-    <rule id="91722" level="g">
+    <rule id="91722" level="12">
         <if_sid>91532</if_sid>
         <field name="office365.Operation" type="osregex">^QuarantineRelease$</field>
         <description>Office 365: Released quarantine message</description>
@@ -1185,7 +1185,7 @@ ID: 91531 - 91650
         <options>no_full_log</options>
         <group>OneDrive,SharePoint</group>
         <mitre>
-            <id>T1213</id>
+            <id>T1213.002</id>
         </mitre>
     </rule>
 
