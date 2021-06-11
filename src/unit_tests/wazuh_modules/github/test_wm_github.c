@@ -228,6 +228,29 @@ void test_github_scan_failure_action_1(void **state) {
 void test_github_scan_failure_action_2(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
+    data->github_config->fails->fails = 1;
+    os_strdup("test_org", data->github_config->fails->org_name);
+    os_calloc(1, sizeof(wm_github_fail), data->github_config->fails->next);
+    data->github_config->fails->next->fails = 1;
+    os_strdup("test_org2", data->github_config->fails->next->org_name);
+    data->github_config->fails->next->next = NULL;
+    char *org_name = "test_org3";
+    char *error_msg = "test_error";
+    int queue_fd = 1;
+
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+
+    assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_string_equal(data->github_config->fails->next->org_name, "test_org2");
+    assert_string_equal(data->github_config->fails->next->next->org_name, "test_org3");
+    assert_int_equal(data->github_config->fails->fails, 1);
+    assert_int_equal(data->github_config->fails->next->fails, 1);
+    assert_int_equal(data->github_config->fails->next->next->fails, 1);
+}
+
+void test_github_scan_failure_action_3(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
     data->github_config->fails->fails = 2;
     os_strdup("test_org", data->github_config->fails->org_name);
     data->github_config->fails->next = NULL;
@@ -247,6 +270,35 @@ void test_github_scan_failure_action_2(void **state) {
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}'");
+
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+
+    assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_int_equal(data->github_config->fails->fails, 3);
+}
+
+void test_github_scan_failure_action_4(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
+    data->github_config->fails->fails = 2;
+    os_strdup("test_org", data->github_config->fails->org_name);
+    data->github_config->fails->next = NULL;
+    char *org_name = "test_org";
+    char *error_msg = "{\"test\":\"test_error\"}";
+    int queue_fd = 1;
+    wm_max_eps = 1;
+
+    int result = 0;
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, 1);
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, "github");
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}'");
 
     wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
 
@@ -1252,6 +1304,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_github_dump_yes_options, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_1, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_2, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_scan_failure_action_3, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_scan_failure_action_4, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_error, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_scan_failure_action_org_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_github_execute_scan_current_null, setup_conf, teardown_conf),
