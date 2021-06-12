@@ -1,0 +1,11 @@
+<group name="fortiweb">
+<rule id="915000" level="3">
+  <decoded_as>fortiweb-custom</decoded_as>
+  <description>Fortiweb messages grouped.</description>
+</rule>
+<rule id="915001" level="7">
+   <if_sid>915000</if_sid>
+   <match>type=attack</match>
+  <description>Fortiweb: | $(sub_type)  | $(source) </description>
+</rule>
+</group>
