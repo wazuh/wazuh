@@ -158,10 +158,20 @@ list(APPEND shared_tests_names "test_atomic")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 list(APPEND shared_tests_names "test_sysinfo_utils")
-list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
+
+if(${TARGET} STREQUAL "winagent")
+    # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
+    # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
+    list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
+                                -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
+                                -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
+                                -Wl,--wrap,cJSON_GetObjectItem@8 -Wl,--wrap,cJSON_GetStringValue@4")
+else()
+    list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
                                 -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
                                 -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
                                 -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
+endif()
 
 # Compiling tests
 list(LENGTH shared_tests_names count)
