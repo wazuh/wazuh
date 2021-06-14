@@ -167,6 +167,9 @@ ID: 91100 - 91449
         <field name="github.action">dependabot_alerts.disable</field>
         <description>GitHub Dependabot alerts disable.</description>
         <options>no_full_log</options>
+        <mitre>
+            <id>T1562.006</id>
+        </mitre>
         <group>git_dependabot_alerts</group>
     </rule>
 
@@ -226,6 +229,9 @@ ID: 91100 - 91449
         <if_sid>91120</if_sid>
         <field name="github.action">dependabot_security_updates.disable</field>
         <description>GitHub Dependabot security updates disable.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_dependabot_security_updates</group>
     </rule>
@@ -1390,6 +1396,9 @@ ID: 91100 - 91449
         <if_sid>91239</if_sid>
         <field name="github.action">org_credential_authorization.grant</field>
         <description>GitHub Organization credential authorization grant.</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org_credential_authorization</group>
     </rule>
@@ -1399,6 +1408,9 @@ ID: 91100 - 91449
         <if_sid>91239</if_sid>
         <field name="github.action">org_credential_authorization.deauthorized</field>
         <description>GitHub Organization credential authorization deauthorized.</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org_credential_authorization</group>
     </rule>
@@ -1407,6 +1419,9 @@ ID: 91100 - 91449
     <rule id="91242" level="9">
         <if_sid>91239</if_sid>
         <field name="github.action">org_credential_authorization.revoke</field>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
         <description>GitHub Organization credential authorization revoke.</description>
         <options>no_full_log</options>
         <group>git_org_credential_authorization</group>
@@ -2649,6 +2664,9 @@ ID: 91100 - 91449
         <if_sid>91365</if_sid>
         <field name="github.action">repository_vulnerability_alerts.disable</field>
         <description>GitHub Repository vulnerability alerts disable.</description>
+        <mitre>
+            <id>T1562.006</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_repository_vulnerability_alerts</group>
     </rule>
