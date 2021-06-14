@@ -344,7 +344,7 @@ ID: 65000 - 65499
     <rule id="65047" level="3">
         <if_sid>65000</if_sid>
         <field name="gcp.jsonPayload.rule_details.reference" type="pcre2">^(?!^$).*</field>
-        <description>GCP VPC Firewall rules grouped</description>
+        <description>GCP VPC Firewall event</description>
         <options>no_full_log</options>
     </rule>
 
@@ -366,7 +366,7 @@ ID: 65000 - 65499
     <rule id="65050" level="2">
         <if_sid>65000</if_sid>
         <field name="gcp.jsonPayload.reporter" type="pcre2">^(?!^$).*</field>
-        <description>GCP VPC Flow rules grouped</description>
+        <description>GCP VPC Flow event</description>
         <options>no_full_log</options>
     </rule>
 </group>
