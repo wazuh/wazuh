@@ -320,7 +320,7 @@ stages:
         function: tavern_utils:test_validate_group_configuration
         extra_kwargs:
           expected_field: "query"
-          expected_value: " <QueryList> <Query Id='0' Path='System'> <Select Path='System'>*[System[(Level&lt;=3)]]</Select> </Query> </QueryList> "
+          expected_value: ' <QueryList> <Query Id="0" Path="System"> <Select Path="System">*[System[(Level&lt;=3)]]</Select> </Query> </QueryList> '
       json:
         error: 0
         data:

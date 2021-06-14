@@ -15,7 +15,6 @@
 #define WM_GITHUB_LOGTAG ARGV0 ":" GITHUB_WM_NAME
 
 #define WM_GITHUB_DEFAULT_ENABLED 1
-#define WM_GITHUB_DEFAULT_RUN_ON_START 1
 #define WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS 1
 #define WM_GITHUB_DEFAULT_INTERVAL 600
 #define WM_GITHUB_DEFAULT_DELAY 1
@@ -45,7 +44,6 @@ typedef struct wm_github_fail {
 
 typedef struct wm_github {
     int enabled;
-    int run_on_start;
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
     time_t time_delay;

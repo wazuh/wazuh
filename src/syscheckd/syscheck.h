@@ -339,10 +339,27 @@ int realtime_start(void);
  *
  * @param dir Path to file or directory
  * @param configuration Configuration associated with the file or directory
- * @param followsl If the path is configured with follow sym link option
  * @return 1 on success, -1 on realtime_start failure, -2 on set_winsacl failure, and 0 on other errors
  */
-int realtime_adddir(const char *dir, directory_t *configuration, int followsl);
+int realtime_adddir(const char *dir, directory_t *configuration);
+
+#ifdef INOTIFY_ENABLED
+/**
+ * @brief Add an inotify watch to monitoring directory
+ *
+ * @param dir Path to file or directory
+ * @param configuration Configuration associated with the file or directory
+ * @return 1 on success, -1 on failure
+ */
+int fim_add_inotify_watch(const char *dir, const directory_t *configuration);
+#endif
+
+/**
+ * @brief Remove an inotify watch
+ *
+ * @param configuration Configuration associated with the file or directory
+ */
+void fim_delete_realtime_watches(const directory_t *configuration);
 
 /**
  * @brief Process events in the real time queue
@@ -445,9 +462,9 @@ void remove_audit_rule_syscheck(const char *path);
  * @brief Read an audit event from socket
  *
  * @param [out] audit_sock The audit socket to read the events from
- * @param [in] reading_mode READING_MODE or HEALTHCHECK_MODE
+ * @param [in] running atomic_int that holds the status of the running thread.
  */
-void audit_read_events(int *audit_sock, int reading_mode);
+void audit_read_events(int *audit_sock, atomic_int_t *running);
 
 /**
  * @brief Makes Audit thread to wait for audit healthcheck to be performed
@@ -931,4 +948,23 @@ void fim_delete_file_event(fdb_t *fim_sql,
                            void *_evt_data,
                            void *_unused_field_1,
                            void *_unused_field_2);
+
+/**
+ * @brief Create a delete event and removes the entry from the database.
+ *
+ * @param fim_sql  FIM database struct.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param evt_data Information associated to the triggered event.
+ * @param configuration Directory configuration to be deleted.
+ * @param _unused_field Unused field, required to use this function as a callback.
+ *
+ */
+void fim_generate_delete_event(fdb_t *fim_sql,
+                               fim_entry *entry,
+                               pthread_mutex_t *mutex,
+                               void *evt_data,
+                               void *configuration,
+                               void *_unused_field);
+
 #endif /* SYSCHECK_H */

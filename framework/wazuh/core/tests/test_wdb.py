@@ -192,6 +192,6 @@ def test_failed_execute(send_mock, connect_mock, error_query, error_type, expect
             mywdb.execute(error_query, delete=delete, update=update)
     else:
         with patch("wazuh.core.wdb.WazuhDBConnection._send", return_value=[{'total': 5}]):
-            with patch("wazuh.core.wdb.range", side_effect=error_type):
+            with patch("wazuh.core.wdb.min", side_effect=error_type):
                 with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
                     mywdb.execute(error_query, delete=delete, update=update)

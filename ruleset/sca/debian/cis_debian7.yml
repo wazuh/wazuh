@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for Debian Linux 7
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -346,7 +346,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /boot/grub/grub.cfg -> r:Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   - id: 1022
     title: "Set Permissions on bootloader config"
@@ -360,7 +360,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:^Access: \(0\d00/-\w\w\w------\)'
+      - 'c:stat -L /boot/grub/grub.cfg -> r:^Access: \(0\d00/-\w\w\w------\)'
 
   - id: 1023
     title: "Set Boot Loader Password"
@@ -1933,7 +1933,7 @@ checks:
       - gdpr_IV: ["35.7","32.2"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 9.1.3 Set User/Group Owner and Permission on /etc/cron.hourly (Scored)
   - id: 1110
@@ -1948,7 +1948,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 9.1.4 Set User/Group Owner and Permission on /etc/cron.daily (Scored)
   - id: 1111
@@ -1963,7 +1963,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 9.1.5 Set User/Group Owner and Permission on /etc/cron.weekly (Scored)
   - id: 1112
@@ -1978,7 +1978,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 9.1.6 Set User/Group Owner and Permission on /etc/cron.monthly (Scored)
@@ -1994,7 +1994,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 9.1.7 Set User/Group Owner and Permission on /etc/cron.d (Scored)
   - id: 1114
@@ -2009,7 +2009,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 9.1.8 Restrict at/cron to Authorized Users (Scored)
   - id: 1115
@@ -2028,8 +2028,8 @@ checks:
       - 'f:/etc/at.allow'
       - 'not f:/etc/cron.deny'
       - 'not f:/etc/at.deny'
-      - 'c:stat -c%u-%g-%a /etc/cron.allow -> r:^0-0-600'
-      - 'c:stat -c%u-%g-%a /etc/at.allow -> r:^0-0-600'
+      - 'c:stat -L -c%u-%g-%a /etc/cron.allow -> r:^0-0-600'
+      - 'c:stat -L -c%u-%g-%a /etc/at.allow -> r:^0-0-600'
 
 ###########################################
 # 9.2 Configure PAM
@@ -2121,7 +2121,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/-\w\w-------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/-\w\w-------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 9.3.4 Disable SSH X11 Forwarding (Scored)
   - id: 1122
@@ -2412,9 +2412,9 @@ checks:
       - 'f:/etc/motd'
       - 'f:/etc/issue'
       - 'f:/etc/issue.net'
-      - 'c:stat -c%u-%g-%a /etc/motd -> 0-0-644'
-      - 'c:stat -c%u-%g-%a /etc/issue -> 0-0-644'
-      - 'c:stat -c%u-%g-%a /etc/issue.net -> 0-0-644'
+      - 'c:stat -L -c%u-%g-%a /etc/motd -> 0-0-644'
+      - 'c:stat -L -c%u-%g-%a /etc/issue -> 0-0-644'
+      - 'c:stat -L -c%u-%g-%a /etc/issue.net -> 0-0-644'
 
 # 11.2 Remove OS Information from Login Warning Banners (Scored)
   - id: 1141

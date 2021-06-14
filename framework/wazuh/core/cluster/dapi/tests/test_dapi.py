@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from asyncio import TimeoutError
+from typing import Iterator
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -57,6 +58,12 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
             assert e.ext['code'] == expected_error
         else:
             assert False, f'Unexpected exception: {e.ext}'
+
+
+@pytest.fixture(scope="session", autouse=True)
+def default_session_fixture() -> Iterator[None]:
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
+        yield
 
 
 @pytest.mark.parametrize('kwargs', [

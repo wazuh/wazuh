@@ -24,12 +24,6 @@
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 
-#ifndef WAZUH_UNIT_TESTING
-#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
-                                (mode == HEALTHCHECK_MODE && hc_thread_active))
-#else
-#define audit_thread_status() FOREVER()
-#endif
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -42,7 +36,7 @@ unsigned int count_reload_retries;
 //This variable controls if the the modification of the rule is made by syscheck.
 
 volatile int audit_db_consistency_flag = 0;
-volatile int audit_thread_active;
+atomic_int_t audit_thread_active = ATOMIC_INT_INITIALIZER(0);
 
 #ifdef ENABLE_AUDIT
 typedef struct _audit_data_s {
@@ -186,8 +180,11 @@ void audit_no_rules_to_realtime() {
     int found;
     char *real_path = NULL;
     directory_t *dir_it = NULL;
+    OSListNode *node_it;
 
-    foreach_array(dir_it, syscheck.directories) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }
@@ -201,6 +198,7 @@ void audit_no_rules_to_realtime() {
         }
         free(real_path);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 }
 
 // LCOV_EXCL_START
@@ -281,8 +279,9 @@ int audit_init(void) {
     w_cond_init(&audit_db_consistency, NULL);
     w_create_thread(audit_main, &audit_data);
     w_mutex_lock(&audit_mutex);
-    while (!audit_thread_active)
+    while (atomic_int_get(&audit_thread_active) == 0) {
         w_cond_wait(&audit_thread_started, &audit_mutex);
+    }
     w_mutex_unlock(&audit_mutex);
     return 1;
 
@@ -303,11 +302,12 @@ void audit_set_db_consistency(void) {
 void *audit_main(audit_data_t *audit_data) {
     char *path = NULL;
     directory_t *dir_it = NULL;
+    OSListNode *node_it;
     count_reload_retries = 0;
-    audit_thread_active = 0;
+    atomic_int_set(&audit_thread_active,0);
 
     w_mutex_lock(&audit_mutex);
-    audit_thread_active = 1;
+    atomic_int_set(&audit_thread_active, 1);
     w_cond_signal(&audit_thread_started);
 
     while (!audit_db_consistency_flag) {
@@ -324,7 +324,7 @@ void *audit_main(audit_data_t *audit_data) {
     minfo(FIM_WHODATA_STARTED);
 
     // Read events
-    audit_read_events(&audit_data->socket, READING_MODE);
+    audit_read_events(&audit_data->socket, &audit_thread_active);
 
     // Auditd is not runnig or socket closed.
     mdebug1(FIM_AUDIT_THREAD_STOPED);
@@ -333,7 +333,9 @@ void *audit_main(audit_data_t *audit_data) {
     // Clean regexes used for parsing events
     clean_regex();
     // Change Audit monitored folders to Inotify.
-    foreach_array(dir_it, syscheck.directories) {
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
         }
@@ -346,9 +348,34 @@ void *audit_main(audit_data_t *audit_data) {
         dir_it->options &= ~ WHODATA_ACTIVE;
         dir_it->options |= REALTIME_ACTIVE;
 
-        realtime_adddir(path, 0, (dir_it->options & CHECK_FOLLOW) ? 1 : 0);
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        if (syscheck.realtime == NULL) {
+            realtime_start();
+        }
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        realtime_adddir(path, dir_it);
         free(path);
     }
+
+    OSList_foreach(node_it, syscheck.wildcards) {
+        dir_it = node_it->data;
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
+            continue;
+        }
+
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        if (syscheck.realtime == NULL) {
+            realtime_start();
+        }
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
+        dir_it->options &= ~ WHODATA_ACTIVE;
+        dir_it->options |= REALTIME_ACTIVE;
+    }
+
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+
 
     // Clean Audit added rules.
     if (audit_data->mode == AUDIT_ENABLED) {
@@ -360,7 +387,7 @@ void *audit_main(audit_data_t *audit_data) {
 // LCOV_EXCL_STOP
 
 
-void audit_read_events(int *audit_sock, int mode) {
+void audit_read_events(int *audit_sock, atomic_int_t *running) {
     size_t byteRead;
     char * cache;
     char * cache_id = NULL;
@@ -379,7 +406,7 @@ void audit_read_events(int *audit_sock, int mode) {
     os_malloc(BUF_SIZE * sizeof(char), buffer);
     os_malloc(BUF_SIZE, cache);
 
-    while (audit_thread_status()) {
+    while (atomic_int_get(running)) {
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 
@@ -402,8 +429,7 @@ void audit_read_events(int *audit_sock, int mode) {
             continue;
 
         default:
-            if ((mode == READING_MODE && !audit_thread_active) ||
-                (mode == HEALTHCHECK_MODE && !hc_thread_active)) {
+            if (atomic_int_get(running) == 0) {
                 continue;
             }
 
