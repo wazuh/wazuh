@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+
 with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
         with patch('wazuh.core.common.wazuh_uid'):
@@ -12,6 +13,7 @@ with patch('wazuh.core.common.getgrnam'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
                 from wazuh.core.cluster import utils
+                from wazuh.core.common import reset_context_cache
                 from wazuh import WazuhError, WazuhException, WazuhInternalError
                 from wazuh.core.results import WazuhResult
 
@@ -77,12 +79,14 @@ def test_read_cluster_config():
 def test_get_manager_status():
     """Check that get_manager function returns the manager status,
     for this test, the status can be stopped or failed."""
+    reset_context_cache()
     status = utils.get_manager_status()
     for value in status.values():
         assert value == 'stopped'
 
     with patch('wazuh.core.cluster.utils.glob', return_value=['ossec-0.pid']):
         with patch('re.match', return_value='None'):
+            reset_context_cache()
             status = utils.get_manager_status()
             for value in status.values():
                 assert value == 'failed'
