@@ -493,7 +493,7 @@ class Agent:
         :return: Message.
         """
 
-        manager_status = get_manager_status()
+        manager_status = get_manager_status(cache=True)
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd and not is_authd_running:

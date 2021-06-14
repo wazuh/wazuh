@@ -12,7 +12,6 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.manager import *
         from wazuh.core.exception import WazuhException
-        from wazuh.core.common import reset_context_cache
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
@@ -82,7 +81,6 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
             return path_to_check.endswith(f'.{process_status.replace("ing", "").replace("re", "")}') or \
                    path_to_check.endswith(f'.{process_status.replace("ing", "")}')
 
-    reset_context_cache()
     manager_glob.side_effect = mock_glob
     manager_exists.side_effect = mock_exists
     manager_status = status()

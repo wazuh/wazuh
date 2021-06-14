@@ -20,6 +20,7 @@ from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.utils import temporary_cache
 
 logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
@@ -92,8 +93,8 @@ def read_cluster_config(config_file=common.ossec_conf, from_import=False) -> typ
     return config_cluster
 
 
-@common.context_cached('manager_status')
-def get_manager_status() -> typing.Dict:
+@temporary_cache()
+def get_manager_status(cache=False) -> typing.Dict:
     """Get the current status of each process of the manager.
 
     Returns
