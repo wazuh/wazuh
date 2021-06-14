@@ -845,6 +845,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /vulnerability/{agent_id}
+          - GET /vulnerability/{agent_id}/last_scan
 
 
 get_rbac_resources:
