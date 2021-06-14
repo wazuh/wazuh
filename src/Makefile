@@ -2386,6 +2386,9 @@ clean-unit-tests:
 	rm -f ${wrappers_windows_posix_o}
 	rm -f ${wrappers_client_agent_o}
 	rm -f ${wrappers_wazuh_remoted_o}
+	rm -f ${wrappers_logcollector_o}
+	rm -f ${wrappers_macos_o}
+	rm -f ${wrappers_data_provider_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean
