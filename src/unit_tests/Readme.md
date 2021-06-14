@@ -189,7 +189,7 @@ If you need to run the tests on a CentOS 7 machine, you can follow these instruc
 
 After installing wine, the `WINEPATH` and `WINEARCH` variables need to be created in order for it to know it should run on 32 bit mode and find all required dlls for the tests. On an Ubuntu system, the following commands need to be executed and/or added into the user's `.bashrc` file.
 ```
-export WINEPATH="/usr/i686-w64-mingw32/lib;/path/to/wazuh/src"
+export WINEPATH="/usr/i686-w64-mingw32/lib;/path/to/wazuh/src;/path/to/wazuh/src/data_provider/build/bin/"
 export WINEARCH=win32
 ```
 If wine complains about being a 64 bit installation, remove/rename the directory `~/.wine` and run it again.

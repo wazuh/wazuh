@@ -15,6 +15,9 @@
 
 // Define EXPORTED for any platform
 #include "commonDefs.h"
+#ifdef WAZUH_UNIT_TESTING
+#define EXPORTED
+#else
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -26,6 +29,8 @@
 #else
 #define EXPORTED
 #endif
+#endif
+
 
 #include "cJSON.h"
 #ifdef __cplusplus

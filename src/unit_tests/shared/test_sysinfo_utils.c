@@ -13,11 +13,12 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../data_provider/include/sysInfo.h"
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/shared/sym_load_wrappers.h"
 #include "../../headers/shared.h"
 #include "../../headers/sysinfo_utils.h"
 #include "../wrappers/common.h"
+#include "../../data_provider/include/sysInfo.h"
 
 /* setup/teardown */
 
