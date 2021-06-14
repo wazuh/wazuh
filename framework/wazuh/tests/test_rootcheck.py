@@ -10,10 +10,6 @@ from unittest.mock import patch, MagicMock, call
 import pytest
 
 from api.util import parse_api_param
-
-with patch('wazuh.core.common.wazuh_uid'):
-    with patch('wazuh.core.common.wazuh_gid'):
-        from wazuh.core.agent import Agent
 from wazuh.core.exception import WazuhError
 
 with patch('wazuh.common.wazuh_uid'):
@@ -26,6 +22,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import rootcheck
+        from wazuh.core.agent import Agent
         from wazuh.core.rootcheck import WazuhDBQueryRootcheck
         from wazuh.core.tests.test_rootcheck import InitRootcheck, send_msg_to_wdb, remove_db, \
             test_data_path as core_data

@@ -16,12 +16,12 @@ from wazuh.rbac.decorators import expose_resources
 
 @expose_resources(actions=["rootcheck:run"], resources=["agent:id:{agent_list}"])
 def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
-    """Run rootcheck scan.
+    """Run a rootcheck scan in the specified agents.
 
     Parameters
     ----------
-    agent_list : list
-         Run rootcheck in a list of agents.
+    agent_list : Union[str, None]
+         List of the agents IDs to run the scan for.
 
     Returns
     -------
