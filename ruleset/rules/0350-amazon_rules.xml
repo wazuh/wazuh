@@ -566,7 +566,7 @@ ID: 80200 - 80499
     <rule id="80363" level="0">
         <if_sid>80362</if_sid>
         <field name="aws.operation">^REST.GET.OBJECT$</field>
-        <field name="aws.htt_status">200</field>
+        <field name="aws.http_status">200</field>
         <description>AWS S3: GET with 200 status code</description>
     </rule>
 
