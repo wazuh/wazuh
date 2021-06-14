@@ -23,7 +23,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.syscheck import run, clear, last_scan, files
-        from wazuh.syscheck import AffectedItemsWazuhResult
+        from wazuh.syscheck import AffectedItemsWazuhResult, Agent
         from wazuh import WazuhError, WazuhInternalError
         from wazuh.core import common
 
@@ -79,7 +79,12 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_li
     expected_result : list
         List of dicts with expected results for every test.
     """
-    with patch('wazuh.syscheck.Agent.get_basic_information', side_effect=status_list):
+
+    class MockAgent(Agent):
+        def load_info_from_db(self, select=None):
+            self.status = status_list.pop(0)['status']
+
+    with patch('wazuh.syscheck.Agent', side_effect=MockAgent):
         result = run(agent_list=agent_list)
         for args, kwargs in callable_list:
             assert (isinstance(a, str) for a in args)
@@ -91,34 +96,6 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_li
             assert next(iter(result.failed_items.values())) == expected_result['failed_items']
         else:
             assert result.failed_items == expected_result['failed_items']
-        assert result.total_failed_items == expected_result['total_failed_items']
-
-
-@pytest.mark.parametrize('agent_list, status_list, expected_result', [
-    (['001'], {'status': 'active'}, test_result[3])
-])
-@patch('wazuh.syscheck.WazuhQueue', side_effect=WazuhError(1000))
-def test_syscheck_run_exception(wazuh_queue_mock, agent_list, status_list, expected_result):
-    """Test function `run` from syscheck module.
-
-    It will force an exception.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agent IDs.
-    status_list : list
-        List of agent statuses.
-    expected_result : list
-        List of dicts with expected results for every test.
-    """
-    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=status_list):
-        result = run(agent_list=agent_list)
-        assert isinstance(result, AffectedItemsWazuhResult)
-        assert result.affected_items == expected_result['affected_items']
-        assert result.total_affected_items == expected_result['total_affected_items']
-        if result.failed_items:
-            assert next(iter(result.failed_items.values())) == expected_result['failed_items']
         assert result.total_failed_items == expected_result['total_failed_items']
 
 
@@ -246,7 +223,8 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['008'], ['file', 'value.name'], None, True),
     (['009'], ['value.name'], None, True),
     (['000'], ['attributes'], None, True),
-    (['000'], None, {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
+    (['000'], None,
+     {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.core.common.wdb_path', new=test_data_path)
