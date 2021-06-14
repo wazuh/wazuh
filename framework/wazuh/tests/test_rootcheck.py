@@ -10,6 +10,10 @@ from unittest.mock import patch, MagicMock, call
 import pytest
 
 from api.util import parse_api_param
+
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
+        from wazuh.core.agent import Agent
 from wazuh.core.exception import WazuhError
 
 with patch('wazuh.common.wazuh_uid'):
@@ -47,10 +51,9 @@ test_result = [
 
 
 @pytest.mark.parametrize('agent_list, status_list, expected_result', [
-    (['002', '001'], [{'status': status} for status in ['active', 'active']], test_result[0]),
-    (['003', '001', '008'], [{'status': status} for status in ['active', 'disconnected', 'active']], test_result[1]),
-    (['001', '002', '003'], [{'status': status} for status in ['active', 'disconnected', 'disconnected']],
-     test_result[2]),
+    (['002', '001'], ['active', 'active'], test_result[0]),
+    (['003', '001', '008'], ['active', 'disconnected', 'active'], test_result[1]),
+    (['001', '002', '003'], ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
 @patch('wazuh.syscheck.WazuhQueue._connect')
 @patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
@@ -67,7 +70,11 @@ def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_list, status_l
     expected_result : list
         List of dicts with expected results for every test.
     """
-    with patch('wazuh.rootcheck.Agent.get_basic_information', side_effect=status_list):
+    class MockAgent(Agent):
+        def load_info_from_db(self, select=None):
+            self.status = status_list.pop(0)
+
+    with patch('wazuh.rootcheck.Agent', side_effect=MockAgent):
         result = rootcheck.run(agent_list=agent_list)
         for args, kwargs in callable_list:
             assert (isinstance(a, str) for a in args)
