@@ -367,11 +367,9 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
     if (syscheck.realtime != NULL) {
-        mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
+        mdebug2(FIM_NUM_WATCHES, get_realtime_watches());
     }
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     while (FOREVER()) {
 
@@ -380,8 +378,7 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
             set_whodata_mode_changes();
         }
 #endif
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime && OSHash_Get_Elem_ex(syscheck.realtime->dirtb) > 0) {
+        if (get_realtime_watches() > 0) {
             log_realtime_status(1);
 
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
@@ -390,7 +387,6 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
         } else {
             sleep(SYSCHECK_WAIT);
         }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
         // Directories in Windows configured with real-time add recursive watches
         w_rwlock_wrlock(&syscheck.directories_lock);
