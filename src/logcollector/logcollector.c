@@ -23,7 +23,7 @@
 
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
-#define OFFSET_SIZE 20
+#define OFFSET_SIZE     21  ///< Maximum 64-bit integer is 20-char long, plus 1 because of the '\0'
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -2750,7 +2750,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         char * path = hash_node->key;
         char offset[OFFSET_SIZE] = {0};
 
-        sprintf(offset, "%" PRIi64, data->offset);
+        snprintf(offset, OFFSET_SIZE, "%" PRIi64, data->offset);
 
         cJSON * item = cJSON_CreateObject();
 

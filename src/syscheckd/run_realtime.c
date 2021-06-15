@@ -34,7 +34,7 @@
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
 int realtime_start() {
-    directory_t *dir_it;
+    OSListNode *node_it;
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
@@ -54,26 +54,34 @@ int realtime_start() {
     return (0);
 
 error:
-    foreach_array(dir_it, syscheck.directories) {
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        directory_t *dir_it = node_it->data;
+
         if (dir_it->options & REALTIME_ACTIVE) {
             dir_it->options &= ~ REALTIME_ACTIVE;
             dir_it->options |= SCHEDULED_ACTIVE;
         }
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
     return -1;
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *configuration, int followsl) {
+int fim_add_inotify_watch(const char *dir, const directory_t *configuration) {
     /* Check if it is ready to use */
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+
     if (syscheck.realtime->fd < 0) {
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return (-1);
     } else {
         int wd = 0;
 
-        wd = inotify_add_watch(syscheck.realtime->fd,
-                                dir,
-                                (0 == followsl) ? (REALTIME_MONITOR_FLAGS|IN_DONT_FOLLOW) : REALTIME_MONITOR_FLAGS);
+        wd =
+        inotify_add_watch(syscheck.realtime->fd, dir,
+                          (0 == (configuration->options & CHECK_FOLLOW)) ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
+                                                                           REALTIME_MONITOR_FLAGS);
         if (wd < 0) {
             if (errno == 28) {
                 merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
@@ -104,13 +112,34 @@ int realtime_adddir(const char *dir, __attribute__((unused)) directory_t *config
                 if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                     merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
                     os_free(data);
+                    w_mutex_unlock(&syscheck.fim_realtime_mutex);
                     return (-1);
                 }
             }
         }
     }
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
-    return (1);
+    return 1;
+}
+
+/* Add a directory to real time checking */
+int realtime_adddir(const char *dir, directory_t *configuration) {
+    int mode = FIM_MODE(configuration->options);
+
+#ifdef ENABLE_AUDIT
+    if (mode == FIM_WHODATA){
+        add_whodata_directory(dir);
+        return 1;
+    }
+#endif
+
+    if (mode == FIM_REALTIME) {
+        return fim_add_inotify_watch(dir, configuration);
+    }
+
+    // Nothing to do here
+    return 1;
 }
 
 /* Process events in the real time queue */
@@ -211,11 +240,13 @@ int realtime_update_watch(const char *wd, const char *dir) {
         return -1;
     }
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     configuration = fim_configuration_directory(dir);
 
     if (configuration == NULL) {
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+        w_rwlock_unlock(&syscheck.directories_lock);
         return 0;
     }
 
@@ -224,6 +255,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
     inotify_add_watch(syscheck.realtime->fd, dir,
                       (configuration->options & CHECK_FOLLOW) == 0 ? (REALTIME_MONITOR_FLAGS | IN_DONT_FOLLOW) :
                                                                      REALTIME_MONITOR_FLAGS);
+    w_rwlock_unlock(&syscheck.directories_lock);
 
     if (new_wd < 0) {
         if (errno == ENOSPC) {
@@ -422,8 +454,10 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             }
             str_lowercase(final_path);
 
+            w_rwlock_rdlock(&syscheck.directories_lock);
             directory_t *index = fim_configuration_directory(wdchar);
             directory_t *file_index = fim_configuration_directory(final_path);
+            w_rwlock_unlock(&syscheck.directories_lock);
 
             if (index == file_index) {
                 /* Check the change */
@@ -452,15 +486,20 @@ int realtime_start() {
 
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
+        OSListNode *node_it;
+
         merror(MEM_ERROR, errno, strerror(errno));
-        directory_t *dir_it;
-        foreach_array(dir_it, syscheck.directories) {
+
+        w_rwlock_wrlock(&syscheck.directories_lock);
+        OSList_foreach(node_it, syscheck.directories) {
+            directory_t *dir_it = (directory_t *)node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
                 dir_it->options &= ~ REALTIME_ACTIVE;
                 dir_it->options |= SCHEDULED_ACTIVE;
             }
-        return(-1);
         }
+        w_rwlock_unlock(&syscheck.directories_lock);
+        return(-1);
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
 
@@ -487,7 +526,7 @@ int realtime_win32read(win32rtfim *rtlocald)
     return rc;
 }
 
-int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((unused)) int followsl) {
+int realtime_adddir(const char *dir, directory_t *configuration) {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
 
@@ -532,8 +571,10 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
 #endif
     }
     /* Maximum limit for realtime on Windows */
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
         merror(FIM_ERROR_REALTIME_MAXNUM_WATCHES, dir);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return (0);
     }
 
@@ -560,6 +601,7 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
             free(rtlocald);
             rtlocald = NULL;
             mdebug2(FIM_REALTIME_ADD, dir);
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
             return (0);
         }
         syscheck.realtime->fd++;
@@ -573,6 +615,7 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
         if(realtime_win32read(rtlocald) == 0) {
             mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
             free_win32rtfim_data(rtlocald);
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
             return 0;
         }
 
@@ -582,6 +625,7 @@ int realtime_adddir(const char *dir, directory_t *configuration, __attribute__((
 
         mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
     }
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     return 1;
 }
@@ -627,8 +671,7 @@ int realtime_start() {
 }
 
 int realtime_adddir(__attribute__((unused)) const char *dir,
-                    __attribute__((unused)) directory_t *configuration,
-                    __attribute__((unused)) int followsl) {
+                    __attribute__((unused)) directory_t *configuration) {
     return (0);
 }
 

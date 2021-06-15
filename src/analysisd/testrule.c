@@ -706,7 +706,8 @@ void OS_ReadMSG(char *ut_str)
                 /* Log the alert if configured to */
                 if (currently_rule->alert_opts & DO_LOGALERT) {
                     if (alert_only) {
-                        OS_Log(lf);
+                        OS_Log(lf, stdout);
+                        fflush(stdout);
                         __crt_ftell++;
                     } else {
                         print_out("**Alert to be generated.\n\n");

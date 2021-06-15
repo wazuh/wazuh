@@ -1449,7 +1449,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                     OS_CustomLog(lf, Config.custom_alert_output_format);
                 } else if (Config.alerts_log) {
                     __crt_ftell = ftell(_aflog);
-                    OS_Log(lf);
+                    OS_Log(lf, _aflog);
                 } else if(Config.jsonout_output){
                     __crt_ftell = ftell(_jflog);
                 }
@@ -2228,7 +2228,7 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
                 OS_CustomLog(lf, Config.custom_alert_output_format);
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
-                OS_Log(lf);
+                OS_Log(lf, _aflog);
             } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }

@@ -16,6 +16,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "sysInfo.h"
 #include "sym_load.h"
+#include "../os_net/os_net.h"
 
 HANDLE hMutex;
 int win_debug_level;
