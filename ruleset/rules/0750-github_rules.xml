@@ -3189,6 +3189,9 @@ ID: 91100 - 91449
         <if_sid>91415</if_sid>
         <field name="github.action">codespaces.create_an_org_secret</field>
         <description>GitHub Codespaces create an org secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_codespaces</group>
     </rule>
@@ -3198,6 +3201,9 @@ ID: 91100 - 91449
         <if_sid>91415</if_sid>
         <field name="github.action">codespaces.update_an_org_secret</field>
         <description>GitHub Codespaces update an org secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_codespaces</group>
     </rule>
@@ -3207,6 +3213,9 @@ ID: 91100 - 91449
         <if_sid>91415</if_sid>
         <field name="github.action">codespaces.remove_an_org_secret</field>
         <description>GitHub Codespaces remove an org secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_codespaces</group>
     </rule>
