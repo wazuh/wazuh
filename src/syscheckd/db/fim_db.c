@@ -611,7 +611,7 @@ void fim_db_callback_calculate_checksum(__attribute__((unused)) fdb_t *fim_sql, 
     EVP_DigestUpdate((EVP_MD_CTX *)arg, checksum, strlen(checksum));
 }
 
-int fim_db_get_count(fdb_t *fim_sql, int index) {
+int _fim_db_get_count(fdb_t *fim_sql, int index) {
     int retval = FIMDB_ERR;
 #ifndef WIN32
     assert(index == FIMDB_STMT_GET_COUNT_PATH || index == FIMDB_STMT_GET_COUNT_INODE ||
@@ -622,12 +622,20 @@ int fim_db_get_count(fdb_t *fim_sql, int index) {
            index == FIMDB_STMT_COUNT_DB_ENTRIES);
 #endif
 
-    w_mutex_lock(&fim_sql->mutex);
     fim_db_clean_stmt(fim_sql, index);
 
     if (sqlite3_step(fim_sql->stmt[index]) == SQLITE_ROW) {
         retval = sqlite3_column_int(fim_sql->stmt[index], 0);
     }
+
+    return retval;
+}
+
+int fim_db_get_count(fdb_t *fim_sql, int index) {
+    int retval = FIMDB_ERR;
+
+    w_mutex_lock(&fim_sql->mutex);
+    retval = _fim_db_get_count(fim_sql, index);
     w_mutex_unlock(&fim_sql->mutex);
 
     return retval;

@@ -224,10 +224,9 @@ void fim_db_bind_get_inode(fdb_t *fim_sql, int index, unsigned long int inode, u
     sqlite3_bind_int(fim_sql->stmt[index], 2, dev);
 }
 
-fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
+static fim_entry *_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     fim_entry *entry = NULL;
 
-    w_mutex_lock(&fim_sql->mutex);
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH);
     fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH, file_path);
@@ -235,6 +234,15 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH]) == SQLITE_ROW) {
         entry = fim_db_decode_full_row(fim_sql->stmt[FIMDB_STMT_GET_PATH]);
     }
+
+    return entry;
+}
+
+fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
+    fim_entry *entry = NULL;
+
+    w_mutex_lock(&fim_sql->mutex);
+    entry = _fim_db_get_path(fim_sql, file_path);
     w_mutex_unlock(&fim_sql->mutex);
 
     return entry;
@@ -268,52 +276,81 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
     return paths;
 }
 
-int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry) {
-    int res;
+static int fim_db_check_limit(fdb_t *fim_sql) {
+    int nodes_count;
+    int retval = FIMDB_OK;
 
-    w_mutex_lock(&fim_sql->mutex);
+    if (syscheck.file_limit_enabled == 0) {
+        return FIMDB_OK;
+    }
+
+#ifndef WIN32
+    nodes_count = _fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
+#else
+    nodes_count = _fim_db_get_count(fim_sql, FIMDB_STMT_COUNT_DB_ENTRIES);
+#endif
+    if (nodes_count < 0) {
+        retval = FIMDB_ERR;
+    } else if (nodes_count >= syscheck.file_limit) {
+        fim_sql->full = true;
+        retval = FIMDB_FULL;
+    }
+
+    return retval;
+}
+
+static int _fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry) {
+    int res;
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_ENTRY);
     fim_db_bind_replace_entry(fim_sql, file_path, entry);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_ENTRY]), res != SQLITE_DONE) {
             merror("Step error replacing path '%s': %s (%d)", file_path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
-            w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_ERR;
     }
 
+    return FIMDB_OK;
+}
+
+int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry) {
+    int retval;
+
+    w_mutex_lock(&fim_sql->mutex);
+    retval = _fim_db_insert_entry(fim_sql, file_path, entry);
     w_mutex_unlock(&fim_sql->mutex);
 
-    return FIMDB_OK;
+    return retval;
 }
 
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, const fim_file_data *saved) {
     int res_entry;
     int nodes_count;
 
+    w_mutex_lock(&fim_sql->mutex);
     // Add event, check if db is full
-    if (!saved) {
-        if (syscheck.file_limit_enabled) {
-            nodes_count = fim_db_get_count_entries(fim_sql);
-            if (nodes_count < 0) {
-                mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
-                return FIMDB_ERR;
-            }
-            if (nodes_count >= syscheck.file_limit) {
-                w_mutex_lock(&fim_sql->mutex);
-                fim_sql->full = true;
-                w_mutex_unlock(&fim_sql->mutex);
-
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+    if (saved == NULL) {
+        switch (fim_db_check_limit(fim_sql)) {
+        case FIMDB_FULL:
+            mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
                         file_path);
-                return FIMDB_FULL;
-            }
+            w_mutex_unlock(&fim_sql->mutex);
+            return FIMDB_FULL;
+
+        case FIMDB_ERR:
+            mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+            w_mutex_unlock(&fim_sql->mutex);
+            return FIMDB_ERR;
+
+        default:
+            break;
         }
     }
 
-    res_entry = fim_db_insert_entry(fim_sql, file_path, new);
-    fim_db_check_transaction(fim_sql);
+    res_entry = _fim_db_insert_entry(fim_sql, file_path, new);
 
+    w_mutex_unlock(&fim_sql->mutex);
+    fim_db_check_transaction(fim_sql);
     return res_entry;
 }
 
@@ -364,9 +401,7 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     return retval;
 }
 
-int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
-    w_mutex_lock(&fim_sql->mutex);
-
+static int _fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_SCANNED);
     fim_db_bind_set_scanned(fim_sql, path);
@@ -376,11 +411,20 @@ int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
         w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
+
+    return FIMDB_OK;
+}
+
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
+    int retval;
+
+    w_mutex_lock(&fim_sql->mutex);
+    retval = _fim_db_set_scanned(fim_sql, path);
     w_mutex_unlock(&fim_sql->mutex);
 
     fim_db_check_transaction(fim_sql);
 
-    return FIMDB_OK;
+    return retval;
 }
 
 int fim_db_get_count_file_inode(fdb_t * fim_sql) {
@@ -428,19 +472,43 @@ int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_fi
 }
 
 int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *data, fim_entry **saved) {
+    int retval;
     assert(saved != NULL);
 
-    *saved = fim_db_get_path(fim_sql, path);
+    w_mutex_lock(&fim_sql->mutex);
+    *saved = _fim_db_get_path(fim_sql, path);
 
 
     if (*saved == NULL) {
-        return fim_db_insert(fim_sql, path, data, NULL);
+        switch (fim_db_check_limit(fim_sql)) {
+        case FIMDB_FULL:
+            mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+                        path);
+            w_mutex_unlock(&fim_sql->mutex);
+            return FIMDB_FULL;
+
+        case FIMDB_ERR:
+            mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+            w_mutex_unlock(&fim_sql->mutex);
+            return FIMDB_ERR;
+
+        default:
+            break;
+        }
+
+        retval = _fim_db_insert_entry(fim_sql, path, data);
+        w_mutex_unlock(&fim_sql->mutex);
+        return retval;
     }
 
     if (strcmp(data->checksum, (*saved)->file_entry.data->checksum) == 0) {
         // Entry up to date
-        return fim_db_set_scanned(fim_sql, path);;
+        retval = _fim_db_set_scanned(fim_sql, path);
+        w_mutex_unlock(&fim_sql->mutex);
+        return retval;
     }
 
-    return fim_db_insert(fim_sql, path, data, (*saved)->file_entry.data);
+    retval = _fim_db_insert_entry(fim_sql, path, data);
+    w_mutex_unlock(&fim_sql->mutex);
+    return retval;
 }
