@@ -497,6 +497,28 @@ ID: 65000 - 65499
         </mitre>
     </rule>
 
+    <!-- impact gcp_iam_role deletion -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteRole$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP IAM role deleted</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
+    </rule>
+
+    <!-- impact gcp_service_account deleted -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteServiceAccount$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP service account deleted</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
+    </rule>
+
 
     <!-- Fabri -->
 
