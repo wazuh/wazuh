@@ -1,6 +1,6 @@
   <localfile>
     <log_format>full_command</log_format>
-    <command>netstat -an | grep -e "tcp" -e "udp" | sed -E 's/([[:alnum:]]*)\ *[[:digit:]]*\ *[[:digit:]]*\ *(.*)\.([0-9\*]*)\ +([0-9\.\*]+).+/\1 \2 == \3 == \4/' | sort -k 4 -g | sed 's/ == \(.*\) ==/.\1/'| uniq</command>
+    <command>/usr/sbin/lsof -i -P -n +c 20 | /usr/bin/grep -e 'UDP' -e 'LISTEN' | /usr/bin/grep -ve '->' | /usr/bin/awk '{printf "%-20s %-20s %s %s %s\n", $1, $3, $5, $8, $9}' | /usr/bin/sed -E 's/(.+) +([][*[:digit:]abcdef\.:]+):([[:digit:]*]+)$/\1 \2 \3/' | /usr/bin/sort -k 6 -g | /usr/bin/uniq</command>
     <alias>netstat listening ports</alias>
     <frequency>360</frequency>
   </localfile>
