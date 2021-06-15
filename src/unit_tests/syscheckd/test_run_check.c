@@ -626,8 +626,6 @@ void test_fim_run_realtime_w_sleep(void **state) {
     }
     will_return(__wrap_FOREVER, 1);
 
-    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, added_dirs);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
     expect_value(wrap_Sleep, dwMilliseconds, SYSCHECK_WAIT * 1000);
 
     OSList_foreach(node_it, syscheck.directories) {

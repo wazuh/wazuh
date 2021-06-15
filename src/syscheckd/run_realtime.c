@@ -472,13 +472,18 @@ void free_win32rtfim_data(win32rtfim *data) {
     os_free(data);
 }
 
+static unsigned int _get_realtime_watches() {
+    if (syscheck.realtime != NULL) {
+        return OSHash_Get_Elem_ex(syscheck.realtime->dirtb);
+    }
+    return 0;
+}
+
 unsigned int get_realtime_watches() {
     unsigned int n_elements = 0;
 
     w_mutex_lock(&syscheck.fim_realtime_mutex);
-    if (syscheck.realtime != NULL) {
-        n_elements = OSHash_Get_Elem_ex(syscheck.realtime->dirtb);
-    }
+    n_elements = _get_realtime_watches();
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     return n_elements;
@@ -594,14 +599,13 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return 1;
     }
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
 
     /* Maximum limit for realtime on Windows */
-    if (get_realtime_watches() >= syscheck.max_fd_win_rt) {
-        merror(FIM_ERROR_REALTIME_MAXNUM_WATCHES, dir);
+    if (_get_realtime_watches() >= syscheck.max_fd_win_rt) {
+        mdebug1(FIM_REALTIME_MAXNUM_WATCHES, dir);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return 0;
     }
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
 
     os_calloc(1, sizeof(win32rtfim), rtlocald);
 

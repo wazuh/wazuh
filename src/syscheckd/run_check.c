@@ -355,6 +355,7 @@ void start_daemon()
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
     directory_t *dir_it;
     OSListNode *node_it;
+    int watches;
 
     set_priority_windows_thread();
     // Directories in Windows configured with real-time add recursive watches
@@ -367,8 +368,9 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
     }
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    if (syscheck.realtime != NULL) {
-        mdebug2(FIM_NUM_WATCHES, get_realtime_watches());
+    watches = get_realtime_watches();
+    if (watches != 0) {
+        mdebug2(FIM_NUM_WATCHES, watches);
     }
 
     while (FOREVER()) {

@@ -1496,6 +1496,7 @@ void test_realtime_adddir_whodata_dir_success(void **state) {
 
 void test_realtime_adddir_max_limit_reached(void **state) {
     int ret;
+    char msg[OS_SIZE_256] = { '\0' };
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1509,8 +1510,8 @@ void test_realtime_adddir_max_limit_reached(void **state) {
     expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Get_Elem_ex, 257);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
+    snprintf(msg, OS_SIZE_256, FIM_REALTIME_MAXNUM_WATCHES, "C:\\a\\path");
+    expect_string(__wrap__mdebug1, formatted_msg, msg);
 
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
