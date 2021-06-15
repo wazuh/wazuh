@@ -322,7 +322,7 @@ ID: 65000 - 65499
         <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.delete$</field>
         <description>GCP firewall rule deleted</description>
         <mitre>
-            <id>T1562</id>
+            <id>T1562.007</id>
         </mitre>
     </rule>
 
