@@ -234,23 +234,11 @@ stages:
       params:
         sort: name
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *cluster_nodes_response
-              type: master
-              name: master-node
-            - <<: *cluster_nodes_response
-              type: worker
-              name: worker1
-            - <<: *cluster_nodes_response
-              type: worker
-              name: worker2
-          failed_items: []
-          total_affected_items: 3
-          total_failed_items: 0
 
   - name: Sort nodes by name in descending order
     request:
@@ -259,23 +247,12 @@ stages:
       params:
         sort: -name
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+            reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *cluster_nodes_response
-              type: worker
-              name: worker2
-            - <<: *cluster_nodes_response
-              type: worker
-              name: worker1
-            - <<: *cluster_nodes_response
-              type: master
-              name: master-node
-          failed_items: []
-          total_affected_items: 3
-          total_failed_items: 0
 
   - name: Search master
     request:
@@ -1491,16 +1468,11 @@ stages:
         limit: 2
         sort: tag
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "tag"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *cluster_log
-            - <<: *cluster_log
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Read logs with filters -> limit=1, sort=-level {node_id}
     request:
@@ -1510,15 +1482,12 @@ stages:
         limit: 1
         sort: -level
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "level"
+            reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *cluster_log
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Read logs with filters -> offset=2, limit=3 {node_id}
     request:

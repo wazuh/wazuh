@@ -49,12 +49,6 @@ stages:
             key: "id"
             reverse: true
       status_code: 200
-      json: &basic_response_inverse
-        error: 0
-        data:
-          failed_items: [ ]
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Get all agents sorted by multiple fields
     request:
@@ -66,14 +60,8 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "os.name,os.major,os.minor"
+            key: "os.name,os.major"
       status_code: 200
-      json:
-        error: 0
-        data:
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Get all agents sorted by status
     request:
@@ -87,12 +75,6 @@ stages:
           extra_kwargs:
             key: "status"
       status_code: 200
-      json:
-        error: 0
-        data:
-          failed_items: [ ]
-          total_affected_items: 13
-          total_failed_items: 0
 
   - name: Pagination with offset 0 and limit 2
     request:
@@ -189,27 +171,6 @@ stages:
         limit: 999999
     response:
       status_code: 400
-
-  - name: Sort
-    request:
-      verify: False
-      <<: *get_agents
-      params:
-        sort: -id
-        limit: 2
-    response:
-      verify_response_with:
-        - function: tavern_utils:test_sort_response
-          extra_kwargs:
-            key: "id"
-            reverse: true
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          failed_items: []
-          total_affected_items: 13
-          total_failed_items: 0
 
   - name: Try to show agents using wrong sort
     request:
@@ -2241,12 +2202,6 @@ stages:
             key: "name"
             reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          failed_items: []
-          total_affected_items: 4
-          total_failed_items: 0
 
   - name: Try to show groups with wrong sort
     request:
@@ -2501,12 +2456,6 @@ stages:
             key: "id"
             reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          failed_items: []
-          total_affected_items: 4
-          total_failed_items: 0
 
   - name: Try show agents with wrong sort
     request:
@@ -2790,12 +2739,6 @@ stages:
           extra_kwargs:
             key: "{field}"
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          failed_items: []
-          total_affected_items: 4
-          total_failed_items: 0
 
 ---
 test_name: GET /groups/{group_id}/configuration
@@ -3097,12 +3040,6 @@ stages:
             key: "hash"
             reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
-          total_failed_items: 0
-          failed_items: []
 
   - name: Try get the files of a group with wrong sort
     request:
@@ -3497,12 +3434,6 @@ stages:
             key: "id"
             reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          failed_items: []
-          total_affected_items: 2
-          total_failed_items: 0
 
   - name: Try show agents with wrong sort
     request:
@@ -3610,8 +3541,6 @@ stages:
           extra_kwargs:
             key: "{field}"
       status_code: 200
-      json:
-        <<: *no_group_response
 
   - name: Select
     request:
@@ -3653,12 +3582,6 @@ stages:
             key: "id"
             reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data: &outdated_agents_response
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Pagination
     request:
@@ -3669,16 +3592,13 @@ stages:
         limit: 1
         sort: -id
     response:
-      verify_response_with:
-        - function: tavern_utils:test_sort_response
-          extra_kwargs:
-            key: "id"
-            reverse: true
       status_code: 200
       json:
         error: !anyint
         data:
-          failed_items: []
+          affected_items:
+            - id: '009'
+          failed_items: [ ]
           total_affected_items: !anyint
           total_failed_items: 0
 
@@ -3771,12 +3691,6 @@ stages:
             key: "id"
             reverse: true
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          failed_items: [ ]
-          total_affected_items: 2
-          total_failed_items: 0
 
   - name: Filter agents by query
     request:
@@ -4016,9 +3930,12 @@ stages:
       params:
         sort: -id
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
-      json:
-        <<: *basic_response_inverse
 
   - name: Try to show agents with wrong sort
     request:

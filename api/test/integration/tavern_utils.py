@@ -141,6 +141,10 @@ def test_sort_response(response, key=None, reverse=False):
                 dictionary = dictionary[key]
         except KeyError:
             return ''
+
+        if isinstance(dictionary, str):
+            return dictionary.lower()
+
         return dictionary
 
     affected_items = response.json()['data']['affected_items']
