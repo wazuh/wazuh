@@ -518,7 +518,7 @@ ID: 65000 - 65499
         <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
         <description>GCP Identity and Access Management (IAM) custom role created</description>
         <mitre>
-            <id>T1078</id>
+            <id>T1098.001</id>
         </mitre>
     </rule>
 
