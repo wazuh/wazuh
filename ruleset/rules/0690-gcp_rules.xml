@@ -580,4 +580,14 @@ ID: 65000 - 65499
         </mitre>
     </rule>
 
+    <rule id="65069" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.DisableServiceAccount$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Service account disabled</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
+    </rule>
+
 </group>
