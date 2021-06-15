@@ -262,6 +262,9 @@ ID: 91100 - 91449
         <if_sid>91123</if_sid>
         <field name="github.action">dependabot_security_updates_new_repos.disable</field>
         <description>GitHub Dependabot security updates new repos disable.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_dependabot_security_updates_new_repos</group>
     </rule>
