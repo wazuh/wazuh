@@ -142,7 +142,7 @@ def test_sort_response(response, key=None, reverse=False):
         except KeyError:
             return ''
 
-        if isinstance(dictionary, str):
+        if isinstance(dictionary, str) and not dictionary.startswith('/') and not dictionary.startswith('\\'):
             return dictionary.lower()
 
         return dictionary
