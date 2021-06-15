@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.9.6)
 
 project(wazuhext)
 
-get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
 
 set(EXTERNAL_LIBS_PATHS)
 set(EXTERNAL_LIBS)
@@ -18,15 +18,12 @@ set(COMMON_LIBS_PATHS
 
 set(COMMON_LIBS
     cjson
-    zlib
+    z
     ssl
     crypto
     sqlite3
     yaml
     pcre2-8
-    # will only be used by agent in the future
-    gtest
-    gmock
     )
 
 # apple libraries only
@@ -71,7 +68,8 @@ if(LINUX)
         ${SRC_FOLDER}/external/libdb/build_unix/.libs)
     set(LINUX_LIBS
         proc
-        db-6.2)
+        db-6.2
+        dl)
     #not centos 5 libs
     if(NOT CENTOS5)
         set(ALPM_ARCHIVE_LIBS_PATHS
@@ -91,15 +89,18 @@ if(UNIX)
         msgpack)
 endif(UNIX)
 
-string(APPEND EXTERNAL_LIBS_PATHS "${COMMON_LIBS_PATHS} ${APPLE_LIBS} ${AUDIT_LIB_PATHS} ${GTEST_LIBS_PATHS} ${MANAGER_LIBS_PATHS} ${LINUX_LIBS_PATHS} ${ALPM_ARCHIVE_LIBS_PATHS} ${UNIX_LIBS_PATHS}")
-string(APPEND EXTERNAL_LIBS ${COMMON_LIBS} APPLE_LIBS AUDIT_LIB GTEST_LIBS MANAGER_LIBS LINUX_LIBS ALPM_ARCHIVE_LIBS UNIX_LIBS)
-message(${EXTERNAL_LIBS_PATHS})
-message(${EXTERNAL_LIBS})
+list(APPEND EXTERNAL_LIBS_PATHS ${COMMON_LIBS_PATHS} ${APPLE_LIBS} ${AUDIT_LIB_PATHS} ${GTEST_LIBS_PATHS} ${MANAGER_LIBS_PATHS} ${LINUX_LIBS_PATHS} ${ALPM_ARCHIVE_LIBS_PATHS} ${UNIX_LIBS_PATHS})
+list(APPEND EXTERNAL_LIBS ${COMMON_LIBS} ${APPLE_LIBS} ${AUDIT_LIB} ${GTEST_LIBS} ${MANAGER_LIBS} ${LINUX_LIBS} ${ALPM_ARCHIVE_LIBS} ${UNIX_LIBS})
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
 link_directories(${EXTERNAL_LIBS_PATHS})
-target_link_libraries(${EXTERNAL_LIBS})
+add_library(wazuhext SHARED
+            ${CMAKE_CURRENT_SOURCE_DIR}/empty.cpp)
+target_link_libraries(wazuhext
+                      -Wl,--whole-archive
+                      ${EXTERNAL_LIBS}
+                      -Wl,--no-whole-archive)
 
-add_library(wazuhext INTERFACE)
