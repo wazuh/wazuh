@@ -271,6 +271,19 @@ void fim_db_force_commit(fdb_t *fim_sql);
 int fim_db_clean_stmt(fdb_t *fim_sql, int index);
 
 /**
+ * @brief Get count of all entries in the database. This function must not be called from outside fim_db,
+ * use `fim_db_get_count` instead.
+ *
+ * The database to count is chosen with the index variable.
+ *
+ * @param fim_sql FIM database struct.
+ * @param index Index to SQL statement.
+ *
+ * @return Number of entries in selected database.
+*/
+int _fim_db_get_count(fdb_t *fim_sql, int index);
+
+/**
  * @brief Get count of all entries in the database.
  *
  * The database to count is chosen with the index variable.
