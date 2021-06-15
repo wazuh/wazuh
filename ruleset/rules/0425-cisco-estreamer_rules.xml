@@ -55,7 +55,7 @@
           <id>T1043</id>
         </mitre>
         <description>Cisco eStreamer: APP-DETECT DNS request for potential malware</description>
-        <group>gdpr_IV_35.7.d,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
 </group>
