@@ -369,4 +369,31 @@ ID: 65000 - 65499
         <description>GCP VPC Flow event</description>
         <options>no_full_log</options>
     </rule>
+
+    <!-- Mitre rules based on elastic detection rules WIP -->
+    <!-- collection gcp_pub_sub subscription creation -->
+    <rule id="65051" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.CreateSubscription$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub topic subscription created</description>
+        <mitre>
+            <id>T1530</id>
+        </mitre>
+    </rule>
+
+    <!-- collection gcp_pub_sub topic creation -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.CreateTopic$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub topic created</description>
+        <mitre>
+            <id>T1530</id>
+        </mitre>
+    </rule>
+
+    
+
+
 </group>
