@@ -393,8 +393,100 @@ ID: 65000 - 65499
         </mitre>
     </rule>
 
+    <!-- defense evasion gcp_firewall_rule created -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.insert$</field>
+        <description>GCP firewall rule created</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_firewall_rule deleted -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.delete$</field>
+        <description>GCP firewall rule deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
     
+    <!-- defense evasion gcp_firewall_rule modified -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.patch$</field>
+        <description>GCP firewall rule modified</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_logging_bucket deletion -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\d*\.DeleteBucket$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP logging bucket deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_logging_sink deletion -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\*\.DeleteSink$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP logging sink deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_pub_sub_subscription deletion -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.DeleteSubscription$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub subscription deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_pub_sub_topic deletion -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.DeleteTopic$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub topic deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_storage_bucket_configuration modified -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^storage.\buckets\.update$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP storage bucket configuration modified</description>
+    </rule>
+
+    <!-- defense evasion gcp_storage_bucket_permissions modified -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sstorage.setIamPermissions$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP storage bucket permissions modified</description>
+        <mitre>
+            <id>T1222</id>
+        </mitre>
+    </rule>
+
     <!-- Fabri -->
-    
+
 
 </group>
