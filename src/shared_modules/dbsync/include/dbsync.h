@@ -240,7 +240,7 @@ EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
 EXPORTED void dbsync_free_result(cJSON** js_data);
 
 #ifdef __cplusplus
-    }
+}
 #endif
 
 #endif // _DBSYNC_H_

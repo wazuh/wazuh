@@ -9,7 +9,7 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Element, parse
 
 import pytest
 
@@ -108,6 +108,19 @@ mock_array_order_by_mac = [
     {'rx': {'bytes': 4005, 'packets': 30}, 'scan': {'id': 1999992193, 'time': '2019/05/29 07:25:26'},
      'mac': '02:42:ac:14:00:05', 'agent_id': '000'}]
 mock_array_class = [ClassTest("Payne", "coach")]
+mock_array_missing_key = [
+    {
+        "description": "GReAT. (2017, April 3). Lazarus Under the Hood. Retrieved April 17, 2019.",
+        "id": "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340",
+    },
+    {
+        "description": "FireEye. (2018, October 03). APT38: Un-usual Suspects. Retrieved November 6, 2018.",
+        "id": "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340",
+    },
+    {
+        "description": None,
+        "id": "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340",
+    }]
 
 mock_keys = ['rx_bytes', 'rx_packets', 'scan_id', 'scan_time', 'mac', 'agent_id']
 
@@ -212,25 +225,6 @@ def test_cut_array(array, limit):
     assert isinstance(result, list)
 
 
-@pytest.mark.xfail(reason='Pending rework for process_array tests: https://github.com/wazuh/wazuh/issues/8249')
-@pytest.mark.parametrize('array, limit, search_text, sort_by, q', [
-    (['one', 'two', 'three'], 3, None, None, ''),
-    (['one', 'two', 'three'], 2, 'one', [''], 'contains=one'),
-    (['one', 'two', 'three'], 2, 'one', '+', 'two=two')
-])
-def test_process_array(array, limit, search_text, sort_by, q):
-    """Test cut_array function."""
-    result = process_array(array=array, limit=limit, offset=0, search_text=search_text, sort_by=sort_by, q=q)
-    if search_text:
-        array = search_array(array, search_text=search_text)
-    if q:
-        array = filter_array_by_query(q, array)
-    if sort_by == ['']:
-        array = sort_array(array)
-
-    assert result == {'items': cut_array(array, offset=0, limit=limit), 'totalItems': len(array)}
-
-
 @pytest.mark.parametrize('limit, offset, expected_exception', [
     (11, 0, 1405),
     (0, 0, 1406),
@@ -250,6 +244,24 @@ def test_cut_array_ko(limit, offset, expected_exception):
     """
     with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
         cut_array(array=['one', 'two', 'three'], limit=limit, offset=offset)
+
+
+@pytest.mark.parametrize('array, filters, limit, search_text, sort_by, expected_items, len_expected_items', [
+    ([{'item': 'value_one'}, {'item': 'value_two'}, {'item': 'value_three'}],
+     {'item': 'value_one'}, 1, None, None, [{'item': 'value_one'}], 1),
+    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
+     {}, 1, 'one', None, [{'item': 'value_one'}], 2),
+    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
+     {}, 2, 'one', None, [{'item': 'value_one'}, {'item': 'value_one'}], 2),
+    ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
+     {}, 500, None, ['item'], [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
+])
+def test_process_array(array, filters, limit, search_text, sort_by, expected_items, len_expected_items):
+    """Test cut_array function."""
+    result = process_array(array=array, filters=filters, limit=limit, offset=0, search_text=search_text,
+                           sort_by=sort_by)
+
+    assert result == {'items': expected_items, 'totalItems': len_expected_items}
 
 
 def test_sort_array_type():
@@ -281,7 +293,8 @@ def test_sort_array_error(array, sort_by, order, expected_exception):
     ([4005, 4006, 4019, 36], None, True, None, [36, 4005, 4006, 4019]),
     ([4005, 4006, 4019, 36], None, False, None, [4019, 4006, 4005, 36]),
     (mock_array, mock_sort_by, True, mock_sort_by, mock_array_order_by_mac),
-    (mock_array_class, ['name'], False, ['name'], mock_array_class)
+    (mock_array_class, ['name'], False, ['name'], mock_array_class),
+    (mock_array_missing_key, ['description'], False, ['description'], mock_array_missing_key)
 ])
 def test_sort_array(array, sort_by, order, allowed_sort_field, output):
     """Test sort_array function.
@@ -529,13 +542,32 @@ def test_plain_dict_to_nested_dict():
 
 
 @patch('wazuh.core.utils.compile', return_value='Something')
-def test_load_wazuh_xml(mock_compile):
-    """Test load_wazuh_xml function."""
+def test_basic_load_wazuh_xml(mock_compile):
+    """Test basic load_wazuh_xml functionality."""
     with patch('wazuh.core.utils.open') as f:
         f.return_value.__enter__.return_value = StringIO(test_xml)
         result = load_wazuh_xml('test_file')
 
         assert isinstance(result, Element)
+
+
+def test_load_wazuh_xml():
+    """Test load_wazuh_xml function."""
+
+    def elements_equal(e1, e2):
+        if e1.tag != e2.tag: return False
+        if e1.text != e2.text: return False
+        if e1.attrib != e2.attrib: return False
+        if len(e1) != len(e2): return False
+        return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
+
+    for rule_file in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml')):
+        path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml'),
+                            rule_file)
+        original = parse(path).getroot()
+        result = load_wazuh_xml(path)
+
+        assert elements_equal(original, result.find('dummy_tag'))
 
 
 @pytest.mark.parametrize('version1, version2', [
@@ -1166,7 +1198,8 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, 
 
 
 @pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}], {'items': [{'id': '099'}], 'totalItems': 1}),
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
+     {'items': [{'id': '099'}], 'totalItems': 1}),
     ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
      [{'id': i} for i in range(15001, 30000)],
@@ -1645,6 +1678,7 @@ def test_expand_decoders():
     decoders = expand_decoders()
     assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
                                                                         f'*{common.DECODERS_EXTENSION}'))))
+
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
 @patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)

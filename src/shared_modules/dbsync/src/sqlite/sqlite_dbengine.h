@@ -26,9 +26,12 @@ constexpr auto TEMP_TABLE_SUBFIX {"_TEMP"};
 constexpr auto STATUS_FIELD_NAME {"db_status_field_dm"};
 constexpr auto STATUS_FIELD_TYPE {"INTEGER"};
 
-constexpr auto CACHE_STMT_LIMIT { 30ull };
+constexpr auto CACHE_STMT_LIMIT
+{
+    30ull
+};
 
-const std::vector<std::string> InternalColumnNames = 
+const std::vector<std::string> InternalColumnNames =
 {
     { STATUS_FIELD_NAME }
 };
@@ -46,23 +49,23 @@ enum ColumnType
 
 const std::map<std::string, ColumnType> ColumnTypeNames =
 {
-    { "UNKNOWN"         , Unknown        },
-    { "TEXT"            , Text           },
-    { "INTEGER"         , Integer        },
-    { "BIGINT"          , BigInt         },
-    { "UNSIGNED BIGINT" , UnsignedBigInt },
-    { "DOUBLE"          , Double         },
-    { "BLOB"            , Blob           },
+    { "UNKNOWN", Unknown        },
+    { "TEXT", Text           },
+    { "INTEGER", Integer        },
+    { "BIGINT", BigInt         },
+    { "UNSIGNED BIGINT", UnsignedBigInt },
+    { "DOUBLE", Double         },
+    { "BLOB", Blob           },
 };
 
-enum TableHeader 
+enum TableHeader
 {
     CID = 0,
     Name,
     Type,
     PK,
     TXNStatusField
-}; 
+};
 
 enum GenericTupleIndex
 {
@@ -72,7 +75,7 @@ enum GenericTupleIndex
     GenBigInt,
     GenUnsignedBigInt,
     GenDouble
-}; 
+};
 
 using ColumnData =
     std::tuple<int32_t, std::string, ColumnType, bool, bool>;
@@ -91,33 +94,33 @@ enum ResponseType
 {
     RTJson = 0,
     RTCallback
-}; 
+};
 
 class dbengine_error : public DbSync::dbsync_error
 {
-public:
-    explicit dbengine_error(const std::pair<int, std::string>& exceptionInfo)
-    : DbSync::dbsync_error
-    { 
-        exceptionInfo.first, "dbEngine: " + exceptionInfo.second
-    }
-    {}
+    public:
+        explicit dbengine_error(const std::pair<int, std::string>& exceptionInfo)
+            : DbSync::dbsync_error
+        {
+            exceptionInfo.first, "dbEngine: " + exceptionInfo.second
+        }
+        {}
 };
 
 
-class SQLiteDBEngine final : public DbSync::IDbEngine 
+class SQLiteDBEngine final : public DbSync::IDbEngine
 {
     public:
         SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
                        const std::string& path,
                        const std::string& tableStmtCreation);
         ~SQLiteDBEngine();
-        
+
         void bulkInsert(const std::string& table,
                         const nlohmann::json& data) override;
 
         void refreshTableData(const nlohmann::json& data,
-                                      const DbSync::ResultCallback callback) override;
+                              const DbSync::ResultCallback callback) override;
 
         void syncTableRowData(const std::string& table,
                               const nlohmann::json& data,
@@ -131,7 +134,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
 
-        void returnRowsMarkedForDelete(const nlohmann::json& tableNames, 
+        void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                        const DbSync::ResultCallback callback) override;
 
         void selectData(const std::string& table,
@@ -140,7 +143,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void deleteTableRowsData(const std::string& table,
                                  const nlohmann::json& jsDeletionData) override;
-        
+
         void addTableRelationship(const nlohmann::json& data) override;
 
     private:
@@ -156,7 +159,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         std::string buildInsertBulkDataSqlQuery(const std::string& table,
                                                 const nlohmann::json& data = {});
 
-        std::string buildDeleteBulkDataSqlQuery(const std::string& table, 
+        std::string buildDeleteBulkDataSqlQuery(const std::string& table,
                                                 const std::vector<std::string>& primaryKeyList);
 
         std::string buildSelectQuery(const std::string& table,
@@ -201,7 +204,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void deleteRowsbyPK(const std::string& table,
                             const nlohmann::json& data);
 
-        void getTableData(std::unique_ptr<SQLite::IStatement>const & stmt,
+        void getTableData(std::unique_ptr<SQLite::IStatement>const& stmt,
                           const int32_t index,
                           const ColumnType& type,
                           const std::string& fieldName,
@@ -245,7 +248,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         std::string buildUpdateDataSqlQuery(const std::string& table,
                                             const std::vector<std::string>& primaryKeyList,
                                             const Row& row,
-                                            const std::pair<const std::string, TableField> &field);
+                                            const std::pair<const std::string, TableField>& field);
 
         std::string buildUpdatePartialDataSqlQuery(const std::string& table,
                                                    const nlohmann::json& data,
@@ -275,12 +278,12 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         std::unique_ptr<SQLite::IStatement>const& getStatement(const std::string& sql);
 
-        std::string getSelectAllQuery(const std::string& table, 
+        std::string getSelectAllQuery(const std::string& table,
                                       const TableColumns& tableFields) const;
 
         std::string buildDeleteRelationTrigger(const nlohmann::json& data,
                                                const std::string&    baseTable);
-        
+
         std::string buildUpdateRelationTrigger(const nlohmann::json&            data,
                                                const std::string&               baseTable,
                                                const std::vector<std::string>&  primaryKeys);

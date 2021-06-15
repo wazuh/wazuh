@@ -352,7 +352,7 @@ CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '7');
+INSERT INTO metadata (key, value) VALUES ('db_version', '8');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');

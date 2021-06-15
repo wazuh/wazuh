@@ -731,6 +731,21 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
+        if [ -f libwazuhshared.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 libwazuhshared.dylib ${INSTALLDIR}/lib
+        fi
+    elif [ -f libwazuhshared.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
         if [ -f shared_modules/dbsync/build/lib/libdbsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${INSTALLDIR}/lib

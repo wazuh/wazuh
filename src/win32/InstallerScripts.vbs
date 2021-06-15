@@ -239,3 +239,11 @@ Private Function GetVersion()
 		GetVersion = Split(objItem.Version,".")(0)
 	Next
 End Function
+
+Public Function CheckSvcRunning()
+	Set wmi = GetObject("winmgmts://./root/cimv2")
+	state = wmi.Get("Win32_Service.Name='OssecSvc'").State
+	Session.Property("OSSECRUNNING") = state
+
+	CheckSvcRunning = 0
+End Function

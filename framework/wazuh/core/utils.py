@@ -783,8 +783,8 @@ def load_wazuh_xml(xml_path, data=None):
     # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
-    # replace \< by &lt;
-    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
+    # replace \< by &lt, only outside xml tags;
+    data = re.sub(r'^&backslash;<(.*[^>])$', '&backslash;&lt;\g<1>', data)
 
     # replace \> by &gt;
     data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
