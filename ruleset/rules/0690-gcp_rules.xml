@@ -470,7 +470,7 @@ ID: 65000 - 65499
     <!-- defense evasion gcp_storage_bucket_configuration modified -->
     <rule id="65052" level="0">
         <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^storage.\buckets\.update$</field>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.update$</field>
         <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
         <description>GCP storage bucket configuration modified</description>
     </rule>
@@ -478,13 +478,25 @@ ID: 65000 - 65499
     <!-- defense evasion gcp_storage_bucket_permissions modified -->
     <rule id="65052" level="0">
         <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^sstorage.setIamPermissions$</field>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sstorage\.setIamPermissions$</field>
         <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
         <description>GCP storage bucket permissions modified</description>
         <mitre>
             <id>T1222</id>
         </mitre>
     </rule>
+
+    <!-- exfiltration gcp_logging_sink modification -->
+    <rule id="65052" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.logging\.v\d*\.ConfigServiceV\d*\.UpdateSink$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP logging sink modified</description>
+        <mitre>
+            <id>T1537</id>
+        </mitre>
+    </rule>
+
 
     <!-- Fabri -->
 
