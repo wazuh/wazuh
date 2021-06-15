@@ -54,6 +54,14 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
         except WazuhResourceNotFound as e:
             result.add_failed_item(id_=agent, error=e)
 
+    # Avoid that integer type fields are casted to string, this prevents sort parameter malfunctioning
+    if len(result.affected_items) and sort and len(sort['fields']) == 1:
+        fields = sort['fields'][0].split('.')
+        element = result.affected_items[0][fields.pop(0)]
+        for field in fields:
+            element = element[field]
+        result.sort_casting = [type(element).__name__]
+
     result.affected_items = merge(*[[res] for res in result.affected_items],
                                   criteria=result.sort_fields,
                                   ascending=result.sort_ascending,
