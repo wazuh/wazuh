@@ -1121,28 +1121,40 @@ async def get_agent_outdated(request, pretty=False, wait_for_complete=False, off
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_fields(request, pretty=False, wait_for_complete=False, fields=None, offset=0, limit=database_limit,
-                           select=None, sort=None, search=None, q=None):
+async def get_agent_fields(request, pretty: bool = False, wait_for_complete: bool = False, fields: str = None,
+                           offset: int = 0, limit: int = database_limit, sort: str = None, search: str = None,
+                           q: str = None) -> web.Response:
     """Get distinct fields in agents.
 
     Returns all the different combinations that agents have for the selected fields. It also indicates the total number
     of agents that have each combination.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param fields: List of fields affecting the operation.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: ListMetadata
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    fields : str
+        List of fields affecting the operation.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Looks for elements with the specified string.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+
+    Returns
+    -------
+    web.Response
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'fields': fields,

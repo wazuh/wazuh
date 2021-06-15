@@ -16,6 +16,7 @@
 #include <atomic>
 #include <future>
 #include <functional>
+#include <iostream>
 #include "threadSafeQueue.h"
 namespace Utils
 {
@@ -58,97 +59,104 @@ namespace Utils
 
     template
     <
-    typename Type,
-    typename Functor
-    >
+        typename Type,
+        typename Functor
+        >
     class AsyncDispatcher
     {
-    public:
-        AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency())
-        : m_functor{ functor }
-        , m_running{ true }
-        , m_numberOfThreads{ numberOfThreads }
-        {
-            m_threads.reserve(m_numberOfThreads);
-            for (unsigned int i = 0; i < m_numberOfThreads; ++i)
+        public:
+            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency())
+                : m_functor{ functor }
+                , m_running{ true }
+                , m_numberOfThreads{ numberOfThreads }
             {
-                m_threads.push_back(std::thread{ &AsyncDispatcher<Type, Functor>::dispatch, this });
-            }
-        }
-        AsyncDispatcher& operator=(const AsyncDispatcher&) = delete;
-        AsyncDispatcher(AsyncDispatcher& other) = delete;
-        ~AsyncDispatcher()
-        {
-            cancel();
-        }
+                m_threads.reserve(m_numberOfThreads);
 
-        void push(const Type& value)
-        {
-            if (m_running)
+                for (unsigned int i = 0; i < m_numberOfThreads; ++i)
+                {
+                    m_threads.push_back(std::thread{ &AsyncDispatcher<Type, Functor>::dispatch, this });
+                }
+            }
+            AsyncDispatcher& operator=(const AsyncDispatcher&) = delete;
+            AsyncDispatcher(AsyncDispatcher& other) = delete;
+            ~AsyncDispatcher()
             {
-                m_queue.push
-                (
-                    [value, this]()
+                cancel();
+            }
+
+            void push(const Type& value)
+            {
+                if (m_running)
+                {
+                    m_queue.push
+                    (
+                        [value, this]()
                     {
                         this->m_functor(value);
                     }
-                );
+                    );
+                }
             }
-        }
 
-        void rundown()
-        {
-            if (m_running)
+            void rundown()
             {
-                std::promise<void> promise;
-                auto fut { promise.get_future() };
-                m_queue.push
-                (
-                    [&promise]()
+                if (m_running)
+                {
+                    std::promise<void> promise;
+                    auto fut { promise.get_future() };
+                    m_queue.push
+                    (
+                        [&promise]()
                     {
                         promise.set_value();
                     }
-                );
-                fut.wait();
-                cancel();
-            }
-        }
-        void cancel()
-        {
-            m_queue.cancel();
-            joinThreads();
-        }
-
-        bool cancelled() const
-        {
-            return !m_running;
-        }
-        unsigned int numberOfThreads() const
-        {
-            return m_numberOfThreads;
-        }
-        size_t size() const
-        {
-            return m_queue.size();
-        }
-
-    private:
-        void dispatch()
-        {
-            while(m_running)
-            {
-                std::function<void()> fnc;
-                if(m_queue.pop(fnc))
-                {
-                    fnc();
+                    );
+                    fut.wait();
+                    cancel();
                 }
             }
-        }
-        void joinThreads()
-        {
-            if (m_running)
+            void cancel()
             {
                 m_running = false;
+                m_queue.cancel();
+                joinThreads();
+            }
+
+            bool cancelled() const
+            {
+                return !m_running;
+            }
+            unsigned int numberOfThreads() const
+            {
+                return m_numberOfThreads;
+            }
+            size_t size() const
+            {
+                return m_queue.size();
+            }
+
+        private:
+            void dispatch()
+            {
+                try
+                {
+                    while (m_running)
+                    {
+                        std::function<void()> fnc;
+
+                        if (m_queue.pop(fnc))
+                        {
+                            fnc();
+                        }
+                    }
+                }
+                catch (const std::exception& ex)
+                {
+                    std::cerr << "Dispatch handler error, " << ex.what() << std::endl;
+                }
+            }
+            void joinThreads()
+            {
                 for (auto& thread : m_threads)
                 {
                     if (thread.joinable())
@@ -157,32 +165,61 @@ namespace Utils
                     }
                 }
             }
-        }
-        Functor m_functor;
-        SafeQueue<std::function<void()>> m_queue;
-        std::vector<std::thread> m_threads;
-        std::atomic_bool m_running;
-        const unsigned int m_numberOfThreads;
+
+            Functor m_functor;
+            SafeQueue<std::function<void()>> m_queue;
+            std::vector<std::thread> m_threads;
+            std::atomic_bool m_running;
+            const unsigned int m_numberOfThreads;
     };
 
     template <typename Input, typename Functor>
     class SyncDispatcher
     {
-    public:
-        SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/)
-        : m_functor{functor}
-        {
-        }
-        void push(const Input& data)
-        {
-            m_functor(data);
-        }
-        size_t size() const {return 0;}
-        void rundown(){}
-        void cancel(){}
-        ~SyncDispatcher() = default;
-    private:
-        Functor m_functor;
+        public:
+            SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/)
+                : m_functor{functor}
+                , m_running{true}
+            {
+            }
+
+            SyncDispatcher(Functor functor)
+                : m_functor{functor}
+                , m_running{true}
+            {
+            }
+
+            void push(const Input& data)
+            {
+                if (m_running)
+                {
+                    m_functor(data);
+                }
+            }
+            size_t size() const
+            {
+                return 0;
+            }
+            void rundown()
+            {
+                cancel();
+            }
+            void cancel()
+            {
+                m_running = false;
+            }
+            bool cancelled() const
+            {
+                return !m_running;
+            }
+            unsigned int numberOfThreads() const
+            {
+                return 0;
+            }
+            ~SyncDispatcher() = default;
+        private:
+            Functor m_functor;
+            bool m_running;
     };
 }//namespace Utils
 #endif //THREAD_DISPATCHER_H

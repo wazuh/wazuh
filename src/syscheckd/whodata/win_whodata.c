@@ -413,6 +413,7 @@ void restore_sacls() {
     PSECURITY_DESCRIPTOR security_descriptor = NULL;
     int privilege_enabled = 0;
     directory_t *dir_it;
+    OSListNode *node_it;
 
     c_process = GetCurrentProcess();
     if (!OpenProcessToken(c_process, TOKEN_ADJUST_PRIVILEGES, &hdle)) {
@@ -427,7 +428,9 @@ void restore_sacls() {
 
     privilege_enabled = 1;
 
-    foreach_array(dir_it, syscheck.directories) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->dirs_status.status & WD_IGNORE_REST) {
             sacl_it = NULL;
 
@@ -461,6 +464,7 @@ void restore_sacls() {
             mdebug1(FIM_SACL_RESTORED, dir_it->path);
         }
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
 end:
     if (privilege_enabled) {
@@ -670,6 +674,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     char is_directory;
     whodata_directory *w_dir;
     unsigned long mask = 0;
+    directory_t *configuration;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -704,31 +709,36 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
 
-                w_evt->config_node = fim_configuration_directory(w_evt->path);
-                if (w_evt->config_node == NULL && !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
+                w_rwlock_rdlock(&syscheck.directories_lock);
+                configuration = fim_configuration_directory(w_evt->path);
+                if (configuration == NULL && !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                     // Discard the file or directory if its monitoring has not been activated
                     mdebug2(FIM_WHODATA_NOT_ACTIVE, w_evt->path);
                     free_whodata_event(w_evt);
+                    w_rwlock_unlock(&syscheck.directories_lock);
                     goto clean;
                 }
 
-                if (w_evt->config_node != NULL) {
+                if (configuration != NULL) {
                     // Ignore the file if belongs to a non-whodata directory
-                    if (!(w_evt->config_node->dirs_status.status & WD_CHECK_WHODATA) &&
+                    if (!(configuration->dirs_status.status & WD_CHECK_WHODATA) &&
                         !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                         mdebug2(FIM_WHODATA_CANCELED, w_evt->path);
                         free_whodata_event(w_evt);
+                        w_rwlock_unlock(&syscheck.directories_lock);
                         goto clean;
                     }
 
                     // Ignore any and all events that are beyond the configured recursion level.
-                    int depth = fim_check_depth(w_evt->path, w_evt->config_node);
-                    if (depth > w_evt->config_node->recursion_level) {
-                        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, w_evt->config_node->recursion_level, w_evt->path);
+                    int depth = fim_check_depth(w_evt->path, configuration);
+                    if (depth > configuration->recursion_level) {
+                        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, w_evt->path);
                         free_whodata_event(w_evt);
+                        w_rwlock_unlock(&syscheck.directories_lock);
                         goto clean;
                     }
                 }
+                w_rwlock_unlock(&syscheck.directories_lock);
 
                 int device_type;
 
@@ -810,11 +820,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 // Check if is a valid directory
-                if (w_evt->config_node == NULL) {
+                w_rwlock_rdlock(&syscheck.directories_lock);
+                if (fim_configuration_directory(w_evt->path) == NULL) {
                     mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
                     w_evt->scan_directory = 2;
+                    w_rwlock_unlock(&syscheck.directories_lock);
                     break;
                 }
+                w_rwlock_unlock(&syscheck.directories_lock);
 
                 w_rwlock_wrlock(&syscheck.wdata.directories->mutex);
 
@@ -853,9 +866,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt && w_evt->path) {
 
                     if (!w_evt->scan_directory) {
-
                         fim_whodata_event(w_evt);
-
                     } else if (w_evt->scan_directory == 1) {
                         // Directory scan has been aborted if scan_directory is 2
                         if (w_evt->mask & DELETE) {
@@ -915,6 +926,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     OSHashNode *w_dir_node_next;
     whodata_directory *w_dir;
     directory_t *dir_it;
+    OSListNode *node_it;
     unsigned int w_dir_it;
     FILETIME current_time;
     ULARGE_INTEGER stale_time;
@@ -928,7 +940,9 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
     mdebug1(FIM_WHODATA_CHECKTHREAD, interval);
 
     while (FOREVER()) {
-        foreach_array(dir_it, syscheck.directories) {
+        w_rwlock_wrlock(&syscheck.directories_lock);
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             exists = 0;
             d_status = &dir_it->dirs_status;
 
@@ -991,6 +1005,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
             // Set the timestamp
             GetSystemTime(&d_status->last_check);
         }
+        w_rwlock_unlock(&syscheck.directories_lock);
 
         // Go through syscheck.wdata.directories and remove stale entries
         GetSystemTimeAsFileTime(&current_time);

@@ -46,6 +46,7 @@ int main(int argc, char **argv)
     gid_t gid;
     const char *group = GROUPGLOBAL;
     directory_t *dir_it = NULL;
+    int start_realtime = 0;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -114,7 +115,7 @@ int main(int argc, char **argv)
         merror(RCONFIG_ERROR, SYSCHECK, cfg);
         syscheck.disabled = 1;
     } else if ((r == 1) || (syscheck.disabled == 1)) {
-        if (syscheck.directories == NULL || syscheck.directories[0] == NULL) {
+        if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
             if (!test_config) {
                 minfo(FIM_DIRECTORY_NOPROVIDED);
             }
@@ -175,11 +176,14 @@ int main(int argc, char **argv)
     }
 
     if (!syscheck.disabled) {
+        OSListNode *node_it;
+
         /* Start up message */
         minfo(STARTUP_MSG, (int)getpid());
 
         /* Print directories to be monitored */
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             char optstr[ 1024 ];
 
             if (dir_it->symbolic_links == NULL) {
@@ -231,10 +235,26 @@ int main(int argc, char **argv)
         }
 
         /* Check directories set for real time */
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             if (dir_it->options & REALTIME_ACTIVE) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
                 minfo(FIM_REALTIME_MONITORING_DIRECTORY, dir_it->path);
+                start_realtime = 1;
+#else
+                mwarn(FIM_WARN_REALTIME_DISABLED, dir_it->path);
+                dir_it->options &= ~REALTIME_ACTIVE;
+                dir_it->options |= SCHEDULED_ACTIVE;
+#endif
+            }
+        }
+
+        OSList_foreach(node_it, syscheck.wildcards) {
+            dir_it = node_it->data;
+            if (dir_it->options & REALTIME_ACTIVE) {
+#if defined (INOTIFY_ENABLED) || defined (WIN32)
+                start_realtime = 1;
+                break;
 #else
                 mwarn(FIM_WARN_REALTIME_DISABLED, dir_it->path);
                 dir_it->options &= ~REALTIME_ACTIVE;
@@ -246,22 +266,34 @@ int main(int argc, char **argv)
 
     fim_initialize();
 
+    if (start_realtime == 1) {
+        realtime_start();
+    }
+
     // Audit events thread
     if (!syscheck.disabled && syscheck.enable_whodata) {
 #ifdef ENABLE_AUDIT
         if (audit_init() < 0) {
             directory_t *dir_it;
+            OSListNode *node_it;
 
             mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
 
             // Switch who-data to real-time mode
 
-            foreach_array(dir_it, syscheck.directories) {
+            OSList_foreach(node_it, syscheck.directories) {
+                dir_it = node_it->data;
                 if (dir_it->options & WHODATA_ACTIVE) {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
                 }
             }
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            if (syscheck.realtime == NULL) {
+                realtime_start();
+            }
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
         }
 #else
         merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);

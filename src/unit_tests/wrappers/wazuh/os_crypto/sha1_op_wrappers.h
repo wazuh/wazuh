@@ -28,4 +28,6 @@ int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os
                                       DWORD fd_check);
 #endif
 
+int __wrap_OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output);
+
 #endif

@@ -25,20 +25,31 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                        fields=None, q=None):
-    """ Gets all the different combinations that all system agents have for the selected fields. It also indicates the
+def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.database_limit, sort: str = None,
+                        search: str = None, fields: str = None, q: str = None) -> AffectedItemsWazuhResult:
+    """Get all the different combinations that all system agents have for the selected fields. It also indicates the
     total number of agents that have each combination.
 
-    :param agent_list: List of agents ID's.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    :param q: Defines query to filter in DB.
-    :param fields: Fields to group by
-    :return: WazuhResult
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's.
+    fields : str
+        List of fields to group by.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : str
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    search : str
+        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
     """
 
     result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
@@ -49,8 +60,8 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
-                                             search=search, select=select, query=q, min_select_fields=set(), count=True,
+        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, select=fields, offset=offset, limit=limit, sort=sort,
+                                             search=search, query=q, min_select_fields=set(), count=True,
                                              get_data=True, **rbac_filters)
 
         data = db_query.run()

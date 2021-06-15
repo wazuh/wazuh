@@ -23,7 +23,7 @@
 
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
-#define OFFSET_SIZE 20
+#define OFFSET_SIZE     21  ///< Maximum 64-bit integer is 20-char long, plus 1 because of the '\0'
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -490,6 +490,9 @@ void LogCollectorStart()
                     if (current->file && current->exists) {
                         if (reload_file(current) == -1) {
                             minfo(FORGET_FILE, current->file);
+                            os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            os_free(old_file_status);
+                            w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
                             current->ign++;
 
@@ -565,6 +568,9 @@ void LogCollectorStart()
                         if (errno == ENOENT) {
                             if(current->exists==1){
                                 minfo(FORGET_FILE, current->file);
+                                os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                                os_free(old_file_status);
+                                w_logcollector_state_delete_file(current->file);
                                 current->exists = 0;
                             }
                             current->ign++;
@@ -620,6 +626,9 @@ void LogCollectorStart()
                     if (!current->fp) {
                         if(current->exists==1){
                             minfo(FORGET_FILE, current->file);
+                            os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            os_free(old_file_status);
+                            w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
                         }
                         current->ign++;
@@ -661,7 +670,10 @@ void LogCollectorStart()
                         mdebug1("File inode changed. %s",
                                current->file);
 
-                        OSHash_Delete_ex(files_status,current->file);
+                        os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                        os_free(old_file_status);
+                        w_logcollector_state_delete_file(current->file);
+
                         fclose(current->fp);
 
 #ifdef WIN32
@@ -693,7 +705,10 @@ void LogCollectorStart()
                                 current->file);
 
                         /* Get new file */
-                        OSHash_Delete_ex(files_status,current->file);
+                        os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                        os_free(old_file_status);
+                        w_logcollector_state_delete_file(current->file);
+
                         fclose(current->fp);
 
 #ifdef WIN32
@@ -2609,7 +2624,7 @@ STATIC void w_initialize_file_status() {
 
         fclose(fd);
     } else if (errno != ENOENT) {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
 }
 
@@ -2735,7 +2750,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         char * path = hash_node->key;
         char offset[OFFSET_SIZE] = {0};
 
-        sprintf(offset, "%" PRIi64, data->offset);
+        snprintf(offset, OFFSET_SIZE, "%" PRIi64, data->offset);
 
         cJSON * item = cJSON_CreateObject();
 

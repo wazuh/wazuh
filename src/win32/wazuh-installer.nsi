@@ -188,7 +188,6 @@ Section "Wazuh Agent (required)" MainSec
     File wazuh-agent.exe
     File wazuh-agent-eventchannel.exe
     File default-agent.conf
-    File default-agent-pre6.conf
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File internal_options.conf
@@ -210,9 +209,11 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\restart-wazuh.exe restart-wazuh.exe
     File /oname=active-response\bin\netsh.exe netsh.exe
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
+    File /oname=libgcc_s_sjlj-1.dll libgcc_s_sjlj-1.dll
     File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
     File /oname=libwazuhext.dll ..\libwazuhext.dll
+    File /oname=libwazuhshared.dll ..\libwazuhshared.dll
     File /oname=dbsync.dll ..\shared_modules\dbsync\build\bin\dbsync.dll
     File /oname=rsync.dll ..\shared_modules\rsync\build\bin\rsync.dll
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
@@ -301,11 +302,7 @@ Section "Wazuh Agent (required)" MainSec
     ConfInstallOSSEC:
         ClearErrors
         IfFileExists "$INSTDIR\agent.conf" ConfPresentOSSEC
-        ${If} ${AtLeastWinVista}
             Rename "$INSTDIR\default-agent.conf" "$INSTDIR\agent.conf"
-        ${Else}
-            Rename "$INSTDIR\default-agent-pre6.conf" "$INSTDIR\agent.conf"
-        ${EndIf}
         IfErrors ConfErrorOSSEC ConfPresentOSSEC
     ConfErrorOSSEC:
         MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
@@ -496,13 +493,8 @@ Section "Uninstall"
     Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR\incoming\*"
     Delete "$INSTDIR\wodles\*"
-    Delete "$INSTDIR\libwazuhext.dll"
-    Delete "$INSTDIR\dbsync.dll"
-    Delete "$INSTDIR\rsync.dll"
-    Delete "$INSTDIR\sysinfo.dll"
-    Delete "$INSTDIR\syscollector.dll"
-    Delete "$INSTDIR\queue\syscollector\db\local.db"
-    Delete "$INSTDIR\queue\syscollector\norm_config.json"
+    Delete "$INSTDIR\queue\syscollector\db\*"
+    Delete "$INSTDIR\queue\syscollector\*"
     Delete "$INSTDIR\ruleset\sca\*"
     Delete "$INSTDIR\ruleset\*"
 
@@ -525,6 +517,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\queue\logcollector"
     RMDir "$INSTDIR\incoming"
     RMDir /r "$INSTDIR\upgrade"
+    RMDir /r "$INSTDIR\queue\syscollector"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
     RMDir "$INSTDIR\ruleset\sca"

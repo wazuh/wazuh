@@ -32,6 +32,7 @@ const wm_context WM_GCP_CONTEXT = {
     (wm_routine)wm_gcp_main,
     (wm_routine)(void *)wm_gcp_destroy,
     (cJSON * (*)(const void *))wm_gcp_dump,
+    NULL,
     NULL
 };
 
