@@ -7,7 +7,7 @@ marks:
 stages:
 
   # DELETE /experimental/rootcheck
-  - name: Try to delete rootcheck scans in agent 001
+  - name: Delete rootcheck scans in agent 001
     request:
       verify: False
       method: DELETE
@@ -28,7 +28,7 @@ stages:
           total_failed_items: 0
 
   # DELETE /experimental/rootcheck
-  - name: Try to delete rootcheck scans in all agents
+  - name: Delete rootcheck scans in all agents
     request:
       verify: False
       method: DELETE

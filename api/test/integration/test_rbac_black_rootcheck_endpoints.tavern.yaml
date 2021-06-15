@@ -18,7 +18,7 @@ stages:
       json:
         error: 4000
 
-  - name: Try to get rootcheck scan results for agent 002 (Allow)
+  - name: Get rootcheck scan results for agent 002 (Allow)
     request:
       verify: False
       method: GET
@@ -40,7 +40,7 @@ test_name: DELETE /rootcheck/{agent_id}
 
 stages:
 
-  - name: Try to delete rootcheck scans in agent 002 (Allow)
+  - name: Delete rootcheck scans in agent 002 (Allow)
     request:
       verify: False
       method: DELETE
@@ -82,7 +82,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Try to get when the last scan for agent 002 started and ended
+  - name: Get when the last scan for agent 002 started and ended
     request:
       verify: False
       method: GET

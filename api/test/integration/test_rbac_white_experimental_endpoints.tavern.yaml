@@ -6,7 +6,7 @@ marks:
 
 stages:
 
-  - name: Try to delete rootcheck scans in agent 001 (Allow)
+  - name: Delete rootcheck scans in agent 001 (Allow)
     request:
       verify: False
       method: DELETE

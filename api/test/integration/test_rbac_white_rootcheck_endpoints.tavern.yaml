@@ -6,7 +6,7 @@ marks:
 
 stages:
 
-  - name: Try to get rootcheck scan results for agent 000 (Allow)
+  - name: Get rootcheck scan results for agent 000 (Allow)
     request:
       verify: False
       method: GET
@@ -43,7 +43,7 @@ test_name: GET /rootcheck/{agent_id}/last_scan
 
 stages:
 
-  - name: Try to get when the last scan for agent 001 started and ended
+  - name: Get when the last scan for agent 001 started and ended
     request:
       verify: False
       method: GET
@@ -77,7 +77,7 @@ test_name: PUT /rootcheck
 
 stages:
 
-  - name: Try to run a rootcheck scan in all agents
+  - name: Run a rootcheck scan in all agents
     request:
       verify: False
       method: PUT
@@ -135,7 +135,7 @@ test_name: DELETE /rootcheck/{agent_id}
 
 stages:
 
-  - name: Try to delete rootcheck scans in agent 001 (Allow)
+  - name: Delete rootcheck scans in agent 001 (Allow)
     request:
       verify: False
       method: DELETE
