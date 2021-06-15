@@ -537,6 +537,9 @@ ID: 91100 - 91449
     <rule id="91152" level="9">
         <if_sid>91149</if_sid>
         <field name="github.action">environment.remove_actions_secret</field>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <description>GitHub Environment Remove actions secret.</description>
         <options>no_full_log</options>
         <group>git_environment</group>
@@ -547,6 +550,9 @@ ID: 91100 - 91449
         <if_sid>91149</if_sid>
         <field name="github.action">environment.update_actions_secret</field>
         <description>GitHub Environment Update actions secret.</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_environment</group>
     </rule>
