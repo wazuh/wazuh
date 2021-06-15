@@ -11457,6 +11457,49 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+        - Rootcheck
+      summary: "Clear results"
+      description: "Clear an agent's rootcheck database"
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Clear an agent's rootcheck database"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "001"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "Rootcheck database was cleared on returned agents"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rootcheck/{agent_id}/last_scan:
     get:

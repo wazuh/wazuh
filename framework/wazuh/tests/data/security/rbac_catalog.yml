@@ -492,6 +492,7 @@ get_rbac_actions:
             - agent:id:*
           effect: deny
         related_endpoints:
+          - DELETE /rootcheck/{agent_id}
           - DELETE /experimental/rootcheck
       rootcheck:run:
         description: Run agents rootcheck scan

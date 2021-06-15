@@ -1953,6 +1953,21 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: DELETE /rootcheck/{agent_id}
+
+stages:
+
+  - name: Try to delete agent 001 rootcheck data
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /rootcheck/{agent_id}/last_scan
 
 stages:
