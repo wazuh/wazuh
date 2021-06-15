@@ -2270,8 +2270,9 @@ ifneq ($(wildcard external/libarchive/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
 endif
 
-ifneq ($(wildcard external/pacman/lib/libalpm/libalpm.a),)
-	rm $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+ifneq ($(wildcard external/pacman/lib/libalpm/*),)
+	rm -f $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+	rm -f $(EXTERNAL_PACMAN)lib/libalpm/*.o
 endif
 endif
 
