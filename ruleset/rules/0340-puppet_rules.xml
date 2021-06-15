@@ -346,11 +346,11 @@
             <frequency>2100</frequency>
         </localfile>
 
-        *Also you can copy the code to /<INSTALLATION_PATH>/etc/shared/agent.conf in Wazuh Master and configure in every agent the logcollector option to accept remote commands from the manager:
+        *Also you can copy the code to /<INSTALLATION_PATH>/etc/shared/shared.conf in Wazuh Master and configure in every agent the logcollector option to accept remote commands from the manager:
             /<INSTALLATION_PATH>/etc/internal_options.conf:
                 # Logcollector - If it should accept remote commands from the manager
                 logcollector.remote_commands=1
-            /<INSTALLATION_PATH>/etc/shared/agent.conf:
+            /<INSTALLATION_PATH>/etc/shared/shared.conf:
                 <agent_config> localfile_code </agent_config>
     -->
     <rule id="80090" level="0">
