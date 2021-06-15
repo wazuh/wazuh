@@ -2593,6 +2593,9 @@ ID: 91100 - 91449
         <if_sid>91358</if_sid>
         <field name="github.action">repository_secret_scanning.disable</field>
         <description>GitHub Repository secret scanning disable.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_repository_secret_scanning</group>
     </rule>
@@ -2705,6 +2708,9 @@ ID: 91100 - 91449
     <rule id="91370" level="9">
         <if_sid>91369</if_sid>
         <field name="github.action">secret_scanning.disable</field>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <description>GitHub Secret scanning disable.</description>
         <options>no_full_log</options>
         <group>git_secret_scanning</group>
