@@ -395,6 +395,85 @@ ID: 65000 - 65499
 
     
     <!-- Fabri -->
-    
+    <rule id="65060" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.CreateServiceAccount$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>New service account created</description>
+        <mitre>
+            <id>T1136</id>
+        </mitre>
+    </rule>
+
+    <rule id="65061" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateServiceAccountKey$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>New key is created for a service account</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
+    </rule>
+
+    <rule id="65062" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.DeleteServiceAccountKey$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Identity and Access Management (IAM) service account key deleted</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
+    </rule>
+
+    <rule id="65063" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateRole$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Identity and Access Management (IAM) custom role created</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
+    </rule>
+
+    <rule id="65064" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateRole$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Identity and Access Management (IAM) custom role created</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
+    </rule>
+
+    <rule id="65065" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.delete$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Virtual Private Cloud (VPC) route deleted</description>
+    </rule>
+
+    <rule id="65066" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.insert$|^beta\.compute\.routes\.insert$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Virtual Private Cloud (VPC) route created</description>
+    </rule>
+
+    <rule id="65067" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.networks\.delete$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Virtual Private Cloud (VPC) network deleted</description>
+    </rule>
+
+    <rule id="65068" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.delete$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Google Cloud Platform (GCP) storage bucket deleted</description>
+        <mitre>
+            <id>T1485</id>
+        </mitre>
+    </rule>
 
 </group>
