@@ -332,7 +332,7 @@ ID: 65000 - 65499
         <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.patch$</field>
         <description>GCP firewall rule modified</description>
         <mitre>
-            <id>T1562</id>
+            <id>T1562.007</id>
         </mitre>
     </rule>
 
