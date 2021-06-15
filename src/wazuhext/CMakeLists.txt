@@ -4,6 +4,44 @@ project(wazuhext)
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/ ABSOLUTE)
 
+if(NOT EXTERNAL_DEPS_VERSION)
+    set(EXTERNAL_DEPS_VERSION "14")
+endif(NOT EXTERNAL_DEPS_VERSION)
+
+if(NOT RESOURCES_URL)
+    set(RESOURCES_URL "https://packages.wazuh.com/deps/${EXTERNAL_DEPS_VERSION}/libraries/sources")
+endif(NOT RESOURCES_URL)
+
+function(check_and_download_dep libname)
+    if(NOT EXISTS ${SRC_FOLDER}/external/${libname})
+        file(DOWNLOAD ${RESOURCES_URL}/${libname}.tar.gz ${SRC_FOLDER}/external/${libname}.tar.gz
+             TIMEOUT 60  # seconds
+             STATUS DOWNLOAD_STATUS)
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        list(GET DOWNLOAD_STATUS 1 STATUS_MESSAGE)
+        if(STATUS_CODE GREATER 0)
+            message(FATAL_ERROR "Error downloading ${libname}: ${STATUS_MESSAGE} (${STATUS_CODE}) .")
+        endif(STATUS_CODE GREATER 0)
+    endif()
+endfunction(check_and_download_dep)
+
+set(EXTERNAL_RES cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive)
+
+foreach(loop_var ${EXTERNAL_RES})
+    check_and_download_dep(${loop_var})
+endforeach(loop_var)
+
+# add_custom_target( unZip ALL)
+# add_custom_command(TARGET unZip PRE_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/abc/
+#    COMMAND ${CMAKE_COMMAND} -E tar xzf {CMAKE_SOURCE_DIR}/abc.zip
+# WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+# DEPENDS ${CMAKE_SOURCE_DIR}/abc.zip
+# COMMENT "Unpacking abc.zip"
+# VERBATIM)
+
+
+
 set(EXTERNAL_LIBS_PATHS)
 set(EXTERNAL_LIBS)
 
