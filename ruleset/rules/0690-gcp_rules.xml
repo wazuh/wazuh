@@ -507,7 +507,7 @@ ID: 65000 - 65499
         <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
         <description>GCP Identity and Access Management (IAM) service account key deleted</description>
         <mitre>
-            <id>T1098</id>
+            <id>T1531</id>
         </mitre>
     </rule>
 
