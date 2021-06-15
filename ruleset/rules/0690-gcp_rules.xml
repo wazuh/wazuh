@@ -485,7 +485,7 @@ ID: 65000 - 65499
         <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
         <description>GCP New service account created</description>
         <mitre>
-            <id>T1136</id>
+            <id>T1136.003</id>
         </mitre>
     </rule>
 
