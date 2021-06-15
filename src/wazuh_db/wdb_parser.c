@@ -245,21 +245,25 @@ int wdb_parse(char * input, char * output) {
 
         mdebug2("Agent %s query: %s", sagent_id, query);
 
-        if (wdb_global = wdb_open_global(), !wdb_global) {
-            mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
-            wdb_leave(wdb_global);
+        // Don't perform this check if it's a manager.
+        if (agent_id != 0) {
+            if (wdb_global = wdb_open_global(), !wdb_global) {
+                mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+                snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
+                wdb_leave(wdb_global);
 
-            return -1;
-        }
+                return -1;
+            }
 
-        if (wdb_global_agent_exists(wdb_global, agent_id) <= 0) {
-            mdebug2("No agent with id %s found.", sagent_id);
-            snprintf(output, OS_MAXSTR + 1, "err Agent not found");
+            if (wdb_global_agent_exists(wdb_global, agent_id) <= 0) {
+                mdebug2("No agent with id %s found.", sagent_id);
+                snprintf(output, OS_MAXSTR + 1, "err Agent not found");
+                wdb_leave(wdb_global);
+
+                return -1;
+            }
             wdb_leave(wdb_global);
-            return -1;
         }
-        wdb_leave(wdb_global);
 
         if (wdb = wdb_open_agent2(agent_id), !wdb) {
             merror("Couldn't open DB for agent '%s'", sagent_id);

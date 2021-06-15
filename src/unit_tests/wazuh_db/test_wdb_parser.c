@@ -753,12 +753,6 @@ void test_vuln_cve_syntax_error(void **state) {
 
     os_strdup("agent 000 vuln_cve", query);
 
-    will_return(__wrap_wdb_open_global, data->wdb_global);
-
-    expect_value(__wrap_wdb_global_agent_exists, wdb, data->wdb_global);
-    expect_value(__wrap_wdb_global_agent_exists, agent_id, 0);
-    will_return(__wrap_wdb_global_agent_exists, 1);
-
     expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
     will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cve");
@@ -780,11 +774,6 @@ void test_vuln_cve_invalid_action(void **state) {
     char *query = NULL;
 
     os_strdup("agent 000 vuln_cve invalid", query);
-    will_return(__wrap_wdb_open_global, data->wdb_global);
-
-    expect_value(__wrap_wdb_global_agent_exists, wdb, data->wdb_global);
-    expect_value(__wrap_wdb_global_agent_exists, agent_id, 0);
-    will_return(__wrap_wdb_global_agent_exists, 1);
 
     expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
     will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
