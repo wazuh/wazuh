@@ -283,6 +283,245 @@ ID: 65000 - 65499
         <options>no_full_log</options>
     </rule>
 
+    <!-- Mitre detection rules  -->
+    <!-- collection gcp_pub_sub subscription creation -->
+    <rule id="65051" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.CreateSubscription$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub topic subscription created</description>
+        <mitre>
+            <id>T1530</id>
+        </mitre>
+    </rule>
+
+    <!-- collection gcp_pub_sub topic creation -->
+    <rule id="65052" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.CreateTopic$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub topic created</description>
+        <mitre>
+            <id>T1530</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_firewall_rule created -->
+    <rule id="65053" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.insert$</field>
+        <description>GCP firewall rule created</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_firewall_rule deleted -->
+    <rule id="65054" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.delete$</field>
+        <description>GCP firewall rule deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_firewall_rule modified -->
+    <rule id="65055" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.patch$</field>
+        <description>GCP firewall rule modified</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_logging_bucket deletion -->
+    <rule id="65056" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\d*\.DeleteBucket$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP logging bucket deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_logging_sink deletion -->
+    <rule id="65057" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\*\.DeleteSink$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP logging sink deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_pub_sub_subscription deletion -->
+    <rule id="65058" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.DeleteSubscription$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub subscription deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_pub_sub_topic deletion -->
+    <rule id="65059" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.DeleteTopic$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP pub/sub topic deleted</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <!-- defense evasion gcp_storage_bucket_configuration modified -->
+    <rule id="65060" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.update$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP storage bucket configuration modified</description>
+    </rule>
+
+    <!-- defense evasion gcp_storage_bucket_permissions modified -->
+    <rule id="65061" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sstorage\.setIamPermissions$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP storage bucket permissions modified</description>
+        <mitre>
+            <id>T1222</id>
+        </mitre>
+    </rule>
+
+    <!-- exfiltration gcp_logging_sink modification -->
+    <rule id="65062" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.logging\.v\d*\.ConfigServiceV\d*\.UpdateSink$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP logging sink modified</description>
+        <mitre>
+            <id>T1537</id>
+        </mitre>
+    </rule>
+
+    <!-- impact gcp_iam_role deletion -->
+    <rule id="65063" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteRole$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP IAM role deleted</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
+    </rule>
+
+    <!-- impact gcp_service_account deleted -->
+    <rule id="65064" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteServiceAccount$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>GCP service account deleted</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
+    </rule>
+
+    <!-- impact gcp_service_account disabled -->
+    <rule id="65065" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.DisableServiceAccount$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Service account disabled</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
+    </rule>
+
+    <!-- impact gcp_storage_bucket deleted -->
+    <rule id="65066" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.delete$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Google Cloud Platform (GCP) storage bucket deleted</description>
+        <mitre>
+            <id>T1485</id>
+        </mitre>
+    </rule>
+
+    <!-- impact gcp_virtual_private_cloud_network deleted -->
+    <rule id="65067" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.networks\.delete$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Virtual Private Cloud (VPC) network deleted</description>
+    </rule>
+
+    <!-- impact gcp_virtual_private_cloud_route created -->
+    <rule id="65068" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.insert$|^beta\.compute\.routes\.insert$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Virtual Private Cloud (VPC) route created</description>
+    </rule>
+
+    <!-- impact gcp_virtual_private_cloud_route deleted -->
+    <rule id="65069" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.delete$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Virtual Private Cloud (VPC) route deleted</description>
+    </rule>
+
+    <!-- persistence gcp_service_account created -->
+    <rule id="65070" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.CreateServiceAccount$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>New service account created</description>
+        <mitre>
+            <id>T1136</id>
+        </mitre>
+    </rule>
+
+    <!-- persistence gcp_key_created_for_service_account -->
+    <rule id="65071" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateServiceAccountKey$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>New key is created for a service account</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
+    </rule>
+
+    <!-- persistence gcp_iam_service_account_key deletion -->
+    <rule id="65072" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.DeleteServiceAccountKey$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Identity and Access Management (IAM) service account key deleted</description>
+        <mitre>
+            <id>T1098</id>
+        </mitre>
+    </rule>
+
+    <!-- initial access gcp_iam_custom_role creation -->
+    <rule id="65073" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateRole$</field>
+        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
+        <description>Identity and Access Management (IAM) custom role created</description>
+        <mitre>
+            <id>T1078</id>
+        </mitre>
+    </rule>
+
     <!-- GCP Generic Events -->
     <rule id="65039" level="0">
         <if_sid>65000</if_sid>
@@ -368,248 +607,6 @@ ID: 65000 - 65499
         <field name="gcp.jsonPayload.reporter" type="pcre2">^(?!^$).*</field>
         <description>GCP VPC Flow event</description>
         <options>no_full_log</options>
-    </rule>
-
-    <!-- Mitre rules based on elastic detection rules WIP -->
-    <!-- collection gcp_pub_sub subscription creation -->
-    <rule id="65051" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.CreateSubscription$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP pub/sub topic subscription created</description>
-        <mitre>
-            <id>T1530</id>
-        </mitre>
-    </rule>
-
-    <!-- collection gcp_pub_sub topic creation -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.CreateTopic$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP pub/sub topic created</description>
-        <mitre>
-            <id>T1530</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_firewall_rule created -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.insert$</field>
-        <description>GCP firewall rule created</description>
-        <mitre>
-            <id>T1562</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_firewall_rule deleted -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.delete$</field>
-        <description>GCP firewall rule deleted</description>
-        <mitre>
-            <id>T1562</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_firewall_rule modified -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.firewalls\.patch$</field>
-        <description>GCP firewall rule modified</description>
-        <mitre>
-            <id>T1562</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_logging_bucket deletion -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\d*\.DeleteBucket$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP logging bucket deleted</description>
-        <mitre>
-            <id>T1562</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_logging_sink deletion -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.logging\.v\d*\.ConfigServiceV\*\.DeleteSink$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP logging sink deleted</description>
-        <mitre>
-            <id>T1562</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_pub_sub_subscription deletion -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Subscriber\.DeleteSubscription$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP pub/sub subscription deleted</description>
-        <mitre>
-            <id>T1562</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_pub_sub_topic deletion -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.pubsub\.v\d*\.Publisher\.DeleteTopic$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP pub/sub topic deleted</description>
-        <mitre>
-            <id>T1562</id>
-        </mitre>
-    </rule>
-
-    <!-- defense evasion gcp_storage_bucket_configuration modified -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.update$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP storage bucket configuration modified</description>
-    </rule>
-
-    <!-- defense evasion gcp_storage_bucket_permissions modified -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^sstorage\.setIamPermissions$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP storage bucket permissions modified</description>
-        <mitre>
-            <id>T1222</id>
-        </mitre>
-    </rule>
-
-    <!-- exfiltration gcp_logging_sink modification -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.logging\.v\d*\.ConfigServiceV\d*\.UpdateSink$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP logging sink modified</description>
-        <mitre>
-            <id>T1537</id>
-        </mitre>
-    </rule>
-
-    <!-- impact gcp_iam_role deletion -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteRole$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP IAM role deleted</description>
-        <mitre>
-            <id>T1531</id>
-        </mitre>
-    </rule>
-
-    <!-- impact gcp_service_account deleted -->
-    <rule id="65052" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^sgoogle\.iam\.admin\.v\d*\.DeleteServiceAccount$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>GCP service account deleted</description>
-        <mitre>
-            <id>T1531</id>
-        </mitre>
-    </rule>
-
-
-    <!-- Fabri -->
-    <rule id="65060" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.CreateServiceAccount$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>New service account created</description>
-        <mitre>
-            <id>T1136</id>
-        </mitre>
-    </rule>
-
-    <rule id="65061" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateServiceAccountKey$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>New key is created for a service account</description>
-        <mitre>
-            <id>T1098</id>
-        </mitre>
-    </rule>
-
-    <rule id="65062" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.DeleteServiceAccountKey$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Identity and Access Management (IAM) service account key deleted</description>
-        <mitre>
-            <id>T1098</id>
-        </mitre>
-    </rule>
-
-    <rule id="65063" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateRole$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Identity and Access Management (IAM) custom role created</description>
-        <mitre>
-            <id>T1078</id>
-        </mitre>
-    </rule>
-
-    <rule id="65064" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^event\.action:google\.iam\.admin\.v\d*\.CreateRole$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Identity and Access Management (IAM) custom role created</description>
-        <mitre>
-            <id>T1078</id>
-        </mitre>
-    </rule>
-
-    <rule id="65065" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.delete$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Virtual Private Cloud (VPC) route deleted</description>
-    </rule>
-
-    <rule id="65066" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.routes\.insert$|^beta\.compute\.routes\.insert$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Virtual Private Cloud (VPC) route created</description>
-    </rule>
-
-    <rule id="65067" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^v\d*\.compute\.networks\.delete$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Virtual Private Cloud (VPC) network deleted</description>
-    </rule>
-
-    <rule id="65068" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^storage\.buckets\.delete$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Google Cloud Platform (GCP) storage bucket deleted</description>
-        <mitre>
-            <id>T1485</id>
-        </mitre>
-    </rule>
-
-    <rule id="65069" level="0">
-        <if_sid>65000</if_sid>
-        <field name="gcp.protoPayload.methodName" type="pcre2">^google\.iam\.admin\.v\d*\.DisableServiceAccount$</field>
-        <field name="gcp.protoPayload.authorizationInfo" type="pcre2">"granted":\strue</field>
-        <description>Service account disabled</description>
-        <mitre>
-            <id>T1531</id>
-        </mitre>
     </rule>
 
 </group>
