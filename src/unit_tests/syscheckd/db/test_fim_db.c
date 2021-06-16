@@ -1150,7 +1150,7 @@ static void fim_db_get_checksum_empty_range_fail_step_on_second_half(void **stat
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     expect_string(__wrap__mdebug2, formatted_msg,
-                  "Received a synchronization message with empty range, first half 'start start' 'top top' (i:1)");
+                  "Received a synchronization message with empty range, second half 'start start' 'top top' (i:1)");
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
