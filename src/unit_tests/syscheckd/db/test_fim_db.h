@@ -42,13 +42,10 @@ void expect_fim_db_get_path_success(const char *path, const fim_entry *entry);
 /* fim_db_files.c */
 void expect_fim_db_bind_insert_data(int text_count);
 void expect_fim_db_bind_update_data(int text_count);
-void expect_fim_db_bind_replace_path(int text_count);
-void expect_fim_db_bind_delete_data_id(int row);
+void expect_fim_db_bind_replace_entry(int text_count);
 void expect_fim_db_bind_get_inode();
-void expect_fim_db_insert_path_success();
-void expect_fim_db_insert_data_success(int row_id);
+void expect_fim_db_insert_entry_success();
 void expect_fim_db_bind_path(const char *path);
-void expect_fim_db_get_paths_from_inode(char **paths);
 
 /* fim_db_registries.c */
 void expect_fim_db_get_registry_key_fail(const fim_registry_key *key);
