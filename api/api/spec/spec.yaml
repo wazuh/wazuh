@@ -1157,7 +1157,7 @@ components:
               items:
                 $ref: '#/components/schemas/SyscheckDatabase'
 
-    AllItemsResponseSyscheckLastScan:
+    AllItemsResponseLastScan:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
         - type: object
@@ -4592,6 +4592,13 @@ components:
         enum:
           - os
           - package
+    cve_severity:
+      in: query
+      name: severity
+      description: "Filter by CVE severity"
+      schema:
+        type: string
+        format: names
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -12450,7 +12457,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseSyscheckLastScan'
+                        $ref: '#/components/schemas/AllItemsResponseLastScan'
               example:
                 data:
                   affected_items:
@@ -16680,6 +16687,7 @@ paths:
         - $ref: '#/components/parameters/cve_version'
         - $ref: '#/components/parameters/cve_type'
         - $ref: '#/components/parameters/cve_status'
+        - $ref: '#/components/parameters/cve_severity'
       responses:
         '200':
           description: "Get agent vulnerabilities"
@@ -16690,18 +16698,76 @@ paths:
               example:
                 data:
                   affected_items:
-                    - cve: CVE-2020-27350
-                      architecture: amd64
-                      version: 1.2.32ubuntu0.1
-                      name: apt
-                    - cve: CVE-2019-18276
-                      architecture: amd64
-                      version: 4.3-14ubuntu1.4
-                      name: bash
+                    - architecture: amd64
+                      name: binutils
+                      version: 2.34-6ubuntu1.1
+                      type: PACKAGE
+                      severity: Medium
+                      cvss2_score: 7.1
+                      cve: CVE-2021-3487
+                      detection_time: '2021-06-14T07:45:51Z'
+                      cvss3_score: 6.5
+                      status: VALID
+                    - architecture: amd64
+                      name: binutils
+                      version: 2.34-6ubuntu1.1
+                      type: PACKAGE
+                      severity: High
+                      cvss2_score: 6.8
+                      cve: CVE-2021-20294
+                      detection_time: '2021-06-14T07:45:51Z'
+                      cvss3_score: 7.8
+                      status: VALID
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected vulnerabilities were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /vulnerability/{agent_id}/last_scan:
+    get:
+      tags:
+      - Vulnerability
+      summary: "Get last scan datetime"
+      description: "Return when the last full and partial vulnerability scan of a specified agent ended."
+      operationId: api.controllers.vulnerability_controller.get_last_scan_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Scan dates"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLastScan'
+              example:
+                data:
+                  affected_items:
+                    - last_full_scan: '2021-06-14T07:45:51Z'
+                      last_partial_scan: '2021-06-14T10:15:56Z'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: Last vulnerability scans of the agent were returned
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
