@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import copy
 import fcntl
 import hashlib
 import ipaddress
@@ -486,7 +485,7 @@ class Agent:
         return send_restart_command(self.id, self.version)
 
     def remove(self, backup=False, purge=False, use_only_authd=False):
-        """Deletes the agent.
+        """Delete the agent.
 
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
@@ -494,7 +493,7 @@ class Agent:
         :return: Message.
         """
 
-        manager_status = get_manager_status()
+        manager_status = get_manager_status(cache=True)
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd and not is_authd_running:
