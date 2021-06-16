@@ -2074,7 +2074,7 @@ install_mitre: install_python
 #### test ##########
 ####################
 
-CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
+CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING -fsanitize=address -fsanitize=undefined
 LIBS_TEST=-lcmocka
 
 unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
