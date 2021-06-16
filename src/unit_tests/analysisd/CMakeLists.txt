@@ -47,7 +47,8 @@ list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_SendUnix -Wl,--wra
 
 list(APPEND analysisd_names "test_log")
 list(APPEND analysisd_flags "-Wl,--wrap,fprintf,-wrap,fflush,--wrap,fclose,--wrap,fgets,--wrap,fgetpos,--wrap,fopen \
-                             -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fputc")
+                             -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fputc \
+                             -Wl,--wrap,ctime_r")
 
 list(APPEND analysisd_names "test_labels")
 list(APPEND analysisd_flags "-Wl,--wrap,wdb_get_agent_labels")

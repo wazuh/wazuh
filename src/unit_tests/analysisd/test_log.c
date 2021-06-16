@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/posix/time_wrappers.h"
 #include "../../analysisd/alerts/log.h"
 #include "../../headers/syscheck_op.h"
 
@@ -133,8 +134,9 @@ static int test_teardown(void **state) {
 void test_OS_Log_no_syscheck_event(void **state) {
     Eventinfo *lf = *state;
     char buffer[FIM_NFIELDS][40];
+    FILE fp = { '\0' };
 
-    expect_fprintf(_aflog, "** Alert 160987966.0: - rule_group\n"
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
                            "2000 m 01 h hostname->no-syscheck\n"
                            "key_label: value_label\n"
                            "Rule: 554 (level 123) -> 'comment'\n"
@@ -142,16 +144,16 @@ void test_OS_Log_no_syscheck_event(void **state) {
 
     for (int i = 0; i < lf->nfields; i++) {
         snprintf(buffer[i], 40, "%s: %s\n", df[i].key, df[i].value);
-        expect_fprintf(_aflog, buffer[i], 0);
+        expect_fprintf(&fp, buffer[i], 0);
     }
 
-    expect_fprintf(_aflog, "Last\n", 0);
-    expect_fprintf(_aflog, "event\n", 0);
+    expect_fprintf(&fp, "Last\n", 0);
+    expect_fprintf(&fp, "event\n", 0);
     expect_value(__wrap_fputc, character, '\n');
-    expect_value(__wrap_fputc, stream, _aflog);
+    expect_value(__wrap_fputc, stream, &fp);
     will_return(__wrap_fputc, 0);
 
-    OS_Log(lf);
+    OS_Log(lf, &fp);
 }
 
 void test_OS_Log_no_label_event(void **state) {
@@ -159,24 +161,25 @@ void test_OS_Log_no_label_event(void **state) {
     char buffer[FIM_NFIELDS][40];
     lf->labels[0].key = NULL;
     lf->labels[0].value = NULL;
+    FILE fp = { '\0' };
 
-    expect_fprintf(_aflog, "** Alert 160987966.0: - rule_group\n"
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
                            "2000 m 01 h hostname->no-syscheck\n"
                            "Rule: 554 (level 123) -> 'comment'\n"
                            "full_log\n", 0);
 
     for (int i = 0; i < lf->nfields; i++) {
         snprintf(buffer[i], 40, "%s: %s\n", df[i].key, df[i].value);
-        expect_fprintf(_aflog, buffer[i], 0);
+        expect_fprintf(&fp, buffer[i], 0);
     }
 
-    expect_fprintf(_aflog, "Last\n", 0);
-    expect_fprintf(_aflog, "event\n", 0);
+    expect_fprintf(&fp, "Last\n", 0);
+    expect_fprintf(&fp, "event\n", 0);
     expect_value(__wrap_fputc, character, '\n');
-    expect_value(__wrap_fputc, stream, _aflog);
+    expect_value(__wrap_fputc, stream, &fp);
     will_return(__wrap_fputc, 0);
 
-    OS_Log(lf);
+    OS_Log(lf, &fp);
 }
 
 void test_OS_Log_syscheck_event(void **state) {
@@ -185,45 +188,50 @@ void test_OS_Log_syscheck_event(void **state) {
     lf->location = "syscheck";
     lf->labels[0].key = "key_label";
     lf->labels[0].value = "value_label";
+    FILE fp = { '\0' };
 
-    expect_fprintf(_aflog, "** Alert 160987966.0: - rule_group\n"
+    expect_fprintf(&fp, "** Alert 160987966.0: - rule_group\n"
                            "2000 m 01 h hostname->syscheck\n"
                            "key_label: value_label\n"
                            "Rule: 554 (level 123) -> 'comment'\n"
                            "full_log\n", 0);
 
     will_return(__wrap_fwrite, 13); // "Attributes:\n"
-    expect_fprintf(_aflog, " - Size: 5000\n", 0);
-    expect_fprintf(_aflog, " - Permissions: permission\n", 0);
-    expect_fprintf(_aflog, " - Date: Sat May 23 21:21:18 1970\n", 0);
-    expect_fprintf(_aflog, " - Inode: 2222\n", 0);
-    expect_fprintf(_aflog, " - User: user (1000)\n", 0);
-    expect_fprintf(_aflog, " - Group: group (1000)\n", 0);
-    expect_fprintf(_aflog, " - MD5: 12345\n", 0);
-    expect_fprintf(_aflog, " - SHA1: 12345\n", 0);
-    expect_fprintf(_aflog, " - SHA256: 12345\n", 0);
-    expect_fprintf(_aflog, " - File attributes: attributes\n", 0);
-    expect_fprintf(_aflog, " - (Audit) User name: user_name\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Audit name: audit_name\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Effective name: effective_name\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Group name: group_name\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Process id: proc_id\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Process name: proc_name\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Process cwd: /audit/cwd\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Parent process name: proc_pname\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Parent process id: ppid\n", 0);
-    expect_fprintf(_aflog, " - (Audit) Parent process cwd: /audit/pcwd\n", 0);
-    expect_fprintf(_aflog, "\nWhat changed:\ndiff\n", 0);
+    expect_fprintf(&fp, " - Size: 5000\n", 0);
+    expect_fprintf(&fp, " - Permissions: permission\n", 0);
+
+    expect_any(__wrap_ctime_r, timep);
+    will_return(__wrap_ctime_r, "Sat May 23 21:21:18 1970\n");
+
+    expect_fprintf(&fp, " - Date: Sat May 23 21:21:18 1970\n", 0);
+    expect_fprintf(&fp, " - Inode: 2222\n", 0);
+    expect_fprintf(&fp, " - User: user (1000)\n", 0);
+    expect_fprintf(&fp, " - Group: group (1000)\n", 0);
+    expect_fprintf(&fp, " - MD5: 12345\n", 0);
+    expect_fprintf(&fp, " - SHA1: 12345\n", 0);
+    expect_fprintf(&fp, " - SHA256: 12345\n", 0);
+    expect_fprintf(&fp, " - File attributes: attributes\n", 0);
+    expect_fprintf(&fp, " - (Audit) User name: user_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) Audit name: audit_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) Effective name: effective_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) Group name: group_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) Process id: proc_id\n", 0);
+    expect_fprintf(&fp, " - (Audit) Process name: proc_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) Process cwd: /audit/cwd\n", 0);
+    expect_fprintf(&fp, " - (Audit) Parent process name: proc_pname\n", 0);
+    expect_fprintf(&fp, " - (Audit) Parent process id: ppid\n", 0);
+    expect_fprintf(&fp, " - (Audit) Parent process cwd: /audit/pcwd\n", 0);
+    expect_fprintf(&fp, "\nWhat changed:\ndiff\n", 0);
     will_return(__wrap_fwrite, 8); // "\nTags:\n"
-    expect_fprintf(_aflog, " - tag1\n", 0);
-    expect_fprintf(_aflog, " - tag2\n", 0);
-    expect_fprintf(_aflog, "Last\n", 0);
-    expect_fprintf(_aflog, "event\n", 0);
+    expect_fprintf(&fp, " - tag1\n", 0);
+    expect_fprintf(&fp, " - tag2\n", 0);
+    expect_fprintf(&fp, "Last\n", 0);
+    expect_fprintf(&fp, "event\n", 0);
     expect_value(__wrap_fputc, character, '\n');
-    expect_value(__wrap_fputc, stream, _aflog);
+    expect_value(__wrap_fputc, stream, &fp);
     will_return(__wrap_fputc, 0);
 
-    OS_Log(lf);
+    OS_Log(lf, &fp);
 }
 
 int main(void)
