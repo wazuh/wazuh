@@ -977,7 +977,6 @@ class Agent:
         :return: Agent ID.
         """
         agent = Agent(agent_id)
-        agent_info = False
         if replace_list is None:
             replace_list = []
         if not force:
@@ -988,9 +987,6 @@ class Agent:
             if not Agent.group_exists(group_id):
                 raise WazuhResourceNotFound(1710)
 
-            agent.load_info_from_db()
-            agent_info = True
-
         # Get agent's group
         group_path = path.join(common.groups_path, agent_id)
         try:
@@ -998,7 +994,7 @@ class Agent:
                 multigroup_name = f.read().strip()
         except Exception as e:
             # Check if agent is never_connected.
-            not agent_info and agent.load_info_from_db()
+            agent.load_info_from_db()
             if agent.status == 'never_connected':
                 raise WazuhError(1753)
             raise WazuhInternalError(1005, extra_message=str(e))
