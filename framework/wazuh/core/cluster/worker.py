@@ -182,6 +182,10 @@ class SyncWazuhdb:
             # Send list of chunks as a JSON string
             data = json.dumps({"set_data_command": self.set_data_command, "chunks": chunks}).encode()
             task_id = await self.worker.send_string(data)
+            if task_id.startswith(b'Error'):
+                raise WazuhClusterError(3016, extra_message=f'agent-info string could not be sent to the master '
+                                                            f'node: {task_id}')
+
             # Specify under which task_id the JSON can be found in the master.
             await self.worker.send_request(command=self.cmd, data=task_id)
             self.logger.debug(f"All chunks sent.")

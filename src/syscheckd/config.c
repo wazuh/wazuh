@@ -22,6 +22,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 {
     int modules = 0;
     directory_t *dir_it;
+    OSListNode *node_it;
 
     modules |= CSYSCHECK;
 
@@ -42,7 +43,12 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.scan_time      = NULL;
     syscheck.file_limit_enabled = true;
     syscheck.file_limit     = 100000;
-    syscheck.directories = NULL;
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return (OS_INVALID);
+    }
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+    syscheck.wildcards = NULL;
     syscheck.enable_synchronization = 1;
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
@@ -98,7 +104,8 @@ int Read_Syscheck_Config(const char *cfgfile)
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->diff_size_limit == -1) {
             dir_it->diff_size_limit = syscheck.file_size_limit;
         }
@@ -119,7 +126,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 
 #ifndef WIN32
     /* We must have at least one directory to check */
-    if (syscheck.directories == NULL || syscheck.directories[0] == NULL) {
+    if (OSList_GetFirstNode(syscheck.directories) == NULL && syscheck.wildcards == NULL) {
         return (1);
     }
 #else
@@ -139,7 +146,7 @@ int Read_Syscheck_Config(const char *cfgfile)
             it++;
         }
     }
-    if ((syscheck.directories == NULL) && (syscheck.registry[0].entry == NULL)) {
+    if ((OSList_GetFirstNode(syscheck.directories) == NULL) && (syscheck.registry[0].entry == NULL && syscheck.wildcards == NULL)) {
         return (1);
     }
     syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
@@ -173,11 +180,13 @@ void free_whodata_event(whodata_evt *w_evt) {
 }
 
 cJSON *getSyscheckConfig(void) {
-
 #ifndef WIN32
-    if (!syscheck.directories) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    if (OSList_GetFirstNode(syscheck.directories) == NULL) {
+        w_rwlock_unlock(&syscheck.directories_lock);
         return NULL;
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 #endif
 
     cJSON *root = cJSON_CreateObject();
@@ -214,11 +223,14 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
-    if (syscheck.directories) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    if (OSList_GetFirstNode(syscheck.directories) != NULL) {
         directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
+        OSListNode *node_it;
 
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             cJSON *pair = cJSON_CreateObject();
             cJSON *opts = cJSON_CreateArray();
             if (dir_it->options & CHECK_MD5SUM) {
@@ -287,6 +299,8 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg,"directories",dirs);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
     if (syscheck.nodiff) {
         cJSON *ndfs = cJSON_CreateArray();
         for (i=0;syscheck.nodiff[i];i++) {
