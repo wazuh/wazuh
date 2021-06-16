@@ -1,6 +1,11 @@
 
 # Tests list and flags
 
+list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
+    -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,_merror \
+    -Wl,--wrap,pthread_rwlock_wrlock")
+list(APPEND shared_tests_names "test_list_op")
+
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
     set(FILE_OP_BASE_FLAGS "-Wl,--wrap,stat,--wrap,chmod,--wrap,getpid,--wrap,_mdebug1 \

@@ -16,7 +16,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
+from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
@@ -25,20 +25,31 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
-                        fields=None, q=None):
-    """ Gets all the different combinations that all system agents have for the selected fields. It also indicates the
+def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.database_limit, sort: str = None,
+                        search: str = None, fields: str = None, q: str = None) -> AffectedItemsWazuhResult:
+    """Get all the different combinations that all system agents have for the selected fields. It also indicates the
     total number of agents that have each combination.
 
-    :param agent_list: List of agents ID's.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-    :param q: Defines query to filter in DB.
-    :param fields: Fields to group by
-    :return: WazuhResult
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's.
+    fields : str
+        List of fields to group by.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : str
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    search : str
+        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
     """
 
     result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
@@ -49,8 +60,8 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
-                                             search=search, select=select, query=q, min_select_fields=set(), count=True,
+        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, select=fields, offset=offset, limit=limit, sort=sort,
+                                             search=search, query=q, min_select_fields=set(), count=True,
                                              get_data=True, **rbac_filters)
 
         data = db_query.run()
@@ -333,28 +344,40 @@ def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=Fal
 
         db_query = WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters)
         data = db_query.run()
-        can_purge_agents = list(map(operator.itemgetter('id'), data['items']))
-        for agent_id in agent_list:
-            try:
-                if agent_id == "000":
-                    raise WazuhError(1703)
-                elif agent_id not in system_agents:
-                    raise WazuhResourceNotFound(1701)
-                elif agent_id not in can_purge_agents:
-                    raise WazuhError(
+        can_purge_agents = set(map(operator.itemgetter('id'), data['items']))
+        agent_list = set(agent_list)
+
+        try:
+            agent_list.remove('000')
+            result.add_failed_item('000', WazuhError(1703))
+        except KeyError:
+            pass
+
+        # Add not existing agents to failed_items
+        not_found_agents = agent_list - system_agents
+        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhResourceNotFound(1701)), not_found_agents))
+
+        # Add non eligible agents to failed_items
+        non_eligible_agents = agent_list - not_found_agents - can_purge_agents
+        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhError(
                         1731,
                         extra_message="some of the requirements are not met -> {}".format(
                             ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
                             (f', q: {q}' if q else '')
                         )
-                    )
-                else:
-                    my_agent = Agent(agent_id)
-                    my_agent.load_info_from_db()
-                    my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
-                    result.affected_items.append(agent_id)
+                    )), non_eligible_agents))
+
+        for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
+            try:
+                my_agent = Agent(agent_id)
+                my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
+                result.affected_items.append(agent_id)
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
+
+        # Clear temporary cache
+        clear_temporary_caches()
+
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
 

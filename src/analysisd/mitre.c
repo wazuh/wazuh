@@ -237,6 +237,11 @@ end:
 }
 
 technique_data* mitre_get_attack(const char *mitre_id) {
+
+    if (techniques_table == NULL) {
+        return NULL;
+    }
+
     return OSHash_Get(techniques_table, mitre_id);
 }
 
