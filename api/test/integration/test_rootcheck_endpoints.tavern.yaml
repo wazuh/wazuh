@@ -402,11 +402,13 @@ stages:
         distinct: true
     response:
       status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "status"
       json:
         error: 0
         data:
-          affected_items:
-            - status: "outstanding"
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

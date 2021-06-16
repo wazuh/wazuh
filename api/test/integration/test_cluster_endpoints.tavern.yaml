@@ -369,16 +369,13 @@ stages:
         select: name,version
     response:
       status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "name,version"
       json:
         error: !anyint
         data:
-          affected_items:
-            - name: !anystr
-              version: !anystr
-            - name: !anystr
-              version: !anystr
-            - name: !anystr
-              version: !anystr
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
@@ -391,13 +388,13 @@ stages:
         select: type
     response:
       status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "type"
       json:
         error: !anyint
         data:
-          affected_items:
-            - type: !anystr
-            - type: !anystr
-            - type: !anystr
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
