@@ -27,11 +27,7 @@ extern void mock_assert(const int result, const char* const expression,
 
 const char *SQL_STMT[] = {
     // Files
-#ifdef WIN32
-    [FIMDB_STMT_REPLACE_ENTRY] = "INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-#else
     [FIMDB_STMT_REPLACE_ENTRY] = "INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-#endif
     [FIMDB_STMT_GET_PATH] = "SELECT path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime FROM file_entry WHERE path = ?;",
     [FIMDB_STMT_GET_LAST_PATH] = "SELECT path FROM file_entry ORDER BY path DESC LIMIT 1;",
     [FIMDB_STMT_GET_FIRST_PATH] = "SELECT path FROM file_entry ORDER BY path ASC LIMIT 1;",
@@ -44,7 +40,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry WHERE inode=? AND dev=?;",
     [FIMDB_STMT_SET_SCANNED] = "UPDATE file_entry SET scanned = 1 WHERE path = ?;",
     [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM file_entry",
-    [FIMDB_STMT_GET_COUNT_INODE] = "SELECT count(inode) FROM file_entry",
+    [FIMDB_STMT_GET_COUNT_INODE] = "SELECT count(*) FROM (SELECT DISTINCT inode, dev from file_entry)",
     [FIMDB_STMT_GET_PATH_FROM_PATTERN] = "SELECT path FROM file_entry WHERE path LIKE ?",
     // Registries
 #ifdef WIN32

@@ -981,33 +981,9 @@ cJSON *fim_json_event(const fim_entry *new_data,
 
     cJSON_AddStringToObject(data, "path", new_data->file_entry.path);
     cJSON_AddNumberToObject(data, "version", 2.0);
-
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[evt_data->type]);
     cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
-
-#ifndef WIN32
-    char** paths = NULL;
-
-    if (paths = fim_db_get_paths_from_inode(syscheck.database, new_data->file_entry.data->inode,
-                                            new_data->file_entry.data->dev),
-        paths) {
-        if (paths[0] && paths[1]) {
-            cJSON *hard_links = cJSON_CreateArray();
-            int i;
-            for(i = 0; paths[i]; i++) {
-                if (strcmp(new_data->file_entry.path, paths[i])) {
-                    cJSON_AddItemToArray(hard_links, cJSON_CreateString(paths[i]));
-                }
-                os_free(paths[i]);
-            }
-            cJSON_AddItemToObject(data, "hard_links", hard_links);
-        } else {
-            os_free(paths[0]);
-        }
-        os_free(paths);
-    }
-#endif
 
     cJSON_AddItemToObject(data, "attributes", fim_attributes_json(new_data->file_entry.data));
 

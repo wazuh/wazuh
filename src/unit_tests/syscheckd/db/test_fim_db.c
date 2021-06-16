@@ -467,17 +467,9 @@ void test_fim_db_init_failed_cache(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
-#ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE (111)");
-#else
-    expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
-#endif
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+
     fdb_t *fim_db;
     fim_db = fim_db_init(syscheck.database_store);
     assert_null(fim_db);
@@ -495,17 +487,9 @@ void test_fim_db_init_failed_cache_memory(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
-#ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE (111)");
-#else
-    expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
-#endif
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t *fim_db;
     syscheck.database_store = 1;
@@ -849,17 +833,9 @@ void test_fim_db_cache_failed(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
-#ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE (111)");
-#else
-    expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
-#endif
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+
     int ret = fim_db_cache(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -882,17 +858,9 @@ void test_fim_db_close_failed(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
-#ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
-                  "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE (111)");
-#else
-    expect_string(__wrap__merror, formatted_msg,
-                  "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
-#endif
+                  "Error finalizing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+
     will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
     fim_db_close(test_data->fim_sql);
 }
@@ -989,17 +957,9 @@ void test_fim_db_clean_stmt_reset_and_prepare_failed(void **state) {
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     will_return(__wrap_sqlite3_extended_errcode, 111);
-#ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': ERROR (111)");
-#else
-    expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': ERROR (111)");
-#endif
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': ERROR");
+
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_ERR);
 }
@@ -1795,6 +1755,8 @@ static void test_fim_db_callback_save_string_memory(void **state) {
 \**********************************************************************************************************************/
 static void test_fim_db_get_count_invalid_index(void **state) {
     fdb_t fim_sql;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_assert_failure(fim_db_get_count(&fim_sql, -1));
 }

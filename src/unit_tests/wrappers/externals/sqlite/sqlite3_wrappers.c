@@ -39,6 +39,13 @@ int __wrap_sqlite3_bind_int64(__attribute__((unused)) sqlite3_stmt *stmt,
     return mock();
 }
 
+int __wrap_sqlite3_bind_null(__attribute__((unused)) sqlite3_stmt *stmt,
+                              int index) {
+    check_expected(index);
+
+    return mock();
+}
+
 void expect_sqlite3_bind_int64_call(int idx, double val, int ret) {
     expect_value(__wrap_sqlite3_bind_int64, index, idx);
     expect_value(__wrap_sqlite3_bind_int64, value, val);

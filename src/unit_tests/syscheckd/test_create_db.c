@@ -587,10 +587,6 @@ static void test_fim_json_event(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
     directory_t configuration = { .tag = "tag1,tag2" };
 
-#ifndef TEST_WINAGENT
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, NULL);
-#endif
-
     fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
     assert_non_null(fim_data->json);
@@ -645,10 +641,6 @@ static void test_fim_json_event_whodata(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
-
-#ifndef TEST_WINAGENT
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, NULL);
-#endif
 
     fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, "diff");
 
@@ -709,10 +701,6 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     paths[0] = strdup("test.file");
     paths[1] = NULL;
 
-#ifndef TEST_WINAGENT
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, paths);
-
-#endif
     fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
 
     assert_non_null(fim_data->json);
@@ -750,62 +738,6 @@ static void test_fim_json_event_hardlink_one_path(void **state) {
     assert_int_equal(cJSON_GetArraySize(attributes), 13);
     assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
 }
-
-
-static void test_fim_json_event_hardlink_two_paths(void **state) {
-    fim_data_t *fim_data = *state;
-    fim_entry entry = { .file_entry.path = "test.file", .file_entry.data = fim_data->new_data };
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
-    directory_t configuration = { .tag = NULL };
-
-    char **paths = calloc(3, sizeof(char *));
-    paths[0] = strdup("test.file");
-    paths[1] = strdup("hard_link.file");
-    paths[2] = NULL;
-
-#ifndef TEST_WINAGENT
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, paths);
-#endif
-
-    fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, NULL);
-
-    assert_non_null(fim_data->json);
-    cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
-    assert_string_equal(cJSON_GetStringValue(type), "event");
-    cJSON *data = cJSON_GetObjectItem(fim_data->json, "data");
-    assert_non_null(data);
-    cJSON *path = cJSON_GetObjectItem(data, "path");
-    assert_string_equal(cJSON_GetStringValue(path), "test.file");
-    cJSON *mode = cJSON_GetObjectItem(data, "mode");
-    assert_string_equal(cJSON_GetStringValue(mode), "realtime");
-    cJSON *data_type = cJSON_GetObjectItem(data, "type");
-    assert_string_equal(cJSON_GetStringValue(data_type), "modified");
-    cJSON *timestamp = cJSON_GetObjectItem(data, "timestamp");
-    assert_non_null(timestamp);
-    assert_int_equal(timestamp->valueint, 1570184221);
-    cJSON *tags = cJSON_GetObjectItem(data, "tags");
-    assert_null(tags);
-#ifndef TEST_WINAGENT
-    cJSON *hard_links = cJSON_GetObjectItem(data, "hard_links");
-    assert_non_null(hard_links);
-#endif
-    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
-    assert_non_null(attributes);
-    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
-    assert_non_null(changed_attributes);
-    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
-    assert_non_null(old_attributes);
-
-#ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(hard_links), 1);
-    assert_int_equal(cJSON_GetArraySize(changed_attributes), 11);
-#else
-    assert_int_equal(cJSON_GetArraySize(changed_attributes), 10);
-#endif
-    assert_int_equal(cJSON_GetArraySize(attributes), 13);
-    assert_int_equal(cJSON_GetArraySize(old_attributes), 13);
-}
-
 
 static void test_fim_attributes_json(void **state) {
     fim_data_t *fim_data = *state;
@@ -1343,10 +1275,6 @@ static void test_fim_file_add(void **state) {
     will_return(__wrap_fim_db_file_update, NULL);
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
-#ifndef TEST_WINAGENT
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 1234, 2345, NULL);
-#endif
-
     expect_fim_file_diff(file_path, strdup("diff"));
 
     fim_file(file_path, &configuration, &evt_data);
@@ -1413,11 +1341,6 @@ static void test_fim_file_modify(void **state) {
     expect_string(__wrap_fim_db_file_update, path, file_path);
     will_return(__wrap_fim_db_file_update, fim_data->fentry);
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
-
-#ifndef TEST_WINAGENT
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 1234, 2345, NULL);
-#endif
-
 
     fim_file(file_path, &configuration, &evt_data);
 }
@@ -1735,8 +1658,6 @@ static void test_fim_checker_fim_regular(void **state) {
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
 
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 999, 1, NULL);
-
     expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_file_update, path, path);
     will_return(__wrap_fim_db_file_update, NULL);
@@ -1959,11 +1880,6 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
-
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, syscheck.database);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, statbuf.st_ino);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, statbuf.st_dev);
-    will_return(__wrap_fim_db_get_paths_from_inode, NULL);
 
     expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_file_update, path, path);
@@ -2443,7 +2359,6 @@ void test_fim_delete_file_event_remove_success(void **state) {
     char buffer[OS_SIZE_128] = {0};
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     // inside fim_json_event
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, NULL);
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
@@ -2532,7 +2447,6 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     char buffer[OS_SIZE_128] = {0};
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     // inside fim_json_event
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, NULL);
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
@@ -2648,7 +2562,6 @@ void test_fim_delete_file_event_report_changes(void **state) {
     char buffer[OS_SIZE_128] = {0};
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     // inside fim_json_event
-    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, NULL);
     expect_fim_diff_process_delete_file(fim_data->fentry->file_entry.path, 0);
 
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
@@ -4619,7 +4532,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_json_event_whodata, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_no_changes, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_hardlink_one_path, teardown_delete_json),
-        cmocka_unit_test_teardown(test_fim_json_event_hardlink_two_paths, teardown_delete_json),
 
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
