@@ -528,12 +528,32 @@ stages:
                 - "012"
           total_affected_items: 9
           total_failed_items: 4
+    delay_after: !float "{global_db_delay}"
 
 
 ---
 test_name: DELETE /rootcheck/{agent_id}
 
 stages:
+
+  # GET /rootcheck/001
+  - name: Check that agent 001 has data
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 5
+          total_failed_items: 0
+        message: !anystr
 
   # DELETE /rootcheck/001
   - name: Delete rootcheck scans in agent 001
@@ -561,64 +581,6 @@ stages:
       verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          failed_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-        message: !anystr
-
-  # GET /rootcheck/002
-  - name: Check that agent 002 has data
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: 5
-          total_failed_items: 0
-        message: !anystr
-
-  # DELETE /rootcheck/002
-  - name: Delete rootcheck scans in agent 002
-    request:
-      verify: False
-      method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - "002"
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-    delay_after: !float "{global_db_delay}"
-
-  # GET /rootcheck/002
-  - name: Check if data has been deleted in agent 002
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
