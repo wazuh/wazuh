@@ -553,6 +553,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
 
   # GET /rootcheck/001
   - name: Check if data has been deleted in agent 001
@@ -574,7 +575,7 @@ stages:
         message: !anystr
 
   # GET /rootcheck/002
-  - name: Check if agent 002 has data.
+  - name: Check that agent 002 has data
     request:
       verify: False
       method: GET
@@ -610,6 +611,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
 
   # GET /rootcheck/002
   - name: Check if data has been deleted in agent 002

@@ -31,8 +31,8 @@ def check_experimental_feature_value(func):
 
 
 @check_experimental_feature_value
-async def clear_rootcheck_database(request, pretty=False, wait_for_complete=False, agents_list='*'):
-    """Clear the rootcheck database for a list of agents.
+async def clear_rootcheck_database(request, pretty=False, wait_for_complete=False, agents_list=None):
+    """Clear the rootcheck database for all agents or a list of them.
 
     Parameters
     ----------
@@ -68,7 +68,7 @@ async def clear_rootcheck_database(request, pretty=False, wait_for_complete=Fals
 
 @check_experimental_feature_value
 async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, agents_list=None):
-    """Clear the syscheck database for all agents.
+    """Clear the syscheck database for all agents or a list of them.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response

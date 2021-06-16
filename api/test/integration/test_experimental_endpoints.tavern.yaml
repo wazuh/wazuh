@@ -60,25 +60,6 @@ stages:
           total_affected_items: 13
           total_failed_items: 0
 
-  # GET /rootcheck/002
-  - name: Check if data has been deleted in agent 002
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          failed_items: []
-          total_affected_items: 0
-          total_failed_items: 0
-        message: !anystr
-
 ---
 test_name: DELETE /experimental/syscheck
 
