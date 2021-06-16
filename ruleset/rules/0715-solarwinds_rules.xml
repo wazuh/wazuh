@@ -12,83 +12,66 @@ ID: 66500 - 66999
 
 <group name="solarwinds_rules">
   <!-- Sysmon: Library load -->
-  <rule id="66500" level="12">
-    <if_sid>61609</if_sid>
+  <rule id="66500" level="15">
+    <if_group>sysmon_event7</if_group>
+    <description>Supernova trojan detected in $(win.eventdata.imageLoaded) library.</description>
     <field name="win.eventdata.hashes">SHA256=C15ABAF51E78CA56C0376522D699C978217BF041A3BD3C71D09193EFA5717C71|SHA1=75AF292F34789A1C782EA36C7127BF6106F595E8|MD5=56CEB6D0011D87B6E4D7023D7EF85676</field>
     <mitre>
       <id>T1587.001</id>
-      <id>T1587</id>
       <id>T1588.003</id>
-      <id>T1588</id>
       <id>T1190</id>
-      <id>T1195</id>
       <id>T1195.002</id>
-      <id>T1053</id>
       <id>T1053.005</id>
-      <id>T1036</id>
       <id>T1036.004</id>
       <id>T1036.005</id>
-      <id>T1553</id>
       <id>T1553.002</id>
     </mitre>
-    <description>Supernova trojan detected in $(win.eventdata.imageLoaded) library.</description>
   </rule>
 
   <!-- Sysmon: File creation/modification -->
   <rule id="66501" level="10">
-    <if_sid>61613</if_sid>
+    <if_group>sysmon_event_11</if_group>
+    <description>Suspicious file $(win.eventdata.targetFilename) - Possible Supernova trojan</description>
     <field name="win.eventdata.targetFilename">logoimagehandler.ashx</field>
     <mitre>
       <id>T1587.001</id>
-      <id>T1587</id>
       <id>T1588.003</id>
-      <id>T1588</id>
       <id>T1190</id>
-      <id>T1195</id>
       <id>T1195.002</id>
-      <id>T1053</id>
       <id>T1053.005</id>
     </mitre>
-    <description>Suspicious file $(win.eventdata.targetFilename) - Possible Supernova trojan</description>
   </rule>
 
   <!-- Sysmon: File creation/modification -->
   <rule id="66502" level="13">
-    <if_sid>61613</if_sid>
+    <if_group>sysmon_event_11</if_group>
+    <description>Image $(win.eventdata.image) created suspicious file $(win.eventdata.targetFilename) - Possible Supernova trojan</description>
     <field name="win.eventdata.image">solarwinds.businesslayerhost.exe|SolarWinds.BusinessLayerHostx64.exe</field>
     <field name="win.eventdata.targetFilename">.exe|.ps1|.jpg|.png|.dll|.gz|.zip|.gzip|.7zip|.rar|.zlib</field>
     <mitre>
       <id>T1587.001</id>
-      <id>T1587</id>
       <id>T1588.003</id>
-      <id>T1588</id>
       <id>T1190</id>
-      <id>T1195</id>
       <id>T1195.002</id>
       <id>T1078</id>
-      <id>T1059</id>
       <id>T1059.001</id>
       <id>T1059.003</id>
       <id>T1027</id>
       <id>T1083</id>
-      <id>T1560</id>
       <id>T1560.001</id>
-      <id>T1074</id>
       <id>T1074.002</id>
     </mitre>
-    <description>Image $(win.eventdata.image) created suspicious file $(win.eventdata.targetFilename) - Possible Supernova trojan</description>
   </rule>
 
   <!-- Sysmon: File creation/modification -->
   <rule id="66503" level="13">
     <if_sid>61600</if_sid>
+    <description>Image $(win.eventdata.image) removed suspicious file $(win.eventdata.targetFilename) - Possible Supernova trojan</description>
     <field name="win.system.eventID">^23$</field>
     <field name="win.eventdata.image">solarwinds.businesslayerhost.exe|SolarWinds.BusinessLayerHostx64.exe</field>
     <mitre>
       <id>T1070.004</id>
-      <id>T1070</id>
     </mitre>
-    <description>Image $(win.eventdata.image) removed suspicious file $(win.eventdata.targetFilename) - Possible Supernova trojan</description>
   </rule>
 
 
@@ -113,13 +96,9 @@ ID: 66500 - 66999
     <match>C15ABAF51E78CA56C0376522D699C978217BF041A3BD3C71D09193EFA5717C71|75AF292F34789A1C782EA36C7127BF6106F595E8|56CEB6D0011D87B6E4D7023D7EF85676</match>
     <mitre>
       <id>T1587.001</id>
-      <id>T1587</id>
       <id>T1588.003</id>
-      <id>T1588</id>
       <id>T1190</id>
-      <id>T1195</id>
       <id>T1195.002</id>
-      <id>T1036</id>
       <id>T1036.004</id>
       <id>T1036.005</id>
     </mitre>
@@ -129,16 +108,17 @@ ID: 66500 - 66999
   <!-- IIS: Supernova attack detection through URL -->
   <rule id="66560" level="12">
     <if_sid>31108</if_sid>
-    <url>clazz|codes|args|method</url>
+    <description>Supernova attack detected</description>
+    <url>clazz</url>
+    <url>codes</url>
+    <url>args</url>
+    <url>method</url>
     <mitre>
       <id>T1190</id>
       <id>T1057</id>
-      <id>T1071</id>
       <id>T1071.001</id>
       <id>T1567</id>
-      
     </mitre>
-    <description>Supernova attack detected</description>
     <info type="cve">CVE-2020-10148</info>
     <info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-10148</info>
   </rule>
