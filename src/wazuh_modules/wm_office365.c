@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -35,15 +35,72 @@ STATIC void wm_office365_destroy(wm_office365* office365_config);
 STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
 STATIC void wm_office365_subscription_destroy(wm_office365_subscription* office365_subscription);
 STATIC void wm_office365_fail_destroy(wm_office365_fail* office365_fails);
-STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan);
-STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_size);
-STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* client_id, const char* token, int start, size_t max_size);
-STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token, char** next_page, size_t max_size, bool* buffer_size_reached);
-STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token, size_t max_size, bool* buffer_size_reached);
-STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_office365_fail* fails, char* tenant_id, char* subscription_name);
-STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, int queue_fd);
-
 cJSON *wm_office365_dump(const wm_office365* office365_config);
+
+/**
+ * @brief Execute a scan
+ * @param github_config Office365 configuration structure
+ * @param initial_scan Whether it is the first scan or not
+ */
+STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initial_scan);
+
+/**
+ * @brief Get access token through Office365 API
+ * @param auth Office365 authentication node
+ * @param max_size Max response size allowed
+ * @return access_token if no error, NULL otherwise
+ */
+STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_size);
+
+/**
+ * @brief Start/stop a subscription through Office365 API
+ * @param subscription Office365 subscription node
+ * @param client_id Client ID
+ * @param token Authentication token
+ * @param start Whether to start/end a subscription
+ * @param max_size Max response size allowed
+ * @return 0 if no error, -1 otherwise
+ */
+STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscription, const char* client_id, const char* token, int start, size_t max_size);
+
+/**
+ * @brief Get a content blob through Office365 API
+ * @param url URL to request
+ * @param token Authentication token
+ * @param next_page Variable to store next page URL if exists
+ * @param max_size Max response size allowed
+ * @param buffer_size_reached Flag to set if max response size error happens
+ * @return JSON content blob if no error, NULL otherwise
+ */
+STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token, char** next_page, size_t max_size, bool* buffer_size_reached);
+
+/**
+ * @brief Get logs from content blob through Office365 API
+ * @param url URL to request
+ * @param token Authentication token
+ * @param max_size Max response size allowed
+ * @param buffer_size_reached Flag to set if max response size error happens
+ * @return JSON logs if no error, NULL otherwise
+ */
+STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token, size_t max_size, bool* buffer_size_reached);
+
+/**
+ * @brief Get tenant and subscription node from office365 failure list
+ * @param fails Office365 failure list
+ * @param tenant_id Tenant ID to search
+ * @param subscription_name Subscription name to search
+ * @return Pointer to tenant and subscription node if exists, NULL otherwise
+ */
+STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_office365_fail* fails, char* tenant_id, char* subscription_name);
+
+/**
+ * @brief Increase failure counter for tenant and subscription node and send failure message to manager if necessary
+ * @param current_fails Office365 failure list
+ * @param tenant_id Tenant ID to search
+ * @param subscription_name Subscription name to search
+ * @param queue_fd Socket ID
+ */
+STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, int queue_fd);
 
 /* Context definition */
 const wm_context WM_OFFICE365_CONTEXT = {
@@ -200,7 +257,7 @@ cJSON *wm_office365_dump(const wm_office365* office365_config) {
     return root;
 }
 
-STATIC void wm_office365_execute_scan(wm_office365 *office365_config, int initial_scan) {
+STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initial_scan) {
     int scan_finished = 0;
     int fail = 0;
     char url[OS_SIZE_8192];

@@ -33,8 +33,26 @@ int w_download_status(int status,const char *url,const char *dest);
 // Request download
 int wurl_request(const char * url, const char * dest, const char *header, const char *data, const long timeout);
 int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);
+
+/**
+ * @brief Make a HTTP GET request
+ * @param url URL to request
+ * @param max_size Max response size allowed
+ * @return Request response (body)
+ */
 char * wurl_http_get(const char * url, size_t max_size);
+
+/**
+ * @brief Make a HTTP request
+ * @param method HTTP method
+ * @param headers Request headers
+ * @param url URL to request
+ * @param payload Request body
+ * @param max_size Max response size allowed
+ * @return Request response (status_code, headers and body)
+ */
 curl_response *wurl_http_request(char *method, char **headers, const char *url, const char *payload, size_t max_size);
+
 void wurl_free_response(curl_response* response);
 #ifndef CLIENT
 int wurl_request_bz2(const char * url, const char * dest, const char * header, const char * data, const long timeout, char *sha256);

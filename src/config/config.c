@@ -55,7 +55,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osauthd = "auth";                       /* Authd Config */
     const char *osreports = "reports";                  /* Server Config */
 #endif
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
     const char *office365 = "office365";                /* Office365 Module */
 #endif
@@ -212,7 +212,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 mwarn("%s configuration is only set in the manager.", node[i]->element);
             #endif
         }
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
         else if (chld_node && (strcmp(node[i]->element, github) == 0)) {
             if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1) < 0)) {
                 goto fail;

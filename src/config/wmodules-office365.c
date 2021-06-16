@@ -7,7 +7,7 @@
  * Foundation
 */
 
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 
 #include "wazuh_modules/wmodules.h"
 
@@ -24,46 +24,6 @@ static const char *XML_CLIENT_SECRET        = "client_secret";
 
 static const char *XML_SUBSCRIPTIONS                = "subscriptions";
 static const char *XML_SUBSCRIPTION                 = "subscription";
-
-time_t time_convert_1d(const char *time_c) {
-    char *endptr;
-    time_t time_i = strtoul(time_c, &endptr, 0);
-
-    if (time_i <= 0 || time_i >= INT_MAX) {
-        return OS_INVALID;
-    }
-
-    switch (*endptr) {
-    case 'd':
-        if(time_i > 1) {
-            return OS_INVALID;
-        }
-        time_i *= 86400;
-        break;
-    case 'h':
-        if(time_i > 24) {
-            return OS_INVALID;
-        }
-        time_i *= 3600;
-        break;
-    case 'm':
-        if(time_i > 1440) {
-            return OS_INVALID;
-        }
-        time_i *= 60;
-        break;
-    case 's':
-        if(time_i > 86400) {
-            return OS_INVALID;
-        }
-        break;
-    case '\0':
-        break;
-    default:
-        return OS_INVALID;
-    }
-    return time_i;
-}
 
 // Parse XML
 int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **nodes, wmodule *module) {
@@ -118,8 +78,8 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            office365_config->interval = time_convert_1d(nodes[i]->content);
-            if (office365_config->interval == OS_INVALID) {
+            office365_config->interval = w_parse_time(nodes[i]->content);
+            if ((office365_config->interval < 0) || (office365_config->interval > W_DAY_SECONDS)) {
                 merror("Invalid content for tag '%s' at module '%s'. The maximum value allowed is 1 day.", XML_INTERVAL, WM_OFFICE365_CONTEXT.name);
                 return OS_INVALID;
             }

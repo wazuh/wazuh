@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -34,11 +34,31 @@ STATIC void* wm_github_main(wm_github* github_config);    // Module main functio
 STATIC void wm_github_destroy(wm_github* github_config);
 STATIC void wm_github_auth_destroy(wm_github_auth* github_auth);
 STATIC void wm_github_fail_destroy(wm_github_fail* github_fails);
-STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
-STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan);
-STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
-
 cJSON *wm_github_dump(const wm_github* github_config);
+
+/**
+ * @brief Execute a scan
+ * @param github_config GitHub configuration structure
+ * @param initial_scan Whether it is the first scan or not
+ */
+STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan);
+
+/**
+ * @brief Get organization node from organizations failure list
+ * @param fails Organizations failure list
+ * @param org_name Organization name to search
+ * @return Pointer to organization node if exists, NULL otherwise
+ */
+STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
+
+/**
+ * @brief Increase failure counter for organization node and send failure message to manager if necessary
+ * @param current_fails Organizations failure list
+ * @param org_name Organization name to search
+ * @param error_msg Error message to send
+ * @param queue_fd Socket ID
+ */
+STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
 
 /* Context definition */
 const wm_context WM_GITHUB_CONTEXT = {

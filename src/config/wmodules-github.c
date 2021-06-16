@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
 */
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 
 #include "wazuh_modules/wmodules.h"
 
@@ -26,34 +26,6 @@ static const char *XML_EVENT_TYPE = "event_type";
 static const char *EVENT_TYPE_ALL = "all";
 static const char *EVENT_TYPE_GIT = "git";
 static const char *EVENT_TYPE_WEB = "web";
-
-time_t time_convert(const char *time_c) {
-    char *endptr;
-    time_t time_i = strtoul(time_c, &endptr, 0);
-
-    if (time_i <= 0 || time_i >= INT_MAX) {
-        return OS_INVALID;
-    }
-
-    switch (*endptr) {
-    case 'd':
-        time_i *= 86400;
-        break;
-    case 'h':
-        time_i *= 3600;
-        break;
-    case 'm':
-        time_i *= 60;
-        break;
-    case 's':
-        break;
-    case '\0':
-        break;
-    default:
-        return OS_INVALID;
-    }
-    return time_i;
-}
 
 // Parse XML
 int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
@@ -98,8 +70,8 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            github_config->interval = time_convert(nodes[i]->content);
-            if (github_config->interval == OS_INVALID) {
+            github_config->interval = w_parse_time(nodes[i]->content);
+            if (github_config->interval < 0) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_INTERVAL, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -116,8 +88,8 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
             github_config->curl_max_size = (size_t)(max_size * 1024);
         } else if (!strcmp(nodes[i]->element, XML_TIME_DELAY)) {
-            github_config->time_delay = time_convert(nodes[i]->content);
-            if (github_config->time_delay == OS_INVALID) {
+            github_config->time_delay = w_parse_time(nodes[i]->content);
+            if (github_config->time_delay < 0) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_TIME_DELAY, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
