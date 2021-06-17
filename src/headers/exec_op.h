@@ -15,7 +15,6 @@
 #define W_BIND_STDOUT   001
 #define W_BIND_STDERR   002
 #define W_CHECK_WRITE   004
-#define W_APPEND_POOL   010
 #define W_BIND_STDIN    020
 
 #ifdef WIN32

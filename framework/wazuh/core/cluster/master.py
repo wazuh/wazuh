@@ -200,13 +200,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.logger.debug(f"Command received: {command}")
-        if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p' or command == b'sync_a_w_m_p':
+        if command == b'syn_i_w_m_p' or command == b'syn_e_w_m_p' or command == b'syn_a_w_m_p':
             return self.get_permission(command)
-        elif command == b'sync_i_w_m' or command == b'sync_e_w_m' or command == b'sync_a_w_m':
+        elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m':
             return self.setup_sync_integrity(command, data)
-        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e':
+        elif command == b'syn_i_w_m_e' or command == b'syn_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
-        elif command == b'sync_i_w_m_r' or command == b'sync_e_w_m_r':
+        elif command == b'syn_i_w_m_r' or command == b'syn_e_w_m_r':
             return self.process_sync_error_from_worker(command, data)
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
@@ -257,7 +257,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
 
         # If forward request to other worker, get destination client and request.
-        if command == b'dapi_forward':
+        if command == b'dapi_fwd':
             client, request = data.split(b' ', 1)
             client = client.decode()
             if client in self.server.clients:
@@ -271,11 +271,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             result = self.process_request(command=command, data=data)
 
-        # If command was dapi or dapi_forward, wait for response.
-        if command == b'dapi' or command == b'dapi_forward':
+        # If command was dapi or dapi_fwd, wait for response.
+        if command == b'dapi' or command == b'dapi_fwd':
             try:
                 timeout = None if wait_for_complete \
-                               else self.cluster_items['intervals']['communication']['timeout_api_request']
+                               else self.cluster_items['intervals']['communication']['timeout_dapi_request']
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                 request_result = self.server.pending_api_requests[request_id]['Response']
             except asyncio.TimeoutError:
@@ -420,11 +420,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if sync_type == b'sync_i_w_m_p':
+        if sync_type == b'syn_i_w_m_p':
             permission = self.sync_integrity_free
-        elif sync_type == b'sync_e_w_m_p':
+        elif sync_type == b'syn_e_w_m_p':
             permission = self.sync_extra_valid_free
-        elif sync_type == b'sync_a_w_m_p':
+        elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
         else:
             permission = False
@@ -446,11 +446,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if sync_type == b'sync_i_w_m':
+        if sync_type == b'syn_i_w_m':
             self.sync_integrity_free, sync_function = False, ReceiveIntegrityTask
-        elif sync_type == b'sync_e_w_m':
+        elif sync_type == b'syn_e_w_m':
             self.sync_extra_valid_free, sync_function = False, ReceiveExtraValidTask
-        elif sync_type == b'sync_a_w_m':
+        elif sync_type == b'syn_a_w_m':
             self.sync_agent_info_free, sync_function = False, ReceiveAgentInfoTask
         else:
             sync_function = None
@@ -476,9 +476,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if command == b'sync_i_w_m_r':
+        if command == b'syn_i_w_m_r':
             sync_type, self.sync_integrity_free = "Integrity", True
-        else:  # command == b'sync_e_w_m_r':
+        else:  # command == b'syn_e_w_m_r':
             sync_type, self.sync_extra_valid_free = "Extra valid", True
 
         return super().error_receiving_file(error_msg.decode())
@@ -524,11 +524,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             received_string = self.in_str[task_id].payload
             data = json.loads(received_string.decode())
         except KeyError as e:
-            await self.send_request(command=b'sync_m_a_err',
+            await self.send_request(command=b'syn_m_a_err',
                                     data=f"error while trying to access string under task_id {str(e)}.".encode())
             raise exception.WazuhClusterError(3035, extra_message=f"it should be under task_id {str(e)}, but it's empty.")
         except ValueError as e:
-            await self.send_request(command=b'sync_m_a_err', data=f"error while trying to load JSON: {str(e)}".encode())
+            await self.send_request(command=b'syn_m_a_err', data=f"error while trying to load JSON: {str(e)}".encode())
             raise exception.WazuhClusterError(3036, extra_message=str(e))
 
         # Update chunks in local wazuh-db
@@ -547,7 +547,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.debug(f"All chunks updated in wazuh-db in {(time() - before):3f}s.")
 
         # Send result to worker
-        response = await self.send_request(command=b'sync_m_a_e', data=json.dumps(result).encode())
+        response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
         self.sync_agent_info_status.update({'date_start_master': date_start_master, 'date_end_master': datetime.now(),
                                             'n_synced_chunks': result['updated_chunks']})
         logger.info("Finished in {:.3f}s ({} chunks updated).".format((self.sync_agent_info_status['date_end_master'] -
@@ -663,7 +663,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
             logger.info(f"Finished in {total_time:.3f}s. Sync not required.")
-            result = await self.send_request(command=b'sync_m_c_ok', data=b'')
+            result = await self.send_request(command=b'syn_m_c_ok', data=b'')
         else:
             logger.info(f"Finished in {total_time:.3f}s. Sync required.")
 
@@ -684,7 +684,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.debug("Zip with files to be synced sent to worker.")
             try:
                 # Start the synchronization process with the worker and get a taskID.
-                task_id = await self.send_request(command=b'sync_m_c', data=b'')
+                task_id = await self.send_request(command=b'syn_m_c', data=b'')
                 if isinstance(task_id, Exception) or task_id.startswith(b'Error'):
                     exc_info = task_id if isinstance(task_id, Exception) else \
                         exception.WazuhClusterError(code=3016, extra_message=str(task_id))
@@ -695,7 +695,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 await self.send_file(compressed_data)
 
                 # Finish the synchronization process and notify where the file corresponding to the taskID is located.
-                result = await self.send_request(command=b'sync_m_c_e',
+                result = await self.send_request(command=b'syn_m_c_e',
                                                  data=task_id + b' ' + os.path.relpath(
                                                      compressed_data, common.wazuh_path).encode())
                 if isinstance(result, Exception):
@@ -705,14 +705,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             except exception.WazuhException as e:
                 # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
-                result = await self.send_request(command=b'sync_m_c_r', data=task_id + b' ' +
+                result = await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' +
                                                  json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 # Notify error to worker and delete its received file.
                 self.logger.error(f"Error sending files information: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                       cls=c_common.WazuhJSONEncoder).encode()
-                result = await self.send_request(command=b'sync_m_c_r', data=task_id + b' ' + exc_info)
+                result = await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
             finally:
                 # Remove local file.
                 os.unlink(compressed_data)
