@@ -68,6 +68,8 @@ def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_mock,
     ----------
     agent_list : list
         List of agent IDs.
+    failed_items : list
+        List with the WazuhDBQueryAgents response.
     status_list : list
         List of agent statuses.
     expected_result : list

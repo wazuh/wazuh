@@ -15,12 +15,12 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["rootcheck:run"], resources=["agent:id:{agent_list}"])
-def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
+def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
     """Run a rootcheck scan in the specified agents.
 
     Parameters
     ----------
-    agent_list : Union[str, None]
+    agent_list : Union[list, None]
          List of the agents IDs to run the scan for.
 
     Returns
@@ -56,7 +56,7 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
         except WazuhError as e:
             result.add_failed_item(id_=agent_id, error=e)
     wq.close()
-    result.affected_items = sorted(result.affected_items, key=int)
+    result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
 
     return result
