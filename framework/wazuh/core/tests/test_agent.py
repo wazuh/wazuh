@@ -1375,27 +1375,6 @@ def test_agent_set_agent_group_file_ko():
         Agent.set_agent_group_file('002', 'test_group')
 
 
-@pytest.mark.parametrize('groups, expected_result', [
-    ('default0,default1,default2,default3', True),
-    ('default0,default1', False),
-    ('', False)
-])
-@patch('wazuh.core.common.max_groups_per_multigroup', new=3)
-def test_agent_check_multigroup_limit(groups, expected_result):
-    """Test if check_multigroup_limit() returns True when limit of groups is reached
-
-    Parameters
-    ----------
-    groups : str
-        Groups to which the agent belongs.
-    expected_result : bool
-        Expected result.
-    """
-    with patch('wazuh.core.agent.Agent.get_agents_group_file', return_value=groups):
-        result = Agent.check_multigroup_limit('002')
-        assert result == expected_result, f'check_multigroup_limit returns {result} but should return {expected_result}'
-
-
 @pytest.mark.parametrize('agent_id, group_id, force, previous_groups, set_default', [
     ('002', 'test_group', False, 'default,test_group,another_test', False),
     ('002', 'test_group', True, 'default,test_group,another_test', False),
