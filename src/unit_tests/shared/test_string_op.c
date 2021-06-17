@@ -91,7 +91,20 @@ void test_os_snprintf_more_parameters(void **state)
     assert_int_equal(ret, 21);
 }
 
-void test_w_remove_substr(void **state)
+/* w_remove_substr */
+
+void test_w_remove_substr_null_sub(void **state)
+{
+    int i;
+    char * ret;
+    char * sub = NULL;
+    char * str = "This is a test";
+
+    ret = w_remove_substr(str, sub);
+    assert_null(ret);
+}
+
+void test_w_remove_substr_success(void **state)
 {
     int i;
     char * ret;
@@ -600,7 +613,8 @@ int main(void) {
         cmocka_unit_test(test_os_snprintf_long),
         cmocka_unit_test(test_os_snprintf_more_parameters),
         // Tests w_remove_substr
-        cmocka_unit_test(test_w_remove_substr),
+        cmocka_unit_test(test_w_remove_substr_null_sub),
+        cmocka_unit_test(test_w_remove_substr_success),
         // Tests W_JSON_AddField
         cmocka_unit_test(test_W_JSON_AddField_nest_object),
         cmocka_unit_test(test_W_JSON_AddField_nest_no_object),
