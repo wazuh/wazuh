@@ -37,18 +37,12 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
     agent_list = set(agent_list)
     not_found_agents = agent_list - system_agents
 
-    try:
-        agent_list.remove('000')
-        result.add_failed_item('000', WazuhError(1703))
-    except KeyError:
-        pass
-
     # Add non existent agents to failed_items
     [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
     # Add non eligible agents to failed_items
-    db_query = WazuhDBQueryAgents(limit=None, select=["id", "status"], query=f'status!=active', **rbac_filters)
-    non_eligible_agents = db_query.run()['items']
+    non_eligible_agents = WazuhDBQueryAgents(limit=None, select=["id", "status"], query=f'status!=active',
+                                             **rbac_filters).run()['items']
     [result.add_failed_item(
         id_=agent['id'],
         error=WazuhError(1601, extra_message=f'Status - {agent["status"]}')) for agent in non_eligible_agents]

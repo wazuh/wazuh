@@ -22,12 +22,12 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import rootcheck
-        from wazuh.core.agent import Agent
         from wazuh.core.rootcheck import WazuhDBQueryRootcheck
         from wazuh.core.tests.test_rootcheck import InitRootcheck, send_msg_to_wdb, remove_db, \
             test_data_path as core_data
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_agent_path = os.path.join(test_data_path, 'agent')
 test_data = InitRootcheck()
 callable_list = list()
 
@@ -47,15 +47,21 @@ test_result = [
 ]
 
 
-@pytest.mark.parametrize('agent_list, status_list, expected_result', [
-    (['002', '001'], ['active', 'active'], test_result[0]),
-    (['003', '001', '008'], ['active', 'disconnected', 'active'], test_result[1]),
-    (['001', '002', '003'], ['active', 'disconnected', 'disconnected'], test_result[2]),
+@pytest.mark.parametrize('agent_list, failed_items, status_list, expected_result', [
+    (['002', '001'], [{'items': []}], ['active', 'active'], test_result[0]),
+    (['003', '001', '008'], [{'items': [{'id': '001', 'status': ['disconnected']}]}],
+     ['active', 'disconnected', 'active'], test_result[1]),
+    (['001', '002', '003'], [{'items': [{'id': '002', 'status': ['disconnected']},
+                                        {'id': '003', 'status': ['disconnected']}]}],
+     ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
+@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.rootcheck.WazuhDBQueryAgents.__init__', return_value=None)
 @patch('wazuh.syscheck.WazuhQueue._connect')
 @patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
 @patch('wazuh.syscheck.WazuhQueue.close')
-def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
+def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_mock,
+                       agent_list, failed_items, status_list, expected_result):
     """Test function `run` from rootcheck module.
 
     Parameters
@@ -67,11 +73,7 @@ def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_list, status_l
     expected_result : list
         List of dicts with expected results for every test.
     """
-    class MockAgent(Agent):
-        def load_info_from_db(self, select=None):
-            self.status = status_list.pop(0)
-
-    with patch('wazuh.rootcheck.Agent', side_effect=MockAgent):
+    with patch('wazuh.rootcheck.WazuhDBQueryAgents.run', return_value=failed_items[0]):
         result = rootcheck.run(agent_list=agent_list)
         for args, kwargs in callable_list:
             assert (isinstance(a, str) for a in args)
