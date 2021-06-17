@@ -214,6 +214,10 @@ void wm_gcp_run(const wm_gcp *data) {
 }
 
 void wm_gcp_destroy(wm_gcp * data) {
+    os_free(data->project_id);
+    os_free(data->subscription_name);
+    os_free(data->credentials_file);
+    sched_scan_free(&data->scan_config);
     os_free(data);
 }
 

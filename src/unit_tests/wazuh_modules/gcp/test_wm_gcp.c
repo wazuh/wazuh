@@ -166,7 +166,7 @@ static void test_wm_gcp_run_success_log_disabled(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output"));
+    will_return(__wrap_wm_exec, "Test output");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -200,7 +200,7 @@ static void test_wm_gcp_run_error_running_command(void **state)  {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output"));
+    will_return(__wrap_wm_exec, "Test output");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 1);
 
@@ -234,7 +234,7 @@ static void test_wm_gcp_run_unknown_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Unknown error - This is an unknown error."));
+    will_return(__wrap_wm_exec, "Unknown error - This is an unknown error.");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
@@ -275,7 +275,7 @@ static void test_wm_gcp_run_unknown_error_no_description(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("This description does not match the criteria"));
+    will_return(__wrap_wm_exec, "This description does not match the criteria");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
@@ -316,7 +316,7 @@ static void test_wm_gcp_run_error_parsing_args(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Error!! integration.py: error: unable to parse"));
+    will_return(__wrap_wm_exec, "Error!! integration.py: error: unable to parse");
     will_return(__wrap_wm_exec, 2);
     will_return(__wrap_wm_exec, 0);
 
@@ -357,7 +357,7 @@ static void test_wm_gcp_run_error_parsing_args_no_description(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Error!! But won't trigger a specific message"));
+    will_return(__wrap_wm_exec, "Error!! But won't trigger a specific message");
     will_return(__wrap_wm_exec, 2);
     will_return(__wrap_wm_exec, 0);
 
@@ -398,7 +398,7 @@ static void test_wm_gcp_run_generic_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("ERROR: A specific error message."));
+    will_return(__wrap_wm_exec, "ERROR: A specific error message.");
     will_return(__wrap_wm_exec, 3);
     will_return(__wrap_wm_exec, 0);
 
@@ -439,7 +439,7 @@ static void test_wm_gcp_run_generic_error_no_description(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("A specific error message."));
+    will_return(__wrap_wm_exec, "A specific error message.");
     will_return(__wrap_wm_exec, 3);
     will_return(__wrap_wm_exec, 0);
 
@@ -480,7 +480,7 @@ static void test_wm_gcp_run_logging_debug_message_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - DEBUG - This is a debug message"));
+    will_return(__wrap_wm_exec, "Test output - DEBUG - This is a debug message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -514,7 +514,7 @@ static void test_wm_gcp_run_logging_debug_message_not_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - This is a message"));
+    will_return(__wrap_wm_exec, "Test output - This is a message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -549,7 +549,7 @@ static void test_wm_gcp_run_logging_debug_message_not_debug_discarded(void **sta
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - INFO - This is a dicarded message"));
+    will_return(__wrap_wm_exec, "Test output - INFO - This is a dicarded message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -580,7 +580,7 @@ static void test_wm_gcp_run_logging_info_message_info(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - INFO - This is an info message"));
+    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -614,7 +614,7 @@ static void test_wm_gcp_run_logging_info_message_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - DEBUG - This is an info message"));
+    will_return(__wrap_wm_exec, "Test output - DEBUG - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -645,7 +645,7 @@ static void test_wm_gcp_run_logging_info_message_warning(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - WARNING - This is a warning message"));
+    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -676,7 +676,7 @@ static void test_wm_gcp_run_logging_warning_message_warning(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - WARNING - This is a warning message"));
+    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -710,7 +710,7 @@ static void test_wm_gcp_run_logging_warning_message_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - DEBUG - This is a debug message"));
+    will_return(__wrap_wm_exec, "Test output - DEBUG - This is a debug message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -741,7 +741,7 @@ static void test_wm_gcp_run_logging_warning_message_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - ERROR - This is an error message"));
+    will_return(__wrap_wm_exec, "Test output - ERROR - This is an error message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -772,7 +772,7 @@ static void test_wm_gcp_run_logging_error_message_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - ERROR - This is an error message"));
+    will_return(__wrap_wm_exec, "Test output - ERROR - This is an error message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -806,7 +806,7 @@ static void test_wm_gcp_run_logging_error_message_info(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - INFO - This is an info message"));
+    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -837,7 +837,7 @@ static void test_wm_gcp_run_logging_error_message_critical(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - CRITICAL - This is a critical message"));
+    will_return(__wrap_wm_exec, "Test output - CRITICAL - This is a critical message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -868,7 +868,7 @@ static void test_wm_gcp_run_logging_critical_message_critical(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - CRITICAL - This is a critical message"));
+    will_return(__wrap_wm_exec, "Test output - CRITICAL - This is a critical message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -902,7 +902,7 @@ static void test_wm_gcp_run_logging_critical_message_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output - DEBUG - This is a debug message"));
+    will_return(__wrap_wm_exec, "Test output - DEBUG - This is a debug message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -1346,7 +1346,7 @@ static void test_wm_gcp_main_pull_on_start(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, strdup("Test output"));
+    will_return(__wrap_wm_exec, "Test output");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 

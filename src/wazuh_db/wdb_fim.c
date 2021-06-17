@@ -384,7 +384,7 @@ int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
     }
 
     if (data == NULL) {
-        mdebug1("DB(%s): cannot parse FIM payload: '%s'", wdb->id, payload);
+        mdebug1("DB(%s): cannot parse FIM payload: '%s'", wdb->id, payload == NULL ? "" : payload);
         goto end;
     }
 

@@ -371,7 +371,7 @@ static void test_wm_gcp_read_credentials_file_tag_too_long(void **state) {
     int ret;
 
     memset(buffer, 'a', OS_MAXSTR);
-    buffer[OS_MAXSTR] = '\0';
+    buffer[OS_MAXSTR - 1] = '\0';
 
     if(replace_configuration_value(data->nodes, XML_CREDENTIALS_FILE, buffer) != 0)
         fail();
