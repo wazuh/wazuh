@@ -343,18 +343,14 @@ stages:
       verify: False
       <<: *get_syscheck_agent
       params:
-        limit: 1
+        limit: 20
         sort: file,date
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "file,date"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *full_items_array
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
     # GET /syscheck/000?limit=1&sort=wrongparam
   - name: Try to get syscheck scan results for agent 000 using an invalid sort parameter
@@ -437,17 +433,14 @@ stages:
       verify: False
       <<: *get_syscheck_agent
       params:
-        limit: 1
+        limit: 10
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
     # GET /syscheck/000?limit=1&select={field}
   - name: Try to get syscheck scan results for agent 000 with a selected field answer
@@ -870,19 +863,14 @@ stages:
       verify: False
       <<: *get_syscheck_agent_002
       params:
-        limit: 2
+        limit: 5
         sort: file,date
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "file,date"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *full_items_array_002
-            - <<: *full_items_array_002
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
     # GET /syscheck/002?limit=1&sort=wrongparam
   - name: Try to get syscheck scan results for agent 002 using an invalid sort parameter
@@ -941,17 +929,14 @@ stages:
       verify: False
       <<: *get_syscheck_agent_002
       params:
-        limit: 1
+        limit: 5
         sort: "{field}"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "{field}"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: *full_items_array_002
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
     # GET /syscheck/002?limit=1&select={field}
   - name: Try to get syscheck scan results for agent 002 with a selected field answer

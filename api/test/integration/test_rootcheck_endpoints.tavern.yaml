@@ -402,11 +402,13 @@ stages:
         distinct: true
     response:
       status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "status"
       json:
         error: 0
         data:
-          affected_items:
-            - status: "outstanding"
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -419,14 +421,11 @@ stages:
       params:
         sort: +log
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "log"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   # GET /rootcheck/001?sort=-log
   - name: Sort response (descending)
@@ -441,7 +440,6 @@ stages:
           extra_kwargs:
             key: "log"
             reverse: True
-
 
 ---
 test_name: GET /rootcheck/001/last_scan
