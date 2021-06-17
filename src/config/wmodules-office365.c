@@ -84,17 +84,11 @@ int wm_office365_read(__attribute__((unused)) const OS_XML *xml, xml_node **node
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
-            if (!OS_StrIsNum(nodes[i]->content)) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_OFFICE365_CONTEXT.name);
-                return (OS_INVALID);
+            office365_config->curl_max_size = w_parse_size(nodes[i]->content);
+            if (office365_config->curl_max_size < 1024) {
+                merror("Invalid content for tag '%s' at module '%s'. The minimum value allowed is 1KB.", XML_CURL_MAX_SIZE, WM_OFFICE365_CONTEXT.name);
+                return OS_INVALID;
             }
-            int max_size;
-            if (max_size = atoi(nodes[i]->content), max_size < 1) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_OFFICE365_CONTEXT.name);
-                return (OS_INVALID);
-            }
-
-            office365_config->curl_max_size = (size_t)(max_size * 1024);
         } else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
             // Create auth node
             if (office365_auth) {

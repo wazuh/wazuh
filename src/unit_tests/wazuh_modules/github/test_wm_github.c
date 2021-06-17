@@ -683,7 +683,7 @@ void test_read_configuration(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2048</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -712,7 +712,7 @@ void test_read_configuration_1(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -872,7 +872,7 @@ void test_read_curl_max_size(void **state) {
         "<enabled>yes</enabled>\n"
         "<interval>10</interval>\n"
         "<time_delay>10</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -894,7 +894,7 @@ void test_repeatd_tag(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -925,7 +925,7 @@ void test_fake_tag(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -947,7 +947,7 @@ void test_invalid_content_2(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>yes</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -968,7 +968,7 @@ void test_invalid_content_3(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>invalid</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -989,7 +989,7 @@ void test_invalid_content_4(void **state) {
         "<enabled>invalid</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>yes</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -1010,7 +1010,7 @@ void test_invalid_content_5(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>invalid</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>yes</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -1042,7 +1042,7 @@ void test_invalid_content_6(void **state) {
         "</api_parameters>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -1052,7 +1052,7 @@ void test_invalid_time_delay_1(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>-1</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -1073,7 +1073,7 @@ void test_invalid_time_delay_2(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1y</time_delay>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -1094,7 +1094,7 @@ void test_invalid_curl_max_size_1(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>10</time_delay>"
-        "<curl_max_size>0</curl_max_size>"
+        "<curl_max_size>100</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -1105,7 +1105,7 @@ void test_invalid_curl_max_size_1(void **state) {
         "</api_parameters>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -1115,7 +1115,7 @@ void test_invalid_curl_max_size_2(void **state) {
         "<enabled>no</enabled>\n"
         "<interval>10m</interval>\n"
         "<time_delay>10</time_delay>"
-        "<curl_max_size>-1</curl_max_size>"
+        "<curl_max_size>-1m</curl_max_size>"
         "<only_future_events>no</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
@@ -1126,7 +1126,7 @@ void test_invalid_curl_max_size_2(void **state) {
         "</api_parameters>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -1147,7 +1147,7 @@ void test_invalid_curl_max_size_3(void **state) {
         "</api_parameters>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'github'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }

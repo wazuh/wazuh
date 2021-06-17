@@ -133,7 +133,7 @@ void test_read_configuration(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>10m</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2048</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -170,7 +170,7 @@ void test_read_configuration_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>yes</only_future_events>"
         "<interval>10m</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -231,7 +231,7 @@ void test_read_interval(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>10</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -268,7 +268,7 @@ void test_read_interval_s(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>50s</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -294,7 +294,7 @@ void test_read_interval_s_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>90000s</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -319,7 +319,7 @@ void test_read_interval_m(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1m</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -345,7 +345,7 @@ void test_read_interval_m_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1500m</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -370,7 +370,7 @@ void test_read_interval_h(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>2h</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -396,7 +396,7 @@ void test_read_interval_h_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>30h</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -421,7 +421,7 @@ void test_read_interval_d(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -447,7 +447,7 @@ void test_read_interval_d_fail(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>2d</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -472,7 +472,7 @@ void test_read_curl_max_size(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>10</interval>"
-        "<curl_max_size>4</curl_max_size>"
+        "<curl_max_size>4k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -524,7 +524,7 @@ void test_read_curl_max_size_invalid_1(void **state) {
         "</subscriptions>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -549,7 +549,7 @@ void test_read_curl_max_size_invalid_2(void **state) {
         "</subscriptions>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -574,7 +574,7 @@ void test_read_curl_max_size_invalid_3(void **state) {
         "</subscriptions>"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'.");
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'office365'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_office365_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -599,7 +599,7 @@ void test_fake_tag(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -625,7 +625,7 @@ void test_fake_tag_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -651,7 +651,7 @@ void test_invalid_content_1(void **state) {
         "<enabled>no</enabled>"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -676,7 +676,7 @@ void test_invalid_content_2(void **state) {
         "<enabled>invalid</enabled>\n"
         "<only_future_events>no</only_future_events>"
         "<interval>1d</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -701,7 +701,7 @@ void test_invalid_content_3(void **state) {
         "<enabled>yes</enabled>\n"
         "<only_future_events>no</only_future_events>"
         "<interval>invalid</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"
@@ -726,7 +726,7 @@ void test_invalid_content_4(void **state) {
         "<enabled>yes</enabled>\n"
         "<only_future_events>invalid</only_future_events>"
         "<interval>yes</interval>"
-        "<curl_max_size>2</curl_max_size>"
+        "<curl_max_size>2k</curl_max_size>"
         "<api_auth>"
             "<tenant_id>your_tenant_id</tenant_id>"
             "<client_id>your_client_id</client_id>"

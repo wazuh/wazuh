@@ -48,7 +48,7 @@ typedef struct wm_github {
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
     time_t time_delay;
-    size_t curl_max_size;
+    ssize_t curl_max_size;
     wm_github_auth *auth;
     char *event_type;                       // Event types to include: web/git/all
     wm_github_fail *fails;

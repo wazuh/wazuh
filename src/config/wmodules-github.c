@@ -76,17 +76,11 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
-            if (!OS_StrIsNum(nodes[i]->content)) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_GITHUB_CONTEXT.name);
-                return (OS_INVALID);
+            github_config->curl_max_size = w_parse_size(nodes[i]->content);
+            if (github_config->curl_max_size < 1024) {
+                merror("Invalid content for tag '%s' at module '%s'. The minimum value allowed is 1KB.", XML_CURL_MAX_SIZE, WM_GITHUB_CONTEXT.name);
+                return OS_INVALID;
             }
-            int max_size;
-            if (max_size = atoi(nodes[i]->content), max_size < 1) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_CURL_MAX_SIZE, WM_GITHUB_CONTEXT.name);
-                return (OS_INVALID);
-            }
-
-            github_config->curl_max_size = (size_t)(max_size * 1024);
         } else if (!strcmp(nodes[i]->element, XML_TIME_DELAY)) {
             github_config->time_delay = w_parse_time(nodes[i]->content);
             if (github_config->time_delay < 0) {

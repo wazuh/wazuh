@@ -60,7 +60,7 @@ typedef struct wm_office365 {
     int enabled;
     int only_future_events;
     time_t interval;                        // Interval betweeen events in seconds
-    size_t curl_max_size;
+    ssize_t curl_max_size;
     wm_office365_auth *auth;
     wm_office365_subscription *subscription;
     wm_office365_fail *fails;
