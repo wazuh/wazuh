@@ -140,13 +140,6 @@ stages:
             key: "filename"
             reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Sort rules by multiple fields
     request:
@@ -160,13 +153,6 @@ stages:
           extra_kwargs:
             key: "level,filename"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: [ ]
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Show rules of the system using valid select
     request:
@@ -831,7 +817,7 @@ stages:
     response:
       status_code: 400
 
-  - name: Filter sort
+  - name: Test limit
     request:
       verify: False
       <<: *pci_dss_rules_request
@@ -860,13 +846,6 @@ stages:
             reverse: True
             # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: [ ]
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -976,13 +955,6 @@ stages:
             reverse: True
             # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: [ ]
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -1091,21 +1063,12 @@ stages:
       verify: False
       <<: *gpg13_rules_request
       params:
-        sort: "-"
+        sort: "+"
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
-          extra_kwargs:
-            reverse: True
-            # No `key` parameter needed as we are sorting a list of strings
+          # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: [ ]
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -1193,13 +1156,6 @@ stages:
             reverse: True
             # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -1287,13 +1243,6 @@ stages:
             reverse: True
             # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -1373,21 +1322,12 @@ stages:
       verify: False
       <<: *tsc_rules_request
       params:
-        sort: "-"
+        sort: "+"
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
-          extra_kwargs:
-            reverse: True
-            # No `key` parameter needed as we are sorting a list of strings
+          # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -1475,13 +1415,6 @@ stages:
             reverse: True
             # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -1561,21 +1494,12 @@ stages:
       verify: False
       <<: *groups_rules_request
       params:
-        sort: "-"
+        sort: "+"
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
-          extra_kwargs:
-            reverse: True
-            # No `key` parameter needed as we are sorting a list of strings
+          # No `key` parameter needed as we are sorting a list of strings
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search
     request:
@@ -1663,13 +1587,6 @@ stages:
             key: "filename"
             reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: [ ]
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Invalid filter
     request:
@@ -2059,23 +1976,14 @@ stages:
       verify: False
       <<: *id_rules_request
       params:
-        sort: -filename
+        sort: filename
         rule_ids: 1
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "filename"
-            reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *rules_response
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Filter search error
     request:
