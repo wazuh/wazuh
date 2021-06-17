@@ -72,6 +72,7 @@ const wm_context WM_FLUENT_CONTEXT = {
     (wm_routine)wm_fluent_main,
     (wm_routine)(void *)wm_fluent_destroy,
     (cJSON * (*)(const void *))wm_fluent_dump,
+    NULL,
     NULL
 };
 

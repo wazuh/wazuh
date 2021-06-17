@@ -26,7 +26,7 @@ namespace Utils
         typename Value,
         typename RawValue,
         typename RawValueDecoder,
-        template <class, class> class ThreadDispatcher = AsyncDispatcher
+        template <class, class> class ThreadDispatcher = SyncDispatcher
         >
     class MsgDispatcher final : public ThreadDispatcher<RawValue, std::function<void(const RawValue&)>>
         , public RawValueDecoder

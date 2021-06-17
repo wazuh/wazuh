@@ -443,7 +443,7 @@ void audit_parse(char *buffer) {
                     snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
                     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
                     // Stop thread
-                    audit_thread_active = 0;
+                    atomic_int_set(&audit_thread_active, 0);
                 }
             }
             os_free(p_dir);
@@ -836,7 +836,7 @@ void audit_parse(char *buffer) {
                 // i686: 5 open
                 // i686: 295 openat
                 mdebug2(FIM_HEALTHCHECK_CREATE, syscall);
-                audit_health_check_creation = 1;
+                atomic_int_set(&audit_health_check_creation, 1);
             } else if (!strcmp(syscall, "87") || !strcmp(syscall, "263") || !strcmp(syscall, "10") ||
                        !strcmp(syscall, "301")) {
                 // x86_64: 87 unlink

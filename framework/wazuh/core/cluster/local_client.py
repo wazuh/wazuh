@@ -175,11 +175,11 @@ class LocalClient(client.AbstractClientManager):
         else:
             # Wait for expected data if it is not returned by send_request(),
             # which occurs when the following commands are used.
-            if command == b'dapi' or command == b'dapi_forward' or command == b'send_file' or command == b'sendasync' \
+            if command == b'dapi' or command == b'dapi_fwd' or command == b'send_file' or command == b'sendasync' \
                     or result == 'Sent request to master node':
                 try:
                     timeout = None if wait_for_complete \
-                        else self.cluster_items['intervals']['communication']['timeout_api_request']
+                        else self.cluster_items['intervals']['communication']['timeout_dapi_request']
                     await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
                     request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:
