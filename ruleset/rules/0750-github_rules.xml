@@ -976,6 +976,9 @@ ID: 91100 - 91449
         <if_sid>91188</if_sid>
         <field name="github.action">org.advanced_security_policy_selected_member_disabled</field>
         <description>GitHub Organization advanced security policy selected member disabled.</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org</group>
     </rule>
@@ -994,6 +997,9 @@ ID: 91100 - 91449
         <if_sid>91188</if_sid>
         <field name="github.action" type="pcre2">^org\.audit_log(?:_git_event)?_export</field>
         <description>GitHub Organization audit log export.</description>
+        <mitre>
+            <id>T1530</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org</group>
     </rule>
@@ -1003,6 +1009,9 @@ ID: 91100 - 91449
         <if_sid>91188</if_sid>
         <field name="github.action">org.block_user</field>
         <description>GitHub Organization block user.</description>
+        <mitre>
+            <id>T1531</id>
+        </mitre>
         <options>no_full_log</options>
         <group>git_org</group>
     </rule>
@@ -1047,6 +1056,9 @@ ID: 91100 - 91449
     <rule id="91199" level="12">
         <if_sid>91188</if_sid>
         <field name="github.action">org.disable_oauth_app_restrictions</field>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <description>GitHub Organization disable oauth app restrictions.</description>
         <options>no_full_log</options>
         <group>git_org</group>
@@ -1065,6 +1077,9 @@ ID: 91100 - 91449
     <rule id="91201" level="12">
         <if_sid>91188</if_sid>
         <field name="github.action">org.disable_two_factor_requirement</field>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
         <description>GitHub Organization disable two factor requirement.</description>
         <options>no_full_log</options>
         <group>git_org</group>
