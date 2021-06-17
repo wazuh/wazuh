@@ -323,6 +323,7 @@ int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path, unsigned i
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_REG_KEY_SCANNED]) != SQLITE_DONE) {
         merror("Step error setting scanned key path '%s': %s (%d)", path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
     w_mutex_unlock(&fim_sql->mutex);
@@ -341,6 +342,7 @@ int fim_db_set_registry_data_scanned(fdb_t *fim_sql, const char *name, unsigned 
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_REG_DATA_SCANNED]) != SQLITE_DONE) {
         merror("Step error setting scanned data name '%s': %s (%d)", name, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
     w_mutex_unlock(&fim_sql->mutex);
@@ -546,6 +548,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY]), res != SQLITE_DONE) {
         merror("Step error replacing registry key '%s': %s (%d)", entry->path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
     w_mutex_unlock(&fim_sql->mutex);

@@ -453,6 +453,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *ne
 
     case SQLITE_DONE:
         inode_id = 0;
+    break;
 
     default:
         merror("Step error getting data row: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
