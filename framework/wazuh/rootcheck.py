@@ -81,15 +81,19 @@ def clear(agent_list=None):
                                       none_msg="No rootcheck database was cleared")
 
     wdb_conn = WazuhDBConnection()
-    for agent_id in agent_list:
-        if agent_id not in get_agents_info():
-            result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
-        else:
-            try:
-                wdb_conn.execute(f"agent {agent_id} rootcheck delete", delete=True)
-                result.affected_items.append(agent_id)
-            except WazuhError as e:
-                result.add_failed_item(id_=agent_id, error=e)
+    system_agents = get_agents_info()
+    agent_list = set(agent_list)
+    not_found_agents = agent_list - system_agents
+    # Add non existent agents to failed_items
+    [result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701)) for agent_id in not_found_agents]
+
+    eligible_agents = agent_list - not_found_agents
+    for agent_id in eligible_agents:
+        try:
+            wdb_conn.execute(f"agent {agent_id} rootcheck delete", delete=True)
+            result.affected_items.append(agent_id)
+        except WazuhError as e:
+            result.add_failed_item(id_=agent_id, error=e)
 
     result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
