@@ -312,7 +312,9 @@ def get_agents_in_group(group_list, offset=0, limit=common.database_limit, sort=
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult.
     """
-    if group_list[0] not in get_groups():
+    system_groups = get_groups()
+    
+    if group_list[0] not in system_groups:
         raise WazuhResourceNotFound(1710)
 
     q = 'group=' + group_list[0] + (';' + q if q else '')
@@ -746,15 +748,18 @@ def remove_agents_from_group(agent_list=None, group_list=None):
                                       some_msg=f'Some agents were not removed from group {group_id}',
                                       none_msg=f'No agent was removed from group {group_id}'
                                       )
+
+    system_groups = get_groups()
+    system_agents = get_agents_info()
     # Check if group exists
-    if group_id not in get_groups():
+    if group_id not in system_groups:
         raise WazuhResourceNotFound(1710)
 
     for agent_id in agent_list:
         try:
             if agent_id == '000':
                 raise WazuhError(1703)
-            if agent_id not in get_agents_info():
+            elif agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(agent_id)
