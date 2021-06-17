@@ -151,8 +151,6 @@ void test_fim_db_insert_data_rowid_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error updating data row_id '1': ERROR MESSAGE (111)");
-    int ret;
-    int row_id = 1;
 
     expect_function_call(__wrap_pthread_mutex_unlock);
     ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
@@ -1317,6 +1315,7 @@ static void test_fim_db_remove_validated_path_valid_path(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
     // fim_db_check_transaction
+    will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_fim_db_exec_simple_wquery("END;");
     expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
     expect_fim_db_exec_simple_wquery("BEGIN;");

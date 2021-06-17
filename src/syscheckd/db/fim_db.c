@@ -449,6 +449,7 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
         if (!sqlite3_get_autocommit(fim_sql->db)) {
             // A transaction has been initiated by a BEGIN command and it's in progress
             if (fim_db_exec_simple_wquery(fim_sql, "END;") == FIMDB_ERR) {
+                w_mutex_unlock(&fim_sql->mutex);
                 return;
             }
 

@@ -818,11 +818,17 @@ void test_fim_db_check_transaction_failed(void **state) {
 
 void test_fim_db_check_transaction_no_transaction(void **state) {
     test_fim_db_insert_data *test_data = *state;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_DONE);
     will_return(__wrap_sqlite3_get_autocommit, 1);
     const time_t commit_time = test_data->fim_sql->transaction.last_commit;
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     fim_db_check_transaction(test_data->fim_sql);
     assert_int_equal(commit_time, test_data->fim_sql->transaction.last_commit);
 }
