@@ -220,7 +220,7 @@ else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
 endif()
 
-set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
+set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                          -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex \
                          -Wl,--wrap,fim_db_get_row_path -Wl,--wrap,fim_db_get_data_checksum \
                          -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_db_get_count_range \
@@ -229,7 +229,8 @@ set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mwarn -Wl,--wr
                          -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_get_first_path \
                          -Wl,--wrap,fim_db_get_last_path -Wl,--wrap,fim_db_get_entry_from_sync_msg \
                          -Wl,--wrap,fim_db_read_line_from_file -Wl,--wrap,fim_db_clean_file \
-                         -Wl,--wrap,free_entry")
+                         -Wl,--wrap,free_entry -Wl,--wrap,fim_sync_check_eps -Wl,--wrap,fim_send_sync_state \
+                         -Wl,--wrap,fim_send_sync_control")
 
 list(APPEND syscheckd_tests_names "test_fim_sync")
 if(${TARGET} STREQUAL "winagent")

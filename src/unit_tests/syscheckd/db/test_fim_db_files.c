@@ -119,7 +119,7 @@ static int teardown_append_inode(void **state) {
 
     teardown_os_list((void **)&(data->list));
     teardown_rb_tree((void **)&(data->tree));
-
+    free(data);
     return 0;
 }
 #endif
@@ -1436,9 +1436,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_get_not_scanned_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_get_paths_from_inode
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_setup(test_fim_db_get_paths_from_inode_none_path, test_fim_db_setup),
-        cmocka_unit_test_setup(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup),
-        cmocka_unit_test_setup(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_none_path, test_fim_db_setup,
+
+                                        test_fim_db_teardown),
+
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_single_path, test_fim_db_setup,
+
+                                        test_fim_db_teardown),
+
+        cmocka_unit_test_setup_teardown(test_fim_db_get_paths_from_inode_multiple_path, test_fim_db_setup,
+
+                                        test_fim_db_teardown),
 #endif
         // fim_db_get_count_file_data
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_file_data, test_fim_db_setup, test_fim_db_teardown),
@@ -1458,7 +1466,7 @@ int main(void) {
                                         test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_from_pattern_success, test_fim_db_setup,
 
-                                                                               test_fim_db_teardown),
+                                        test_fim_db_teardown),
 
         // fim_db_remove_validated_path
         cmocka_unit_test(test_fim_db_remove_validated_path_invalid_path),

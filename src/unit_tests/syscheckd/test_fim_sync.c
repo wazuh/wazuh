@@ -314,10 +314,7 @@ static void expect_fim_db_get_data_checksum_success(const fdb_t *db, char **firs
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, db);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_dbsync_check_msg_call("fim_file",INTEGRITY_CHECK_GLOBAL, 1572521857, *first, *last, NULL,
-                                 strdup("A mock message"));
-
-    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
+    expect_function_call(__wrap_fim_send_sync_control);
 }
 
 static void expect_fim_db_get_entry_from_sync_msg(char *path, int type, fim_entry *mock_entry) {
@@ -368,12 +365,8 @@ static void expect_read_line(fim_tmp_file *file, char *line, fim_entry *entry, i
     expect_fim_db_read_line_from_file (file, FIM_DB_DISK, 0, line, FIMDB_OK);
     expect_fim_db_get_entry_from_sync_msg(line, FIM_TYPE_FILE, entry);
 
-    expect_any(__wrap_dbsync_state_msg, data);
-    expect_string(__wrap_dbsync_state_msg, component, "fim_file");
-    will_return(__wrap_dbsync_state_msg, strdup("msg"));
-
-    expect_any(__wrap_fim_send_sync_msg, msg);
     expect_fim_db_read_line_from_file(file, storage, 1, NULL, 1);
+    expect_function_call(__wrap_fim_send_sync_state);
 
     expect_any(__wrap_fim_db_clean_file, file);
     expect_value(__wrap_fim_db_clean_file, storage, storage);
@@ -449,9 +442,9 @@ static void test_fim_sync_checksum_empty_db(void **state) {
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_dbsync_check_msg_call("fim_file", INTEGRITY_CLEAR, 1572521857, NULL, NULL, NULL, strdup("A mock message"));
+    // expect_dbsync_check_msg_call("fim_file", INTEGRITY_CLEAR, 1572521857, NULL, NULL, NULL, strdup("A mock message"));
 
-    expect_string(__wrap_fim_send_sync_msg, msg, "A mock message");
+    expect_function_call(__wrap_fim_send_sync_control);
     fim_sync_checksum(FIM_TYPE_FILE, mutex);
 }
 static void test_fim_sync_checksum_success(void **state) {
@@ -507,15 +500,10 @@ static void test_fim_sync_checksum_split_range_size_1(void **state) {
     expect_fim_db_get_count_range_n("start", "top", 1);
 
     expect_fim_db_get_entry_from_sync_msg("start", FIM_TYPE_FILE, &entry);
-
-    expect_any(__wrap_dbsync_state_msg, data);
-    expect_string(__wrap_dbsync_state_msg, component, "fim_file");
-    will_return(__wrap_dbsync_state_msg, str);
-
-    expect_any(__wrap_fim_send_sync_msg, msg);
+    expect_function_call(__wrap_fim_send_sync_state);
 
     fim_sync_checksum_split("start", "top", 1234);
-    // str is freed at this point.
+    free(str);
 }
 
 static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **state) {
@@ -545,14 +533,10 @@ static void test_fim_sync_checksum_split_range_size_default(void **state) {
     will_return(__wrap_fim_db_get_checksum_range, FIMDB_OK);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_dbsync_check_msg_call("fim_file", INTEGRITY_CHECK_LEFT, 1234, "start", "path1", "path2",
-                                 strdup("plain_text"));
-
-    expect_string(__wrap_fim_send_sync_msg, msg, "plain_text");
-
-    expect_dbsync_check_msg_call("fim_file", INTEGRITY_CHECK_RIGHT, 1234, "path2", "top", "", strdup("plain_text"));
-
-    expect_string(__wrap_fim_send_sync_msg, msg, "plain_text");
+    // right
+    expect_function_call(__wrap_fim_send_sync_control);
+    // left
+    expect_function_call(__wrap_fim_send_sync_control);
 
     fim_sync_checksum_split("start", "top", 1234);
 }
@@ -579,9 +563,8 @@ static void test_fim_sync_send_list_success(void **state) {
     entry.file_entry.path = "/some/path";
     entry.file_entry.data = &DEFAULT_FILE_DATA;
 
-    expect_read_line(&file, strdup("/some/path"), &entry, FIM_DB_DISK);
-
     expect_fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, "start", "top", FIM_DB_DISK, &file, FIMDB_OK);
+    expect_read_line(&file, strdup("/some/path"), &entry, FIM_DB_DISK);
 
     fim_sync_send_list("start", "top");
 }
@@ -835,7 +818,7 @@ int main(void) {
         /* fim_sync_checksum_split */
         cmocka_unit_test_setup_teardown(test_fim_sync_checksum_split_get_count_range_error, setup_str_pair, teardown_str_pair),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_0),
-        cmocka_unit_test(test_fim_sync_checksum_split_range_size_1),
+        cmocka_unit_test_teardown(test_fim_sync_checksum_split_range_size_1, teardown_str),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_1_get_path_error),
         cmocka_unit_test(test_fim_sync_checksum_split_range_size_default),
 

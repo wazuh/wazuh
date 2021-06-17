@@ -309,7 +309,7 @@ void test_send_UDP_by_size(void **state) {
 
 void test_recv_conn_UDP(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERSIZE + 1];
 
     data->server_client_socket = 4;
     will_return(__wrap_recv, 13);
@@ -330,7 +330,7 @@ void test_recv_UDP(void **state) {
 }
 
 void test_udp_recv_conn_invalid_sockets(void **state) {
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERSIZE + 1];
     will_return(__wrap_recv, -1);
 
     assert_int_equal(OS_RecvConnUDP(-1, buffer, BUFFERSIZE), 0);

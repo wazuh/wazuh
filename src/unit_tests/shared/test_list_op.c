@@ -142,7 +142,7 @@ void test_OSList_GetDataFromIndex_data_return(void **state) {
     assert_ptr_equal(data_return, list->first_node->data);
 
     list->free_data_function = NULL;
-
+    free(data);
     OSList_CleanNodes(list);
 }
 

@@ -420,13 +420,6 @@ void free_whodata_event(whodata_evt *w_evt);
  */
 void send_syscheck_msg(const cJSON *msg) __attribute__((nonnull));
 
-/**
- * @brief Send a data synchronization control message
- *
- * @param location Specifies if the synchronization message is for files or registries.
- * @param msg The message to be sent
- */
-void fim_send_sync_msg(const char *location, const char * msg);
 
 // TODO
 /**
@@ -1001,4 +994,17 @@ void fim_generate_delete_event(fdb_t *fim_sql,
                                void *configuration,
                                void *_unused_field);
 
+void fim_sync_check_eps();
+
+// Send a state synchronization message
+void fim_send_sync_state(const char *location, cJSON * msg);
+
+// Send a data synchronization control message
+void fim_send_sync_control(const char *component,
+                           dbsync_msg msg,
+                           long id,
+                           const char *start,
+                           const char *top,
+                           const char *tail,
+                           const char *checksum);
 #endif /* SYSCHECK_H */

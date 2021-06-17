@@ -836,40 +836,6 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif  // WIN_WHODATA
 #endif
 
-void test_fim_send_sync_msg_10_eps(void ** state) {
-    (void) state;
-    syscheck.sync_max_eps = 10;
-    char location[10] = "fim_file";
-
-    // We must not sleep the first 9 times
-
-    for (int i = 1; i < syscheck.sync_max_eps; i++) {
-        expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-        expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
-        fim_send_sync_msg( location, "");
-    }
-
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_sleep, seconds, 1);
-#else
-    expect_value(wrap_Sleep, dwMilliseconds, 1000);
-#endif
-
-    // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-    expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
-    fim_send_sync_msg( location, "");
-}
-
-void test_fim_send_sync_msg_0_eps(void ** state) {
-    (void) state;
-    syscheck.sync_max_eps = 0;
-    char location[10] = "fim_file";
-    // We must not sleep
-    expect_string(__wrap__mdebug2, formatted_msg, "(6317): Sending integrity control message: ");
-    expect_w_send_sync_msg("", location, DBSYNC_MQ, 0);
-    fim_send_sync_msg(location, "");
-}
 
 void test_send_syscheck_msg_10_eps(void ** state) {
     syscheck.max_eps = 10;
@@ -916,6 +882,7 @@ void test_send_syscheck_msg_0_eps(void ** state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
     expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
     send_syscheck_msg(event);
+    cJSON_Delete(event);
 }
 
 void test_fim_send_scan_info(void **state) {
@@ -1177,8 +1144,6 @@ int main(void) {
         cmocka_unit_test(test_fim_send_msg),
         cmocka_unit_test(test_fim_send_msg_retry),
         cmocka_unit_test(test_fim_send_msg_retry_error),
-        cmocka_unit_test(test_fim_send_sync_msg_10_eps),
-        cmocka_unit_test(test_fim_send_sync_msg_0_eps),
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),

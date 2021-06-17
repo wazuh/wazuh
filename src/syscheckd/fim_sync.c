@@ -193,15 +193,10 @@ void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
         EVP_DigestFinal_ex(ctx, digest, &digest_size);
         OS_SHA1_Hexdigest(digest, hexdigest);
 
-        char * plain = dbsync_check_msg(component, INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
-        fim_send_sync_msg(component, plain);
-
-        os_free(plain);
+        fim_send_sync_control(component, INTEGRITY_CHECK_GLOBAL, fim_sync_cur_id, start, top, NULL, hexdigest);
 
     } else { // If database is empty
-        char * plain = dbsync_check_msg(component, INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
-        fim_send_sync_msg(component, plain);
-        os_free(plain);
+        fim_send_sync_control(component, INTEGRITY_CLEAR, fim_sync_cur_id, NULL, NULL, NULL, NULL);
     }
 
 end:
@@ -212,7 +207,6 @@ end:
 
 void fim_sync_checksum_split(const char * start, const char * top, long id) {
     fim_entry *entry = NULL;
-    cJSON *file_data = NULL;
     fim_type type;
     int range_size;
     const char *component;
@@ -253,11 +247,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             merror(FIM_DB_ERROR_GET_PATH, start);
             return;
         }
-
-        file_data = fim_entry_json(start, entry);
-        char * plain = dbsync_state_msg(component, file_data);
-        fim_send_sync_msg(component, plain);
-        os_free(plain);
+        fim_send_sync_state(component, fim_entry_json(start, entry));
         free_entry(entry);
         return;
 
@@ -277,21 +267,16 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             unsigned char digest[EVP_MAX_MD_SIZE] = {0};
             unsigned int digest_size = 0;
             os_sha1 hexdigest;
-            char *plain;
 
             // Send message with checksum of first half
             EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            plain = dbsync_check_msg(component, INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
-            fim_send_sync_msg(component, plain);
-            os_free(plain);
+            fim_send_sync_control(component, INTEGRITY_CHECK_LEFT, id, start, str_pathlh, str_pathuh, hexdigest);
 
             // Send message with checksum of second half
             EVP_DigestFinal_ex(ctx_right, digest, &digest_size);
             OS_SHA1_Hexdigest(digest, hexdigest);
-            plain = dbsync_check_msg(component, INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
-            fim_send_sync_msg(component, plain);
-            os_free(plain);
+            fim_send_sync_control(component, INTEGRITY_CHECK_RIGHT, id, str_pathuh, top, "", hexdigest);
         }
 
         os_free(str_pathlh);
@@ -343,8 +328,6 @@ void fim_sync_send_list(const char *start, const char *top) {
 
     for (it = 0; (fim_db_read_line_from_file(file, syscheck.database_store, it, &line) == 0) ; it++) {
         fim_entry *entry;
-        cJSON *file_data;
-        char *plain;
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
         entry = fim_db_get_entry_from_sync_msg(syscheck.database, type, line);
@@ -356,10 +339,7 @@ void fim_sync_send_list(const char *start, const char *top) {
             continue;
         }
 
-        file_data = fim_entry_json(line, entry);
-        plain = dbsync_state_msg(component, file_data);
-        fim_send_sync_msg(component, plain);
-        os_free(plain);
+        fim_send_sync_state(component, fim_entry_json(line, entry));
         os_free(line);
         free_entry(entry);
     }

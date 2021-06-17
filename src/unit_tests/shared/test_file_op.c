@@ -508,6 +508,8 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
+    char buffer[OS_SIZE_8192] = {"teststring"};
+
     expect_string(__wrap_lstat, filename, srcfile);
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
@@ -522,13 +524,13 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
 
     expect_value(__wrap_gzread, gz_fd, 2);
     will_return(__wrap_gzread, OS_SIZE_8192);
-    will_return(__wrap_gzread, "teststring");
+    will_return(__wrap_gzread, buffer);
 
     will_return(__wrap_fwrite, OS_SIZE_8192);
 
     expect_value(__wrap_gzread, gz_fd, 2);
-    will_return(__wrap_gzread, strlen("failstring"));
-    will_return(__wrap_gzread, "failstring");
+    will_return(__wrap_gzread, strlen(buffer));
+    will_return(__wrap_gzread, buffer);
 
     will_return(__wrap_fwrite, 0);
 

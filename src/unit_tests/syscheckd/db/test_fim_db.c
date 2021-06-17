@@ -2040,6 +2040,7 @@ static void test_fim_db_read_line_from_file_memory_line_read(void **state) {
 
     assert_int_equal(retval, 0);
     assert_string_equal(line, "/some/random/path");
+    free(line);
 }
 
 /**********************************************************************************************************************\
