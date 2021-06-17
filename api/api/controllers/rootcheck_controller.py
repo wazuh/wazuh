@@ -14,17 +14,18 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh-api')
 
 
-async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_list='*'):
+async def put_rootcheck(request, agents_list: str = '*', pretty: bool = False,
+                        wait_for_complete: bool = False) -> web.Response:
     """Run rootcheck scan over the agent_ids.
 
     Parameters
     ----------
+    agents_list : list
+        List of agent's IDs.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agents_list : list
-        List of agent's IDs.
     """
     f_kwargs = {'agent_list': agents_list}
 

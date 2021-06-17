@@ -2,24 +2,26 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from typing import Union
+
 from wazuh import common
-from wazuh.core.agent import Agent, get_agents_info
+from wazuh.core.agent import get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rootcheck import WazuhDBQueryRootcheck, last_scan
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["rootcheck:run"], resources=["agent:id:{agent_list}"])
-def run(agent_list=None):
-    """Run rootcheck scan.
+def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
+    """Run a rootcheck scan in the specified agents.
 
     Parameters
     ----------
-    agent_list : list
-         Run rootcheck in a list of agents.
+    agent_list : Union[list, None]
+         List of the agents IDs to run the scan for.
 
     Returns
     -------
@@ -29,21 +31,32 @@ def run(agent_list=None):
     result = AffectedItemsWazuhResult(all_msg='Rootcheck scan was restarted on returned agents',
                                       some_msg='Rootcheck scan was not restarted on some agents',
                                       none_msg='No rootcheck scan was restarted')
-    for agent_id in agent_list:
+
+    system_agents = get_agents_info()
+    rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
+    agent_list = set(agent_list)
+    not_found_agents = agent_list - system_agents
+
+    # Add non existent agents to failed_items
+    [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
+
+    # Add non eligible agents to failed_items
+    non_eligible_agents = WazuhDBQueryAgents(limit=None, select=["id", "status"], query=f'status!=active',
+                                             **rbac_filters).run()['items']
+    [result.add_failed_item(
+        id_=agent['id'],
+        error=WazuhError(1601, extra_message=f'Status - {agent["status"]}')) for agent in non_eligible_agents]
+
+    wq = WazuhQueue(common.ARQUEUE)
+    eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
+    for agent_id in eligible_agents:
         try:
-            agent_info = Agent(agent_id).get_basic_information()
-            agent_status = agent_info.get('status', 'N/A')
-            if agent_status.lower() != 'active':
-                result.add_failed_item(
-                    id_=agent_id, error=WazuhError(1601, extra_message='Status - {}'.format(agent_status)))
-            else:
-                wq = WazuhQueue(common.ARQUEUE)
-                wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
-                result.affected_items.append(agent_id)
-                wq.close()
+            wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
+            result.affected_items.append(agent_id)
         except WazuhError as e:
             result.add_failed_item(id_=agent_id, error=e)
-    result.affected_items = sorted(result.affected_items, key=int)
+    wq.close()
+    result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
 
     return result
