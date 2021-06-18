@@ -1031,7 +1031,7 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     os_md5 tmp_sum;
     char *end;
     agent_group *agt_group;
-    int err = OS_INVALID;
+    int ret = OS_INVALID;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -1055,7 +1055,6 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     w_mutex_lock(&files_mutex);
 
     if (group[0]) {
-        mdebug2("If group was got, get file sum array");
         if (f_sum = find_sum(group), !f_sum) {
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
@@ -1063,7 +1062,7 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
             mdebug1("No such group '%s' for agent '%s'", group, agent_id);
             return OS_INVALID;
         }
-        mdebug2("file sum array found, group '%s'", group);
+        mdebug2("file sum array found for group '%s'", group);
         w_mutex_unlock(&files_mutex);
         os_strdup(group, *r_group);
         return OS_SUCCESS;
@@ -1077,8 +1076,6 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     }
 
     for (msg++; (*msg == '\"' || *msg == '!') && (end = strchr(msg, '\n')); msg = end + 1);
-
-    mdebug2("msg to process : %s", msg);
 
     /* Parse message */
     while (*msg != '\0') {
@@ -1122,20 +1119,21 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
 
                 if (f_sum = find_sum(group), !f_sum) {
                     merror("No such group '%s' for agent '%s'", group, agent_id);
-                    err = OS_INVALID;
+                    ret = OS_INVALID;
                     break;
                 }
             }
             set_agent_group(agent_id, group);
             os_strdup(group, *r_group);
-            err = OS_SUCCESS;
+            ret = OS_SUCCESS;
+            mdebug2("group assigned: '%s'", group);
             break;
         }
     }
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
 
-    return err;
+    return ret;
 }
 
 /* Read the available control message from the agent */
