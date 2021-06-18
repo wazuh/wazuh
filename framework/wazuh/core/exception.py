@@ -319,8 +319,6 @@ class WazuhException(Exception):
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1746: {'message': "Could not parse current client.keys file"},
-        1747: {'message': "Could not remove agent group assigment from database"},
-        1748: {'message': "Could not remove agent files"},
         1749: {'message': "Downgrading an agent requires the [force] flag.",
                'remediation': "Use force=1 parameter to force the downgrade"
                },

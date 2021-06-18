@@ -1606,9 +1606,6 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
 
     rmtree_mock.side_effect = Exception("Boom!")
 
-    if expected_exception == 1747:
-        check_exception(client_keys_text)
-
     if expected_exception == 1701:
         with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command'):
             check_exception(client_keys_text)
