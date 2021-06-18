@@ -339,7 +339,8 @@ int realtime_update_watch(const char *wd, const char *dir) {
     if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
         if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
             os_free(data);
-            merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+            merror(FIM_CRITICAL_ERROR_OUT_MEM);
+            return -1;
         }
 
         mdebug1(FIM_REALTIME_NEWDIRECTORY, data);

@@ -165,7 +165,7 @@ else()
 endif()
 
 set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex \
-                             -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
+                             -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,read \
                              -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert \
                              -Wl,--wrap,_merror -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,_mwarn \
                              -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror_exit -Wl,--wrap,send_log_msg \

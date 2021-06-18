@@ -49,6 +49,7 @@ static int group_teardown(void ** state) {
 static int test_setup_file(void **state) {
     wfd_t* wfd = NULL;
     os_calloc(1, sizeof(wfd_t), wfd);
+    wfd->file = (FILE *)1;
     *state = wfd;
     return 0;
 }

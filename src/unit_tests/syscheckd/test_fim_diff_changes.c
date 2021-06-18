@@ -374,9 +374,7 @@ static int setup_gen_diff_str(void **state) {
 static int teardown_free_gen_diff_str(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
 
-#ifdef TEST_WINAGENT
     teardown_array_strings((void **)&gen_diff_data_container->strarray);
-#endif
 
     teardown_free_diff_data((void **)&gen_diff_data_container->diff);
     os_free(gen_diff_data_container);
@@ -555,11 +553,12 @@ void test_initialize_file_diff_data(void **state) {
 #else // END TEST_WINAGENT
 
 void test_initialize_file_diff_data(void **state) {
-    diff_data *diff = *state;
+    diff_data *diff;
 
     expect_abspath(GENERIC_PATH, 1);
 
     diff = initialize_file_diff_data(GENERIC_PATH);
+    *state = diff;
 
     assert_non_null(diff);
     assert_string_equal(diff->compress_folder, COMPRESS_FOLDER);
@@ -1727,6 +1726,8 @@ void test_fim_file_diff_nodiff(void **state) {
     char *diff_str = fim_file_diff(filename, &configuration);
 
     assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+
+    free(diff_str);
 }
 #endif
 
@@ -1822,6 +1823,8 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
+
+    free(diff_str);
 }
 
 void test_fim_file_diff_generate_diff_str_too_long(void **state) {
@@ -1839,7 +1842,7 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     memset(gen_diff_data_container->strarray[0] + input_size - 1, 'a', OS_MAXSTR - input_size);
     gen_diff_data_container->strarray[0][OS_MAXSTR - 1] = '\0';
 
-    os_realloc(gen_diff_data_container->strarray[1], strlen(gen_diff_data_container->strarray[1]) - 12 + strlen(STR_MORE_CHANGES), gen_diff_data_container->strarray[1]);
+    os_realloc(gen_diff_data_container->strarray[1], strlen(gen_diff_data_container->strarray[1]) - 12 + strlen(STR_MORE_CHANGES) + 1, gen_diff_data_container->strarray[1]);
     strcpy(gen_diff_data_container->strarray[1] + strlen(gen_diff_data_container->strarray[1]) - 12, STR_MORE_CHANGES);
 
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
@@ -1891,20 +1894,17 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
 
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
+    free(diff_str);
 }
 
 void test_fim_diff_process_delete_file_ok(void **state) {
-    const char *filename = strdup(GENERIC_PATH);
-
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, 0, 0);
 
-    int ret = fim_diff_process_delete_file(filename);
+    int ret = fim_diff_process_delete_file(GENERIC_PATH);
     assert_int_equal(ret, 0);
 }
 
 void test_fim_diff_process_delete_file_delete_error(void **state) {
-    const char *filename = strdup(GENERIC_PATH);
-
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, -1, 0);
 
 #ifdef TEST_WINAGENT
@@ -1913,13 +1913,11 @@ void test_fim_diff_process_delete_file_delete_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/path/to/file'");
 #endif
 
-    int ret = fim_diff_process_delete_file(filename);
+    int ret = fim_diff_process_delete_file(GENERIC_PATH);
     assert_int_equal(ret, -1);
 }
 
 void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
-    const char *filename = strdup(GENERIC_PATH);
-
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, -1, 0, 0);
 
 #ifdef TEST_WINAGENT
@@ -1928,7 +1926,7 @@ void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/path/to/file', it does not exist.");
 #endif
 
-    int ret = fim_diff_process_delete_file(filename);
+    int ret = fim_diff_process_delete_file(GENERIC_PATH);
     assert_int_equal(ret, -1);
 }
 

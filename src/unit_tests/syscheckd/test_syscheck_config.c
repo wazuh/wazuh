@@ -23,6 +23,11 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /* redefinitons/wrapping */
+typedef struct entry_struct_s {
+    directory_t *dir1;
+    directory_t *dir2;
+    char *filerestrict;
+} entry_struct_t;
 
 static int restart_syscheck(void **state)
 {
@@ -54,6 +59,33 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+static int setup_entry(void **state) {
+    entry_struct_t *entries = calloc(1, sizeof(entry_struct_t));
+    if (entries == NULL) {
+        return 1;
+    }
+
+    *state = entries;
+    return 0;
+}
+
+static int teardown_entry(void **state) {
+    entry_struct_t *entries = *state;
+
+    if (entries->dir1) {
+        free_directory(entries->dir1);
+    }
+
+    if (entries->dir2) {
+        free_directory(entries->dir2);
+    }
+
+    if (entries->filerestrict) {
+        free(entries->filerestrict);
+    }
+
+    free(entries);
+}
 /* tests */
 
 void test_Read_Syscheck_Config_success(void **state)
@@ -662,103 +694,108 @@ void test_fim_create_directory_add_new_entry(void **state) {
     int diff_size_limit = 0;
     unsigned int is_wildcard = 0;
     directory_t *new_entry;
+    entry_struct_t *test_struct = *state;
 
     new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
+    test_struct->dir1 = new_entry;
 
     assert_non_null(new_entry);
     assert_string_equal(tag, new_entry->tag);
     assert_string_equal(path, new_entry->path);
     assert_int_equal(is_wildcard, new_entry->is_wildcard);
-
 }
 
 void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
     const char *path = "./mock_path";
-    char *filerestrict = (char*) malloc(sizeof(char)*OS_PATTERN_MAXSIZE+1);
     int recursion_level = 0;
     const char *tag = "mock_tag";
     int options = CHECK_FOLLOW;
     int diff_size_limit = 0;
     unsigned int is_wildcard = 0;
     directory_t *new_entry;
-    char error_msg[OS_MAXSTR];
+    char error_msg[OS_MAXSTR + 1];
+    entry_struct_t *test_struct = *state;
 
-    memset(filerestrict,'a',OS_PATTERN_MAXSIZE+1);
-    snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, filerestrict, OS_REGEX_MAXSIZE);
+    test_struct->filerestrict = calloc(OS_PATTERN_MAXSIZE + 2, sizeof(char));
+    memset(test_struct->filerestrict, 'a', OS_PATTERN_MAXSIZE + 1);
+
+    snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, test_struct->filerestrict, OS_REGEX_MAXSIZE);
 
     expect_string(__wrap__merror, formatted_msg, error_msg);
 
-    new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
-
+    new_entry = fim_create_directory(path, options, test_struct->filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
+    test_struct->dir1 = new_entry;
     assert_non_null(new_entry);
     assert_string_equal(tag, new_entry->tag);
-
 }
 
 void test_fim_insert_directory_duplicate_entry(void **state) {
     OSList list;
     OSListNode first_list_node;
-    directory_t *old_entry = (directory_t*) malloc(sizeof(directory_t));
-    old_entry->symbolic_links = NULL;
-    old_entry->tag = NULL;
-    old_entry->filerestrict = NULL;
-    directory_t new_entry;
-    new_entry.path = "same_path";
-    new_entry.tag = "new_entry_tag";
-    first_list_node.data = old_entry;
+    entry_struct_t *test_struct = *state;
+
+    test_struct->dir1 = calloc(1, sizeof(directory_t));
+    test_struct->dir2 = calloc(1, sizeof(directory_t));
+
+    test_struct->dir2->path = strdup("same_path");
+    test_struct->dir2->tag = strdup("new_entry_tag");
+    first_list_node.data = test_struct->dir1;
     list.first_node = &first_list_node;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    old_entry->path = strdup(new_entry.path);
-    fim_insert_directory(&list, &new_entry);
+    test_struct->dir1->path = strdup(test_struct->dir2->path);
+    fim_insert_directory(&list, test_struct->dir2);
 
-    assert_string_equal(new_entry.tag, ((directory_t*)(list.first_node->data))->tag);
-
+    assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.first_node->data))->tag);
+    // test_struct->dir1 is already freed.
+    test_struct->dir1 = NULL;
+    *state = test_struct;
 }
 
 void test_fim_insert_directory_insert_entry_before(void **state) {
     OSList list;
-    OSListNode first_list_node;
-    directory_t new_entry;
-    directory_t *old_entry = (directory_t*) malloc(sizeof(directory_t));
-    old_entry->symbolic_links = NULL;
-    old_entry->tag = NULL;
-    old_entry->filerestrict = NULL;
-    first_list_node.data = old_entry;
-    list.first_node = &first_list_node;
+    OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
+    entry_struct_t *test_struct= *state;
+
+    test_struct->dir1 = calloc(1, sizeof(directory_t));
+    test_struct->dir2 = calloc(1, sizeof(directory_t));
+
+    test_struct->dir1->path = strdup("BPath");
+    test_struct->dir2->path = strdup("APath");
+    test_struct->dir2->tag = strdup("new_entry_tag");
+
+    first_list_node->data = test_struct->dir1;
+    list.first_node = first_list_node;
     list.last_node = list.first_node;
-    list.first_node->prev = NULL;
-    list.first_node->next = NULL;
-    old_entry->path = "BPath";
-    new_entry.path = "APath";
-    new_entry.tag = "new_entry_tag";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    fim_insert_directory(&list, &new_entry);
+    fim_insert_directory(&list, test_struct->dir2);
+    assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.first_node->data))->tag);
 
-    assert_string_equal(new_entry.tag, ((directory_t*)(list.first_node->data))->tag);
-
+    OSList_CleanNodes(&list);
 }
 
 void test_fim_insert_directory_insert_entry_last(void **state) {
     OSList list;
-    OSListNode first_list_node;
-    directory_t *old_entry = (directory_t*) malloc(sizeof(directory_t));
-    directory_t new_entry;
-    old_entry->path = "APath";
-    new_entry.path = "BPath";
-    new_entry.tag = "new_entry_tag";
-    first_list_node.data = old_entry;
-    list.first_node = &first_list_node;
-    list.first_node->prev = NULL;
+    OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
+    entry_struct_t *test_struct= *state;
+
+    test_struct->dir1 = calloc(1, sizeof(directory_t));
+    test_struct->dir2 = calloc(1, sizeof(directory_t));
+
+    test_struct->dir1->path = strdup("APath");
+    test_struct->dir2->path = strdup("BPath");
+    test_struct->dir2->tag = strdup("new_entry_tag");
+
+    first_list_node->data = test_struct->dir1;
+    list.first_node = first_list_node;
     list.last_node = list.first_node;
-    list.first_node->next = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -766,10 +803,10 @@ void test_fim_insert_directory_insert_entry_last(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    fim_insert_directory(&list, &new_entry);
+    fim_insert_directory(&list, test_struct->dir2);
+    assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.last_node->data))->tag);
 
-    assert_string_equal(new_entry.tag, ((directory_t*)(list.last_node->data))->tag);
-
+    OSList_CleanNodes(&list);
 }
 
 void test_fim_copy_directory_null(void **state) {
@@ -792,6 +829,7 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
     directory_copied.tag = "mock_tag";
     directory_copied.diff_size_limit = 10;
     directory_copied.is_wildcard = 0;
+    entry_struct_t *test_struct = *state;
 
     new_entry = fim_copy_directory(&directory_copied);
 
@@ -799,7 +837,7 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
     assert_string_equal(directory_copied.tag, new_entry->tag);
     assert_string_equal(directory_copied.path, new_entry->path);
     assert_int_equal(directory_copied.is_wildcard, new_entry->is_wildcard);
-
+    test_struct->dir1 = new_entry;
 }
 
 int main(void) {
@@ -813,13 +851,13 @@ int main(void) {
         cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
         cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
-        cmocka_unit_test(test_fim_create_directory_add_new_entry),
-        cmocka_unit_test(test_fim_create_directory_OSMatch_Compile_fail_maxsize),
-        cmocka_unit_test(test_fim_insert_directory_duplicate_entry),
-        cmocka_unit_test(test_fim_insert_directory_insert_entry_before),
-        cmocka_unit_test(test_fim_insert_directory_insert_entry_last),
+        cmocka_unit_test_setup_teardown(test_fim_create_directory_add_new_entry, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_create_directory_OSMatch_Compile_fail_maxsize, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_insert_directory_duplicate_entry, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_before, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_last, setup_entry, teardown_entry),
         cmocka_unit_test(test_fim_copy_directory_null),
-        cmocka_unit_test(test_fim_copy_directory_return_dir_copied)
+        cmocka_unit_test_setup_teardown(test_fim_copy_directory_return_dir_copied, setup_entry, teardown_entry)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

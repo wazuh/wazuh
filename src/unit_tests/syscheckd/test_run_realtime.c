@@ -262,13 +262,7 @@ static int teardown_OSHash(void **state) {
     test_mode = 0;
     OSHash *hash = *state;
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    void *rtlocald = OSHash_Delete_ex(hash, "1");
-#ifdef TEST_WINAGENT
-    free_win32rtfim_data(rtlocald);
-#endif
+    OSHash_Free(hash);
     return 0;
 }
 
@@ -499,24 +493,33 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state) {
 
 void test_realtime_adddir_realtime_update(void **state) {
     int ret;
-    const char * path = "/etc/folder";
+    char *path = strdup("/etc/folder");
+    const char *dummy_key = "1";
+
     directory_t config = { .options = REALTIME_ACTIVE };
+    syscheck.realtime->dirtb = *state;
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    __real_OSHash_Add_ex(syscheck.realtime->dirtb, dummy_key, (void *) path);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, 1);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
-    expect_string(__wrap_OSHash_Get_ex, key, "1");
+    expect_string(__wrap_OSHash_Get_ex, key, dummy_key);
     will_return(__wrap_OSHash_Get_ex, 1);
 
-    will_return(__wrap_OSHash_Update_ex, 1);
-
+    expect_function_call(__wrap_pthread_rwlock_unlock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir(path, &config);
 
+    free(OSHash_Delete(syscheck.realtime->dirtb, dummy_key));
+    free(path);
     assert_int_equal(ret, 1);
 }
 
@@ -525,6 +528,8 @@ void test_realtime_adddir_realtime_update_failure(void **state) {
     int ret;
     const char * path = "/etc/folder";
     directory_t config = { .options = REALTIME_ACTIVE };
+    syscheck.realtime->dirtb = *state;
+
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
@@ -535,7 +540,8 @@ void test_realtime_adddir_realtime_update_failure(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, 1);
 
-    will_return(__wrap_OSHash_Update_ex, 0);
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
 
@@ -1247,15 +1253,11 @@ void test_realtime_sanitize_watch_map_entry_with_new_watch_number_fail(void **st
     expect_string(__wrap_OSHash_Add_ex, key, "4321");
     will_return(__wrap_OSHash_Add_ex, 0);
 
-    expect_string(__wrap__merror_exit, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
+    expect_string(__wrap__merror, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
 
-    expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
-    will_return(__wrap_OSHash_Begin, NULL);
-
-    expect_any(__wrap__mdebug1, formatted_msg);
-
+    expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Next, NULL);
     expect_any(__wrap__mdebug2, formatted_msg);
-
     test_mode = 1;
     realtime_sanitize_watch_map();
 }
@@ -1292,8 +1294,6 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory(v
     expect_string(__wrap_OSHash_Get_ex, key, "4321");
     will_return(__wrap_OSHash_Get_ex, other_path);
 
-    will_return(__wrap_OSHash_Update_ex, 1);
-
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
@@ -1302,6 +1302,7 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory(v
     realtime_sanitize_watch_map();
 
     assert_int_equal(syscheck.realtime->dirtb->elements, 1);
+    free(other_path);
 }
 
 void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory_fail(void **state) {
@@ -1331,17 +1332,15 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory_f
 
     syscheck.realtime->fd = 1;
 
-    will_return(__wrap_inotify_add_watch, 4321);
+    will_return(__wrap_inotify_add_watch, 34321);
 
     expect_value(__wrap_OSHash_Delete_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Delete_ex, key, "1234");
     will_return(__wrap_OSHash_Delete_ex, freeable);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
-    expect_string(__wrap_OSHash_Get_ex, key, "4321");
+    expect_string(__wrap_OSHash_Get_ex, key, "34321");
     will_return(__wrap_OSHash_Get_ex, other_path);
-
-    will_return(__wrap_OSHash_Update_ex, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/media/some/path'");
 
@@ -1352,6 +1351,8 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory_f
 
     test_mode = 1;
     realtime_sanitize_watch_map();
+    free(other_path);
+    free(path);
 }
 
 #else // TEST_WINAGENT
@@ -1937,8 +1938,8 @@ int main(void) {
         cmocka_unit_test(test_realtime_adddir_realtime_watch_generic_failure),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_add, setup_OSHash, teardown_OSHash),
         cmocka_unit_test(test_realtime_adddir_realtime_add_hash_failure),
-        cmocka_unit_test(test_realtime_adddir_realtime_update),
-        cmocka_unit_test(test_realtime_adddir_realtime_update_failure),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_update, setup_OSHash, teardown_OSHash),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_update_failure, setup_OSHash, teardown_OSHash),
 
         /* free_syscheck_dirtb_data */
         cmocka_unit_test(test_free_syscheck_dirtb_data),
@@ -1997,8 +1998,8 @@ int main(void) {
                                         setup_sanitize_watch_map, teardown_sanitize_watch_map),
         cmocka_unit_test_setup_teardown(test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory,
                                         setup_sanitize_watch_map, teardown_sanitize_watch_map),
-        cmocka_unit_test_setup_teardown(test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory_fail,
-                                        setup_sanitize_watch_map, teardown_sanitize_watch_map),
+        cmocka_unit_test_setup(test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory_fail,
+                                        setup_sanitize_watch_map),
 #endif
     };
 #else

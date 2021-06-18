@@ -142,11 +142,7 @@ int test_teardown_context(void **state) {
     os_free(cfg->target_cfg->manager_name);
     os_free(cfg->target_cfg->agent_name);
     os_free(cfg->target_cfg);
-    os_free(cfg->cert_cfg->agent_cert);
-    os_free(cfg->cert_cfg->agent_key);
-    os_free(cfg->cert_cfg->ca_cert);
-    os_free(cfg->cert_cfg->ciphers);
-    os_free(cfg->cert_cfg);
+    w_enrollment_cert_destroy(cfg->cert_cfg);
     if(cfg->ssl) {
         SSL_free(cfg->ssl);
     }
@@ -165,7 +161,7 @@ int test_setup_context_2(void **state) {
     local_target->centralized_group = "test_group";
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
-    local_cert->authpass = "test_password";
+    local_cert->authpass = strdup("test_password");
     local_cert->agent_cert = strdup("CERT");
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
@@ -205,7 +201,7 @@ int test_setup_w_enrolment_request_key(void **state) {
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
     local_cert->auto_method = 0;
-    local_cert->authpass = "test_password";
+    local_cert->authpass = strdup("test_password");
     local_cert->agent_cert = strdup("CERT");
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
@@ -220,11 +216,7 @@ int test_teardown_w_enrolment_request_key(void **state){
     w_enrollment_ctx *cfg = *state;
     os_free(cfg->target_cfg->manager_name);
     os_free(cfg->target_cfg);
-    os_free(cfg->cert_cfg->agent_cert);
-    os_free(cfg->cert_cfg->agent_key);
-    os_free(cfg->cert_cfg->ca_cert);
-    os_free(cfg->cert_cfg->ciphers);
-    os_free(cfg->cert_cfg);
+    w_enrollment_cert_destroy(cfg->cert_cfg);
     w_enrollment_destroy(cfg);
     test_mode = 0;
     return 0;
@@ -257,9 +249,8 @@ int test_setup_enrollment_load_pass(void **state) {
 int test_teardown_enrollment_load_pass(void **state) {
     w_enrollment_cert *cert_cfg;
     cert_cfg = *state;
-    os_free(cert_cfg->authpass);
-    os_free(cert_cfg->authpass_file);
-    os_free(cert_cfg);
+    w_enrollment_cert_destroy(cert_cfg);
+
     test_mode = 0;
     return 0;
 }
@@ -632,7 +623,7 @@ void test_w_enrollment_store_key_entry_chmod_fail(void **state) {
 
     expect_string(__wrap_TempFile, source, KEYS_FILE);
     expect_value(__wrap_TempFile, copy, 0);
-    will_return(__wrap_TempFile, strdup("client.keys.temp"));
+    will_return(__wrap_TempFile, "client.keys.temp");
     will_return(__wrap_TempFile, 6);
     will_return(__wrap_TempFile, 0);
 
@@ -1056,20 +1047,20 @@ int main()
         cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_invalid_certificate, test_setup_ssl_context, test_teardown_ssl_context),
         cmocka_unit_test_setup_teardown(test_verificy_ca_certificate_valid_certificate, test_setup_ssl_context, test_teardown_ssl_context),
         // w_enrollment_connect
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_address, test_setup_context, test_teardown_context),
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_config, test_setup_context, test_teardown_context),
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_connect_invalid_hostname, test_setup_context, test_teardown_context),
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_connect_could_not_setup, test_setup_context, test_teardown_context),
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_connect_socket_error, test_setup_context, test_teardown_context),
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_connect_SSL_connect_error, test_setup_context, test_teardown_context),
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_connect_success, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_address, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_empty_config, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_invalid_hostname, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_could_not_setup, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_socket_error, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_SSL_connect_error, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_connect_success, test_setup_context, test_teardown_context),
         // w_enrollment_send_message
         cmocka_unit_test(test_w_enrollment_send_message_empty_config),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_wrong_hostname, test_setup_context, test_teardown_context),
         // cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_invalid_hostname, test_setup_context_3, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_fix_invalid_hostname, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_ssl_error, test_setup_context, test_teardown_context),
-        // cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_success, test_setup_context_2, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_success, test_setup_context_2, test_teardown_context),
         // w_enrollment_store_key_entry
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_null_key, setup_file_ops, teardown_file_ops),
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_cannot_open, setup_file_ops, teardown_file_ops),
