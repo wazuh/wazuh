@@ -42,6 +42,9 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   void *configuration,
                                   void *_unused_patameter);
 
+int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry);
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path);
+
 #ifndef TEST_WINAGENT
 extern unsigned long __real_time();
 unsigned long __wrap_time() {
@@ -92,11 +95,9 @@ typedef struct {
 /**********************************************************************************************************************\
  * fim_db_insert_entry()
 \**********************************************************************************************************************/
-void test_fim_db_insert_path_error(void **state) {
+void test_fim_db_insert_entry_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_replace_entry(5);
@@ -109,162 +110,24 @@ void test_fim_db_insert_path_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE (111)");
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     ret = fim_db_insert_entry(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data);
 
     assert_int_equal(ret, FIMDB_ERR);
 }
 
-
-void test_fim_db_insert_path_success(void **state) {
+void test_fim_db_insert_entry_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
     int ret;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_replace_entry(5);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = fim_db_insert_entry(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data);
 
     assert_int_equal(ret, FIMDB_OK);
-}
-
-/**********************************************************************************************************************\
- * fim_db_insert()
-\**********************************************************************************************************************/
-void test_fim_db_insert_db_full(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    int ret;
-
-    expect_fim_db_get_count_entries(50000);
-
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "Couldn't insert '/test/path' entry into DB. The DB is full, please check your configuration.");
-
-    syscheck.database = test_data->fim_sql;
-
-
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, NULL);
-
-    syscheck.database = NULL;
-
-    assert_int_equal(ret, FIMDB_FULL);
-}
-
-void test_fim_db_insert_replace(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    int ret;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_fim_db_clean_stmt();
-    expect_fim_db_bind_replace_entry(5);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_fim_db_check_transaction();
-
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
-                        test_data->saved);
-
-    assert_int_equal(ret, FIMDB_OK);   // Success
-    assert_int_equal(test_data->fim_sql->transaction.last_commit, 192837465);
-}
-
-void test_fim_db_insert_replace_fail_step(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    int ret;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    expect_fim_db_clean_stmt();
-    expect_fim_db_bind_replace_entry(5);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
-
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE");
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_fim_db_check_transaction();
-
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
-                        test_data->saved);
-
-    assert_int_equal(ret, FIMDB_ERR);   // Error
-    assert_int_equal(test_data->fim_sql->transaction.last_commit, 192837465);
-}
-
-void test_fim_db_insert_no_saved(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    int ret;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    // fim_db_get_count
-    expect_fim_db_clean_stmt();
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 10);
-
-    // fim_db_insert_entry
-    expect_fim_db_clean_stmt();
-    expect_fim_db_bind_replace_entry(5);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_fim_db_check_transaction();
-
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
-                        NULL);
-
-    assert_int_equal(ret, FIMDB_OK);   // Success
-    assert_int_equal(test_data->fim_sql->transaction.last_commit, 192837465);
-}
-
-void test_fim_db_insert_no_saved_db_error(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    int ret;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    // fim_db_get_count
-    expect_fim_db_clean_stmt();
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, -1);
-
-    expect_string(__wrap__mwarn, formatted_msg, FIM_DATABASE_NODES_COUNT_FAIL);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
-                        NULL);
-
-    assert_int_equal(ret, FIMDB_ERR);   // Error
 }
 
 /**********************************************************************************************************************\
@@ -648,8 +511,6 @@ void test_fim_db_get_count_file_data_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     int ret = fim_db_get_count_file_inode(test_data->fim_sql);
 
     assert_int_equal(ret, -1);
@@ -692,8 +553,6 @@ void test_fim_db_get_count_file_entry_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     int ret = fim_db_get_count_file_entry(test_data->fim_sql);
 
     assert_int_equal(ret, -1);
@@ -733,8 +592,6 @@ void test_fim_db_decode_full_row(void **state) {
 void test_fim_db_set_scanned_error(void **state) {
     test_fim_db_insert_data *test_data = *state;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_fim_db_clean_stmt();
 
     expect_any(__wrap_sqlite3_bind_text, pos);
@@ -747,18 +604,12 @@ void test_fim_db_set_scanned_error(void **state) {
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE (111)");
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->file_entry.path);
     assert_int_equal(ret, FIMDB_ERR);
 }
 
 void test_fim_db_set_scanned_success(void **state) {
     test_fim_db_insert_data *test_data = *state;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
 
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
@@ -767,10 +618,6 @@ void test_fim_db_set_scanned_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_fim_db_check_transaction();
 
     int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->file_entry.path);
     assert_int_equal(ret, FIMDB_OK);
@@ -994,6 +841,8 @@ static void test_fim_db_file_update_unchanged_entry(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
 
+    expect_fim_db_check_transaction();
+
     res = fim_db_file_update(&fim_sql, "/test", &data, &entry);
 
     assert_int_equal(res, FIMDB_OK);
@@ -1033,14 +882,8 @@ static void test_fim_db_file_update_updated_entry(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         // fim_db_insert_entry
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_path_error, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_path_success, test_fim_db_setup, test_fim_db_teardown),
-        // fim_db_insert
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_db_full, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_replace, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_replace_fail_step, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_no_saved, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_no_saved_db_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_entry_error, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_insert_entry_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_remove_path
         cmocka_unit_test(test_fim_db_remove_path),
         cmocka_unit_test(test_fim_db_remove_path_fail),

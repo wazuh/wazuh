@@ -431,4 +431,11 @@ int fim_db_get_count_entries(fdb_t * fim_sql);
  */
 int fim_db_is_full(fdb_t *fim_sql);
 
+/**
+ * @brief Check if database if full
+ *
+ * @param fim_sql FIM database structure.
+ */
+int fim_db_check_limit(fdb_t *fim_sql);
+
 #endif /* FIM_DB_COMMON_H */

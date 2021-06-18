@@ -80,6 +80,33 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   void *configuration,
                                   void *_unused_patameter);
 
+/**
+ * @brief Get the database info related to a given file_path
+ *
+ * @param fim_sql FIM database structure.
+ * @param file_path Path reference to get db entry.
+ */
+static fim_entry *_fim_db_get_path(fdb_t *fim_sql, const char *file_path);
+
+/**
+ * @brief Check if database if full
+ *
+ * @param fim_sql FIM database structure.
+ * @param file_path Path reference to insert in db.
+ * @param entry Entry data to be inserted.
+ */
+static int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry);
+
+/**
+ * @brief Set file entry scanned.
+ *
+ * @param fim_sql FIM database struct.
+ * @param path File path.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+static int fim_db_set_scanned(fdb_t *fim_sql, const char *path);
+
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
@@ -215,7 +242,7 @@ void fim_db_bind_get_inode(fdb_t *fim_sql, int index, unsigned long int inode, u
     sqlite3_bind_int(fim_sql->stmt[index], 2, dev);
 }
 
-static fim_entry *_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
+fim_entry *_fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     fim_entry *entry = NULL;
 
     // Clean and bind statements
@@ -267,7 +294,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
     return paths;
 }
 
-static int fim_db_check_limit(fdb_t *fim_sql) {
+int fim_db_check_limit(fdb_t *fim_sql) {
     int nodes_count;
     int retval = FIMDB_OK;
 
@@ -290,7 +317,7 @@ static int fim_db_check_limit(fdb_t *fim_sql) {
     return retval;
 }
 
-static int _fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry) {
+int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry) {
     int res;
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_ENTRY);
@@ -302,46 +329,6 @@ static int _fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim
     }
 
     return FIMDB_OK;
-}
-
-int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry) {
-    int retval;
-
-    w_mutex_lock(&fim_sql->mutex);
-    retval = _fim_db_insert_entry(fim_sql, file_path, entry);
-    w_mutex_unlock(&fim_sql->mutex);
-
-    return retval;
-}
-
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, const fim_file_data *saved) {
-    int res_entry;
-
-    w_mutex_lock(&fim_sql->mutex);
-    // Add event, check if db is full
-    if (saved == NULL) {
-        switch (fim_db_check_limit(fim_sql)) {
-        case FIMDB_FULL:
-            mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
-                        file_path);
-            w_mutex_unlock(&fim_sql->mutex);
-            return FIMDB_FULL;
-
-        case FIMDB_ERR:
-            mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
-            w_mutex_unlock(&fim_sql->mutex);
-            return FIMDB_ERR;
-
-        default:
-            break;
-        }
-    }
-
-    res_entry = _fim_db_insert_entry(fim_sql, file_path, new);
-
-    w_mutex_unlock(&fim_sql->mutex);
-    fim_db_check_transaction(fim_sql);
-    return res_entry;
 }
 
 int fim_db_remove_path(fdb_t *fim_sql, const char *path) {
@@ -391,7 +378,7 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     return retval;
 }
 
-static int _fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_SCANNED);
     fim_db_bind_set_scanned(fim_sql, path);
@@ -402,20 +389,6 @@ static int _fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
     }
 
     return FIMDB_OK;
-}
-
-int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
-    int retval;
-
-    w_mutex_lock(&fim_sql->mutex);
-    retval = _fim_db_set_scanned(fim_sql, path);
-    w_mutex_unlock(&fim_sql->mutex);
-
-    if (retval == FIMDB_OK){
-        fim_db_check_transaction(fim_sql);
-    }
-
-    return retval;
 }
 
 int fim_db_get_count_file_inode(fdb_t * fim_sql) {
@@ -474,7 +447,7 @@ int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *da
         switch (fim_db_check_limit(fim_sql)) {
         case FIMDB_FULL:
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
-                        path);
+                    path);
             w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_FULL;
 
@@ -486,20 +459,16 @@ int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *da
         default:
             break;
         }
-
-        retval = _fim_db_insert_entry(fim_sql, path, data);
-        w_mutex_unlock(&fim_sql->mutex);
-        return retval;
-    }
-
-    if (strcmp(data->checksum, (*saved)->file_entry.data->checksum) == 0) {
+    } else if (strcmp(data->checksum, (*saved)->file_entry.data->checksum) == 0) {
         // Entry up to date
-        retval = _fim_db_set_scanned(fim_sql, path);
+        retval = fim_db_set_scanned(fim_sql, path);
         w_mutex_unlock(&fim_sql->mutex);
+        fim_db_check_transaction(fim_sql);
+
         return retval;
     }
 
-    retval = _fim_db_insert_entry(fim_sql, path, data);
+    retval = fim_db_insert_entry(fim_sql, path, data);
     w_mutex_unlock(&fim_sql->mutex);
     fim_db_check_transaction(fim_sql);
 

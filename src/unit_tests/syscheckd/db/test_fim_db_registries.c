@@ -280,43 +280,6 @@ static void test_fim_db_get_registry_data_db_error(void **state) {
     assert_null(value);
 }
 
-static void test_fim_db_insert_registry(void **state) {
-    int ret;
-    fim_entry *entry = *state;
-
-    will_return_always(__wrap_sqlite3_step, 1);
-
-    // Insert entry
-    ret = fim_db_insert_registry(syscheck.database, entry);
-    assert_int_equal(ret, FIMDB_OK);
-    ret = check_fim_db_reg_key(entry->registry_entry.key);
-    assert_int_equal(ret, 0);
-    ret = check_fim_db_reg_value_data(entry->registry_entry.value, entry->registry_entry.value->id);
-    assert_int_equal(ret, 0);
-}
-
-static void test_fim_db_insert_registry_db_error(void **state) {
-    int ret;
-    fim_entry *entry = *state;
-
-    for (int i = 0; i < 5; i++){
-        will_return(__wrap_sqlite3_step, 0);
-        will_return(__wrap_sqlite3_step, FIMDB_ERR);
-    }
-
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting registry rowid HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile: not an error (0)");
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing registry data '1': not an error (0)");
-
-    // Insert entry
-    ret = fim_db_insert_registry(syscheck.database, entry);
-    assert_int_not_equal(ret, 0);
-    ret = check_fim_db_reg_key(entry->registry_entry.key);
-    assert_int_equal(ret, -1);
-    ret = check_fim_db_reg_value_data(entry->registry_entry.value, entry->registry_entry.value->id);
-    assert_int_equal(ret, -1);
-}
-
 static void test_fim_db_insert_registry_key(void **state) {
     int ret;
     fim_entry *entry = *state;
@@ -706,8 +669,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_get_registry_key_db_error, teardown_delete_tables),
         cmocka_unit_test_teardown(test_fim_db_get_registry_key_using_id_db_error, teardown_delete_tables),
         cmocka_unit_test_teardown(test_fim_db_get_registry_data_db_error, teardown_delete_tables),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_registry, setup_registry_entry, teardown_registry_entry),
-        cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_db_error, setup_registry_entry, teardown_registry_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_key, setup_registry_entry, teardown_registry_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_data, setup_registry_entry, teardown_registry_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_insert_registry_key_db_error, setup_registry_entry, teardown_registry_entry),

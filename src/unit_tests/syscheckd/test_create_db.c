@@ -527,7 +527,7 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
 
 /**
  * @brief This function will prepare the successfull execution of the double scan in Windows tests
- * @param test_file_path File path that will be used in the function fim_db_insert.
+ * @param test_file_path File path that will be scanned.
  * @param dir_file_path Directory of the file.
  * @param file Dirent structure for the file.
  */
@@ -4072,11 +4072,6 @@ static void test_fim_realtime_event_file_exists(void **state) {
 }
 
 static void test_fim_realtime_event_file_missing(void **state) {
-
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     struct stat stat_buf = { .st_mode = 0 };
 #ifdef TEST_WINAGENT
