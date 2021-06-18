@@ -603,8 +603,7 @@ def delete_groups(group_list=None):
                 raise WazuhResourceNotFound(1710)
             elif group_id == 'default':
                 raise WazuhError(1712)
-            agent_list = list(map(operator.itemgetter('id'),
-                                  WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']))
+            agent_list = [agent['id'] for agent in WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']]
             try:
                 affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
                 if affected_agents_result.total_failed_items != 0:
