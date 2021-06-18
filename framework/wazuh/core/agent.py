@@ -10,13 +10,12 @@ import re
 import tempfile
 import threading
 from base64 import b64encode
-from datetime import date, datetime
+from datetime import datetime
 from functools import lru_cache
 from json import dumps, loads
-from os import chown, chmod, makedirs, urandom, stat, remove
+from os import chown, chmod, urandom, stat
 from os import listdir, path
 from platform import platform
-from shutil import rmtree
 from time import time
 
 import api.configuration as aconf
@@ -25,7 +24,7 @@ from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
+from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
@@ -465,10 +464,9 @@ class Agent:
         return ret_msg
 
 
-    def remove(self, backup=False, purge=False, use_only_authd=False):
+    def remove(self, purge=False, use_only_authd=False):
         """Delete the agent.
 
-        :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
         :param use_only_authd: Force the use of authd when adding and removing agents.
         :return: Message.
@@ -482,7 +480,7 @@ class Agent:
 
         try:
             if not is_authd_running:
-                data = self._remove_manual(backup, purge)
+                data = self._remove_manual(purge)
             else:
                 data = self._remove_authd(purge)
 
@@ -507,10 +505,9 @@ class Agent:
 
         return data
 
-    def _remove_manual(self, backup=False, purge=False):
+    def _remove_manual(self, purge=False):
         """Deletes the agent.
 
-        :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
         :return: Message.
         """
@@ -551,8 +548,6 @@ class Agent:
             if not agent_found:
                 raise WazuhResourceNotFound(1701, extra_message=self.id)
 
-            self.delete_agent_files(self.id, self.name, self.registerIP, backup=backup)
-
             # Write temporary client.keys file
             handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
             with open(handle, 'a') as f_kt:
@@ -570,70 +565,6 @@ class Agent:
             Agent._release_client_keys_lock()
 
         return 'Agent was successfully deleted'
-
-    @staticmethod
-    def delete_agent_files(agent_id, agent_name, agent_register_ip, backup=True):
-        # Tell wazuh-db to delete agent database
-        wdb_backend_conn = WazuhDBBackend(agent_id).connect_to_db()
-        wdb_backend_conn.delete_agents_db([agent_id])
-
-        # Remove agent from groups
-        try:
-            wdb_conn = WazuhDBConnection()
-            wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {agent_id}')
-        except Exception as e:
-            raise WazuhInternalError(1747, extra_message=str(e))
-
-        # Clean up agent files
-        try:
-            # Remove rid file
-            rids_file = path.join(common.wazuh_path, 'queue/rids', agent_id)
-            if path.exists(rids_file):
-                remove(rids_file)
-
-            if backup:
-                # Create backup directory
-                # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
-                date_part = date.today().strftime('%Y/%b/%d')
-                main_agent_backup_dir = path.join(common.backup_path,
-                                                  f'agents/{date_part}/{agent_id}-{agent_name}-{agent_register_ip}')
-                agent_backup_dir = main_agent_backup_dir
-
-                not_agent_dir = True
-                i = 0
-                while not_agent_dir:
-                    if path.exists(agent_backup_dir):
-                        i += 1
-                        agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
-                    else:
-                        makedirs(agent_backup_dir)
-                        chmod_r(agent_backup_dir, 0o750)
-                        not_agent_dir = False
-            else:
-                agent_backup_dir = ''
-
-            # Move agent file
-            agent_files = [
-                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.wazuh_path, agent_name, agent_register_ip),
-                 '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.wazuh_path, agent_id),
-                 '{0}/agent-group'.format(agent_backup_dir)),
-                ('{}/var/db/agents/{}-{}.db'.format(common.wazuh_path, agent_name, agent_id),
-                 '{}/var_db'.format(agent_backup_dir)),
-                ('{}/queue/diff/{}'.format(common.wazuh_path, agent_name), '{}/diff'.format(agent_backup_dir))
-            ]
-
-            for agent_file, backup_file in agent_files:
-                if path.exists(agent_file):
-                    if not backup:
-                        if path.isdir(agent_file):
-                            rmtree(agent_file)
-                        else:
-                            remove(agent_file)
-                    elif not path.exists(backup_file):
-                        safe_move(agent_file, backup_file, permissions=0o660)
-        except Exception as e:
-            raise WazuhInternalError(1748, extra_message=str(e))
 
     def _add(self, name, ip, id=None, key=None, force=-1, use_only_authd=False):
         """Add an agent to Wazuh.
@@ -866,7 +797,6 @@ class Agent:
                                 # If force is non-negative then we check to remove the agent using value of force as
                                 # the max age in seconds
                                 if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
-                                    self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
                                     # We add a void entry
                                     client_keys_entries[index] = f'{entry_id} !{entry_name} {entry_ip} {entry_key}'
                                 else:

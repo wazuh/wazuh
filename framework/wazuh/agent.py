@@ -347,15 +347,13 @@ def get_agents_keys(agent_list=None):
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
-def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=False, filters=None, q=None):
+def delete_agents(agent_list=None, purge=False, use_only_authd=False, filters=None, q=None):
     """Delete a list of agents.
 
     Parameters
     ----------
     agent_list : list
         List of agents ID's to be deleted.
-    backup : bool
-        Create backup before removing the agent.
     purge : bool
         Delete definitely from key store.
     use_only_authd : bool
@@ -407,7 +405,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=Fal
         for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
             try:
                 my_agent = Agent(agent_id)
-                my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
+                my_agent.remove(purge=purge, use_only_authd=use_only_authd)
                 result.affected_items.append(agent_id)
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)

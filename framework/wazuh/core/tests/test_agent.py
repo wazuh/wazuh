@@ -608,7 +608,7 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
         assert result == 'Agent was successfully deleted', 'Not expected message'
 
         if status == 'stopped':
-            mock_remove_manual.assert_called_once_with(False, False), 'Not expected params'
+            mock_remove_manual.assert_called_once_with(False), 'Not expected params'
             mock_remove_authd.assert_not_called(), '_remove_authd should not be called'
         else:
             mock_remove_manual.assert_not_called(), '_remove_manual should not be called'
@@ -635,35 +635,22 @@ def test_agent_remove_authd(mock_wazuh_socket):
     mock_wazuh_socket.return_value.close.assert_called_once()
 
 
-@pytest.mark.parametrize('backup, exists_backup_dir', [
-    (False, False),
-    (True, False),
-    (True, True),
-])
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.fcntl.lockf')
-@patch('wazuh.core.wdb.WazuhDBConnection.delete_agents_db')
-@patch('wazuh.core.agent.remove')
 @patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch("wazuh.core.common.wazuh_path", new=test_data_path)
-@patch('wazuh.core.agent.path.exists')
 @patch('wazuh.core.database.isfile', return_value=True)
 @patch('wazuh.core.agent.path.isdir', return_value=False)
 @patch('wazuh.core.agent.safe_move')
-@patch('wazuh.core.agent.makedirs')
-@patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
 @patch("wazuh.core.common.wazuh_uid", return_value=getpwnam("root"))
 @patch("wazuh.core.common.wazuh_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command')
 @patch('socket.socket.connect')
-def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock,
-                             safe_move_mock, isdir_mock, isfile_mock, exists_mock, stat_mock, chmod_mock,
-                             rmtree_mock, remove_mock, mock_delete_agents, lockf_mock, mkstemp_mock,  backup,
-                             exists_backup_dir):
+def test_agent_remove_manual(socket_mock, send_mock, grp_mock, pwd_mock, safe_move_mock, isdir_mock, isfile_mock,
+                             stat_mock, chmod_mock, rmtree_mock, lockf_mock, mkstemp_mock):
     """Test the _remove_manual function
 
     Parameters
@@ -677,30 +664,15 @@ def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd
 
     with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
         with patch('wazuh.core.agent.open', mock_open(read_data=client_keys_text)) as m:
-            if exists_backup_dir:
-                exists_mock.side_effect = [True, True, True] + [False] * 10
-            else:
-                exists_mock.side_effect = lambda x: not (common.backup_path in x)
-            Agent('001')._remove_manual(backup=backup)
+            Agent('001')._remove_manual()
 
             m.assert_any_call(common.client_keys)
             stat_mock.assert_called_once_with(common.client_keys)
-            mock_delete_agents.assert_called_once_with(['001'])
-            run_wdb_mock.assert_called_once_with('global sql DELETE FROM belongs WHERE id_agent = 001')
-            remove_mock.assert_any_call(os.path.join(common.wazuh_path, 'queue/rids/001'))
             mkstemp_mock.assert_called_once_with(prefix=common.client_keys, suffix=".tmp")
 
             # make sure the mock is called with a string according to a non-backup path
-            exists_mock.assert_any_call('{0}/queue/agent-groups/001'.format(test_data_path))
             safe_move_mock.assert_called_with('mock_tmp_file', common.client_keys,
                                               permissions=stat_mock().st_mode)
-            if backup:
-                if exists_backup_dir:
-                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any-002')
-                else:
-                    backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
-                makedirs_mock.assert_called_once_with(backup_path)
-                chmod_r_mock.assert_called_once_with(backup_path, 0o750)
 
 
 @pytest.mark.parametrize("authd_status", [
@@ -862,9 +834,8 @@ def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_s
 @patch('wazuh.core.wdb.WazuhDBConnection._send')
 @patch('wazuh.core.agent.Agent.load_info_from_db')
 @patch('wazuh.core.agent.Agent.check_if_delete_agent', return_value=True)
-@patch('wazuh.core.agent.Agent.delete_agent_files')
 @patch('socket.socket.connect')
-def test_agent_add_manual_content(socket_mock, delete_mock, check_delete_mock, load_info_mock, wazuhdb_mock,
+def test_agent_add_manual_content(socket_mock, check_delete_mock, load_info_mock, wazuhdb_mock,
                                   mock_get_manager_name, mock_lockf, mock_stat, mock_wazuh_gid, mock_wazuh_uid,
                                   mock_release_lock, mock_acquire_lock, mock_get_agents_info, test_case):
     """Tests if method _add_manual() modify the content of a client.keys as expected"""
@@ -1585,9 +1556,8 @@ def test_expand_group(group, expected_agents):
 @pytest.mark.parametrize('agent_id, expected_exception', [
     ('001', 1746),
     ('006', 1701),
-    ('001', 1747),
-    ('001', 1748),
 ])
+@patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.wdb.WazuhDBConnection.delete_agents_db')
@@ -1607,7 +1577,7 @@ def test_expand_group(group, expected_agents):
 @patch('socket.socket.connect')
 def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, isdir_mock,
                                 stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock, lockf_mock,
-                                mock_safe_move, agent_id, expected_exception):
+                                mock_safe_move, mock_tempfile, agent_id, expected_exception):
     """Test the _remove_manual function error cases.
 
     Parameters
