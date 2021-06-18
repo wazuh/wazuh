@@ -43,6 +43,32 @@ async def put_rootcheck(request, agents_list: str = '*', pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def delete_rootcheck(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = ''):
+    """Clear the rootcheck database for a list of agents.
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : str
+        ID of the agent's rootcheck info to retrieve.
+    """
+    f_kwargs = {'agent_list': [agent_id]}
+
+    dapi = DistributedAPI(f=rootcheck.clear,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, agent_id=None, offset=0, limit=None,
                               sort=None, search=None, select=None, q='', distinct=None, status='all', pci_dss=None,
                               cis=None):
