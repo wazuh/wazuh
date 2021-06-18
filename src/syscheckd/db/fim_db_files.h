@@ -44,29 +44,6 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
 char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
 /**
- * @brief Insert or update entry.
- *
- * @param fim_sql FIM database struct.
- * @param file_path File path.
- * @param entry Entry data to be inserted.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_insert_entry(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry);
-
-/**
- * @brief Insert an entry in the needed tables.
- *
- * @param fim_sql FIM database struct.
- * @param file_path File path.
- * @param new Entry data to be inserted.
- * @param saved Entry with existing data.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, const fim_file_data *saved);
-
-/**
  * @brief Delete entry from the DB using file path.
  *
  * @param fim_sql FIM database struct.
@@ -84,16 +61,6 @@ int fim_db_remove_path(fdb_t *fim_sql, const char *path);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_set_all_unscanned(fdb_t *fim_sql);
-
-/**
- * @brief Set file entry scanned.
- *
- * @param fim_sql FIM database struct.
- * @param path File path.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_set_scanned(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Get all the unscanned files by saving them in a temporal storage.
@@ -221,7 +188,7 @@ int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_fi
  * @param data The information linked to the path to be updated
  * @param saved If the file had information stored in the DB, that data is returned in this parameter.
  * @return The result of the update operation.
- * @retval Returns any of the values returned by fim_db_set_scanned and fim_db_insert.
+ * @retval Returns any of the values returned by fim_db_set_scanned and fim_db_insert_entry.
  */
 int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *data, fim_entry **saved);
 

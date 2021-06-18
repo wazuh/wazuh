@@ -468,7 +468,7 @@ void test_fim_db_init_failed_cache(void **state) {
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 
     fdb_t *fim_db;
     fim_db = fim_db_init(syscheck.database_store);
@@ -488,7 +488,7 @@ void test_fim_db_init_failed_cache_memory(void **state) {
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t *fim_db;
@@ -834,7 +834,7 @@ void test_fim_db_cache_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 
     int ret = fim_db_cache(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
@@ -859,7 +859,7 @@ void test_fim_db_close_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
-                  "Error finalizing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "Error finalizing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 
     will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
     fim_db_close(test_data->fim_sql);
@@ -958,7 +958,7 @@ void test_fim_db_clean_stmt_reset_and_prepare_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
-                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': ERROR");
+                  "Error preparing statement 'INSERT OR REPLACE INTO file_entry (path, mode, last_event, scanned, options, checksum, dev, inode, size, perm, attributes, uid, gid, user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);': ERROR (111)");
 
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1054,8 +1054,6 @@ static void fim_db_get_checksum_range_fail_step_on_first_half(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
     assert_int_equal(retval, FIMDB_ERR);
@@ -1118,8 +1116,6 @@ static void fim_db_get_checksum_range_fail_step_on_second_half(void **state) {
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
                   "Step error getting path range, second half 'start start' 'top top' (i:1): ERROR MESSAGE (111)");
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1244,8 +1240,6 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
 
     expect_string(__wrap__merror, formatted_msg,
                   "Step error getting count range 'start begin' 'top top': Some SQLite error (111)");
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -1822,8 +1816,6 @@ static void test_fim_db_get_last_path_fail_to_step_query(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
 
     assert_int_equal(retval, FIMDB_ERR);
@@ -2199,8 +2191,6 @@ static void test_fim_db_get_count_entries_query_failed(void **state) {
     will_return(__wrap_sqlite3_errmsg, "SQLITE some error");
     will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: SQLITE some error (111)");
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 

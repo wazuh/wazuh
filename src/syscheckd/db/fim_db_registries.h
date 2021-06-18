@@ -162,16 +162,6 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
 int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned int rowid);
 
 /**
- * @brief Insert a registry entry in the needed tables.
- *
- * @param fim_sql FIM database struct.
- * @param new FIM entry data.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_insert_registry(fdb_t *fim_sql, fim_entry *new);
-
-/**
  * @brief Calculate checksum of registry keys between @start and @top.
  *
  * Said range will be split into two and the resulting checksums will
