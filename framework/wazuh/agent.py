@@ -11,7 +11,8 @@ from typing import Union
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
-    WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding
+    WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding, \
+    send_restart_command
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -169,7 +170,7 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
 def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
@@ -184,6 +185,8 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         If the agent to be restarted is 000.
     WazuhError(1701)
         If the agent to be restarted is not in the system.
+     WazuhError(1707)
+            If the agent to be restarted is not active.
 
     Returns
     -------
@@ -194,24 +197,40 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                                       none_msg='Restart command was not sent to any agent'
                                       )
 
-    system_agents = get_agents_info()
     if agent_list:
-        wq = WazuhQueue(common.ARQUEUE)
-        for agent_id in agent_list:
-            try:
-                if agent_id == "000":
-                    raise WazuhError(1703)
-                if agent_id not in system_agents:
-                    raise WazuhResourceNotFound(1701)
-                Agent(agent_id).restart(wq)
-                result.affected_items.append(agent_id)
-            except WazuhException as e:
-                result.add_failed_item(id_=agent_id, error=e)
+        try:
+            agent_list.remove('000')
+            result.add_failed_item('000', WazuhError(1703))
+        except KeyError:
+            pass
 
+        system_agents = get_agents_info()
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
+        agents_with_data = WazuhDBQueryAgents(limit=None, select=["id", "status", "version"],
+                                              **rbac_filters).run()['items']
+        agent_list = set(agent_list)
+
+        # Add non existent agents to failed_items
+        not_found_agents = agent_list - system_agents
+        [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
+
+        # Add non active agents to failed_items
+        non_active_agents = [agent for agent in agents_with_data if agent['status'] != 'active']
+        [result.add_failed_item(id_=agent['id'], error=WazuhError(1707, extra_message=f'{agent["status"]}'))
+         for agent in non_active_agents]
+
+        eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents]
+        wq = WazuhQueue(common.ARQUEUE)
+        for agent in eligible_agents:
+            try:
+                send_restart_command(agent['id'], agent['version'], wq)
+                result.affected_items.append(agent['id'])
+            except WazuhException as e:
+                result.add_failed_item(id_=agent['id'], error=e)
         wq.close()
 
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=int)
+        result.total_affected_items = len(result.affected_items)
+        result.affected_items.sort(key=int)
 
     return result
 
