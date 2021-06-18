@@ -197,18 +197,20 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                                       none_msg='Restart command was not sent to any agent'
                                       )
 
-    if agent_list:
-        try:
-            agent_list.remove('000')
-            result.add_failed_item('000', WazuhError(1703))
-        except KeyError:
-            pass
+    agent_list = set(agent_list)
 
+    # Add agent with ID 000 to failed_items
+    try:
+        agent_list.remove('000')
+        result.add_failed_item('000', WazuhError(1703))
+    except KeyError:
+        pass
+
+    if agent_list:
         system_agents = get_agents_info()
-        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
         agents_with_data = WazuhDBQueryAgents(limit=None, select=["id", "status", "version"],
                                               **rbac_filters).run()['items']
-        agent_list = set(agent_list)
 
         # Add non existent agents to failed_items
         not_found_agents = agent_list - system_agents
@@ -219,7 +221,8 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         [result.add_failed_item(id_=agent['id'], error=WazuhError(1707, extra_message=f'{agent["status"]}'))
          for agent in non_active_agents]
 
-        eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents]
+        eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents] if non_active_agents \
+            else agents_with_data
         wq = WazuhQueue(common.ARQUEUE)
         for agent in eligible_agents:
             try:
@@ -250,8 +253,6 @@ def restart_agents_by_node(agent_list=None):
     -------
     AffectedItemsWazuhResult
     """
-    '000' in agent_list and agent_list.remove('000')
-
     return restart_agents(agent_list=agent_list)
 
 
