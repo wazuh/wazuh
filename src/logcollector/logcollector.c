@@ -1016,7 +1016,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     lf->fp = _fdopen(fd, "r");
     if (!lf->fp) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
-        CloseHandle(lf->h);
+        _close(fd);
         goto error;
     }
 
@@ -1105,7 +1105,7 @@ int reload_file(logreader * lf) {
     lf->fp = _fdopen(fd, "r");
 
     if (!lf->fp) {
-        CloseHandle(lf->h);
+        _close(fd);
         return (-1);
     }
 #endif
