@@ -51,6 +51,17 @@ namespace Utils
         }
     };
 
+    struct HandleSmartDeleter
+    {
+        void operator()(HANDLE handle)
+        {
+            if (handle)
+            {
+                CloseHandle(handle);
+            }
+        }
+    };
+
     typedef UINT (WINAPI *GetSystemFirmwareTable_t)(DWORD, DWORD, PVOID, DWORD);
     static GetSystemFirmwareTable_t getSystemFirmwareTableFunctionAddress()
     {

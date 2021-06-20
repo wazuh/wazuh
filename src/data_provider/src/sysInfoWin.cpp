@@ -308,10 +308,10 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 {
     nlohmann::json jsProcessInfo{};
     const auto pId { processEntry.th32ProcessID };
-    const auto processHandle { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pId) };
+    const std::unique_ptr<void, Utils::HandleSmartDeleter> processHandle { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pId) };
     if (processHandle)
     {
-        SysInfoProcess process(pId, processHandle);
+        SysInfoProcess process(pId, processHandle.get());
 
         // Current process information
         jsProcessInfo["name"]       = processName(processEntry);
@@ -325,7 +325,6 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         jsProcessInfo["nlwp"]       = processEntry.cntThreads;
         jsProcessInfo["utime"]      = process.userModeTime();
         jsProcessInfo["vm_size"]    = process.virtualSize();
-        CloseHandle(processHandle);
     }
     return jsProcessInfo;
 }
