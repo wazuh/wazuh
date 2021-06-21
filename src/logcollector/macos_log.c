@@ -20,7 +20,8 @@
 #define INLINE inline
 #endif
 
-STATIC w_macos_log_vault_t macos_log_vault = {.mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "", .settings = NULL};
+STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "",
+                                               .settings = NULL, .do_generate_json = false };
 
 STATIC char * macos_codename = NULL;
 
@@ -509,10 +510,33 @@ char * w_macos_get_log_settings(void) {
     return settings;
 }
 
+
+bool w_macos_get_do_generate_json() {
+
+    w_rwlock_rdlock(&macos_log_vault.mutex);
+    bool retval = macos_log_vault.do_generate_json;
+    w_rwlock_unlock(&macos_log_vault.mutex);
+
+    return retval;
+}
+
+void w_macos_set_do_generate_json(bool generate_json) {
+
+    w_rwlock_wrlock(&macos_log_vault.mutex);
+    macos_log_vault.do_generate_json = generate_json;
+    w_rwlock_unlock(&macos_log_vault.mutex);
+}
+
 cJSON * w_macos_get_status_as_JSON(void) {
+
+    if (!w_macos_get_do_generate_json()) {
+        return NULL;
+    }
+
     cJSON * macos_log = NULL;
     char * timestamp = w_macos_get_last_log_timestamp();
     char * settings = w_macos_get_log_settings();
+
     if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
         macos_log = cJSON_CreateObject();
         cJSON_AddItemToObject(macos_log, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
@@ -531,6 +555,7 @@ void w_macos_set_status_from_JSON(cJSON * global_json) {
     if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
         w_macos_set_last_log_timestamp(timestamp);
         w_macos_set_log_settings(settings);
+        w_macos_set_do_generate_json(true);
     }
 }
 
