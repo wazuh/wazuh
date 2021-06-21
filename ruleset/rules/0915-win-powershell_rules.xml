@@ -1,0 +1,37 @@
+<!--
+  -  Windows Event Channel - Powershell ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="windows, powershell,">
+
+<!-- Powershell Operational grouping -->
+    <rule id="93000" level="0">
+        <if_sid>60000</if_sid>
+        <field name="win.system.channel">^Microsoft-Windows-PowerShell/Operational$</field>
+        <options>no_full_log</options>
+        <description>Group of Windows rules for the Powershell/Operational channel</description>
+    </rule>
+
+    <!-- Powershell Script Block rules -->
+
+    <rule id="93001" level="0">
+        <if_sid>93000</if_sid>
+        <field name="win.eventdata.ScriptBlockId">\.+</field>
+        <options>no_full_log</options>
+        <description>Group of Windows rules for the Powershell/Operational channel</description>
+    </rule>
+
+
+    <rule id="93002" level="14">
+        <if_sid>93001</if_sid>
+        <field name="win.system.message">CopyFromScreen</field>
+        <options>no_full_log</options>
+        <description>Screen capture method invoked from PowerShell script</description>
+        <mitre>
+            <id>T1113</id>
+        </mitre>
+    </rule>
+</group>>
