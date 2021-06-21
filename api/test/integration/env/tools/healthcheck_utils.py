@@ -3,6 +3,8 @@ import re
 import socket
 import time
 
+OSSEC_LOG_PATH = "/var/ossec/logs/ossec.log"
+
 
 def get_agent_health_base():
     # Get agent health. The agent will be healthy if it has been connected to the manager after been
@@ -11,21 +13,18 @@ def get_agent_health_base():
     # depending on the agent version.
 
     shared_conf_restart = os.system(
-        "grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
-        "/var/ossec/logs/ossec.log")
-    agent_connection = os.system(
-        "grep -q 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/ossec.log")
+        f"grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' {OSSEC_LOG_PATH}")
+    agent_connection = os.system(f"grep -q 'agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}")
 
     if shared_conf_restart == 0 and agent_connection == 0:
         # No -q option as we need the output
         output = os.popen(
-            "grep 'agentd: INFO: Agent is restarting due to shared configuration changes."
-            "\|agentd: INFO: (4102): Connected to the server' "
-            "/var/ossec/logs/ossec.log").read().split("\n")[:-1]
+            f"grep -a 'agentd: INFO: Agent is restarting due to shared configuration changes."
+            f"\|agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}").read().split("\n")[:-1]
 
         agent_restarted = False
         for log in output:
-            if re.match(r'.*Agent is restarting due to shared configuration changes.*', log):
+            if not agent_restarted and re.match(r'.*Agent is restarting due to shared configuration changes.*', log):
                 agent_restarted = True
             if agent_restarted and re.match(r'.*Connected to the server.*', log):
                 # Wait to avoid the worst case:
