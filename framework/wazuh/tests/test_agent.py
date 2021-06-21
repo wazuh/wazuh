@@ -217,12 +217,12 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
     (['000'], [], 1703),
     (['001', '500'], ['001'], 1701)
 ])
-@patch('wazuh.core.agent.Agent.restart')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list, expected_items,
-                              error_code):
+def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+                              expected_items, error_code):
     """Test `restart_agents` function from agent module.
 
     Parameters
@@ -243,27 +243,26 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['000', '001', '002'], ['001', '002'], None),
+    (['000', '001', '002'], ['001', '002'], 1703),
     (['001', '500'], ['001'], 1701)
 ])
-@patch('wazuh.core.agent.Agent.restart')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list,
-                                      expected_items,
-                                      error_code):
+def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+                                      expected_items,  error_code):
     """Test `restart_agents_by_node` function from agent module.
 
-        Parameters
-        ----------
-        agent_list : List of str
-            List of agent ID's.
-        expected_items : List of str
-            List of expected agent ID's returned by 'restart_agents'.
-        error_code : int
-            The expected error code.
-        """
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'restart_agents'.
+    error_code : int
+        The expected error code.
+    """
     result = restart_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
