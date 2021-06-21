@@ -736,6 +736,14 @@ int w_update_sacl(const char *obj_path);
  */
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
+
+/**
+ * @brief Get the number of realtime watches opened by FIM.
+ *
+ * @return Number of realtime watches.
+ */
+unsigned int get_realtime_watches();
+
 #else
 void *fim_run_integrity(void *args);
 #endif

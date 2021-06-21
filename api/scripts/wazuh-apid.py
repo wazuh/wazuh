@@ -7,8 +7,6 @@
 import argparse
 import sys
 
-
-from api import alogging, configuration
 from wazuh.core import common
 
 
@@ -35,6 +33,7 @@ def start(foreground, root, config_file):
     import connexion
     import uvloop
     from aiohttp_cache import setup_cache
+    from api import alogging, configuration
 
     import wazuh.security
     from api import __path__ as api_path
@@ -47,6 +46,14 @@ def start(foreground, root, config_file):
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
+
+    def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
+        for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
+            api_logger = alogging.APILogger(
+                log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,
+                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
+            )
+            api_logger.setup_logger()
 
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
@@ -183,15 +190,6 @@ def start(foreground, root, config_file):
             )
 
 
-def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
-    for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
-        api_logger = alogging.APILogger(log_path=log_path, foreground_mode=foreground_mode,
-                                        debug_level='info' if logger_name != 'wazuh-api'
-                                        and debug_mode != 'debug2' else debug_mode,
-                                        logger_name=logger_name)
-        api_logger.setup_logger()
-
-
 def print_version():
     from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
     print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
@@ -205,8 +203,9 @@ def test_config(config_file):
     config_file : str
         Path of the file
     """
+    from api.configuration import read_yaml_config
     try:
-        configuration.read_yaml_config(config_file=config_file)
+        read_yaml_config(config_file=config_file)
     except Exception as e:
         print(f"Configuration not valid: {e}")
         sys.exit(1)
