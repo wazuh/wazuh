@@ -1,5 +1,5 @@
 ' Script for configuration Windows agent.
-' Copyright (C) 2015-2020, Wazuh Inc. <support@wazuh.com>
+' Copyright (C) 2015-2021, Wazuh Inc. <support@wazuh.com>
 '
 ' This program is free software; you can redistribute it and/or modify
 ' it under the terms of the GNU General Public License as published by
@@ -20,14 +20,14 @@
 
 ' This function is called only when uninstalling the product.
 ' Remove everything, but a few specified items.
-' 
+'
 public function removeAll()
 
    ' Retrieve the parameters
    strArgs = Session.Property("CustomActionData")
    args = Split(strArgs, ",")
    home_dir = Replace(args(0), Chr(34), "") 'APPLICATIONFOLDER
- 
+
    Set objSFO = CreateObject("Scripting.FileSystemObject")
 
    If objSFO.fileExists(home_dir & "ossec.conf.save") AND objSFO.fileExists(home_dir & "ossec.conf") Then
@@ -56,12 +56,12 @@ public function removeAll()
 
    If objSFO.folderExists(home_dir) Then
       Set folder = objSFO.GetFolder(home_dir)
- 
+
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the files specified here *will not* be deleted
        Dim filesToKeep: filesToKeep = Array("ossec.conf.save", "client.keys.save", _
                                             "local_internal_options.conf.save")
- 
+
       ' Construct a simple dictionary to check out later whether a file is in
       ' the list or not
       Dim dicFiles: Set dicFiles = CreateObject("Scripting.Dictionary")
@@ -69,8 +69,8 @@ public function removeAll()
       For Each x in filesToKeep
          dicFiles.add x, x
       Next
- 
- 
+
+
       ' Delete the files in the root folder
       For Each f In folder.Files
          name = f.name
@@ -80,18 +80,16 @@ public function removeAll()
             f.Delete True
          End If
       Next
- 
+
       ' And delete all the subfolders, empty or not
       For Each f In folder.SubFolders
          On Error Resume Next
          f.Delete True
       Next
 
- 
+
    End If   'objSFO.fileExists
- 
+
    removeAll = 0
 
 End Function   'removeAll
-
-

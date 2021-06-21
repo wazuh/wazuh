@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import fcntl
@@ -20,12 +20,13 @@ from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
+from wazuh.core.utils import temporary_cache
 
 logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
 
 
-def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
+def read_cluster_config(config_file=common.ossec_conf, from_import=False) -> typing.Dict:
     """Read cluster configuration from ossec.conf.
 
     If some fields are missing in the ossec.conf cluster configuration, they are replaced
@@ -36,6 +37,8 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     ----------
     config_file : str
         Path to configuration file.
+    from_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
 
     Returns
     -------
@@ -55,7 +58,7 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     }
 
     try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)['cluster']
+        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
         if e.code == 1106:
             # If no cluster configuration is present in ossec.conf, return default configuration but disabling it.
@@ -90,7 +93,8 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     return config_cluster
 
 
-def get_manager_status() -> typing.Dict:
+@temporary_cache()
+def get_manager_status(cache=False) -> typing.Dict:
     """Get the current status of each process of the manager.
 
     Returns

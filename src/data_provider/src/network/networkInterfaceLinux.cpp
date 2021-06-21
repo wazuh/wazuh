@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 24, 2020.
  *
  * This program is free software; you can redistribute it
@@ -22,7 +22,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
     {
         const auto family { interfaceWrapper->family() };
 
-        if(AF_INET == family)
+        if (AF_INET == family)
         {
             ret = std::make_shared<LinuxNetworkImpl<AF_INET>>(interfaceWrapper);
         }
@@ -34,15 +34,14 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
         {
             ret = std::make_shared<LinuxNetworkImpl<AF_PACKET>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating linux network data retriever." };
-        }
+
+        // else: The current interface family is not supported
     }
     else
     {
         throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
     }
+
     return ret;
 }
 
@@ -51,13 +50,17 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
 {
     // Get IPv4 address
     const auto address { m_interfaceAddress->address() };
+
     if (!address.empty())
     {
-        network["IPv4"]["address"] = address;
-        network["IPv4"]["netmask"] = m_interfaceAddress->netmask();
-        network["IPv4"]["broadcast"] = m_interfaceAddress->broadcast();
-        network["IPv4"]["metric"] = m_interfaceAddress->metrics();
-        network["IPv4"]["dhcp"]   = m_interfaceAddress->dhcp();
+        nlohmann::json ipv4JS { };
+        ipv4JS["address"] = address;
+        ipv4JS["netmask"] = m_interfaceAddress->netmask();
+        ipv4JS["broadcast"] = m_interfaceAddress->broadcast();
+        ipv4JS["metric"] = m_interfaceAddress->metrics();
+        ipv4JS["dhcp"]   = m_interfaceAddress->dhcp();
+
+        network["IPv4"].push_back(ipv4JS);
     }
     else
     {
@@ -68,13 +71,17 @@ template <>
 void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
 {
     const auto address { m_interfaceAddress->addressV6() };
+
     if (!address.empty())
     {
-        network["IPv6"]["address"] = address;
-        network["IPv6"]["netmask"] = m_interfaceAddress->netmaskV6();
-        network["IPv6"]["broadcast"] = m_interfaceAddress->broadcastV6();
-        network["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
-        network["IPv6"]["dhcp"]   = m_interfaceAddress->dhcp();
+        nlohmann::json ipv6JS {};
+        ipv6JS["address"] = address;
+        ipv6JS["netmask"] = m_interfaceAddress->netmaskV6();
+        ipv6JS["broadcast"] = m_interfaceAddress->broadcastV6();
+        ipv6JS["metric"] = m_interfaceAddress->metricsV6();
+        ipv6JS["dhcp"]   = m_interfaceAddress->dhcp();
+
+        network["IPv6"].push_back(ipv6JS);
     }
     else
     {

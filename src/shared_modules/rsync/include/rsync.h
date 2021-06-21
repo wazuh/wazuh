@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 20, 2020.
  *
  * This program is free software; you can redistribute it
@@ -86,7 +86,7 @@ EXPORTED int rsync_register_sync_id(const RSYNC_HANDLE handle,
                                     sync_callback_data_t callback_data);
 
 /**
- * @brief Pushes the \p payload message within a queue to process it in an async 
+ * @brief Pushes the \p payload message within a queue to process it in an async
  *  dispatch queue.
  *
  * @param handle  Current rsync handle being used.
@@ -102,7 +102,7 @@ EXPORTED int rsync_push_message(const RSYNC_HANDLE handle,
 
 /**
  * @brief Turns off an specific rsync instance.
- * 
+ *
  * @param handle Handle instance to be closed.
  */
 EXPORTED int rsync_close(const RSYNC_HANDLE handle);

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -228,10 +228,11 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     ERR_clear_error();
     int ret = SSL_connect(cfg->ssl);
     if (ret <= 0) {
-        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.", SSL_get_error(cfg->ssl, ret));
+        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect.", SSL_get_error(cfg->ssl, ret));
         ERR_print_errors_fp(stderr);  // This function empties the error queue
         os_free(ip_address);
         SSL_CTX_free(ctx);
+        OS_CloseSocket(sock);
         return ENROLLMENT_CONNECTION_FAILURE;
     }
 

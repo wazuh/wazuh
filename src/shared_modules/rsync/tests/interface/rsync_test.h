@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 26, 2020.
  *
  * This program is free software; you can redistribute it
@@ -18,13 +18,13 @@
 
 class RSyncTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    RSyncTest() = default;
-    virtual ~RSyncTest() = default;
+        RSyncTest() = default;
+        virtual ~RSyncTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 

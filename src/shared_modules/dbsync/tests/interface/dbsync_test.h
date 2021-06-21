@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,15 +16,15 @@
 #include "gmock/gmock.h"
 #include "commonDefs.h"
 
-class DBSyncTest : public ::testing::Test 
+class DBSyncTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    DBSyncTest() = default;
-    virtual ~DBSyncTest() = default;
+        DBSyncTest() = default;
+        virtual ~DBSyncTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 struct DummyContext

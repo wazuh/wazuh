@@ -16,11 +16,11 @@
 
 struct BerkeleyRpmDbDeleter final
 {
-    void operator()(DB * db)
+    void operator()(DB* db)
     {
         db->close(db, 0);
     }
-    void operator()(DBC * cursor)
+    void operator()(DBC* cursor)
     {
         cursor->c_close(cursor);
     }
@@ -32,7 +32,7 @@ class BerkeleyDbWrapper final : public IBerkeleyDbWrapper
         std::unique_ptr<DB, BerkeleyRpmDbDeleter>  m_db;
         std::unique_ptr<DBC, BerkeleyRpmDbDeleter> m_cursor;
     public:
-        int32_t getRow(DBT & key, DBT & data) override
+        int32_t getRow(DBT& key, DBT& data) override
         {
             std::memset(&key, 0, sizeof(DBT));
             std::memset(&data, 0, sizeof(DBT));
@@ -41,11 +41,11 @@ class BerkeleyDbWrapper final : public IBerkeleyDbWrapper
         // LCOV_EXCL_START
         ~BerkeleyDbWrapper() = default;
         // LCOV_EXCL_STOP
-        explicit BerkeleyDbWrapper(const std::string & directory)
+        explicit BerkeleyDbWrapper(const std::string& directory)
         {
             int ret;
-            DB * dbp;
-            DBC * cursor;
+            DB* dbp;
+            DBC* cursor;
 
             if ((ret = db_create(&dbp, NULL, 0)) != 0)
             {
@@ -66,6 +66,7 @@ class BerkeleyDbWrapper final : public IBerkeleyDbWrapper
             {
                 throw std::runtime_error { std::string("Error creating cursor: ") + db_strerror(ret) };
             }
+
             m_cursor = std::unique_ptr<DBC, BerkeleyRpmDbDeleter>(cursor);
         }
 };

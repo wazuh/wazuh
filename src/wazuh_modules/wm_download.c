@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for file downloads
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 25, 2018.
  *
  * This program is free software; you can redistribute it
@@ -38,6 +38,7 @@ const wm_context WM_DOWNLOAD_CONTEXT = {
     (wm_routine)wm_download_main,
     (wm_routine)(void *)wm_download_destroy,
     (cJSON * (*)(const void *))wm_download_dump,
+    NULL,
     NULL
 };
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -82,8 +82,14 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode,
-                                        whodata_evt * w_evt);
+                                        event_data_t *evt_data);
+
+int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                        fim_tmp_file *file,
+                                        pthread_mutex_t *mutex,
+                                        int storage,
+                                        event_data_t *evt_data,
+                                        directory_t *configuration);
 
 int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path);
 

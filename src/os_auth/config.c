@@ -1,6 +1,6 @@
 /*
  * Authd settings manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * May 29, 2017.
  *
  * This program is free software; you can redistribute it
@@ -61,6 +61,7 @@ cJSON *getAuthdConfig(void) {
     else
         cJSON_AddNumberToObject(auth,"force_time",config.force_time);
     if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","yes"); else cJSON_AddStringToObject(auth,"disabled","no");
+    if (config.flags.remote_enrollment) cJSON_AddStringToObject(auth,"remote_enrollment","yes"); else cJSON_AddStringToObject(auth,"remote_enrollment","no");
     if (config.flags.use_source_ip) cJSON_AddStringToObject(auth,"use_source_ip","yes"); else cJSON_AddStringToObject(auth,"use_source_ip","no");
     if (config.flags.force_insert) cJSON_AddStringToObject(auth,"force_insert","yes"); else cJSON_AddStringToObject(auth,"force_insert","no");
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -17,13 +17,13 @@
 
 class SysInfoNetworkWindowsTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    SysInfoNetworkWindowsTest() = default;
-    virtual ~SysInfoNetworkWindowsTest() = default;
+        SysInfoNetworkWindowsTest() = default;
+        virtual ~SysInfoNetworkWindowsTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_NETWORK_WINDOWS_TEST_H

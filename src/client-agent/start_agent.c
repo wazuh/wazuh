@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -67,7 +67,7 @@ bool connect_server(int server_id, bool verbose)
     if (tmp_str) {
         /* Resolve hostname */
         if (!isChroot()) {
-            resolveHostname(&agt->server[server_id].rip, 5);
+            resolve_hostname(&agt->server[server_id].rip, 5);
 
             tmp_str = strchr(agt->server[server_id].rip, '/');
             if (tmp_str) {
@@ -82,8 +82,12 @@ bool connect_server(int server_id, bool verbose)
 
     /* The hostname was not resolved correctly */
     if (tmp_str == NULL || *tmp_str == '\0') {
-        int rip_l = strlen(agt->server[server_id].rip);
-        mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+        if (agt->server[server_id].rip != NULL) {
+            const int rip_l = strlen(agt->server[server_id].rip);
+            mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+        } else {
+            mdebug2("Could not resolve hostname");
+        }
 
         return false;
     }

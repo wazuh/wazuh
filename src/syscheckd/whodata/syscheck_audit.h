@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -52,8 +52,8 @@ int fim_rules_initial_load();
 void clean_regex();
 
 extern pthread_mutex_t audit_mutex;
-extern volatile int audit_thread_active;
-extern volatile int hc_thread_active;
+extern atomic_int_t audit_thread_active;
+extern atomic_int_t hc_thread_active;
+extern atomic_int_t audit_health_check_creation;
 extern unsigned int count_reload_retries;
-extern volatile int audit_health_check_creation;
 #endif // SYSCHECK_AUDIT_H

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -53,6 +53,18 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
             result.total_affected_items += data['totalItems']
         except WazuhResourceNotFound as e:
             result.add_failed_item(id_=agent, error=e)
+
+    # Avoid that integer type fields are casted to string, this prevents sort parameter malfunctioning
+    try:
+        if len(result.affected_items) and sort and len(sort['fields']) == 1:
+            fields = sort['fields'][0].split('.')
+            element = result.affected_items[0][fields.pop(0)]
+            for field in fields:
+                element = element[field]
+            element_type = type(element).__name__
+            result.sort_casting = [element_type] if element_type not in ['str', 'datetime'] else ['str']
+    except KeyError:
+        pass
 
     result.affected_items = merge(*[[res] for res in result.affected_items],
                                   criteria=result.sort_fields,

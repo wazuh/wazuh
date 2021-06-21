@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -30,7 +30,7 @@ class WazuhException(Exception):
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
-               'remediation': 'Please, check if path to file/directory is correct and `ossec` '
+               'remediation': 'Please, check if path to file/directory is correct and `wazuh` '
                               'has the appropriate permissions'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
@@ -82,7 +82,7 @@ class WazuhException(Exception):
                },
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
-        1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
+        1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
@@ -269,8 +269,8 @@ class WazuhException(Exception):
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1726: {'message': 'Ossec authd is not running',
-               'remediation': f'Please, visit our documentation to get more information: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html#registering-the-wazuh-agent-using-simple-registration-service'
+        1726: {'message': 'Ossec authd is not running and API use_only_authd is enabled',
+               'remediation': f'Please enable authd or change the API use_only_authd configuration'
                },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
@@ -333,13 +333,15 @@ class WazuhException(Exception):
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
         1754: {'message': 'Agent does not exist or you do not have permissions to access it',
                'remediation': 'Try listing all agents with GET /agents endpoint'},
-        1755: {'message': 'The group does not have any agent assigned',
-               'remediation': 'Please select another group or assign any agent to it'},
         1756: {'message': 'Upgrade procedure could not start. Agent already upgrading',
                'remediation': 'You can check the status of this task with the /agents/:agent_id/upgrade_result endpoint'
                },
-        1757: {'message': 'Impossible to reconnect non-active agent',
-               'remediation': 'Please, make sure agent is active before attempting to reconnect'
+        1757: {'message': 'Error deleting an agent',
+               'remediation': 'Please check all data fields and try again'
+               },
+        1758: {'message': 'Tried to release an already unlocked client.keys thread lock',
+               },
+        1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
                },
 
         # CDB List: 1800 - 1899
@@ -369,7 +371,7 @@ class WazuhException(Exception):
         1902: {'message': 'Connection to \'execq\' socket failed'
                },
         1903: 'Error deleting temporary file from API',
-        1904: {'message': 'Bad data from \'execq\''
+        1904: {'message': 'Bad data from \'wcom\''
                },
         1905: {'message': 'File could not be updated, it already exists',
                'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
@@ -405,6 +407,7 @@ class WazuhException(Exception):
         2007: {'message': 'Error retrieving data from Wazuh DB'},
         2008: {'message': 'Corrupted RBAC database',
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
+        2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
 
         # Cluster
         3000: 'Cluster',
@@ -462,8 +465,9 @@ class WazuhException(Exception):
                'remediation': f"[Update](https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
-        3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found.",
+        3035: "String couldn't be found",
+        3036: "JSON couldn't be loaded",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -543,13 +547,13 @@ class WazuhException(Exception):
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
-        6001: {'message': 'Maximum number of request per minute reached',
-               'remediation': f'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+        6001: {'message': 'Maximum number of requests per minute reached',
+               'remediation': f'This limit can be changed in api.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
         6004: {'message': 'The current user does not have authentication enabled through authorization context',
-               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+               'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#operation/api.controllers.security_controller.edit_run_as'},
 
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},

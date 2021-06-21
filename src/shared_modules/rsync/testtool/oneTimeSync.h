@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 18, 2020.
  *
  * This program is free software; you can redistribute it
@@ -18,22 +18,22 @@
 
 class OneTimeSync final
 {
-public:
-    OneTimeSync(const nlohmann::json& config,
-                const nlohmann::json& inputData,
-                const std::string& outputFolder);
-    ~OneTimeSync();
-    void syncData();
-    void pushData();
-    void startSync();
-private:
-    static void rsyncCallback(const void* buffer, size_t bufferSize, void* userData);
-    static void syncCallback(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data);
+    public:
+        OneTimeSync(const nlohmann::json& config,
+                    const nlohmann::json& inputData,
+                    const std::string& outputFolder);
+        ~OneTimeSync();
+        void syncData();
+        void pushData();
+        void startSync();
+    private:
+        static void rsyncCallback(const void* buffer, size_t bufferSize, void* userData);
+        static void syncCallback(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data);
 
-    const RSYNC_HANDLE m_rsyncHandle;
-    const DBSYNC_HANDLE m_dbSyncHandle;
-    const nlohmann::json m_inputData;
-    const std::string m_outputFolder;
+        const RSYNC_HANDLE m_rsyncHandle;
+        const DBSYNC_HANDLE m_dbSyncHandle;
+        const nlohmann::json m_inputData;
+        const std::string m_outputFolder;
 };
 
 

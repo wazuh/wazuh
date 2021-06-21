@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Azure integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September, 2018.
  *
  * This program is free software; you can redistribute it
@@ -37,6 +37,7 @@ const wm_context WM_AZURE_CONTEXT = {
     (wm_routine)wm_azure_main,
     (wm_routine)(void *)wm_azure_destroy,
     (cJSON * (*)(const void *))wm_azure_dump,
+    NULL,
     NULL
 };
 

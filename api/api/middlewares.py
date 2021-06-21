@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -108,7 +108,8 @@ async def prevent_denial_of_service(request, max_requests=300):
 @web.middleware
 async def security_middleware(request, handler):
     access_conf = api_conf['access']
-    await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+    if access_conf['max_request_per_minute'] > 0:
+        await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
     await unlock_ip(request=request, block_time=access_conf['block_time'])
 
     return await handler(request)
@@ -157,6 +158,6 @@ async def response_postprocessing(request, handler):
             problem = connexion_problem(401, "Unauthorized", type="about:blank",
                                         detail="No authorization token provided")
     finally:
-        if problem:
-            remove_unwanted_fields()
-            return problem
+        problem and remove_unwanted_fields()
+
+    return problem

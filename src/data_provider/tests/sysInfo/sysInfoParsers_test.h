@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -13,15 +13,16 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysInfoParsersTest : public ::testing::Test {
+class SysInfoParsersTest : public ::testing::Test
+{
 
-protected:
+    protected:
 
-    SysInfoParsersTest() = default;
-    virtual ~SysInfoParsersTest() = default;
+        SysInfoParsersTest() = default;
+        virtual ~SysInfoParsersTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_PARSERS_TEST_H

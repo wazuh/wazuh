@@ -1,18 +1,18 @@
 # Makefile for Wazuh API
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # May 3, 2017
 #
 # Syntax: make [ all | backup | install | restore | service ]
 
-OSSEC_GROUP       = ossec
-INSTALLDIR        = /var/ossec
+WAZUH_GROUP       = wazuh
+INSTALLDIR       ?= /var/ossec
 
 RM_FILE        = rm -f
-INSTALL_DIR    = install -o root -g ${OSSEC_GROUP} -m 0750 -d
-INSTALL_RW_DIR = install -o root -g ${OSSEC_GROUP} -m 0770 -d
-INSTALL_EXEC   = install -o root -g ${OSSEC_GROUP} -m 0750
-INSTALL_FILE   = install -o root -g ${OSSEC_GROUP} -m 0640
-INSTALL_CONFIG_FILE   = install -o root -g ${OSSEC_GROUP} -m 0660
+INSTALL_DIR    = install -o root -g ${WAZUH_GROUP} -m 0750 -d
+INSTALL_RW_DIR = install -o root -g ${WAZUH_GROUP} -m 0770 -d
+INSTALL_EXEC   = install -o root -g ${WAZUH_GROUP} -m 0750
+INSTALL_FILE   = install -o root -g ${WAZUH_GROUP} -m 0640
+INSTALL_CONFIG_FILE   = install -o root -g ${WAZUH_GROUP} -m 0660
 PYTHON_BIN     = $(INSTALLDIR)/framework/python/bin/python3
 
 

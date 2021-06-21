@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,8 +16,7 @@
 #include "sharedDefs.h"
 #include "bits/stdc++.h"
 
-constexpr auto IPv6AddressHexSize { 32 };
-constexpr auto IPv4AddressHexSize { 8 };
+constexpr int IPV6_ADDRESS_HEX_SIZE { 32 };
 
 enum AddressField
 {
@@ -72,179 +71,197 @@ static const std::map<int32_t, std::string> STATE_TYPE =
     { TCP_CLOSING,                         "closing"        }
 };
 
-
 class LinuxPortWrapper final : public IPortWrapper
 {
-    std::vector<std::string> m_fields;
-    PortType m_type;
-    std::vector<std::string> m_remoteAddresses;
-    std::vector<std::string> m_localAddresses;
-    std::vector<std::string> m_queue;
+        std::vector<std::string> m_fields;
+        PortType m_type;
+        std::vector<std::string> m_remoteAddresses;
+        std::vector<std::string> m_localAddresses;
+        std::vector<std::string> m_queue;
 
-    static std::string IPv4Address(const std::string& hexRawAddress)
-    {
-        std::stringstream ss;
-        in_addr addr;
-        ss << std::hex << hexRawAddress;
-        ss >> addr.s_addr;
-        return inet_ntoa(addr);
-    }
-
-    static std::string IPv6Address(const std::string& hexRawAddress)
-    {
-        std::string retVal;
-
-        const auto hexAddressLength { hexRawAddress.length() };
-        if (hexAddressLength == IPv6AddressHexSize)
+        static std::string IPv4Address(const std::string& hexRawAddress)
         {
-            in6_addr sin6 {};
-            char address[INET6_ADDRSTRLEN] { 0 };
-            auto index { 0l };
-            for (auto i = 0ull; i < hexAddressLength; i += CHAR_BIT)
-            {
-                std::stringstream ss;
-                ss << std::hex << hexRawAddress.substr(CHAR_BIT*index, CHAR_BIT);
-                ss >> sin6.s6_addr32[index];
-                ++index;
-            }
-            retVal = inet_ntop(AF_INET6, &sin6, address, sizeof(address));
+            std::stringstream ss;
+            in_addr addr;
+            ss << std::hex << hexRawAddress;
+            ss >> addr.s_addr;
+            return inet_ntoa(addr);
         }
-        return retVal;
-    }
+
+        static std::string IPv6Address(const std::string& hexRawAddress)
+        {
+            std::string retVal;
+
+            const auto hexAddressLength { hexRawAddress.length() };
+
+            if (hexAddressLength == IPV6_ADDRESS_HEX_SIZE)
+            {
+                in6_addr sin6 {};
+                char address[INET6_ADDRSTRLEN] { 0 };
+                auto index { 0l };
+
+                for (auto i = 0ull; i < hexAddressLength; i += CHAR_BIT)
+                {
+                    std::stringstream ss;
+                    ss << std::hex << hexRawAddress.substr(CHAR_BIT * index, CHAR_BIT);
+                    ss >> sin6.s6_addr32[index];
+                    ++index;
+                }
+
+                retVal = inet_ntop(AF_INET6, &sin6, address, sizeof(address));
+            }
+
+            return retVal;
+        }
 
     public:
-    explicit LinuxPortWrapper(const PortType type, const std::string& row)
-    : m_fields{ Utils::split(row, ' ') }
-    , m_type { type }
-    , m_remoteAddresses { std::move(Utils::split(m_fields.at(REMOTE_ADDRESS),':')) }
-    , m_localAddresses { std::move(Utils::split(m_fields.at(LOCAL_ADDRESS),':')) }
-    , m_queue { std::move(Utils::split(m_fields.at(QUEUE),':')) }
-    { }
+        explicit LinuxPortWrapper(const PortType type, const std::string& row)
+            : m_fields{ Utils::split(row, ' ') }
+            , m_type { type }
+            , m_remoteAddresses { std::move(Utils::split(m_fields.at(REMOTE_ADDRESS), ':')) }
+            , m_localAddresses { std::move(Utils::split(m_fields.at(LOCAL_ADDRESS), ':')) }
+            , m_queue { std::move(Utils::split(m_fields.at(QUEUE), ':')) }
+        { }
 
-    ~LinuxPortWrapper() = default;
-    std::string protocol() const override
-    {
-        std::string retVal;
-
-        const auto it { PORTS_TYPE.find(m_type) };
-        if (PORTS_TYPE.end() != it)
+        ~LinuxPortWrapper() = default;
+        std::string protocol() const override
         {
-            retVal = it->second;
-        }
-        return retVal;
-    }
+            std::string retVal;
 
-    std::string localIp() const override
-    {
-        std::string retVal;
-        if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
-        {
-            if (IPVERSION_TYPE.at(m_type) == IPV4)
+            const auto it { PORTS_TYPE.find(m_type) };
+
+            if (PORTS_TYPE.end() != it)
             {
-                retVal = IPv4Address(m_localAddresses.at(AddressField::IP));
+                retVal = it->second;
             }
-            else if (IPVERSION_TYPE.at(m_type) == IPV6)
+
+            return retVal;
+        }
+
+        std::string localIp() const override
+        {
+            std::string retVal;
+
+            if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
             {
-                retVal = IPv6Address(m_localAddresses.at(AddressField::IP));
+                if (IPVERSION_TYPE.at(m_type) == IPV4)
+                {
+                    retVal = IPv4Address(m_localAddresses.at(AddressField::IP));
+                }
+                else if (IPVERSION_TYPE.at(m_type) == IPV6)
+                {
+                    retVal = IPv6Address(m_localAddresses.at(AddressField::IP));
+                }
             }
+
+            return retVal;
         }
-        return retVal;
-    }
-    int32_t localPort() const override
-    {
-        int32_t retVal { -1 };
-        if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
+        int32_t localPort() const override
         {
-            std::stringstream ss;
-            ss << std::hex << m_localAddresses.at(AddressField::PORT);
-            ss >> retVal;
-        }
-        return retVal;
-    }
-    std::string remoteIP() const override
-    {
-        std::string retVal;
-        if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
-        {
-            if (IPVERSION_TYPE.at(m_type) == IPV4)
+            int32_t retVal { -1 };
+
+            if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
             {
-                retVal = IPv4Address(m_remoteAddresses.at(AddressField::IP));
+                std::stringstream ss;
+                ss << std::hex << m_localAddresses.at(AddressField::PORT);
+                ss >> retVal;
             }
-            else if (IPVERSION_TYPE.at(m_type) == IPV6)
+
+            return retVal;
+        }
+        std::string remoteIP() const override
+        {
+            std::string retVal;
+
+            if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
             {
-                retVal = IPv6Address(m_remoteAddresses.at(AddressField::IP));
+                if (IPVERSION_TYPE.at(m_type) == IPV4)
+                {
+                    retVal = IPv4Address(m_remoteAddresses.at(AddressField::IP));
+                }
+                else if (IPVERSION_TYPE.at(m_type) == IPV6)
+                {
+                    retVal = IPv6Address(m_remoteAddresses.at(AddressField::IP));
+                }
             }
-        }
-        return retVal;
-    }
-    int32_t remotePort() const override
-    {
-        int32_t retVal { -1 };
-        if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
-        {
-            std::stringstream ss;
-            ss << std::hex << m_remoteAddresses.at(AddressField::PORT);
-            ss >> retVal;
-        }
-        return retVal;
-    }
-    int32_t txQueue() const override
-    {
-        int32_t retVal { -1 };
-        if (m_queue.size() == QueueField::QUEUE_FIELD_SIZE)
-        {
-            std::stringstream ss;
-            ss << std::hex << m_queue.at(QueueField::TX);
-            ss >> retVal;
-        }
-        return retVal;
-    }
-    int32_t rxQueue() const override
-    {
-        int32_t retVal { -1 };
-        if (m_queue.size() == QueueField::QUEUE_FIELD_SIZE)
-        {
-            std::stringstream ss;
-            ss << std::hex << m_queue.at(QueueField::RX);
-            ss >> retVal;
-        }
-        return retVal;
-    }
-    int32_t inode() const override
-    {
-        return std::stoi(m_fields.at(INODE));
-    }
-    std::string state() const override
-    {
-        std::string retVal;
-        const auto it { PROTOCOL_TYPE.find(m_type) };
 
-        if (PROTOCOL_TYPE.end() != it && TCP == it->second)
+            return retVal;
+        }
+        int32_t remotePort() const override
         {
-            std::stringstream ss;
-            int32_t state { 0 };
-            ss << std::hex << m_fields.at(STATE);
-            ss >> state;
+            int32_t retVal { -1 };
 
-            const auto itState { STATE_TYPE.find(state) };
-
-            if (STATE_TYPE.end() != itState)
+            if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
             {
-                retVal = itState->second;
+                std::stringstream ss;
+                ss << std::hex << m_remoteAddresses.at(AddressField::PORT);
+                ss >> retVal;
             }
+
+            return retVal;
         }
-        return retVal;
-    }
+        int32_t txQueue() const override
+        {
+            int32_t retVal { -1 };
 
-    std::string processName() const override
-    {
-        return {};
-    }
+            if (m_queue.size() == QueueField::QUEUE_FIELD_SIZE)
+            {
+                std::stringstream ss;
+                ss << std::hex << m_queue.at(QueueField::TX);
+                ss >> retVal;
+            }
 
-    int32_t pid() const override
-    {
-        return {};
-    }
+            return retVal;
+        }
+        int32_t rxQueue() const override
+        {
+            int32_t retVal { -1 };
+
+            if (m_queue.size() == QueueField::QUEUE_FIELD_SIZE)
+            {
+                std::stringstream ss;
+                ss << std::hex << m_queue.at(QueueField::RX);
+                ss >> retVal;
+            }
+
+            return retVal;
+        }
+        int32_t inode() const override
+        {
+            return std::stoi(m_fields.at(INODE));
+        }
+        std::string state() const override
+        {
+            std::string retVal;
+            const auto it { PROTOCOL_TYPE.find(m_type) };
+
+            if (PROTOCOL_TYPE.end() != it && TCP == it->second)
+            {
+                std::stringstream ss;
+                int32_t state { 0 };
+                ss << std::hex << m_fields.at(STATE);
+                ss >> state;
+
+                const auto itState { STATE_TYPE.find(state) };
+
+                if (STATE_TYPE.end() != itState)
+                {
+                    retVal = itState->second;
+                }
+            }
+
+            return retVal;
+        }
+
+        std::string processName() const override
+        {
+            return {};
+        }
+
+        int32_t pid() const override
+        {
+            return {};
+        }
 };
 
 

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Fluent Forwarder
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January 25, 2019.
  *
  * This program is free software; you can redistribute it
@@ -72,6 +72,7 @@ const wm_context WM_FLUENT_CONTEXT = {
     (wm_routine)wm_fluent_main,
     (wm_routine)(void *)wm_fluent_destroy,
     (cJSON * (*)(const void *))wm_fluent_dump,
+    NULL,
     NULL
 };
 

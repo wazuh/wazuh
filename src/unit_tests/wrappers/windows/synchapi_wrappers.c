@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -26,4 +26,11 @@ HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
     check_expected(bInitialState);
     check_expected(lpName);
     return mock_type(HANDLE);
+}
+
+DWORD wrap_WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable) {
+    check_expected(hHandle);
+    check_expected(dwMilliseconds);
+    check_expected(bAlertable);
+    return mock_type(DWORD);
 }

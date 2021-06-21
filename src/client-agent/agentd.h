@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -31,10 +31,6 @@
 #define WARNING 1
 #define FULL 2
 #define FLOOD 3
-
-
-/* Resolve hostname */
-void resolveHostname(char **hostname, int attempts);
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);

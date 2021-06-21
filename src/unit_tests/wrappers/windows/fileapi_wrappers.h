@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -23,6 +23,10 @@
 #undef  GetFileTime
 #define GetFileTime      wrap_GetFileTime
 #define GetFileAttributesA wrap_GetFileAttributesA
+#undef FindFirstFile
+#define FindFirstFile wrap_FindFirstFile
+#undef FindNextFile
+#define FindNextFile wrap_FindNextFile
 
 HANDLE wrap_CreateFile(LPCSTR lpFileName,
                        DWORD dwDesiredAccess,
@@ -58,5 +62,9 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
                       LPFILETIME lpCreationTime,
                       LPFILETIME lpLastAccessTime,
                       LPFILETIME lpLastWriteTime);
+
+HANDLE wrap_FindFirstFile(LPCSTR lpFileName,  LPWIN32_FIND_DATAA lpFindFileData);
+
+BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData);
 
 #endif

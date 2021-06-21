@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import logging
@@ -26,7 +26,7 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         logging.handlers.TimedRotatingFileHandler.doRollover(self)
 
         # Set appropiate permissions
-        #os.chown(self.baseFilename, common.ossec_uid(), common.ossec_gid())
+        #os.chown(self.baseFilename, common.wazuh_uid(), common.wazuh_gid())
         #os.chmod(self.baseFilename, 0o660)
 
         # Save rotated file in /logs/wazuh directory

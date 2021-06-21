@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -52,5 +52,11 @@ int __wrap_fileno (FILE *__stream);
 int __wrap_fgetc(FILE * stream);
 
 int __wrap__fseeki64(FILE *stream, long offset, int whence);
+
+FILE *__wrap_popen(const char *command, const char *type);
+
+int __wrap_pclose(FILE *stream);
+
+int __wrap_fputc(char character, FILE *stream);
 
 #endif

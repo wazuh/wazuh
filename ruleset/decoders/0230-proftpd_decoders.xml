@@ -2,7 +2,7 @@
   -  ProFTPD decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -17,6 +17,12 @@
   - proftpd[2344]: refused connect from 192.168.1.2 (192.168.1.2)
   - proftpd[15181]: valhalla (crawl-66-249-66-80.googlebot.com[66.249.66.80]) - Connection from crawl-66-249-66-80.googlebot.com [66.249.66.80] denied.
   - proftpd[26169] server.example.net: Fatal: unable to open incoming connection: Der Socket ist nicht verbunden
+
+  - More different logs examples:
+  - Oct 24 09:30:30 devXXX proftpd[119259]: [authpriv.notice]: 0.0.0.0 (54.86.105.198[54.86.105.198]) - USER 24-0-proc (Login failed): No such user found
+  - Oct 24 09:31:08 devXXX proftpd[39209]: [authpriv.info]: 0.0.0.0 (54.86.105.198[54.86.105.198]) - USER 24-0-proc: Login successful.
+  - Oct 24 09:29:57 devXXX proftpd[1150]: [authpriv.notice]: 0.0.0.0 (181.49.117.130[181.49.117.130]) - USER root (Login failed): Incorrect password
+  - Oct 22 23:23:34 devXXX proftpd[13512]: [authpriv.notice]: 0.0.0.0 (211.177.150.14[211.177.150.14]) - Maximum login attempts (6) exceeded, connection refused
   -->
 <decoder name="proftpd">
   <program_name>^proftpd</program_name>
@@ -31,8 +37,15 @@
   <fts>name, user, srcip, location</fts>
 </decoder>
 
+<decoder name="proftpd-login failed">
+  <parent>proftpd</parent>
+  <prematch>Login failed</prematch>
+  <regex>^[\.+]: \S+ \(\S+[(\S+)]\) \w+ USER (\S*)</regex>
+  <order>srcip, user</order>
+</decoder>
+
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
-  <regex>^\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[(\S+)]\)</regex>
+  <regex>\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[(\S+)]\)</regex>
   <order>srcip</order>
 </decoder>

@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is free software; you can redistribute it
@@ -135,7 +135,6 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_CLEAR,
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
-    WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_FILE_CLEAR,
     WDB_STMT_FIM_FILE_DELETE_AROUND,
@@ -285,6 +284,7 @@ extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
 extern char *schema_upgrade_v6_sql;
 extern char *schema_upgrade_v7_sql;
+extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 
@@ -712,6 +712,16 @@ void wdb_pool_append(wdb_t * wdb);
 
 void wdb_pool_remove(wdb_t * wdb);
 
+/**
+ * @brief Duplicate the database pool
+ *
+ * Gets a copy of the database pool. This function fills the member "id" and
+ * creates the mutex only.
+ *
+ * @return Pointer to a database list.
+ */
+wdb_t * wdb_pool_copy();
+
 void wdb_close_all();
 
 void wdb_commit_old();
@@ -833,17 +843,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
  * @return -1 on error, and 0 on success.
  */
 int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output);
-
-
-/**
- * @brief Function to get values from MITRE database.
- *
- * @param [in] wdb The MITRE struct database.
- * @param [in] input The query to get a value.
- * @param [out] output The response of the query.
- * @return 1 Success: response contains the value. 0 On error: the value was not found. -1 On error: invalid DB query syntax.
- */
-int wdb_parse_mitre_get(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the agent insert request.
@@ -1241,18 +1240,6 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
  * @retval -1 On error.
  */
 int wdb_journal_wal(sqlite3 *db);
-
-/**
- * @brief Function to get a MITRE technique's name.
- *
- * @param [in] wdb The MITRE struct database.
- * @param [in] id MITRE technique's ID.
- * @param [out] output MITRE technique's name.
- * @retval 1 Sucess: name found on MITRE database.
- * @retval 0 On error: name not found on MITRE database.
- * @retval -1 On error: invalid DB query syntax.
- */
-int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
 
 /**
  * @brief Function to insert an agent.

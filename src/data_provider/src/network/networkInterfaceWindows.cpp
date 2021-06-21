@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 4, 2020.
  *
  * This program is free software; you can redistribute it
@@ -22,7 +22,7 @@ std::shared_ptr<IOSNetwork> FactoryWindowsNetwork::create(const std::shared_ptr<
     {
         const auto family { interfaceWrapper->family() };
 
-        if(Utils::NetworkWindowsHelper::IPV4 == family)
+        if (Utils::NetworkWindowsHelper::IPV4 == family)
         {
             ret = std::make_shared<WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>>(interfaceWrapper);
         }
@@ -34,15 +34,14 @@ std::shared_ptr<IOSNetwork> FactoryWindowsNetwork::create(const std::shared_ptr<
         {
             ret = std::make_shared<WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>>(interfaceWrapper);
         }
-        else
-        {
-            throw std::runtime_error { "Error creating Windows network data retriever." };
-        }
+
+        // else: The current interface family is not supported
     }
     else
     {
         throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
     }
+
     return ret;
 }
 
@@ -57,13 +56,17 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>::buildNetworkData(nlo
 {
     // Get IPv4 address
     const auto address { m_interfaceAddress->address() };
+
     if (!address.empty())
     {
-        networkV4["IPv4"]["address"] = address;
-        networkV4["IPv4"]["netmask"] =  m_interfaceAddress->netmask();
-        networkV4["IPv4"]["broadcast"] = m_interfaceAddress->broadcast();
-        networkV4["IPv4"]["metric"] = m_interfaceAddress->metrics();
-        networkV4["IPv4"]["dhcp"] = m_interfaceAddress->dhcp();
+        nlohmann::json ipv4JS;
+        ipv4JS["address"] = address;
+        ipv4JS["netmask"] =  m_interfaceAddress->netmask();
+        ipv4JS["broadcast"] = m_interfaceAddress->broadcast();
+        ipv4JS["metric"] = m_interfaceAddress->metrics();
+        ipv4JS["dhcp"] = m_interfaceAddress->dhcp();
+
+        networkV4["IPv4"].push_back(ipv4JS);
     }
     else
     {
@@ -75,14 +78,17 @@ template <>
 void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV6>::buildNetworkData(nlohmann::json& networkV6)
 {
     const auto address { m_interfaceAddress->addressV6() };
+
     if (!address.empty())
     {
-        networkV6["IPv6"]["address"] = address;
-        networkV6["IPv6"]["netmask"] = m_interfaceAddress->netmaskV6();
-        networkV6["IPv6"]["broadcast"] = m_interfaceAddress->broadcastV6();
-        networkV6["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
-        networkV6["IPv6"]["dhcp"] = m_interfaceAddress->dhcp();
+        nlohmann::json ipv6JS { };
+        ipv6JS["address"] = address;
+        ipv6JS["netmask"] = m_interfaceAddress->netmaskV6();
+        ipv6JS["broadcast"] = m_interfaceAddress->broadcastV6();
+        ipv6JS["metric"] = m_interfaceAddress->metricsV6();
+        ipv6JS["dhcp"] = m_interfaceAddress->dhcp();
 
+        networkV6["IPv6"].push_back(ipv6JS);
     }
     else
     {

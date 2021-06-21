@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -53,7 +53,10 @@ static sqlite3* openSQLiteDb(const std::string& path)
 }
 
 Connection::Connection(const std::string& path)
-: m_db{ openSQLiteDb(path), [](sqlite3* p){ sqlite3_close_v2(p); } }
+    : m_db{ openSQLiteDb(path), [](sqlite3 * p)
+{
+    sqlite3_close_v2(p);
+} }
 {}
 
 void Connection::close()
@@ -67,7 +70,7 @@ const std::shared_ptr<sqlite3>& Connection::db() const
 }
 
 Connection::Connection()
-: Connection(DB_DEFAULT_PATH)
+    : Connection(DB_DEFAULT_PATH)
 {}
 
 void Connection::execute(const std::string& query)
@@ -79,9 +82,10 @@ void Connection::execute(const std::string& query)
             SQLITE_CONNECTION_ERROR
         };
     }
+
     const auto result
     {
-        sqlite3_exec(m_db.get(), query.c_str(), 0,0, nullptr)
+        sqlite3_exec(m_db.get(), query.c_str(), 0, 0, nullptr)
     };
     checkSqliteResult(result, query + ". " + sqlite3_errmsg(m_db.get()));
 }
@@ -96,18 +100,18 @@ Transaction::~Transaction()
         }
     }
     //dtor should never throw
-    catch(...)
+    catch (...)
     {}
 }
 
 Transaction::Transaction(std::shared_ptr<IConnection>& connection)
-: m_connection{ connection }
-, m_rolledBack{ false }
-, m_commited{ false }
+    : m_connection{ connection }
+    , m_rolledBack{ false }
+    , m_commited{ false }
 {
     m_connection->execute("BEGIN TRANSACTION");
 }
-    
+
 void Transaction::commit()
 {
     if (!m_rolledBack && !m_commited)
@@ -128,7 +132,7 @@ void Transaction::rollback()
         }
     }
     //rollback can be called in a catch statement to unwind things so it shouldn't throw
-    catch(...)
+    catch (...)
     {}
 }
 
@@ -156,8 +160,11 @@ static sqlite3_stmt* prepareSQLiteStatement(std::shared_ptr<IConnection>& connec
 
 Statement::Statement(std::shared_ptr<IConnection>& connection,
                      const std::string& query)
-: m_connection{ connection }
-, m_stmt{ prepareSQLiteStatement(m_connection, query), [](sqlite3_stmt* p){ sqlite3_finalize(p); } }
+    : m_connection{ connection }
+    , m_stmt{ prepareSQLiteStatement(m_connection, query), [](sqlite3_stmt * p)
+{
+    sqlite3_finalize(p);
+} }
 , m_bindParametersCount{ sqlite3_bind_parameter_count(m_stmt.get()) }
 , m_bindParametersIndex{ 0 }
 {}
@@ -165,14 +172,17 @@ Statement::Statement(std::shared_ptr<IConnection>& connection,
 int32_t Statement::step()
 {
     auto ret { SQLITE_ERROR };
-    if(m_bindParametersIndex == m_bindParametersCount)
+
+    if (m_bindParametersIndex == m_bindParametersCount)
     {
         ret = sqlite3_step(m_stmt.get());
+
         if (SQLITE_ROW != ret && SQLITE_DONE != ret)
         {
             checkSqliteResult(ret, sqlite3_errmsg(m_connection->db().get()));
         }
     }
+
     return ret;
 }
 
@@ -236,8 +246,8 @@ int Statement::columnsCount() const
 }
 Column::Column(std::shared_ptr<sqlite3_stmt>& stmt,
                const int32_t index)
-: m_stmt{ stmt }
-, m_index{ index }
+    : m_stmt{ stmt }
+    , m_index{ index }
 {}
 
 bool Column::hasValue() const
@@ -270,6 +280,6 @@ double_t Column::value(const double_t&) const
 }
 std::string Column::value(const std::string&) const
 {
-    const auto str { reinterpret_cast<const char *>(sqlite3_column_text(m_stmt.get(), m_index)) };
+    const auto str { reinterpret_cast<const char*>(sqlite3_column_text(m_stmt.get(), m_index)) };
     return nullptr != str ? str : "";
 }

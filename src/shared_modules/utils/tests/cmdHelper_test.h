@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 19, 2020.
  *
  * This program is free software; you can redistribute it
@@ -15,12 +15,12 @@
 
 class CmdUtilsTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    CmdUtilsTest() = default;
-    virtual ~CmdUtilsTest() = default;
+        CmdUtilsTest() = default;
+        virtual ~CmdUtilsTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //CMD_HELPER_TESTS_H

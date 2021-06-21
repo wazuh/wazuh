@@ -1,6 +1,11 @@
 
 # Tests list and flags
 
+list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
+    -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,_merror \
+    -Wl,--wrap,pthread_rwlock_wrlock")
+list(APPEND shared_tests_names "test_list_op")
+
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
     set(FILE_OP_BASE_FLAGS "-Wl,--wrap,stat,--wrap,chmod,--wrap,getpid,--wrap,_mdebug1 \
@@ -14,7 +19,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror")
+    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror,--wrap,mdebug2")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
@@ -36,7 +41,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execu
 list(APPEND shared_tests_names "test_version_op")
 set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets \
-                           -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen -Wl,--wrap,pclose")
 list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS}")
 
 list(APPEND shared_tests_names "test_queue_op")
@@ -56,7 +61,7 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
                                 -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                                 -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
                                 -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                                -Wl,--wrap=fgets -Wl,--wrap,getpid")
+                                -Wl,--wrap=fgets -Wl,--wrap,getpid -Wl,--wrap,OS_CloseSocket")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()
@@ -147,8 +152,10 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wra
 endif()
 
 list(APPEND shared_tests_names "test_keys")
-list(APPEND shared_tests_flags "-Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Create \
-                                -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete")
+list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
+
+list(APPEND shared_tests_names "test_atomic")
+list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

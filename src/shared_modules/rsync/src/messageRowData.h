@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 10, 2020.
  *
  * This program is free software; you can redistribute it
@@ -19,38 +19,38 @@ namespace RSync
     template <class Type>
     class MessageRowData final : public IMessageCreator<Type>
     {
-    public:
-        // LCOV_EXCL_START
-        ~MessageRowData() = default;
-        void send(const ResultCallback /*callback*/, const nlohmann::json& /*config*/, const Type& /*data*/) override
-        {
-            throw rsync_error { NOT_SPECIALIZED_FUNCTION };
-        }
-        // LCOV_EXCL_STOP
+        public:
+            // LCOV_EXCL_START
+            ~MessageRowData() = default;
+            void send(const ResultCallback /*callback*/, const nlohmann::json& /*config*/, const Type& /*data*/) override
+            {
+                throw rsync_error { NOT_SPECIALIZED_FUNCTION };
+            }
+            // LCOV_EXCL_STOP
     };
     template <>
     class MessageRowData<nlohmann::json> final : public IMessageCreator<nlohmann::json>
     {
-    public:
-        // LCOV_EXCL_START
-        ~MessageRowData() = default;
-        // LCOV_EXCL_STOP
-        void send(const ResultCallback callback, const nlohmann::json& config, const nlohmann::json& data) override
-        {
-            nlohmann::json outputMessage;
-            outputMessage["component"] = config.at("component");
-            outputMessage["type"] = "state";
+        public:
+            // LCOV_EXCL_START
+            ~MessageRowData() = default;
+            // LCOV_EXCL_STOP
+            void send(const ResultCallback callback, const nlohmann::json& config, const nlohmann::json& data) override
+            {
+                nlohmann::json outputMessage;
+                outputMessage["component"] = config.at("component");
+                outputMessage["type"] = "state";
 
-            nlohmann::json outputData;
-            outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
-            const auto lastEvent{config.find("last_event")};
-            outputData["timestamp"] = (lastEvent != config.end()) ? data.at(lastEvent->get_ref<const std::string&>()) : "";
-            outputData["attributes"] = data;
+                nlohmann::json outputData;
+                outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
+                const auto lastEvent{config.find("last_event")};
+                outputData["timestamp"] = (lastEvent != config.end()) ? data.at(lastEvent->get_ref<const std::string&>()) : "";
+                outputData["attributes"] = data;
 
-            outputMessage["data"] = outputData;
+                outputMessage["data"] = outputData;
 
-            callback(outputMessage.dump());
-        }
+                callback(outputMessage.dump());
+            }
     };
 };// namespace RSync
 

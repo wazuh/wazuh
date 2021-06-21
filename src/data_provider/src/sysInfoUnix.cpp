@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 23, 2020.
  *
  * This program is free software; you can redistribute it
@@ -21,6 +21,7 @@ static void getOsInfoFromUname(nlohmann::json& info)
     bool result{false};
     std::string platform;
     const auto osPlatform{Utils::exec("uname")};
+
     if (osPlatform.find("SunOS") != std::string::npos)
     {
         constexpr auto SOLARIS_RELEASE_FILE{"/etc/release"};
@@ -28,12 +29,13 @@ static void getOsInfoFromUname(nlohmann::json& info)
         std::fstream file{SOLARIS_RELEASE_FILE, std::ios_base::in};
         result = spParser && file.is_open() && spParser->parseFile(file, info);
     }
-    else if(osPlatform.find("HP-UX") != std::string::npos)
+    else if (osPlatform.find("HP-UX") != std::string::npos)
     {
         const auto spParser{FactorySysOsParser::create("hp-ux")};
         result = spParser && spParser->parseUname(Utils::exec("uname -r"), info);
     }
-    if(!result)
+
+    if (!result)
     {
         info["os_name"] = "Unix";
         info["os_platform"] = "Unix";
@@ -69,8 +71,9 @@ nlohmann::json SysInfo::getPackages() const
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
-    struct utsname uts{};
+    struct utsname uts {};
     getOsInfoFromUname(ret);
+
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
@@ -79,6 +82,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
     }
+
     return ret;
 }
 nlohmann::json SysInfo::getProcessesInfo() const

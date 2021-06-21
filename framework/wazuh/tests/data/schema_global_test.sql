@@ -1,6 +1,6 @@
 /*
  * SQL Schema agent tests
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * February 13, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS belongs
 -- manager
 INSERT INTO agent (id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_uname, os_arch,
                    version, manager_host, node_name, date_add, last_keepalive, status, connection_status, `group`) VALUES
-                   (0,'master','127.0.0.1','Ubuntu','18.04.1 LTS','18','04','Bionic Beaver','ubuntu',
+                   (0,'master','127.0.0.1','Ubuntu','20.04.1 LTS','20','04','Bionic Beaver','ubuntu',
                    'Linux |master |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.9.0','master','node01',strftime('%s','now','-10 days'),253402300799,
                     'updated','active',NULL);
@@ -63,7 +63,7 @@ INSERT INTO agent (id, name, ip, os_name, os_version, os_major, os_minor, os_cod
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
                    last_keepalive, status, connection_status, `group`) VALUES (1,'agent-1','172.17.0.202','any',
-                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
+                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','16.06.1 LTS','16','06',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
@@ -96,7 +96,7 @@ INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, 
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
                    last_keepalive, status, connection_status) VALUES (5,'agent-5','172.17.0.300','172.17.0.300',
-                   'b3650e11eba2f27er4d160c69de533ee7eed601636a42ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
+                   'b3650e11eba2f27er4d160c69de533ee7eed601636a42ba2455d53a90927747f', 'Ubuntu','18.08.1 LTS','18','08',
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
@@ -108,8 +108,8 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
                    last_keepalive, status, connection_status, `group`) VALUES (6,'agent-6','172.17.0.401','any',
-                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
-                   'Bionic Beaver','ubuntu',
+                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Xubuntu','21.04.1 LTS','21','04',
+                   'Bionic Beaver','xubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
@@ -132,12 +132,24 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
                    os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
                    last_keepalive, status, connection_status, `group`) VALUES (8,'agent-8','172.17.0.502','any',
-                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Ubuntu','18.04.1 LTS','18','04',
-                   'Bionic Beaver','ubuntu',
+                   'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f', 'Xubuntu','18.04.1 LTS','18','04',
+                   'Bionic Beaver','xubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',strftime('%s','now','-4 days'),
                     strftime('%s','now','-12 seconds'),'updated','active','group-2,group-1');
+
+
+-- Connected agent with a different OS
+INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
+                   os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, date_add,
+                   last_keepalive, status, connection_status, `group`) VALUES (9,'agent-9','172.17.0.503','any',
+                   'b3650e11eba2f27er4d160c69de533ee7ffd601636a85ba2455d53a90927747f', 'Windows','10.0.0 XP','10','00',
+                   'XP classic','windows',
+                   'Windows |agent-9 |3.14-45 |#46-Windows SMP Thu Dec 32 24:45:28 UTC 2022 |x86_64','x86_64',
+                   'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
+                   'node01',strftime('%s','now','-4 days'),
+                    strftime('%s','now','-5 seconds'),'updated','active','default');
 
 
 -- Create group-1 and group-2

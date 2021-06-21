@@ -197,7 +197,7 @@ InstallSecurityConfigurationAssessmentFiles()
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
         for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
             if [ -f "../ruleset/sca/$FILE" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca
+                ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca
             else
                 echo "ERROR: SCA policy not found: ../ruleset/sca/$FILE"
             fi
@@ -210,7 +210,7 @@ InstallSecurityConfigurationAssessmentFiles()
         for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
             FILENAME=$(basename $FILE)
             if [ -f "../ruleset/sca/$FILE" ] && [ ! -f "${INSTALLDIR}/ruleset/sca/$FILENAME" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca/
+                ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca/
                 mv ${INSTALLDIR}/ruleset/sca/$FILENAME ${INSTALLDIR}/ruleset/sca/$FILENAME.disabled
             fi
         done
@@ -446,7 +446,7 @@ WriteManager()
     if [ "$EMAILNOTIFY" = "yes"   ]; then
         sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
         s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>ossecm@example.wazuh.com</email_from>|<email_from>ossecm@${HOST}</email_from>|g; \
+        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
         s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
     else
         cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
@@ -579,7 +579,7 @@ WriteLocal()
     if [ "$EMAILNOTIFY" = "yes"   ]; then
         sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
         s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>ossecm@example.wazuh.com</email_from>|<email_from>ossecm@${HOST}</email_from>|g; \
+        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
         s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
     else
         cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
@@ -674,10 +674,8 @@ WriteLocal()
 InstallCommon()
 {
 
-    OSSEC_GROUP='ossec'
-    OSSEC_USER='ossec'
-    OSSEC_USER_MAIL='ossecm'
-    OSSEC_USER_REM='ossecr'
+    WAZUH_GROUP='wazuh'
+    WAZUH_USER='wazuh'
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -699,22 +697,22 @@ InstallCommon()
         INSTALL="/opt/freeware/bin/install"
     fi
 
-    ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${INSTALLDIR} ${INSTYPE}
+    ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/wazuh
-  ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.log
-  ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.json
-  ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/logs/active-responses.log
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/
+  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/wazuh
+  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.log
+  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.json
+  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/active-responses.log
 
     if [ ${INSTYPE} = 'agent' ]; then
         ${INSTALL} -d -m 0750 -o root -g 0 ${INSTALLDIR}/bin
     else
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/bin
+        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/bin
     fi
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/lib
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/lib
 
     if [ ${NUNAME} = 'Darwin' ]
     then
@@ -724,10 +722,25 @@ InstallCommon()
         fi
     elif [ -f libwazuhext.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} libwazuhext.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhext.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhext.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f libwazuhshared.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 libwazuhshared.dylib ${INSTALLDIR}/lib
+        fi
+    elif [ -f libwazuhshared.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
         fi
     fi
 
@@ -740,7 +753,7 @@ InstallCommon()
         fi
     elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libdbsync.so
@@ -757,7 +770,7 @@ InstallCommon()
         fi
     elif [ -f shared_modules/rsync/build/lib/librsync.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} shared_modules/rsync/build/lib/librsync.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/rsync/build/lib/librsync.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librsync.so
@@ -773,7 +786,7 @@ InstallCommon()
         fi
     elif [ -f data_provider/build/lib/libsysinfo.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} data_provider/build/lib/libsysinfo.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} data_provider/build/lib/libsysinfo.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsysinfo.so
@@ -792,7 +805,7 @@ InstallCommon()
         fi
     elif [ -f wazuh_modules/syscollector/build/lib/libsyscollector.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} wazuh_modules/syscollector/build/lib/libsyscollector.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/build/lib/libsyscollector.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsyscollector.so
@@ -806,104 +819,104 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/queue
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/alerts
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/sockets
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/diff
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/fim
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/fim/db
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/syscollector
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/syscollector/db
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
+  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/alerts
+  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sockets
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/diff
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim/db
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
 
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/logcollector
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/ruleset
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/ruleset/sca
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/sca
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles
-  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/wodles
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
 
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/etc
+  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
 
     if [ -f /etc/localtime ]
     then
-         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${INSTALLDIR}/etc
+         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
     fi
 
-  ${INSTALL} -d -m 1770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/tmp
+  ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
 
     if [ -f /etc/TIMEZONE ]; then
-         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
+         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
     # Solaris Needs some extra files
     if [ ${DIST_NAME} = "SunOS" ]; then
-      ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/
+      ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/
         cp -rf /usr/share/lib/zoneinfo/* ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        chown root:${OSSEC_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/*
+        chown root:${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/*
         find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
         find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
 
     if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
-        ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then
         if [ ${INSTYPE} = 'agent' ]; then
-            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         else
-            ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0640 -o wazuh -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         fi
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/ossec.conf ]; then
         if [ -f  ../etc/ossec.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/ossec.conf
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/ossec.conf
         else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${INSTALLDIR}/etc/ossec.conf
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${OSSEC_CONF_SRC} ${INSTALLDIR}/etc/ossec.conf
         fi
     fi
 
-  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/etc/shared
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/active-response
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/active-response/bin
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/agentless
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${INSTALLDIR}/agentless/
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/agentless
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} agentlessd/scripts/* ${INSTALLDIR}/agentless/
 
-  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/.ssh
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/.ssh
 
   ./init/fw-check.sh execute
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/*.sh ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/*.py ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} firewall-drop ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} default-firewall-drop ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} pf ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} npf ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ipfw ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} firewalld-drop ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} disable-account ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} host-deny ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ip-customblock ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} restart-wazuh ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} route-null ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} kaspersky ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/*.sh ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/*.py ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewall-drop ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} default-firewall-drop ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} pf ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} npf ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ipfw ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewalld-drop ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} disable-account ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} host-deny ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ip-customblock ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} restart-wazuh ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} route-null ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} kaspersky ${INSTALLDIR}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var
-  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/run
-  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/upgrade
-  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/selinux
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
 
   if [ -f selinux/wazuh.pp ]
   then
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
     InstallSELinuxPolicyPackage
   fi
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/backup
+  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup
 
 }
 
@@ -912,17 +925,17 @@ InstallLocal()
 
     InstallCommon
 
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/etc/decoders
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/etc/rules
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/var/multigroups
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/db
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/db/agents
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/download
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/archives
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/alerts
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/firewall
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/api
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/etc/rootcheck
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/decoders
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rules
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/multigroups
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db/agents
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/download
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/archives
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/alerts
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rootcheck
 
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentlessd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-analysisd ${INSTALLDIR}/bin
@@ -932,66 +945,66 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-logtest-legacy ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-dbd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-regex ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-integratord ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
 
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/stats
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/ruleset/decoders
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/ruleset/rules
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/stats
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/decoders
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/rules
 
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../ruleset/rules/*.xml ${INSTALLDIR}/ruleset/rules
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../ruleset/decoders/*.xml ${INSTALLDIR}/ruleset/decoders
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/rules/*.xml ${INSTALLDIR}/ruleset/rules
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/decoders/*.xml ${INSTALLDIR}/ruleset/decoders
+    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
 
     if [ ! -f ${INSTALLDIR}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${INSTALLDIR}/etc/decoders/local_decoder.xml
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_decoder.xml ${INSTALLDIR}/etc/decoders/local_decoder.xml
     fi
     if [ ! -f ${INSTALLDIR}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${INSTALLDIR}/etc/rules/local_rules.xml
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_rules.xml ${INSTALLDIR}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists ]; then
-        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/etc/lists
+        ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${INSTALLDIR}/etc/lists/amazon
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../ruleset/lists/amazon/* ${INSTALLDIR}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/amazon/* ${INSTALLDIR}/etc/lists/amazon/
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../ruleset/lists/audit-keys ${INSTALLDIR}/etc/lists/audit-keys
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/audit-keys ${INSTALLDIR}/etc/lists/audit-keys
     fi
     if [ ! -f ${INSTALLDIR}/etc/lists/security-eventchannel ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
     fi
 
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/fts
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/agentless
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/db
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fts
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agentless
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/integrations
-    ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/pagerduty ${INSTALLDIR}/integrations/pagerduty
-    ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/slack ${INSTALLDIR}/integrations/slack.py
-    ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/virustotal ${INSTALLDIR}/integrations/virustotal.py
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/integrations
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/pagerduty ${INSTALLDIR}/integrations/pagerduty
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/slack ${INSTALLDIR}/integrations/slack.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/virustotal ${INSTALLDIR}/integrations/virustotal.py
     touch ${INSTALLDIR}/logs/integrations.log
     chmod 640 ${INSTALLDIR}/logs/integrations.log
-    chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${INSTALLDIR}/logs/integrations.log
+    chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/logs/integrations.log
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
     fi
 
     # Install Vulnerability Detector files
-    ${INSTALL} -d -m 0660 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/vulnerabilities
-    ${INSTALL} -d -m 0440 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/vulnerabilities/dictionaries
-    ${INSTALL} -m 0440 -o root -g ${OSSEC_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${INSTALLDIR}/queue/vulnerabilities/dictionaries
+    ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vulnerabilities
+    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vulnerabilities/dictionaries
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${INSTALLDIR}/queue/vulnerabilities/dictionaries
 
     # Install Task Manager files
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/tasks
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
 
     ### Install Python
     ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
@@ -1025,62 +1038,62 @@ InstallServer()
     InstallLocal
 
     # Install cluster files
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/cluster
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/cluster
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/cluster
 
-    ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${INSTALLDIR}/etc/shared/default
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/backup/shared
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared/default
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/shared
 
     TransferShared
 
     ${INSTALL} -m 0750 -o root -g 0 wazuh-remoted ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${INSTALLDIR}/bin
 
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/rids
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/agent-groups
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent-groups
 
     if [ ! -f ${INSTALLDIR}/queue/agents-timestamp ]; then
-        ${INSTALL} -m 0600 -o root -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
+        ${INSTALL} -m 0600 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
     fi
 
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/backup/agents
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/backup/groups
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/groups
 
-    ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
 
     if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/shared/agent-template.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
     fi
 
     # Install the plugins files
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/aws
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3.py
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/aws/aws-s3
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/aws/aws-s3
 
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/gcloud
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/gcloud.py ${INSTALLDIR}/wodles/gcloud/gcloud.py
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/integration.py ${INSTALLDIR}/wodles/gcloud/integration.py
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/tools.py ${INSTALLDIR}/wodles/gcloud/tools.py
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/gcloud/gcloud
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/gcloud.py ${INSTALLDIR}/wodles/gcloud/gcloud.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/integration.py ${INSTALLDIR}/wodles/gcloud/integration.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/tools.py ${INSTALLDIR}/wodles/gcloud/tools.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/gcloud/gcloud
 
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/docker
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${INSTALLDIR}/wodles/docker/DockerListener.py
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/docker/DockerListener
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/docker
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/docker-listener/DockerListener.py ${INSTALLDIR}/wodles/docker/DockerListener.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/docker/DockerListener
 
     # Add Azure script (for manager only)
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/azure
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs.py
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/azure/azure-logs
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/azure/azure-logs
 
     GenerateAuthCert
 
     # Add the wrappers for python script in active-response
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/slack
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/virustotal
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/slack
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/virustotal
 
 }
 
@@ -1094,29 +1107,29 @@ InstallAgent()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${INSTALLDIR}/bin
 
-    ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/rids
-    ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/var/incoming
-    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpk_root.pem ${INSTALLDIR}/etc/
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming
+    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wpk_root.pem ${INSTALLDIR}/etc/
 
     # Install the plugins files
     # Don't install the plugins if they are already installed. This check affects
     # hybrid installation mode
     if [ ! -d ${INSTALLDIR}/wodles/aws ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/aws
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3
+        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3
     fi
 
     if [ ! -d ${INSTALLDIR}/wodles/gcloud ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/gcloud
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/gcloud.py ${INSTALLDIR}/wodles/gcloud/gcloud
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/integration.py ${INSTALLDIR}/wodles/gcloud/integration.py
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/gcloud/tools.py ${INSTALLDIR}/wodles/gcloud/tools.py
+        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/gcloud.py ${INSTALLDIR}/wodles/gcloud/gcloud
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/integration.py ${INSTALLDIR}/wodles/gcloud/integration.py
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/tools.py ${INSTALLDIR}/wodles/gcloud/tools.py
     fi
 
     if [ ! -d ${INSTALLDIR}/wodles/docker ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/docker
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${INSTALLDIR}/wodles/docker/DockerListener
+        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/docker
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/docker-listener/DockerListener.py ${INSTALLDIR}/wodles/docker/DockerListener
     fi
 
 }

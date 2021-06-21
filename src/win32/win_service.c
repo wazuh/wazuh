@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -27,6 +27,7 @@ static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;
 
 void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv);
 void wm_kill_children();
+extern void stop_wmodules();
 
 /* Start OSSEC-HIDS service */
 int os_start_service()
@@ -248,21 +249,23 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
     if (ossecServiceStatusHandle) {
         switch (dwOpcode) {
             case SERVICE_CONTROL_STOP:
-                ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 ossecServiceStatus.dwWin32ExitCode          = 0;
                 ossecServiceStatus.dwCheckPoint             = 0;
                 ossecServiceStatus.dwWaitHint               = 0;
 
                 minfo("Received exit signal.");
-                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-                minfo("Exiting...");
-
 #ifdef OSSECHIDS
+                ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
+                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+                minfo("Set pending exit signal.");
+
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
+                stop_wmodules();
 #endif
-                return;
-            default:
+                ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
+                SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+                minfo("Exiting...");
                 break;
         }
     }

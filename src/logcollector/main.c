@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -185,8 +185,6 @@ int main(int argc, char **argv)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
-
-    minfo(STARTUP_MSG, (int)getpid());
 
     /* Start the queue */
     if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {

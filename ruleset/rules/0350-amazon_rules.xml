@@ -1,7 +1,7 @@
 <!--
   -  Amazon rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -201,40 +201,40 @@ ID: 80200 - 80499
 
     <rule id="80351" level="3">
         <if_sid>80350</if_sid>
-        <field name="aws.severity">INFO</field>
-        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <field name="aws.severity.description">INFO</field>
+        <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description)</description>
         <group>aws_macie,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="80352" level="4">
         <if_sid>80350</if_sid>
-        <field name="aws.severity">LOW</field>
-        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <field name="aws.severity.description">LOW</field>
+        <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description)</description>
         <group>aws_macie,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="80353" level="6">
         <if_sid>80350</if_sid>
-        <field name="aws.severity">MEDIUM</field>
-        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <field name="aws.severity.description">MEDIUM</field>
+        <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description)</description>
         <group>aws_macie,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="80354" level="8">
         <if_sid>80350</if_sid>
-        <field name="aws.severity">HIGH</field>
-        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <field name="aws.severity.description">HIGH</field>
+        <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description)</description>
         <group>aws_macie,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="80355" level="12">
         <if_sid>80350</if_sid>
-        <field name="aws.severity">CRITICAL</field>
-        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <field name="aws.severity.description">CRITICAL</field>
+        <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description)</description>
         <group>aws_macie,</group>
         <options>no_full_log</options>
     </rule>
@@ -278,15 +278,15 @@ ID: 80200 - 80499
 
     <rule id="80441" level="0">
         <if_sid>80440</if_sid>
-        <match>"ALLOW"</match>
+        <field name="aws.action">ALLOW</field>
         <description>AWS WAF - Allowed request.</description>
         <group>aws_waf,aws_waf_allow,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="80442" level="3">
-        <if_sid>80440,80441</if_sid>
-        <match>"BLOCK"</match>
+        <if_sid>80440</if_sid>
+        <field name="aws.action">BLOCK</field>
         <description>AWS WAF - Blocked request.</description>
         <group>aws_waf,aws_waf_block,</group>
         <options>no_full_log</options>
@@ -298,7 +298,7 @@ ID: 80200 - 80499
         <same_field>aws.httpRequest.clientIp</same_field>
         <options>no_full_log</options>
     </rule>
-  
+
     <!-- AWS Config -->
     <!-- Documentation: https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html -->
     <rule id="80450" level="0">
@@ -334,7 +334,7 @@ ID: 80200 - 80499
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
     </rule>
-  
+
     <rule id="80454" level="3">
         <if_sid>80451</if_sid>
         <field name="aws.configurationItemStatus">ResourceDiscovered</field>
@@ -342,7 +342,7 @@ ID: 80200 - 80499
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
     </rule>
-  
+
     <rule id="80455" level="3">
         <if_sid>80451</if_sid>
         <field name="aws.configurationItemStatus">ResourceNotRecorded</field>
@@ -350,7 +350,7 @@ ID: 80200 - 80499
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
     </rule>
-  
+
     <rule id="80456" level="3">
         <if_sid>80451</if_sid>
         <field name="aws.configurationItemStatus">ResourceDeleted</field>
@@ -358,14 +358,14 @@ ID: 80200 - 80499
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
     </rule>
-  
+
     <rule id="80457" level="3">
         <if_sid>80451</if_sid>
         <field name="aws.configurationItemStatus">ResourceDeletedNotRecorded</field>
         <description>The resource was deleted but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
-    </rule> 
+    </rule>
 
     <!-- Config Snapshot -->
     <rule id="80475" level="3">

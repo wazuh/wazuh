@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -18,6 +18,7 @@
 #define static
 #endif
 
+static pthread_mutex_t restart_mutex = PTHREAD_MUTEX_INITIALIZER;
 /// Pending restart bit field
 static struct {
     unsigned syscheck:1;
@@ -44,8 +45,10 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
  */
 int os_check_restart_syscheck()
 {
+    w_mutex_lock(&restart_mutex);
     int current = os_restart.syscheck;
     os_restart.syscheck = 0;
+    w_mutex_unlock(&restart_mutex);
     return current;
 }
 
@@ -54,16 +57,20 @@ int os_check_restart_syscheck()
  */
 int os_check_restart_rootcheck()
 {
+    w_mutex_lock(&restart_mutex);
     int current = os_restart.rootcheck;
     os_restart.rootcheck = 0;
+    w_mutex_unlock(&restart_mutex);
     return current;
 }
 
 /* Set syscheck and rootcheck to be restarted */
 void os_set_restart_syscheck()
 {
+    w_mutex_lock(&restart_mutex);
     os_restart.syscheck = 1;
     os_restart.rootcheck = 1;
+    w_mutex_unlock(&restart_mutex);
 }
 
 /* Read the agent name for the current agent

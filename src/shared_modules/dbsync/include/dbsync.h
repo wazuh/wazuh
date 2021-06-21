@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -240,7 +240,7 @@ EXPORTED int dbsync_update_with_snapshot_cb(const DBSYNC_HANDLE handle,
 EXPORTED void dbsync_free_result(cJSON** js_data);
 
 #ifdef __cplusplus
-    }
+}
 #endif
 
 #endif // _DBSYNC_H_

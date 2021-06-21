@@ -7,8 +7,8 @@ import pytest
 
 with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
-        with patch('wazuh.core.common.ossec_uid'):
-            with patch('wazuh.core.common.ossec_gid'):
+        with patch('wazuh.core.common.wazuh_uid'):
+            with patch('wazuh.core.common.wazuh_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
                 from wazuh.core.cluster import utils
@@ -37,6 +37,12 @@ def test_read_cluster_config():
     with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=WazuhError(1001)):
         with pytest.raises(WazuhError, match='.* 3006 .*'):
             utils.read_cluster_config()
+
+    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=SystemExit):
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            utils.read_cluster_config(from_import=True)
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
 
     with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=KeyError(1)):
         with pytest.raises(WazuhError, match='.* 3006 .*'):
@@ -142,12 +148,13 @@ def test_get_cluster_items():
                                                         'description': 'agents group configuration'},
                                'excluded_files': ['ar.conf', 'ossec.conf'],
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
-                     'intervals': {'worker': {'sync_integrity': 9, 'sync_files': 10, 'keep_alive': 60,
-                                              'connection_retry': 10, 'max_failed_keepalive_attempts': 2},
+                     'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_info_ko_retry': 1,
+                                              'keep_alive': 60, 'connection_retry': 10,
+                                              'max_failed_keepalive_attempts': 2},
                                    'master': {'recalculate_integrity': 8, 'check_worker_lastkeepalive': 60,
                                               'max_allowed_time_without_keepalive': 120},
-                                   'communication': {'timeout_cluster_request': 20, 'timeout_api_request': 200,
-                                                     'timeout_api_exe': 10, 'timeout_receiving_file': 120}},
+                                   'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
+                                                     'timeout_receiving_file': 120}},
                      'sync_options': {'get_agentinfo_newer_than': 1800}, 'distributed_api': {'enabled': True}}
 
 

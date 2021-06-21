@@ -192,7 +192,7 @@ checks:
       - 'c:coreadm'
       - 'c:coreadm -> r:per-process core dumps: disabled'
       - 'c:coreadm -> r:per-process setid core dumps: disabled'
-      - 'c:stat -c%u-%g-%a /var/cores -> r:^\d-\d-700'
+      - 'c:stat -L -c%u-%g-%a /var/cores -> r:^\d-\d-700'
 
   - id: 8014 
     title: "Enable Stack Protection"
@@ -565,7 +565,7 @@ checks:
     rules:
       - 'f:/etc/issue -> r:Authorized users only. All activity may be monitored and reported'
       - 'f:/etc/motd -> r:Authorized users only. All activity may be monitored and reported'
-      - 'c:stat -c%u-%g-%a /etc/issue -> r:^0-0-644'
+      - 'c:stat -L -c%u-%g-%a /etc/issue -> r:^0-0-644'
 
   - id: 8042 
     title: "Enable a Warning Banner for the SSH Service"

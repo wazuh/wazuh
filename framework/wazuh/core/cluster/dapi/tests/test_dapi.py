@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from asyncio import TimeoutError
+from typing import Iterator
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -15,8 +16,8 @@ from wazuh.core import common
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -50,11 +51,19 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
     dapi = DistributedAPI(**dapi_kwargs)
     try:
         raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+        if expected_error:
+            assert False, f'Expected exception not generated: {expected_error}'
     except ProblemException as e:
         if expected_error:
             assert e.ext['code'] == expected_error
         else:
             assert False, f'Unexpected exception: {e.ext}'
+
+
+@pytest.fixture(scope="session", autouse=True)
+def default_session_fixture() -> Iterator[None]:
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
+        yield
 
 
 @pytest.mark.parametrize('kwargs', [
@@ -326,17 +335,17 @@ def test_DistributedAPI_get_solver_node(mock_cluster_status, mock_agents_overvie
             with patch('wazuh.agent.get_agents_in_group', return_value=expected):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'group_id': 'default'}, 'nodes': ['master']}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1755)
+                raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             expected.affected_items = []
             with patch('wazuh.agent.get_agents_in_group', return_value=expected):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'group_id': 'noexist'}, 'nodes': ['master']}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1755)
+                raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'node_list': '*'}, 'broadcasting': True, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1755)
+            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
 
 @pytest.mark.parametrize('api_request', [

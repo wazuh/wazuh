@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 8, 2020.
  *
  * This program is free software; you can redistribute it
@@ -34,13 +34,15 @@ namespace Utils
         const std::unique_ptr<FILE, FileSmartDeleter> file{popen(cmd.c_str(), "r")};
         char buffer[bufferSize];
         std::string result;
+
         if (file)
         {
-            while(fgets(buffer, bufferSize, file.get()))
+            while (fgets(buffer, bufferSize, file.get()))
             {
                 result += buffer;
             }
         }
+
         return result;
     }
 }

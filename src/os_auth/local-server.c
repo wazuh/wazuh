@@ -1,6 +1,6 @@
 /*
  * Local Authd server
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * May 20, 2017.
  *
  * This program is free software; you can redistribute it
@@ -28,7 +28,8 @@ typedef enum auth_local_err {
     ENOAGENT,
     EDUPID,
     EAGLIM,
-    EINVGROUP
+    EINVGROUP,
+    ENOMASTER
 } auth_local_err;
 
 
@@ -49,7 +50,8 @@ static const struct {
     { 9011, "Agent ID not found" },
     { 9012, "Duplicated ID" },
     { 9013, "Maximum number of agents reached" },
-    { 9014, "Invalid Group(s) Name(s)"}
+    { 9014, "Invalid Group(s) Name(s)" },
+    { 9015, "Cannot execute this request on a worker node" }
 };
 
 // Dispatch local request
@@ -105,9 +107,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             if (errno != EINTR) {
                 merror_exit("at run_local_server(): select(): %s", strerror(errno));
             }
-
             continue;
-
         case 0:
             continue;
         }
@@ -116,7 +116,6 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
                 merror("at run_local_server(): accept(): %s", strerror(errno));
             }
-
             continue;
         }
 
@@ -171,7 +170,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
 // Dispatch local request
 char* local_dispatch(const char *input) {
-    cJSON *request;
+    cJSON *request = NULL;
     cJSON *function;
     cJSON *arguments;
     cJSON *response = NULL;
@@ -179,6 +178,11 @@ char* local_dispatch(const char *input) {
     int ierror;
 
     if (input[0] == '{') {
+        if (config.worker_node) {
+            ierror = ENOMASTER;
+            goto fail;
+        }
+
         const char *jsonErrPtr;
         if (request = cJSON_ParseWithOpts(input, &jsonErrPtr, 0), !request) {
             ierror = EJSON;
@@ -220,9 +224,9 @@ char* local_dispatch(const char *input) {
 
             ip = item->valuestring;
 
-            if(item = cJSON_GetObjectItem(arguments, "groups"), item) {
+            if (item = cJSON_GetObjectItem(arguments, "groups"), item) {
                 groups = wstr_delete_repeated_groups(item->valuestring);
-                if (!groups){
+                if (!groups) {
                     ierror = EINVGROUP;
                     goto fail;
                 }
@@ -230,7 +234,9 @@ char* local_dispatch(const char *input) {
 
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
             force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
+
             response = local_add(id, name, ip, groups, key, force);
+
             os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
             cJSON *item;
@@ -247,6 +253,7 @@ char* local_dispatch(const char *input) {
             }
 
             purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
+
             response = local_remove(item->valuestring, purge);
         } else if (!strcmp(function->valuestring, "get")) {
             cJSON *item;
@@ -304,8 +311,8 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     w_mutex_lock(&mutex_keys);
 
     /* Check if groups are valid to be aggregated */
-    if (groups){
-        if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)){
+    if (groups) {
+        if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)) {
             ierror = EINVGROUP;
             goto fail;
         }
@@ -368,7 +375,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     }
 
 
-    if(groups) {
+    if (groups) {
         char path[PATH_MAX];
         if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             ierror = EINVGROUP;

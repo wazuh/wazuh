@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 7, 2020.
  *
  * This program is free software; you can redistribute it
@@ -24,8 +24,8 @@
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
-#include "packages/packagesLinuxParserHelper.h"
 #include "packages/berkeleyRpmDbHelper.h"
+#include "packages/packageLinuxDataRetriever.h"
 
 struct ProcTableDeleter
 {
@@ -45,6 +45,7 @@ using SysInfoProcess        = std::unique_ptr<proc_t, ProcTableDeleter>;
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
     const auto pos{line.find(separator)};
+
     if (pos != std::string::npos)
     {
         const auto key{Utils::trim(line.substr(0, pos), " \t\"")};
@@ -58,15 +59,18 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
     std::string info;
     std::fstream file{fileName, std::ios_base::in};
     const bool ret{file.is_open()};
+
     if (ret)
     {
         std::string line;
-        while(file.good())
+
+        while (file.good())
         {
             std::getline(file, line);
             parseLineAndFillMap(line, separator, systemInfo);
         }
     }
+
     return ret;
 }
 
@@ -86,13 +90,16 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     if (process->cmdline && process->cmdline[0])
     {
         commandLine = process->cmdline[0];
+
         for (int idx = 1; process->cmdline[idx]; ++idx)
         {
             const auto cmdlineArgSize { sizeof(process->cmdline[idx]) };
-            if(strnlen(process->cmdline[idx], cmdlineArgSize) != 0)
+
+            if (strnlen(process->cmdline[idx], cmdlineArgSize) != 0)
             {
                 commandLineArgs += process->cmdline[idx];
-                if (process->cmdline[idx+1])
+
+                if (process->cmdline[idx + 1])
                 {
                     commandLineArgs += " ";
                 }
@@ -129,6 +136,7 @@ std::string SysInfo::getSerialNumber() const
 {
     std::string serial;
     std::fstream file{WM_SYS_HW_DIR, std::ios_base::in};
+
     if (file.is_open())
     {
         file >> serial;
@@ -137,6 +145,7 @@ std::string SysInfo::getSerialNumber() const
     {
         serial = UNKNOWN_VALUE;
     }
+
     return serial;
 }
 
@@ -146,10 +155,12 @@ std::string SysInfo::getCpuName() const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     const auto& it { systemInfo.find("model name") };
+
     if (it != systemInfo.end())
     {
         retVal = it->second;
     }
+
     return retVal;
 }
 
@@ -159,6 +170,7 @@ int SysInfo::getCpuCores() const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     const auto& it { systemInfo.find("processor") };
+
     if (it != systemInfo.end())
     {
         retVal = std::stoi(it->second) + 1;
@@ -174,6 +186,7 @@ int SysInfo::getCpuMHz() const
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
 
     const auto& it { systemInfo.find("cpu MHz") };
+
     if (it != systemInfo.end())
     {
         retVal = std::stoi(it->second) + 1;
@@ -187,87 +200,34 @@ void SysInfo::getMemory(nlohmann::json& info) const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
 
-    auto memTotal{ 1 };
-    auto memFree{ 0 };
+    auto memTotal{ 1ull };
+    auto memFree{ 0ull };
 
     const auto& itTotal { systemInfo.find("MemTotal") };
+
     if (itTotal != systemInfo.end())
     {
-        memTotal = std::stoi(itTotal->second);
+        memTotal = std::stoull(itTotal->second);
     }
 
     const auto& itFree { systemInfo.find("MemFree") };
+
     if (itFree != systemInfo.end())
     {
-        memFree = std::stoi(itFree->second);
+        memFree = std::stoull(itFree->second);
     }
 
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };
     info["ram_total"] = ramTotal;
     info["ram_free"] = memFree;
-    info["ram_usage"] = 100 - (100*memFree/ramTotal);
+    info["ram_usage"] = 100 - (100 * memFree / ramTotal);
 }
 
-static nlohmann::json getRpmInfo()
-{
-    nlohmann::json ret;
-    BerkeleyRpmDBReader db(std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE));
-
-    for (std::string row = db.getNext() ; !row.empty() ; row = db.getNext())
-    {
-        const auto& package{ PackageLinuxHelper::parseRpm(row) };
-        if (!package.empty())
-        {
-            ret.push_back(package);
-        }
-    }
-    return ret;
-}
-
-static nlohmann::json getDpkgInfo(const std::string& fileName)
-{
-    nlohmann::json ret;
-    std::fstream file{fileName, std::ios_base::in};
-    if (file.is_open())
-    {
-        while(file.good())
-        {
-            std::string line;
-            std::vector<std::string> data;
-            do
-            {
-                std::getline(file, line);
-                if(line.front() == ' ')//additional info
-                {
-                    data.back() = data.back() + line + "\n";
-                }
-                else
-                {
-                    data.push_back(line + "\n");
-                }
-            }
-            while(!line.empty());//end of package item info
-            const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
-            if (!packageInfo.empty())
-            {
-                ret.push_back(packageInfo);
-            }
-        }
-    }
-    return ret;
-}
 
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    if (Utils::existsDir(DPKG_PATH))
-    {
-        packages = getDpkgInfo(DPKG_STATUS_PATH);
-    }
-    else if (Utils::existsDir(RPM_PATH))
-    {
-        packages = getRpmInfo();
-    }
+    FactoryPackagesCreator<LINUX_TYPE>::getPackages(packages);
     return packages;
 }
 
@@ -281,30 +241,34 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
         {"centos",      CENTOS_RELEASE_FILE     },
         {"fedora",      "/etc/fedora-release"   },
         {"rhel",        "/etc/redhat-release"   },
-        {"ubuntu",      "/etc/lsb-release"      },
         {"gentoo",      "/etc/gentoo-release"   },
         {"suse",        "/etc/SuSE-release"     },
         {"arch",        "/etc/arch-release"     },
         {"debian",      "/etc/debian_version"   },
         {"slackware",   "/etc/slackware-version"},
+        {"ubuntu",      "/etc/lsb-release"      },
     };
     const auto parseFnc
     {
-        [&info](const std::string& fileName, const std::string& platform)
+        [&info](const std::string & fileName, const std::string & platform)
         {
             std::fstream file{fileName, std::ios_base::in};
+
             if (file.is_open())
             {
                 const auto spParser{FactorySysOsParser::create(platform)};
                 return spParser->parseFile(file, info);
             }
+
             return false;
         }
     };
+
     for (const auto& unixReleaseFile : UNIX_RELEASE_FILES)
     {
         ret |= parseFnc(unixReleaseFile, "unix");
     }
+
     if (ret)
     {
         ret |= parseFnc(CENTOS_RELEASE_FILE, "centos");
@@ -313,22 +277,29 @@ static bool getOsInfoFromFiles(nlohmann::json& info)
     {
         for (const auto& platform : PLATFORMS_RELEASE_FILES)
         {
-            ret |= parseFnc(platform.second, platform.first);
+            if (parseFnc(platform.second, platform.first))
+            {
+                ret = true;
+                break;
+            }
         }
     }
+
     return ret;
 }
 
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
-    struct utsname uts{};
+    struct utsname uts {};
+
     if (!getOsInfoFromFiles(ret))
     {
         ret["os_name"] = "Linux";
         ret["os_platform"] = "linux";
         ret["os_version"] = UNKNOWN_VALUE;
     }
+
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
@@ -337,6 +308,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
     }
+
     return ret;
 }
 
@@ -350,12 +322,14 @@ nlohmann::json SysInfo::getProcessesInfo() const
     };
 
     SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
+
     while (nullptr != spProcInfo)
     {
         // Append the current json process object to the list of processes
         jsProcessesList.push_back(getProcessInfo(spProcInfo));
         spProcInfo.reset(readproc(spProcTable.get(), nullptr));
     }
+
     return jsProcessesList;
 }
 
@@ -367,14 +341,20 @@ nlohmann::json SysInfo::getNetworks() const
     std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
 
-    for(const auto& interface : networkInterfaces)
+    for (const auto& interface : networkInterfaces)
     {
         nlohmann::json ifaddr {};
 
         for (auto addr : interface.second)
         {
-            FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr))->buildNetworkData(ifaddr);
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
+
+            if (networkInterfacePtr)
+            {
+                networkInterfacePtr->buildNetworkData(ifaddr);
+            }
         }
+
         networks["iface"].push_back(ifaddr);
     }
 
@@ -384,14 +364,17 @@ nlohmann::json SysInfo::getNetworks() const
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports;
-    for (const auto &portType : PORTS_TYPE)
+
+    for (const auto& portType : PORTS_TYPE)
     {
-        const auto fileContent { Utils::getFileContent(WM_SYS_NET_DIR+portType.second) };
-        const auto rows { Utils::split(fileContent,'\n') };
+        const auto fileContent { Utils::getFileContent(WM_SYS_NET_DIR + portType.second) };
+        const auto rows { Utils::split(fileContent, '\n') };
         auto fileBody { false };
+
         for (auto row : rows)
         {
             nlohmann::json port {};
+
             if (fileBody)
             {
                 row = Utils::trim(row);
@@ -400,8 +383,10 @@ nlohmann::json SysInfo::getPorts() const
                 std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
                 ports["ports"].push_back(port);
             }
+
             fileBody = true;
         }
     }
+
     return ports;
 }

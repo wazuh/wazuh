@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,7 +12,16 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <string.h>
 
 time_t __wrap_time(__attribute__ ((unused)) time_t *t) {
     return mock_type(time_t);
+}
+
+char *__wrap_ctime_r(const time_t *timep, char *buf) {
+    check_expected(timep);
+
+    strncpy(buf, mock_type(const char *), 26);
+
+    return buf;
 }

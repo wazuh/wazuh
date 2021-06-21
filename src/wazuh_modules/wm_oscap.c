@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for OpenSCAP
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is free software; you can redistribute it
@@ -22,6 +22,7 @@ const wm_context WM_OSCAP_CONTEXT = {
     (wm_routine)wm_oscap_main,
     (wm_routine)(void *)wm_oscap_destroy,
     (cJSON * (*)(const void *))wm_oscap_dump,
+    NULL,
     NULL
 };
 

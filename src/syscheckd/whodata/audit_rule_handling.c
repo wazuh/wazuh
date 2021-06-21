@@ -79,9 +79,10 @@ void remove_audit_rule_syscheck(const char *path) {
 }
 
 int fim_rules_initial_load() {
-    unsigned int i = 0;
     int retval;
     char *directory = NULL;
+    directory_t *dir_it = NULL;
+    OSListNode *node_it;
     int rules_added = 0;
     int auditd_fd = audit_open();
     int res = audit_get_rule_list(auditd_fd);
@@ -92,14 +93,16 @@ int fim_rules_initial_load() {
         merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
     }
 
+    w_rwlock_rdlock(&syscheck.directories_lock);
     w_mutex_lock(&rules_mutex);
-    for (i = 0; syscheck.dir[i]; i++) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         // Check if dir[i] is set in whodata mode
-        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue; // LCOV_EXCL_LINE
         }
 
-        directory = fim_get_real_path(i);
+        directory = fim_get_real_path(dir_it);
         if (*directory == '\0') {
             free(directory); // LCOV_EXCL_LINE
             continue; // LCOV_EXCL_LINE
@@ -138,8 +141,9 @@ int fim_rules_initial_load() {
         // real_path can't be NULL
         free(directory);
     }
-
     w_mutex_unlock(&rules_mutex);
+    w_rwlock_unlock(&syscheck.directories_lock);
+
     return rules_added;
 }
 
@@ -245,7 +249,7 @@ void clean_rules(void) {
 
     w_mutex_lock(&rules_mutex);
 
-    audit_thread_active = 0;
+    atomic_int_set(&audit_thread_active, 0);
     mdebug2(FIM_AUDIT_DELETE_RULE);
 
     for (node = OSList_GetFirstNode(whodata_directories); node != NULL;
@@ -274,7 +278,7 @@ int fim_audit_rules_init() {
 
 void *audit_reload_thread() {
     sleep(RELOAD_RULES_INTERVAL);
-    while (audit_thread_active) {
+    while (atomic_int_get(&audit_thread_active) == 1) {
         fim_audit_reload_rules();
 
         sleep(RELOAD_RULES_INTERVAL);

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysCollector
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 15, 2020.
  *
  * This program is free software; you can redistribute it
@@ -35,7 +35,7 @@ void syscollector_start(const unsigned int inverval,
 {
     std::function<void(const std::string&)> callbackDiffWrapper
     {
-        [callbackDiff](const std::string& data)
+        [callbackDiff](const std::string & data)
         {
             callbackDiff(data.c_str());
         }
@@ -43,7 +43,7 @@ void syscollector_start(const unsigned int inverval,
 
     std::function<void(const std::string&)> callbackSyncWrapper
     {
-        [callbackSync](const std::string& data)
+        [callbackSync](const std::string & data)
         {
             callbackSync(data.c_str());
         }
@@ -51,7 +51,7 @@ void syscollector_start(const unsigned int inverval,
 
     std::function<void(const syscollector_log_level_t, const std::string&)> callbackLogWrapper
     {
-        [callbackLog](const syscollector_log_level_t level, const std::string& data)
+        [callbackLog](const syscollector_log_level_t level, const std::string & data)
         {
             callbackLog(level, data.c_str());
         }
@@ -59,13 +59,14 @@ void syscollector_start(const unsigned int inverval,
 
     std::function<void(const std::string&)> callbackErrorLogWrapper
     {
-        [callbackLog](const std::string& data)
+        [callbackLog](const std::string & data)
         {
             callbackLog(SYS_LOG_ERROR, data.c_str());
         }
     };
 
     DBSync::initialize(callbackErrorLogWrapper);
+
     try
     {
         Syscollector::instance().init(std::make_shared<SysInfo>(),
@@ -86,7 +87,7 @@ void syscollector_start(const unsigned int inverval,
                                       processes,
                                       hotfixes);
     }
-    catch(const std::exception& ex)
+    catch (const std::exception& ex)
     {
         callbackErrorLogWrapper(ex.what());
     }
@@ -99,14 +100,16 @@ void syscollector_stop()
 int syscollector_sync_message(const char* data)
 {
     int ret{-1};
+
     try
     {
         Syscollector::instance().push(data);
         ret = 0;
     }
-    catch(...)
+    catch (...)
     {
     }
+
     return ret;
 }
 

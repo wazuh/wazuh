@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -14,15 +14,16 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysInfoMacPackagesTest : public ::testing::Test {
+class SysInfoMacPackagesTest : public ::testing::Test
+{
 
-protected:
+    protected:
 
-    SysInfoMacPackagesTest() = default;
-    virtual ~SysInfoMacPackagesTest() = default;
+        SysInfoMacPackagesTest() = default;
+        virtual ~SysInfoMacPackagesTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_MAC_PACKAGES_TEST_H

@@ -30,6 +30,8 @@
 
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
+extern unsigned int count_reload_retries;
+
 /* setup/teardown */
 static int setup_group(void **state) {
     (void) state;
@@ -48,42 +50,51 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+static int setup_config(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    directory_t *directory0 = fim_create_directory("/var/test", WHODATA_ACTIVE, NULL, 512, NULL, 1024, 0);
+
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return -1;
+    }
+
+    OSList_InsertData(syscheck.directories, NULL, directory0);
+
+    return 0;
+}
+
+static int teardown_config(void **state) {
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    if (syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            free_directory(node_it->data);
+            node_it->data = NULL;
+        }
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
+
+    return 0;
+}
+
 static int free_string(void **state) {
     char * string = *state;
     free(string);
     return 0;
 }
 
-
-static int setup_add_audit_rules(void **state) {
-    syscheck.symbolic_links = calloc(2, sizeof(char *));
-
-    if (syscheck.symbolic_links == NULL) {
-        return -1;
-    }
-
-    syscheck.symbolic_links[0] = NULL;
-
-    return 0;
-}
-
-static int teardown_add_audit_rules(void **state) {
-    extern unsigned int count_reload_retries;
-
-    if (syscheck.symbolic_links[0] != NULL) {
-        free(syscheck.symbolic_links[0]);
-        syscheck.symbolic_links[0] = NULL;
-    }
-
-    if (syscheck.symbolic_links != NULL) {
-        free(syscheck.symbolic_links);
-        syscheck.symbolic_links = NULL;
-    }
-
-    count_reload_retries = 0;
-
-    return 0;
-}
 
 void test_filterkey_audit_events_custom(void **state) {
     (void) state;
@@ -561,25 +572,20 @@ void test_audit_parse_delete(void **state) {
 
 
 void test_audit_parse_delete_recursive(void **state) {
-    (void) state;
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
-    extern unsigned int count_reload_retries;
-    count_reload_retries = 0;
-    // In audit_reload_rules()
-    char *entry = "/var/test";
-    syscheck.dir = calloc (2, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc (2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
+
     syscheck.max_audit_entries = 100;
 
+    count_reload_retries = 0;
+    // In audit_reload_rules()
     expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 5);
 
     will_return_count(__wrap_fim_manipulated_audit_rules, 0, 5);
     expect_string_count(__wrap__mwarn, formatted_msg, FIM_WARN_AUDIT_RULES_MODIFIED, 5);
     expect_function_calls(__wrap_fim_audit_reload_rules, 4);
 
+    expect_value(__wrap_atomic_int_set, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_set, 0);
 
     expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 5);
     expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 6);
@@ -592,9 +598,7 @@ void test_audit_parse_delete_recursive(void **state) {
         audit_parse(buffer);
     }
 
-    free(syscheck.opts);
-    free(syscheck.dir[0]);
-    free(syscheck.dir);
+    count_reload_retries = 0;
 }
 
 
@@ -798,7 +802,7 @@ void test_audit_parse_rm_hc(void **state) {
 
 void test_audit_parse_add_hc(void **state) {
     (void) state;
-
+    extern atomic_int_t audit_health_check_creation;
     char * buffer = " \
         type=SYSCALL msg=audit(1571988027.797:3004340): arch=c000003e syscall=257 success=yes exit=0 a0=ffffff9c a1=55578e6d8490 a2=200 a3=7f9cd931bca0 items=3 ppid=3211 pid=56650 auid=2 uid=30 gid=5 euid=2 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts3 ses=5 comm=\"touch\" exe=\"/usr/bin/touch\" key=\"wazuh_hc\" \
         type=CWD msg=audit(1571988027.797:3004340): cwd=\"/root/test\" \
@@ -810,6 +814,9 @@ void test_audit_parse_add_hc(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_hc\"'");
     expect_string(__wrap__mdebug2, formatted_msg, "(6252): Whodata health-check: Detected file creation event (257)");
+
+    expect_value(__wrap_atomic_int_set, atomic, &audit_health_check_creation);
+    will_return(__wrap_atomic_int_set, 1);
 
     audit_parse(buffer);
 }
@@ -1105,8 +1112,8 @@ int main(void) {
         cmocka_unit_test(test_audit_parse4),
         cmocka_unit_test(test_audit_parse_hex),
         cmocka_unit_test(test_audit_parse_empty_fields),
-        cmocka_unit_test_setup_teardown(test_audit_parse_delete, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_audit_parse_delete_recursive, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test(test_audit_parse_delete),
+        cmocka_unit_test_setup_teardown(test_audit_parse_delete_recursive, setup_config, teardown_config),
         cmocka_unit_test(test_audit_parse_mv),
         cmocka_unit_test(test_audit_parse_mv_hex),
         cmocka_unit_test(test_audit_parse_rm),

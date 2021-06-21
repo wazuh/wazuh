@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,6 +9,13 @@
  */
 
 #include "syscheck_op.h"
+
+const char *SYSCHECK_EVENT_STRINGS[] = {
+    [FIM_ADDED] = "added",
+    [FIM_MODIFIED] = "modified",
+    [FIM_READDED] = "readded",
+    [FIM_DELETED] = "deleted"
+};
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
@@ -336,7 +343,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     assert(f_name != NULL);
     assert(sum != NULL);
 
-    os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[FIM_FILE].value);
 
     if (sum->size) {
@@ -375,15 +381,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if (sum->mtime) {
-        lf->mtime_after = sum->mtime;
-        os_calloc(20, sizeof(char), lf->fields[FIM_MTIME].value);
-        snprintf(lf->fields[FIM_MTIME].value, 20, "%ld", sum->mtime);
+        lf->fields[FIM_MTIME].value = w_long_str(sum->mtime);
     }
 
     if (sum->inode) {
-        lf->inode_after = sum->inode;
-        os_calloc(20, sizeof(char), lf->fields[FIM_INODE].value);
-        snprintf(lf->fields[FIM_INODE].value, 20, "%ld", sum->inode);
+        lf->fields[FIM_INODE].value = w_long_str(sum->inode);
     }
 
     if(sum->sha256) {
@@ -395,82 +397,66 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if(sum->wdata.user_id) {
-        os_strdup(sum->wdata.user_id, lf->user_id);
         os_strdup(sum->wdata.user_id, lf->fields[FIM_USER_ID].value);
     }
 
     if(sum->wdata.user_name) {
-        os_strdup(sum->wdata.user_name, lf->user_name);
         os_strdup(sum->wdata.user_name, lf->fields[FIM_USER_NAME].value);
     }
 
     if(sum->wdata.group_id) {
-        os_strdup(sum->wdata.group_id, lf->group_id);
         os_strdup(sum->wdata.group_id, lf->fields[FIM_GROUP_ID].value);
     }
 
     if(sum->wdata.group_name) {
-        os_strdup(sum->wdata.group_name, lf->group_name);
         os_strdup(sum->wdata.group_name, lf->fields[FIM_GROUP_NAME].value);
     }
 
     if(sum->wdata.process_name) {
-        os_strdup(sum->wdata.process_name, lf->process_name);
         os_strdup(sum->wdata.process_name, lf->fields[FIM_PROC_NAME].value);
     }
 
     if(sum->wdata.parent_name) {
-        os_strdup(sum->wdata.parent_name, lf->parent_name);
         os_strdup(sum->wdata.parent_name, lf->fields[FIM_PROC_PNAME].value);
     }
 
     if(sum->wdata.cwd) {
-        os_strdup(sum->wdata.cwd, lf->cwd);
         os_strdup(sum->wdata.cwd, lf->fields[FIM_AUDIT_CWD].value);
     }
 
     if(sum->wdata.parent_cwd) {
-        os_strdup(sum->wdata.parent_cwd, lf->parent_cwd);
         os_strdup(sum->wdata.parent_cwd, lf->fields[FIM_AUDIT_PCWD].value);
     }
 
     if(sum->wdata.audit_uid) {
-        os_strdup(sum->wdata.audit_uid, lf->audit_uid);
         os_strdup(sum->wdata.audit_uid, lf->fields[FIM_AUDIT_ID].value);
     }
 
     if(sum->wdata.audit_name) {
-        os_strdup(sum->wdata.audit_name, lf->audit_name);
         os_strdup(sum->wdata.audit_name, lf->fields[FIM_AUDIT_NAME].value);
     }
 
     if(sum->wdata.effective_uid) {
-        os_strdup(sum->wdata.effective_uid, lf->effective_uid);
         os_strdup(sum->wdata.effective_uid, lf->fields[FIM_EFFECTIVE_UID].value);
     }
 
     if(sum->wdata.effective_name) {
-        os_strdup(sum->wdata.effective_name, lf->effective_name);
         os_strdup(sum->wdata.effective_name, lf->fields[FIM_EFFECTIVE_NAME].value);
     }
 
     if(sum->wdata.ppid) {
-        os_strdup(sum->wdata.ppid, lf->ppid);
         os_strdup(sum->wdata.ppid, lf->fields[FIM_PPID].value);
     }
 
     if(sum->wdata.process_id) {
-        os_strdup(sum->wdata.process_id, lf->process_id);
         os_strdup(sum->wdata.process_id, lf->fields[FIM_PROC_ID].value);
     }
 
     if(sum->tag) {
-        os_strdup(sum->tag, lf->sk_tag);
         os_strdup(sum->tag, lf->fields[FIM_TAG].value);
     }
 
     if(sum->symbolic_path) {
-        os_strdup(sum->symbolic_path, lf->sym_path);
         os_strdup(sum->symbolic_path, lf->fields[FIM_SYM_PATH].value);
     }
 }
@@ -891,8 +877,12 @@ int copy_ace_info(void *ace, char *perm, int perm_size) {
         }
     }
 
-    if (written + 1 < perm_size) {
+    written = snprintf(NULL, 0, "|%s,%d,%d", sid_str ? sid_str : account_name, ace_type, mask);
+
+    if (written > 0 && written + 1 < perm_size) {
         written = snprintf(perm, perm_size, "|%s,%d,%d", sid_str ? sid_str : account_name, ace_type, mask);
+    } else {
+        written = 0;
     }
 
 end:
@@ -1217,9 +1207,7 @@ char *decode_win_permissions(char *raw_perm) {
         if (perm_it = strchr(perm_it, ','), !perm_it) {
             goto error;
         }
-        *perm_it = '\0';
         a_type = *base_it;
-        *perm_it = ',';
 
         // Get the access mask
         base_it = ++perm_it;
@@ -1230,6 +1218,27 @@ char *decode_win_permissions(char *raw_perm) {
         } else {
             // End of the msg
             mask = strtol(base_it, NULL, 10);
+        }
+
+        size = snprintf(NULL, 0, "%s (%s): %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", account_name,
+                        a_type == '0' ? "allowed" : "denied", mask & GENERIC_READ ? "generic_read|" : "",
+                        mask & GENERIC_WRITE ? "generic_write|" : "", mask & GENERIC_EXECUTE ? "generic_execute|" : "",
+                        mask & GENERIC_ALL ? "generic_all|" : "", mask & DELETE ? "delete|" : "",
+                        mask & READ_CONTROL ? "read_control|" : "", mask & WRITE_DAC ? "write_dac|" : "",
+                        mask & WRITE_OWNER ? "write_owner|" : "", mask & SYNCHRONIZE ? "synchronize|" : "",
+                        mask & FILE_READ_DATA ? "read_data|" : "", mask & FILE_WRITE_DATA ? "write_data|" : "",
+                        mask & FILE_APPEND_DATA ? "append_data|" : "", mask & FILE_READ_EA ? "read_ea|" : "",
+                        mask & FILE_WRITE_EA ? "write_ea|" : "", mask & FILE_EXECUTE ? "execute|" : "",
+                        mask & FILE_READ_ATTRIBUTES ? "read_attributes|" : "",
+                        mask & FILE_WRITE_ATTRIBUTES ? "write_attributes|" : "");
+
+        if (size > perm_size) {
+            os_free(account_name);
+
+            if (perm_it != NULL) {
+                continue;
+            }
+            break;
         }
 
         size = snprintf(decoded_it, perm_size, "%s (%s): %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
@@ -1353,10 +1362,11 @@ cJSON *win_perm_to_json(char *perms) {
         }
         *(perm_node++) = '\0';
 
-        perm_node = strchr(perm_node, ' ');
-        if (!perm_node) {
-            goto error;
+        // Remove the colon separator
+        if (*perm_node == ':') {
+            perm_node++;
         }
+
         while (*perm_node == ' ') perm_node++;
 
         // Get the permissions
@@ -1399,6 +1409,12 @@ cJSON *win_perm_to_json(char *perms) {
         cJSON *specific_perms;
         if (specific_perms = cJSON_CreateArray(), !specific_perms) {
             goto error;
+        }
+
+        if (*permissions == '\0') {
+            // Empty ACE
+            cJSON_AddItemToObject(user_obj, perm_type, specific_perms);
+            continue;
         }
 
         char **perms_array = NULL;

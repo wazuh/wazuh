@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,6 +12,10 @@
 
 #ifndef OS_LIST
 #define OS_LIST
+
+#define OSList_foreach(node_it, list)                                                  \
+    for (node_it = (list != NULL) ? OSList_GetFirstNode(list) : NULL; node_it != NULL; \
+         node_it = OSList_GetNext(list, node_it))
 
 typedef struct _OSListNode {
     struct _OSListNode *next;
@@ -72,5 +76,38 @@ void OSList_CleanNodes(OSList *list);
  * @param list List to delete nodes
  */
 void OSList_CleanOnlyNodes(OSList *list);
+
+/**
+ * @brief Get the next node to a given node
+ *
+ * @param list List where to get the node from
+ * @param node Node reference to get next
+ */
+OSListNode *OSList_GetNext(OSList *list, OSListNode *node);
+
+/**
+ * @brief Insert data in the place of a given node
+ *
+ * @param list List where to get the node from
+ * @param node Node reference to insert new node with data
+ * @param data Data to be insert
+ */
+int OSList_InsertData(OSList *list, OSListNode *node, void *data);
+
+/**
+ * @brief Get the pointer to data from the node placed in index position
+ *
+ * @param list List where to get the node from
+ * @param index Index that indicate the position of the node required
+ */
+void *OSList_GetDataFromIndex(OSList *list, int index);
+
+/**
+ * @brief Insert data at the beggining of a list
+ *
+ * @param list List where the node will be inserted into
+ * @param data Data to be inserted
+ */
+int OSList_PushData(OSList *list, void *data);
 
 #endif /* OS_LIST */

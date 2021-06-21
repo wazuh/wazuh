@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -108,7 +108,7 @@ void HandleRemote(int uid)
 
     /* Revoke privileges */
     if (Privsep_SetUser(uid) < 0) {
-        merror_exit(SETUID_ERROR, REMUSER, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
     }
 
     /* Create PID */

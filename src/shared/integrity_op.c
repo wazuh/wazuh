@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 12, 2019.
  *
  * This program is a free software; you can redistribute it
@@ -40,6 +40,7 @@ char * dbsync_check_msg(const char * component, dbsync_msg msg, long id, const c
     cJSON * data = cJSON_CreateObject();
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddNumberToObject(data, "id", id);
+    cJSON_AddNumberToObject(data, "version", 2.0);
 
     if (msg != INTEGRITY_CLEAR) {
         assert(start != NULL);

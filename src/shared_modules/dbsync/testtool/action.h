@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 21, 2020.
  *
  * This program is free software; you can redistribute it
@@ -75,18 +75,19 @@ struct UpdateWithSnapshotAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
         const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> currentSnapshotPtr
-        { 
+        {
             cJSON_Parse(value["body"].dump().c_str())
         };
         cJSON* snapshotLambda{ nullptr };
-        if(0 == dbsync_update_with_snapshot(ctx->handle, currentSnapshotPtr.get(), &snapshotLambda))
+
+        if (0 == dbsync_update_with_snapshot(ctx->handle, currentSnapshotPtr.get(), &snapshotLambda))
         {
             // Create and flush snapshot diff data in files like: snapshot_<#idx>.json
             const std::unique_ptr<cJSON, TestDeleters::ResultDeleter> snapshotLambdaPtr(snapshotLambda);
-            
+
             std::stringstream oFileName;
             oFileName << "action_" << ctx->currentId << ".json";
-            const std::string outputFileName{ ctx->outputPath +"/"+oFileName.str() };
+            const std::string outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
             std::ofstream outputFile{ outputFileName };
             const std::unique_ptr<char, TestDeleters::CJsonDeleter> snapshotDiff{ cJSON_Print(snapshotLambdaPtr.get()) };
@@ -123,21 +124,21 @@ static void txnCallback(ReturnTypeCallback type, const cJSON* json, void* user_d
 
 struct CreateTransactionAction final : public IAction
 {
-    void execute(std::unique_ptr<TestContext>& ctx, 
+    void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
         const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsonTables
-        { 
+        {
             cJSON_Parse(value["body"]["tables"].dump().c_str())
         };
-        
+
         callback_data_t callbackData { txnCallback, ctx.get() };
 
         ctx->txnContext = dbsync_create_txn(ctx->handle,
-                                     jsonTables.get(),
-                                     0,
-                                     100,
-                                     callbackData);
+                                            jsonTables.get(),
+                                            0,
+                                            100,
+                                            callbackData);
 
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
@@ -151,20 +152,20 @@ struct CreateTransactionAction final : public IAction
 
 struct CloseTransactionAction final : public IAction
 {
-    void execute(std::unique_ptr<TestContext>& ctx, 
+    void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& /*value*/) override
     {
-        
+
 
         const auto retVal { dbsync_close_txn(ctx->txnContext)} ;
 
-            std::stringstream oFileName;
-            oFileName << "action_" << ctx->currentId << ".json";
-            const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
+        std::stringstream oFileName;
+        oFileName << "action_" << ctx->currentId << ".json";
+        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
-            std::ofstream outputFile{ outputFileName };
-            const nlohmann::json jsonResult = { {"txn_context", retVal } };
-            outputFile << jsonResult.dump() << std::endl;
+        std::ofstream outputFile{ outputFileName };
+        const nlohmann::json jsonResult = { {"txn_context", retVal } };
+        outputFile << jsonResult.dump() << std::endl;
     }
 };
 
@@ -194,8 +195,8 @@ struct SetMaxRowsAction final : public IAction
 
 struct GetCallbackLogger final
 {
-    explicit GetCallbackLogger(const std::string &fileName)
-    : m_fileName(fileName)
+    explicit GetCallbackLogger(const std::string& fileName)
+        : m_fileName(fileName)
     {};
     std::string m_fileName;
     std::mutex m_mutex;
@@ -206,15 +207,17 @@ static void getCallbackCtx(ReturnTypeCallback /*type*/,
                            const cJSON* json,
                            void* user_data)
 {
-    GetCallbackLogger* loggerContext { reinterpret_cast<GetCallbackLogger *>(user_data) };
+    GetCallbackLogger* loggerContext { reinterpret_cast<GetCallbackLogger*>(user_data) };
 
     std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
     std::ifstream inputFile{ loggerContext->m_fileName };
     nlohmann::json jsonResult {};
+
     if (inputFile.peek() != std::ifstream::traits_type::eof())
     {
         jsonResult = nlohmann::json::parse(inputFile);
     }
+
     const std::unique_ptr<char, TestDeleters::CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json)};
     const auto& newJson { nlohmann::json::parse(spJsonBytes.get()) };
     jsonResult.push_back(newJson.is_array() ? newJson : newJson);
@@ -236,13 +239,13 @@ struct GetDeletedRowsAction final : public IAction
 
         const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
         callback_data_t callbackData { getCallbackCtx, loggerContext.get() } ;
-        
+
         const auto retVal
         {
             dbsync_get_deleted_rows(ctx->txnContext,
                                     callbackData)
         };
-        
+
         std::ofstream outputFile{ outputFileName };
         const nlohmann::json& jsonResult { {"dbsync_get_deleted_rows", retVal } };
         outputFile << jsonResult.dump() << std::endl;
@@ -377,7 +380,7 @@ struct AddTableRelationship final : public IAction
         const auto retVal
         {
             dbsync_add_table_relationship(ctx->handle,
-                               jsInput.get())
+                                          jsInput.get())
         };
         std::ofstream outputFile{ outputFileName };
         const nlohmann::json jsonResult = { {"dbsync_add_table_relationship", retVal } };
@@ -401,15 +404,15 @@ struct InsertDataCPP final : public IAction
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             dbSync->insertData(value.at("body"));
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -431,20 +434,21 @@ struct UpdateWithSnapshotActionCPP final : public IAction
 
         int retVal{ 0 };
         nlohmann::json snapshotLambda { };
+
         try
         {
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             dbSync->updateWithSnapshot(value.at("body"), snapshotLambda);
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -463,7 +467,7 @@ struct CreateTransactionActionCPP final : public IAction
     {
         int retVal{ 0 };
 
-        auto txnCallback = [&ctx](ReturnTypeCallback type, const nlohmann::json& json)
+        auto txnCallback = [&ctx](ReturnTypeCallback type, const nlohmann::json & json)
         {
             static std::mutex s_mutex;
             std::lock_guard<std::mutex> lock{ s_mutex };
@@ -494,15 +498,15 @@ struct CreateTransactionActionCPP final : public IAction
 
             ctx->txnContext = dbSyncTxn->handle();
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -512,7 +516,7 @@ struct CreateTransactionActionCPP final : public IAction
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = { {"createTransaction", nullptr != ctx->txnContext && 0 == retVal } };
+        const nlohmann::json jsonResult = { {"createTransaction", nullptr != ctx->txnContext&& 0 == retVal } };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
@@ -532,15 +536,15 @@ struct SetMaxRowsActionCPP final : public IAction
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             dbSync->setTableMaxRow(table, maxRows);
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -571,15 +575,15 @@ struct AddTableRelationshipCPP final : public IAction
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             dbSync->addTableRelationship(value.at("body"));
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -602,13 +606,14 @@ struct GetDeletedRowsActionCPP final : public IAction
 
         auto callbackDelete
         {
-            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json& json)
+            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json & json)
             {
                 std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
 
                 std::ifstream inputFile{ loggerContext->m_fileName };
 
                 nlohmann::json jsonResult {};
+
                 if (inputFile.peek() != std::ifstream::traits_type::eof())
                 {
                     jsonResult = nlohmann::json::parse(inputFile);
@@ -628,15 +633,15 @@ struct GetDeletedRowsActionCPP final : public IAction
             std::unique_ptr<DBSyncTxn> dbSyncTxn { std::make_unique<DBSyncTxn>(ctx->txnContext) };
             dbSyncTxn->getDeletedRows(callbackDelete);
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -660,23 +665,25 @@ struct SyncRowActionCPP final : public IAction
 
         auto callbackSync
         {
-            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json& json)
+            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json & json)
             {
                 std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
                 std::ifstream inputFile{ loggerContext->m_fileName };
 
                 nlohmann::json jsonResult {};
+
                 if (inputFile.peek() != std::ifstream::traits_type::eof())
                 {
                     jsonResult = nlohmann::json::parse(inputFile);
                 }
+
                 jsonResult.push_back(json);
 
                 std::ofstream outputFile{ loggerContext->m_fileName };
                 outputFile << jsonResult.dump() << std::endl;
             }
         };
- 
+
         int retVal { 0 };
 
         try
@@ -684,15 +691,15 @@ struct SyncRowActionCPP final : public IAction
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             dbSync->syncRow(value.at("body"), callbackSync);
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -717,15 +724,15 @@ struct SyncTxnRowsActionCPP final : public IAction
             std::unique_ptr<DBSyncTxn> dbSyncTxn { std::make_unique<DBSyncTxn>(ctx->txnContext) };
             dbSyncTxn->syncTxnRow(value.at("body"));
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -752,15 +759,15 @@ struct DeleteRowsActionCPP final : public IAction
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             dbSync->deleteRows(value.at("body"));
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }
@@ -787,16 +794,18 @@ struct SelectRowsActionCPP final : public IAction
 
         auto callbackSelect
         {
-            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json& json)
+            [&loggerContext](ReturnTypeCallback /*result_type*/, const nlohmann::json & json)
             {
                 std::lock_guard<std::mutex> lock(loggerContext->m_mutex);
                 std::ifstream inputFile{ loggerContext->m_fileName };
 
                 nlohmann::json jsonResult {};
+
                 if (inputFile.peek() != std::ifstream::traits_type::eof())
                 {
                     jsonResult = nlohmann::json::parse(inputFile);
                 }
+
                 jsonResult.push_back(json);
 
                 std::ofstream outputFile{ loggerContext->m_fileName };
@@ -811,15 +820,15 @@ struct SelectRowsActionCPP final : public IAction
             std::unique_ptr<DBSync> dbSync { std::make_unique<DBSync>(ctx->handle) };
             dbSync->selectRows(value.at("body"), callbackSelect);
         }
-        catch(const nlohmann::detail::exception& ex)
+        catch (const nlohmann::detail::exception& ex)
         {
             retVal = ex.id;
         }
-        catch(const DbSync::dbsync_error& ex)
+        catch (const DbSync::dbsync_error& ex)
         {
             retVal = ex.id();
         }
-        catch(...)
+        catch (...)
         {
             retVal = -1;
         }

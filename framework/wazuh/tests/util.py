@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -39,12 +39,12 @@ class InitWDBSocketMock:
 
 def get_fake_database_data(sql_file):
     """Create a fake database."""
-    mitre_db = sqlite3.connect(':memory:')
-    cur = mitre_db.cursor()
+    memory_db = sqlite3.connect(':memory:')
+    cur = memory_db.cursor()
     with open(os.path.join(test_data_path, sql_file)) as f:
         cur.executescript(f.read())
 
-    return mitre_db
+    return memory_db
 
 
 def RBAC_bypasser(**kwargs_decorator):

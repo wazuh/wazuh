@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -14,17 +14,18 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh-api')
 
 
-async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_list='*'):
+async def put_rootcheck(request, agents_list: str = '*', pretty: bool = False,
+                        wait_for_complete: bool = False) -> web.Response:
     """Run rootcheck scan over the agent_ids.
 
     Parameters
     ----------
+    agents_list : list
+        List of agent's IDs.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agents_list : list
-        List of agent's IDs.
     """
     f_kwargs = {'agent_list': agents_list}
 
@@ -42,19 +43,18 @@ async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_l
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_rootcheck(request, pretty=False, wait_for_complete=False, agents_list='*'):
+async def delete_rootcheck(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = ''):
     """Clear the rootcheck database for a list of agents.
-
     Parameters
     ----------
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agents_list : list
-        List of agent's IDs.
+    agent_id : str
+        ID of the agent's rootcheck info to retrieve.
     """
-    f_kwargs = {'agent_list': agents_list}
+    f_kwargs = {'agent_list': [agent_id]}
 
     dapi = DistributedAPI(f=rootcheck.clear,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -62,7 +62,6 @@ async def delete_rootcheck(request, pretty=False, wait_for_complete=False, agent
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          broadcasting=agents_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())

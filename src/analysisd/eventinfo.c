@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -685,39 +685,9 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->group_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
 
-    lf->filename = NULL;
-    lf->mode = NULL;
-    lf->perm_before = NULL;
-    lf->md5_before = NULL;
-    lf->sha1_before = NULL;
-    lf->sha256_before = NULL;
-    lf->size_before = NULL;
-    lf->owner_before = NULL;
-    lf->gowner_before = NULL;
-    lf->uname_before = NULL;
-    lf->gname_before = NULL;
-    lf->mtime_before = 0;
-    lf->mtime_after = 0;
-    lf->inode_before = 0;
-    lf->inode_after = 0;
-    lf->attributes_before = NULL;
-    lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
-    lf->sk_tag = NULL;
-    lf->sym_path = NULL;
 
-    lf->user_id = NULL;
-    lf->user_name = NULL;
-    lf->group_id = NULL;
-    lf->group_name = NULL;
-    lf->process_name = NULL;
-    lf->audit_uid = NULL;
-    lf->audit_name = NULL;
-    lf->effective_uid = NULL;
-    lf->effective_name = NULL;
-    lf->ppid = NULL;
-    lf->process_id = NULL;
     lf->is_a_copy = 0;
     lf->last_events = NULL;
     lf->r_firedtimes = -1;
@@ -884,93 +854,6 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->fields);
     }
 
-    if (lf->filename) {
-        free(lf->filename);
-    }
-    if (lf->mode) {
-        free(lf->mode);
-    }
-    if (lf->sk_tag) {
-        free(lf->sk_tag);
-    }
-    if (lf->sym_path) {
-        free(lf->sym_path);
-    }
-    if (lf->perm_before) {
-        free(lf->perm_before);
-    }
-    if (lf->md5_before) {
-        free(lf->md5_before);
-    }
-    if (lf->sha1_before) {
-        free(lf->sha1_before);
-    }
-    if (lf->sha256_before) {
-        free(lf->sha256_before);
-    }
-    if (lf->size_before) {
-        free(lf->size_before);
-    }
-    if (lf->owner_before) {
-        free(lf->owner_before);
-    }
-    if (lf->gowner_before) {
-        free(lf->gowner_before);
-    }
-    if (lf->uname_before) {
-        free(lf->uname_before);
-    }
-    if (lf->gname_before) {
-        free(lf->gname_before);
-    }
-    if (lf->attributes_before) {
-        free(lf->attributes_before);
-    }
-    if (lf->user_id) {
-        free(lf->user_id);
-    }
-    if (lf->user_name) {
-        free(lf->user_name);
-    }
-    if (lf->group_id) {
-        free(lf->group_id);
-    }
-    if (lf->group_name) {
-        free(lf->group_name);
-    }
-    if (lf->process_name) {
-        free(lf->process_name);
-    }
-    if (lf->cwd) {
-        free(lf->cwd);
-    }
-    if (lf->audit_uid) {
-        free(lf->audit_uid);
-    }
-    if (lf->audit_name) {
-        free(lf->audit_name);
-    }
-    if (lf->effective_uid) {
-        free(lf->effective_uid);
-    }
-    if (lf->effective_name) {
-        free(lf->effective_name);
-    }
-    if (lf->parent_name) {
-        free(lf->parent_name);
-    }
-    if (lf->parent_cwd) {
-        free(lf->parent_cwd);
-    }
-    if (lf->ppid) {
-        free(lf->ppid);
-    }
-    if (lf->process_id) {
-        free(lf->process_id);
-    }
-    if (lf->diff) {
-        free(lf->diff);
-    }
     if (lf->previous) {
         free(lf->previous);
     }
@@ -1232,116 +1115,8 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     memcpy(lf_cpy->hour,lf->hour,10);
     memcpy(lf_cpy->mon,lf->mon,4);
 
-    /* SYSCHECK Results variables */
-    lf_cpy->event_type = lf->event_type;
-
-    if(lf->filename){
-        os_strdup(lf->filename,lf_cpy->filename);
-    }
-
-    if (lf->mode) {
-        os_strdup(lf->mode, lf_cpy->mode);
-    }
-
-    if (lf->perm_before) {
-        os_strdup(lf->perm_before, lf_cpy->perm_before);
-    }
-
-    if (lf->sk_tag){
-        os_strdup(lf->sk_tag, lf_cpy->sk_tag);
-    }
-
-    if(lf->md5_before){
-        os_strdup(lf->md5_before,lf_cpy->md5_before);
-    }
-
-    if(lf->sha1_before){
-        os_strdup(lf->sha1_before,lf_cpy->sha1_before);
-    }
-
-    if(lf->sha256_before){
-        os_strdup(lf->sha256_before,lf_cpy->sha256_before);
-    }
-
-    if(lf->size_before){
-        os_strdup(lf->size_before,lf_cpy->size_before);
-    }
-
-    if(lf->owner_before){
-        os_strdup(lf->owner_before,lf_cpy->owner_before);
-    }
-
-    if(lf->gowner_before){
-        os_strdup(lf->gowner_before,lf_cpy->gowner_before);
-    }
-
-    if(lf->uname_before){
-        os_strdup(lf->uname_before,lf_cpy->uname_before);
-    }
-
-    if(lf->gname_before){
-        os_strdup(lf->gname_before,lf_cpy->gname_before);
-    }
-
-    if(lf->attributes_before){
-        os_strdup(lf->attributes_before,lf_cpy->attributes_before);
-    }
-
     /* Whodata fields */
-    if (lf->user_id){
-        os_strdup(lf->user_id, lf_cpy->user_id);
-    }
-
-    if (lf->user_name){
-        os_strdup(lf->user_name, lf_cpy->user_name);
-    }
-
-    if (lf->group_id){
-        os_strdup(lf->group_id, lf_cpy->group_id);
-    }
-
-    if (lf->group_name){
-        os_strdup(lf->group_name, lf_cpy->group_name);
-    }
-
-    if (lf->process_name){
-        os_strdup(lf->process_name, lf_cpy->process_name);
-    }
-
-    if (lf->audit_uid){
-        os_strdup(lf->audit_uid, lf_cpy->audit_uid);
-    }
-
-    if (lf->audit_name){
-        os_strdup(lf->audit_name, lf_cpy->audit_name);
-    }
-
-    if (lf->effective_uid){
-        os_strdup(lf->effective_uid, lf_cpy->effective_uid);
-    }
-
-    if (lf->effective_name){
-        os_strdup(lf->effective_name, lf_cpy->effective_name);
-    }
-
-    if (lf->ppid){
-        os_strdup(lf->ppid, lf_cpy->ppid);
-    }
-
-    if (lf->process_id){
-        os_strdup(lf->process_id, lf_cpy->process_id);
-    }
-
-    lf_cpy->mtime_before = lf->mtime_before;
-    lf_cpy->mtime_after = lf->mtime_after;
-    lf_cpy->inode_before = lf->inode_before;
-    lf_cpy->inode_after = lf->inode_after;
     lf_cpy->r_firedtimes = lf->r_firedtimes;
-
-
-    if(lf->diff){
-        os_strdup(lf->diff,lf_cpy->diff);
-    }
 
     if(lf->previous){
         os_strdup(lf->previous,lf_cpy->previous);
@@ -1364,8 +1139,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
         lf_cpy->last_events[index] = NULL;
     }
-
-    w_strdup(lf->sym_path, lf_cpy->sym_path);
 
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
@@ -1401,4 +1174,17 @@ void w_free_event_info(Eventinfo *lf) {
     if (force_remove) {
         Free_Eventinfo(lf);
     }
+}
+
+const char *extract_module_from_location(const char *location){
+    assert(location);
+
+    const char *module_name = strstr(location, "->");
+    if (module_name == NULL) {
+        module_name = location;
+    } else {
+        module_name += 2;
+    }
+
+    return module_name;
 }

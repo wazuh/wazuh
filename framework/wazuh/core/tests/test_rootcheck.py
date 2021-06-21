@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -12,8 +12,8 @@ import pytest
 from api.util import remove_nones_to_dict
 from wazuh.core.exception import WazuhException
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import rootcheck
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_rootcheck')
@@ -50,7 +50,7 @@ def remove_db(data_path):
 test_data = InitRootcheck()
 
 
-def send_msg_to_wdb(msg, raw=False):
+def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
     query = ' '.join(msg.split(' ')[3:])
     result = test_data.cur.execute(query).fetchall()
     return list(map(remove_nones_to_dict, map(dict, result)))

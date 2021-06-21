@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,12 +16,12 @@
 
 class ThreadDispatcherTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    ThreadDispatcherTest() = default;
-    virtual ~ThreadDispatcherTest() = default;
+        ThreadDispatcherTest() = default;
+        virtual ~ThreadDispatcherTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //THREAD_DISPATCHER_TESTS_H

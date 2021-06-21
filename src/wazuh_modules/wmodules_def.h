@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -26,9 +26,10 @@ typedef void* (*wm_routine)(void*);     // Standard routine pointer
 typedef struct wm_context {
     const char *name;                   // Name for module
     wm_routine start;                   // Main function
-    wm_routine destroy;                 // Destructor
+    wm_routine destroy;                 // Configuration destructor
     cJSON *(* dump)(const void *);
     int (* sync)(const char*);          // Sync
+    wm_routine stop;                    // Module destructor
 } wm_context;
 
 // Main module structure

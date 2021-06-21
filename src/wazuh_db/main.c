@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January 03, 2018.
  *
  * This program is free software; you can redistribute it
@@ -414,7 +414,7 @@ void * run_up(__attribute__((unused)) void * args) {
         return NULL;
     }
 
-    while ((db = readdir(fd)) != NULL) {
+    while ((db = readdir(fd)) != NULL && running) {
         if ((strcmp(db->d_name, ".") == 0) ||
             (strcmp(db->d_name, "..") == 0) ||
             (strcmp(db->d_name, ".template.db") == 0) ||
@@ -438,6 +438,8 @@ void * run_up(__attribute__((unused)) void * args) {
         wdb = wdb_open_agent2(atoi(entry));
         wdb_leave(wdb);
         free(entry);
+
+        sleep(1);
     }
 
     os_free(db_folder);

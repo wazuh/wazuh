@@ -2,7 +2,7 @@
   -  Web access log decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -53,4 +53,12 @@
     <parent>web-accesslog</parent>
     <regex>^(\S+) \S+ \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
     <order>srcip, protocol, url, id</order>
+</decoder>
+
+<decoder name="web-accesslog-glpi">
+    <type>web-log</type>
+    <parent>web-accesslog</parent>
+    <prematch>^\S+ - - [\d+/\w+/\d+:\d+:\d+:\d+ +\d+] "\S+ \S+ HTTP/\.+"</prematch>
+    <regex>^(\S+) - - [(\d+/\w+/\d+:\d+:\d+:\d+) +\d+] "(\S+) (\S+) HTTP/(\.+)" (\d+) (\S+) "(\.+)" "(\.+)"</regex>
+    <order>srcip,timestamp,operation, route, http_version, rcode, rsize, url, browser</order>
 </decoder>

@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * Sep 1, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,12 +16,12 @@
 
 class MsgDispatcherTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    MsgDispatcherTest() = default;
-    virtual ~MsgDispatcherTest() = default;
+        MsgDispatcherTest() = default;
+        virtual ~MsgDispatcherTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //MSG_DISPATCHER_TESTS_H

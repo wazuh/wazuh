@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -22,7 +22,8 @@ custom_api_configuration = {
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
-        "ssl_cipher": "TLSv1.2"
+        "ssl_protocol": "TLSv1.2",
+        "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 5, 2020.
  *
  * This program is free software; you can redistribute it
@@ -13,15 +13,16 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysOsInfoTest : public ::testing::Test {
+class SysOsInfoTest : public ::testing::Test
+{
 
-protected:
+    protected:
 
-    SysOsInfoTest() = default;
-    virtual ~SysOsInfoTest() = default;
+        SysOsInfoTest() = default;
+        virtual ~SysOsInfoTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_OS_TEST_H

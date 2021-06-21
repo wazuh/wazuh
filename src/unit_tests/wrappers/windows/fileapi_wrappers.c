@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-
+#include <stdio.h>
 HANDLE wrap_CreateFile(LPCSTR lpFileName,
                        __UNUSED_PARAM(DWORD dwDesiredAccess),
                        __UNUSED_PARAM(DWORD dwShareMode),
@@ -102,6 +102,30 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
         lpft = mock_type(LPFILETIME);
         lpLastWriteTime->dwLowDateTime = lpft->dwLowDateTime;
         lpLastWriteTime->dwHighDateTime = lpft->dwHighDateTime;
+    }
+    return mock_type(BOOL);
+}
+
+HANDLE wrap_FindFirstFile(LPCSTR lpFileName,  LPWIN32_FIND_DATA lpFindFileData) {
+    char *file_name;
+    check_expected(lpFileName);
+
+    file_name = mock_type(char *);
+    if (file_name != NULL) {
+        strcpy(lpFindFileData->cFileName, file_name);
+        lpFindFileData->dwFileAttributes = mock_type(DWORD);
+    }
+
+    return mock_type(HANDLE);
+}
+
+BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATA lpFindFileData) {
+    char *file_name;
+    check_expected(hFindFile);
+    file_name = mock_type(char *);
+    if (file_name != NULL) {
+        strcpy(lpFindFileData->cFileName, file_name);
+        lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
     return mock_type(BOOL);
 }

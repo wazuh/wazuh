@@ -1,6 +1,6 @@
 /*
  * Shared functions for Syscheck events decoding
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,6 +10,8 @@
 
 #ifndef SYSCHECK_OP_H
 #define SYSCHECK_OP_H
+
+extern const char *SYSCHECK_EVENT_STRINGS[];
 
 #ifndef WIN32
 
@@ -84,18 +86,30 @@ typedef enum fim_fields {
     FIM_HARD_LINKS,
     FIM_MODE,
     FIM_SIZE,
+    FIM_SIZE_BEFORE,
     FIM_PERM,
+    FIM_PERM_BEFORE,
     FIM_UID,
+    FIM_UID_BEFORE,
     FIM_GID,
+    FIM_GID_BEFORE,
     FIM_MD5,
+    FIM_MD5_BEFORE,
     FIM_SHA1,
+    FIM_SHA1_BEFORE,
     FIM_UNAME,
+    FIM_UNAME_BEFORE,
     FIM_GNAME,
+    FIM_GNAME_BEFORE,
     FIM_MTIME,
+    FIM_MTIME_BEFORE,
     FIM_INODE,
+    FIM_INODE_BEFORE,
     FIM_SHA256,
+    FIM_SHA256_BEFORE,
     FIM_DIFF,
     FIM_ATTRS,
+    FIM_ATTRS_BEFORE,
     FIM_CHFIELDS,
     FIM_USER_ID,
     FIM_USER_NAME,
@@ -117,6 +131,7 @@ typedef enum fim_fields {
     FIM_REGISTRY_VALUE_NAME,
     FIM_REGISTRY_VALUE_TYPE,
     FIM_ENTRY_TYPE,
+    FIM_EVENT_TYPE,
     FIM_NFIELDS
 } fim_fields;
 

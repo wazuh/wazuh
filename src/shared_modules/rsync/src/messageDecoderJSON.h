@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 5, 2020.
  *
  * This program is free software; you can redistribute it
@@ -19,47 +19,51 @@ namespace RSync
 {
     class JSONMessageDecoder final : public IMessageDecoder
     {
-    public:
-        // LCOV_EXCL_START
-        ~JSONMessageDecoder() = default;
-        // LCOV_EXCL_STOP
-        SyncInputData decode(const std::vector<unsigned char>& rawData) override
-        {
-            SyncInputData retVal{};
-            const std::string rawDataString { reinterpret_cast<const char*>(rawData.data()), rawData.size() };
-            const auto firstToken { rawDataString.find(' ') };
-
-            if (std::string::npos != firstToken)
+        public:
+            // LCOV_EXCL_START
+            ~JSONMessageDecoder() = default;
+            // LCOV_EXCL_STOP
+            SyncInputData decode(const std::vector<unsigned char>& rawData) override
             {
-                const auto rawDataStringFromFirst { rawDataString.substr(firstToken + 1, rawDataString.length() - firstToken - 1) };
-                const auto secondToken { rawDataStringFromFirst.find(' ') };
-                if (std::string::npos != secondToken)
-                {
-                    retVal.command = rawDataStringFromFirst.substr(0, secondToken);
+                SyncInputData retVal{};
+                const std::string rawDataString { reinterpret_cast<const char*>(rawData.data()), rawData.size() };
+                const auto firstToken { rawDataString.find(' ') };
 
-                    const auto rawDataStringFromSecond { rawDataStringFromFirst.substr(secondToken + 1, rawDataStringFromFirst.length() - secondToken - 1) };
-                    const auto& json { nlohmann::json::parse(rawDataStringFromSecond) };
-                    const auto& begin{json.at("begin")};
-                    const auto& end{json.at("end")};
-                    if (begin.is_string())
+                if (std::string::npos != firstToken)
+                {
+                    const auto rawDataStringFromFirst { rawDataString.substr(firstToken + 1, rawDataString.length() - firstToken - 1) };
+                    const auto secondToken { rawDataStringFromFirst.find(' ') };
+
+                    if (std::string::npos != secondToken)
                     {
-                        retVal.begin = begin;
-                        retVal.end = end;
+                        retVal.command = rawDataStringFromFirst.substr(0, secondToken);
+
+                        const auto rawDataStringFromSecond { rawDataStringFromFirst.substr(secondToken + 1, rawDataStringFromFirst.length() - secondToken - 1) };
+                        const auto& json { nlohmann::json::parse(rawDataStringFromSecond) };
+                        const auto& begin{json.at("begin")};
+                        const auto& end{json.at("end")};
+
+                        if (begin.is_string())
+                        {
+                            retVal.begin = begin;
+                            retVal.end = end;
+                        }
+                        else
+                        {
+                            const auto beginNumber{begin.get<unsigned long>()};
+                            const auto endNumber{end.get<unsigned long>()};
+                            const auto beginString{std::to_string(beginNumber)};
+                            const auto endString{std::to_string(endNumber)};
+                            retVal.begin = beginString;
+                            retVal.end = endString;
+                        }
+
+                        retVal.id = json.at("id").get<int32_t>();
                     }
-                    else
-                    {
-                        const auto beginNumber{begin.get<unsigned long>()};
-                        const auto endNumber{end.get<unsigned long>()};
-                        const auto beginString{std::to_string(beginNumber)};
-                        const auto endString{std::to_string(endNumber)};
-                        retVal.begin = beginString;
-                        retVal.end = endString;
-                    }
-                    retVal.id = json.at("id").get<int32_t>();
                 }
+
+                return retVal;
             }
-            return retVal;
-        }
     };
 }// namespace RSync
 

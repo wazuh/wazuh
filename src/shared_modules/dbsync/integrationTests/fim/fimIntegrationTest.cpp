@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 6, 2020.
  *
  * This program is free software; you can redistribute it
@@ -21,10 +21,10 @@ constexpr auto DATABASE_TEMP {"FIM_TEMP.db"};
 
 class CallbackMock
 {
-public:
-    CallbackMock() = default;
-    ~CallbackMock() = default;
-    MOCK_METHOD(void, callbackMock, (ReturnTypeCallback result_type, const nlohmann::json&), ());
+    public:
+        CallbackMock() = default;
+        ~CallbackMock() = default;
+        MOCK_METHOD(void, callbackMock, (ReturnTypeCallback result_type, const nlohmann::json&), ());
 };
 
 struct CJsonDeleter final
@@ -37,7 +37,7 @@ struct CJsonDeleter final
 
 struct smartDeleterJson
 {
-    void operator()(cJSON * data)
+    void operator()(cJSON* data)
     {
         cJSON_Delete(data);
     }
@@ -61,7 +61,7 @@ static void logFunction(const char* msg)
 }
 
 DBSyncFimIntegrationTest::DBSyncFimIntegrationTest()
-: m_dbHandle{ dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, FIM_SQL_DB_DUMP) }
+    : m_dbHandle{ dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, FIM_SQL_DB_DUMP) }
 {
     dbsync_initialize(&logFunction);
 }
@@ -282,7 +282,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
     };
     const auto expectedResult2
     {
-       R"({"checksum":"eeb46d0e85f635cd8595afc3447b21686c8fedb3",
+        R"({"checksum":"eeb46d0e85f635cd8595afc3447b21686c8fedb3",
            "dev":2051,"entry_type":0,"gid":0,"group_name":"root",
            "hash_md5":"349e00330684b1b1443904956aa0b241",
            "hash_sha1":"f945fe1ad48aa9c367d2a131a4f7a659db6c1967",
@@ -293,7 +293,7 @@ TEST_F(DBSyncFimIntegrationTest, FIMDB_STMT_GET_PATH_RANGE)
     };
     const auto expectedResult3
     {
-       R"({"checksum":"e24f1dfcba64d3dea78c6840893c77539f44638f",
+        R"({"checksum":"e24f1dfcba64d3dea78c6840893c77539f44638f",
            "dev":2051,"entry_type":0,"gid":0,"group_name":"root",
            "hash_md5":"7449031222431c7cbac19313af55aca4",
            "hash_sha1":"640746d2388b9500b300e2a45878e81e5473aa83",

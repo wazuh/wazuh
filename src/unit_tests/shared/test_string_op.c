@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -397,6 +397,196 @@ void test_json_unescape(void ** state)
     }
 }
 
+/* Test for wstr_replace */
+
+void test_wstr_replace_valid(void **state)
+{
+    const char * search = "$file";
+    const char * replace = "/var";
+    const char EXPECTED_OUTPUT[] = "echo /var";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $file", subject);
+    ret = wstr_replace(subject, search, replace);
+    assert_string_equal(ret, EXPECTED_OUTPUT);
+
+    os_free(ret);
+    os_free(subject);
+}
+
+void test_wstr_replace_double_$(void **state)
+{
+    const char * search = "$file";
+    const char * replace = "/var";
+    const char EXPECTED_OUTPUT[] = "echo $/var";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $$file", subject);
+    ret = wstr_replace(subject, search, replace);
+    assert_string_equal(ret, EXPECTED_OUTPUT);
+
+    os_free(ret);
+    os_free(subject);
+}
+
+void test_wstr_replace_surround_$(void **state)
+{
+    const char * search = "$file";
+    const char * replace = "/var";
+    const char EXPECTED_OUTPUT[] = "echo $/var$";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $$file$", subject);
+    ret = wstr_replace(subject, search, replace);
+    assert_string_equal(ret, EXPECTED_OUTPUT);
+
+    os_free(ret);
+    os_free(subject);
+}
+
+void test_wstr_replace_multiples_variable(void **state)
+{
+    const char * search = "$file";
+    const char * replace = "/var";
+    const char EXPECTED_OUTPUT[] = "echo /var /var";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $file $file", subject);
+    ret = wstr_replace(subject, search, replace);
+    assert_string_equal(ret, EXPECTED_OUTPUT);
+    os_free(ret);
+    os_free(subject);
+}
+
+void test_wstr_replace_multiples_variables_surround_$(void **state)
+{
+    const char * search = "$file";
+    const char * replace = "/var";
+    const char EXPECTED_OUTPUT[] = "echo /var$ $/var$";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $file$ $$file$", subject);
+    ret = wstr_replace(subject, search, replace);
+    assert_string_equal(ret, EXPECTED_OUTPUT);
+    os_free(ret);
+    os_free(subject);
+}
+
+void test_wstr_replace_different_variables(void **state)
+{
+    const char * INPUTS[] = {"$file","$home",NULL};
+    const char * replace[] = {"/var","/home"};
+    const char EXPECTED_OUTPUT[] = "echo /var /home";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $file $home", subject);
+
+    for (int i = 0; INPUTS[i] != NULL; i++) {
+        ret = wstr_replace(subject, INPUTS[i], replace[i]);
+        os_free(subject);
+        subject = ret;
+    }
+    assert_string_equal(subject, EXPECTED_OUTPUT);
+    os_free(subject);
+}
+
+void test_wstr_replace_different_variables_surround_$(void **state)
+{
+    const char * INPUTS[] = {"$file","$home",NULL};
+    const char * replace[] = {"/var","/home"};
+    const char EXPECTED_OUTPUT[] = "echo $/var$ /home$";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $$file$ $home$", subject);
+
+    for (int i = 0; INPUTS[i] != NULL; i++) {
+        ret = wstr_replace(subject, INPUTS[i], replace[i]);
+        os_free(subject);
+        subject = ret;
+    }
+    assert_string_equal(subject, EXPECTED_OUTPUT);
+    os_free(subject);
+}
+
+void test_wstr_replace_different_variables_$(void **state)
+{
+    const char * INPUTS[] = {"$file","$home","$$",NULL};
+    const char * replace[] = {"/var","/home","/etc"};
+    const char EXPECTED_OUTPUT[] = "echo $/var /home/etc /etc";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $$file $home$$ $$", subject);
+
+    for (int i = 0; INPUTS[i] != NULL; i++) {
+        ret = wstr_replace(subject, INPUTS[i], replace[i]);
+        os_free(subject);
+        subject = ret;
+    }
+    assert_string_equal(subject, EXPECTED_OUTPUT);
+    os_free(subject);
+}
+
+void test_wstr_replace_different_variables_empty(void **state)
+{
+    const char * INPUTS[] = {"$file","$home","$empty",NULL};
+    const char * replace[] = {"/var","/home",""};
+    const char EXPECTED_OUTPUT[] = "echo /var /home ";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $file $home $empty", subject);
+
+    for (int i = 0; INPUTS[i] != NULL; i++) {
+        ret = wstr_replace(subject, INPUTS[i], replace[i]);
+        os_free(subject);
+        subject = ret;
+    }
+    assert_string_equal(subject, EXPECTED_OUTPUT);
+    os_free(subject);
+}
+
+void test_wstr_replace_contained_variables(void **state)
+{
+    const char * INPUTS[] = {"$file_new","$file",NULL};
+    const char * replace[] = {"/var","/home",""};
+    const char EXPECTED_OUTPUT[] = "echo /var";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $file_new", subject);
+
+    for (int i = 0; INPUTS[i] != NULL; i++) {
+        ret = wstr_replace(subject, INPUTS[i], replace[i]);
+        os_free(subject);
+        subject = ret;
+    }
+    assert_string_equal(subject, EXPECTED_OUTPUT);
+    os_free(subject);
+}
+
+void test_wstr_replace_not_found(void **state)
+{
+    const char * search = "$file";
+    const char * replace = "/var";
+    const char EXPECTED_OUTPUT[] = "echo $fake";
+    char * subject = NULL;
+    char * ret = NULL;
+
+    os_strdup("echo $fake", subject);
+    ret = wstr_replace(subject, search, replace);
+    assert_string_equal(ret, EXPECTED_OUTPUT);
+    os_free(ret);
+    os_free(subject);
+}
+
 /* Tests */
 
 int main(void) {
@@ -441,6 +631,18 @@ int main(void) {
         cmocka_unit_test(test_strnspn_escaped),
         cmocka_unit_test(test_json_escape),
         cmocka_unit_test(test_json_unescape),
+        // Tests wstr_replace
+        cmocka_unit_test(test_wstr_replace_valid),
+        cmocka_unit_test(test_wstr_replace_double_$),
+        cmocka_unit_test(test_wstr_replace_surround_$),
+        cmocka_unit_test(test_wstr_replace_multiples_variable),
+        cmocka_unit_test(test_wstr_replace_different_variables_surround_$),
+        cmocka_unit_test(test_wstr_replace_different_variables_$),
+        cmocka_unit_test(test_wstr_replace_different_variables_empty),
+        cmocka_unit_test(test_wstr_replace_different_variables),
+        cmocka_unit_test(test_wstr_replace_multiples_variables_surround_$),
+        cmocka_unit_test(test_wstr_replace_contained_variables),
+        cmocka_unit_test(test_wstr_replace_not_found)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

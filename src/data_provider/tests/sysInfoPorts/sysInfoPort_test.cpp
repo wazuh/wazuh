@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 10, 2020.
  *
  * This program is free software; you can redistribute it
@@ -22,20 +22,20 @@ using ::testing::Return;
 
 class SysInfoPortWrapperMock: public IPortWrapper
 {
-public:
-    SysInfoPortWrapperMock() = default;
-    virtual ~SysInfoPortWrapperMock() = default;
-    MOCK_METHOD(std::string, protocol, (), (const override));
-    MOCK_METHOD(std::string, localIp, (), (const override));
-    MOCK_METHOD(int32_t, localPort, (), (const override));
-    MOCK_METHOD(std::string, remoteIP, (), (const override));
-    MOCK_METHOD(int32_t, remotePort, (), (const override));
-    MOCK_METHOD(int32_t, txQueue, (), (const override));
-    MOCK_METHOD(int32_t, rxQueue, (), (const override));
-    MOCK_METHOD(int32_t, inode, (), (const override));
-    MOCK_METHOD(std::string, state, (), (const override));
-    MOCK_METHOD(int32_t, pid, (), (const override));
-    MOCK_METHOD(std::string, processName, (), (const override));
+    public:
+        SysInfoPortWrapperMock() = default;
+        virtual ~SysInfoPortWrapperMock() = default;
+        MOCK_METHOD(std::string, protocol, (), (const override));
+        MOCK_METHOD(std::string, localIp, (), (const override));
+        MOCK_METHOD(int32_t, localPort, (), (const override));
+        MOCK_METHOD(std::string, remoteIP, (), (const override));
+        MOCK_METHOD(int32_t, remotePort, (), (const override));
+        MOCK_METHOD(int32_t, txQueue, (), (const override));
+        MOCK_METHOD(int32_t, rxQueue, (), (const override));
+        MOCK_METHOD(int32_t, inode, (), (const override));
+        MOCK_METHOD(std::string, state, (), (const override));
+        MOCK_METHOD(int32_t, pid, (), (const override));
+        MOCK_METHOD(std::string, processName, (), (const override));
 };
 
 TEST_F(SysInfoPortTest, Test_SPEC_Data)
@@ -55,15 +55,15 @@ TEST_F(SysInfoPortTest, Test_SPEC_Data)
     EXPECT_CALL(*mock, processName()).Times(1).WillOnce(Return("11"));
 
     EXPECT_NO_THROW(std::make_unique<PortImpl>(mock)->buildPortData(port));
-    EXPECT_EQ("1",port.at("protocol").get_ref<const std::string&>());
-    EXPECT_EQ("2",port.at("local_ip").get_ref<const std::string&>());
-    EXPECT_EQ(3,port.at("local_port").get<int32_t>());
-    EXPECT_EQ("4",port.at("remote_ip").get_ref<const std::string&>());
-    EXPECT_EQ(5,port.at("remote_port").get<int32_t>());
-    EXPECT_EQ(6,port.at("tx_queue").get<int32_t>());
-    EXPECT_EQ(7,port.at("rx_queue").get<int32_t>());
-    EXPECT_EQ(8,port.at("inode").get<int32_t>());
-    EXPECT_EQ("9",port.at("state").get_ref<const std::string&>());
-    EXPECT_EQ(10,port.at("pid").get<int32_t>());
-    EXPECT_EQ("11",port.at("process").get_ref<const std::string&>());
+    EXPECT_EQ("1", port.at("protocol").get_ref<const std::string&>());
+    EXPECT_EQ("2", port.at("local_ip").get_ref<const std::string&>());
+    EXPECT_EQ(3, port.at("local_port").get<int32_t>());
+    EXPECT_EQ("4", port.at("remote_ip").get_ref<const std::string&>());
+    EXPECT_EQ(5, port.at("remote_port").get<int32_t>());
+    EXPECT_EQ(6, port.at("tx_queue").get<int32_t>());
+    EXPECT_EQ(7, port.at("rx_queue").get<int32_t>());
+    EXPECT_EQ(8, port.at("inode").get<int32_t>());
+    EXPECT_EQ("9", port.at("state").get_ref<const std::string&>());
+    EXPECT_EQ(10, port.at("pid").get<int32_t>());
+    EXPECT_EQ("11", port.at("process").get_ref<const std::string&>());
 }

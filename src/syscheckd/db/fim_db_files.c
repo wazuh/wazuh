@@ -3,7 +3,7 @@
  * @brief Definition of FIM database for files library.
  * @date 2020-09-9
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 #include "fim_db_files.h"
@@ -98,17 +98,16 @@ static void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row);
  * @param fim_sql FIM database structure.
  * @param entry Entry data to be removed.
  * @param mutex FIM database's mutex for thread synchronization.
- * @param alert False don't send alert, True send delete alert.
  * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
  * @param configuration Position of the configuration that triggered the deletion of entries.
+ * @param _unused_parameter Needed for this function to be a valid FIM DB callback.
  */
 void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   fim_entry *entry,
                                   pthread_mutex_t *mutex,
-                                  void *alert,
-                                  void *fim_ev_mode,
-                                  void *configuration);
-
+                                  void *evt_data,
+                                  void *configuration,
+                                  void *_unused_patameter);
 
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
@@ -128,19 +127,38 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 // LCOV_EXCL_START
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = TRUE, .type = FIM_DELETE };
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
-                                    (void *) true, (void *) FIM_SCHEDULED, NULL);
+                                    (void *)&evt_data, NULL, NULL);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode, int *configuration) {
+int fim_db_delete_range(fdb_t *fim_sql,
+                        fim_tmp_file *file,
+                        pthread_mutex_t *mutex,
+                        int storage,
+                        event_data_t *evt_data,
+                        directory_t *configuration) {
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_validated_path, storage,
-                                    (void *) false, (void *) mode, (void *) configuration);
+                                    evt_data, configuration, NULL);
 }
 
-int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
-                                 fim_event_mode mode, whodata_evt * w_evt) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
-                                    (void *) true, (void *) (fim_event_mode) mode, (void *) w_evt);
+int fim_db_process_missing_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data) {
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage, evt_data, NULL,
+                                    NULL);
+}
+
+int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data,
+                                 directory_t *configuration) {
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_generate_delete_event, storage, evt_data,
+                                    configuration, NULL);
 }
 // LCOV_EXCL_STOP
 
@@ -345,7 +363,7 @@ int fim_db_insert_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id) 
         fim_db_bind_insert_data(fim_sql, entry);
 
         if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_INSERT_DATA]), res != SQLITE_DONE) {
-            merror("Step error inserting data row_id '%d': %s", *row_id, sqlite3_errmsg(fim_sql->db));
+            merror("Step error inserting data row_id '%d': %s (%d)", *row_id, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             return FIMDB_ERR;
         }
 
@@ -356,7 +374,7 @@ int fim_db_insert_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id) 
         fim_db_bind_update_data(fim_sql, entry, row_id);
 
         if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA]), res != SQLITE_DONE) {
-            merror("Step error updating data row_id '%d': %s", *row_id, sqlite3_errmsg(fim_sql->db));
+            merror("Step error updating data row_id '%d': %s (%d)", *row_id, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             return FIMDB_ERR;
         }
     }
@@ -371,7 +389,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, const fim_file_dat
     fim_db_bind_replace_path(fim_sql, file_path, inode_id, entry);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH]), res != SQLITE_DONE) {
-            merror("Step error replacing path '%s': %s", file_path, sqlite3_errmsg(fim_sql->db));
+            merror("Step error replacing path '%s': %s (%d)", file_path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             return FIMDB_ERR;
     }
 
@@ -415,7 +433,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *ne
             fim_db_bind_delete_data_id(fim_sql, inode_id);
 
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_DATA]) != SQLITE_DONE) {
-                merror("Step error deleting data: %s", sqlite3_errmsg(fim_sql->db));
+                merror("Step error deleting data: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
                 return FIMDB_ERR;
             }
             fim_db_force_commit(fim_sql);
@@ -441,7 +459,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *ne
     break;
 
     default:
-        merror("Step error getting data row: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting data row: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -498,14 +516,14 @@ end:
 void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   fim_entry *entry,
                                   pthread_mutex_t *mutex,
-                                  void *alert,
-                                  void *fim_ev_mode,
-                                  void *configuration) {
-    int *original_configuration = (int *)configuration;
-    int validated_configuration = fim_configuration_directory(entry->file_entry.path);
+                                  void *evt_data,
+                                  void *configuration,
+                                  __attribute__((unused)) void *_unused_patameter) {
+    const directory_t *original_configuration = (const directory_t *)configuration;
+    directory_t *validated_configuration = fim_configuration_directory(entry->file_entry.path);
 
-    if (validated_configuration == *original_configuration) {
-        fim_delete_file_event(fim_sql, entry, mutex, alert, fim_ev_mode, NULL);
+    if (validated_configuration == original_configuration) {
+        fim_delete_file_event(fim_sql, entry, mutex, evt_data, NULL, NULL);
     }
 }
 
@@ -521,7 +539,7 @@ int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
     fim_db_bind_set_scanned(fim_sql, path);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_SCANNED]) != SQLITE_DONE) {
-        merror("Step error setting scanned path '%s': %s", path, sqlite3_errmsg(fim_sql->db));
+        merror("Step error setting scanned path '%s': %s (%d)", path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -534,7 +552,7 @@ int fim_db_get_count_file_data(fdb_t * fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_DATA);
 
     if(res == FIMDB_ERR) {
-        merror("Step error getting count entry data: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count entry data: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
     }
     return res;
 }
@@ -543,7 +561,7 @@ int fim_db_get_count_file_entry(fdb_t * fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_PATH);
 
     if(res == FIMDB_ERR) {
-        merror("Step error getting count entry path: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count entry path: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
     }
     return res;
 }

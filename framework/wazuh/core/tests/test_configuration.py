@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -14,8 +14,8 @@ from wazuh.core.common import ossec_conf
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
@@ -131,6 +131,12 @@ def test_get_ossec_conf():
     with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1101 .*"):
             configuration.get_ossec_conf()
+
+    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            configuration.get_ossec_conf(from_import=True)
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
 
     with pytest.raises(WazuhError, match=".* 1102 .*"):
         configuration.get_ossec_conf(section='noexists',
@@ -262,29 +268,31 @@ def test_get_internal_options_value():
         assert configuration.get_internal_options_value('ossec', 'python', 5, 1) == 1
 
 
-def test_upload_group_configuration():
+@patch('builtins.open')
+def test_upload_group_configuration(mock_open):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.upload_group_configuration('noexists', 'noexists')
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with patch('wazuh.core.configuration.open'):
-            with pytest.raises(WazuhInternalError, match=".* 1743 .*"):
-                configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
-        with patch('wazuh.core.configuration.open', return_value=Exception):
-            with pytest.raises(WazuhError, match=".* 1113 .*"):
-                configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
-        with patch('builtins.open'):
-            with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
-                with patch('wazuh.core.utils.chown', side_effect=None):
-                    with patch('wazuh.core.utils.chmod', side_effect=None):
-                        with patch('wazuh.core.configuration.safe_move'):
-                            assert isinstance(configuration.upload_group_configuration('default',
-                                                                                       "<agent_config>new_config</agent_config>"),
-                                              str)
-                        with patch('wazuh.core.configuration.safe_move', side_effect=Exception):
-                            with pytest.raises(WazuhInternalError, match=".* 1016 .*"):
-                                configuration.upload_group_configuration('default',
-                                                                         "<agent_config>new_config</agent_config>")
+        with patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']):
+            with patch('wazuh.core.configuration.open'):
+                with pytest.raises(WazuhInternalError, match=".* 1743 .*"):
+                    configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
+            with patch('wazuh.core.configuration.open', return_value=Exception):
+                with pytest.raises(WazuhError, match=".* 1113 .*"):
+                    configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
+            with patch('builtins.open'):
+                with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
+                    with patch('wazuh.core.utils.chown', side_effect=None):
+                        with patch('wazuh.core.utils.chmod', side_effect=None):
+                            with patch('wazuh.core.configuration.safe_move'):
+                                assert isinstance(configuration.upload_group_configuration('default',
+                                                                                           "<agent_config>new_config</agent_config>"),
+                                                  str)
+                            with patch('wazuh.core.configuration.safe_move', side_effect=Exception):
+                                with pytest.raises(WazuhInternalError, match=".* 1016 .*"):
+                                    configuration.upload_group_configuration('default',
+                                                                             "<agent_config>new_config</agent_config>")
             with patch('wazuh.core.configuration.subprocess.check_output',
                        side_effect=subprocess.CalledProcessError(cmd='ls', returncode=1, output=b'ERROR')):
                 with patch('wazuh.core.configuration.re.findall', return_value=None):
@@ -310,12 +318,14 @@ def test_upload_group_file(mock_safe_move, mock_open):
             configuration.upload_group_file('default', [], 'agent.conf')
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
-            with patch('wazuh.core.utils.chown', side_effect=None):
-                with patch('wazuh.core.utils.chmod', side_effect=None):
-                    assert configuration.upload_group_file('default',
-                                                           "<agent_config>new_config</agent_config>", 'agent.conf') == \
-                           'Agent configuration was successfully updated'
+        with patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']):
+            with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
+                with patch('wazuh.core.utils.chown', side_effect=None):
+                    with patch('wazuh.core.utils.chmod', side_effect=None):
+                        assert configuration.upload_group_file('default',
+                                                               "<agent_config>new_config</agent_config>",
+                                                               'agent.conf') == \
+                               'Agent configuration was successfully updated'
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1111 .*"):

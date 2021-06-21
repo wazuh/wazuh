@@ -3,7 +3,7 @@
  * @brief Definition of FIM database for files library.
  * @date 2020-09-9
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 #ifndef FIM_DB_FILES_H
@@ -157,13 +157,17 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_
  * @param file Structure of the file which contains all the paths.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param storage 1 Store database in memory, disk otherwise.
- * @param mode FIM mode (scheduled, realtime or whodata)
+ * @param evt_data Information on how the event was triggered.
  * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
-                        pthread_mutex_t *mutex, int storage, fim_event_mode mode, int *configuration);
+int fim_db_delete_range(fdb_t *fim_sql,
+                        fim_tmp_file *file,
+                        pthread_mutex_t *mutex,
+                        int storage,
+                        event_data_t *evt_data,
+                        directory_t *configuration);
 
 /**
  * @brief Remove a range of paths from database if they have a specific monitoring mode.
@@ -172,13 +176,34 @@ int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
  * @param file Structure of the file which contains all the paths.
  * @param mutex FIM database's mutex for thread synchronization.
  * @param storage 1 Store database in memory, disk otherwise.
- * @param mode FIM mode (scheduled, realtime or whodata)
- * @param w_evt Whodata information
+ * @param evt_data Information on how the event was triggered.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
-                                 fim_event_mode mode, whodata_evt * w_evt);
+int fim_db_process_missing_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data);
+
+/**
+ * @brief Remove a wildcard directory that were not expanded from the configuration
+ *
+ * @param fim_sql FIM database struct.
+ * @param file Structure of the file which contains all the paths.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @param evt_data Information on how the event was triggered.
+ * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
+ *
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 pthread_mutex_t *mutex,
+                                 int storage,
+                                 event_data_t *evt_data,
+                                 directory_t *configuration);
 
 /**
  * @brief Decodes a row from the database to be saved in a fim_entry structure.

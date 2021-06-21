@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * February 17, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,13 +16,13 @@
 
 class EncodingWindowsHelperTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    EncodingWindowsHelperTest() = default;
-    virtual ~EncodingWindowsHelperTest() = default;
+        EncodingWindowsHelperTest() = default;
+        virtual ~EncodingWindowsHelperTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //ENCODING_WINDOWS_HELPER_TEST_H

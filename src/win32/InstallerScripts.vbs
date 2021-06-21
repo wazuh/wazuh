@@ -1,6 +1,6 @@
 
 ' Script for configuration Windows agent.
-' Copyright (C) 2015-2020, Wazuh Inc. <support@wazuh.com>
+' Copyright (C) 2015-2021, Wazuh Inc. <support@wazuh.com>
 '
 ' This program is free software; you can redistribute it and/or modify
 ' it under the terms of the GNU General Public License as published by
@@ -222,4 +222,12 @@ Private Function GetVersion()
 	For Each objItem in colItems
 		GetVersion = Split(objItem.Version,".")(0)
 	Next
+End Function
+
+Public Function CheckSvcRunning()
+	Set wmi = GetObject("winmgmts://./root/cimv2")
+	state = wmi.Get("Win32_Service.Name='OssecSvc'").State
+	Session.Property("OSSECRUNNING") = state
+
+	CheckSvcRunning = 0
 End Function

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -45,4 +45,10 @@ char* __wrap_wurl_http_get(const char * url) {
     check_expected(url);
 
     return mock_type(char *);
+}
+
+curl_response* __wrap_wurl_http_get_with_header(const char *header, const char* url) {
+    check_expected(header);
+    check_expected(url);
+    return mock_type(curl_response*);
 }

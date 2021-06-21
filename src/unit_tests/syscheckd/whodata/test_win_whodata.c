@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -36,8 +36,9 @@
 
 #include "syscheckd/syscheck.h"
 
-extern int set_winsacl(const char *dir, int position);
+int set_winsacl(const char *dir, directory_t *configuration);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
+extern int w_update_sacl(const char *obj_path);
 extern char *get_whodata_path(const short unsigned int *win_path);
 extern int whodata_path_filter(char **path);
 extern void whodata_adapt_path(char **path);
@@ -105,6 +106,12 @@ static void successful_whodata_event_render(EVT_HANDLE event, PEVT_VARIANT raw_d
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
 int syscheck_teardown(void ** state) {
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     // Free wdata
     if (syscheck.wdata.fd) {
         OSHash_Free(syscheck.wdata.fd);
@@ -112,10 +119,6 @@ int syscheck_teardown(void ** state) {
 
     if (syscheck.wdata.directories) {
         OSHash_Free(syscheck.wdata.directories);
-    }
-
-    if (syscheck.wdata.dirs_status) {
-        free(syscheck.wdata.dirs_status);
     }
 
     if (syscheck.wdata.drive) {
@@ -128,25 +131,19 @@ int syscheck_teardown(void ** state) {
 
     syscheck.wdata.fd = NULL;
     syscheck.wdata.directories = NULL;
-    syscheck.wdata.dirs_status = NULL;
     syscheck.wdata.drive = NULL;
     syscheck.wdata.device = NULL;
 
     // Free everything else in syscheck
     Free_Syscheck(&syscheck);
 
-    syscheck.opts = NULL;
     syscheck.scan_day = NULL;
     syscheck.scan_time = NULL;
     syscheck.ignore = NULL;
     syscheck.ignore_regex = NULL;
     syscheck.nodiff = NULL;
     syscheck.nodiff_regex = NULL;
-    syscheck.dir = NULL;
-    syscheck.filerestrict = NULL;
-    syscheck.tag = NULL;
-    syscheck.symbolic_links = NULL;
-    syscheck.recursion_level = NULL;
+    syscheck.directories = NULL;
     syscheck.key_ignore = NULL;
     syscheck.key_ignore_regex = NULL;
     syscheck.registry = NULL;
@@ -171,6 +168,13 @@ int test_group_setup(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
     expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [../test_syscheck.conf]");
     will_return_always(__wrap_getDefine_Int, 0);
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     ret = Read_Syscheck_Config("../test_syscheck.conf");
 
     SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
@@ -199,30 +203,22 @@ static int setup_whodata_callback_group(void ** state) {
 
     __real_OSHash_SetFreeDataPointer(syscheck.wdata.directories, free);
 
-    if (syscheck.dir = calloc(2, sizeof(char *)), !syscheck.dir)
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
         return -1;
+    }
 
-    if (syscheck.symbolic_links = calloc(2, sizeof(char *)), !syscheck.symbolic_links)
-        return -1;
+    int options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
+                  CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_ATTRS | WHODATA_ACTIVE;
+    directory_t *directory0 = fim_create_directory("c:\\windows", options, NULL, 50, NULL, -1, 0);
+    directory0->dirs_status.status = WD_CHECK_WHODATA;
 
-    if (syscheck.opts = calloc(1, sizeof(int *)), !syscheck.opts)
-        return -1;
-
-    if (syscheck.dir[0] = strdup("c:\\windows"), !syscheck.dir[0])
-        return -1;
-
-    if (syscheck.wdata.dirs_status = calloc(2, sizeof(whodata_dir_status)), !syscheck.wdata.dirs_status)
-        return -1;
-
-    if (syscheck.recursion_level = calloc(1, sizeof(int *)), !syscheck.recursion_level)
-        return -1;
-
-    syscheck.opts[0] = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
-                       CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_ATTRS | WHODATA_ACTIVE;
-
-    syscheck.wdata.dirs_status[0].status = WD_CHECK_WHODATA;
-
-    syscheck.recursion_level[0] = 50;
+    OSList_InsertData(syscheck.directories, NULL, directory0);
 
     OSHash_Add_ex_check_data = 0;
     SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
@@ -248,8 +244,10 @@ static int setup_wdata_dirs_cleanup(void ** state) {
 
     __real_OSHash_SetFreeDataPointer(syscheck.wdata.directories, free);
 
-    if (syscheck.dir = calloc(1, sizeof(char *)), !syscheck.dir)
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
         return -1;
+    }
 
     return 0;
 }
@@ -297,14 +295,22 @@ static int teardown_reset_errno(void **state) {
 }
 
 static int setup_state_checker(void ** state) {
-    if (syscheck.dir = calloc(2, sizeof(char *)), !syscheck.dir)
-        return -1;
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    if (syscheck.dir[0] = strdup("c:\\a\\path"), !syscheck.dir[0])
+    syscheck.directories = OSList_Create();
+    if (!syscheck.directories) {
         return -1;
+    }
 
-    if (syscheck.opts = calloc(2, sizeof(char *)), !syscheck.opts)
-        return -1;
+    directory_t *directory0 = fim_create_directory("c:\\a\\path", WHODATA_ACTIVE, NULL, 50, NULL, -1, 0);
+    directory0->dirs_status.status = WD_CHECK_WHODATA;
+    directory0->dirs_status.object_type = WD_STATUS_DIR_TYPE;
+    directory0->dirs_status.status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
+
+    OSList_InsertData(syscheck.directories, NULL, directory0);
 
 #ifdef TEST_WINAGENT
     will_return_count(__wrap_os_random, 12345, 2);
@@ -315,14 +321,6 @@ static int setup_state_checker(void ** state) {
     }
 
     __real_OSHash_SetFreeDataPointer(syscheck.wdata.directories, free);
-
-    if (syscheck.wdata.dirs_status = calloc(1, sizeof(whodata_dir_status)), !syscheck.wdata.dirs_status)
-        return -1;
-
-    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_DIR_TYPE;
-    syscheck.wdata.dirs_status[0].status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
-
-    syscheck.opts[0] = WHODATA_ACTIVE;
 
     test_mode = 1;
 
@@ -365,23 +363,31 @@ static int teardown_win_whodata_evt(void **state) {
 }
 
 static int teardown_whodata_callback_restore_globals(void ** state) {
-    syscheck.wdata.dirs_status[0].status |= WD_CHECK_WHODATA;
-    syscheck.recursion_level[0] = 50;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    directory_t *directory0 = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0));
+    directory0->dirs_status.status |= WD_CHECK_WHODATA;
+    directory0->recursion_level = 50;
     return 0;
 }
 
 static int teardown_state_checker_restore_globals(void ** state) {
-    if (syscheck.dir[0])
-        free(syscheck.dir[0]);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    if (syscheck.dir[0] = strdup("c:\\a\\path"), !syscheck.dir[0]) {
-        return -1;
-    }
+    OSList_CleanNodes(syscheck.directories);
+    directory_t *directory0 = fim_create_directory("c:\\a\\path", WHODATA_ACTIVE, NULL, 50, NULL, -1, 0);
 
-    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_DIR_TYPE;
-    syscheck.wdata.dirs_status[0].status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
+    directory0->dirs_status.object_type = WD_STATUS_DIR_TYPE;
+    directory0->dirs_status.status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
 
-    syscheck.opts[0] = WHODATA_ACTIVE;
+    OSList_InsertData(syscheck.directories, NULL, directory0);
+
     return 0;
 }
 
@@ -402,23 +408,17 @@ static int teardown_clean_directories_hash(void ** state) {
     return 0;
 }
 
-int __wrap_pthread_rwlock_wrlock(pthread_rwlock_t * rwlock) {
-    function_called();
-    check_expected(rwlock);
-    return mock();
-}
-
-int __wrap_pthread_rwlock_unlock(pthread_rwlock_t * rwlock) {
-    function_called();
-    check_expected(rwlock);
-    return mock();
-}
-
 /**************************************************************************/
 /***************************set_winsacl************************************/
 void test_set_winsacl_failed_opening(void **state) {
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -429,12 +429,18 @@ void test_set_winsacl_failed_opening(void **state) {
     will_return(wrap_GetLastError, (unsigned int) 500);
     expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
 
-    set_winsacl(syscheck.dir[0], 0);
+    set_winsacl(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 }
 
 void test_set_winsacl_failed_privileges(void **state) {
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -454,12 +460,18 @@ void test_set_winsacl_failed_privileges(void **state) {
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    set_winsacl(syscheck.dir[0], 0);
+    set_winsacl(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 }
 
 void test_set_winsacl_failed_security_descriptor(void **state) {
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -478,7 +490,7 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
 
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     will_return(wrap_GetNamedSecurityInfo, NULL);
@@ -498,7 +510,7 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    set_winsacl(syscheck.dir[0], 0);
+    set_winsacl(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 }
 
 void test_set_winsacl_no_need_to_configure_acl(void **state) {
@@ -507,6 +519,11 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
@@ -571,7 +588,7 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 0);
 }
@@ -581,6 +598,11 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6266): The SACL of 'C:\\a\\path' will be configured.");
 
@@ -614,11 +636,14 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -644,7 +669,7 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -654,6 +679,11 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -689,11 +719,14 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -722,7 +755,7 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -732,6 +765,11 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -767,11 +805,14 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -805,7 +846,7 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -816,6 +857,11 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -851,11 +897,14 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -892,7 +941,7 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -903,6 +952,11 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -938,11 +992,14 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -983,7 +1040,7 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -993,6 +1050,11 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -1028,11 +1090,14 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1076,7 +1141,7 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
@@ -1089,6 +1154,11 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -1124,11 +1194,14 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1171,7 +1244,7 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1188,6 +1261,11 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -1223,11 +1301,14 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1275,7 +1356,7 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1292,6 +1373,11 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -1327,11 +1413,14 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1388,7 +1477,7 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1405,6 +1494,11 @@ void test_set_winsacl_success(void **state) {
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     ev_sid_size = 1;
 
@@ -1440,11 +1534,14 @@ void test_set_winsacl_success(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1499,7 +1596,7 @@ void test_set_winsacl_success(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", 0);
+    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 0);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -2993,7 +3090,7 @@ void test_is_valid_sacl_sid_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
 
     ret = is_valid_sacl(sacl, 0);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 2);
 }
 
 void test_is_valid_sacl_sacl_not_found(void **state) {
@@ -3010,7 +3107,7 @@ void test_is_valid_sacl_sacl_not_found(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6267): No SACL found on target. A new one will be created.");
 
     ret = is_valid_sacl(sacl, 0);
-    assert_int_equal(ret, 2);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_ace_not_found(void **state) {
@@ -3039,7 +3136,7 @@ void test_is_valid_sacl_ace_not_found(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '800'.");
 
     ret = is_valid_sacl(new_sacl, 0);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_not_valid(void **state) {
@@ -3065,7 +3162,7 @@ void test_is_valid_sacl_not_valid(void **state) {
     will_return(wrap_GetAce, 1);
 
     ret = is_valid_sacl(new_sacl, 1);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_valid(void **state) {
@@ -3092,7 +3189,7 @@ void test_is_valid_sacl_valid(void **state) {
     will_return(wrap_EqualSid, 1);
 
     ret = is_valid_sacl(&new_sacl, 1);
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 0);
 }
 
 void test_replace_device_path_invalid_path(void **state) {
@@ -3454,23 +3551,42 @@ void test_restore_sacls_set_privilege_failed(void **state){
 }
 
 int setup_restore_sacls(void **state) {
-    int *ptr = malloc(sizeof(int));
+    directory_t *dir_it;
+    OSListNode *node_it;
 
-    if(ptr == NULL)
-        return -1;
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    *ptr = syscheck.wdata.dirs_status[0].status;
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        dir_it->dirs_status.status &= ~WD_IGNORE_REST;
+    }
 
-    *state = ptr;
-    // Set realtime
-    syscheck.wdata.dirs_status[0].status |= WD_IGNORE_REST;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_IGNORE_REST;
+
     return 0;
 }
 
 int teardown_restore_sacls(void **state) {
-    int *ptr = (int *)state;
-    syscheck.wdata.dirs_status[0].status = *ptr;
-    free(*state);
+    directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_IGNORE_REST;
+        }
+    }
+
     return 0;
 }
 
@@ -3479,6 +3595,12 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     // set_privilege
     {
@@ -3492,7 +3614,7 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     will_return(wrap_GetNamedSecurityInfo, NULL);
@@ -3527,6 +3649,12 @@ void test_restore_sacls_deleteAce_failed(void **state){
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     // set_privilege
     {
         expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -3539,7 +3667,7 @@ void test_restore_sacls_deleteAce_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3579,6 +3707,12 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     // set_privilege
     {
         expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -3591,7 +3725,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3603,7 +3737,7 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_SetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
@@ -3640,6 +3774,12 @@ void test_restore_sacls_success(void **state){
     will_return(wrap_OpenProcessToken, (HANDLE) 123456);
     will_return(wrap_OpenProcessToken, 1);
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     // set_privilege
     {
         expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -3652,7 +3792,7 @@ void test_restore_sacls_success(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
     expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3664,7 +3804,7 @@ void test_restore_sacls_success(void **state){
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+    expect_string(wrap_SetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
     expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
     expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
@@ -3674,7 +3814,7 @@ void test_restore_sacls_success(void **state){
     will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
 
     char debug_msg[OS_MAXSTR];
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, syscheck.dir[0]);
+    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
     /* Inside set_privilege */
@@ -3774,6 +3914,12 @@ void test_restore_audit_policies_success(void **state) {
 }
 /****************************************audit_restore**************************************/
 void test_audit_restore(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     // restore_sacls
     {
         will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -3793,7 +3939,7 @@ void test_audit_restore(void **state) {
             expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
         // GetNamedSecurity
-        expect_string(wrap_GetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+        expect_string(wrap_GetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         ACL acl;
         expect_value(wrap_GetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
         expect_value(wrap_GetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
@@ -3805,7 +3951,7 @@ void test_audit_restore(void **state) {
         expect_value(wrap_DeleteAce, dwAceIndex, 0);
         will_return(wrap_DeleteAce, 1);
 
-        expect_string(wrap_SetNamedSecurityInfo, pObjectName, syscheck.dir[0]);
+        expect_string(wrap_SetNamedSecurityInfo, pObjectName, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         expect_value(wrap_SetNamedSecurityInfo, ObjectType, SE_FILE_OBJECT);
         expect_value(wrap_SetNamedSecurityInfo, SecurityInfo, SACL_SECURITY_INFORMATION);
         expect_value(wrap_SetNamedSecurityInfo, psidOwner, NULL);
@@ -3815,7 +3961,7 @@ void test_audit_restore(void **state) {
         will_return(wrap_SetNamedSecurityInfo, ERROR_SUCCESS);
 
         char debug_msg[OS_MAXSTR];
-        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, syscheck.dir[0]);
+        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
         /* Inside set_privilege */
@@ -4655,6 +4801,12 @@ void test_whodata_callback_4656_non_monitored_directory(void **state) {
         { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
     };
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     unsigned long result;
 
     successful_whodata_event_render(event, raw_data);
@@ -4706,7 +4858,13 @@ void test_whodata_callback_4656_non_whodata_directory(void **state) {
 
     unsigned long result;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -4756,7 +4914,13 @@ void test_whodata_callback_4656_path_above_recursion_level(void ** state) {
     };
     unsigned long result;
 
-    syscheck.recursion_level[0] = 0;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->recursion_level = 0;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -4804,6 +4968,12 @@ void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void ** state) {
         { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
     };
     unsigned long result;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     successful_whodata_event_render(event, raw_data);
 
@@ -4864,6 +5034,12 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_delete(void **state)
         { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
     };
     unsigned long result;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     successful_whodata_event_render(event, raw_data);
 
@@ -4938,6 +5114,12 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_readd(void **state) 
 
     memset(w_evtdup, 0, sizeof(whodata_evt));
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     successful_whodata_event_render(event, raw_data);
 
     // Inside whodata_event_parse
@@ -5011,6 +5193,12 @@ void test_whodata_callback_4656_success(void **state) {
         { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
     };
     unsigned long result;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5212,7 +5400,12 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
         fail();
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = -1;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5220,6 +5413,8 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6319): No configuration found for (file):'c:\\a\\path'");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6243): The 'c:\\a\\path' directory has been discarded because it is not being monitored in whodata mode.");
 
@@ -5246,11 +5441,16 @@ void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
     unsigned long result;
     whodata_evt *w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
-    w_evt->config_node = 8;
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5258,26 +5458,18 @@ void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, NULL);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     // Inside whodata_hash_add
     {
         expect_value(__wrap_OSHash_Add_ex, self, syscheck.wdata.directories);
-        expect_string(__wrap_OSHash_Add_ex, key, "c:\\a\\path");
+        expect_string(__wrap_OSHash_Add_ex, key, "c:\\windows");
         will_return(__wrap_OSHash_Add_ex, 0);
 
         expect_string(__wrap__merror, formatted_msg,
-            "(6631): The event could not be added to the 'directories' hash table. Target: 'c:\\a\\path'.");
+            "(6631): The event could not be added to the 'directories' hash table. Target: 'c:\\windows'.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -5303,11 +5495,16 @@ void test_whodata_callback_4663_new_files_added(void **state) {
     unsigned long result;
     whodata_evt *w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     w_evt->scan_directory = 1;
-    w_evt->config_node = 8;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5315,27 +5512,19 @@ void test_whodata_callback_4663_new_files_added(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, NULL);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     // Inside whodata_hash_add
     {
         expect_value(__wrap_OSHash_Add_ex, self, syscheck.wdata.directories);
-        expect_string(__wrap_OSHash_Add_ex, key, "c:\\a\\path");
+        expect_string(__wrap_OSHash_Add_ex, key, "c:\\windows");
         will_return(__wrap_OSHash_Add_ex, 2);
     }
 
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6244): New files have been detected in the 'c:\\a\\path' directory and will be scanned.");
+        "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5360,7 +5549,7 @@ void test_whodata_callback_4663_wrong_time_type(void **state) {
     unsigned long result;
     whodata_evt *w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5397,10 +5586,17 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     whodata_evt *w_evt = *state;
     whodata_directory w_dir;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     w_evt->scan_directory = 1;
+
     memset(&w_dir, 0, sizeof(whodata_directory));
     w_dir.QuadPart = 133022717170000000;
 
@@ -5410,19 +5606,11 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\a\\path' directory has been scanned. It does not need to be scanned again.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\windows' directory has been scanned. It does not need to be scanned again.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5448,10 +5636,17 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
     whodata_evt *w_evt = *state;
     whodata_directory w_dir;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     w_evt->scan_directory = 1;
+
     memset(&w_dir, 0, sizeof(whodata_directory));
 
     successful_whodata_event_render(event, raw_data);
@@ -5460,19 +5655,11 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
-    expect_string(__wrap_OSHash_Get, key, "c:\\a\\path");
+    expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6244): New files have been detected in the 'c:\\a\\path' directory and will be scanned.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5749,7 +5936,7 @@ void test_check_object_sacl_open_process_error(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_unable_to_set_privilege(void **state) {
@@ -5781,7 +5968,7 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
@@ -5831,7 +6018,7 @@ void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_invalid_sacl(void **state) {
@@ -5869,11 +6056,14 @@ void test_check_object_sacl_invalid_sacl(void **state) {
 
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &acl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     // Inside set_privilege
@@ -6511,23 +6701,16 @@ void test_state_checker_no_files_to_check(void **state) {
     int ret;
     void *input = NULL;
 
-    if(syscheck.dir[0])
-        free(syscheck.dir[0]);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    syscheck.dir[0] = NULL;
-
+    OSList_CleanNodes(syscheck.directories);
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
     will_return(__wrap_FOREVER, 1);
     will_return(__wrap_FOREVER, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     expect_value(wrap_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -6540,21 +6723,19 @@ void test_state_checker_file_not_whodata(void **state) {
     int ret;
     void *input = NULL;
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     // Leverage Free_Syscheck not free the wdata struct
-    syscheck.wdata.dirs_status[0].status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
     will_return(__wrap_FOREVER, 1);
     will_return(__wrap_FOREVER, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     expect_value(wrap_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
@@ -6573,6 +6754,12 @@ void test_state_checker_file_does_not_exist(void **state) {
     st.wMonth = 3;
     st.wDay = 3;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
     will_return(__wrap_FOREVER, 1);
@@ -6588,20 +6775,12 @@ void test_state_checker_file_does_not_exist(void **state) {
 
     will_return(wrap_GetSystemTime, &st);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_UNK_TYPE);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
+    assert_memory_equal(&((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_UNK_TYPE);
+    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
 }
 
 void test_state_checker_file_with_invalid_sacl(void **state) {
@@ -6609,6 +6788,14 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     void *input = NULL;
     ACL acl;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+
+    acl.AceCount = 1;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -6652,11 +6839,14 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
             expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
             expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-            will_return(wrap_AllocateAndInitializeSid, 0);
+            will_return(wrap_AllocateAndInitializeSid, 1);
+
+            will_return(wrap_GetAce, &acl);
+            will_return(wrap_GetAce, 0);
 
             will_return(wrap_GetLastError, (unsigned int) 700);
 
-            expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
         }
 
         // Inside set_privilege
@@ -6688,20 +6878,12 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
         will_return(__wrap_SendMSG, 0); // Return value is discarded
     }
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_file_with_valid_sacl(void **state) {
@@ -6716,6 +6898,12 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     st.wDay = 3;
 
     acl.AceCount = 1;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -6795,21 +6983,13 @@ void test_state_checker_file_with_valid_sacl(void **state) {
 
     will_return(wrap_GetSystemTime, &st);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_memory_equal(&((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_FILE_TYPE);
+    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_dir_readded_error(void **state) {
@@ -6817,7 +6997,13 @@ void test_state_checker_dir_readded_error(void **state) {
     void *input = NULL;
     char debug_msg[OS_MAXSTR];
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_STATUS_EXISTS;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_STATUS_EXISTS;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -6834,7 +7020,7 @@ void test_state_checker_dir_readded_error(void **state) {
 
     // Inside set_winsacl
     {
-        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, syscheck.dir[0]);
+        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
         will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -6849,20 +7035,12 @@ void test_state_checker_dir_readded_error(void **state) {
     expect_string(__wrap__merror, formatted_msg,
         "(6619): Unable to add directory to whodata real time monitoring: 'c:\\a\\path'. It will be monitored in Realtime");
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
-    assert_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_dir_readded_succesful(void **state) {
@@ -6875,8 +7053,14 @@ void test_state_checker_dir_readded_succesful(void **state) {
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEMTIME st;
 
-    syscheck.wdata.dirs_status[0].status &= ~WD_STATUS_EXISTS;
-    syscheck.wdata.dirs_status[0].object_type = WD_STATUS_UNK_TYPE;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_STATUS_EXISTS;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type = WD_STATUS_UNK_TYPE;
 
     memset(&st, 0, sizeof(SYSTEMTIME));
     st.wYear = 2020;
@@ -6932,11 +7116,14 @@ void test_state_checker_dir_readded_succesful(void **state) {
         {
             expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
             expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-            will_return(wrap_AllocateAndInitializeSid, 0);
+            will_return(wrap_AllocateAndInitializeSid, 1);
+
+            will_return(wrap_GetAce, &old_sacl);
+            will_return(wrap_GetAce, 0);
 
             will_return(wrap_GetLastError, (unsigned int) 700);
 
-            expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
         }
 
         expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'c:\\a\\path'");
@@ -6994,25 +7181,20 @@ void test_state_checker_dir_readded_succesful(void **state) {
 
     will_return(wrap_GetSystemTime, &st);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&syscheck.wdata.dirs_status[0].last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(syscheck.wdata.dirs_status[0].object_type, WD_STATUS_DIR_TYPE);
-    assert_non_null(syscheck.wdata.dirs_status[0].status & WD_STATUS_EXISTS);
-    assert_non_null(syscheck.opts[0] & WHODATA_ACTIVE);
+    assert_memory_equal(&((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
+    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_DIR_TYPE);
+    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
 void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -7020,14 +7202,6 @@ void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
     will_return(__wrap_FOREVER, 0);
 
     expect_value(wrap_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
-
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     ret = state_checker(NULL);
 
@@ -7039,6 +7213,9 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     int ret;
     whodata_directory * w_dir;
     FILETIME current_time;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -7058,14 +7235,6 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     if (OSHash_Add(syscheck.wdata.directories, "C:\\some\\path", w_dir) != 2)
         fail();
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);
@@ -7076,6 +7245,9 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
 void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     int ret;
     whodata_directory * w_dir;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -7093,14 +7265,6 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     if (OSHash_Add(syscheck.wdata.directories, "C:\\some\\path", w_dir) != 2)
         fail();
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);
@@ -7112,6 +7276,9 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
     int ret;
     FILETIME current_time;
     int i;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -7138,14 +7305,6 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
             fail();
     }
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);
@@ -7159,6 +7318,9 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
     int ret;
     FILETIME current_time;
     int i;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -7190,14 +7352,6 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
             fail();
     }
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);
@@ -7210,6 +7364,9 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
 void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
     int ret;
     int i;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
@@ -7233,15 +7390,6 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
         if (OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
             fail();
     }
-
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_any(__wrap_pthread_rwlock_wrlock, rwlock);
-    will_return(__wrap_pthread_rwlock_wrlock, 0);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     ret = state_checker(NULL);
 
     assert_int_equal(ret, 0);

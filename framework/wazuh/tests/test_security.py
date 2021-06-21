@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -48,7 +48,7 @@ def create_memory_db(sql_file, session):
 
 
 def reload_default_rbac_resources():
-    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
+    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=default_orm_engine):
             with patch('shutil.chown'), patch('os.chmod'):
                 import wazuh.rbac.orm as orm
@@ -63,7 +63,7 @@ def reload_default_rbac_resources():
 
 @pytest.fixture(scope='function')
 def db_setup():
-    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
+    with patch('wazuh.core.common.wazuh_uid'), patch('wazuh.core.common.wazuh_gid'):
         with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
@@ -211,7 +211,7 @@ def test_invalid_users_tokens(db_setup, user_list, expected_users):
     expected_users : set
         Expected users.
     """
-    with patch('wazuh.security.TokenManager.add_user_roles_rules') as TM_mock:
+    with patch('wazuh.core.security.TokenManager.add_user_roles_rules') as TM_mock:
         _, _, core_security = db_setup
         core_security.invalid_users_tokens(users=[user_id for user_id in user_list])
         related_users = TM_mock.call_args.kwargs['users']
@@ -233,7 +233,7 @@ def test_invalid_roles_tokens(db_setup, role_list, expected_roles):
     expected_roles : set
         Expected roles.
     """
-    with patch('wazuh.security.TokenManager.add_user_roles_rules') as TM_mock:
+    with patch('wazuh.core.security.TokenManager.add_user_roles_rules') as TM_mock:
         _, _, core_security = db_setup
         core_security.invalid_roles_tokens(roles=[role_id for role_id in role_list])
         assert set(TM_mock.call_args.kwargs['roles']) == expected_roles

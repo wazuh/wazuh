@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -7,22 +7,25 @@ import glob
 import hashlib
 import json
 import operator
-import random
 import re
 import stat
 import sys
-import time
+import tempfile
 import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
+from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk
 from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
-from xml.dom.minidom import parseString
-from xml.etree import ElementTree
+from xml.etree.ElementTree import ElementTree
+
+from cachetools import cached, TTLCache
+from defusedxml.ElementTree import fromstring
+from defusedxml.minidom import parseString
 
 import wazuh.core.results as results
 from api import configuration
@@ -34,6 +37,9 @@ from wazuh.core.wdb import WazuhDBConnection
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
+
+# Temporary cache
+t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
 def find_nth(string, substring, n):
@@ -105,28 +111,66 @@ def execute(command):
 
 
 def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
-                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None):
+                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None,
+                  allowed_select_fields=None, filters=None):
     """ Process a Wazuh framework data array
 
-    :param array: Array to process
-    :param search_text: Text to search and search type
-    :param complementary_search: Perform a complementary search
-    :param search_in_fields: Fields to search in
-    :param select: Select fields to return
-    :param sort_by: Fields to sort_by. Will sort the array directly if [''] is received
-    :param sort_ascending: Sort order ascending or descending
-    :param allowed_sort_fields: Allowed fields to sort_by
-    :param offset: First element to return.
-    :param limit: Maximum number of elements to return
-    :param q: Query to filter by
-    :param required_fields: Required fields that must appear in the response
-    :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
+    Parameters
+    ----------
+    array : list
+        Array to process
+    search_text : str
+        Text to search and search type
+    complementary_search : bool
+        Perform a complementary search
+    search_in_fields : list
+        Fields to search in
+    select : list
+        Select fields to return
+    sort_by : list
+        Fields to sort_by. Will sort the array directly if [''] is received
+    sort_ascending : bool
+        Sort order ascending or descending
+    allowed_sort_fields : list
+        Allowed fields to sort_by
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return
+    q : str
+        Query to filter by
+    required_fields : list
+        Required fields that must appear in the response
+    allowed_select_fields: list
+        List of fields allowed to select from
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+
+    Returns
+    -------
+    Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
     if not array:
         return {'items': list(), 'totalItems': 0}
 
+    if isinstance(filters, dict) and len(filters.keys()) > 0:
+        new_array = list()
+        for element in array:
+            for key, value in filters.items():
+                if element[key] in value:
+                    new_array.append(element)
+
+        array = new_array
+
+    if sort_by == [""]:
+        array = sort_array(array, sort_ascending=sort_ascending)
+    elif sort_by:
+        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
+                           allowed_sort_fields=allowed_sort_fields)
+
     if select:
-        array = select_array(array, select=select, required_fields=required_fields)
+        array = select_array(array, select=select, required_fields=required_fields,
+                             allowed_select_fields=allowed_select_fields)
 
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,
@@ -134,12 +178,6 @@ def process_array(array, search_text=None, complementary_search=False, search_in
 
     if q:
         array = filter_array_by_query(q, array)
-
-    if sort_by == [""]:
-        array = sort_array(array, sort_ascending=sort_ascending)
-    elif sort_by:
-        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
-                           allowed_sort_fields=allowed_sort_fields)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -197,17 +235,37 @@ def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=Non
     if not isinstance(sort_ascending, bool):
         raise WazuhError(1402)
 
+    is_sort_valid = False
     if allowed_sort_fields:
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
+        is_sort_valid = True
 
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
-            check_sort_fields(set(array[0].keys()), set(sort_by))
+            not is_sort_valid and check_sort_fields(set(array[0].keys()), set(sort_by))
+            try:
+                return sorted(array,
+                              key=lambda o: tuple(
+                                  o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                              reverse=not sort_ascending)
+            except TypeError:
+                items_with_missing_keys = list()
+                copy_array = deepcopy(array)
+                for item in array:
+                    set(sort_by) & set(item.keys()) and items_with_missing_keys.append(
+                        copy_array.pop(copy_array.index(item)))
 
-            return sorted(array,
-                          key=lambda o: tuple(
-                              o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
-                          reverse=not sort_ascending)
+                sorted_array = sorted(copy_array, key=lambda o: tuple(
+                    o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                                      reverse=not sort_ascending)
+
+                if not sort_ascending:
+                    items_with_missing_keys.extend(sorted_array)
+                    return items_with_missing_keys
+                else:
+                    sorted_array.extend(items_with_missing_keys)
+                    return sorted_array
+
         else:
             return sorted(array,
                           key=lambda o: tuple(
@@ -281,7 +339,7 @@ def search_array(array, search_text=None, complementary_search=False, search_in_
     return found
 
 
-def select_array(array, select=None, required_fields=None):
+def select_array(array, select=None, required_fields=None, allowed_select_fields=None):
     """Get only those values from each element in the array that matches the select values.
 
     Parameters
@@ -293,6 +351,8 @@ def select_array(array, select=None, required_fields=None):
         Example: ['select1', 'select2.select21.select22', 'select3.select31']
     required_fields : set, optional
         Set of fields that must be in the response. These depends on the framework function.
+    allowed_select_fields: list
+        List of fields allowed to select from
 
     Raises
     ------
@@ -320,28 +380,36 @@ def select_array(array, select=None, required_fields=None):
                 next_element = None
             return {split_select[0]: next_element} if next_element else None
 
+    def detect_nested_select(user_select):
+        nested = set()
+        no_nested = set()
+        for element in user_select:
+            no_nested.add(element) if '.' not in element else nested.add(element)
+
+        return nested, no_nested
+
     if required_fields is None:
         required_fields = set()
-    select = set(select)
+
+    select_nested, select_no_nested = detect_nested_select(set(select))
+    if allowed_select_fields and not select_no_nested.issubset(allowed_select_fields):
+        raise WazuhError(1724, "{}".format(', '.join(select_no_nested)))
+    select = select_nested.union(select_no_nested)
 
     result_list = list()
     for item in array:
         selected_fields = dict()
-        missing_select = False
         # Build an entry with the filtered values
         for sel in select:
             candidate = get_nested_fields(item, sel)
             if candidate:
                 selected_fields.update(candidate)
-            else:
-                missing_select = True
-                break
-        # Add required fields if the entry is not empty or missing one of the selects
-        if selected_fields and not missing_select:
-            selected_fields.update({req_field: item[req_field] for req_field in required_fields})
-            result_list.append(selected_fields)
-    if not result_list:
-        raise WazuhError(1724, "{}".format(', '.join(select)))
+        # Add required fields if the entry is not empty
+        if array and not allowed_select_fields and not selected_fields:
+            raise WazuhError(1724, "{}".format(', '.join(select)))
+        selected_fields.update({req_field: item[req_field] for req_field in required_fields})
+        result_list.append(selected_fields)
+
     return result_list
 
 
@@ -431,8 +499,6 @@ def chmod_r(filepath, mode):
     :param filepath: Path to the file.
     :param mode: file mode in octal.
     """
-    chmod(filepath, mode)
-
     if path.isdir(filepath):
         for item in listdir(filepath):
             itempath = path.join(filepath, item)
@@ -440,6 +506,8 @@ def chmod_r(filepath, mode):
                 chmod(itempath, mode)
             elif path.isdir(itempath):
                 chmod_r(itempath, mode)
+
+    chmod(filepath, mode)
 
 
 def chown_r(filepath, uid, gid):
@@ -486,7 +554,7 @@ def delete_wazuh_file(full_path):
         raise WazuhError(1906)
 
 
-def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid()), time=None, permissions=None):
+def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid()), time=None, permissions=None):
     """Moves a file even between filesystems
 
     This function is useful to move files even when target directory is in a different filesystem from the source.
@@ -720,8 +788,8 @@ def load_wazuh_xml(xml_path, data=None):
     # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
-    # replace \< by &lt;
-    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
+    # replace \< by &lt, only outside xml tags;
+    data = re.sub(r'^&backslash;<(.*[^>])$', '&backslash;&lt;\g<1>', data)
 
     # replace \> by &gt;
     data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
@@ -736,7 +804,7 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return ElementTree.fromstring(entities + '<root_tag>' + data + '</root_tag>')
+    return fromstring(entities + '<root_tag>' + data + '</root_tag>', forbid_entities=False)
 
 
 class WazuhVersion:
@@ -986,13 +1054,16 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries
     """
 
-    def __init__(self, agent_id=None, query_format='agent'):
+    def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
         self.agent_id = agent_id
         self.query_format = query_format
+        self.max_size = max_size
+        self.request_slice = request_slice
+
         super().__init__()
 
     def connect_to_db(self):
-        return WazuhDBConnection()
+        return WazuhDBConnection(max_size=self.max_size, request_slice=self.request_slice)
 
     def _substitute_params(self, query, request):
         """
@@ -1138,11 +1209,11 @@ class WazuhDBQuery(object):
     def _add_sort_to_query(self):
         if self.sort:
             if self.sort['fields']:
-                sort_fields, allowed_sort_fields = set(self.sort['fields']), set(self.fields.keys())
-                # check every element in sort['fields'] is in allowed_sort_fields
-                if not sort_fields.issubset(allowed_sort_fields):
-                    raise WazuhError(1403, "Allowerd sort fields: {}. Fields: {}".format(
-                        sorted(allowed_sort_fields, key=str), ', '.join(sort_fields - allowed_sort_fields)
+                sort_fields, allowed_sort_fields = self.sort['fields'], set(self.fields.keys())
+                # Check every element in sort['fields'] is in allowed_sort_fields
+                if not set(sort_fields).issubset(allowed_sort_fields):
+                    raise WazuhError(1403, "Allowed sort fields: {}. Fields: {}".format(
+                        sorted(allowed_sort_fields, key=str), ', '.join(set(sort_fields) - allowed_sort_fields)
                     ))
                 self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
             else:
@@ -1609,7 +1680,7 @@ def upload_file(content, path, check_xml_formula_values=True):
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
-        et = ElementTree.ElementTree(ElementTree.fromstring(f'<root>{xml_string}</root>'))
+        et = ElementTree(fromstring(f'<root>{xml_string}</root>'))
         full_preprend, beginning_preprend = list(), list()
         for node in et.iter():
             if node.tag and node.tag.startswith(formula_characters):
@@ -1627,9 +1698,9 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.wazuh_path, time.time(), random.randint(0, 1000))
+    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
     try:
-        with open(tmp_file_path, 'w') as tmp_file:
+        with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
             tmp_file.write(final_file)
         chmod(tmp_file_path, 0o660)
@@ -1694,3 +1765,33 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
         Relative path to `full_path` from `prefix`.
     """
     return relpath(full_path, prefix)
+
+
+def clear_temporary_caches():
+    """Clear all saved temporary caches."""
+    t_cache.clear()
+
+
+def temporary_cache():
+    """Apply cache depending on whether function has its `cache` parameter set to `True` or not.
+
+    Returns
+    -------
+    Requested function.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            apply_cache = kwargs.pop('cache', None)
+
+            @cached(cache=t_cache)
+            def f(*_args, **_kwargs):
+                return func(*_args, **_kwargs)
+
+            if apply_cache:
+                return f(*args, **kwargs)
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

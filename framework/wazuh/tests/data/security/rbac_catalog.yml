@@ -216,12 +216,12 @@ get_rbac_actions:
       group:read:
         description: Access agent groups information (id, name, agents, etc)
         resources:
-          - "*:*"
+          - group:id
         example:
           actions:
             - group:create
           resources:
-            - "*:*:*"
+            - group:id:*
           effect: allow
         related_endpoints:
           - GET /groups
@@ -463,7 +463,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /manager/restart
       mitre:read:
-        description: Access attacks information from MITRE database
+        description: Access information from MITRE database
         resources:
           - "*:*"
         example:
@@ -473,7 +473,13 @@ get_rbac_actions:
             - "*:*:*"
           effect: allow
         related_endpoints:
-          - GET /mitre
+          - GET /mitre/groups
+          - GET /mitre/metadata
+          - GET /mitre/mitigations
+          - GET /mitre/references
+          - GET /mitre/software
+          - GET /mitre/tactics
+          - GET /mitre/techniques
       rootcheck:clear:
         description: Clear the agents rootcheck database
         resources:
@@ -486,7 +492,8 @@ get_rbac_actions:
             - agent:id:*
           effect: deny
         related_endpoints:
-          - DELETE /rootcheck
+          - DELETE /rootcheck/{agent_id}
+          - DELETE /experimental/rootcheck
       rootcheck:run:
         description: Run agents rootcheck scan
         resources:
@@ -533,7 +540,7 @@ get_rbac_actions:
       rules:update:
         description: Update or upload custom rule files
         resources:
-          - rule:file
+          - '*:*'
         example:
           actions:
             - rules:update
@@ -629,7 +636,7 @@ get_rbac_actions:
       decoders:update:
         description: Update or upload custom decoder files
         resources:
-          - decoder:file
+          - '*:*'
         example:
           actions:
             - decoders:update

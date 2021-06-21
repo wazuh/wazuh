@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -158,5 +158,19 @@ ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 
 // Wrapper for select()
 int wnet_select(int sock, int timeout);
+
+/**
+ * @brief Resolve a given hostname, getting the associated ip
+ * @param hostname Hostname to be resolved, if successfull, it will be modified with the format: 'hostname/x.x.x.x'
+ * @param attempts Number of attempts of the call to the function gethostbyname
+ * */
+void resolve_hostname(char **hostname, int attempts);
+
+/**
+ * @brief Extract the ip address from the result of the resolve_hostname function.
+ * @param resolved_hostname String with the format: 'hostname/x.x.x.x'
+ * @return String with the ip addres
+ * */
+const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
 
 #endif /* OS_NET_H */

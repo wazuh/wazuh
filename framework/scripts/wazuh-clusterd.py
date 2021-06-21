@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import argparse
@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import sys
+from signal import signal, Signals, SIGTERM, SIG_DFL
 
 
 #
@@ -25,6 +26,17 @@ def set_logging(foreground_mode=False, debug_mode=0):
 def print_version():
     from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
     print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
+
+
+def exit_handler(signum, frame):
+    main_logger.info(f'SIGNAL [({signum})-({Signals(signum).name})] received. Exit...')
+
+    if callable(original_sig_handler):
+        original_sig_handler(signum, frame)
+    elif original_sig_handler == SIG_DFL:
+        # Call default handler if the original one can't be run
+        signal(signum, SIG_DFL)
+        os.kill(os.getpid(), signum)
 
 
 #
@@ -113,7 +125,7 @@ if __name__ == '__main__':
 
     # set correct permissions on cluster.log file
     if os.path.exists('{0}/logs/cluster.log'.format(common.wazuh_path)):
-        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.ossec_uid(), common.ossec_gid())
+        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.wazuh_uid(), common.wazuh_gid())
         os.chmod('{0}/logs/cluster.log'.format(common.wazuh_path), 0o660)
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
@@ -133,6 +145,11 @@ if __name__ == '__main__':
 
     from api import configuration
 
+    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
+    if cluster_status['running'] == 'yes':
+        main_logger.error("Cluster is already running.")
+        sys.exit(1)
+
     configuration.api_conf.update(configuration.read_yaml_config())
 
     # clean
@@ -142,12 +159,13 @@ if __name__ == '__main__':
     if not args.foreground:
         pyDaemonModule.pyDaemon()
 
-    # Drop privileges to ossec
+    # Drop privileges to wazuh
     if not args.root:
-        os.setgid(common.ossec_gid())
-        os.setuid(common.ossec_uid())
+        os.setgid(common.wazuh_gid())
+        os.setuid(common.wazuh_uid())
 
     pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
+    original_sig_handler = signal(SIGTERM, exit_handler)
 
     main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
     try:
@@ -156,6 +174,6 @@ if __name__ == '__main__':
         main_logger.info("SIGINT received. Bye!")
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution "
-                          "permission for 'ossec' user")
+                          "permission for 'wazuh' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")

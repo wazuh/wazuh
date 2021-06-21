@@ -168,7 +168,9 @@
 #define EXEC_INV_CMD    "(1316): Invalid AR command: '%s'"
 #define EXEC_CMD_FAIL   "(1317): Could not launch command %s (%d)"
 
-#define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
+#define AR_NOAGENT_ERROR                "(1320): Agent '%s' not found."
+#define EXEC_QUEUE_CONNECTION_ERROR     "(1321): Error communicating with queue '%s'."
+#define EXEC_QUEUE_BUSY                 "(1322): Socket busy."
 
 /* List operations */
 #define LIST_ERROR      "(1290): Unable to create a new list (calloc)."
@@ -214,6 +216,7 @@
 #define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 #define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
+#define FAIL_SHA1_GEN   "(1969): Failure to generate the SHA1 hash from file '%s'"
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -286,10 +289,11 @@
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
 /* Syslog output */
-#define XML_INV_CSYSLOG "(5301): Invalid client-syslog configuration."
+#define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
+#define ERROR_SENDING_MSG  "(5302): Error sending message to '%s'."
 
 /* Integrator daemon */
-#define XML_INV_INTEGRATOR "(5302): Invalid integratord configuration."
+#define XML_INV_INTEGRATOR "(5310): Invalid integratord configuration."
 
 /* Agentless */
 #define XML_INV_AGENTLESS   "(7101): Invalid agentless configuration."
@@ -422,7 +426,7 @@
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
 #define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
-#define FIM_ERROR_REALTIME_MAXNUM_WATCHES           "(6616): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
+
 #define FIM_ERROR_AUDIT_MODE                        "(6617): Unable to get audit mode: %s (%d)."
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
 #define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'. It will be monitored in Realtime"

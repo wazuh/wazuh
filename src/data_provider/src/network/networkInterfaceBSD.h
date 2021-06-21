@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 24, 2020.
  *
  * This program is free software; you can redistribute it
@@ -18,21 +18,21 @@
 class FactoryBSDNetwork
 {
     public:
-    static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper);
+        static std::shared_ptr<IOSNetwork>create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper);
 };
 
 template <unsigned short osNetworkType>
 class BSDNetworkImpl final : public IOSNetwork
 {
-    const std::shared_ptr<INetworkInterfaceWrapper>& m_interfaceAddress;
-public:
-    explicit BSDNetworkImpl(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress) 
-    : m_interfaceAddress(interfaceAddress)
-    { }
-    void buildNetworkData(nlohmann::json& /*network*/) override
-    {
-        throw std::runtime_error { "Non implemented specialization." };
-    }
+        const std::shared_ptr<INetworkInterfaceWrapper>& m_interfaceAddress;
+    public:
+        explicit BSDNetworkImpl(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress)
+            : m_interfaceAddress(interfaceAddress)
+        { }
+        void buildNetworkData(nlohmann::json& /*network*/) override
+        {
+            throw std::runtime_error { "Non implemented specialization." };
+        }
 };
 
 #endif // _NETWORK_BSD_H

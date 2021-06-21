@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * August 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -28,28 +28,28 @@ using SyncQueue = Utils::SafeQueue<SyncMessage>;
 
 class AgentEmulator
 {
-public:
-    AgentEmulator(const std::chrono::milliseconds updatePeriod,
-                  const unsigned int maxDbItems,
-                  const std::shared_ptr<SyncQueue>& outQueue,
-                  const std::string& dbFolder);
-    ~AgentEmulator();
-private:
+    public:
+        AgentEmulator(const std::chrono::milliseconds updatePeriod,
+                      const unsigned int maxDbItems,
+                      const std::shared_ptr<SyncQueue>& outQueue,
+                      const std::string& dbFolder);
+        ~AgentEmulator();
+    private:
 
-    void updateData();
-    void syncData(const void* buffer, size_t bufferSize);
-    static void agentEmulatorSyncCallback(const void* buffer, size_t bufferSize, void* userData);
+        void updateData();
+        void syncData(const void* buffer, size_t bufferSize);
+        static void agentEmulatorSyncCallback(const void* buffer, size_t bufferSize, void* userData);
 
-    const std::string m_agentId;
-    const RSYNC_HANDLE m_rsyncHandle;
-    const DBSYNC_HANDLE m_dbSyncHandle;
-    const cJSON* m_config;
-    const cJSON* m_startConfig;
-    const std::chrono::milliseconds m_updatePeriod;
-    const unsigned int m_maxDbItems;
-    std::atomic_bool m_threadsRunning;
-    std::thread m_updateThread;
-    const std::shared_ptr<SyncQueue> m_outQueue;
+        const std::string m_agentId;
+        const RSYNC_HANDLE m_rsyncHandle;
+        const DBSYNC_HANDLE m_dbSyncHandle;
+        const cJSON* m_config;
+        const cJSON* m_startConfig;
+        const std::chrono::milliseconds m_updatePeriod;
+        const unsigned int m_maxDbItems;
+        std::atomic_bool m_threadsRunning;
+        std::thread m_updateThread;
+        const std::shared_ptr<SyncQueue> m_outQueue;
 };
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -357,11 +357,12 @@ void test_fim_db_init_failed_file_creation(void **state) {
     will_return(__wrap_sqlite3_open_v2, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database '.\\fim.db': ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database '.\\fim.db': ERROR MESSAGE (111)");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database './fim.db': ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database './fim.db': ERROR MESSAGE (111)");
 #endif
 
     will_return(__wrap_sqlite3_close_v2, 0);
@@ -382,6 +383,7 @@ void test_fim_db_init_failed_file_creation_prepare(void **state) {
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_any(__wrap__merror, formatted_msg);
 
     will_return(__wrap_sqlite3_close_v2, 0);
@@ -401,6 +403,7 @@ void test_fim_db_init_failed_file_creation_step(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_any(__wrap__merror, formatted_msg);
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_close_v2, 0);
@@ -462,16 +465,17 @@ void test_fim_db_init_failed_cache(void **state) {
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?);': REASON GOES HERE (111)");
 #else
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 #endif
     fdb_t *fim_db;
     fim_db = fim_db_init(syscheck.database_store);
@@ -489,16 +493,17 @@ void test_fim_db_init_failed_cache_memory(void **state) {
     will_return(__wrap_sqlite3_finalize, 0);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?);': REASON GOES HERE (111)");
 #else
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 #endif
     will_return(__wrap_sqlite3_close_v2, 0);
     fdb_t *fim_db;
@@ -517,10 +522,11 @@ void test_fim_db_init_failed_execution(void **state) {
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;");
+    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode = TRUNCATE;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "SQL error turning off synchronous mode: ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "SQL error setting synchronous and journal mode: ERROR_MESSAGE (111)");
     // fim_db_finalize_stmt()
     will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
@@ -537,7 +543,7 @@ void test_fim_db_init_failed_simple_query(void **state) {
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;");
+    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode = TRUNCATE;");
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
     // Simple query fails
@@ -563,7 +569,7 @@ void test_fim_db_init_success(void **state) {
     will_return(__wrap_sqlite3_open_v2, NULL);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
     wraps_fim_db_cache();
-    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;");
+    expect_string(__wrap_sqlite3_exec, sql, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode = TRUNCATE;");
     will_return(__wrap_sqlite3_exec, NULL);
     will_return(__wrap_sqlite3_exec, SQLITE_OK);
     expect_fim_db_exec_simple_wquery("BEGIN;");
@@ -766,7 +772,19 @@ void test_fim_db_check_transaction_failed(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR MESSAGE");
+    const time_t commit_time = test_data->fim_sql->transaction.last_commit;
+    fim_db_check_transaction(test_data->fim_sql);
+    assert_int_equal(commit_time, test_data->fim_sql->transaction.last_commit);
+}
+
+void test_fim_db_check_transaction_no_transaction(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    expect_string(__wrap_sqlite3_exec, sql, "BEGIN;");
+    will_return(__wrap_sqlite3_exec, NULL);
+    will_return(__wrap_sqlite3_exec, SQLITE_DONE);
+    will_return(__wrap_sqlite3_get_autocommit, 1);
     const time_t commit_time = test_data->fim_sql->transaction.last_commit;
     fim_db_check_transaction(test_data->fim_sql);
     assert_int_equal(commit_time, test_data->fim_sql->transaction.last_commit);
@@ -787,16 +805,17 @@ void test_fim_db_cache_failed(void **state) {
     test_fim_db_insert_data *test_data = *state;
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?);': REASON GOES HERE (111)");
 #else
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 #endif
     int ret = fim_db_cache(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
@@ -819,16 +838,17 @@ void test_fim_db_close_failed(void **state) {
     will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
     will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
                   "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?);': REASON GOES HERE (111)");
 #else
     expect_string(__wrap__merror, formatted_msg,
                   "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
+                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE (111)");
 #endif
     will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
     fim_db_close(test_data->fim_sql);
@@ -861,7 +881,8 @@ void test_fim_db_finalize_stmt_failed(void **state) {
         will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
         char buffer[OS_MAXSTR];
         will_return(__wrap_sqlite3_errmsg, "FINALIZE ERROR");
-        snprintf(buffer, OS_MAXSTR, "Error finalizing statement '%s': FINALIZE ERROR", SQL_STMT[index]);
+        will_return(__wrap_sqlite3_extended_errcode, 111);
+        snprintf(buffer, OS_MAXSTR, "Error finalizing statement '%s': FINALIZE ERROR (111)", SQL_STMT[index]);
         expect_string(__wrap__merror, formatted_msg, buffer);
         int ret = fim_db_finalize_stmt(test_data->fim_sql);
         assert_int_equal(ret, FIMDB_ERR);
@@ -885,6 +906,7 @@ void test_fim_db_force_commit_failed(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "END;");
     will_return(__wrap_sqlite3_exec, "ERROR_MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'END;': ERROR_MESSAGE");
     fim_db_force_commit(test_data->fim_sql);
     // If commit fails last_commit should still be one
@@ -917,16 +939,17 @@ void test_fim_db_clean_stmt_reset_and_prepare_failed(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 #ifndef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': ERROR");
+                  "?, ?, ?, ?);': ERROR (111)");
 #else
     expect_string(__wrap__merror, formatted_msg,
                   "Error preparing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
                   "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': ERROR");
+                  "?, ?, ?, ?, ?, ?);': ERROR (111)");
 #endif
     int ret = fim_db_clean_stmt(test_data->fim_sql, 0);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1014,8 +1037,31 @@ static void fim_db_get_checksum_range_fail_step_on_first_half(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
-                  "Step error getting path range, first half 'start start' 'top top' (i:0): ERROR MESSAGE");
+                  "Step error getting path range, first half 'start start' 'top top' (i:0): ERROR MESSAGE (111)");
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_empty_range_fail_step_on_first_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Received a synchronization message with empty range, first half 'start start' 'top top' (i:0)");
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
@@ -1070,8 +1116,41 @@ static void fim_db_get_checksum_range_fail_step_on_second_half(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
     expect_string(__wrap__merror, formatted_msg,
-                  "Step error getting path range, second half 'start start' 'top top' (i:1): ERROR MESSAGE");
+                  "Step error getting path range, second half 'start start' 'top top' (i:1): ERROR MESSAGE (111)");
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_empty_range_fail_step_on_second_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    const char *array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
+    int retval;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_fim_db_decode_string_array(2, array);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "0123456789ABCDEF0123456789ABCDEF01234567");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Received a synchronization message with empty range, second half 'start start' 'top top' (i:1)");
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
@@ -1180,9 +1259,10 @@ void test_fim_db_get_count_range_error_stepping(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "Some SQLite error");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Step error getting count range 'start begin' 'top top': Some SQLite error");
+                  "Step error getting count range 'start begin' 'top top': Some SQLite error (111)");
 
     ret = fim_db_get_count_range(test_data->fim_sql, FIM_TYPE_FILE, "begin", "top", &count);
 
@@ -1742,8 +1822,9 @@ static void test_fim_db_get_last_path_fail_to_step_query(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "SQLITE error");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 
-    expect_string(__wrap__merror, formatted_msg, "Step error getting row string: SQLITE error");
+    expect_string(__wrap__merror, formatted_msg, "Step error getting row string: SQLITE error (111)");
 
     retval = fim_db_get_last_path(&fim_sql, FIM_TYPE_FILE, &path);
 
@@ -2108,8 +2189,8 @@ static void test_fim_db_get_count_entries_query_failed(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "SQLITE some error");
-
-    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: SQLITE some error");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
+    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: SQLITE some error (111)");
 
     retval = fim_db_get_count_entries(&fim_sql);
 
@@ -2170,7 +2251,7 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_key(void **state) {
     expect_fim_db_get_registry_key(&data);
 
     entry =
-    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key");
+    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:");
 
     *state = entry;
 
@@ -2182,6 +2263,21 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_key(void **state) {
     assert_null(entry->registry_entry.value);
 }
 
+void test_fim_db_get_entry_from_sync_msg_get_registry_key_fail_to_get_key(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key data = DEFAULT_REGISTRY_KEY;
+    fim_entry *entry;
+
+    expect_fim_db_get_registry_key_fail(&data);
+
+    entry =
+    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:value");
+
+    *state = entry;
+
+    assert_null(entry);
+}
+
 void test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data(void **state) {
     fdb_t fim_sql;
     fim_registry_key key_data = DEFAULT_REGISTRY_KEY;
@@ -2191,7 +2287,7 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data(voi
     expect_fim_db_get_registry_data_fail("some:value", key_data.id);
 
     entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
-                                           "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:some::value");
+                                           "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:some\\:value");
 
     *state = entry;
 
@@ -2208,7 +2304,7 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_value_success(void **state
     expect_fim_db_get_registry_data("some:value", key_data.id, &value_data);
 
     entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
-                                           "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:some::value");
+                                           "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:some\\:value");
 
     *state = entry;
 
@@ -2221,6 +2317,59 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_value_success(void **state
     assert_string_equal(entry->registry_entry.value->name, "some:value");
     assert_int_equal(entry->registry_entry.value->id, entry->registry_entry.key->id);
 }
+
+void test_fim_db_get_entry_from_sync_msg_two_dots_subkey(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key key_data = DEFAULT_REGISTRY_KEY;
+    fim_registry_value_data value_data = DEFAULT_REGISTRY_VALUE;
+    fim_entry *entry;
+    key_data.path = "HKEY_LOCAL_MACHINE\\software\\some:\\:\\key";
+    expect_fim_db_get_registry_key(&key_data);
+    expect_fim_db_get_registry_data("some:value", key_data.id, &value_data);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
+                                           "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\\\:\\\\key:some\\:value");
+
+    *state = entry;
+
+    assert_non_null(entry);
+    assert_int_equal(entry->type, FIM_TYPE_REGISTRY);
+    assert_non_null(entry->registry_entry.key);
+    assert_string_equal(entry->registry_entry.key->path, "HKEY_LOCAL_MACHINE\\software\\some:\\:\\key");
+    assert_int_equal(entry->registry_entry.key->arch, ARCH_64BIT);
+    assert_non_null(entry->registry_entry.value);
+    assert_string_equal(entry->registry_entry.value->name, "some:value");
+    assert_int_equal(entry->registry_entry.value->id, entry->registry_entry.key->id);
+}
+
+void test_fim_db_get_entry_from_sync_msg_no_separator(void **state) {
+    char *str = "[x64] a\\string\\without\\the\\separator\\:";
+    char debug_msg[OS_SIZE_128] = {0};
+    fdb_t fim_sql;
+    fim_entry *entry = NULL;
+
+    snprintf(debug_msg, OS_SIZE_128, "Separator ':' was not found in %s", "a\\string\\without\\the\\separator\\:");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, str);
+
+    assert_null(entry);
+}
+
+void test_fim_db_get_entry_from_sync_msg_wrong_str(void **state) {
+    char *str = "[x64] \\\\\\\0:random_content";
+    char debug_msg[OS_SIZE_128] = {0};
+    fdb_t fim_sql;
+    fim_entry *entry = NULL;
+
+    snprintf(debug_msg, OS_SIZE_128, "Separator ':' was not found in %s", "\\\\\\");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, str);
+
+    assert_null(entry);
+}
+
 
 #endif
 
@@ -2261,6 +2410,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_last_commit_is_0, test_fim_db_setup,
                                         test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_no_transaction, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_check_transaction_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_cache
         cmocka_unit_test_setup_teardown(test_fim_db_cache_failed, test_fim_db_setup, test_fim_db_teardown),
@@ -2288,6 +2438,8 @@ int main(void) {
         cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half),
         cmocka_unit_test(fim_db_get_checksum_range_fail_step_on_second_half),
         cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half),
+        cmocka_unit_test(fim_db_get_checksum_empty_range_fail_step_on_first_half),
+        cmocka_unit_test(fim_db_get_checksum_empty_range_fail_step_on_second_half),
         cmocka_unit_test_teardown(fim_db_get_checksum_range_success, teardown_string_array),
         // fim_db_get_count_range
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup,
@@ -2362,8 +2514,13 @@ int main(void) {
         // fim_db_get_entry_from_sync_msg
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_file, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_key, teardown_fim_entry),
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_key_fail_to_get_key, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_success, teardown_fim_entry),
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_two_dots_subkey, teardown_fim_entry),
+        cmocka_unit_test(test_fim_db_get_entry_from_sync_msg_no_separator),
+        cmocka_unit_test(test_fim_db_get_entry_from_sync_msg_wrong_str),
+
 #endif
     };
     return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);

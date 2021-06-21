@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -754,12 +754,6 @@ void fim_read_values(HKEY key_handle,
         if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
             ERROR_SUCCESS) {
             break;
-        }
-
-        /* Check if no value name is specified */
-        if (value_buffer[0] == '\0') {
-            value_buffer[0] = '@';
-            value_buffer[1] = '\0';
         }
 
         new->registry_entry.value->name = value_buffer;

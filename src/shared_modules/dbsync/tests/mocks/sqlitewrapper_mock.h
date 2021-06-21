@@ -1,6 +1,6 @@
 /*
  * Wazuh DBSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 16, 2020.
  *
  * This program is free software; you can redistribute it
@@ -16,36 +16,36 @@
 #include <string>
 #include "sqlite/isqlite_wrapper.h"
 
-class MockConnection : public SQLite::IConnection 
+class MockConnection : public SQLite::IConnection
 {
     public:
         MockConnection() = default;
         virtual ~MockConnection() = default;
-        MOCK_METHOD(void, 
-                    close, 
-                    (), 
+        MOCK_METHOD(void,
+                    close,
+                    (),
                     (override));
-        MOCK_METHOD(void, 
-                    execute, 
-                    (const std::string& query), 
+        MOCK_METHOD(void,
+                    execute,
+                    (const std::string& query),
                     (override));
-        MOCK_METHOD(const std::shared_ptr<sqlite3>&, 
-                    db, 
-                    (), 
+        MOCK_METHOD(const std::shared_ptr<sqlite3>&,
+                    db,
+                    (),
                     (const override));
-        
+
 };
 
 class MockTransaction : public SQLite::ITransaction
 {
     public:
-        MOCK_METHOD(void, 
-                    commit, 
-                    (), 
+        MOCK_METHOD(void,
+                    commit,
+                    (),
                     (override));
-        MOCK_METHOD(void, 
-                    rollback, 
-                    (), 
+        MOCK_METHOD(void,
+                    rollback,
+                    (),
                     (override));
 };
 

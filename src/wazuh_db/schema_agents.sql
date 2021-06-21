@@ -1,6 +1,6 @@
 /*
  * SQL Schema for global database
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 30, 2016.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -158,7 +158,7 @@ CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
 CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('deb', 'rpm', 'win', 'pkg')),
+    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg')),
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -352,7 +352,7 @@ CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '7');
+INSERT INTO metadata (key, value) VALUES ('db_version', '8');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');

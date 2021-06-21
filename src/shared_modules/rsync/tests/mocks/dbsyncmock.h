@@ -1,6 +1,6 @@
 /*
  * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * September 14, 2020.
  *
  * This program is free software; you can redistribute it
@@ -22,11 +22,11 @@ class MockDBSync : public RSync::DBSyncWrapper
         MockDBSync() : RSync::DBSyncWrapper(nullptr) {};
         virtual ~MockDBSync() = default;
 
-        MOCK_METHOD(void, 
-                    select, 
+        MOCK_METHOD(void,
+                    select,
                     (const cJSON*, callback_data_t),
                     (override));
-        
+
 };
 
 #endif //_MOCKDBSYNC_TEST_H

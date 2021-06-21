@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
@@ -188,10 +188,12 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     except OSError as e:
         raise WazuhError(3015, str(e))
 
-    for entry in entries:
+    # Get the information collected in the previous integration process.
+    previous_status = common.cluster_integrity_mtime.get()
 
+    for entry in entries:
         # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
-        if entry in excluded_files or reduce(add, map(lambda x: entry[-(len(x)):] == x, excluded_extensions)):
+        if entry in excluded_files or any([entry.endswith(v) for v in excluded_extensions]):
             continue
 
         try:
@@ -199,32 +201,39 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
             full_path = path.join(dirname, entry)
 
             # If 'all' files have been requested or entry is in the specified files list.
-            if entry in files or files == ["all"]:
+            current_path = os.path.join(common.wazuh_path, full_path)
+            if entry in files or files == ["all"] and not path.isdir(current_path):
+                file_mod_time = os.path.getmtime(current_path)
 
-                if not path.isdir(os.path.join(common.wazuh_path, full_path)):
-                    file_mod_time = datetime.utcfromtimestamp(stat(os.path.join(common.wazuh_path, full_path)).st_mtime)
+                try:
+                    if file_mod_time == previous_status[full_path]['mod_time']:
+                        # The current file has not changed its mtime since the last integrity process
+                        walk_files[full_path] = previous_status[full_path]
+                        continue
+                except KeyError:
+                    pass
 
-                    # Create dict with metadata of 'full_path' file.
-                    entry_metadata = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
-                    if '.merged' in entry:
-                        entry_metadata['merged'] = True
-                        entry_metadata['merge_type'] = 'agent-groups'
-                        entry_metadata['merge_name'] = os.path.join(dirname, entry)
-                    else:
-                        entry_metadata['merged'] = False
+                # Create dict with metadata of 'full_path' file.
+                entry_metadata = {"mod_time": file_mod_time, 'cluster_item_key': get_cluster_item_key}
+                if '.merged' in entry:
+                    entry_metadata['merged'] = True
+                    entry_metadata['merge_type'] = 'agent-groups'
+                    entry_metadata['merge_name'] = os.path.join(dirname, entry)
+                else:
+                    entry_metadata['merged'] = False
 
-                    if get_md5:
-                        entry_metadata['md5'] = md5(os.path.join(common.wazuh_path, full_path))
+                if get_md5:
+                    entry_metadata['md5'] = md5(os.path.join(common.wazuh_path, full_path))
 
-                    # Use the relative file path as a key to save its metadata dictionary.
-                    walk_files[full_path] = entry_metadata
+                # Use the relative file path as a key to save its metadata dictionary.
+                walk_files[full_path] = entry_metadata
 
             if recursive and path.isdir(os.path.join(common.wazuh_path, full_path)):
                 walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions,
                                            get_cluster_item_key, get_md5))
 
         except Exception as e:
-            logger.error(f"Could not get checksum of file {entry}: {e}")
+            logger.debug(f"Could not get checksum of file {entry}: {e}")
 
     return walk_files
 
@@ -255,6 +264,9 @@ def get_files_status(get_md5=True):
                          cluster_items['files']['excluded_extensions'], file_path, get_md5))
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
+
+    # Save the information collected in the current integration process.
+    common.cluster_integrity_mtime.set(final_items)
 
     return final_items
 

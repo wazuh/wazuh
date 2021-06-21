@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -62,7 +62,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     while (rc < agt->server_count) {
         if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolveHostname(&agt->server[rc].rip, 5);
+            resolve_hostname(&agt->server[rc].rip, 5);
             int rip_l = strlen(agt->server[rc].rip);
             mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         }

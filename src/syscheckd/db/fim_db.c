@@ -3,7 +3,7 @@
  * @brief Definition of FIM database library.
  * @date 2019-08-28
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 #include "fim_db.h"
@@ -86,6 +86,17 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_COUNT_DB_ENTRIES] = "SELECT (SELECT count(*) FROM file_entry) + (SELECT count(*) FROM registry_key) + (SELECT count(*) FROM registry_data);",
 };
 
+#ifdef WIN32
+/**
+ * @brief Function that looks for the separator `:` between keys and values in synchronization messages.
+ *
+ * @param input string with the path of the synchronization message.
+ * @return char* Pointer to the separator. If the separator wasn't found, returns NULL.
+ */
+static char *find_key_value_limiter(char *input);
+
+#endif
+
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
     char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
@@ -111,10 +122,10 @@ fdb_t *fim_db_init(int storage) {
     }
 
     char *error;
-    sqlite3_exec(fim->db, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;", NULL, NULL, &error);
+    sqlite3_exec(fim->db, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode = TRUNCATE;", NULL, NULL, &error);
 
     if (error) {
-        merror("SQL error turning off synchronous mode: %s", error);
+        merror("SQL error setting synchronous and journal mode: %s (%d)", error, sqlite3_extended_errcode(fim->db));
         fim_db_finalize_stmt(fim);
         sqlite3_free(error);
         goto free_fim;
@@ -181,7 +192,7 @@ int fim_db_cache(fdb_t *fim_sql) {
     for (index = 0; index < FIMDB_STMT_SIZE; index++) {
         if (sqlite3_prepare_v2(fim_sql->db, SQL_STMT[index], -1,
             &fim_sql->stmt[index], NULL) != SQLITE_OK) {
-            merror("Error preparing statement '%s': %s", SQL_STMT[index], sqlite3_errmsg(fim_sql->db));
+            merror("Error preparing statement '%s': %s (%d)", SQL_STMT[index], sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             goto end;
         }
     }
@@ -200,14 +211,14 @@ int fim_db_create_file(const char *path, const char *source, const int storage, 
     int result;
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
-        merror("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
+        merror("Couldn't create SQLite database '%s': %s (%d)", path, sqlite3_errmsg(db), sqlite3_extended_errcode(db));
         sqlite3_close_v2(db);
         return -1;
     }
 
     for (sql = source; sql && *sql; sql = tail) {
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
-            merror("Error preparing statement '%s': %s", sql, sqlite3_errmsg(db));
+            merror("Error preparing statement '%s': %s (%d)", sql, sqlite3_errmsg(db), sqlite3_extended_errcode(db));
             sqlite3_close_v2(db);
             return -1;
         }
@@ -220,7 +231,7 @@ int fim_db_create_file(const char *path, const char *source, const int storage, 
         case SQLITE_DONE:
             break;
         default:
-            merror("Error stepping statement '%s': %s", sql, sqlite3_errmsg(db));
+            merror("Error stepping statement '%s': %s (%d)", sql, sqlite3_errmsg(db), sqlite3_extended_errcode(db));
             sqlite3_finalize(stmt);
             sqlite3_close_v2(db);
             return -1;
@@ -298,10 +309,44 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
 }
 // LCOV_EXCL_STOP
 #else
+
+static char *find_key_value_limiter(char *input){
+    size_t limiter_pos = 0;
+    if (input == NULL || *input == '\0') {
+        return NULL;
+    }
+
+    size_t input_len = strlen(input);
+    size_t increment = 0;
+
+    while (limiter_pos = strcspn(input, "\\:"), input[limiter_pos] != '\0') {
+        switch (input[limiter_pos]) {
+        case ':':
+            return input + limiter_pos;
+
+        default: // '\':
+            // Check that the string won't be exceeded.
+            increment += limiter_pos + 2;
+            if (input_len <= increment) {
+                return NULL;
+            }
+
+            input += limiter_pos + 2;
+            break;
+        }
+    }
+
+    return NULL;
+}
+
+
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
-    char *full_path, *key_path, *value_name;
+    char *full_path = NULL;
+    char *key_path = NULL;
+    char *value_name = NULL;
+    char *finder = NULL;
     int arch;
-    fim_entry *entry;
+    fim_entry *entry = NULL;
 
     if (type == FIM_TYPE_FILE) {
         return fim_db_get_path(fim_sql, path);
@@ -312,31 +357,38 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     os_strdup(&path[6], full_path);
     value_name = full_path;
 
-    // Find where the key ends and the value starts
-    while ((value_name = strchr(value_name, ':'))) {
-        if (value_name[1] != ':') {
-            *value_name = '\0';
-            value_name++;
-            break;
-        }
-        value_name += 2;
+    finder = find_key_value_limiter(value_name);
+
+    if (finder == NULL) {
+        mdebug1("Separator ':' was not found in %s", full_path);
+        free(full_path);
+        return NULL;
     }
 
-    key_path = wstr_replace(full_path, "::", ":");
+    *finder = '\0';
 
+    value_name = filter_special_chars(finder + 1);
+    key_path = filter_special_chars(full_path);
     os_calloc(1, sizeof(fim_entry), entry);
     entry->type = FIM_TYPE_REGISTRY;
     entry->registry_entry.key = fim_db_get_registry_key(fim_sql, key_path, arch);
 
+    if (entry->registry_entry.key == NULL) {
+        free(key_path);
+        free(full_path);
+        os_free(value_name);
+        fim_registry_free_entry(entry);
+        return NULL;
+    }
+
     if (value_name == NULL || *value_name == '\0') {
         free(key_path);
         free(full_path);
+        os_free(value_name);
         return entry;
     }
 
     free(key_path);
-
-    value_name = wstr_replace(value_name, "::", ":");
     free(full_path);
 
     entry->registry_entry.value = fim_db_get_registry_data(fim_sql, entry->registry_entry.key->id, value_name);
@@ -358,7 +410,7 @@ int fim_db_finalize_stmt(fdb_t *fim_sql) {
     for (index = 0; index < FIMDB_STMT_SIZE; index++) {
         fim_db_clean_stmt(fim_sql, index);
         if (sqlite3_finalize(fim_sql->stmt[index]) != SQLITE_OK) {
-            merror("Error finalizing statement '%s': %s", SQL_STMT[index], sqlite3_errmsg(fim_sql->db));
+            merror("Error finalizing statement '%s': %s (%d)", SQL_STMT[index], sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             goto end;
         }
     }
@@ -377,12 +429,19 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
             return;
         }
 
-        // If the completion of the transaction fails, we do not update the timestamp
-        if (fim_db_exec_simple_wquery(fim_sql, "END;") != FIMDB_ERR) {
+        if (!sqlite3_get_autocommit(fim_sql->db)) {
+            // A transaction has been initiated by a BEGIN command and it's in progress
+            if (fim_db_exec_simple_wquery(fim_sql, "END;") == FIMDB_ERR) {
+                return;
+            }
+
+            // Updating timestamp only after a successful transaction end
             mdebug1("Database transaction completed.");
             fim_sql->transaction.last_commit = now;
-            while (fim_db_exec_simple_wquery(fim_sql, "BEGIN;") == FIMDB_ERR);
         }
+
+        // A new transaction begins after a successful END or if there wasn't one in progress
+        while (fim_db_exec_simple_wquery(fim_sql, "BEGIN;") == FIMDB_ERR);
     }
 }
 
@@ -396,7 +455,7 @@ int fim_db_clean_stmt(fdb_t *fim_sql, int index) {
         sqlite3_finalize(fim_sql->stmt[index]);
 
         if (sqlite3_prepare_v2(fim_sql->db, SQL_STMT[index], -1, &fim_sql->stmt[index], NULL) != SQLITE_OK) {
-            merror("Error preparing statement '%s': %s", SQL_STMT[index], sqlite3_errmsg(fim_sql->db));
+            merror("Error preparing statement '%s': %s (%d)", SQL_STMT[index], sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
             return FIMDB_ERR;
         }
     }
@@ -675,7 +734,7 @@ int fim_db_get_string(fdb_t *fim_sql, int index, char **str) {
     fim_db_clean_stmt(fim_sql, index);
 
     if (result = sqlite3_step(fim_sql->stmt[index]), result != SQLITE_ROW && result != SQLITE_DONE) {
-        merror("Step error getting row string: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting row string: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -729,7 +788,7 @@ int fim_db_get_count_range(fdb_t *fim_sql, fim_type type, const char *start, con
     fim_db_bind_range(fim_sql, RANGE_QUERY[type], start, top);
 
     if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
-        merror("Step error getting count range 'start %s' 'top %s': %s", start, top, sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count range 'start %s' 'top %s': %s (%d)", start, top, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -766,10 +825,24 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     // Calculate checksum of the first half
     for (i = 0; i < m; i++) {
         char *path, *checksum;
-        if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
-            merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s", start, top, i,
-                   sqlite3_errmsg(fim_sql->db));
-            return FIMDB_ERR;
+
+        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]])) {
+            case SQLITE_ROW:
+                break;
+
+            case SQLITE_DONE:
+                mdebug2("Received a synchronization message with empty range, first half 'start %s' 'top %s' (i:%d)", start,
+                        top, i);
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
+
+            default:
+                merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
+                       sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
         }
 
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
@@ -793,13 +866,26 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     //Calculate checksum of the second half
     for (i = m; i < n; i++) {
         char *path, *checksum;
-        if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
-            merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s", start, top, i,
-                   sqlite3_errmsg(fim_sql->db));
-            os_free(*str_pathlh);
-            os_free(*str_pathuh);
-            return FIMDB_ERR;
+
+        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]])) {
+            case SQLITE_ROW:
+                break;
+
+            case SQLITE_DONE:
+                mdebug2("Received a synchronization message with empty range, second half 'start %s' 'top %s' (i:%d)", start,
+                        top, i);
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
+
+            default:
+                merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
+                       sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
         }
+
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
         if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
             free_strarray(decoded_row);
@@ -923,7 +1009,7 @@ int fim_db_get_count_entries(fdb_t * fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_COUNT_DB_ENTRIES);
 
     if(res == FIMDB_ERR) {
-        merror("Step error getting count entry path: %s", sqlite3_errmsg(fim_sql->db));
+        merror("Step error getting count entry path: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
     }
     return res;
 }

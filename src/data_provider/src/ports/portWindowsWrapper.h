@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * November 3, 2020.
  *
  * This program is free software; you can redistribute it
@@ -17,9 +17,7 @@
 #include "stringHelper.h"
 #include "windowsHelper.h"
 
-const auto IPV6_BUFFER_ADDRESS_SIZE { 16 };
-
-static const std::map<int32_t, std::string> STATE_TYPE = 
+static const std::map<int32_t, std::string> STATE_TYPE =
 {
     { MIB_TCP_STATE_ESTAB,                 "established"    },
     { MIB_TCP_STATE_SYN_SENT,              "syn_sent"       },
@@ -35,7 +33,7 @@ static const std::map<int32_t, std::string> STATE_TYPE =
     { MIB_TCP_STATE_DELETE_TCB,            "delete_tcp"     }
 };
 
-static const std::map<pid_t, std::string> SYSTEM_PROCESSES = 
+static const std::map<pid_t, std::string> SYSTEM_PROCESSES =
 {
     { 0,                                   "System Idle Process"   },
     { 4,                                   "System"                },
@@ -51,138 +49,141 @@ struct PortTables
 
 class WindowsPortWrapper final : public IPortWrapper
 {
-    const std::string m_protocol;
-    const int32_t m_localPort;
-    const std::string m_localIpAddress;
-    const int32_t m_remotePort;
-    const std::string m_remoteIpAddress;
-    const uint32_t m_state;
-    const uint32_t m_pid;
-    const std::string m_processName;
+        const std::string m_protocol;
+        const int32_t m_localPort;
+        const std::string m_localIpAddress;
+        const int32_t m_remotePort;
+        const std::string m_remoteIpAddress;
+        const uint32_t m_state;
+        const uint32_t m_pid;
+        const std::string m_processName;
 
-    static std::string getIpAddress(const DWORD addr)
-    {
-        in_addr ipaddress;
-        ipaddress.S_un.S_addr = addr;
-        return inet_ntoa(ipaddress);
-    }
-
-    static std::string getProcessName(const std::map<pid_t, std::string> processDataList, const pid_t pid)
-    {
-        std::string retVal { UNKNOWN_VALUE };
-        const auto itSystemProcess { SYSTEM_PROCESSES.find(pid) } ;
-        if (SYSTEM_PROCESSES.end() != itSystemProcess)
+        static std::string getIpAddress(const DWORD addr)
         {
-            retVal = itSystemProcess->second;
+            in_addr ipaddress;
+            ipaddress.S_un.S_addr = addr;
+            return inet_ntoa(ipaddress);
         }
-        else
+
+        static std::string getProcessName(const std::map<pid_t, std::string> processDataList, const pid_t pid)
         {
-            const auto itCurrentProcessList { processDataList.find(pid) } ;
+            std::string retVal { UNKNOWN_VALUE };
+            const auto itSystemProcess { SYSTEM_PROCESSES.find(pid) } ;
+
+            if (SYSTEM_PROCESSES.end() != itSystemProcess)
             {
-                if (processDataList.end() != itCurrentProcessList)
+                retVal = itSystemProcess->second;
+            }
+            else
+            {
+                const auto itCurrentProcessList { processDataList.find(pid) } ;
                 {
-                    retVal = itCurrentProcessList->second;
+                    if (processDataList.end() != itCurrentProcessList)
+                    {
+                        retVal = itCurrentProcessList->second;
+                    }
                 }
             }
+
+            return retVal;
         }
-        return retVal;
-    }
-    WindowsPortWrapper() = delete;
+        WindowsPortWrapper() = delete;
     public:
-    WindowsPortWrapper(const _MIB_TCPROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
-    : m_protocol { "tcp" }
-    , m_localPort { ntohs(data.dwLocalPort) }
-    , m_localIpAddress { getIpAddress(data.dwLocalAddr) }
-    , m_remotePort { ntohs(data.dwRemotePort) }
-    , m_remoteIpAddress { getIpAddress(data.dwRemoteAddr) }
-    , m_state { data.dwState }
-    , m_pid { data.dwOwningPid }
-    , m_processName { getProcessName(processDataList, data.dwOwningPid) }
-    { }
+        WindowsPortWrapper(const _MIB_TCPROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
+            : m_protocol { "tcp" }
+            , m_localPort { ntohs(data.dwLocalPort) }
+            , m_localIpAddress { getIpAddress(data.dwLocalAddr) }
+            , m_remotePort { ntohs(data.dwRemotePort) }
+            , m_remoteIpAddress { getIpAddress(data.dwRemoteAddr) }
+            , m_state { data.dwState }
+            , m_pid { data.dwOwningPid }
+            , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+        { }
 
-    WindowsPortWrapper(const _MIB_TCP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
-    : m_protocol { "tcp6" }
-    , m_localPort { ntohs(data.dwLocalPort) }
-    , m_localIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucLocalAddr) }
-    , m_remotePort { ntohs(data.dwRemotePort) }
-    , m_remoteIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucRemoteAddr) }
-    , m_state { data.dwState }
-    , m_pid { data.dwOwningPid }
-    , m_processName { getProcessName(processDataList, data.dwOwningPid) }
-    { }
+        WindowsPortWrapper(const _MIB_TCP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
+            : m_protocol { "tcp6" }
+            , m_localPort { ntohs(data.dwLocalPort) }
+            , m_localIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucLocalAddr) }
+            , m_remotePort { ntohs(data.dwRemotePort) }
+            , m_remoteIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucRemoteAddr) }
+            , m_state { data.dwState }
+            , m_pid { data.dwOwningPid }
+            , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+        { }
 
-    WindowsPortWrapper(const _MIB_UDPROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
-    : m_protocol { "udp" }
-    , m_localPort { ntohs(data.dwLocalPort) }
-    , m_localIpAddress { getIpAddress(data.dwLocalAddr) }
-    , m_remotePort { 0 }
-    , m_state { 0 }
-    , m_pid { data.dwOwningPid }
-    , m_processName { getProcessName(processDataList, data.dwOwningPid) }
-    { }
+        WindowsPortWrapper(const _MIB_UDPROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
+            : m_protocol { "udp" }
+            , m_localPort { ntohs(data.dwLocalPort) }
+            , m_localIpAddress { getIpAddress(data.dwLocalAddr) }
+            , m_remotePort { 0 }
+            , m_state { 0 }
+            , m_pid { data.dwOwningPid }
+            , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+        { }
 
-    WindowsPortWrapper(const _MIB_UDP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
-    : m_protocol("udp6")
-    , m_localPort { ntohs(data.dwLocalPort) }
-    , m_localIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucLocalAddr) }
-    , m_remotePort { 0 }
-    , m_state { 0 }
-    , m_pid { data.dwOwningPid }
-    , m_processName { getProcessName(processDataList, data.dwOwningPid) }
-    { }
+        WindowsPortWrapper(const _MIB_UDP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
+            : m_protocol("udp6")
+            , m_localPort { ntohs(data.dwLocalPort) }
+            , m_localIpAddress { Utils::NetworkWindowsHelper::getIpV6Address(data.ucLocalAddr) }
+            , m_remotePort { 0 }
+            , m_state { 0 }
+            , m_pid { data.dwOwningPid }
+            , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+        { }
 
-    ~WindowsPortWrapper() = default;
-    std::string protocol() const override
-    {
-        return m_protocol;
-    }
-    std::string localIp() const override
-    {
-        return m_localIpAddress;
-    }
-    int32_t localPort() const override
-    {
-        return m_localPort;
-    }
-    std::string remoteIP() const override
-    {
-        return m_remoteIpAddress;
-    }
-    int32_t remotePort() const override
-    {
-        return m_remotePort;
-    }
-    int32_t txQueue() const override
-    {
-        return {};
-    }
-    int32_t rxQueue() const override
-    {
-        return {};
-    }
-    int32_t inode() const override
-    {
-        return {};
-    }
-    std::string state() const override
-    {
-        std::string retVal { UNKNOWN_VALUE };
-        const auto itState { STATE_TYPE.find(m_state) };
-
-        if (STATE_TYPE.end() != itState)
+        ~WindowsPortWrapper() = default;
+        std::string protocol() const override
         {
-            retVal = itState->second;
+            return m_protocol;
         }
-        return retVal;
-    }
-    int32_t pid() const override
-    {
-        return m_pid;
-    }
-    std::string processName() const override
-    {
-        return m_processName;
-    }
+        std::string localIp() const override
+        {
+            return m_localIpAddress;
+        }
+        int32_t localPort() const override
+        {
+            return m_localPort;
+        }
+        std::string remoteIP() const override
+        {
+            return m_remoteIpAddress;
+        }
+        int32_t remotePort() const override
+        {
+            return m_remotePort;
+        }
+        int32_t txQueue() const override
+        {
+            return {};
+        }
+        int32_t rxQueue() const override
+        {
+            return {};
+        }
+        int32_t inode() const override
+        {
+            return {};
+        }
+        std::string state() const override
+        {
+            std::string retVal { UNKNOWN_VALUE };
+            const auto itState { STATE_TYPE.find(m_state) };
+
+            if (STATE_TYPE.end() != itState)
+            {
+                retVal = itState->second;
+            }
+
+            return retVal;
+        }
+        int32_t pid() const override
+        {
+            return m_pid;
+        }
+        std::string processName() const override
+        {
+            return m_processName;
+        }
 };
 
 

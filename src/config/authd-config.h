@@ -1,6 +1,6 @@
 /*
  * Authd settings manager
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * May 29, 2017.
  *
  * This program is free software; you can redistribute it
@@ -20,6 +20,7 @@ typedef struct authd_flags_t {
     unsigned short use_password:1;
     unsigned short verify_host:1;
     unsigned short auto_negotiate:1;
+    unsigned short remote_enrollment:1;
 } authd_flags_t;
 
 typedef struct authd_config_t {

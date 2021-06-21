@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Task management.
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 13, 2020.
  *
  * This program is free software; you can redistribute it
@@ -34,6 +34,7 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
     (wm_routine)wm_task_manager_main,
     (wm_routine)(void *)wm_task_manager_destroy,
     (cJSON * (*)(const void *))wm_task_manager_dump,
+    NULL,
     NULL
 };
 

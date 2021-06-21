@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 11, 2020.
  *
  * This program is free software; you can redistribute it
@@ -29,11 +29,13 @@ namespace Utils
     {
         auto pos { data.find(toSearch) };
         const auto ret{ std::string::npos != pos };
+
         while (std::string::npos != pos)
         {
             data.replace(pos, toSearch.size(), toReplace);
             pos = data.find(toSearch, pos);
         }
+
         return ret;
     }
 
@@ -43,11 +45,13 @@ namespace Utils
     {
         auto pos { data.find(toSearch) };
         auto ret { false };
+
         if (std::string::npos != pos)
         {
             data.replace(pos, toSearch.size(), toReplace);
             ret = true;
         }
+
         return ret;
     }
 
@@ -57,10 +61,12 @@ namespace Utils
         std::vector<std::string> tokens;
         std::string token;
         std::istringstream tokenStream{ str };
+
         while (std::getline(tokenStream, token, delimiter))
         {
             tokens.push_back(token);
         }
+
         return tokens;
     }
 
@@ -71,7 +77,7 @@ namespace Utils
         std::string retVal;
         const auto& splitResult { split(str, delimiter) };
 
-        if(index < splitResult.size())
+        if (index < splitResult.size())
         {
             retVal = splitResult.at(index);
         }
@@ -79,6 +85,7 @@ namespace Utils
         {
             throw std::runtime_error("Invalid index to get values.");
         }
+
         return retVal;
     }
 
@@ -86,15 +93,19 @@ namespace Utils
     {
         constexpr auto NULL_TERMINATED_DELIMITER {'\0'};
         std::vector<std::string> ret;
-        while(buffer[0] != NULL_TERMINATED_DELIMITER)
+
+        while (buffer[0] != NULL_TERMINATED_DELIMITER)
         {
             const std::string token(buffer);
+
             if (!token.empty())
             {
                 ret.push_back(token);
             }
+
             buffer += token.size() + 1;
         }
+
         return ret;
     }
 
@@ -102,10 +113,12 @@ namespace Utils
     {
         std::string ret;
         std::stringstream ss;
+
         for (const auto& val : asciiData)
         {
             ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<unsigned int>(val);
         }
+
         if (ss.good())
         {
             ret = ss.str();
@@ -116,13 +129,16 @@ namespace Utils
             const auto size{asciiData.size() * 2};
             const auto buffer{std::make_unique<char[]>(size + 1)};
             char* output{buffer.get()};
+
             for (const auto& value : asciiData)
             {
                 snprintf(output, 3, "%02x", value);
                 output += 2;
             }
+
             ret = std::string{buffer.get(), size};
         }
+
         // LCOV_EXCL_STOP
         return ret;
     }
@@ -130,20 +146,24 @@ namespace Utils
     static std::string leftTrim(const std::string& str, const std::string& args = " ")
     {
         const auto pos{ str.find_first_not_of(args) };
+
         if (pos != std::string::npos)
         {
             return str.substr(pos);
         }
+
         return str;
     }
 
     static std::string rightTrim(const std::string& str, const std::string& args = " ")
     {
         const auto pos{ str.find_last_not_of(args) };
+
         if (pos != std::string::npos)
         {
             return str.substr(0, pos + 1);
         }
+
         return str;
     }
 
@@ -158,7 +178,10 @@ namespace Utils
         std::transform(std::begin(temp),
                        std::end(temp),
                        std::begin(temp),
-                       [](std::string::value_type character) { return std::toupper(character); });
+                       [](std::string::value_type character)
+        {
+            return std::toupper(character);
+        });
         return temp;
     }
 
@@ -168,6 +191,7 @@ namespace Utils
         {
             return str.compare(0, start.length(), start) == 0;
         }
+
         return false;
     }
 
@@ -179,16 +203,19 @@ namespace Utils
             const auto token{ str.substr(str.length() - endLength, endLength) };
             return token == ending;
         }
+
         return false;
     }
 
     static std::string substrOnFirstOccurrence(const std::string& str, const std::string& args = " ")
     {
         const auto pos{ str.find(args) };
+
         if (pos != std::string::npos)
         {
             return str.substr(0, pos);
         }
+
         return str;
     }
 }

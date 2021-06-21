@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
@@ -503,6 +503,23 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
+    /* Verbose message */
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
+
+    /* Signal manipulation */
+    StartSIG(ARGV0);
+
+    /* Create the PID file */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        merror_exit(PID_ERROR);
+    }
+
+    /* Set the queue */
+    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
+        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    }
+
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
     if (!os_analysisd_last_events) {
@@ -746,23 +763,6 @@ int main_analysisd(int argc, char **argv)
         minfo("The option <queue_size> is deprecated and won't apply. Set up each queue size in the internal_options file.");
     }
 
-    /* Verbose message */
-    mdebug1(PRIVSEP_MSG, home_path, user);
-    os_free(home_path);
-
-    /* Signal manipulation */
-    StartSIG(ARGV0);
-
-    /* Create the PID file */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
-
-    /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-    }
-
     /* Whitelist */
     if (Config.white_list == NULL) {
         if (Config.ar) {
@@ -812,7 +812,7 @@ int main_analysisd(int argc, char **argv)
     w_create_thread(asyscom_main, NULL);
 
     /* Load Mitre JSON File and Mitre hash table */
-    mitre_load(NULL);
+    mitre_load();
 
     /* Initialize Logtest */
     w_create_thread(w_logtest_init, NULL);
@@ -874,26 +874,8 @@ void OS_ReadMSG_analysisd(int m_queue)
         if (Config.ar & REMOTE_AR) {
             if ((arq = StartMQ(ARQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If LOCAL_AR is set, keep it there */
-                if (Config.ar & LOCAL_AR) {
-                    Config.ar = 0;
-                    Config.ar |= LOCAL_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, ARQUEUE, "active-response");
-            }
-        }
-#else
-        /* Only for LOCAL_ONLY installs */
-        if (Config.ar & REMOTE_AR) {
-            if (Config.ar & LOCAL_AR) {
-                Config.ar = 0;
-                Config.ar |= LOCAL_AR;
-            } else {
-                Config.ar = 0;
             }
         }
 #endif
@@ -901,14 +883,6 @@ void OS_ReadMSG_analysisd(int m_queue)
         if (Config.ar & LOCAL_AR) {
             if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
                 merror(ARQ_ERROR);
-
-                /* If REMOTE_AR is set, keep it there */
-                if (Config.ar & REMOTE_AR) {
-                    Config.ar = 0;
-                    Config.ar |= REMOTE_AR;
-                } else {
-                    Config.ar = 0;
-                }
             } else {
                 minfo(CONN_TO, EXECQUEUE, "exec");
             }
@@ -1475,7 +1449,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                     OS_CustomLog(lf, Config.custom_alert_output_format);
                 } else if (Config.alerts_log) {
                     __crt_ftell = ftell(_aflog);
-                    OS_Log(lf);
+                    OS_Log(lf, _aflog);
                 } else if(Config.jsonout_output){
                     __crt_ftell = ftell(_jflog);
                 }
@@ -2117,8 +2091,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                         do_ar = 0;
                     }
 
-                    if (do_ar && execdq >= 0) {
-                        OS_Exec(execdq, &arq, lf, *rule_ar);
+                    if (do_ar) {
+                        OS_Exec(&execdq, &arq, lf, *rule_ar);
                     }
                     rule_ar++;
                 }
@@ -2254,7 +2228,7 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
                 OS_CustomLog(lf, Config.custom_alert_output_format);
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
-                OS_Log(lf);
+                OS_Log(lf, _aflog);
             } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }
