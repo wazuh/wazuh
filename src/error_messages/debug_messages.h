@@ -260,6 +260,8 @@
 #define FIM_WILDCARDS_UPDATE_START          "(6361): Starting configuration wildcards update."
 #define FIM_WILDCARDS_REMOVE_DIRECTORY      "(6362): Removing entry '%s' due to it has not been expanded by the wildcards"
 #define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
+#define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
+
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
