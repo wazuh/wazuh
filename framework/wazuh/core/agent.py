@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import copy
 import fcntl
 import hashlib
 import ipaddress
@@ -134,7 +133,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         else:
             rbac_value = None
 
-        if rbac_value:
+        if rbac_value is not None and (rbac_value or not self.rbac_negate):
             self.query_filters += [{'value': rbac_value,
                                     'field': 'rbac_id',
                                     'operator': operator,
@@ -486,7 +485,7 @@ class Agent:
         return send_restart_command(self.id, self.version)
 
     def remove(self, backup=False, purge=False, use_only_authd=False):
-        """Deletes the agent.
+        """Delete the agent.
 
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
@@ -494,7 +493,7 @@ class Agent:
         :return: Message.
         """
 
-        manager_status = get_manager_status()
+        manager_status = get_manager_status(cache=True)
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd and not is_authd_running:
@@ -976,12 +975,11 @@ class Agent:
         :param replace_list: List of Group names that can be replaced
         :return: Agent ID.
         """
+        agent = Agent(agent_id)
         if replace_list is None:
             replace_list = []
         if not force:
             # Check if agent exists, it is not 000 and the group exists
-            Agent(agent_id).get_basic_information()
-
             if agent_id == "000":
                 raise WazuhError(1703)
 
@@ -992,12 +990,11 @@ class Agent:
         group_path = path.join(common.groups_path, agent_id)
         try:
             with open(group_path) as f:
-                multigroup_name = f.read().replace('\n', '')
+                multigroup_name = f.read().strip()
         except Exception as e:
             # Check if agent is never_connected.
-            failed = Agent(agent_id)
-            failed.load_info_from_db()
-            if failed.status == 'never_connected':
+            agent.load_info_from_db()
+            if agent.status == 'never_connected':
                 raise WazuhError(1753)
             raise WazuhInternalError(1005, extra_message=str(e))
         agent_groups = set(multigroup_name.split(','))
@@ -1009,13 +1006,13 @@ class Agent:
                 raise WazuhError(1752)
         else:
             # Check if the group already belongs to the agent
-            if group_id in multigroup_name.split(','):
+            if group_id in agent_groups:
                 raise WazuhError(1751)
 
-            multigroup_name = (multigroup_name + ',' if multigroup_name else '') + group_id
+            multigroup_name = f'{multigroup_name}{"," if multigroup_name else ""}{group_id}'
 
         # Check multigroup limit
-        if Agent.check_multigroup_limit(agent_id):
+        if len(agent_groups) > common.max_groups_per_multigroup:
             raise WazuhError(1737)
 
         # Update group file
@@ -1092,22 +1089,6 @@ class Agent:
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhInternalError(1005, extra_message=str(e))
-
-    @staticmethod
-    def check_multigroup_limit(agent_id):
-        """An agent can belong to <common.max_groups_per_multigroup> groups as maximum. This function checks
-        that limit is not yet reached.
-
-        :param agent_id: Agent ID to check
-        :return: True if the limit is reached, False otherwise
-        """
-        group_read = Agent.get_agents_group_file(agent_id)
-        if group_read:
-            return len(group_read.split(',')) >= common.max_groups_per_multigroup
-        else:
-            # In case that the agent is not connected and has no assigned group, the file is not created.
-            # So, the limit is not reached.
-            return False
 
     @staticmethod
     def unset_single_group_agent(agent_id, group_id, force=False):
