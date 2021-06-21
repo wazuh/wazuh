@@ -7,6 +7,7 @@ import glob
 import hashlib
 import json
 import operator
+import os
 import re
 import stat
 import sys
@@ -30,6 +31,7 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
+from wazuh.core.common import pidfiles_path
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -40,6 +42,24 @@ if sys.version_info[0] == 3:
 
 # Temporary cache
 t_cache = TTLCache(maxsize=4500, ttl=60)
+
+
+def check_pid(daemon):
+    """Check the existence of '.pid' files for a specified daemon.
+
+    Parameters
+    ----------
+    daemon : str
+        Daemon's name
+    """
+    regex = rf'{daemon}-(.*).pid'
+    for pidfile in os.listdir(pidfiles_path):
+        if match := re.match(regex, pidfile):
+            try:
+                os.kill(int(match.group(1)), 0)
+            except OSError:
+                print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
+                os.remove(f'{pidfiles_path}/{pidfile}')
 
 
 def find_nth(string, substring, n):
