@@ -78,16 +78,20 @@
 
 /* ******************  DATATYPES  ****************** */
 
+/**
+ * @brief Stores the configuration of the `log` call for the next startup (only future events)
+ */
 typedef struct {
-    pthread_rwlock_t mutex;
-    char timestamp[OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1];
-    char * settings;
+    pthread_rwlock_t mutex;                                  ///< Prevent the RC on this structure
+    char timestamp[OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1]; ///< Timestamp of last log received
+    char * settings;                                         ///< `log` command arguments
+    bool do_generate_json;                                   ///< false when log was called with an invalid predicate
 } w_macos_log_vault_t;
 
 /* ******************  PROTOTYPES  ****************** */
 
 /**
-* @brief Creates the environment for collecting logs on macOS Systems
+ * @brief Creates the environment for collecting logs on macOS Systems
  * @param current logreader structure with `log`'s input arguments and w_macos_log_config_t structure to be set
  * @param global_sysinfo sysinfo reference used to get useful information
  */
@@ -149,4 +153,22 @@ bool w_is_macos_sierra();
  * @return pid_t found child. Zero otherwise
  */
 pid_t w_get_first_child(pid_t parent_pid);
+
+/**
+ * @brief Enables or disables the generation of the json object with the macOS log status. 
+ * 
+ * Sets the validity of the \ref macos_log_vault data. 
+ * \ref w_macos_get_status_as_JSON.
+ * @param generate_json true if generates the JSON
+ */
+void w_macos_set_do_generate_json(bool generate_json);
+
+/**
+ * @brief Gets the validity of the \ref macos_log_vault data
+ * 
+ * @return true if valid data has been stored
+ * @return false if invalid data has been stored
+ */
+bool w_macos_get_do_generate_json();
+
 #endif /* MACOS_LOG_H */

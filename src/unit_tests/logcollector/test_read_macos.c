@@ -41,7 +41,6 @@ void w_macos_log_ctxt_clean(w_macos_log_ctxt_t * ctxt);
 bool w_macos_is_log_ctxt_expired(time_t timeout, w_macos_log_ctxt_t * ctxt);
 char * w_macos_log_get_last_valid_line(char * str);
 bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
-bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * buffer);
 bool w_macos_log_getlog(char * buffer, int length, FILE * stream, w_macos_log_config_t * macos_log_cfg);
 char * w_macos_trim_full_timestamp(char *);
 char * w_macos_get_last_log_timestamp(void);
@@ -297,6 +296,7 @@ void test_w_macos_is_log_header_false(void ** state) {
     macos_log_cfg.is_header_processed = false;
 
     will_return(__wrap_w_expression_match, true);
+    expect_value(__wrap_w_macos_set_do_generate_json, valid, true);
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 
@@ -322,7 +322,9 @@ void test_w_macos_is_log_header_log_stream_execution_error_after_exec(void ** st
 
     expect_string(__wrap__merror, formatted_msg, "(1602): Execution error 'log: test'");
 
-    bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
+    expect_value(__wrap_w_macos_set_do_generate_json, valid, false);
+
+    bool ret = w_macos_is_log_header(&macos_log_cfg, buffer);
 
     assert_true(ret);
 
@@ -345,6 +347,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_colon(void ** state) 
     will_return(__wrap_w_expression_match, false);
 
     expect_string(__wrap__merror, formatted_msg, "(1602): Execution error 'log'");
+    expect_value(__wrap_w_macos_set_do_generate_json, valid, false);
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 
@@ -369,6 +372,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_line_break(void ** st
     will_return(__wrap_w_expression_match, false);
 
     expect_string(__wrap__merror, formatted_msg, "(1602): Execution error 'log: test'");
+    expect_value(__wrap_w_macos_set_do_generate_json, valid, false);
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 
