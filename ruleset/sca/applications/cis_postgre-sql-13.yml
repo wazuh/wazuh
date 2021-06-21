@@ -214,7 +214,7 @@ checks:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     conditions: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_directory" | grep $log_directory$ -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_directory\" | grep $log_directory$" -> r:\.+'
 
 # 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
   - id: 24005
@@ -255,7 +255,7 @@ checks:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_filename" | grep $log_filename -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_filename\" | grep $log_filename" -> r:\.+'
 
 # 3.1.6 Ensure the log file permissions are set correctly (Automated)
   - id: 24006
@@ -294,8 +294,8 @@ checks:
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
-    rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_file_mode" | grep $log_file_mode -> r:\.+'
+    rules: 
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_file_mode\" | grep $log_file_mode" -> r:\.+'
 
 # 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
   - id: 24007
@@ -371,7 +371,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_rotation_age" | grep $log_rotation_age -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_age\" | grep $log_rotation_age" -> r:\.+'
 
 # 3.1.9 Ensure the maximum log file size is set correctly (Automated)
   - id: 24009
@@ -399,7 +399,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_rotation_size" | grep $log_rotation_size -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_size\" | grep $log_rotation_size" -> r:\.+'
 
 # 3.1.10 Ensure the correct syslog facility is selected (Manual)
   - id: 24010
@@ -429,7 +429,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show syslog_facility" | grep $syslog_facility -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_facility\" | grep $syslog_facility" -> r:\.+'
 
 # 3.1.11 Ensure the program name for PostgreSQL syslog messages is correct (Automated)
   - id: 24011
@@ -462,7 +462,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     conditions: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show syslog_ident" | grep $syslog_ident -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_ident\" | grep $syslog_ident" -> r:\.+'
 
 # 3.1.12 Ensure the correct messages are written to the server log (Automated)
   - id: 24012
