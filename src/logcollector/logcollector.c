@@ -2842,7 +2842,7 @@ STATIC char * w_save_files_status_to_cJSON() {
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 
     cJSON * macos_status = w_macos_get_status_as_JSON();
-    if (macos_status != NULL) {
+    if (macos_status != NULL && macos_processes != NULL) {
         if (global_json == NULL) {
             global_json = cJSON_CreateObject();
         }
