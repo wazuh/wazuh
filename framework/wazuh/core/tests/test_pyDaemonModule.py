@@ -41,7 +41,7 @@ def test_create_pid():
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
-            create_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
+            create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 
 @patch('wazuh.core.pyDaemonModule.common.wazuh_path', new='/tmp')
@@ -53,7 +53,7 @@ def test_create_pid_ko(mock_chmod):
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
             with pytest.raises(WazuhException, match=".* 3002 .*"):
-                create_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
+                create_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 
 @patch('wazuh.core.pyDaemonModule.common.wazuh_path', new='/tmp')
@@ -63,16 +63,4 @@ def test_delete_pid():
     with TemporaryDirectory() as tmpdirname:
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
-            delete_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
-
-
-@patch('wazuh.core.pyDaemonModule.common.wazuh_path', new='/tmp')
-@patch('wazuh.core.pyDaemonModule.os.path.exists', side_effect=OSError)
-def test_delete_pid_ko(mock_exists):
-    """Tests delete_pid function exception works"""
-
-    with TemporaryDirectory() as tmpdirname:
-        tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
-        with patch('wazuh.core.pyDaemonModule.common.os_pidfile', new=tmpdirname.split('/')[2]):
-            with pytest.raises(WazuhException, match=".* 3003 .*"):
-                delete_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
+            delete_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
