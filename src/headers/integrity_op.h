@@ -23,6 +23,16 @@
 */
 
 /**
+ * @brief Synchronization status codes
+ */
+typedef enum integrity_sync_status_t {
+    INTEGRITY_SYNC_ERR      = -1,
+    INTEGRITY_SYNC_NO_DATA  = 0,
+    INTEGRITY_SYNC_CKS_FAIL = 1,
+    INTEGRITY_SYNC_CKS_OK   = 2,
+} integrity_sync_status_t;
+
+/**
  * @brief Synchronization message type
  */
 typedef enum dbsync_msg {
