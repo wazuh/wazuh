@@ -993,10 +993,10 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
     :param group_id: Group ID.
     :return: AllItemsResponseAgents
     """
-    f_kwargs = {'group_list': [group_id], 'select': ['id']}
+    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
 
     dapi = DistributedAPI(f=agent.get_agents_in_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          f_kwargs=f_kwargs,
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
