@@ -443,6 +443,8 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
     test_mode = 1;
 
     OSHashNode *hash_node = NULL;
+    w_macos_log_procceses_t * bak_macos_processes = macos_processes;
+    macos_processes = (w_macos_log_procceses_t *) 1;
 
     strcpy(macos_log_vault.timestamp,"2021-04-27 08:07:20-0700");
     macos_log_vault.settings = "/usr/bin/log stream --style syslog";
@@ -489,6 +491,7 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
     char * ret = w_save_files_status_to_cJSON();
 
     assert_string_equal(ret, "test_1234");
+    macos_processes = bak_macos_processes;
 
 }
 
@@ -518,6 +521,8 @@ void test_w_save_files_status_invalid_vault(void ** state) {
 void test_w_save_files_status_to_cJSON_data(void ** state) {
     test_mode = 1;
 
+    w_macos_log_procceses_t * bak_macos_processes = macos_processes;
+    macos_processes = (w_macos_log_procceses_t *) 1;
     os_file_status_t * data;
     os_calloc(1, sizeof(os_file_status_t), data);
     strcpy(data->hash,"test1234");
@@ -596,7 +601,7 @@ void test_w_save_files_status_to_cJSON_data(void ** state) {
     char * ret = w_save_files_status_to_cJSON();
 
     assert_string_equal(ret, "test_1234");
-
+    macos_processes = bak_macos_processes;
     os_free(data);
     os_free(hash_node);
 
