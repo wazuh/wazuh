@@ -26,7 +26,6 @@ variables: # default values, please provide based on your organization policies
   $log_destination: stderr #stderr
   $log_filename: postgresql-%Y-%m-%d_%H%M%S.log #postgresql-%Y-%m-%d_%H%M%S.log
   $log_directory: log # log
-  $log_pattern: some_pattern
   $log_policy: "0600" # 0600
   $log_rotation_age: 1d # 1d
   $log_rotation_size: 10MB # 10MB
@@ -491,7 +490,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_min_messages" -> r:\sERROR|\sLOG$|\sFATAL$|\sPANIC$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_min_messages" -> r:\serror|\slog$|\sfatal$|\spanic$'
 
 ## 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
   - id: 24013
@@ -525,7 +524,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_min_error_statement" -> r:\sLOG$|\sFATAL$|\sPANIC$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_min_error_statement" -> r:\slog$|\sfatal$|\spanic$'
 
 ## 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
   - id: 24014
@@ -795,7 +794,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_disconnections" -> r:%m\s[%p]:\s[%l-1]\sdb=%d,user=%u,app=%a,client=%h'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_disconnections" -> r:%m\s\[%p\]:\s\[%l-1\]\sdb=%d,user=%u,app=%a,client=%h'
 
   ## 3.1.23 Ensure 'log_statement' is set correctly (Automated)
   - id: 24023
@@ -823,7 +822,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_statement" -> r:\snone'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_statement" -> r:\sdll'
 
   ## 3.1.24 Ensure 'log_timezone' is set correctly (Automated)
   - id: 24024
@@ -856,11 +855,9 @@ checks:
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
       - https://en.wikipedia.org/wiki/Time_zone
-    condition: any
+    condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW log_timezone" -> r:\sGMT$'
-      - 'c:psql -U $user -h $host $db -c "SHOW log_timezone" -> r:\sUTC$'
-      #- 'c:psql -U $user -h $host $db -c "SHOW log_timezone" | grep $log_timezone -> r:\.+'
+      - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_timezone\" | grep $log_timezone" -> r:\.+'
 
   ## 3.2 Ensure the PostgreSQL Audit Extension (pgAudit) is enabled (Automated)
   - id: 24025
@@ -978,9 +975,10 @@ checks:
       - cis_csc: ["5.1"]
     references:
       - https://github.com/cybertec-postgresql/pg_permission
-    condition: none
+    condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name =\"pg_permissions\";" -> r:(0\srows)'
+      - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name=\"pg_permissions\";" -> r:pg_permissions && !r:(0\srows) && !r:ERROR'
+      
 
   ## 4.6 Ensure Row Level Security (RLS) is configured correctly (Manual)
   ## Not Aplicable: subjective
@@ -1004,9 +1002,9 @@ checks:
       - cis_csc: ["5.1", "5.8", "4.3"]
     references:
       - https://github.com/pgaudit/set_user
-    condition: none
+    condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name \"set_user\";" -> r:(0\srows)'
+      - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name=\"set_user\";" -> r:set_user && !r:(0\srows) && !r:ERROR'
 
   # 4.8 Make use of default roles (Manual)
   # Not Aplicable: subjective
@@ -1048,7 +1046,7 @@ checks:
       - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/security_hardening/using-the-system-wide-cryptographic-policies_security-hardening#switching-the-system-to-fips-mode_using-the-system-wide-cryptographic-policies
       - https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp1758.pdf
       - https://csrc.nist.gov/publications/fips
-    condition: none
+    condition: all
     rules:
       - 'c:fips-mode-setup --check -> r:FIPS\smode\sis\senabled'
 
@@ -1069,9 +1067,9 @@ checks:
       - https://www.postgresql.org/docs/current/static/ssl-tcp.html
       - http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-52r1.pdf
       - https://www.postgresql.org/docs/current/static/libpq-ssl.html
-    condition: none
+    condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "SHOW ssl" -> r:\soff'
+      - 'c:psql -U $user -h $host $db -c "SHOW ssl" -> r:\son'
 
   # 7 Replication
 
