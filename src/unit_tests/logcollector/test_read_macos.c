@@ -296,7 +296,7 @@ void test_w_macos_is_log_header_false(void ** state) {
     macos_log_cfg.is_header_processed = false;
 
     will_return(__wrap_w_expression_match, true);
-    expect_value(__wrap_w_macos_set_do_generate_json, valid, true);
+    expect_value(__wrap_w_macos_set_is_valid_data, is_valid, true);
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 
@@ -322,7 +322,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_after_exec(void ** st
 
     expect_string(__wrap__merror, formatted_msg, "(1602): Execution error 'log: test'");
 
-    expect_value(__wrap_w_macos_set_do_generate_json, valid, false);
+    expect_value(__wrap_w_macos_set_is_valid_data, is_valid, false);
 
     bool ret = w_macos_is_log_header(&macos_log_cfg, buffer);
 
@@ -347,7 +347,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_colon(void ** state) 
     will_return(__wrap_w_expression_match, false);
 
     expect_string(__wrap__merror, formatted_msg, "(1602): Execution error 'log'");
-    expect_value(__wrap_w_macos_set_do_generate_json, valid, false);
+    expect_value(__wrap_w_macos_set_is_valid_data, is_valid, false);
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 
@@ -372,7 +372,7 @@ void test_w_macos_is_log_header_log_stream_execution_error_line_break(void ** st
     will_return(__wrap_w_expression_match, false);
 
     expect_string(__wrap__merror, formatted_msg, "(1602): Execution error 'log: test'");
-    expect_value(__wrap_w_macos_set_do_generate_json, valid, false);
+    expect_value(__wrap_w_macos_set_is_valid_data, is_valid, false);
 
     bool ret = w_macos_is_log_header(& macos_log_cfg, buffer);
 

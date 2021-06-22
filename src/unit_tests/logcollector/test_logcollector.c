@@ -52,7 +52,7 @@ static wfd_t * show_backup;
 
 static int setup_group(void **state) {
     test_mode = 1;
-    macos_log_vault.do_generate_json = true;
+    macos_log_vault.is_valid_data = true;
     return 0;
 }
 static int teardown_group(void **state) {
@@ -498,8 +498,8 @@ void test_w_save_files_status_to_cJSON_macos_valid_vault(void ** state) {
 void test_w_save_files_status_invalid_vault(void ** state) {
 
     test_mode = 1;
-    bool back_valid_json = macos_log_vault.do_generate_json;
-    macos_log_vault.do_generate_json = false;
+    bool back_valid_json = macos_log_vault.is_valid_data;
+    macos_log_vault.is_valid_data = false;
 
     OSHashNode *hash_node = NULL;
 
@@ -513,8 +513,8 @@ void test_w_save_files_status_invalid_vault(void ** state) {
 
     char * ret = w_save_files_status_to_cJSON();
     assert_null(ret);
-    assert_false(macos_log_vault.do_generate_json);
-    macos_log_vault.do_generate_json = back_valid_json;
+    assert_false(macos_log_vault.is_valid_data);
+    macos_log_vault.is_valid_data = back_valid_json;
 
 }
 
@@ -1521,7 +1521,7 @@ void test_w_load_files_status_valid_vault(void ** state) {
     cJSON *global_json = (cJSON*)1;
     strcpy(macos_log_vault.timestamp,"hi 123");
     os_strdup("my settings", macos_log_vault.settings);
-    macos_log_vault.do_generate_json = false;
+    macos_log_vault.is_valid_data = false;
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -1550,7 +1550,7 @@ void test_w_load_files_status_valid_vault(void ** state) {
 
     assert_string_equal(macos_log_vault.timestamp, "2021-04-27 08:07:20-0700");
     assert_string_equal(macos_log_vault.settings, "/usr/bin/log stream --style syslog");
-    assert_true(macos_log_vault.do_generate_json);
+    assert_true(macos_log_vault.is_valid_data);
 
     os_free(macos_log_vault.settings);
 }

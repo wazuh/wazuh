@@ -3310,8 +3310,6 @@ void test_w_get_first_child_non_null_zero(void ** state) {
     will_return(__wrap_w_get_process_childs, pid_array);
 
     assert_int_equal(w_get_first_child(0), 0);
-
-    os_free(pid_array);
 }
 
 int main(void) {
