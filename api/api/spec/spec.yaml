@@ -1418,7 +1418,7 @@ components:
       properties:
         affected_items:
           type: array
-          description: "List of removed groups with the agents which belonged to the it and might have been reassigned to group default"
+          description: "List of removed groups with the agents which belonged to it and might have been reassigned to group default"
           items:
             $ref: '#/components/schemas/GroupDelete'
 
