@@ -100,42 +100,43 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
 
     if (wdb_agents_find_cve(wdb, cve, reference)) {
         cJSON_AddStringToObject(result, "action", "UPDATE");
-        cJSON_AddStringToObject(result, "status", "SUCCESS");
     }
     else {
         cJSON_AddStringToObject(result, "action", "INSERT");
+    }
 
-        if (check_pkg_existence && !wdb_agents_find_package(wdb, reference)) {
-            cJSON_AddStringToObject(result, "status", "PKG_NOT_FOUND");
-        }
-        else {
-            sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
+    if (check_pkg_existence && !wdb_agents_find_package(wdb, reference)) {
+        cJSON_AddStringToObject(result, "status", "PKG_NOT_FOUND");
+    }
+    else {
+        // The package is inserted even on an UPDATE, to replace the status with VALID
+        sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
-            if (stmt) {
-                sqlite3_bind_text(stmt, 1, name, -1, NULL);
-                sqlite3_bind_text(stmt, 2, version, -1, NULL);
-                sqlite3_bind_text(stmt, 3, architecture, -1, NULL);
-                sqlite3_bind_text(stmt, 4, cve, -1, NULL);
-                sqlite3_bind_text(stmt, 5, reference, -1, NULL);
-                sqlite3_bind_text(stmt, 6, type, -1, NULL);
-                sqlite3_bind_text(stmt, 7, status, -1, NULL);
-                sqlite3_bind_text(stmt, 8, severity, -1, NULL);
-                sqlite3_bind_double(stmt, 9, cvss2_score);
-                sqlite3_bind_double(stmt, 10, cvss3_score);
+        if (stmt) {
+            sqlite3_bind_text(stmt, 1, name, -1, NULL);
+            sqlite3_bind_text(stmt, 2, version, -1, NULL);
+            sqlite3_bind_text(stmt, 3, architecture, -1, NULL);
+            sqlite3_bind_text(stmt, 4, cve, -1, NULL);
+            sqlite3_bind_text(stmt, 5, reference, -1, NULL);
+            sqlite3_bind_text(stmt, 6, type, -1, NULL);
+            sqlite3_bind_text(stmt, 7, status, -1, NULL);
+            sqlite3_bind_text(stmt, 8, severity, -1, NULL);
+            sqlite3_bind_double(stmt, 9, cvss2_score);
+            sqlite3_bind_double(stmt, 10, cvss3_score);
 
-                if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
-                    cJSON_AddStringToObject(result, "status", "SUCCESS");
-                }
-                else {
-                    mdebug1("Exec statement error %s", sqlite3_errmsg(wdb->db));
-                    cJSON_AddStringToObject(result, "status", "ERROR");
-                }
+            if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
+                cJSON_AddStringToObject(result, "status", "SUCCESS");
             }
             else {
+                mdebug1("Exec statement error %s", sqlite3_errmsg(wdb->db));
                 cJSON_AddStringToObject(result, "status", "ERROR");
             }
         }
+        else {
+            cJSON_AddStringToObject(result, "status", "ERROR");
+        }
     }
+
     return result;
 }
 
