@@ -21,7 +21,7 @@
 #endif
 
 STATIC w_macos_log_vault_t macos_log_vault = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "",
-                                               .settings = NULL, .do_generate_json = false };
+                                               .settings = NULL, .is_valid_data = false };
 
 STATIC char * macos_codename = NULL;
 
@@ -471,8 +471,8 @@ pid_t w_get_first_child(pid_t parent_pid) {
     pid_t * childs = w_get_process_childs(sysinfo, parent_pid, 1);
     if (childs != NULL && *childs != 0) {
         first_child = *childs;
-        os_free(childs);
     }
+    os_free(childs);
 
     return first_child;
 }
@@ -511,25 +511,25 @@ char * w_macos_get_log_settings(void) {
 }
 
 
-bool w_macos_get_do_generate_json() {
+bool w_macos_get_is_valid_data() {
 
     w_rwlock_rdlock(&macos_log_vault.mutex);
-    bool retval = macos_log_vault.do_generate_json;
+    bool retval = macos_log_vault.is_valid_data;
     w_rwlock_unlock(&macos_log_vault.mutex);
 
     return retval;
 }
 
-void w_macos_set_do_generate_json(bool generate_json) {
+void w_macos_set_is_valid_data(bool is_valid) {
 
     w_rwlock_wrlock(&macos_log_vault.mutex);
-    macos_log_vault.do_generate_json = generate_json;
+    macos_log_vault.is_valid_data = is_valid;
     w_rwlock_unlock(&macos_log_vault.mutex);
 }
 
 cJSON * w_macos_get_status_as_JSON(void) {
 
-    if (!w_macos_get_do_generate_json()) {
+    if (!w_macos_get_is_valid_data()) {
         return NULL;
     }
 
@@ -555,7 +555,7 @@ void w_macos_set_status_from_JSON(cJSON * global_json) {
     if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
         w_macos_set_last_log_timestamp(timestamp);
         w_macos_set_log_settings(settings);
-        w_macos_set_do_generate_json(true);
+        w_macos_set_is_valid_data(true);
     }
 }
 

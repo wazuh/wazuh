@@ -402,7 +402,7 @@ STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * b
     /* if the buffer contains a log, then there won't be headers anymore */
     if (w_expression_match(macos_log_cfg->log_start_regex, buffer, NULL, NULL)) {
         macos_log_cfg->is_header_processed = true;
-        w_macos_set_do_generate_json(true);
+        w_macos_set_is_valid_data(true);
         retval = false;
     }
     /* Error in the execution of the `log stream` cli command, probably there is an error in the predicate. */
@@ -415,7 +415,7 @@ STATIC bool w_macos_is_log_header(w_macos_log_config_t * macos_log_cfg, char * b
             buffer[buffer_size - 1] = '\0';
         }
         merror(LOGCOLLECTOR_MACOS_LOG_ERROR_AFTER_EXEC, buffer);
-        w_macos_set_do_generate_json(false);
+        w_macos_set_is_valid_data(false);
     }
     /* Rows header or remaining error lines */
     else {

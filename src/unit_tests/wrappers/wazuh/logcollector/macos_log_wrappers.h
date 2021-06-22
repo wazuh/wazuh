@@ -30,8 +30,8 @@ bool __wrap_w_is_macos_sierra();
 
 pid_t __wrap_w_get_first_child(pid_t parent_pid);
 
-bool __wrap_w_macos_get_do_generate_json();
+bool __wrap_w_macos_get_is_valid_data();
 
-void __wrap_w_macos_set_do_generate_json(bool valid);
+void __wrap_w_macos_set_is_valid_data(bool is_valid);
 
 #endif

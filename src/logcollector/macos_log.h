@@ -85,7 +85,7 @@ typedef struct {
     pthread_rwlock_t mutex;                                  ///< Prevent the RC on this structure
     char timestamp[OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1]; ///< Timestamp of last log received
     char * settings;                                         ///< `log` command arguments
-    bool do_generate_json;                                   ///< false when log was called with an invalid predicate
+    bool is_valid_data;                                   ///< false when log was called with an invalid predicate
 } w_macos_log_vault_t;
 
 /* ******************  PROTOTYPES  ****************** */
@@ -155,13 +155,13 @@ bool w_is_macos_sierra();
 pid_t w_get_first_child(pid_t parent_pid);
 
 /**
- * @brief Enables or disables the generation of the json object with the macOS log status. 
+ * @brief Sets the validity of the \ref macos_log_vault data. 
  * 
- * Sets the validity of the \ref macos_log_vault data. 
+ * Enables or disables the generation of the json object with the macOS log status. 
  * \ref w_macos_get_status_as_JSON.
- * @param generate_json true if generates the JSON
+ * @param is_valid true if generates the JSON
  */
-void w_macos_set_do_generate_json(bool generate_json);
+void w_macos_set_is_valid_data(bool is_valid);
 
 /**
  * @brief Gets the validity of the \ref macos_log_vault data
@@ -169,6 +169,6 @@ void w_macos_set_do_generate_json(bool generate_json);
  * @return true if valid data has been stored
  * @return false if invalid data has been stored
  */
-bool w_macos_get_do_generate_json();
+bool w_macos_get_is_valid_data(void);
 
 #endif /* MACOS_LOG_H */
