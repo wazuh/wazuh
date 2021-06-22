@@ -2,7 +2,6 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import os
 import shutil
 import sys
@@ -47,7 +46,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 short_agent_list = ['000', '001', '002', '003', '004', '005']
 
 
-def send_msg_to_wdb(msg, raw=False):
+def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
     query = ' '.join(msg.split(' ')[2:])
     result = test_data.cur.execute(query).fetchall()
     return list(map(remove_nones_to_dict, map(dict, result)))
@@ -218,12 +217,12 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
     (['000'], [], 1703),
     (['001', '500'], ['001'], 1701)
 ])
-@patch('wazuh.core.agent.Agent.restart')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list, expected_items,
-                              error_code):
+def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+                              expected_items, error_code):
     """Test `restart_agents` function from agent module.
 
     Parameters
@@ -244,27 +243,26 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['000', '001', '002'], ['001', '002'], None),
+    (['000', '001', '002'], ['001', '002'], 1703),
     (['001', '500'], ['001'], 1701)
 ])
-@patch('wazuh.core.agent.Agent.restart')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list,
-                                      expected_items,
-                                      error_code):
+def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+                                      expected_items,  error_code):
     """Test `restart_agents_by_node` function from agent module.
 
-        Parameters
-        ----------
-        agent_list : List of str
-            List of agent ID's.
-        expected_items : List of str
-            List of expected agent ID's returned by 'restart_agents'.
-        error_code : int
-            The expected error code.
-        """
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'restart_agents'.
+    error_code : int
+        The expected error code.
+    """
     result = restart_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
@@ -424,11 +422,12 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.common.wazuh_uid')
 @patch('wazuh.core.agent.common.wazuh_gid')
+@patch('wazuh.core.agent.tempfile.mkstemp', return_value=['handle', 'output'])
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, common_gid_mock, common_uid_mock, chmod_mock,
-                         chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
+def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, common_gid_mock, common_uid_mock,
+                         chmod_mock, chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
     """Test `add_agent` from agent module.
 
     Parameters
@@ -440,12 +439,20 @@ def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, common_gid_mock
     key : str
         The agent key.
     """
-    try:
-        add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
-        assert add_result.dikt['data']['id'] == agent_id
-        assert add_result.dikt['data']['key']
-    except WazuhError as e:
-        assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
+    def mock_open(*args):
+        """Mock open only if .write() is used"""
+        if len(args) == 2 and args[1] in ['a', 'w']:
+            return patch('wazuh.core.agent.open')
+        else:
+            return open(*args)
+
+    with patch('wazuh.core.agent.open', new=mock_open):
+        try:
+            add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
+            assert add_result.dikt['data']['id'] == agent_id
+            assert add_result.dikt['data']['key']
+        except WazuhError as e:
+            assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list, expected_result', [

@@ -339,10 +339,27 @@ int realtime_start(void);
  *
  * @param dir Path to file or directory
  * @param configuration Configuration associated with the file or directory
- * @param followsl If the path is configured with follow sym link option
  * @return 1 on success, -1 on realtime_start failure, -2 on set_winsacl failure, and 0 on other errors
  */
-int realtime_adddir(const char *dir, directory_t *configuration, int followsl);
+int realtime_adddir(const char *dir, directory_t *configuration);
+
+#ifdef INOTIFY_ENABLED
+/**
+ * @brief Add an inotify watch to monitoring directory
+ *
+ * @param dir Path to file or directory
+ * @param configuration Configuration associated with the file or directory
+ * @return 1 on success, -1 on failure
+ */
+int fim_add_inotify_watch(const char *dir, const directory_t *configuration);
+#endif
+
+/**
+ * @brief Remove an inotify watch
+ *
+ * @param configuration Configuration associated with the file or directory
+ */
+void fim_delete_realtime_watches(const directory_t *configuration);
 
 /**
  * @brief Process events in the real time queue
@@ -719,6 +736,14 @@ int w_update_sacl(const char *obj_path);
  */
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
+
+/**
+ * @brief Get the number of realtime watches opened by FIM.
+ *
+ * @return Number of realtime watches.
+ */
+unsigned int get_realtime_watches();
+
 #else
 void *fim_run_integrity(void *args);
 #endif
@@ -931,4 +956,23 @@ void fim_delete_file_event(fdb_t *fim_sql,
                            void *_evt_data,
                            void *_unused_field_1,
                            void *_unused_field_2);
+
+/**
+ * @brief Create a delete event and removes the entry from the database.
+ *
+ * @param fim_sql  FIM database struct.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param evt_data Information associated to the triggered event.
+ * @param configuration Directory configuration to be deleted.
+ * @param _unused_field Unused field, required to use this function as a callback.
+ *
+ */
+void fim_generate_delete_event(fdb_t *fim_sql,
+                               fim_entry *entry,
+                               pthread_mutex_t *mutex,
+                               void *evt_data,
+                               void *configuration,
+                               void *_unused_field);
+
 #endif /* SYSCHECK_H */

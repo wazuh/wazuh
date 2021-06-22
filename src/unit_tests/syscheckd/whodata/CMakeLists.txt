@@ -57,7 +57,10 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,select -Wl,--wrap,audit_parse -Wl,--wrap,symlink -Wl,--wrap,SendMSG \
                               -Wl,--wrap,audit_get_rule_list -Wl,--wrap,fim_audit_reload_rules \
                               -Wl,--wrap,search_audit_rule -Wl,--wrap,abspath -Wl,--wrap,atomic_int_get \
-                              -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc")
+                              -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
+                              -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
+                              -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,OS_SHA1_Str \
+                              -Wl,--wrap,OS_SHA1_File")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
 
@@ -79,7 +82,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,audit_close -Wl,--wrap,fim_manipulated_audit_rules \
                            -Wl,--wrap,fim_audit_reload_rules -Wl,--wrap,remove_audit_rule_syscheck \
                            -Wl,--wrap,atomic_int_get -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec \
-                           -Wl,--wrap,atomic_int_inc")
+                           -Wl,--wrap,atomic_int_inc -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
+                           -Wl,--wrap,pthread_rwlock_rdlock")
 
     target_link_libraries(test_audit_parse SYSCHECK_O ${TEST_DEPS})
 
@@ -99,7 +103,8 @@ else()
                            -Wl,--wrap,convert_windows_string -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,FOREVER \
                            -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,fprintf \
                            -Wl,--wrap,fgets -Wl,--wrap,wstr_split -Wl,--wrap,pthread_rwlock_wrlock \
-                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,getDefine_Int")
+                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,getDefine_Int -Wl,--wrap,pthread_rwlock_rdlock \
+                           -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS})
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")

@@ -275,7 +275,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if command == b'dapi' or command == b'dapi_fwd':
             try:
                 timeout = None if wait_for_complete \
-                               else self.cluster_items['intervals']['communication']['timeout_api_request']
+                               else self.cluster_items['intervals']['communication']['timeout_dapi_request']
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                 request_result = self.server.pending_api_requests[request_id]['Response']
             except asyncio.TimeoutError:

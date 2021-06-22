@@ -179,7 +179,7 @@ class LocalClient(client.AbstractClientManager):
                     or result == 'Sent request to master node':
                 try:
                     timeout = None if wait_for_complete \
-                        else self.cluster_items['intervals']['communication']['timeout_api_request']
+                        else self.cluster_items['intervals']['communication']['timeout_dapi_request']
                     await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
                     request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:

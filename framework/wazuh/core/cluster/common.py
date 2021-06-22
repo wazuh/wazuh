@@ -9,10 +9,11 @@ import json
 import logging
 import os
 import random
+import re
 import struct
 import traceback
 from importlib import import_module
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict, Callable, List
 from uuid import uuid4
 
 import cryptography.fernet
@@ -314,7 +315,7 @@ class Handler(asyncio.Protocol):
         self.counter = (self.counter + 1) % (2 ** 32)
         return self.counter
 
-    def msg_build(self, command: bytes, counter: int, data: bytes) -> list[bytearray]:
+    def msg_build(self, command: bytes, counter: int, data: bytes) -> List[bytearray]:
         """Build messages with header + payload.
 
         Each message contains a header in self.header_format format that includes self.counter, the data size and the
@@ -524,8 +525,11 @@ class Handler(asyncio.Protocol):
         total = len(my_str)
         task_id = await self.send_request(command=b'new_str', data=str(total).encode())
 
-        # Send the string to the destination node, indicating the ID of the string.
-        await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str)
+        if task_id.startswith(b'Error'):
+            self.logger.error(f'There was an error while trying to send a string: {task_id}')
+            await self.send_request(command=b'err_str', data=str(total).encode())
+        else:
+            await self.send_request(command=b'str_upd', data=task_id + b' ' + my_str)
 
         return task_id
 
@@ -681,6 +685,8 @@ class Handler(asyncio.Protocol):
             return self.update_file(data)
         elif command == b'str_upd':
             return self.str_upd(data)
+        elif command == b'err_str':
+            return self.process_error_str(data)
         elif command == b"file_end":
             return self.end_file(data)
         else:
@@ -824,6 +830,36 @@ class Handler(asyncio.Protocol):
         name, str_data = data.split(b' ', 1)
         self.in_str[name].receive_data(str_data)
         return b"ok", b"String updated"
+
+    def process_error_str(self, expected_len: bytes) -> Tuple[bytes, bytes]:
+        """Search and delete item inside self.in_str.
+
+        If null byetearray is created inside self.in_str and its len is the same as 'expected_len', it can be
+        inferred that said item is garbage consequence of an incorrect communication and should be deleted.
+
+        Parameters
+        ----------
+        expected_len : bytes
+            Expected length of bytearray. If any bytearray has this length and its content is null, it will be deleted.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Task_id of deleted item, if found.
+        """
+        # Regex to find any character different to '\x00' (null) inside a string.
+        regex = re.compile(b'[^\x00]')
+        expected_len = int(expected_len.decode())
+
+        for item in list(self.in_str):
+            if self.in_str.get(item, None) and self.in_str.get(item).total == expected_len and not \
+                    regex.match(self.in_str.get(item).payload):
+                self.in_str.pop(item, None)
+                return b'ok', item
+
+        return b'ok', b'None'
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:
         """Define message when an unknown command is received.
@@ -977,7 +1013,7 @@ class WazuhCommon:
         """
         task_id, error_details = task_id_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
-        if task_id != 'None':
+        if task_id in self.sync_tasks:
             # Remove filename if exists
             if os.path.exists(self.sync_tasks[task_id].filename):
                 try:

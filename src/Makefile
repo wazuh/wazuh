@@ -1316,6 +1316,9 @@ wrappers_wazuh_addagent_o := $(wrappers_wazuh_addagent_c:.c=.o)
 wrappers_client_agent_c := $(wildcard unit_tests/wrappers/wazuh/client-agent/*.c)
 wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
 
+wrappers_wazuh_config_c := $(wildcard unit_tests/wrappers/wazuh/config/*.c)
+wrappers_wazuh_config_o := $(wrappers_wazuh_config_c:.c=.o)
+
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
@@ -1354,6 +1357,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_config_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 
 	ifeq (${TARGET},winagent)
@@ -2148,6 +2152,9 @@ unit_tests/wrappers/wazuh/os_auth/%.o: unit_tests/wrappers/wazuh/os_auth/%.c
 unit_tests/wrappers/wazuh/addagent/%.o: unit_tests/wrappers/wazuh/addagent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
+unit_tests/wrappers/wazuh/config/%.o: unit_tests/wrappers/wazuh/config/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
 unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
@@ -2263,8 +2270,9 @@ ifneq ($(wildcard external/libarchive/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
 endif
 
-ifneq ($(wildcard external/pacman/lib/libalpm/libalpm.a),)
-	rm $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+ifneq ($(wildcard external/pacman/lib/libalpm/*),)
+	rm -f $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+	rm -f $(EXTERNAL_PACMAN)lib/libalpm/*.o
 endif
 endif
 
@@ -2309,6 +2317,7 @@ clean-internals: clean-unit-tests
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
+	rm -f $(WAZUH_LIB)
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
 	rm -rf $(SHARED_UTILS_TEST)build
@@ -2348,6 +2357,7 @@ clean-unit-tests:
 	rm -f ${wrappers_wazuh_monitord_o}
 	rm -f ${wrappers_wazuh_os_auth_o}
 	rm -f ${wrappers_wazuh_addagent_o}
+	rm -f ${wrappers_wazuh_config_o}
 	rm -f ${wrappers_windows_o}
 	rm -f ${wrappers_windows_lib_o}
 	rm -f ${wrappers_windows_posix_o}

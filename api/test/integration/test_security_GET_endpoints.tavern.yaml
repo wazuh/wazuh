@@ -98,52 +98,26 @@ stages:
       <<: *all_roles_request
       params:
         sort: name
-        limit: 2
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *roles
-            - <<: *roles
-          total_affected_items: !anyint
-      save:
-        json:
-          second_role_id: data.affected_items[1].id
-          second_role_name: data.affected_items[1].name
 
   # GET /security/roles
-  - name: Sort the roles, limit=2, offset=1
-    request:
-      <<: *all_roles_request
-      params:
-        sort: name
-        limit: 2
-        offset: 1
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-          - id: !int "{second_role_id}"
-            name: "{second_role_name}"
-          - <<: *roles
-          total_affected_items: !anyint
-
-  # GET /security/roles
-  - name: Sort without limit
+  - name: Sort without limit (reverse)
     request:
       <<: *all_roles_request
       params:
         sort: -name
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
 
   # GET /security/roles
   - name: Select role name
@@ -471,30 +445,25 @@ stages:
     request:
       <<: *all_policies_request
       params:
-        sort: -name
-        limit: 2
+        sort: name
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *policies
-            - <<: *policies
-          total_affected_items: !anyint
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
 
   # GET /security/policies
-  - name: Sort without limit
+  - name: Sort the policies (reverse)
     request:
       <<: *all_policies_request
       params:
         sort: -name
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+            reverse: true
 
   # GET /security/policies
   - name: Select policy id
@@ -771,52 +740,26 @@ stages:
       <<: *all_rules_request
       params:
         sort: name
-        limit: 2
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *rules
-            - <<: *rules
-          total_affected_items: !anyint
-      save:
-        json:
-          second_rule_id: data.affected_items[1].id
-          second_rule_name: data.affected_items[1].name
 
   # GET /security/rules
-  - name: Sort the rules, limit=2, offset=1
-    request:
-      <<: *all_rules_request
-      params:
-        sort: name
-        limit: 2
-        offset: 1
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-          - id: !int "{second_rule_id}"
-            name: "{second_rule_name}"
-          - <<: *rules
-          total_affected_items: !anyint
-
-  # GET /security/rules
-  - name: Sort without limit
+  - name: Sort the rules (reverse)
     request:
       <<: *all_rules_request
       params:
         sort: -name
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "name"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
 
   # GET /security/rules
   - name: Search in rules
@@ -1138,19 +1081,14 @@ stages:
     response:
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items
-        extra_kwargs:
-          select_key: 'id' # required_fields={'id'}
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: 'id' # required_fields={'id'}
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - id: 105
-            - id: 104
-          total_affected_items: !anyint
-          total_failed_items: 0
-          failed_items: [ ]
 
   - name: Get users in the system using search and select filters
     request:
@@ -1407,129 +1345,12 @@ stages:
       params:
         sort: "-username"
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "username"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - id: 2
-              username: wazuh-wui
-              allow_run_as: true
-              roles:
-                - 1
-            - id: 1
-              username: wazuh
-              allow_run_as: true
-              roles:
-                - 1
-            - id: 99
-              username: testing
-              allow_run_as: false
-              roles:
-                - 1
-            - id: 104
-              username: rbac
-              allow_run_as: false
-              roles:
-                - 104
-                - 102
-                - 103
-            - id: 103
-              username: python
-              allow_run_as: false
-              roles:
-                - 101
-            - id: 102
-              username: ossec
-              allow_run_as: false
-              roles:
-                - 101
-                - 104
-            - id: 101
-              username: normal
-              allow_run_as: false
-              roles:
-                - 104
-                - 105
-                - 103
-            - id: 105
-              username: guest
-              allow_run_as: false
-              roles: []
-            - id: 100
-              username: administrator
-              allow_run_as: false
-              roles:
-                - 100
-                - 101
-          total_affected_items: 9
-          total_failed_items: 0
-          failed_items: []
-
-  - name: Testing sort
-    request:
-      <<: *all_users_request
-      params:
-        sort: "username"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - id: 100
-              username: administrator
-              allow_run_as: false
-              roles:
-                - 100
-                - 101
-            - id: 105
-              username: guest
-              allow_run_as: false
-              roles: []
-            - id: 101
-              username: normal
-              allow_run_as: false
-              roles:
-                - 104
-                - 105
-                - 103
-            - id: 102
-              username: ossec
-              allow_run_as: false
-              roles:
-                - 101
-                - 104
-            - id: 103
-              username: python
-              allow_run_as: false
-              roles:
-                - 101
-            - id: 104
-              username: rbac
-              allow_run_as: false
-              roles:
-                - 104
-                - 102
-                - 103
-            - id: 99
-              username: testing
-              allow_run_as: false
-              roles:
-                - 1
-            - id: 1
-              username: wazuh
-              allow_run_as: true
-              roles:
-                - 1
-            - id: 2
-              username: wazuh-wui
-              allow_run_as: true
-              roles:
-                - 1
-          total_affected_items: 9
-          total_failed_items: 0
-          failed_items: []
 
   - name: Testing offset
     request:
