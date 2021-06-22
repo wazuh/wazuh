@@ -75,8 +75,7 @@ def test_select_key_affected_items(response, select_key):
 
         # Check if there are keys in response that were not specified in 'select_keys', apart from those which can be
         # mandatory (id, agent_id, etc).
-        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file', 'task_id', 'agent_id', 'status',
-                                                            'command', 'create_time'} | main_keys)), \
+        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file', 'task_id'} | main_keys)), \
             f'Select keys are {main_keys}, but the response contains these keys: {set1}'
 
         for nested_key in nested_keys.items():
@@ -142,6 +141,10 @@ def test_sort_response(response, key=None, reverse=False):
                 dictionary = dictionary[key]
         except KeyError:
             return ''
+
+        if isinstance(dictionary, str) and not dictionary.startswith('/') and not dictionary.startswith('\\'):
+            return dictionary.lower()
+
         return dictionary
 
     affected_items = response.json()['data']['affected_items']

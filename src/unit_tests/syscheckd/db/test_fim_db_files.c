@@ -114,6 +114,9 @@ static int teardown_append_inode(void **state) {
         return 0;
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     teardown_os_list((void **)&(data->list));
     teardown_rb_tree((void **)&(data->tree));
 
@@ -134,7 +137,8 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error inserting data row_id '0': ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
+    expect_string(__wrap__merror, formatted_msg, "Step error inserting data row_id '0': ERROR MESSAGE (111)");
 
     int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
 
@@ -168,7 +172,8 @@ void test_fim_db_insert_data_rowid_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error updating data row_id '1': ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
+    expect_string(__wrap__merror, formatted_msg, "Step error updating data row_id '1': ERROR MESSAGE (111)");
     int ret;
     int row_id = 1;
     ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
@@ -207,8 +212,9 @@ void test_fim_db_insert_path_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE (111)");
 
     ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, 1);
 
@@ -276,8 +282,9 @@ void test_fim_db_insert_fail_to_remove_existing_entry(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg,"ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
 
-    expect_string(__wrap__merror, formatted_msg, "Step error deleting data: ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "Step error deleting data: ERROR MESSAGE (111)");
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
                         test_data->saved);
@@ -435,7 +442,8 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
+    expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE (111)");
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
                         test_data->saved);
@@ -930,7 +938,8 @@ void test_fim_db_get_count_file_data_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry data: ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
+    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry data: ERROR MESSAGE (111)");
 
     int ret = fim_db_get_count_file_data(test_data->fim_sql);
 
@@ -963,7 +972,8 @@ void test_fim_db_get_count_file_entry_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
+    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: ERROR MESSAGE (111)");
 
     int ret = fim_db_get_count_file_entry(test_data->fim_sql);
 
@@ -1012,7 +1022,8 @@ void test_fim_db_set_scanned_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE");
+    will_return(__wrap_sqlite3_extended_errcode, 111);
+    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE (111)");
 
     int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->file_entry.path);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1109,13 +1120,18 @@ static void test_fim_db_remove_validated_path_invalid_path(void **state) {
 #else
     char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
 #endif
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
 
     fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 
-    // Last commit time should change
+    // Last commit time should not change
     assert_int_equal(fim_sql.transaction.last_commit, 1);
 }
 
@@ -1126,6 +1142,11 @@ static void test_fim_db_remove_validated_path_valid_path(void **state) {
 #else
     char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
 #endif
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
     fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = false, .type = FIM_DELETE };
@@ -1203,6 +1224,9 @@ static void test_fim_db_append_paths_from_inode_append_paths(void **state) {
     OSList *list = ((append_inode_t *)*state)->list;
     rb_tree *tree = ((append_inode_t *)*state)->tree;
     int ret, i;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_fim_db_clean_stmt();
     expect_fim_db_bind_get_inode();

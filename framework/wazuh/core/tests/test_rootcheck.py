@@ -50,7 +50,7 @@ def remove_db(data_path):
 test_data = InitRootcheck()
 
 
-def send_msg_to_wdb(msg, raw=False):
+def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
     query = ' '.join(msg.split(' ')[3:])
     result = test_data.cur.execute(query).fetchall()
     return list(map(remove_nones_to_dict, map(dict, result)))

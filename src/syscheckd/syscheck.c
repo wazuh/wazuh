@@ -83,6 +83,7 @@ void fim_initialize() {
         merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db");
     }
 
+    w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
@@ -94,11 +95,12 @@ void fim_initialize() {
 
 #ifdef WIN32
 /* syscheck main for Windows */
-int Start_win32_Syscheck()
-{
+int Start_win32_Syscheck() {
     int debug_level = 0;
     int r = 0;
     char *cfg = OSSECCONF;
+    OSListNode *node_it;
+
     /* Read internal options */
     read_internal(debug_level);
 
@@ -113,15 +115,14 @@ int Start_win32_Syscheck()
         syscheck.disabled = 1;
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         /* Disabled */
-        if (!syscheck.directories) {
-            minfo(FIM_DIRECTORY_NOPROVIDED);
-            dump_syscheck_file(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
-        } else if (syscheck.directories[0]->path == NULL) {
-            minfo(FIM_DIRECTORY_NOPROVIDED);
-        }
+        minfo(FIM_DIRECTORY_NOPROVIDED);
 
-        free_directory(syscheck.directories[0]);
-        syscheck.directories[0] = NULL;
+        // Free directories list
+        OSList_foreach(node_it, syscheck.directories) {
+            free_directory(node_it->data);
+            node_it->data = NULL;
+        }
+        OSList_CleanNodes(syscheck.directories);
 
         if (!syscheck.ignore) {
             os_calloc(1, sizeof(char *), syscheck.ignore);
@@ -146,10 +147,12 @@ int Start_win32_Syscheck()
 
     if (!syscheck.disabled) {
         directory_t *dir_it;
+        OSListNode *node_it;
 #ifndef WIN_WHODATA
         int whodata_notification = 0;
         /* Remove whodata attributes */
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             if (dir_it->options & WHODATA_ACTIVE) {
                 if (!whodata_notification) {
                     whodata_notification = 1;
@@ -176,7 +179,8 @@ int Start_win32_Syscheck()
         }
 
         /* Print directories to be monitored */
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             char optstr[ 1024 ];
 
             minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
@@ -253,6 +257,24 @@ int Start_win32_Syscheck()
 
         /* Start up message */
         minfo(STARTUP_MSG, getpid());
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
+            if (dir_it->options & REALTIME_ACTIVE) {
+                realtime_start();
+                break;
+            }
+        }
+
+        if (syscheck.realtime == NULL) {
+            // Check if a wildcard might require realtime later
+            OSList_foreach(node_it, syscheck.wildcards) {
+                dir_it = node_it->data;
+                if (dir_it->options & REALTIME_ACTIVE) {
+                    realtime_start();
+                    break;
+                }
+            }
+        }
     }
 
     /* Some sync time */
