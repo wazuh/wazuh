@@ -288,7 +288,7 @@ void test_wdb_agents_insert_vuln_cves_update_success(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
-    bool check_pkg_existence = true;
+    bool check_pkg_existence = false;
     const char* severity = "Unknown";
     double cvss2_score = 0.0;
     double cvss3_score = 0.0;
@@ -309,6 +309,34 @@ void test_wdb_agents_insert_vuln_cves_update_success(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, name, "action");
     expect_string(__wrap_cJSON_AddStringToObject, string, "UPDATE");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, name);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, version);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, architecture);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, type);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, status);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, severity);
+    will_return_count(__wrap_sqlite3_bind_double, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_double, index, 9);
+    expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+    expect_value(__wrap_sqlite3_bind_double, index, 10);
+    expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
     expect_string(__wrap_cJSON_AddStringToObject, name, "status");
     expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
