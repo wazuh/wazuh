@@ -20,15 +20,16 @@ policy:
     - https://www.cisecurity.org/cis-benchmarks/
 
 variables: # default values, please provide based on your organization policies
-  $user: base # must be granted pg_read_all_settings and LOGIN and .pgpass exists
+  $user: test_user # must be granted pg_read_all_settings and LOGIN and .pgpass exists
   $host: localhost
   $db: postgres
   $log_destination: stderr #stderr
+  $log_filename: postgresql-%Y-%m-%d_%H%M%S.log #postgresql-%Y-%m-%d_%H%M%S.log
   $log_directory: log # log
   $log_pattern: some_pattern
   $log_policy: "0600" # 0600
   $log_rotation_age: 1d # 1d
-  $log_rotation_size: "0" # 0
+  $log_rotation_size: 10MB # 10MB
   $syslog_facility: local0 # local0
   $syslog_ident: postgres # postgres
   $log_timezone: America/New_York #  server's timezone in the Operating System
@@ -38,7 +39,7 @@ requirements:
   description: "Requirements for running the SCA scan against the PostgreSQL13 setup. "
   condition: all
   rules:
-    - 'c:psql -U $user -h $host $db -c "\l" -w -> r:row'
+    - 'c:psql -U $user -h $host $db -c "\\l" -w -> r:row'
     - 'c:psql --version -> r:13'
 
 checks:
@@ -820,7 +821,7 @@ checks:
       - cis_csc: ["6", "6.3"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
-    condition: none
+    condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_statement" -> r:\snone'
 
