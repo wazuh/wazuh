@@ -28,6 +28,7 @@ requirements:
     - 'f:/etc/redhat-release -> r:^Oracle && r:release 7'
     - 'f:/etc/redhat-release -> r:^Better && r:release 7'
     - 'f:/etc/redhat-release -> r:^OpenVZ && r:release 7'
+    - 'f:/etc/system-release -> r:^Amazon && r:release 2'
     - 'f:/etc/system-release -> r:^Fedora && r:release 29'
     - 'f:/etc/system-release -> r:^Fedora && r:release 30'
     - 'f:/etc/system-release -> r:^Fedora && r:release 31'
