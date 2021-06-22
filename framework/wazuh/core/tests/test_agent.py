@@ -6,7 +6,8 @@
 import os
 import sqlite3
 import sys
-from unittest.mock import ANY, patch, mock_open, call, MagicMock
+from shutil import rmtree
+from unittest.mock import ANY, patch, mock_open, call
 
 import pytest
 from freezegun import freeze_time
@@ -637,7 +638,6 @@ def test_agent_remove_authd(mock_wazuh_socket):
 
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.fcntl.lockf')
-@patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch("wazuh.core.common.wazuh_path", new=test_data_path)
@@ -650,7 +650,7 @@ def test_agent_remove_authd(mock_wazuh_socket):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_remove_manual(socket_mock, send_mock, grp_mock, pwd_mock, safe_move_mock, isdir_mock, isfile_mock,
-                             stat_mock, chmod_mock, rmtree_mock, lockf_mock, mkstemp_mock):
+                             stat_mock, chmod_mock, lockf_mock, mkstemp_mock):
     """Test the _remove_manual function
 
     Parameters
@@ -1561,22 +1561,18 @@ def test_expand_group(group, expected_agents):
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.wdb.WazuhDBConnection.delete_agents_db')
-@patch('wazuh.core.agent.remove')
-@patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch("wazuh.core.common.client_keys", new=os.path.join(test_data_path, 'etc', 'client.keys'))
 @patch('wazuh.core.agent.path.isdir', return_value=True)
-@patch('wazuh.core.agent.makedirs')
-@patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
 @patch("wazuh.core.common.wazuh_uid", return_value=getpwnam("root"))
 @patch("wazuh.core.common.wazuh_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, isdir_mock,
-                                stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, delete_mock, lockf_mock,
+def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, isdir_mock,
+                                stat_mock, chmod_mock, chown_mock, delete_mock, lockf_mock,
                                 mock_safe_move, mock_tempfile, agent_id, expected_exception):
     """Test the _remove_manual function error cases.
 
@@ -1603,8 +1599,6 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
                                   in
                                   test_data.global_db.execute(
                                       'select id, name, register_ip, internal_key from agent where id > 0')])
-
-    rmtree_mock.side_effect = Exception("Boom!")
 
     if expected_exception == 1701:
         with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command'):
