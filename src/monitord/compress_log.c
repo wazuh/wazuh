@@ -45,7 +45,7 @@ void OS_CompressLog(const char *logfile)
     zlog = gzopen(logfileGZ, "w");
     if (!zlog) {
         fclose(log);
-        merror(FOPEN_ERROR, logfileGZ, errno, strerror(errno));
+        mterror(WM_MONITOR_LOGTAG, FOPEN_ERROR, logfileGZ, errno, strerror(errno));
         return;
     }
 
@@ -55,7 +55,7 @@ void OS_CompressLog(const char *logfile)
             break;
         }
         if (gzwrite(zlog, buf, (unsigned)len) != len) {
-            merror("Compression error: %s", gzerror(zlog, &err));
+            mterror(WM_MONITOR_LOGTAG, "Compression error: %s", gzerror(zlog, &err));
         }
     }
 
@@ -64,7 +64,7 @@ void OS_CompressLog(const char *logfile)
 
     /* Remove uncompressed file */
     if ( unlink(logfile) == -1)
-        merror("Unable to delete '%s' due to '%s'", logfile, strerror(errno));
+        mterror(WM_MONITOR_LOGTAG, "Unable to delete '%s' due to '%s'", logfile, strerror(errno));
 
     return;
 }

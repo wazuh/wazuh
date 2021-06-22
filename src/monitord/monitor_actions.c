@@ -24,8 +24,8 @@ void monitor_send_deletion_msg(char *agent) {
 
     if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
         mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
-        mdebug1("Could not generate removed agent alert for '%s'", agent);
-        merror(QUEUE_SEND);
+        mtdebug1(WM_MONITOR_LOGTAG, "Could not generate removed agent alert for '%s'", agent);
+        mterror(WM_MONITOR_LOGTAG, QUEUE_SEND);
     }
 }
 
@@ -41,7 +41,7 @@ void monitor_send_disconnection_msg(char *agent) {
             // Agent is no longer in the database
             monitor_send_deletion_msg(agent);
         } else {
-            mdebug1("Could not generate disconnected agent alert for '%s'", agent);
+            mtdebug1(WM_MONITOR_LOGTAG, "Could not generate disconnected agent alert for '%s'", agent);
         }
     }
 }
@@ -57,7 +57,7 @@ void monitor_agents_disconnection(){
         for (int i = 0; agents_array[i] != -1; i++) {
             snprintf(str_agent_id, 12, "%d", agents_array[i]);
             if (OSHash_Add(agents_to_alert_hash, str_agent_id, (void*)time(0)) == 0) {
-                mdebug1("Can't add agent ID '%d' to the alerts hash table", agents_array[i]);
+                mtdebug1(WM_MONITOR_LOGTAG, "Can't add agent ID '%d' to the alerts hash table", agents_array[i]);
             }
         }
     }
@@ -108,7 +108,7 @@ void monitor_agents_alert(){
                     }
                 }
         } else {
-            mdebug1("Unable to retrieve agent's '%s' data from Wazuh DB", agent_hash_node->key);
+            mtdebug1(WM_MONITOR_LOGTAG, "Unable to retrieve agent's '%s' data from Wazuh DB", agent_hash_node->key);
             OSHash_Delete(agents_to_alert_hash, agent_hash_node->key);
         }
         cJSON_Delete(j_agent_info);
@@ -151,7 +151,7 @@ void monitor_agents_deletion(){
                     cJSON_Delete(j_agent_info);
                 }
             } else {
-                mdebug1("Unable to retrieve agent's '%d' data from Wazuh DB", agents_array[i]);
+                mtdebug1(WM_MONITOR_LOGTAG, "Unable to retrieve agent's '%d' data from Wazuh DB", agents_array[i]);
                 snprintf(str_agent_id, 12, "%d", agents_array[i]);
                 OSHash_Delete(agents_to_alert_hash, str_agent_id);
             }
@@ -199,7 +199,7 @@ int delete_old_agent(const char *agent) {
     char *agent_id = get_agent_id_from_name(agent_name);
     if(agent_id) {
         if (sock = auth_connect(), sock < 0) {
-            mdebug1("Monitord could not connect to to Authd socket. Is Authd running?");
+            mtdebug1(WM_MONITOR_LOGTAG, "Monitord could not connect to to Authd socket. Is Authd running?");
             val = -1;
             free(agent_id);
             return val;
@@ -243,7 +243,7 @@ int mon_send_agent_msg(char *agent, char *msg) {
         snprintf(header, OS_SIZE_256, "[%03d] (%s) %s", ag_id, ag_name, ag_ip);
         if (SendMSG(mond.a_queue, msg, header, SECURE_MQ) < 0) {
             mond.a_queue = -1;  // set an invalid fd so we can attempt to reconnect later on.
-            merror(QUEUE_SEND);
+            mterror(WM_MONITOR_LOGTAG, QUEUE_SEND);
             return 1;
         }
         return 0;

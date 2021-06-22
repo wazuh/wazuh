@@ -16,6 +16,8 @@
 #define ARGV0 "wazuh-modules"
 #endif
 
+#define WM_MONITOR_LOGTAG ARGV0 ":monitor"  // Tag for log messages
+
 #include "../headers/store_op.h"
 #include "config/reports-config.h"
 #include "config/global-config.h"
