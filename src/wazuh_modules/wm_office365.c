@@ -342,7 +342,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
             saved = (time_t)tenant_state_struc.last_log_time;
 
             if (saved > 0 && saved < now) {
-                start_time = saved;
+                start_time = saved - 5000000;
             } else {
                 start_time = now;
             }
@@ -394,6 +394,8 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
 
                                         if (log) {
                                             cJSON *office365 = cJSON_CreateObject();
+
+                                            cJSON_AddStringToObject(log, "Subscription", current_subscription->subscription_name);
 
                                             cJSON_AddStringToObject(office365, "integration", WM_OFFICE365_CONTEXT.name);
                                             cJSON_AddItemToObject(office365, "office365", cJSON_Duplicate(log, true));
