@@ -342,7 +342,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
             saved = (time_t)tenant_state_struc.last_log_time;
 
             if (saved > 0 && saved < now) {
-                start_time = saved - 5000000;
+                start_time = saved;
             } else {
                 start_time = now;
             }

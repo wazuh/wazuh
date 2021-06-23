@@ -2389,13 +2389,13 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_value(__wrap_wurl_free_response, response, get_content_blobs_response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending Office365 log: '{\"integration\":\"office365\",\"office365\":{\"contentUri\":\"https://contentUri1.com\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending Office365 log: '{\"integration\":\"office365\",\"office365\":{\"contentUri\":\"https://contentUri1.com\",\"Subscription\":\"test_subscription_name\"}}'");
 
     int result = 1;
     int queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"contentUri\":\"https://contentUri1.com\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"contentUri\":\"https://contentUri1.com\",\"Subscription\":\"test_subscription_name\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "office365");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
