@@ -66,10 +66,11 @@ int fim_diff_registry_tmp(const char *value_data,
  * @brief Initializes the structure with the data needed for diff
  *
  * @param filename Path of file monitored
+ * @param configuration Configuration associated with the file
  *
  * @return Structure with all the data necessary to compute differences
  */
-diff_data *initialize_file_diff_data(const char *filename);
+diff_data *initialize_file_diff_data(const char *filename, const directory_t *configuration);
 
 /**
  * @brief Free the structure with the data needed for diff
@@ -389,13 +390,13 @@ int fim_diff_registry_tmp(const char *value_data,
 
 #endif
 
-char *fim_file_diff(const char *filename) {
+char *fim_file_diff(const char *filename, const directory_t *configuration) {
 
     char *diff_changes = NULL;
     int limits_reached;
 
     // Generate diff structure
-    diff_data *diff = initialize_file_diff_data(filename);
+    diff_data *diff = initialize_file_diff_data(filename, configuration);
     if (!diff){
         return NULL;
     }
@@ -459,7 +460,7 @@ cleanup:
 }
 
 
-diff_data *initialize_file_diff_data(const char *filename){
+diff_data *initialize_file_diff_data(const char *filename, const directory_t *configuration){
     diff_data *diff;
     char buffer[PATH_MAX];
     char abs_diff_dir_path[PATH_MAX + 1];
@@ -470,10 +471,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     diff->file_size = 0;
 
     if (syscheck.file_size_enabled) {
-        w_rwlock_rdlock(&syscheck.directories_lock);
-        const directory_t *configuration = fim_configuration_directory(filename);
         diff->size_limit = configuration->diff_size_limit;
-        w_rwlock_unlock(&syscheck.directories_lock);
     }
 
     // Get absolute path of filename:
