@@ -189,17 +189,6 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     return 0;
 }
 
-/**
- * @brief Update sync attempt timestamp
- *
- * Set the column "last_attempt" with the timestamp argument,
- * and increase "n_attempts" one unit.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp (field "id");
- */
-
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum) {
 
     assert(wdb != NULL);
@@ -218,17 +207,6 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
-
-/**
- * @brief Update sync completion timestamp
- *
- * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
- * Increase "n_attempts" and "n_completions" one unit.
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param timestamp Synchronization event timestamp (field "id");
- */
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 manager_checksum) {
 
@@ -289,6 +267,7 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
     // Get the previously computed manager checksum
     if (INTEGRITY_CHECK_GLOBAL == action) {
         if (OS_SUCCESS == wdbi_get_last_manager_checksum(wdb, component, manager_checksum) && 0 == strcmp(manager_checksum, checksum)) {
+            mdebug2("Agent '%s' %s range checksum avoided.", wdb->id, COMPONENT_NAMES[component]);
             status = INTEGRITY_SYNC_CKS_OK;
         }
     }
@@ -318,7 +297,7 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
         switch (status) {
         case INTEGRITY_SYNC_NO_DATA:
         case INTEGRITY_SYNC_CKS_FAIL:
-            wdbi_update_attempt(wdb, component, timestamp, manager_checksum);
+            wdbi_update_attempt(wdb, component, timestamp, "");
             break;
 
         case INTEGRITY_SYNC_CKS_OK:
