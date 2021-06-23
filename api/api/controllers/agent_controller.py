@@ -19,6 +19,7 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -993,9 +994,8 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
     :param group_id: Group ID.
     :return: AllItemsResponseAgents
     """
-    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
-
-    dapi = DistributedAPI(f=agent.get_agents_in_group,
+    f_kwargs = {'group_list': [group_id]}
+    dapi = DistributedAPI(f=agent.get_agent_groups,
                           f_kwargs=f_kwargs,
                           request_type='local_master',
                           is_async=False,
@@ -1003,16 +1003,33 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
+    group_info = raise_if_exc(await dapi.distribute_function())
+    try:
+        agent_count = group_info.affected_items[0]['count']
+    except IndexError:
+        return web.json_response(data=raise_if_exc(WazuhResourceNotFound(1710)), status=404,
+                                 dumps=prettify if pretty else dumps)
 
-    agents = raise_if_exc(await dapi.distribute_function())
-    agent_list = [a['id'] for a in agents.affected_items]
-
-    if not agent_list:
+    if agent_count == 0:
         data = AffectedItemsWazuhResult(none_msg='Restart command was not sent to any agent')
         return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
-    f_kwargs = {'agent_list': agent_list}
+    agent_list = []
+    for i in range(int(agent_count / database_limit) + 1):
+        agent_group_f_kwargs = {'group_list': [group_id], 'select': ['id'], 'offset': 500 * i}
+        dapi = DistributedAPI(f=agent.get_agents_in_group,
+                              f_kwargs=agent_group_f_kwargs,
+                              request_type='local_master',
+                              is_async=False,
+                              wait_for_complete=wait_for_complete,
+                              logger=logger,
+                              rbac_permissions=request['token_info']['rbac_policies']
+                              )
 
+        agents = raise_if_exc(await dapi.distribute_function())
+        [agent_list.append(a['id']) for a in agents.affected_items]
+
+    f_kwargs = {'agent_list': agent_list}
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
