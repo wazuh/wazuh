@@ -5,6 +5,7 @@
 
 | Actions            | Resources | Allow           | Deny    |
 |--------------------|-----------|-----------------|---------|
+| rootcheck:clear    | agent:id  | 001,003,005,007 | *       |
 | syscollector:read  | agent:id  | 001,003,005,007 | *       |
-| syscollector:clear | agent:id  | 001,003,005,007 | *       |
+| syscheck:clear     | agent:id  | 001,003,005,007 | *       |
 | ciscat:read        | agent:id  | 001,003,005,007 | *       |
