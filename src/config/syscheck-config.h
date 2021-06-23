@@ -80,12 +80,6 @@ typedef enum fdb_stmt {
     FIMDB_STMT_SIZE
 } fdb_stmt;
 
-// The following foreach is really hacky, beware!!
-// It will only work with arrays that end on a NULL element
-#define foreach_array(iterator, array)            \
-    iterator = (array != NULL) ? array[0] : NULL; \
-    for (int _i = 0; iterator != NULL; iterator = array[++_i])
-
 #define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
 
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
@@ -160,6 +154,7 @@ typedef enum fdb_stmt {
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "headers/integrity_op.h"
 #include "external/sqlite/sqlite3.h"
+#include "headers/list_op.h"
 
 #ifdef WIN32
 typedef struct whodata_dir_status whodata_dir_status;
@@ -208,6 +203,8 @@ typedef struct _directory_s {
     // Windows specific fields
     whodata_dir_status dirs_status; // Status list
 #endif
+    unsigned int is_wildcard:1; // 1 if it is a wildcard, 0 if it is a directory
+    unsigned int is_expanded:1; // Indicates if the wilcard has been expanded in this scan
 } directory_t;
 
 typedef struct whodata_evt {
@@ -233,7 +230,6 @@ typedef struct whodata_evt {
     unsigned __int64 process_id;
     unsigned int mask;
     char scan_directory;
-    directory_t *config_node;
 #endif
 } whodata_evt;
 
@@ -366,7 +362,8 @@ typedef struct _config {
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
     unsigned int enable_registry_synchronization:1; /* Enable registry database synchronization */
 
-    directory_t **directories; /* List of directories to be monitored */
+    OSList *directories;            /* List of directories to be monitored */
+    OSList *wildcards;              /* List of wildcards to be monitored */
 
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
@@ -395,7 +392,7 @@ typedef struct _config {
     long sync_response_timeout;     /* Minimum time between receiving a sync response and starting a new sync session */
     long sync_queue_size;           /* Data synchronization message queue size */
     long sync_max_eps;              /* Maximum events per second for synchronization messages. */
-    unsigned max_eps;               /* Maximum events per second. */
+    int max_eps;               /* Maximum events per second. */
 
     /* Windows only registry checking */
 #ifdef WIN32
@@ -415,6 +412,7 @@ typedef struct _config {
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
 
+    pthread_rwlock_t directories_lock;
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
@@ -461,20 +459,46 @@ int read_data_unit(const char *content);
 void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
 
 /**
- * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
+ * @brief Creates a directory_t object from defined values
  *
- * @param syscheck Syscheck configuration structure
- * @param entry Entry to be dumped
- * @param vals Indicates the attributes for folders or registries to be set
- * @param restrictfile The restrict regex to be set
+ * @param path Path to be dumped
+ * @param options Indicates the attributes for folders or registries to be set
+ * @param filerestrict The restrict string to be set
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
- * @param link If the added entry is pointed by a symbolic link for folders and arch for registries
- * @param diff_size Maximum size to calculate diff for files in the directory
+ * @param diff_size_limit Maximum size to calculate diff for files in the directory
+ * @param is_wildcard Boolean that indicates if this is a wildcard or not
  */
-void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const char *restrictfile,
-                            int recursion_level, const char *tag, const char *link,
-                            int diff_size) __attribute__((nonnull(1, 2)));
+directory_t *fim_create_directory(const char *path,
+                                  int options,
+                                  const char *filerestrict,
+                                  int recursion_level,
+                                  const char *tag,
+                                  int diff_size_limit,
+                                  unsigned int is_wildcard);
+
+/**
+ * @brief Inserts the directory_t 'config_object' into the directory_t OSList 'config_list'
+ *
+ * @param config_list directory_t OSList from the syscheck configuration, passed by reference
+ * @param config_object directory_t object to be inserted
+ */
+void fim_insert_directory(OSList *config_list,
+                          directory_t *config_object);
+
+/**
+ * @brief Copies a given directory_t object and returns a reference to the copy.
+ *
+ * @param _dir directory_t object to be copied
+ */
+directory_t *fim_copy_directory(const directory_t *_dir);
+
+/**
+ * @brief Expands wildcards in the given path
+ *
+ * @param path Path to be expanded
+ */
+char **expand_wildcards(const char *path);
 
 #ifdef WIN32
 /**

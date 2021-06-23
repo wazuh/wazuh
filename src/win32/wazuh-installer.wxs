@@ -69,7 +69,13 @@
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
+        <Property Id="MAJORVERSION" Value="0">
+            <RegistrySearch Id="CurrentMajorVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentMajorVersionNumber" />
+        </Property>
+        <Property Id="BUILDVERSION" Value="0">
+            <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
+        </Property>
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
@@ -87,8 +93,12 @@
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
 
+        <CustomAction Id="CheckSvcRunning_OssecSvc" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no" />
+
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
+
+        <CustomAction Id="ReplaceConfiguration" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="cscript ReplaceConf.vbs &quot;[APPLICATIONFOLDER]&quot;" />
 
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT]" />
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [WAZUH_REGISTRATION_SERVER] -p [WAZUH_REGISTRATION_PORT] -k &quot;[WAZUH_REGISTRATION_KEY]&quot; -x &quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;" />
@@ -173,13 +183,9 @@
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
         <CustomAction Id="DepStartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
 
-        <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
-        <!-- Otherwise, the locked files and directories will not be deleted. -->
-        <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;WazuhSvc&quot;" Execute="immediate" Return="ignore" />
-
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
-        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
-        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE &quot;OssecSvc&quot;" Execute="deferred" Return="ignore" Impersonate="no" />
+        <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
+        <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
@@ -189,6 +195,7 @@
         </UI>
         <InstallExecuteSequence>
             <!-- Delete OSSEC service if it exist -->
+            <Custom Action="CheckSvcRunning_OssecSvc" After="AppSearch">OSSECINSTALLED</Custom>
             <Custom Action="StopOssecService" After="InstallInitialize">OSSECINSTALLED</Custom>
             <Custom Action="DeleteOssecService" After="StopOssecService">OSSECINSTALLED</Custom>
 
@@ -197,9 +204,10 @@
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
-            <Custom Action="StopWinService" After="DeleteOssecService">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+
+            <Custom Action="ReplaceConfiguration" After="InstallFinalize">NOT Installed AND NOT WIX_UPGRADE_DETECTED</Custom>
 
             <Custom Action="CustomAction_NoGroup_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE = "" AND WAZUH_REGISTRATION_KEY = ""</Custom>
             <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; "" AND WAZUH_AGENT_GROUP = "" AND WAZUH_AGENT_NAME = "" AND WAZUH_REGISTRATION_PASSWORD = "" AND WAZUH_REGISTRATION_CA = "" AND WAZUH_REGISTRATION_CERTIFICATE &lt;&gt; "" AND WAZUH_REGISTRATION_KEY &lt;&gt; ""</Custom>
@@ -291,6 +299,12 @@
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
+                    <Component Id="REPLACECONF.VBS" DiskId="1" Guid="D2CA93FD-4B3C-4147-B7D8-503487E23D16">
+                        <File Id="REPLACECONF.VBS" Name="ReplaceConf.vbs" Source="ReplaceConf.vbs" />
+                    </Component>
+                    <Component Id="LIBWAZUHSHARED_DLL" DiskId="1" Guid="A40D7FB4-8D7B-440E-B7CB-1D8CB1E277E6">
+                        <File Id="LIBWAZUHSHARED_DLL" Name="libwazuhshared.dll" Source="..\libwazuhshared.dll" />
+                    </Component>
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
                         <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
                     </Component>
@@ -308,14 +322,10 @@
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
-
-                    <Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="71947F0E-56D6-4E14-8539-214DFF6CA2BE" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="default-ossec-pre6.conf" KeyPath="yes" />
-                        <Condition>VersionNT &lt; 600</Condition>
-                    </Component>
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes" />
-                        <Condition>VersionNT &gt;= 600</Condition>
+                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
+                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
+                        </File>
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
                         <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" DefaultVersion="1.0"/>
@@ -325,6 +335,9 @@
                     </Component>
                     <Component Id="LIBWINPTHREAD_1.DLL" DiskId="1" Guid="C15C5883-00FB-41D7-B9E6-53C8BC30761F">
                         <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="libwinpthread-1.dll" />
+                    </Component>
+                    <Component Id="LIBGCC_S_SJLJ_1.DLL" DiskId="1" Guid="27BDCB9A-F89F-4009-A789-1F779EB05697">
+                        <File Id="LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" Source="libgcc_s_sjlj-1.dll" />
                     </Component>
                     <Component Id="MANAGE_AGENTS.EXE" DiskId="1" Guid="C15C5883-00FB-41D7-B7E6-53C8BC30761F">
                         <File Id="MANAGE_AGENTS.EXE" Name="manage_agents.exe" Source="manage_agents.exe" />
@@ -338,8 +351,14 @@
                     <Component Id="WAZUH_AGENT.EXE" DiskId="1" Guid="5CCEA6DC-8434-4137-9486-55AE3949266B">
                         <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
-                        <ServiceControl Id="svc_uninstall" Name="WazuhSvc" Remove="uninstall" Stop="uninstall" Wait="yes" />
-                        <Condition>VersionNT &lt; 600</Condition>
+                        <ServiceControl Id="ServiceControl" Name="WazuhSvc" Stop="both" Remove="uninstall" Wait="yes" />
+                        <Condition>NOT(OSSECINSTALLED) AND (VersionNT &lt; 600)</Condition>
+                    </Component>
+                    <Component Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" DiskId="1" Guid="FB49A2F0-3433-47D4-A668-4139718AFDAC">
+                        <File Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
+                        <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec" />
+                        <ServiceControl Id="ServiceControl_ossec_upgrade" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
+                        <Condition>OSSECINSTALLED AND (OSSECRUNNING = "Running") AND (VersionNT &gt;= 600)</Condition>
                     </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
@@ -364,6 +383,7 @@
                         <RemoveFile Id="NSIS_WIN32UI_EXE" Name="win32ui.exe" On="install" />
                         <RemoveFile Id="NSIS_AGENT_AUTH_EXE" Name="agent-auth.exe" On="install" />
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
+                        <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_MANAGE_AGENTS_EXE" Name="manage_agents.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_EXE" Name="ossec-agent.exe" On="install" />
                         <RemoveFile Id="NSIS_OSSEC_AGENT_STATE" Name="ossec-agent.state" On="install" />
@@ -383,6 +403,74 @@
                     </Component>
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
+                    </Component>
+                    <Component Id="WXP_CONF_LOCALFILE" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
+                        <File Id="WXP_LOCALFILE.TEMPLATE" Name="localfile-events.template" Source="..\..\etc\templates\config\windows\xp\localfile-events.template"/>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
+                    </Component>
+                    <Component Id="WXP_CONF_PROFILE" DiskId="1" Guid="31F19F56-4549-4D80-924E-ED2F7B0CA74E">
+                        <File Id="WXP_PROFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\xp\profile.template"/>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
+                    </Component>
+                    <Component Id="WXP_CONF_SYSCHECK" DiskId="1" Guid="EFE11D65-FF03-41B8-B4FE-82BDC522F0E9">
+                        <File Id="WXP_SYSCHECK.TEMPLATE" Name="syscheck.template" Source="..\..\etc\templates\config\windows\xp\syscheck.template"/>
+                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
+                    </Component>
+                    <Component Id="W2003_CONF_LOCALFILE" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
+                        <File Id="W2003_LOCALFILE.TEMPLATE" Name="localfile-events.template" Source="..\..\etc\templates\config\windows\2003\localfile-events.template"/>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
+                    </Component>
+                    <Component Id="W2003_CONF_PROFILE" DiskId="1" Guid="31F19F56-4549-4D80-924E-ED2F7B0CA74E">
+                        <File Id="W2003_PROFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2003\profile.template"/>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
+                    </Component>
+                    <Component Id="W2003_CONF_SYSCHECK" DiskId="1" Guid="EFE11D65-FF03-41B8-B4FE-82BDC522F0E9">
+                        <File Id="W2003_SYSCHECK.TEMPLATE" Name="syscheck.template" Source="..\..\etc\templates\config\windows\2003\syscheck.template"/>
+                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
+                    </Component>
+                    <Component Id="WVISTA_CONF_PROFILE" DiskId="1" Guid="06CBBBCB-0D20-4EEA-9E5A-854A9A34DEFE">
+                        <File Id="WVISTA_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\Vista\profile.template"/>
+                        <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                   <Component Id="W2008_CONF_PROFILE" DiskId="1" Guid="89BC9CB1-065E-4808-8B8F-70C22F500B4A">
+                        <File Id="W2008_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2008\profile.template"/>
+                        <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W7_CONF_PROFILE" DiskId="1" Guid="6D58D297-5AAD-4B44-BBE0-D8691998267A">
+                        <File Id="W7_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\7\profile.template"/>
+                        <Condition>( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                    <Component Id="W2008R2_CONF_PROFILE" DiskId="1" Guid="6EF6AD1F-B740-48E4-BDFD-7B396E2CB3E0">
+                        <File Id="W2008R2_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2008R2\profile.template"/>
+                        <Condition>( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                    <Component Id="W8_CONF_PROFILE" DiskId="1" Guid="A23E9242-A5CC-4171-8A25-791AB93D8DE0">
+                        <File Id="W8_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\8\profile.template"/>
+                        <Condition>( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                   <Component Id="W2012_CONF_PROFILE" DiskId="1" Guid="757D2306-1821-462F-B4CC-1ED947FC8AA2">
+                        <File Id="W2012_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2012\profile.template"/>
+                        <Condition>VersionNT64 = 602 AND MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                   <Component Id="W8.1_CONF_PROFILE" DiskId="1" Guid="AF637857-14A3-437E-9D23-CDFB4453CFA8">
+                        <File Id="W8.1_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\8.1\profile.template"/>
+                        <Condition>( VersionNT = 603 OR VersionNT64 = 603) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType = 1</Condition>
+                    </Component>
+                   <Component Id="W2012R2_CONF_PROFILE" DiskId="1" Guid="D1E8FBD0-3382-43E4-81FD-EE168402DF94">
+                        <File Id="W2012R2_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2012R2\profile.template"/>
+                        <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                   <Component Id="W10_CONF_PROFILE" DiskId="1" Guid="5FD334C9-8EA1-4575-826C-C18804A2BEA7">
+                        <File Id="W10_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\10\profile.template"/>
+                        <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
+                    </Component>
+                   <Component Id="W2016_CONF_PROFILE" DiskId="1" Guid="CDE13E2B-04F7-435A-9CDB-894FA55F932E">
+                        <File Id="W2016_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2016\profile.template"/>
+                        <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
+                    </Component>
+                   <Component Id="W2019_CONF_PROFILE" DiskId="1" Guid="7D21C1E6-7307-43C8-9EA8-47202379DF37">
+                        <File Id="W2019_LOCALFILE.TEMPLATE" Name="profile.template" Source="..\..\etc\templates\config\windows\2019\profile.template"/>
+                        <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
                     </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
@@ -431,6 +519,22 @@
                         </Component>
                         <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
                           <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\ruleset\sca\windows\sca_win_audit.yml" />
+                        </Component>
+                        <Component Id="SCA_WIN10" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA907">
+                            <File Id="SCA_WIN10" Name="cis_win10_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win10_enterprise.yml" />
+                            <Condition>MAJORVERSION = "#10" AND MsiNTProductType = 1</Condition>
+                        </Component>
+                        <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
+                            <File Id="SCA_WIN2012R2" Name="cis_win2012r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012r2.yml" />
+                            <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
+                        </Component>
+                        <Component Id="SCA_WIN2016" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
+                            <File Id="SCA_WIN2016" Name="cis_win2016.yml" Source="..\..\ruleset\sca\windows\cis_win2016.yml" />
+                            <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>
+                        </Component>
+                        <Component Id="SCA_WIN2019" DiskId="1" Guid="217F0183-FB18-4FBF-BF98-0FCE7B59C706">
+                            <File Id="SCA_WIN2019" Name="cis_win2019.yml" Source="..\..\ruleset\sca\windows\cis_win2019.yml" />
+                            <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
                         </Component>
                       </Directory>
                     </Directory>
@@ -607,18 +711,21 @@
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
+            <ComponentRef Id="REPLACECONF.VBS" />
+            <ComponentRef Id="LIBWAZUHSHARED_DLL" />
             <ComponentRef Id="RSYNC_DLL" />
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
-            <ComponentRef Id="OSSEC_PRE6.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
+            <ComponentRef Id="LIBGCC_S_SJLJ_1.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
+            <ComponentRef Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_WAZUH.EXE" />
             <ComponentRef Id="ROUTE_NULL.EXE" />
@@ -644,6 +751,10 @@
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
             <ComponentRef Id="SCA_WIN_AUDIT.YML" />
+            <ComponentRef Id="SCA_WIN10" />
+            <ComponentRef Id="SCA_WIN2012R2" />
+            <ComponentRef Id="SCA_WIN2016" />
+            <ComponentRef Id="SCA_WIN2019" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />
@@ -658,6 +769,23 @@
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
+            <ComponentRef Id="WXP_CONF_SYSCHECK" />
+            <ComponentRef Id="WXP_CONF_LOCALFILE" />
+            <ComponentRef Id="WXP_CONF_PROFILE" />
+            <ComponentRef Id="W2003_CONF_PROFILE" />
+            <ComponentRef Id="W2003_CONF_LOCALFILE" />
+            <ComponentRef Id="W2003_CONF_SYSCHECK" />
+            <ComponentRef Id="WVISTA_CONF_PROFILE" />
+            <ComponentRef Id="W2008_CONF_PROFILE" />
+            <ComponentRef Id="W7_CONF_PROFILE" />
+            <ComponentRef Id="W2008R2_CONF_PROFILE" />
+            <ComponentRef Id="W8_CONF_PROFILE" />
+            <ComponentRef Id="W2012_CONF_PROFILE" />
+            <ComponentRef Id="W8.1_CONF_PROFILE" />
+            <ComponentRef Id="W2012R2_CONF_PROFILE" />
+            <ComponentRef Id="W10_CONF_PROFILE" />
+            <ComponentRef Id="W2016_CONF_PROFILE" />
+            <ComponentRef Id="W2019_CONF_PROFILE" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>

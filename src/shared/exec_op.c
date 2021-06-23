@@ -10,7 +10,6 @@
  */
 
 #include <shared.h>
-#include <wazuh_modules/wmodules.h>
 
 // Open a stream from a process without shell (execvp form)
 wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
@@ -135,11 +134,6 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         wfd->file = fp;
     }
 
-    if (flags & W_APPEND_POOL) {
-        wm_append_handle(pinfo.hProcess);
-        wfd->append_pool = 1;
-    }
-
     wfd->pinfo = pinfo;
     return wfd;
 
@@ -235,11 +229,6 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             close(pipe_fd[0]);
         }
 
-        if (flags & W_APPEND_POOL) {
-            wm_append_sid(pid);
-            wfd->append_pool = 1;
-        }
-
         wfd->pid = pid;
         return wfd;
     }
@@ -296,10 +285,6 @@ int wpclose(wfd_t * wfd) {
 #ifdef WIN32
     DWORD exitcode;
 
-    if (wfd->append_pool) {
-        wm_remove_handle(wfd->pinfo.hProcess);
-    }
-
     switch (WaitForSingleObject(wfd->pinfo.hProcess, INFINITE)) {
     case WAIT_OBJECT_0:
         GetExitCodeProcess(wfd->pinfo.hProcess, &exitcode);
@@ -316,10 +301,6 @@ int wpclose(wfd_t * wfd) {
     return wstatus;
 #else
     pid_t pid;
-
-    if (wfd->append_pool) {
-        wm_remove_sid(wfd->pid);
-    }
 
     while (pid = waitpid(wfd->pid, &wstatus, 0), pid == -1 && errno == EINTR);
     free(wfd);

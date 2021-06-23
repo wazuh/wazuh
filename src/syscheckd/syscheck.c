@@ -64,9 +64,10 @@ void fim_initialize() {
     syscheck.database = fim_db_init(syscheck.database_store);
 
     if (!syscheck.database) {
-        merror_exit(FIM_CRITICAL_DATA_CREATE, "sqlite3 db");
+        mterror_exit(SYSCHECK_LOGTAG, FIM_CRITICAL_DATA_CREATE, "sqlite3 db");
     }
 
+    w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);

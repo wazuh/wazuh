@@ -2,7 +2,6 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import os
 import shutil
 import sys
@@ -47,7 +46,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 short_agent_list = ['000', '001', '002', '003', '004', '005']
 
 
-def send_msg_to_wdb(msg, raw=False):
+def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
     query = ' '.join(msg.split(' ')[2:])
     result = test_data.cur.execute(query).fetchall()
     return list(map(remove_nones_to_dict, map(dict, result)))
@@ -418,33 +417,43 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
 ])
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.agent.Agent._acquire_client_keys_lock')
+@patch('wazuh.core.agent.Agent._release_client_keys_lock')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.common.wazuh_uid')
 @patch('wazuh.core.agent.common.wazuh_gid')
+@patch('wazuh.core.agent.tempfile.mkstemp', return_value=['handle', 'output'])
 @patch('wazuh.core.agent.safe_move')
-@patch('builtins.open')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_add_agent(socket_mock, send_mock, open_mock, safe_move_mock, common_gid_mock, common_uid_mock,
-                         chmod_mock, chown_mock, fcntl_mock, name, agent_id, key):
+def test_agent_add_agent(socket_mock, send_mock, safe_move_mock, tempfile_mock, common_gid_mock, common_uid_mock,
+                         chmod_mock, chown_mock, release_mock, acquire_mock, fcntl_mock, name, agent_id, key):
     """Test `add_agent` from agent module.
 
     Parameters
     ----------
     name : str
         Name of the agent.
-    expected_id : str
+    agent_id : str
         ID of the agent whose name is the specified one.
     key : str
         The agent key.
     """
-    try:
-        add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
-        assert add_result.dikt['data']['id'] == agent_id
-        assert add_result.dikt['data']['key']
-    except WazuhError as e:
-        assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
+    def mock_open(*args):
+        """Mock open only if .write() is used"""
+        if len(args) == 2 and args[1] in ['a', 'w']:
+            return patch('wazuh.core.agent.open')
+        else:
+            return open(*args)
+
+    with patch('wazuh.core.agent.open', new=mock_open):
+        try:
+            add_result = add_agent(name=name, agent_id=agent_id, key=key, use_only_authd=False)
+            assert add_result.dikt['data']['id'] == agent_id
+            assert add_result.dikt['data']['key']
+        except WazuhError as e:
+            assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list, expected_result', [
@@ -1344,3 +1353,57 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
         assert len(result.dikt['data']['last_registered_agent']) == 0
     else:
         assert result.dikt['data']['last_registered_agent'][0]['id'] == last_agent
+
+
+@pytest.fixture(scope='module')
+def insert_agents_db(n_agents=100000):
+    """Insert n_agents in the global.db test database.
+
+    All the tests using this fixture should be run in the last place, since
+    agent's database is modified.
+
+    Parameters
+    ----------
+    n_agents : int
+        Total number of agents that must be inside the db after running this function.
+    """
+    last_inserted_id = next(map(list, test_data.cur.execute("select max(id) from agent")), 0)[0]
+    for agent_id in range(last_inserted_id+1, n_agents):
+        msg = f"INSERT INTO agent (id, name, ip, date_add) VALUES ({agent_id}, 'test_{agent_id}', 'any', 1621925385)"
+        test_data.cur.execute(msg)
+
+
+@pytest.mark.parametrize('agent_list, params, expected_ids', [
+    (range(500), {}, range(500)),
+    (range(1000), {}, range(500)),
+    (range(1000, 2000), {}, range(1000, 1500)),
+    (range(100000), {'limit': 1000}, range(1000)),
+    (range(100000), {'offset': 50000}, range(50000, 50500)),
+    (range(1000), {'limit': 100, 'offset': 500}, range(500, 600)),
+    (range(100000), {'limit': 1000, 'offset': 80000}, range(80000, 81000)),
+])
+@patch('wazuh.agent.get_agents_info', return_value=['test', 'test2'])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents_db, agent_list, params, expected_ids):
+    """Check that the expected number of items is returned when limit is greater than 500.
+
+    Parameters
+    ----------
+    agent_list : list
+        Agents to retrieve.
+    params : dict
+        Parameters to be passed to get_agents function.
+    expected_ids
+        IDs that should be returned.
+    """
+    def agent_ids_format(ids_list):
+        return [str(agent_id).zfill(3) for agent_id in ids_list]
+
+    with patch('wazuh.agent.get_agents_info', return_value=set(agent_ids_format(range(100000)))):
+        result = get_agents(agent_list=agent_ids_format(agent_list), **params).render()
+        expected_ids = agent_ids_format(expected_ids)
+        for item in result['data']['affected_items']:
+            assert item['id'] in expected_ids, f'Received ID {item["id"]} is not within expected IDs.'
+
+

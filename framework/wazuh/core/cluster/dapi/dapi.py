@@ -18,6 +18,7 @@ from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
+import api.configuration as aconf
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -30,7 +31,7 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
-threadpool = ThreadPoolExecutor()
+threadpool = ThreadPoolExecutor(max_workers=1)
 
 
 class DistributedAPI:
@@ -40,7 +41,7 @@ class DistributedAPI:
                  debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None):
+                 rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None):
         """Class constructor.
 
         Parameters
@@ -75,6 +76,8 @@ class DistributedAPI:
             Default `None`, list of system nodes
         current_user : str
             User who started the request
+        api_timeout : int
+            Timeout set in source API for the request
         """
         self.logger = logger
         self.f = f
@@ -100,6 +103,7 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
+        self.api_request_timeout = api_timeout if api_timeout else aconf.api_conf['intervals']['request_timeout']
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -234,8 +238,7 @@ class DistributedAPI:
             before = time.time()
             self.check_wazuh_status()
 
-            timeout = None if self.wait_for_complete \
-                else self.cluster_items['intervals']['communication']['timeout_api_exe']
+            timeout = self.api_request_timeout if not self.wait_for_complete else None
 
             # LocalClient only for control functions
             if self.local_client_arg is not None:
@@ -263,7 +266,8 @@ class DistributedAPI:
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
-            self.logger.error(f"{e.message}", exc_info=True)
+            # Avoid exception info if it is an asyncio timeout
+            self.logger.error(f"{e.message}", exc_info=True if e.code != 3021 else False)
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
@@ -301,7 +305,8 @@ class DistributedAPI:
                 "rbac_permissions": self.rbac_permissions,
                 "current_user": self.current_user,
                 "broadcasting": self.broadcasting,
-                "nodes": self.nodes
+                "nodes": self.nodes,
+                "api_timeout": self.api_request_timeout
                 }
 
     def get_error_info(self, e) -> Dict:
@@ -410,7 +415,7 @@ class DistributedAPI:
                     kcopy = deepcopy(self.to_dict())
                     if agent_list:
                         kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
-                    result = json.loads(await client.execute(b'dapi_forward',
+                    result = json.loads(await client.execute(b'dapi_fwd',
                                                              "{} {}".format(node_name,
                                                                             json.dumps(kcopy,
                                                                                        cls=c_common.WazuhJSONEncoder)
@@ -692,13 +697,12 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 result = await wazuh_sendsync(**request)
                 task_id = await node.send_string(result.encode())
             except Exception as e:
-                self.logger.error(f"Error in SendSync: {e}", exc_info=True)
-                task_id = b'Error in SendSync: ' + str(e).encode()
+                task_id = f'Error in SendSync (parameters {request}): {str(e)}'.encode()
 
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id.decode())
-                result = await node.send_request(b'sendsync_err', name_2.encode() + task_id)
+                result = await node.send_request(b'sendsyn_err', name_2.encode() + task_id)
             else:
-                result = await node.send_request(b'sendsync_res', name_2.encode() + task_id)
+                result = await node.send_request(b'sendsyn_res', name_2.encode() + task_id)
             if isinstance(result, WazuhException):
                 self.logger.error(result.message)

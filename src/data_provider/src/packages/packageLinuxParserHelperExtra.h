@@ -28,19 +28,23 @@
 // Parse helper for partially incompatible Linux packaging systems (pacman, ...)
 namespace PackageLinuxHelper
 {
-    static nlohmann::json parsePacman(const alpm_list_t *pItem)
+    static nlohmann::json parsePacman(const alpm_list_t* pItem)
     {
         const auto pArchPkg{reinterpret_cast<alpm_pkg_t*>(pItem->data)};
         nlohmann::json packageInfo;
         std::string groups;
         static const auto alpmWrapper
         {
-            [] (auto pkgData) { return pkgData ? pkgData : ""; }
+            [] (auto pkgData)
+            {
+                return pkgData ? pkgData : "";
+            }
         };
 
         packageInfo["name"]         = alpmWrapper(alpm_pkg_get_name(pArchPkg));
         packageInfo["size"]         = alpm_pkg_get_isize(pArchPkg);
         packageInfo["install_time"] = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pArchPkg)));
+
         for (auto group{alpm_pkg_get_groups(pArchPkg)}; group; group = alpm_list_next(group))
         {
             if (group->data)
@@ -49,7 +53,8 @@ namespace PackageLinuxHelper
                 groups  += groupString + "-";
             }
         }
-        groups = groups.empty() ? "" : groups.substr(0, groups.size()-1);
+
+        groups = groups.empty() ? "" : groups.substr(0, groups.size() - 1);
         packageInfo["groups"]       = groups;
         packageInfo["version"]      = alpmWrapper(alpm_pkg_get_version(pArchPkg));
         packageInfo["architecture"] = alpmWrapper(alpm_pkg_get_arch(pArchPkg));

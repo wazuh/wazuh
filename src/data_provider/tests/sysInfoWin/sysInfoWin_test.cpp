@@ -39,6 +39,7 @@ TEST_F(SysInfoWinTest, testHF_Valids_Format)
     constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
     constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
     PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
+
     for (const auto& hf : ret)
     {
         auto hfValue { hf.at("hotfix").get_ref<const std::string&>() };
@@ -57,6 +58,7 @@ TEST_F(SysInfoWinTest, testHF_NT_Valids_Format)
     constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
     constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
     PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+
     for (const auto& hf : ret)
     {
         auto hfValue { hf.at("hotfix").get_ref<const std::string&>() };

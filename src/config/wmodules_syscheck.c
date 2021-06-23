@@ -51,6 +51,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
         config = d1;
     }
     directory_t *dir_it;
+    OSListNode *node_it;
 
     config->rootcheck      = 0;
     config->disabled       = SK_CONF_UNPARSED;
@@ -69,7 +70,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     config->scan_time      = NULL;
     config->file_limit_enabled = true;
     config->file_limit     = 100000;
-    config->directories    = NULL;
+    config->directories    = OSList_Create();
+    if (config->directories == NULL) {
+        return (OS_INVALID);
+    }
+    OSList_SetFreeDataPointer(config->directories, (void (*)(void *))free_directory);
     config->enable_synchronization = 1;
     config->restart_audit  = 1;
     config->enable_whodata = 0;
@@ -122,7 +127,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     ReadConfig(modules, AGENTCONFIG, config, NULL);
 #endif
 
-    foreach_array(dir_it, config->directories) {
+    OSList_foreach(node_it, config->directories) {
+        dir_it = node_it->data;
         if (dir_it->diff_size_limit == -1) {
             dir_it->diff_size_limit = config->file_size_limit;
         }
@@ -140,7 +146,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     }
 #ifndef WIN32
     /* We must have at least one directory to check */
-    if (config->directories == NULL || config->directories[0] == NULL) {
+    if (OSList_GetFirstNode(config->directories) == NULL && config->wildcards == NULL) {
         return (1);
     }
 #else
@@ -160,7 +166,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
             it++;
         }
     }
-    if ((config->directories == NULL) && (config->registry[0].entry == NULL)) {
+    if ((OSList_GetFirstNode(config->directories) == NULL) && (config->registry[0].entry == NULL && config->wildcards == NULL)) {
         return (1);
     }
     config->max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);

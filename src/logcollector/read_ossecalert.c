@@ -33,7 +33,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     int64_t current_position = w_ftell(lf->fp);
 
     if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, current_position) < 0) {
-        merror(FAIL_SHA1_GEN, lf->file);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, FAIL_SHA1_GEN, lf->file);
     }
 
     w_update_file_status(lf->file, current_position, &context);

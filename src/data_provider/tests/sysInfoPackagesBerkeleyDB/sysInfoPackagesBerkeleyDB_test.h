@@ -16,13 +16,13 @@
 
 class SysInfoPackagesBerkeleyDBTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    SysInfoPackagesBerkeleyDBTest() = default;
-    virtual ~SysInfoPackagesBerkeleyDBTest() = default;
+        SysInfoPackagesBerkeleyDBTest() = default;
+        virtual ~SysInfoPackagesBerkeleyDBTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_PACKAGES_BERKELEY_DB_TEST_H

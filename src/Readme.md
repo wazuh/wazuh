@@ -15,6 +15,7 @@ There are several modules needed in order to the tool to work correctly.
   - lcov
   - gcov
   - scan-build-10
+  - astyle
 
 ## Compile Wazuh
 In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
@@ -47,6 +48,11 @@ optional arguments:
   --asan ASAN           Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --scanbuild SCANBUILD
                         Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>
+  --scheck SCHECK       Run AStyle on the code for checking purposes. Example: python3 build.py --scheck
+                        <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
+  --sformat SFORMAT     Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat
+                        <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
+
 
 Ready to review checks:
   1. runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
@@ -86,6 +92,9 @@ shared_modules/dbsync > [make: PASSED]
 Report: /home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/coverage_report/index.html
 [Lines Coverage 93.4%: PASSED]
 [Functions Coverage 96.7%: PASSED]
+<shared_modules/dbsync>=================== Running AStyle      ===================<shared_modules/dbsync>
+[Cleanfolder: PASSED]
+<shared_modules/dbsync>[AStyle Check: PASSED]<shared_modules/dbsync>
 <shared_modules/dbsync>=================== Running ASAN        ===================<shared_modules/dbsync>
 [Cleanfolder: PASSED]
 <shared_modules/dbsync>=================== Running CMake Conf  ===================<shared_modules/dbsync>

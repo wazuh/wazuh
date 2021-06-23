@@ -16,17 +16,17 @@
 
 class ISysInfo
 {
-public:
-    ISysInfo() = default;
-    // LCOV_EXCL_START
-    virtual ~ISysInfo() = default;
-    // LCOV_EXCL_STOP
-    virtual nlohmann::json hardware() = 0;
-    virtual nlohmann::json packages() = 0;
-    virtual nlohmann::json os() = 0;
-    virtual nlohmann::json processes() = 0;
-    virtual nlohmann::json networks() = 0;
-    virtual nlohmann::json ports() = 0;
+    public:
+        ISysInfo() = default;
+        // LCOV_EXCL_START
+        virtual ~ISysInfo() = default;
+        // LCOV_EXCL_STOP
+        virtual nlohmann::json hardware() = 0;
+        virtual nlohmann::json packages() = 0;
+        virtual nlohmann::json os() = 0;
+        virtual nlohmann::json processes() = 0;
+        virtual nlohmann::json networks() = 0;
+        virtual nlohmann::json ports() = 0;
 };
 
 #endif //_SYS_INFO_INTERFACE

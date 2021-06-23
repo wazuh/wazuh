@@ -14,12 +14,12 @@
 
 class RegistryUtilsTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    RegistryUtilsTest() = default;
-    virtual ~RegistryUtilsTest() = default;
+        RegistryUtilsTest() = default;
+        virtual ~RegistryUtilsTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //REGISTRY_HELPER_TESTS_H
