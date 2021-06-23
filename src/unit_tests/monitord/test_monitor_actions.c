@@ -116,8 +116,10 @@ void test_monitor_send_deletion_msg_fail(void **state) {
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, -1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not generate removed agent alert for 'Agent1-any'");
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Could not generate removed agent alert for 'Agent1-any'");
+    expect_string(__wrap__mterror, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, QUEUE_SEND);
 
     monitor_send_deletion_msg(agent);
 
@@ -166,8 +168,10 @@ void test_monitor_send_disconnection_msg_send_msg_fail(void **state) {
     expect_value(__wrap_SendMSG, loc, SECURE_MQ);
     will_return(__wrap_SendMSG, -1);
     mond.a_queue = 1;
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not generate disconnected agent alert for 'Agent1-any'");
+    expect_string(__wrap__mterror, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, QUEUE_SEND);
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Could not generate disconnected agent alert for 'Agent1-any'");
 
     monitor_send_disconnection_msg(agent);
 
@@ -202,7 +206,8 @@ void test_monitor_send_disconnection_msg_fail(void **state) {
     expect_string(__wrap_wdb_find_agent, ip, "any");
     will_return(__wrap_wdb_find_agent, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not generate disconnected agent alert for 'Agent1-any'");
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Could not generate disconnected agent alert for 'Agent1-any'");
     mond.a_queue = 1;
 
     monitor_send_disconnection_msg(agent);
@@ -236,7 +241,8 @@ void test_monitor_agents_disconnection(void **state) {
     expect_string(__wrap_OSHash_Add, key, "13");
     expect_string(__wrap_OSHash_Add, key, "5");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Can't add agent ID '5' to the alerts hash table");
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Can't add agent ID '5' to the alerts hash table");
 
     monitor_agents_disconnection();
 }
@@ -244,7 +250,8 @@ void test_monitor_agents_disconnection(void **state) {
 void test_monitor_send_disconnection_ip_fail(void **state) {
     char *agent = "Agent1";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not generate disconnected agent alert for 'Agent1'");
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Could not generate disconnected agent alert for 'Agent1'");
 
     monitor_send_disconnection_msg(agent);
 }
@@ -259,7 +266,8 @@ void test_monitor_send_disconnection_name_size_fail(void **state) {
     wm_strcat(&agent, "any", '-');
 
     snprintf(debug_message, OS_SIZE_512, "Could not generate disconnected agent alert for '%s'", agent);
-    expect_string(__wrap__mdebug1, formatted_msg, debug_message);
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, debug_message);
 
     monitor_send_disconnection_msg(agent);
 
@@ -312,7 +320,8 @@ void test_monitor_agents_alert_agent_info_fail() {
     expect_value(__wrap_wdb_get_agent_info, id, 1);
     will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Unable to retrieve agent's '1' data from Wazuh DB");
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Unable to retrieve agent's '1' data from Wazuh DB");
     expect_value(__wrap_OSHash_Delete, self, agents_to_alert_hash);
     expect_value(__wrap_OSHash_Delete, key, "1");
     will_return(__wrap_OSHash_Delete, 2);
@@ -422,7 +431,8 @@ void test_monitor_agents_deletion_agent_info_fail() {
     expect_value(__wrap_wdb_get_agent_info, id, 13);
     will_return(__wrap_wdb_get_agent_info, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Unable to retrieve agent's '13' data from Wazuh DB");
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Unable to retrieve agent's '13' data from Wazuh DB");
     expect_value(__wrap_OSHash_Delete, self, agents_to_alert_hash);
     expect_string(__wrap_OSHash_Delete, key, "13");
     will_return(__wrap_OSHash_Delete, 2);
@@ -455,7 +465,8 @@ void test_monitor_agents_deletion_auth_fail() {
     os_strdup("13", agent_id_str);
     will_return(__wrap_get_agent_id_from_name, agent_id_str);
     will_return(__wrap_auth_connect, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "Monitord could not connect to to Authd socket. Is Authd running?");
+    expect_string(__wrap__mtdebug1, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Monitord could not connect to to Authd socket. Is Authd running?");
 
     monitor_agents_deletion();
 }
