@@ -18,13 +18,13 @@
 
 class RSyncImplementationTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    RSyncImplementationTest() = default;
-    virtual ~RSyncImplementationTest() = default;
+        RSyncImplementationTest() = default;
+        virtual ~RSyncImplementationTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 

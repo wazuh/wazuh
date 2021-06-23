@@ -173,9 +173,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Security configuration assessment remoted queue */
 #define CFGARQUEUE       "queue/alerts/cfgarq"
 
-/* Exec queue api*/
-#define EXECQUEUEA      "queue/alerts/execa"
-
 /* Active Response queue */
 #define ARQUEUE         "queue/alerts/ar"
 
@@ -221,9 +218,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SYSCOLLECTOR_DB_DISK_PATH    ".\\local.db"
 #endif // WIN32
 #endif // WAZUH_UNIT_TESTING
-
-/* Rootcheck directory */
-#define ROOTCHECK_DIR    "queue/rootcheck"
 
 /* Wazuh Database */
 #define WDB_DIR         "var/db"

@@ -13,6 +13,29 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
 
+struct MemoryStruct {
+  char *memory;
+  size_t size;
+};
+
+static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+  char *ptr = realloc(mem->memory, mem->size + realsize + 1);
+  if(ptr == NULL) {
+    return 0;
+  }
+
+  mem->memory = ptr;
+  memcpy(&(mem->memory[mem->size]), contents, realsize);
+  mem->size += realsize;
+  mem->memory[mem->size] = 0;
+
+  return realsize;
+}
+
 #ifndef WIN32
 /*
  * These values ​​were taken from how libcurl looks for the paths at compilation time,
@@ -27,11 +50,6 @@ const char* certs_list[] = {
     "/usr/local/share/certs/ca-root-nss.crt",   // FreeBSD
     "/etc/ssl/cert.pem",                        // OpenBSD, FreeBSD, MacOS
     NULL
-};
-
-struct MemoryStruct {
-  char *memory;
-  size_t size;
 };
 
 char const * find_cert_list() {
@@ -281,24 +299,6 @@ int wurl_check_connection() {
     }
 }
 
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-  size_t realsize = size * nmemb;
-  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
-
-  char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-  if(ptr == NULL) {
-    return 0;
-  }
-
-  mem->memory = ptr;
-  memcpy(&(mem->memory[mem->size]), contents, realsize);
-  mem->size += realsize;
-  mem->memory[mem->size] = 0;
-
-  return realsize;
-}
-
 char * wurl_http_get(const char * url) {
     CURL *curl;
     CURLcode res;
@@ -403,3 +403,91 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
     return res_url_request;
 }
 #endif
+
+curl_response* wurl_http_get_with_header(const char *header, const char* url) {
+    curl_response *response;
+    struct curl_slist* headers = NULL;
+    struct curl_slist* headers_tmp = NULL;
+    CURLcode res;
+    struct MemoryStruct req;
+    struct MemoryStruct req_header;
+
+    CURL* curl = curl_easy_init();
+
+    if (!curl) {
+        mdebug1("curl initialization failure");
+        return NULL;
+    }
+
+    if (!header) {
+        mdebug1("curl header NULL");
+        curl_easy_cleanup(curl);
+        return NULL;
+    }
+
+#ifndef WIN32
+    char const *cert = find_cert_list();
+
+    // Enable SSL check if url is HTTPS
+    if(!strncmp(url,"https",5)){
+        if (NULL != cert) {
+            curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+        }
+    }
+#endif
+
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+
+    headers = curl_slist_append(headers, "User-Agent: curl/7.58.0");
+
+    if (headers == NULL) {
+        curl_easy_cleanup(curl);
+        mdebug1("curl append header failure");
+        return NULL;
+    }
+
+    headers_tmp = curl_slist_append(headers, header);
+
+    if (headers_tmp == NULL) {
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        mdebug1("curl append header failure");
+        return NULL;
+    }
+
+    headers = headers_tmp;
+
+    req.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    req.size = 0;    /* no data at this point */
+
+    req_header.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    req_header.size = 0;    /* no data at this point */
+
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        mdebug1("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        os_free(req.memory);
+        os_free(req_header.memory);
+        return NULL;
+    }
+
+    os_calloc(1, sizeof(curl_response), response);
+    curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &response->status_code);
+    response->header = req_header.memory;
+    response->body = req.memory;
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    return response;
+}

@@ -65,6 +65,44 @@ stages:
           total_affected_items: 13
           total_failed_items: 0
 
+  - name: Get all agents sorted by multiple fields
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: os.name,os.major
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "os.name,os.major,os.minor"
+      status_code: 200
+      json:
+        error: 0
+        data:
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Get all agents sorted by status
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: status
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "status"
+      status_code: 200
+      json:
+        error: 0
+        data:
+          failed_items: [ ]
+          total_affected_items: 13
+          total_failed_items: 0
+
   - name: Pagination with offset 0 and limit 2
     request:
       verify: False
@@ -152,12 +190,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try to show agents with limit 9999
+  - name: Try to show agents with limit 999999
     request:
       verify: False
       <<: *get_agents
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -233,9 +271,14 @@ stages:
         select: 'os.platform'
         limit: 2
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'os.platform'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -257,9 +300,14 @@ stages:
         limit: 2
         offset: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'dateAdd,mergedSum'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -954,9 +1002,14 @@ stages:
         select: 'os.platform'
         agents_list: '000'
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'os.platform'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -975,9 +1028,14 @@ stages:
         select: 'dateAdd,status'
         agents_list: '000'
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'dateAdd,status'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -2168,12 +2226,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show groups with limit 9999
+  - name: Try show groups with limit 999999
     request:
       verify: False
       <<: *get_agents_groups
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -2407,12 +2465,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *groups_id_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -2511,9 +2569,14 @@ stages:
       params:
         select: 'os.platform'
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'os.platform'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '003'
@@ -2541,9 +2604,14 @@ stages:
         limit: 1
         offset: 2
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'dateAdd,mergedSum'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '007'
@@ -2702,9 +2770,14 @@ stages:
       params:
         select: "{field}"
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field}"
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '003'
@@ -2855,12 +2928,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *groups_id_config_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -2976,12 +3049,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try get the files of a group with limit 9999
+  - name: Try get the files of a group with limit 999999
     request:
       verify: False
       <<: *groups_id_files_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -3264,9 +3337,14 @@ stages:
         select: name
         name: wazuh-agent1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *get_agents_by_name_response
 
@@ -3278,9 +3356,14 @@ stages:
         select: name,id,status
         name: wazuh-agent1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name,id,status'
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -3399,12 +3482,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *no_group_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -3541,6 +3624,11 @@ stages:
       params:
         select: "{field}"
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: "{field}"
       status_code: 200
       json:
         <<: *no_group_response
@@ -3649,12 +3737,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try show agents with limit 999999
     request:
       verify: False
       <<: *agents_outdated_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -3765,8 +3853,8 @@ stages:
               os:
                 platform: !anystr
             - count: !anyint
-                os:
-                  platform: unknown
+              os:
+                platform: unknown
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -3837,22 +3925,6 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Invalid select
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 2
-        fields: os.platform
-        select: invalid
-    response:
-      status_code: 400
-      json:
-        error: 1724
-
   - name: Pagination
     request:
       verify: False
@@ -3871,7 +3943,7 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Try show agents with offset -1
+  - name: Try to show agents with offset -1
     request:
       verify: False
       <<: *distinct_request
@@ -3882,7 +3954,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with offset not integer value
+  - name: Try to show agents with offset not integer value
     request:
       verify: False
       <<: *distinct_request
@@ -3893,7 +3965,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with offset too large 9999999999999999999
+  - name: Try to show agents with offset too large 9999999999999999999
     request:
       verify: False
       <<: *distinct_request
@@ -3904,7 +3976,7 @@ stages:
       json:
         error: 2003
 
-  - name: Try show agents with limit 0
+  - name: Try to show agents with limit 0
     request:
       verify: False
       <<: *distinct_request
@@ -3915,7 +3987,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit not integer value
+  - name: Try to show agents with limit not integer value
     request:
       verify: False
       <<: *distinct_request
@@ -3926,12 +3998,12 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with limit 9999
+  - name: Try to show agents with limit 999999
     request:
       verify: False
       <<: *distinct_request
       params:
-        limit: 9999
+        limit: 999999
     response:
       status_code: 400
 
@@ -3946,7 +4018,7 @@ stages:
       json:
         <<: *basic_response_inverse
 
-  - name: Try show agents with wrong sort
+  - name: Try to show agents with wrong sort
     request:
       verify: False
       <<: *distinct_request
@@ -3976,7 +4048,7 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
 
-  - name: Try show agents with wrong search
+  - name: Try to show agents with wrong search
     request:
       verify: False
       <<: *distinct_request
@@ -3989,7 +4061,7 @@ stages:
         data:
           <<: *affected_empty_answer
 
-  - name: Try show agents with bad query
+  - name: Try to show agents with bad query
     request:
       verify: False
       <<: *distinct_request
@@ -4000,7 +4072,7 @@ stages:
       json:
         error: 1408
 
-  - name: Try show agents with bad query (invalid character)
+  - name: Try to show agents with bad query (invalid character)
     request:
       verify: False
       <<: *distinct_request
@@ -4011,7 +4083,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try show agents with complex query
+  - name: Try to show agents with complex query
     request:
       verify: False
       <<: *distinct_request

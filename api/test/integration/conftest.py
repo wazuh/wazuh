@@ -21,6 +21,7 @@ login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['
 basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+environment_status = None
 
 
 def pytest_addoption(parser):
@@ -48,20 +49,22 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(interval: int = 10, build: bool = True):
+def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool = True):
     """Build all Docker environments needed for the current test.
 
     Parameters
     ----------
     interval : int
-        Time interval between every healthcheck
+        Time interval between every healthcheck.
+    interval_build_env : int
+        Time interval between every docker environment healthcheck.
     build : bool
-        Flag to indicate if images need to be built
+        Flag to indicate if images need to be built.
 
     Returns
     -------
     dict
-        Dict with healthchecks parameters
+        Dict with healthchecks parameters.
     """
     pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
     os.chdir(pwd)
@@ -70,14 +73,27 @@ def build_and_up(interval: int = 10, build: bool = True):
         'max_retries': 60,
         'retries': 0
     }
+    values_build_env = {
+        'interval': interval_build_env,
+        'max_retries': 3,
+        'retries': 0
+    }
     # Get current branch
     current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
-    if build:
-        current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
-                                            f"WAZUH_BRANCH={current_branch}"])
+    while values_build_env['retries'] < values_build_env['max_retries']:
+        if build:
+            current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
+                                                f"WAZUH_BRANCH={current_branch}"])
+            current_process.wait()
+        current_process = subprocess.Popen(["docker-compose", "up", "-d"])
         current_process.wait()
-    current_process = subprocess.Popen(["docker-compose", "up", "-d"])
-    current_process.wait()
+
+        if current_process.returncode == 0:
+            time.sleep(values_build_env['interval'])
+            break
+        else:
+            time.sleep(values_build_env['interval'])
+            values_build_env['retries'] += 1
 
     return values
 
@@ -294,7 +310,28 @@ def api_test(request):
     clean_tmp_folder()
     if request.session.testsfailed > 0:
         save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
+
+    # Get the environment current status
+    global environment_status
+    environment_status = get_health()
     down_env()
+
+
+def get_health():
+    """Get the current status of the integration environment
+
+    Returns
+    -------
+    str
+        Current status
+    """
+    health = "\nEnvironment final status\n"
+    health += subprocess.check_output(
+        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}' --filter name=^env_wazuh",
+        shell=True).decode()
+    health += '\n'
+
+    return health
 
 
 # HTML report
@@ -382,6 +419,11 @@ def pytest_runtest_makereport(item, call):
 
     elif report.outcome == 'failed':
         results[report.location[0]]['error'] += 1
+
+    if report.when == 'setup' and \
+            report.longrepr and ('api_test did not yield a value' in report.longrepr.reprcrash.message or
+                                 'StopIteration' in report.longrepr.reprcrash.message):
+        report.sections.append(('Environment section', environment_status))
 
 
 def pytest_html_results_summary(prefix, summary, postfix):

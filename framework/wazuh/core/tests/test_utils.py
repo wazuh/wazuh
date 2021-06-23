@@ -9,7 +9,7 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Element, parse
 
 import pytest
 
@@ -108,6 +108,19 @@ mock_array_order_by_mac = [
     {'rx': {'bytes': 4005, 'packets': 30}, 'scan': {'id': 1999992193, 'time': '2019/05/29 07:25:26'},
      'mac': '02:42:ac:14:00:05', 'agent_id': '000'}]
 mock_array_class = [ClassTest("Payne", "coach")]
+mock_array_missing_key = [
+    {
+        "description": "GReAT. (2017, April 3). Lazarus Under the Hood. Retrieved April 17, 2019.",
+        "id": "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340",
+    },
+    {
+        "description": "FireEye. (2018, October 03). APT38: Un-usual Suspects. Retrieved November 6, 2018.",
+        "id": "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340",
+    },
+    {
+        "description": None,
+        "id": "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340",
+    }]
 
 mock_keys = ['rx_bytes', 'rx_packets', 'scan_id', 'scan_time', 'mac', 'agent_id']
 
@@ -177,7 +190,7 @@ def test_execute(mock_output):
 
 @pytest.mark.parametrize('error_effect, expected_exception', [
     (CalledProcessError(returncode=1000, cmd='Unexpected error', output='{"data":"Some data", "message":"Error", '
-                                                                       '"error":1000}'), 1000),
+                                                                        '"error":1000}'), 1000),
     (Exception, 1002),
     (CalledProcessError(returncode=1, cmd='Unexpected error', output={}), 1003),
     (CalledProcessError(returncode=1, cmd='Unexpected error', output='{"error":1000}'), 1004),
@@ -212,24 +225,6 @@ def test_cut_array(array, limit):
     assert isinstance(result, list)
 
 
-@pytest.mark.parametrize('array, limit, search_text, sort_by, q', [
-    (['one', 'two', 'three'], 3, None, None, ''),
-    (['one', 'two', 'three'], 2, 'one', [''], 'contains=one'),
-    (['one', 'two', 'three'], 2, 'one', '+', 'two=two')
-])
-def test_process_array(array, limit, search_text, sort_by, q):
-    """Test cut_array function."""
-    result = process_array(array=array, limit=limit, offset=0, search_text=search_text, sort_by=sort_by, q=q)
-    if search_text:
-        array = search_array(array, search_text=search_text)
-    if q:
-        array = filter_array_by_query(q, array)
-    if sort_by == ['']:
-        array = sort_array(array)
-
-    assert result == {'items': cut_array(array, offset=0, limit=limit), 'totalItems': len(array)}
-
-
 @pytest.mark.parametrize('limit, offset, expected_exception', [
     (11, 0, 1405),
     (0, 0, 1406),
@@ -249,6 +244,24 @@ def test_cut_array_ko(limit, offset, expected_exception):
     """
     with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
         cut_array(array=['one', 'two', 'three'], limit=limit, offset=offset)
+
+
+@pytest.mark.parametrize('array, filters, limit, search_text, sort_by, expected_items, len_expected_items', [
+    ([{'item': 'value_one'}, {'item': 'value_two'}, {'item': 'value_three'}],
+     {'item': 'value_one'}, 1, None, None, [{'item': 'value_one'}], 1),
+    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
+     {}, 1, 'one', None, [{'item': 'value_one'}], 2),
+    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
+     {}, 2, 'one', None, [{'item': 'value_one'}, {'item': 'value_one'}], 2),
+    ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
+     {}, 500, None, ['item'], [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
+])
+def test_process_array(array, filters, limit, search_text, sort_by, expected_items, len_expected_items):
+    """Test cut_array function."""
+    result = process_array(array=array, filters=filters, limit=limit, offset=0, search_text=search_text,
+                           sort_by=sort_by)
+
+    assert result == {'items': expected_items, 'totalItems': len_expected_items}
 
 
 def test_sort_array_type():
@@ -280,7 +293,8 @@ def test_sort_array_error(array, sort_by, order, expected_exception):
     ([4005, 4006, 4019, 36], None, True, None, [36, 4005, 4006, 4019]),
     ([4005, 4006, 4019, 36], None, False, None, [4019, 4006, 4005, 36]),
     (mock_array, mock_sort_by, True, mock_sort_by, mock_array_order_by_mac),
-    (mock_array_class, ['name'], False, ['name'], mock_array_class)
+    (mock_array_class, ['name'], False, ['name'], mock_array_class),
+    (mock_array_missing_key, ['description'], False, ['description'], mock_array_missing_key)
 ])
 def test_sort_array(array, sort_by, order, allowed_sort_field, output):
     """Test sort_array function.
@@ -528,13 +542,32 @@ def test_plain_dict_to_nested_dict():
 
 
 @patch('wazuh.core.utils.compile', return_value='Something')
-def test_load_wazuh_xml(mock_compile):
-    """Test load_wazuh_xml function."""
+def test_basic_load_wazuh_xml(mock_compile):
+    """Test basic load_wazuh_xml functionality."""
     with patch('wazuh.core.utils.open') as f:
         f.return_value.__enter__.return_value = StringIO(test_xml)
         result = load_wazuh_xml('test_file')
 
         assert isinstance(result, Element)
+
+
+def test_load_wazuh_xml():
+    """Test load_wazuh_xml function."""
+
+    def elements_equal(e1, e2):
+        if e1.tag != e2.tag: return False
+        if e1.text != e2.text: return False
+        if e1.attrib != e2.attrib: return False
+        if len(e1) != len(e2): return False
+        return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
+
+    for rule_file in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml')):
+        path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_load_wazuh_xml'),
+                            rule_file)
+        original = parse(path).getroot()
+        result = load_wazuh_xml(path)
+
+        assert elements_equal(original, result.find('dummy_tag'))
 
 
 @pytest.mark.parametrize('version1, version2', [
@@ -767,31 +800,39 @@ def test_WazuhDBQuery_protected_sort_query(mock_socket_conn, mock_isfile, mock_c
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('sort, error, expected_exception', [
-    (None, False, None),
-    ({'order': 'asc', 'fields': None}, False, None),
-    ({'order': 'asc', 'fields': ['1']}, False, None),
-    ({'order': 'asc', 'fields': ['bad_field']}, True, 1403)
+@pytest.mark.parametrize('sort, expected_exception', [
+    (None, None),
+    ({'order': 'asc', 'fields': None}, None),
+    ({'order': 'asc', 'fields': ['1']}, None),
+    ({'order': 'asc', 'fields': ['bad_field']}, 1403),
+    ({'order': 'asc', 'fields': ['1', '2', '3', '4']}, None)
 ])
 @patch('wazuh.core.utils.glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, sort,
-                                                  error, expected_exception):
+                                                  expected_exception):
     """Test WazuhDBQuery._add_sort_to_query function."""
+    fields = {'1': 'one', '2': 'two', '3': 'three', '4': 'four'}
     query = WazuhDBQuery(offset=0, limit=1, table='agent', sort=sort,
                          search=None, select=None, filters=None,
-                         fields={'1': None, '2': None},
+                         fields=fields,
                          default_sort_field=None, query=None,
                          backend=WazuhDBBackend(agent_id=1),
                          count=5, get_data=None)
 
-    if error:
+    if expected_exception:
         with pytest.raises(exception.WazuhException, match=f'.* {expected_exception} .*'):
             query._add_sort_to_query()
     else:
         query._add_sort_to_query()
+
+    # Check the fields list maintains its original order after adding it to the query
+    if not expected_exception and sort:
+        sort_string_added = ','.join(f"{fields[field]} {sort['order']}" for field in sort['fields']) if sort['fields'] \
+            else f"None {sort['order']}"
+        assert query.query.endswith(f"ORDER BY {sort_string_added}")
 
     mock_conn_db.assert_called_once_with()
 
@@ -1157,7 +1198,8 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, 
 
 
 @pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}], {'items': [{'id': '099'}], 'totalItems': 1}),
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
+     {'items': [{'id': '099'}], 'totalItems': 1}),
     ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
      [{'id': i} for i in range(15001, 30000)],
@@ -1496,13 +1538,13 @@ def test_filter_array_by_query(q, return_length):
 
 @pytest.mark.parametrize('select, required_fields, expected_result', [
     (['single_select', 'nested1.nested12.nested121'], {'required'}, {'required': None,
-                                                                   'single_select': None,
-                                                                   'nested1': {
-                                                                       'nested12': {
-                                                                           'nested121': None
-                                                                       }
-                                                                   }}),
-    (['single_select', 'noexists'], None, None),
+                                                                     'single_select': None,
+                                                                     'nested1': {
+                                                                         'nested12': {
+                                                                             'nested121': None
+                                                                         }
+                                                                     }}),
+    (['single_select', 'noexists'], None, {'single_select': None}),
     (['required.noexists1.noexists2'], None, None)
 ])
 def test_select_array(select, required_fields, expected_result):
@@ -1634,7 +1676,8 @@ def test_expand_rules():
 @patch('wazuh.core.utils.common.user_decoders_path', new=test_files_path)
 def test_expand_decoders():
     decoders = expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.DECODERS_EXTENSION}'))))
+    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
+                                                                        f'*{common.DECODERS_EXTENSION}'))))
 
 
 @patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)

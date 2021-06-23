@@ -117,7 +117,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -125,7 +125,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -219,6 +219,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
+            reverse: True
 
   - name: Parameters -> sort=+score,limit=1
     request:
@@ -244,7 +245,6 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
-            reverse: False
 
   # Testing GET /sca/006
   - name: Parameters -> limit=2
@@ -347,7 +347,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/006"
@@ -355,7 +355,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -428,6 +428,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
+            reverse: True
 
   - name: Parameters -> sort=+score,limit=2
     request:
@@ -454,7 +455,6 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
-            reverse: False
 
 ---
 test_name: GET /sca/001/checks/cis_debian9 (001 is an agent with version >=4.2.0)
@@ -570,6 +570,7 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "id"
+            reverse: True
 
   - name: Parameters -> search=passwd,limit=1
     request:
@@ -657,7 +658,7 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
@@ -665,7 +666,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -1110,7 +1111,7 @@ stages:
           failed_items: []
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
@@ -1118,7 +1119,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 

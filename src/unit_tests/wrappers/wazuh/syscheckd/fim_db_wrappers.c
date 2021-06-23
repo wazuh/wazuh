@@ -186,12 +186,23 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_tmp_file *file,
                                         __attribute__((unused)) pthread_mutex_t *mutex,
                                         int storage,
-                                        fim_event_mode mode,
-                                        __attribute__((unused)) whodata_evt * w_evt) {
+                                        __attribute__((unused)) event_data_t *evt_data) {
     check_expected_ptr(fim_sql);
     check_expected_ptr(file);
     check_expected_ptr(storage);
-    check_expected_ptr(mode);
+
+    return mock();
+}
+
+int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                 fim_tmp_file *file,
+                                 __attribute__((unused)) pthread_mutex_t *mutex,
+                                 int storage,
+                                 __attribute__((unused)) event_data_t *evt_data,
+                                 __attribute__((unused)) directory_t *configuration) {
+    check_expected_ptr(fim_sql);
+    check_expected_ptr(file);
+    check_expected_ptr(storage);
 
     return mock();
 }

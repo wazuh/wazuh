@@ -6,17 +6,22 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
-
 #ifndef RUN_REALTIME_WRAPPERS_H
 #define RUN_REALTIME_WRAPPERS_H
 
-int __wrap_realtime_adddir(const char *dir, int whodata, int followsl);
+#include "config/syscheck-config.h"
+
+int __wrap_realtime_adddir(const char *dir,
+                           directory_t *configuration);
 
 int __wrap_realtime_start();
 
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of realtime_adddir
  */
-void expect_realtime_adddir_call(const char *path, int whodata, int ret);
+void expect_realtime_adddir_call(const char *path, int ret);
+
+int __wrap_fim_add_inotify_watch(const char *dir,
+                                 const directory_t *configuration);
+
 #endif

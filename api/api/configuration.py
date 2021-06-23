@@ -32,13 +32,17 @@ default_api_configuration = {
     "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "intervals": {
+        "request_timeout": 10
+    },
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
-        "ssl_cipher": "TLSv1.2"
+        "ssl_protocol": "TLSv1.2",
+        "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
@@ -213,6 +217,7 @@ def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
 
     :return: API configuration
     """
+
     def replace_bools(conf):
         """Replace 'yes' and 'no' strings in configuration for actual booleans.
 

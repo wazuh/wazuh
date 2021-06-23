@@ -16,12 +16,12 @@
 
 class MapWrapperSafeTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    MapWrapperSafeTest() = default;
-    virtual ~MapWrapperSafeTest() = default;
+        MapWrapperSafeTest() = default;
+        virtual ~MapWrapperSafeTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //MAP_WRAPPER_SAFE_TESTS_H
