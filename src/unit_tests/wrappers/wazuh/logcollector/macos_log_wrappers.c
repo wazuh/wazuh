@@ -60,10 +60,10 @@ pid_t __wrap_w_get_first_child(pid_t parent_pid) {
     return mock_type(pid_t);
 }
 
-bool __wrap_w_macos_get_is_valid_data(){
+bool __wrap_w_macos_get_is_valid_data() {
     return mock_type(bool);
 }
 
-void __wrap_w_macos_set_is_valid_data(bool is_valid){
+void __wrap_w_macos_set_is_valid_data(bool is_valid) {
     check_expected(is_valid);
 }

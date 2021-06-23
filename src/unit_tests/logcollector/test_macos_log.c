@@ -3312,6 +3312,34 @@ void test_w_get_first_child_non_null_zero(void ** state) {
     assert_int_equal(w_get_first_child(0), 0);
 }
 
+// Test w_macos_set_is_valid_data
+void test_w_macos_set_is_valid_data_ok(void ** state) {
+    
+    bool bak_is_valid_data = macos_log_vault.is_valid_data;
+    macos_log_vault.is_valid_data = false;
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    w_macos_set_is_valid_data(true);
+
+    assert_true(macos_log_vault.is_valid_data);
+    macos_log_vault.is_valid_data = bak_is_valid_data;
+
+}
+
+// Test w_macos_get_is_valid_data
+void test_w_macos_get_is_valid_data_ok(void ** state) {
+
+    bool bak_is_valid_data = macos_log_vault.is_valid_data;
+    macos_log_vault.is_valid_data = false;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    assert_false(w_macos_get_is_valid_data());
+    macos_log_vault.is_valid_data = bak_is_valid_data;
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -3446,6 +3474,10 @@ int main(void) {
         cmocka_unit_test(test_w_get_first_child_NULL),
         cmocka_unit_test(test_w_get_first_child_non_null_non_zero),
         cmocka_unit_test(test_w_get_first_child_non_null_zero),
+        // Test w_macos_set_is_valid_data
+        cmocka_unit_test(test_w_macos_set_is_valid_data_ok),
+        // Test w_macos_get_is_valid_data
+        cmocka_unit_test(test_w_macos_get_is_valid_data_ok),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
