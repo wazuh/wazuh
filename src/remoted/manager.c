@@ -1030,6 +1030,8 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     char *end;
     agent_group *agt_group;
     int ret = OS_INVALID;
+    char *message;
+    char *fmsg;
 
     if (!groups) {
         /* Nothing to share with agent */
@@ -1062,32 +1064,37 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         return OS_SUCCESS;
     }
 
+    // make a copy to keep original msg for read_controlmsg
+    os_strdup(msg, message);
+    fmsg = message;
+
     // Skip agent-info and label data
 
-    if (msg = strchr(msg, '\n'), !msg) {
+    if (message = strchr(message, '\n'), !message) {
         merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
         w_mutex_unlock(&files_mutex);
+        os_free(fmsg);
         return OS_INVALID;
     }
 
-    for (msg++; (*msg == '\"' || *msg == '!' || *msg == '#') && (end = strchr(msg, '\n')); msg = end + 1);
+    for (message++; (*message == '\"' || *message == '!' || *message == '#') && (end = strchr(message, '\n')); message = end + 1);
 
     /* Parse message */
-    while (*msg != '\0') {
+    while (*message != '\0') {
         char *md5;
         char *file;
 
-        md5 = msg;
-        file = msg;
+        md5 = message;
+        file = message;
 
-        msg = strchr(msg, '\n');
-        if (!msg) {
+        message = strchr(message, '\n');
+        if (!message) {
             merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
             break;
         }
 
-        *msg = '\0';
-        msg++;
+        *message = '\0';
+        message++;
 
         // Skip labeled data
         if (*md5 == '\"' || *md5 == '!' || *md5 == '#') {
@@ -1125,7 +1132,7 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     }
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
-
+    os_free(fmsg);
     return ret;
 }
 
@@ -1170,7 +1177,7 @@ static void read_controlmsg(const char *agent_id, char *msg, char *group)
 
         msg = strchr(msg, '\n');
         if (!msg) {
-            merror("Invalid message 1 from agent ID '%s' (strchr \\n)", agent_id);
+            merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
             break;
         }
 
@@ -1185,7 +1192,7 @@ static void read_controlmsg(const char *agent_id, char *msg, char *group)
 
         file = strchr(file, ' ');
         if (!file) {
-            merror("Invalid message 2 from agent ID '%s' (strchr ' ')", agent_id);
+            merror("Invalid message from agent ID '%s' (strchr ' ')", agent_id);
             break;
         }
 
