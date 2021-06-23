@@ -296,6 +296,12 @@ static int teardown_hash(void **state) {
     return 0;
 }
 #endif
+
+static int teardown_dbsync_msg(void **state) {
+    char *ret_msg = *state;
+    free(ret_msg);
+    return 0;
+}
 /* tests */
 
 void test_fim_whodata_initialize(void **state)
@@ -1127,6 +1133,37 @@ void test_check_max_fps_sleep(void **state) {
     check_max_fps();
 }
 
+void test_send_sync_control(void **state) {
+    char debug_msg[OS_SIZE_256] = {0};
+    char *ret_msg = dbsync_check_msg("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
+    *state = ret_msg;
+
+    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+
+    fim_send_sync_control("fim_file", INTEGRITY_CHECK_GLOBAL, 32, "start", "top", NULL, "checksum");
+}
+
+void test_send_sync_state(void **state) {
+    char debug_msg[OS_SIZE_256] = {0};
+    cJSON *event = cJSON_CreateObject(); // to be freed in dbsync_state_msg
+
+    if (event == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+    cJSON_AddStringToObject(event, "data", "random_string");
+    char *ret_msg = "{\"component\":\"fim_file\",\"type\":\"state\",\"data\":{\"data\":\"random_string\"}}";
+
+    snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, ret_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    expect_SendMSG_call(ret_msg, "fim_file", DBSYNC_MQ, 0);
+
+    fim_send_sync_state("fim_file", event);
+}
+
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
@@ -1171,6 +1208,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
         cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
+        cmocka_unit_test_teardown(test_send_sync_control, teardown_dbsync_msg),
+        cmocka_unit_test(test_send_sync_state),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

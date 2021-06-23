@@ -85,6 +85,7 @@ static int teardown_entry(void **state) {
     }
 
     free(entries);
+    return 0;
 }
 /* tests */
 
@@ -755,7 +756,8 @@ void test_fim_insert_directory_duplicate_entry(void **state) {
 }
 
 void test_fim_insert_directory_insert_entry_before(void **state) {
-    OSList list;
+    OSList list = {0};
+    OSList_SetFreeDataPointer(&list, (void (*)(void *))free_directory);
     OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
     entry_struct_t *test_struct= *state;
 
@@ -779,12 +781,17 @@ void test_fim_insert_directory_insert_entry_before(void **state) {
     assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.first_node->data))->tag);
 
     OSList_CleanNodes(&list);
+    test_struct->dir1 = NULL;
+    test_struct->dir2 = NULL;
 }
 
 void test_fim_insert_directory_insert_entry_last(void **state) {
-    OSList list;
+    OSList list = {0};
+
+    OSList_SetFreeDataPointer(&list, (void (*)(void *))free_directory);
     OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
-    entry_struct_t *test_struct= *state;
+
+    entry_struct_t *test_struct = *state;
 
     test_struct->dir1 = calloc(1, sizeof(directory_t));
     test_struct->dir2 = calloc(1, sizeof(directory_t));
@@ -807,6 +814,9 @@ void test_fim_insert_directory_insert_entry_last(void **state) {
     assert_string_equal(test_struct->dir2->tag, ((directory_t*)(list.last_node->data))->tag);
 
     OSList_CleanNodes(&list);
+
+    test_struct->dir1 = NULL;
+    test_struct->dir2 = NULL;
 }
 
 void test_fim_copy_directory_null(void **state) {

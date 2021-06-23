@@ -32,33 +32,38 @@ char * __wrap_dbsync_state_msg(const char * component, cJSON * data) {
     return mock_type(char*);
 }
 
-void expect_dbsync_check_msg_call(const char *component,
+void expect_fim_send_sync_control_call(const char *component,
                                          dbsync_msg msg,
                                          int id,
                                          const char *start,
                                          const char *top,
                                          const char *tail,
-                                         char *ret) {
+                                         const char *checksum) {
 
-    expect_string(__wrap_dbsync_check_msg, component, component);
-    expect_value(__wrap_dbsync_check_msg, msg, msg);
-    expect_value(__wrap_dbsync_check_msg, id, id);
+    expect_string(__wrap_fim_send_sync_control, component, component);
+    expect_value(__wrap_fim_send_sync_control, msg, msg);
+    expect_value(__wrap_fim_send_sync_control, id, id);
 
     if (start == NULL) {
-        expect_value(__wrap_dbsync_check_msg, start, 0);
+        expect_value(__wrap_fim_send_sync_control, start, 0);
     } else {
-        expect_string(__wrap_dbsync_check_msg, start, start);
+        expect_string(__wrap_fim_send_sync_control, start, start);
 
     }
     if (top == NULL) {
-        expect_value(__wrap_dbsync_check_msg, top, 0);
+        expect_value(__wrap_fim_send_sync_control, top, 0);
     } else {
-        expect_string(__wrap_dbsync_check_msg, top, top);
+        expect_string(__wrap_fim_send_sync_control, top, top);
     }
     if (tail == NULL) {
-        expect_value(__wrap_dbsync_check_msg, tail, 0);
+        expect_value(__wrap_fim_send_sync_control, tail, 0);
     } else {
-        expect_string(__wrap_dbsync_check_msg, tail, tail);
+        expect_string(__wrap_fim_send_sync_control, tail, tail);
     }
-    will_return(__wrap_dbsync_check_msg, ret);
+
+    if (checksum == NULL) {
+        expect_value(__wrap_fim_send_sync_control, checksum, checksum);
+    } else {
+        expect_string(__wrap_fim_send_sync_control, checksum, checksum);
+    }
 }

@@ -5737,11 +5737,15 @@ int main(void) {
         cmocka_unit_test(test_fim_diff_folder_size),
 
         /* test_fim_delete_file_event */
+#ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_delete_file_event_delete_error),
         cmocka_unit_test(test_fim_delete_file_event_remove_success),
         cmocka_unit_test(test_fim_delete_file_event_no_conf),
-#ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_delete_file_event_report_changes),
+#else
+        cmocka_unit_test_setup(test_fim_delete_file_event_delete_error, setup_fim_entry),
+        cmocka_unit_test_setup(test_fim_delete_file_event_remove_success, setup_fim_entry),
+        cmocka_unit_test_setup(test_fim_delete_file_event_no_conf, setup_fim_entry),
 #endif
         cmocka_unit_test(test_fim_delete_file_event_different_mode_scheduled),
         cmocka_unit_test(test_fim_delete_file_event_different_mode_abort_realtime),

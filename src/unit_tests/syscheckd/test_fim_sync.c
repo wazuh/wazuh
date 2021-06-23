@@ -314,7 +314,7 @@ static void expect_fim_db_get_data_checksum_success(const fdb_t *db, char **firs
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, db);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_fim_send_sync_control);
+    expect_fim_send_sync_control_call("fim_file",INTEGRITY_CHECK_GLOBAL, 1572521857, *first, *last, NULL, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
 }
 
 static void expect_fim_db_get_entry_from_sync_msg(char *path, int type, fim_entry *mock_entry) {
@@ -366,7 +366,9 @@ static void expect_read_line(fim_tmp_file *file, char *line, fim_entry *entry, i
     expect_fim_db_get_entry_from_sync_msg(line, FIM_TYPE_FILE, entry);
 
     expect_fim_db_read_line_from_file(file, storage, 1, NULL, 1);
-    expect_function_call(__wrap_fim_send_sync_state);
+
+    expect_string(__wrap_fim_send_sync_state, location, "fim_file");
+    expect_any(__wrap_fim_send_sync_state, msg);
 
     expect_any(__wrap_fim_db_clean_file, file);
     expect_value(__wrap_fim_db_clean_file, storage, storage);
@@ -405,7 +407,7 @@ static void test_fim_sync_push_msg_no_response(void **state) {
 
 /* fim_sync_checksum */
 static void test_fim_sync_checksum_first_row_error(void **state) {
-    pthread_mutex_t *mutex = NULL;
+    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
     char buffer[60];
     snprintf(buffer, 60, FIM_DB_ERROR_GET_ROW_PATH, "FIRST", "FILE");
 
@@ -415,7 +417,7 @@ static void test_fim_sync_checksum_first_row_error(void **state) {
 }
 
 static void test_fim_sync_checksum_last_row_error(void **state) {
-    pthread_mutex_t *mutex = NULL;
+    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
     char buffer[60];
     snprintf(buffer, 60, FIM_DB_ERROR_GET_ROW_PATH, "LAST","FILE");
 
@@ -425,7 +427,7 @@ static void test_fim_sync_checksum_last_row_error(void **state) {
 }
 
 static void test_fim_sync_checksum_checksum_error(void **state) {
-    pthread_mutex_t *mutex = NULL;
+    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
 
     expect_fim_db_get_data_checksum_error(syscheck.database);
 
@@ -433,7 +435,7 @@ static void test_fim_sync_checksum_checksum_error(void **state) {
 }
 
 static void test_fim_sync_checksum_empty_db(void **state) {
-    pthread_mutex_t *mutex = NULL;
+    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
 
     expect_fim_db_get_first_row_success(syscheck.database, FIM_TYPE_FILE, NULL);
     expect_fim_db_get_last_row_success(syscheck.database, FIM_TYPE_FILE, NULL);
@@ -442,13 +444,12 @@ static void test_fim_sync_checksum_empty_db(void **state) {
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    // expect_dbsync_check_msg_call("fim_file", INTEGRITY_CLEAR, 1572521857, NULL, NULL, NULL, strdup("A mock message"));
+    expect_fim_send_sync_control_call("fim_file", INTEGRITY_CLEAR, 1572521857, NULL, NULL, NULL, NULL);
 
-    expect_function_call(__wrap_fim_send_sync_control);
     fim_sync_checksum(FIM_TYPE_FILE, mutex);
 }
 static void test_fim_sync_checksum_success(void **state) {
-    pthread_mutex_t *mutex = NULL;
+    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
     str_pair_t *pair = *state;
 
     char *first = pair->first;
@@ -500,7 +501,9 @@ static void test_fim_sync_checksum_split_range_size_1(void **state) {
     expect_fim_db_get_count_range_n("start", "top", 1);
 
     expect_fim_db_get_entry_from_sync_msg("start", FIM_TYPE_FILE, &entry);
-    expect_function_call(__wrap_fim_send_sync_state);
+
+    expect_string(__wrap_fim_send_sync_state, location, "fim_file");
+    expect_any(__wrap_fim_send_sync_state, msg);
 
     fim_sync_checksum_split("start", "top", 1234);
     free(str);
@@ -533,10 +536,10 @@ static void test_fim_sync_checksum_split_range_size_default(void **state) {
     will_return(__wrap_fim_db_get_checksum_range, FIMDB_OK);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    // right
-    expect_function_call(__wrap_fim_send_sync_control);
-    // left
-    expect_function_call(__wrap_fim_send_sync_control);
+
+    expect_fim_send_sync_control_call("fim_file", INTEGRITY_CHECK_LEFT, 1234, "start", "path1", "path2", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+
+    expect_fim_send_sync_control_call("fim_file", INTEGRITY_CHECK_RIGHT, 1234, "path2", "top", "", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
 
     fim_sync_checksum_split("start", "top", 1234);
 }
