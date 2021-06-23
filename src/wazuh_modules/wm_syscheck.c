@@ -192,11 +192,6 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
             mtinfo(SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
         }
 
-#ifdef WIN32
-        free_directory(syscheck.directories[0]);
-        syscheck.directories[0] = NULL;
-#endif //WIN32
-
         if (!syscheck.ignore) {
             os_calloc(1, sizeof(char *), syscheck.ignore);
         } else {

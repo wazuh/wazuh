@@ -3791,9 +3791,6 @@ static void test_fim_check_db_state_empty_to_full(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -3813,9 +3810,6 @@ static void test_fim_check_db_state_full_to_empty(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
@@ -3835,9 +3829,6 @@ static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
@@ -3857,9 +3848,6 @@ static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
@@ -3879,9 +3867,6 @@ static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
@@ -3901,9 +3886,6 @@ static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
@@ -3951,9 +3933,6 @@ static void test_fim_check_db_state_normal_to_full(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -3974,9 +3953,6 @@ static void test_fim_check_db_state_full_to_normal(void **state) {
     (void) state;
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
@@ -3997,9 +3973,6 @@ static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
@@ -4020,9 +3993,6 @@ static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
@@ -4042,9 +4012,6 @@ static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
@@ -4079,9 +4046,6 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -4102,9 +4066,6 @@ static void test_fim_check_db_state_full_to_80_percentage(void **state) {
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
@@ -4124,9 +4085,6 @@ static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
@@ -4161,9 +4119,6 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
@@ -4199,9 +4154,6 @@ static void test_fim_check_db_state_full_to_90_percentage(void **state) {
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
@@ -4221,9 +4173,6 @@ static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
@@ -4243,9 +4192,6 @@ static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
@@ -4265,9 +4211,6 @@ static void test_fim_check_db_state_nodes_count_database_error(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, -1);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "(6948): Unable to get the number of entries in database.");
 
@@ -4775,9 +4718,6 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/test");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 

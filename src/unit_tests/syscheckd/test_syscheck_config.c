@@ -535,6 +535,12 @@ void test_getSyscheckConfig_no_directories(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    OS_XML xml;
+    OS_ReadXML("test_empty_config.conf", &xml);
+    assert_null(OS_GetElementsbyNode(&xml, NULL));
+    Read_Syscheck(&xml, NULL, &syscheck, CWMODULE, 0);
+    OS_ClearXML(&xml);
+
     ret = getSyscheckConfig();
 
     assert_non_null(ret);

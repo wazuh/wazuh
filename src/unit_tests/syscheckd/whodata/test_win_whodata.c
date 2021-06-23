@@ -5834,10 +5834,6 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
 
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
-
     expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6241): The 'c:\\windows' directory has been scanned. It does not need to be scanned again.");
 
@@ -5887,10 +5883,6 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
     expect_value(__wrap_OSHash_Get, self, syscheck.wdata.directories);
     expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
-
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-    expect_any(__wrap_pthread_rwlock_unlock, rwlock);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
 
     expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
@@ -6967,7 +6959,9 @@ void test_state_checker_no_files_to_check(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     OSList_CleanNodes(syscheck.directories);
+
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
     will_return(__wrap_FOREVER, 1);
     will_return(__wrap_FOREVER, 0);

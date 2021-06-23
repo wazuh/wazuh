@@ -25,18 +25,6 @@ void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
-/** Prototypes **/
-int Start_win32_Syscheck();
-
-/* syscheck main thread */
-void *skthread()
-{
-
-    Start_win32_Syscheck();
-
-    return (NULL);
-}
-
 void stop_wmodules()
 {
     wmodule * cur_module;

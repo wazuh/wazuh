@@ -209,16 +209,15 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mte
 list(APPEND syscheckd_tests_names "test_syscheck")
 
 if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
-                                    -Wl,--wrap=Read_Syscheck_Config \
-                                    -Wl,--wrap=os_wait \
-                                    -Wl,--wrap=rootcheck_init \
-                                    -Wl,--wrap=start_daemon \
-                                    -Wl,--wrap=File_DateofChange \
-                                    -Wl,--wrap,getpid, -Wl,--wrap,realtime_start \
-                                    -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
-                                    -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
-                                    -Wl,--wrap,pthread_mutex_unlock")
+list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
+                                  -Wl,--wrap=os_wait \
+                                  -Wl,--wrap=rootcheck_init \
+                                  -Wl,--wrap=start_daemon \
+                                  -Wl,--wrap=File_DateofChange \
+                                  -Wl,--wrap,getpid, -Wl,--wrap,realtime_start \
+                                  -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
+                                  -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
+                                  -Wl,--wrap,pthread_mutex_unlock")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
