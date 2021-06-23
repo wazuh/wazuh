@@ -29,7 +29,6 @@ requirements:
     - 'f:/etc/redhat-release -> r:^Better && r:release 7'
     - 'f:/etc/redhat-release -> r:^OpenVZ && r:release 7'
     - 'f:/etc/system-release -> r:^Amazon && r:release 2'
-    - 'f:/etc/redhat-release -> r:^Fedora && r:release 29'
 
 
 variables:

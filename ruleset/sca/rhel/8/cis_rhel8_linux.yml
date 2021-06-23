@@ -28,8 +28,6 @@ requirements:
     - 'f:/etc/redhat-release -> r:^Oracle && r:release 8'
     - 'f:/etc/redhat-release -> r:^Better && r:release 8'
     - 'f:/etc/redhat-release -> r:^OpenVZ && r:release 8'
-    - 'f:/etc/redhat-release -> r:^Fedora && r:release 29'
-    - 'f:/etc/system-release -> r:^Fedora && r:release 29 (Twenty Nine)'
 
 
 
