@@ -85,7 +85,7 @@ typedef struct {
     pthread_rwlock_t mutex;                                  ///< Prevent the RC on this structure
     char timestamp[OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1]; ///< Timestamp of last log received
     char * settings;                                         ///< `log` command arguments
-    bool is_valid_data;                                   ///< false when log was called with an invalid predicate
+    bool is_valid_data;                                      ///< false when log was called with an invalid predicate
 } w_macos_log_vault_t;
 
 /* ******************  PROTOTYPES  ****************** */

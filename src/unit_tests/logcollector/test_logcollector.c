@@ -607,7 +607,7 @@ void test_w_save_files_status_to_cJSON_data(void ** state) {
 
 }
 
-/* w_save_files_status_to_cJSON */
+/* w_save_file_status */
 
 void test_w_save_file_status_str_NULL(void ** state) {
     test_mode = 1;
