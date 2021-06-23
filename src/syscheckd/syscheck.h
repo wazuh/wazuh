@@ -480,10 +480,16 @@ void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
 
 /**
+ * @brief Create the necessary file to store the audit rules to be loaded by the immutable mode.
+ *
+*/
+void audit_create_rules_file();
+
+/**
  * @brief Set all directories that don't have audit rules and have whodata enabled to realtime.
  *
 */
-void audit_no_rules_to_realtime();
+void audit_rules_to_realtime();
 
 /**
  * @brief Set Auditd socket configuration
@@ -736,6 +742,14 @@ int w_update_sacl(const char *obj_path);
  */
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
+
+/**
+ * @brief Get the number of realtime watches opened by FIM.
+ *
+ * @return Number of realtime watches.
+ */
+unsigned int get_realtime_watches();
+
 #else
 void *fim_run_integrity(void *args);
 #endif
