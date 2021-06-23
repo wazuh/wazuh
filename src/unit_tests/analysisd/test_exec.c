@@ -63,6 +63,7 @@ static int test_teardown(void **state) {
     os_free(data->lf->decoder_info);
     os_free(data->lf->generated_rule);
     os_free(data->ar->ar_cmd);
+    os_free(data->lf->fields);
     os_free(data->lf);
     os_free(data->ar);
     os_free(data);
