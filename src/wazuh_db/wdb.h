@@ -1154,6 +1154,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  *
  * Set the column "last_attempt" with the timestamp argument,
  * and increase "n_attempts" one unit (non legacy agents).
+ * Save the last calculated component checksum on the manager.
  *
  * It should be called when the syncronization with the agents is in process, or the checksum sent
  * to the manager is not the same than the one calculated locally.
@@ -1170,6 +1171,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
  *
  * Set the columns "last_attempt" and "last_completion" with the timestamp argument.
  * Increase "n_attempts" and "n_completions" one unit.
+ * Save the last calculated component checksum on the manager.
  *
  * It should be called when the syncronization with the agents is complete,
  * or the checksum sent to the manager is the same than the one calculated locally.
@@ -1183,7 +1185,6 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
 
 /**
  * @brief Get the last stored checksum of a component on the manager
- *
  *
  * @param wdb Database node.
  * @param component Name of the component.

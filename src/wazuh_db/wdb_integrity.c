@@ -252,7 +252,7 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
 
 // Query the checksum of a data range
 integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, dbsync_msg action, const char * payload) {
-    integrity_sync_status_t retval = INTEGRITY_SYNC_ERR;
+    integrity_sync_status_t status = INTEGRITY_SYNC_ERR;
 
     // Parse payload
     cJSON * data = cJSON_Parse(payload);
@@ -289,33 +289,33 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
     // Get the previously computed manager checksum
     if (INTEGRITY_CHECK_GLOBAL == action) {
         if (OS_SUCCESS == wdbi_get_last_manager_checksum(wdb, component, manager_checksum) && 0 == strcmp(manager_checksum, checksum)) {
-            retval = INTEGRITY_SYNC_CKS_OK;
+            status = INTEGRITY_SYNC_CKS_OK;
         }
     }
 
     // Get the actual manager checksum
-    struct timespec ts_start, ts_end;
-    gettime(&ts_start);
-    if (retval != INTEGRITY_SYNC_CKS_OK) {
+    if (status != INTEGRITY_SYNC_CKS_OK) {
+        struct timespec ts_start, ts_end;
+        gettime(&ts_start);
         switch (wdbi_checksum_range(wdb, component, begin, end, manager_checksum)) {
         case -1:
             goto end;
 
         case 0:
-            retval = INTEGRITY_SYNC_NO_DATA;
+            status = INTEGRITY_SYNC_NO_DATA;
             break;
 
         case 1:
             gettime(&ts_end);
             mdebug2("Agent '%s' %s range checksum: Time: %.3f ms.", wdb->id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
-            retval = strcmp(manager_checksum, checksum) ? INTEGRITY_SYNC_CKS_FAIL : INTEGRITY_SYNC_CKS_OK;
+            status = strcmp(manager_checksum, checksum) ? INTEGRITY_SYNC_CKS_FAIL : INTEGRITY_SYNC_CKS_OK;
         }
     }
 
     // Update sync status
     if (INTEGRITY_CHECK_GLOBAL == action) {
         wdbi_delete(wdb, component, begin, end, NULL);
-        switch (retval) {
+        switch (status) {
         case INTEGRITY_SYNC_NO_DATA:
         case INTEGRITY_SYNC_CKS_FAIL:
             wdbi_update_attempt(wdb, component, timestamp, manager_checksum);
@@ -336,7 +336,7 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
 
 end:
     cJSON_Delete(data);
-    return retval;
+    return status;
 }
 
 // Query a complete table clear
@@ -404,14 +404,12 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
     sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
 
     cJSON* j_sync_info = wdb_exec_stmt(stmt);
-
     if (!j_sync_info) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
         return result;
     }
 
     cJSON* j_last_checksum = cJSON_GetObjectItem(j_sync_info->child, "last_manager_checksum");
-
     if (cJSON_IsString(j_last_checksum)) {
         strncpy(manager_checksum, cJSON_GetStringValue(j_last_checksum), sizeof(os_sha1));
         result = OS_SUCCESS;
