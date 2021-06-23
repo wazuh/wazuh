@@ -406,9 +406,9 @@ int main(void) {
     int ret;
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_fim_initialize),
-            //cmocka_unit_test(test_fim_initialize_error),
-            //cmocka_unit_test(test_read_internal),
-            //cmocka_unit_test(test_read_internal_debug),
+            cmocka_unit_test(test_fim_initialize_error),
+            cmocka_unit_test(test_read_internal),
+            cmocka_unit_test(test_read_internal_debug),
     };
         /* Windows specific tests */
 #ifdef TEST_WINAGENT
@@ -421,8 +421,6 @@ int main(void) {
             cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
     };
 #endif
-
-    //return cmocka_run_group_tests(tests, setup_group, teardown_group);
 
     ret = cmocka_run_group_tests(tests, setup_group, teardown_group);
 #ifdef TEST_WINAGENT

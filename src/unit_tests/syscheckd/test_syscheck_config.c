@@ -67,7 +67,7 @@ void test_Read_Syscheck_Config_success(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_any_always(__wrap__mwarn, formatted_msg);
 
     OS_XML xml;
@@ -122,32 +122,18 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.diff_folder_size, 0);
 }
 
-void test_Read_Syscheck_Config_invalid(void **state)
-{
-    (void) state;
-    int ret;
-
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
-    expect_string(__wrap__mterror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
-
- /* expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-*/
-
-    ret = Read_Syscheck_Config("invalid.conf");
-
-    assert_int_equal(ret, OS_INVALID);
-}
-
 void test_Read_Syscheck_Config_undefined(void **state)
 {
     (void) state;
     int ret;
 
-    /*OS_XML xml;
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
     OS_ReadXML("test_syscheck2.conf", &xml);
@@ -156,18 +142,7 @@ void test_Read_Syscheck_Config_undefined(void **state)
     ret = Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
     OS_ClearNode(chld_node);
     OS_ClearNode(node);
-    OS_ClearXML(&xml);*/
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
-
-
-    ret = Read_Syscheck_Config("test_syscheck2.conf");
+    OS_ClearXML(&xml);
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.rootcheck, 0);
@@ -213,10 +188,11 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
-
-    ret = Read_Syscheck_Config("test_empty_config.conf");
-
+    OS_XML xml;
+    OS_ReadXML("test_empty_config.conf", &xml);
+    assert_null(OS_GetElementsbyNode(&xml, NULL));
+    ret = Read_Syscheck(&xml, NULL, &syscheck, CWMODULE, 0);
+    OS_ClearXML(&xml);
     assert_int_equal(ret, 1);
 
     // Default values
@@ -266,7 +242,8 @@ void test_getSyscheckConfig(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
@@ -415,10 +392,16 @@ void test_getSyscheckConfig_no_audit(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
-
-
-    Read_Syscheck_Config("test_syscheck2.conf");
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("test_syscheck2.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
 
     ret = getSyscheckConfig();
     *state = ret;
@@ -532,9 +515,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
-
-    Read_Syscheck_Config("test_empty_config.conf");
+    OS_XML xml;
+    OS_ReadXML("test_empty_config.conf", &xml);
+    assert_null(OS_GetElementsbyNode(&xml, NULL));
+    Read_Syscheck(&xml, NULL, &syscheck, CWMODULE, 0);
+    OS_ClearXML(&xml);
 
     ret = getSyscheckConfig();
 
@@ -550,11 +535,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
-
-
     ret = getSyscheckConfig();
-
 
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 1);
@@ -628,15 +609,11 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     (void) state;
     int ret;
 
-    #ifndef WIN32
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
-    #endif //WIN32
 
     OS_XML xml;
     XML_NODE node;
@@ -673,7 +650,7 @@ void test_getSyscheckInternalOptions(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
 
     OS_XML xml;
     XML_NODE node;
@@ -732,7 +709,7 @@ void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
     memset(filerestrict,'a',OS_PATTERN_MAXSIZE+1);
     snprintf(error_msg, OS_MAXSTR, REGEX_COMPILE, filerestrict, OS_REGEX_MAXSIZE);
 
-    expect_string(__wrap__mterror, formatted_msg, error_msg);
+    expect_string(__wrap__merror, formatted_msg, error_msg);
 
     new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
 

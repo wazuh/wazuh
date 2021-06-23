@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "syscheck-config.h"
 #include "config.h"

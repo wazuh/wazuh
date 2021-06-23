@@ -196,7 +196,7 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--w
                                 -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
                                 -Wl,--wrap,pthread_mutex_unlock")
 
-#list(APPEND syscheckd_tests_names "test_syscheck_config")
+list(APPEND syscheckd_tests_names "test_syscheck_config")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
 else()
