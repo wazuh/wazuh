@@ -14,7 +14,6 @@
 #include "config.h"
 
 #ifdef WIN32
-static char *SYSCHECK_EMPTY[] = { NULL };
 static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
 #endif
 
@@ -109,6 +108,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
     config->comp_estimation_perc = 0.9;    // 90%
     config->disk_quota_full_msg = true;
     config->audit_key = NULL;
+
+    config->rt_delay = getDefine_Int("syscheck", "rt_delay", 0, 1000);
+    config->max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
+    config->file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
+    config->sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
+
+#ifndef WIN32
+    config->max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
+#endif
 
     /* Read config */
     if (node && read_syscheck_config_xml(xml, node, config, modules) < 0) {

@@ -181,7 +181,6 @@ static void wm_syscheck_log_config(const wm_syscheck_t *sys) {
 void* wm_syscheck_main(wm_syscheck_t *sys) {
     syscheck_config* config = (syscheck_config*)sys;
     syscheck = *config;
-    read_internal(0);
     mtdebug1(SYSCHECK_LOGTAG, "Starting syscheck.");
     if (syscheck.disabled == 1) {
         if (syscheck.directories == NULL || syscheck.directories[0] == NULL) {
