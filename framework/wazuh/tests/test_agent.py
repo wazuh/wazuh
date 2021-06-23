@@ -636,7 +636,7 @@ def test_create_group_exceptions(group_id, exception, exception_code):
     ['random-1', 'random-2'],
 ])
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.agent.remove_agents_from_group', return_value=AffectedItemsWazuhResult())
+@patch('wazuh.agent.remove_agents_from_group', return_value=AffectedItemsWazuhResult(affected_items=['000']))
 @patch('wazuh.agent.Agent.delete_single_group')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -659,7 +659,14 @@ def test_agent_delete_groups(socket_mock, send_mock, mock_delete, mock_remove_ag
     assert isinstance(result.affected_items, list)
     # Check affected items
     assert result.total_affected_items == len(result.affected_items)
-    assert set(result.affected_items).difference(set(group_list)) == set()
+    group_set = set(group_list)
+    for affected_item in result.affected_items:
+        key = next(iter(affected_item))
+        group_set -= {key}
+        assert affected_item[key] == ['000']
+
+    assert group_set == set()
+
     # Check failed items
     assert result.total_failed_items == 0
 
