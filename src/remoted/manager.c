@@ -1049,20 +1049,13 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     }
     mdebug2("Agent '%s' group is '%s'", agent_id, group);
 
-    /* Lock mutex */
-    w_mutex_lock(&files_mutex);
-
     if (group[0]) {
-        if (f_sum = find_sum(group), !f_sum) {
-            /* Unlock mutex */
-            w_mutex_unlock(&files_mutex);
-            mdebug1("No such group '%s' for agent '%s'", group, agent_id);
-            return OS_INVALID;
-        }
-        w_mutex_unlock(&files_mutex);
         os_strdup(group, *r_group);
         return OS_SUCCESS;
     }
+
+    /* Lock mutex */
+    w_mutex_lock(&files_mutex);
 
     // make a copy to keep original msg for read_controlmsg
     os_strdup(msg, message);
@@ -1111,25 +1104,20 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         file++;
 
         // If group was not got, guess it by matching sum
-        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
+        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, file, md5);
         if (!guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
             // If the group could not be guessed, set to "default"
             // or if the user requested not to guess the group, through the internal
             // option 'guess_agent_group', set to "default"
             strncpy(group, "default", OS_SIZE_65536);
-
-            if (f_sum = find_sum(group), !f_sum) {
-                merror("No such group '%s' for agent '%s'", group, agent_id);
-                ret = OS_INVALID;
-                break;
-            }
         }
         set_agent_group(agent_id, group);
         os_strdup(group, *r_group);
         ret = OS_SUCCESS;
-        mdebug2("group assigned: '%s'", group);
+        mdebug2("Group assigned: '%s'", group);
         break;
     }
+
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
     os_free(fmsg);
@@ -1162,8 +1150,7 @@ static void read_controlmsg(const char *agent_id, char *msg, char *group)
     if (f_sum = find_sum(group), !f_sum) {
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
-
-        mdebug1("No such group '%s' for agent '%s'", group, agent_id);
+        merror("No such group '%s' for agent '%s'", group, agent_id);
         return;
     }
 
