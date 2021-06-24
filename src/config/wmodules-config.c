@@ -215,7 +215,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     return 0;
 }
 
-int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
+int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
@@ -259,9 +259,68 @@ int Read_GCP(const OS_XML *xml, xml_node *node, void *d1) {
     }
 
     //Google Cloud module
-    if (!strcmp(node->element, WM_GCP_CONTEXT.name)) {
+    if (!strcmp(node->element, WM_GCP_PUBSUB_CONTEXT.name)) {
 #ifndef WIN32
-        if (wm_gcp_read(children, cur_wmodule) < 0) {
+        if (wm_gcp_pubsub_read(children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+#else
+        mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->element);
+#endif
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+
+int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //Google Cloud module
+    if (!strcmp(node->element, WM_GCP_BUCKET_CONTEXT.name)) {
+#ifndef WIN32
+        if (wm_gcp_bucket_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
