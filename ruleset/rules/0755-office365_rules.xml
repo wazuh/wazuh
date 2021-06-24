@@ -137,7 +137,7 @@ ID: 91531 - 91650
         <field name="office365.RecordType" type="osregex">^1$</field>
         <description>Office 365: Events from the Exchange admin audit log.</description>
         <options>no_full_log</options>
-        <group>ExchangeAdmin</group>
+        <group>ExchangeAdmin,pci_dss_10.2.2,pci_dss_10.6.1</group>
     </rule>
 
     <rule id="91534" level="3">
