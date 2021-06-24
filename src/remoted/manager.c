@@ -22,6 +22,13 @@
 #define HOST_NAME_MAX 64
 #endif
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+  #define STATIC
+#else
+  #define STATIC static
+#endif
+
 /* Internal structures */
 typedef struct _file_sum {
     int mark;
@@ -45,7 +52,7 @@ static OSHash *invalid_files;
  * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
  * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
  */
-static int lookfor_agent_group(const char *agent_id, char *msg, char **group);
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group);
 static void read_controlmsg(const char *agent_id, char *msg, char *group);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
@@ -1031,7 +1038,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 }
 
 /* look for agent group */
-static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
 {
     char group[OS_SIZE_65536];
     file_sum **f_sum = NULL;

@@ -7,13 +7,17 @@
  * Foundation
  */
 
-#include "agent_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "agent_op_wrappers.h"
+
+#include "../../headers/shared.h"
+#include "../../analysisd/logmsg.h"
 
 int __wrap_auth_connect() {
     return mock();
@@ -24,5 +28,17 @@ char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
 }
 
 int __wrap_control_check_connection() {
+    return mock();
+}
+
+int __wrap_get_agent_group(const char *id, char *group, __attribute__((unused)) size_t size) {
+    check_expected(id);
+    check_expected(group);
+    return mock();
+}
+
+int __wrap_set_agent_group(const char * id, const char * group) {
+    check_expected(id);
+    check_expected(group);
     return mock();
 }
