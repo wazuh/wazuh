@@ -60,7 +60,8 @@ static int teardown_group(void **state) {
 }
 
 static int setup_hashmap(void **state) {
-    if (files_status = OSHash_Create(), files_status == NULL) {
+    files_status = OSHash_Create();
+    if (files_status == NULL) {
         return 1;
     }
 
@@ -97,7 +98,9 @@ static int setup_log_context(void **state) {
 }
 
 static int teardown_log_context(void **state) {
-    teardown_hashmap(state);
+    if (teardown_hashmap(state) != 0) {
+        return 1;
+    }
     test_logcollector_t *test_struct = *state;
 
     expect_any(__wrap_fclose, _File);
@@ -113,11 +116,13 @@ static int teardown_log_context(void **state) {
 }
 
 static int setup_status(void **state) {
-    os_file_status_t *data = NULL;
+    os_file_status_t *data = calloc(1, sizeof(os_file_status_t));
 
-    setup_hashmap(NULL);
+    if (data == NULL) {
+        return 1;
+    }
 
-    if (data = calloc(1, sizeof(os_file_status_t)), data == NULL) {
+    if (setup_hashmap(NULL) != 0) {
         return 1;
     }
 
@@ -127,14 +132,6 @@ static int setup_status(void **state) {
 
     return 0;
 }
-
-static int teardown_status(void **state) {
-    teardown_hashmap(NULL);
-    os_file_status_t *data = *state;
-    free(data);
-    return 0;
-}
-
 
 /* wraps */
 
@@ -212,20 +209,25 @@ void test_w_get_hash_context_done(void ** state) {
 
 /* w_update_file_status
 Can't test if OSHashAddEx isn't wrapped, but wrapping it will leak memory ;(
-void test_w_update_file_status_fail_update_add_table_hash(void ** state) {
     test_mode = 1;
 
     char * path = "test/test.log";
     long pos = 0;
     SHA_CTX context = {0};
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
 
+    will_return(__wrap_OSHash_Update_ex, 0);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, path);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
     int retval = w_update_file_status(path, pos, &context);
-    assert_int_equal(retval, -1);
+
+    assert_int_equal(retval,-1);
 }
 */
 
@@ -265,7 +267,7 @@ void test_w_update_file_status_update_OK(void ** state) {
     int retval = w_update_file_status(path, pos, &context);
     free(OSHash_Delete(files_status, path));
 
-    assert_int_equal(retval,0);
+    assert_int_equal(retval, 0);
 }
 
 /* w_set_to_pos */
@@ -818,9 +820,6 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     int mode = OS_BINARY;
     struct stat stat_buf = { .st_mode = 0040000 };
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetArraySize, 1);
@@ -839,7 +838,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    will_return(__wrap_cJSON_GetStringValue, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_cJSON_GetStringValue, "1");
 
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, 1);
@@ -852,8 +851,11 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
-    expect_function_call(__wrap_pthread_rwlock_wrlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
+    will_return(__wrap_OSHash_Update_ex, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, file);
+    will_return(__wrap_OSHash_Add_ex, 0);
 
     expect_string(__wrap__merror, formatted_msg, "(1298): Failure to add 'test' to 'file_status' hash table");
 
@@ -1048,7 +1050,7 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
-}
+
 */
 
 void test_w_initialize_file_status_fopen_fail(void ** state) {
@@ -1474,62 +1476,78 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
 
     assert_int_equal(ret, -1);
 }
+/*
+void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
+    test_mode = 1;
 
-// void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
-//     os_file_status_t *data = *state;
-//     logreader log_reader = {.fp = (FILE *)1, .file= "test", .diff_max_size = 0};
-//     int mode = OS_BINARY;
+    int mode = OS_BINARY;
 
-//     OSHash_Add(files_status, "test", data);
+    logreader *lf = NULL;
+    os_calloc(1, sizeof(logreader), lf);
+    lf->fp = (FILE*)1;
+    os_strdup("test", lf->file);
+    lf->diff_max_size = 0;
 
-//     expect_function_call(__wrap_pthread_rwlock_rdlock);
-//     expect_function_call(__wrap_pthread_rwlock_unlock);
+    os_file_status_t data = {0};
+    strcpy(data.hash, "1234");
+    data.offset = 1;
 
-//     expect_value(__wrap_fileno, __stream, log_reader.fp);
-//     will_return(__wrap_fileno, 1);
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "test");
+    will_return(__wrap_OSHash_Get_ex, &data);
 
-//     expect_value(__wrap_fstat, __fd, 1);
-//     will_return(__wrap_fstat, 0040000);
-//     will_return(__wrap_fstat, 10);
-//     will_return(__wrap_fstat, 1);
+    expect_value(__wrap_fileno, __stream, lf->fp);
+    will_return(__wrap_fileno, 1);
 
-//     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
-//     expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
-//     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 5);
-//     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
-//     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+    expect_value(__wrap_fstat, __fd, 1);
+    will_return(__wrap_fstat, 0040000);
+    will_return(__wrap_fstat, 10);
+    will_return(__wrap_fstat, 1);
 
-//     //w_set_pos
-//     long pos = 0;
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
-//     os_calloc(1, sizeof(fpos_t), test_position);
-//     test_position->__pos = 1;
+    //w_set_pos
+    long pos = 0;
 
-//     expect_any(__wrap_w_fseek, x);
-//     expect_value(__wrap_w_fseek, pos, 0);
-//     will_return(__wrap_w_fseek, 0);
+    os_calloc(1, sizeof(fpos_t), test_position);
+    test_position->__pos = 1;
 
-//     expect_value(__wrap_w_ftell, x, 1);
-//     will_return(__wrap_w_ftell, 1);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
-//     //w_update_hash_node
-//     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
-//     expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
-//     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
-//     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
-//     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 1);
 
-//     expect_function_call(__wrap_pthread_rwlock_wrlock);
-//     expect_function_call(__wrap_pthread_rwlock_unlock);
+    //w_update_hash_node
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, lf->file);
+    will_return(__wrap_OSHash_Add_ex, 0);
 
+    will_return(__wrap_OSHash_Update_ex, 0);
 
-//     expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update 'test' to 'file_status' hash table");
+    expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update 'test' to 'file_status' hash table");
 
-//     int ret = w_set_to_last_line_read(&log_reader);
+    int ret = w_set_to_last_line_read(lf);
 
-//     assert_int_equal(ret, 1);
-// }
+    assert_int_equal(ret, 1);
+
+    os_free(lf->file);
+    os_free(lf);
+    os_free(test_position);
+
+}
+*/
 
 int main(void) {
     const struct CMUnitTest tests[] = {

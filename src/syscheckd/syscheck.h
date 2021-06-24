@@ -994,12 +994,24 @@ void fim_generate_delete_event(fdb_t *fim_sql,
                                void *configuration,
                                void *_unused_field);
 
-void fim_sync_check_eps();
-
-// Send a state synchronization message
+/**
+ * @brief Send a state synchronization message.
+ *
+ * @param location Name of the component
+ * @param msg Synchronization data for the message
+ */
 void fim_send_sync_state(const char *location, cJSON * msg);
 
-// Send a data synchronization control message
+/**
+ * @brief Send a control synchronization message
+ * @param component Name of the component.
+ * @param msg Type of the message.
+ * @param id Sync session counter (timetamp).
+ * @param start First key in the list.
+ * @param top Last key in the list.
+ * @param tail Key of the first key in the next sublist.
+ * @param checksum Checksum of this list.
+ */
 void fim_send_sync_control(const char *component,
                            dbsync_msg msg,
                            long id,

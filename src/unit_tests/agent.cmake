@@ -17,7 +17,7 @@ if(${uname} STREQUAL "Darwin")
     add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -I/usr/local/include -DENABLE_SYSC -DWAZUH_UNIT_TESTING)
 else()
     add_compile_options(-ggdb -O0 -g -coverage -DTEST_AGENT -DENABLE_AUDIT -DINOTIFY_ENABLED -fsanitize=address -fsanitize=undefined)
-    link_libraries("-fsanitize=address -fsanitize=undefined")
+    link_libraries(-fsanitize=address -fsanitize=undefined)
     set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -ldl -fprofile-arcs -ftest-coverage)
 endif()
 

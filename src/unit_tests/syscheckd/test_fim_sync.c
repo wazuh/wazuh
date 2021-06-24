@@ -407,35 +407,35 @@ static void test_fim_sync_push_msg_no_response(void **state) {
 
 /* fim_sync_checksum */
 static void test_fim_sync_checksum_first_row_error(void **state) {
-    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     char buffer[60];
     snprintf(buffer, 60, FIM_DB_ERROR_GET_ROW_PATH, "FIRST", "FILE");
 
     expect_fim_db_get_first_row_error(syscheck.database, FIM_TYPE_FILE, NULL, buffer);
 
-    fim_sync_checksum(FIM_TYPE_FILE, mutex);
+    fim_sync_checksum(FIM_TYPE_FILE, &mutex);
 }
 
 static void test_fim_sync_checksum_last_row_error(void **state) {
-    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
+   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;;
     char buffer[60];
     snprintf(buffer, 60, FIM_DB_ERROR_GET_ROW_PATH, "LAST","FILE");
 
     expect_fim_db_last_row_error(syscheck.database, FIM_TYPE_FILE, NULL, buffer);
 
-    fim_sync_checksum(FIM_TYPE_FILE, mutex);
+    fim_sync_checksum(FIM_TYPE_FILE, &mutex);
 }
 
 static void test_fim_sync_checksum_checksum_error(void **state) {
-    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
+   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;;
 
     expect_fim_db_get_data_checksum_error(syscheck.database);
 
-    fim_sync_checksum(FIM_TYPE_FILE, mutex);
+    fim_sync_checksum(FIM_TYPE_FILE, &mutex);
 }
 
 static void test_fim_sync_checksum_empty_db(void **state) {
-    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
+   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;;
 
     expect_fim_db_get_first_row_success(syscheck.database, FIM_TYPE_FILE, NULL);
     expect_fim_db_get_last_row_success(syscheck.database, FIM_TYPE_FILE, NULL);
@@ -446,17 +446,17 @@ static void test_fim_sync_checksum_empty_db(void **state) {
 
     expect_fim_send_sync_control_call("fim_file", INTEGRITY_CLEAR, 1572521857, NULL, NULL, NULL, NULL);
 
-    fim_sync_checksum(FIM_TYPE_FILE, mutex);
+    fim_sync_checksum(FIM_TYPE_FILE, &mutex);
 }
 static void test_fim_sync_checksum_success(void **state) {
-    pthread_mutex_t *mutex = (pthread_mutex_t *) 1;
+   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;;
     str_pair_t *pair = *state;
 
     char *first = pair->first;
     char *last = pair->last;
 
     expect_fim_db_get_data_checksum_success(syscheck.database, &first, &last);
-    fim_sync_checksum(FIM_TYPE_FILE, mutex);
+    fim_sync_checksum(FIM_TYPE_FILE, &mutex);
     pair->first = NULL;
     pair->last = NULL;
 }

@@ -47,6 +47,8 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
 void * fim_run_realtime(__attribute__((unused)) void * args);
 #endif
 
+void fim_sync_check_eps();
+
 int fim_whodata_initialize();
 #ifdef WIN32
 STATIC void set_priority_windows_thread();

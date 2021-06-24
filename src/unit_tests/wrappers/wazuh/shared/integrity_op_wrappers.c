@@ -48,7 +48,6 @@ void expect_fim_send_sync_control_call(const char *component,
         expect_value(__wrap_fim_send_sync_control, start, 0);
     } else {
         expect_string(__wrap_fim_send_sync_control, start, start);
-
     }
     if (top == NULL) {
         expect_value(__wrap_fim_send_sync_control, top, 0);
