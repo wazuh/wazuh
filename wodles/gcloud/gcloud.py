@@ -9,7 +9,7 @@
 """This module processes events from a Google Cloud subscription."""
 
 import tools
-import os
+import sys
 
 from pubsub.subscriber import WazuhGCloudSubscriber
 from buckets.access_logs import GCSAccessLogs
@@ -18,7 +18,7 @@ from buckets.access_logs import GCSAccessLogs
 try:
     # get script arguments
     arguments = tools.get_script_arguments()
-    # get logger
+
     logger = tools.get_stdout_logger(tools.logger_name, arguments.log_level)
 
     if arguments.integration_type == "pubsub":
@@ -50,10 +50,9 @@ try:
     num_processed_messages = integration.process_data()
 
 except Exception as e:
-    # write the trace in the log file
     logger.critical(f'An exception happened while running the wodle: {e}')
-    os._exit(-1)
+    sys.exit(1)
 
 else:
-    logger.info(f'Received and acknowledged {num_processed_messages} messages')  # noqa: E501
-    os._exit(0)
+    logger.info(f'Received and acknowledged {num_processed_messages} messages')
+    sys.exit(0)

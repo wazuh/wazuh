@@ -10,9 +10,7 @@ import csv
 import os
 import sys
 
-from google.cloud import storage
-
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))  # noqa: E501
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from bucket import WazuhGCloudBucket
 
 

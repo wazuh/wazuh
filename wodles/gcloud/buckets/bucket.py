@@ -239,7 +239,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         """Format every event obtained from `load_information_from_file` and send them to Analysisd. If the
         `remove_file` was used the blob will be removed from the bucket after being processed.
 
-        Attributes
+        Parameters
         ----------
         blob : google.cloud.storage.blob.Blob
             A blob object obtained from the bucket

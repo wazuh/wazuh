@@ -8,8 +8,8 @@
 
 """This module contains tools for processing events from a Google Cloud subscription."""  # noqa: E501
 
+import logging
 import socket
-
 import tools
 
 
@@ -19,7 +19,7 @@ class WazuhGCloudIntegration:
     header = '1:Wazuh-GCloud:'
     key_name = 'gcp'
 
-    def __init__(self, logger):
+    def __init__(self, logger: logging.Logger):
         self.wazuh_queue = tools.get_wazuh_queue()
         self.logger = logger
 
@@ -28,7 +28,15 @@ class WazuhGCloudIntegration:
 
     def format_msg(self, msg: str) -> str:
         """Format a message.
-        :param msg: Message to be formatted
+
+        Parameters
+        ----------
+        msg : str
+            Message to be formatted
+
+        Returns
+        -------
+        An str with the formatted message
         """
         # Insert msg as value of self.key_name key.
         return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
@@ -38,7 +46,11 @@ class WazuhGCloudIntegration:
 
     def send_msg(self, msg: str):
         """Send an event to the Wazuh queue.
-        :param msg: Event to be sent
+
+        Parameters
+        ----------
+        msg : str
+            Event to be sent
         """
         event_json = f'{self.header}{msg}'.encode(errors='replace')  # noqa: E501
         try:

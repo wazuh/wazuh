@@ -30,11 +30,11 @@ log_levels = {0: logging.NOTSET,
 logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 
 
-def get_script_arguments():
+def get_script_arguments() -> args:
     """Get script arguments."""
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
-                                     description="Wazuh wodle for monitoring Google Cloud",  # noqa: E501
-                                     formatter_class=argparse.RawTextHelpFormatter)  # noqa: E501
+                                     description="Wazuh wodle for monitoring Google Cloud",
+                                     formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('-t', '--integration_type', dest='integration_type',
                         help='Supported integration types: pubsub, access_logs', required=True)
@@ -49,8 +49,7 @@ def get_script_arguments():
                         help='Path to credentials file', required=True)
 
     parser.add_argument('-m', '--max_messages', dest='max_messages', type=int,
-                        help='Number of maximum messages pulled in each iteration',  # noqa: E501
-                        default=100)
+                        help='Number of maximum messages pulled in each iteration', default=100)
 
     parser.add_argument('-l', '--log_level', dest='log_level', type=int,
                         help='Log level', required=False, default=3)
@@ -73,10 +72,16 @@ def get_script_arguments():
 def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
     """Create a logger which returns the messages by stdout.
 
-    :param name: Logger name
-    :param level: Log level to be set
-    :return: Logger configured with input parameters. Returns the messages by
-        stdout
+    Parameters
+    ----------
+    name : str
+        Logger name
+    level : int
+        Log level to be set
+
+    Returns
+    -------
+    Logger configured with input parameters. Returns the messages by stdout
     """
     logger_stdout = logging.getLogger(name)
     # set log level
@@ -92,8 +97,16 @@ def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
 def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
     """Create a logger which returns the messages in a file. Useful for debugging.
 
-    :return: Logger configured with input parameters. Returns the messages in
-        a output file
+    Parameters
+    ----------
+    output_file : str
+        Path to the output file
+    level : int
+        Logging level
+
+    Returns
+    -------
+    Logger configured with input parameters. Returns the messages in a output file
     """
     logger_file = logging.getLogger(f'{logger_name}_debug')
     # set log level
@@ -112,16 +125,22 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
 
 
 def get_wazuh_queue() -> str:
-    """Get Wazuh queue"""
+    """Get Wazuh queue
+
+    Returns
+    -------
+    A str containing the path to Wazuh queue"""
     return os.path.join(find_wazuh_path(), 'queue', 'sockets', 'queue')
 
 
 @lru_cache(maxsize=None)
 def find_wazuh_path() -> str:
     """
-    Gets the path where Wazuh is installed dinamically
+    Gets the path where Wazuh is installed dynamically
 
-    :return: str path where Wazuh is installed or empty string if there is no framework in the environment
+    Returns
+    -------
+    A str path where Wazuh is installed or empty string if there is no framework in the environment
     """
     abs_path = os.path.abspath(os.path.dirname(__file__))
     allparts = []
@@ -146,7 +165,19 @@ def find_wazuh_path() -> str:
 
     return wazuh_path
 
-def arg_valid_date(arg_string):
+
+def arg_valid_date(arg_string : str):
+    """Validation function for only_logs_after dates.
+
+    Parameters
+    ----------
+    arg_string : str
+        The only_logs_after value in YYYY-MMM-DD format.
+
+    Returns
+    -------
+    The formatted date
+    """
     try:
         return datetime.strptime(arg_string, "%Y-%b-%d").replace(tzinfo=pytz.UTC)
     except ValueError:
