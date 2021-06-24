@@ -37,6 +37,14 @@ typedef struct group_t {
 static OSHash *invalid_files;
 
 /* Internal functions prototypes */
+
+/**
+ * @brief Get agent group
+ * @param agent_id. Agent id to assign a group
+ * @param msg. Message from agent to process and validate current configuration files
+ * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
+ * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
+ */
 static int lookfor_agent_group(const char *agent_id, char *msg, char **group);
 static void read_controlmsg(const char *agent_id, char *msg, char *group);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
@@ -1056,7 +1064,7 @@ static int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         if (f_sum = find_sum(group), !f_sum) {
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
-            mdebug1("No such group '%s' for agent '%s'", group, agent_id);
+            merror("No such group '%s' for agent '%s'", group, agent_id);
             return OS_INVALID;
         }
         w_mutex_unlock(&files_mutex);
@@ -1163,7 +1171,7 @@ static void read_controlmsg(const char *agent_id, char *msg, char *group)
         /* Unlock mutex */
         w_mutex_unlock(&files_mutex);
 
-        mdebug1("No such group '%s' for agent '%s'", group, agent_id);
+        merror("No such group '%s' for agent '%s'", group, agent_id);
         return;
     }
 

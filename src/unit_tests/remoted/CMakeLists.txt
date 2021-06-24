@@ -21,7 +21,7 @@ target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate remoted tests
 list(APPEND remoted_names "test_manager")
-list(APPEND remoted_flags "-W")
+list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
