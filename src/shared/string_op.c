@@ -760,6 +760,46 @@ long w_parse_time(const char * string) {
     return seconds >= 0 ? seconds : -1;
 }
 
+// Parse positive size string into bytes
+
+ssize_t w_parse_size(const char * string) {
+    char c;
+    ssize_t size;
+
+    switch (sscanf(string, "%zd%c", &size, &c)) {
+    case 1:
+        break;
+
+    case 2:
+        switch (c) {
+        case 'G':
+        case 'g':
+            size *= 1073741824;
+            break;
+        case 'M':
+        case 'm':
+            size *= 1048576;
+            break;
+        case 'K':
+        case 'k':
+            size *= 1024;
+            break;
+        case 'B':
+        case 'b':
+            break;
+        default:
+            return -1;
+        }
+
+        break;
+
+    default:
+        return -1;
+    }
+
+    return size >= 0 ? size : -1;
+}
+
 // Get time unit from seconds
 
 char*  w_seconds_to_time_unit(long seconds, bool long_format) {
@@ -787,7 +827,7 @@ char*  w_seconds_to_time_unit(long seconds, bool long_format) {
 // Get time value from seconds
 
 long w_seconds_to_time_value(long seconds) {
-    
+
     if(seconds < 0) {
         return -1;
     }

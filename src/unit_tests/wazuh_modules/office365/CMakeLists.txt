@@ -6,37 +6,37 @@
 # Foundation.
 
 # Tests list and flags
-list(APPEND tests_names "test_wm_github")
-list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror\
-                        -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,StartMQ -Wl,--wrap,sleep \
-                        -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,wm_sendmsg -Wl,--wrap,OSRegex_Compile \
-                        -Wl,--wrap,wm_state_io -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
-                        -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,localtime_r")
+list(APPEND tests_names "test_wm_office365")
+list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,access \
+                        -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,wurl_http_request \
+                        -Wl,--wrap,wurl_free_response -Wl,--wrap,wm_sendmsg -Wl,--wrap,strftime -Wl,--wrap,localtime_r \
+                        -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ")
+
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB github ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM github ../../../wazuh_modules/main.o)
+file(GLOB office365 ../../../wazuh_modules/*.o)
+list(REMOVE_ITEM office365 ../../../wazuh_modules/main.o)
 
-add_library(GITHUB_O STATIC ${github})
+add_library(OFFICE365_O STATIC ${office365})
 
 set_source_files_properties(
-  ${github}
+  ${office365}
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
   )
 
 set_target_properties(
-  GITHUB_O
+  OFFICE365_O
   PROPERTIES
   LINKER_LANGUAGE C
   )
 
-target_link_libraries(GITHUB_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(OFFICE365_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Compiling tests
@@ -58,7 +58,7 @@ foreach(counter RANGE ${count})
             ${test_name}
             ${WAZUHLIB}
             ${WAZUHEXT}
-            GITHUB_O
+            OFFICE365_O
             -lcmocka
             -ldl
             -fprofile-arcs
@@ -70,7 +70,6 @@ foreach(counter RANGE ${count})
             ${TEST_DEPS}
         )
     endif()
-
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(

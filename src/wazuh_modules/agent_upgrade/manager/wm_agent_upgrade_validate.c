@@ -187,7 +187,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     // Set versions respository
     snprintf(versions_url, OS_SIZE_4096, "%sversions", path_url);
 
-    versions = wurl_http_get(versions_url);
+    versions = wurl_http_get(versions_url, WM_UPGRADE_MAX_RESPONSE_SIZE);
 
     if (versions) {
         char *version = versions;
