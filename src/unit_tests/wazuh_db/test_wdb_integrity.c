@@ -706,6 +706,8 @@ void test_wdbi_query_checksum_last_manager_success(void **state)
     will_return(__wrap_wdb_stmt_cache, -1);
     will_return(__wrap_wdb_stmt_cache, -1);
 
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '000' fim range checksum avoided.");
+
     ret = wdbi_query_checksum(data, WDB_FIM, INTEGRITY_CHECK_GLOBAL, payload);
 
     assert_int_equal(ret, INTEGRITY_SYNC_CKS_OK);
