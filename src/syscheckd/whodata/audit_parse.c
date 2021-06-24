@@ -374,6 +374,7 @@ void audit_parse(char *buffer) {
     char *psuccess;
     char *pconfig;
     char *pdelete;
+    char *endptr = NULL;
     regmatch_t match[2];
     int match_size;
     char *path0 = NULL;
@@ -460,16 +461,30 @@ void audit_parse(char *buffer) {
                 char *chr_item;
                 os_malloc(match_size + 1, chr_item);
                 snprintf(chr_item, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                items = atoi(chr_item);
+
+                // No further checks needed on items
+                items = strtol(chr_item, NULL, 10);
+
                 free(chr_item);
             }
+
             // user_name & user_id
             if (regexec(&regexCompiled_uid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->user_id);
                 snprintf(w_evt->user_id, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->user_name = get_user(atoi(w_evt->user_id));
+
+                if (w_evt->user_id[0] != '\0') {
+                    errno = 0;
+                    int user_id = strtol(w_evt->user_id, &endptr, 10);
+
+                    if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                        w_evt->user_name = get_user(user_id);
+                    }
+                    endptr = NULL;
+                }
             }
+
             // audit_name & audit_uid
             if (regexec(&regexCompiled_auid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
@@ -484,8 +499,18 @@ void audit_parse(char *buffer) {
                     w_evt->audit_name = NULL;
                     w_evt->audit_uid = NULL;
                 } else {
-                    w_evt->audit_name = get_user(atoi(auid));
-                    w_evt->audit_uid = strdup(auid);
+                    w_evt->audit_uid = auid;
+                    auid = NULL;
+
+                    if (w_evt->audit_uid[0] != '\0') {
+                        errno = 0;
+                        int audit_uid = strtol(w_evt->audit_uid, &endptr, 10);
+
+                        if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                            w_evt->audit_name = get_user(audit_uid);
+                        }
+                        endptr = NULL;
+                    }
                 }
                 os_free(auid);
             }
@@ -494,14 +519,32 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->effective_uid);
                 snprintf(w_evt->effective_uid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->effective_name = get_user(atoi(w_evt->effective_uid));
+
+                if (w_evt->effective_uid[0] != '\0') {
+                    errno = 0;
+                    int euid = strtol(w_evt->effective_uid, &endptr, 10);
+
+                    if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                        w_evt->effective_name = get_user(euid);
+                    }
+                    endptr = NULL;
+                }
             }
             // group_name & group_id
             if (regexec(&regexCompiled_gid, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->group_id);
                 snprintf(w_evt->group_id, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->group_name = (char *)get_group(atoi(w_evt->group_id));
+
+                if (w_evt->group_id[0] != '\0') {
+                    errno = 0;
+                    int gid = strtol(w_evt->group_id, &endptr, 10);
+
+                    if (errno != ERANGE && endptr != NULL && *endptr == '\0') {
+                        w_evt->group_name = get_group(gid);
+                    }
+                    endptr = NULL;
+                }
             }
             // process_id
             if (regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
@@ -509,7 +552,9 @@ void audit_parse(char *buffer) {
                 char *pid = NULL;
                 os_malloc(match_size + 1, pid);
                 snprintf(pid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->process_id = atoi(pid);
+
+                w_evt->process_id = strtol(pid, &endptr, 10);
+
                 free(pid);
             }
             // ppid
@@ -521,7 +566,9 @@ void audit_parse(char *buffer) {
                 os_malloc(match_size + 1, ppid);
                 snprintf(ppid, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
                 get_parent_process_info(ppid, &w_evt->parent_name, &w_evt->parent_cwd);
-                w_evt->ppid = atoi(ppid);
+
+                w_evt->ppid = strtol(ppid, &endptr, 10);
+
                 free(ppid);
             }
             // process_name

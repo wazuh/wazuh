@@ -541,16 +541,12 @@ stages:
         limit: 2
         sort: -level
     response:
-        status_code: 200
-        json:
-          error: !anyint
-          data:
-            affected_items:
-              - <<: *manager_log
-              - <<: *manager_log
-            failed_items: []
-            total_affected_items: !anyint
-            total_failed_items: 0
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "level"
+            reverse: true
+      status_code: 200
 
   # GET /manager/logs
   - name: Filters -> offset=3, limit=3
