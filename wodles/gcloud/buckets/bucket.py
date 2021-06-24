@@ -13,7 +13,11 @@ import sqlite3
 import sys
 
 from datetime import datetime
-from google.cloud import storage
+try:
+    from google.cloud import storage
+except ImportError:
+    print('ERROR: google-cloud-storage module is required.')
+    sys.exit(4)
 from google.api_core import exceptions as google_exceptions
 
 

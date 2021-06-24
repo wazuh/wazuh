@@ -9,7 +9,11 @@
 import os
 import sys
 
-from google.cloud import pubsub_v1 as pubsub
+try:
+    from google.cloud import pubsub_v1 as pubsub
+except ImportError:
+    print('ERROR: google-cloud-storage module is required.')
+    sys.exit(4)
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from integration import WazuhGCloudIntegration
@@ -97,8 +101,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         while len(response.received_messages) > 0 and processed_messages < self.max_messages:
             for message in response.received_messages:
                 message_data: bytes = message.message.data
-                if self.logger.getEffectiveLevel() == logging.DEBUG:
-                    self.logger.debug(f'Processing event:\n{self.format_msg(message_data.decode(errors="replace"))}')
+                self.logger.debug(f'Processing event:\n{self.format_msg(message_data.decode(errors="replace"))}')
                 self.process_message(message.ack_id, message_data)
                 processed_messages += 1
             # get more messages
