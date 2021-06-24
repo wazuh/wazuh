@@ -207,7 +207,6 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mte
                          -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_merror_exit -Wl,--wrap,_minfo \
                          -Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int")
 list(APPEND syscheckd_tests_names "test_syscheck")
-list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
 
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
