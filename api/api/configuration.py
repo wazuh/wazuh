@@ -32,6 +32,7 @@ default_api_configuration = {
     "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "max_upload_size": 1048576,
     "intervals": {
         "request_timeout": 10
     },

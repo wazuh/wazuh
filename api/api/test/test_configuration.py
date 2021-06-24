@@ -16,6 +16,7 @@ custom_api_configuration = {
     "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "max_upload_size": 1048576,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
@@ -104,6 +105,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'use_only_authd': 'invalid_type'},
     {'drop_privileges': 'invalid_type'},
     {'experimental_features': 'invalid_type'},
+    {'max_upload_size': 'invalid_type'},
     {'https': {'enabled': 'invalid_type'}},
     {'https': {'key': 12345}},
     {'https': {'cert': 12345}},
