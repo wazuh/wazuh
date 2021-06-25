@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/var/ossec/framework/python/bin/python3
 # -*- coding: UTF-8 -*-
 #
 # Copyright (C) 2015-2021, Wazuh Inc.
