@@ -7,17 +7,19 @@
 # it and/or modify it under the terms of GPLv2
 
 import json
+import logging
 import os
 import pytz
 import sqlite3
 import sys
 
 from datetime import datetime
+
 try:
     from google.cloud import storage
 except ImportError:
     print('ERROR: google-cloud-storage module is required.')
-    sys.exit(4)
+    sys.exit(1)
 from google.api_core import exceptions as google_exceptions
 
 
@@ -26,34 +28,30 @@ from integration import WazuhGCloudIntegration
 
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
-    """
-    Class for getting Google Cloud Storage Bucket logs
+    """Class for getting Google Cloud Storage Bucket logs"""
 
-    Attributes
-    ----------
-    project_id : str
-        The id of the GCP Project where the bucket is stored
-    bucket_name : str
-        Name of the bucket to read the logs from
-    client : google.cloud.storage.client.Client
-        Connection object to Google Cloud Storage
-    prefix : prefix
-        Expected prefix for the logs. It can be used to specify the relative path where the logs are stored
-    db_path : str
-        Path to the gcloud database file
-    db_connector : sqlite3.Connection
-        Connection object to the gcloud database file
-    sql_create_table : str
-        SQL query used to create the required table for a given bucket type
-    sql_find_last_creation_time : str
-        SQL query used to find the creation time of the last processed file in the bucket
-    """
-
-    def __init__(self, credentials_file: str, logger, bucket_name: str, prefix: str = None,
+    def __init__(self, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
                  delete_file: bool = False, only_logs_after: datetime = None):
+        """Class constructor.
+
+        Parameters
+        ----------
+        credentials_file : str
+            Path to credentials file
+        logger : logging.Logger
+            Logger to use
+        bucket_name : str
+            Name of the bucket to read the logs from
+        prefix : prefix
+            Expected prefix for the logs. It can be used to specify the relative path where the logs are stored
+        delete_file : bool
+            Indicate whether blobs should be deleted after being processed
+        only_logs_after : str
+            Date after which obtain logs
+        """
         WazuhGCloudIntegration.__init__(self, logger)
-        self.bucket = None
         self.bucket_name = bucket_name
+        self.bucket = None
         self.client = storage.client.Client.from_service_account_json(credentials_file)
         self.project_id = self.client.project
         self.prefix = prefix
@@ -141,18 +139,24 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             pass
 
     def process_data(self):
-        """Iterate over the contents of the bucket and process each file.
-        As the 'list_blobs' function always returns the complete list of files contained in the bucket this function
-        checks if a particular file should be processed by taking into account the 'only_logs_after' and 'prefix'
-        values. If the database have a last_creation_time stored every blob with a creation_time older than that will
-        skipped."""
+        """Iterate over the contents of the bucket and process each blob contained.
+        As the 'list_blobs' function will always return the complete list of blobs contained in the bucket this function
+        checks if a particular file should be processed by taking into account the 'only_logs_after' and 'prefix', as
+        well as the creation time of each blob.
+
+        Returns
+        -------
+        The number of processed blobs
+        """
         def get_last_creation_time():
+            """Get the latest creation time value stored in the database for the given project, bucket_name and
+            prefix."""
             creation_time = datetime.min.replace(tzinfo=pytz.UTC)
             query_creation_time = self.db_connector.execute(
                 self.sql_find_last_creation_time.format(table_name=self.db_table_name,
-                                                 project_id=self.project_id,
-                                                 bucket_name=self.bucket_name,
-                                                 prefix=self.prefix))
+                                                        project_id=self.project_id,
+                                                        bucket_name=self.bucket_name,
+                                                        prefix=self.prefix))
             try:
                 creation_time = query_creation_time.fetchone()[0]
                 creation_time = datetime.strptime(creation_time, self.datetime_format)
@@ -161,16 +165,19 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             return creation_time
 
         def get_last_processed_files():
-            processed_files = self.db_connector.execute(self.sql_find_processed_files.format(table_name=self.db_table_name,
-                                                                                  project_id=self.project_id,
-                                                                                  bucket_name=self.bucket_name,
-                                                                                  prefix=self.prefix))
+            """Get the names of the blobs processed during the last execution."""
+            processed_files = self.db_connector.execute(
+                self.sql_find_processed_files.format(table_name=self.db_table_name,
+                                                     project_id=self.project_id,
+                                                     bucket_name=self.bucket_name,
+                                                     prefix=self.prefix))
             try:
                 return [p[0] for p in processed_files.fetchall()]
             except (TypeError, IndexError):
                 return list()
 
         def update_last_processed_files():
+            """Remove the records for the previous execution and store the new values from the current one."""
             if processed_files and processed_files != list():
                 self.logger.info('Updating previously processed files.')
                 try:
@@ -232,12 +239,12 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                 self.db_connector.close()
         return processed_messages
 
-    def load_information_from_file(self, msg):
+    def load_information_from_file(self, msg: str):
         raise NotImplementedError
 
     def process_blob(self, blob):
         """Format every event obtained from `load_information_from_file` and send them to Analysisd. If the
-        `remove_file` was used the blob will be removed from the bucket after being processed.
+        `delete_file` was used the blob will be removed from the bucket after being processed.
 
         Parameters
         ----------
