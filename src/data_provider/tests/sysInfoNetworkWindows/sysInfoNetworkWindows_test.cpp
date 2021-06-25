@@ -86,11 +86,15 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV4)
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(dhcp));
     EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(metrics));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
-    EXPECT_EQ(address, networkInfo.at("IPv4").at("address").get_ref<const std::string&>());
-    EXPECT_EQ(netmask, networkInfo.at("IPv4").at("netmask").get_ref<const std::string&>());
-    EXPECT_EQ(broadcast, networkInfo.at("IPv4").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ(dhcp, networkInfo.at("IPv4").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ(metrics, networkInfo.at("IPv4").at("metric").get_ref<const std::string&>());
+
+    for (auto& element : networkInfo.at("IPv4"))
+    {
+        EXPECT_EQ(address, element.at("address").get_ref<const std::string&>());
+        EXPECT_EQ(netmask, element.at("netmask").get_ref<const std::string&>());
+        EXPECT_EQ(broadcast, element.at("broadcast").get_ref<const std::string&>());
+        EXPECT_EQ(dhcp, element.at("dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(metrics, element.at("metric").get_ref<const std::string&>());
+    }
 }
 
 TEST_F(SysInfoNetworkWindowsTest, Test_IPV6)
@@ -109,11 +113,15 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV6)
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(dhcp));
     EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return(metrics));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
-    EXPECT_EQ(address, networkInfo.at("IPv6").at("address").get_ref<const std::string&>());
-    EXPECT_EQ(netmask, networkInfo.at("IPv6").at("netmask").get_ref<const std::string&>());
-    EXPECT_EQ(broadcast, networkInfo.at("IPv6").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ(dhcp, networkInfo.at("IPv6").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ(metrics, networkInfo.at("IPv6").at("metric").get_ref<const std::string&>());
+
+    for (auto& element : networkInfo.at("IPv6"))
+    {
+        EXPECT_EQ(address, element.at("address").get_ref<const std::string&>());
+        EXPECT_EQ(netmask, element.at("netmask").get_ref<const std::string&>());
+        EXPECT_EQ(broadcast, element.at("broadcast").get_ref<const std::string&>());
+        EXPECT_EQ(dhcp, element.at("dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(metrics, element.at("metric").get_ref<const std::string&>());
+    }
 }
 
 TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)

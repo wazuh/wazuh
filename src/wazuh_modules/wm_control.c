@@ -93,15 +93,25 @@ char* getPrimaryIP(){
                             continue;
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring," ")) {
                             const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
                             if (!ipv4) {
                                 continue;
                             }
-                            cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                            if (address && cJSON_GetStringValue(address))
-                            {
-                                os_strdup(address->valuestring, agent_ip);
+                            const int size_proto_interfaces = cJSON_GetArraySize(ipv4);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ipv4 = cJSON_GetArrayItem(ipv4, j);
+                                if(!element_ipv4) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ipv4, "address");
+                                if (address && cJSON_GetStringValue(address))
+                                {
+                                    os_strdup(address->valuestring, agent_ip);
+                                    break;
+                                }
+                            }
+                            if (agent_ip) {
                                 break;
                             }
                         }

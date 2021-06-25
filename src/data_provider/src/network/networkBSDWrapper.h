@@ -27,6 +27,7 @@
 #include "networkHelper.h"
 #include "makeUnique.h"
 #include "sharedDefs.h"
+#include "stringHelper.h"
 
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
@@ -55,7 +56,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
         std::string name() const override
         {
-            return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
+            return m_interfaceAddress->ifa_name ? Utils::substrOnFirstOccurrence(m_interfaceAddress->ifa_name, ":") : "";
         }
 
         std::string adapter() const override

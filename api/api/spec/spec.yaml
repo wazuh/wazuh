@@ -621,8 +621,8 @@ components:
             $ref: '#/components/schemas/RequestError'
           example:
             title: "Wazuh Error"
-            detail: "Maximum number of request per minute reached"
-            remediation: "This limit can be changed in security.yaml file. More information here:
+            detail: "Maximum number of requests per minute reached"
+            remediation: "This limit can be changed in api.yaml file. More information here:
             https://documentation.wazuh.com/4.3/user-manual/api/security/configuration.html"
             code: 6001
 
@@ -1414,13 +1414,13 @@ components:
     AgentGroupDeleted:
       type: object
       required:
-      - affected_agents
+      - affected_items
       properties:
-        affected_agents:
+        affected_items:
           type: array
-          description: "List of agents which belonged to the group and might have been reassigned to group default"
+          description: "List of removed groups with the agents which belonged to it and might have been reassigned to group default"
           items:
-            $ref: '#/components/schemas/AgentID'
+            $ref: '#/components/schemas/GroupDelete'
 
     AgentIdKey:
       type: object
@@ -1501,11 +1501,11 @@ components:
       description: "Agent ID"
       format: numbers
 
-    AgentID_DELETE:
+    AgentIDListAll:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: numbers_delete
+      format: numbers_or_all
 
     NodeID:
       type: string
@@ -1517,11 +1517,17 @@ components:
       description: "Group name"
       format: group_names
 
-    GroupID_DELETE:
+    GroupIDListAll:
       type: string
       minLength: 1
       description: "Group name|all"
-      format: group_names_delete
+      format: group_names_or_all
+
+    GroupDelete:
+      type: object
+      description: "Deleted group with a list of agents that were assigned to it"
+      additionalProperties:
+        type: array
 
     AgentConfiguration:
       type: object
@@ -1748,14 +1754,14 @@ components:
     Role_id_DELETE:
       type: string
       description: "Role ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     Security_rule_id:
       type: string
       format: numbers
       description: "Security rule ID"
     Security_rule_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "Security rule ID|all"
     Task_id:
       type: string
@@ -1768,14 +1774,14 @@ components:
     Policy_id_DELETE:
       type: string
       description: "Policy ID|all"
-      format: numbers_delete
+      format: numbers_or_all
     User_id:
       type: string
       format: numbers
       description: "User ID"
     User_id_DELETE:
       type: string
-      format: numbers_delete
+      format: numbers_or_all
       description: "User ID|all"
     PoliciesRequest:
       type: object
@@ -3543,7 +3549,7 @@ components:
     agent_name:
       in: query
       name: agent_name
-      description: "Agent name"
+      description: "Agent name. The special characters allowed are: '-','_','.' "
       required: true
       schema:
         type: string
@@ -3945,7 +3951,17 @@ components:
     limit:
       in: query
       name: limit
-      description: "Maximum number of elements to return"
+      description: "Maximum number of elements to return. Although up to 100.000 can be specified, it is recommended not to exceed 500 elements. Responses may be slower the more this number is exceeded. "
+      schema:
+        type: integer
+        format: int32
+        default: 500
+        minimum: 1
+        maximum: 100000
+    log_lines:
+      in: query
+      name: limit
+      description: "Maximum number of lines to return."
       schema:
         type: integer
         format: int32
@@ -3978,7 +3994,7 @@ components:
         items:
           $ref: '#/components/schemas/AgentID'
         maxItems: 100
-    agents_list_delete:
+    agents_list_all:
       in: query
       name: agents_list
       description: "List of agent IDs (separated by comma), use the keyword `all` to select all agents"
@@ -3986,7 +4002,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentID_DELETE'
+          $ref: '#/components/schemas/AgentIDListAll'
     groups_list:
       in: query
       name: groups_list
@@ -3995,7 +4011,7 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupID'
-    groups_list_delete:
+    groups_list_all:
       in: query
       name: groups_list
       description: "List of group IDs (separated by comma), use the keyword 'all' to select all groups"
@@ -4003,7 +4019,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/GroupID_DELETE'
+          $ref: '#/components/schemas/GroupIDListAll'
     node:
       in: query
       name: node
@@ -4237,13 +4253,6 @@ components:
       required: False
       schema:
         type: boolean
-    raw_conf:
-      in: query
-      name: raw
-      description: "Format response in plain text"
-      required: False
-      schema:
-        type: boolean
     registry:
       in: query
       name: registry
@@ -4395,7 +4404,7 @@ components:
       in: query
       name: search
       description: "Look for elements containing the specified string. To obtain a complementary search, use '-' at the
-      beggining"
+      beginning"
       schema:
         type: string
         format: search
@@ -4515,7 +4524,7 @@ components:
     typesys:
       in: query
       name: type
-      description: "Type of file"
+      description: "Type of interface"
       schema:
         type: string
     allow_run_as:
@@ -5213,7 +5222,7 @@ components:
     package_version:
       in: query
       name: version
-      description: "Filter by version name"
+      description: "Filter by package version"
       schema:
         type: string
     older_than:
@@ -5244,7 +5253,7 @@ components:
     force_single_group:
       in: query
       name: force_single_group
-      description: "Whether to append the new group to current agent's multigroup or replace it"
+      description: "Removes the agent from all groups to which it belongs and assigns it to the specified group"
       schema:
         type: boolean
     wpk_repo:
@@ -5449,8 +5458,8 @@ paths:
                     - "001"
                     - "002"
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: 'AR command was sent to all agents'
                 error: 0
         '400':
@@ -5480,7 +5489,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
@@ -5514,8 +5523,9 @@ paths:
                     - '001'
                     - '002'
                     - '003'
-                  older_than: 1s
                   total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
                 message: 'All selected agents were deleted'
                 error: 0
         '400':
@@ -5573,82 +5583,78 @@ paths:
               example:
                 data:
                   affected_items:
-                    - configSum: 29e0926e5a77442212e824868a2a61df
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group1
+                    - os:
+                        arch: x86_64
+                        codename: Focal Fossa
+                        major: '20'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '001'
-                      ip: 172.18.0.6
-                      lastKeepAlive: '2019-10-16T09:13:34Z'
+                      dateAdd: 2021-05-26T12:40:08Z
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
                       manager: wazuh-worker2
-                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
-                      name: wazuh-agent1
+                      group: [default]
+                      registerIP: Any
+                      ip: 172.25.0.6
+                      name: ac7cb188d538
+                      status: active
+                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      version: Wazuh v4.3.0
                       node_name: worker2
-                      os:
+                    - os:
                         arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
+                        codename: Focal Fossa
+                        major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group2
+                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '002'
-                      ip: 172.18.0.7
-                      lastKeepAlive: '2019-10-16T09:13:28Z'
+                      dateAdd: 2021-05-26T12:40:10Z
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
                       manager: wazuh-worker2
-                      mergedSum: d6fde33dc232d8f91359b2e98994c933
-                      name: wazuh-agent2
+                      group: [default]
+                      registerIP: Any
+                      ip: 172.25.0.11
+                      name: 91642a418627
+                      status: active
+                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      version: Wazuh v4.3.0
                       node_name: worker2
-                      os:
+                    - os:
                         arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
+                        codename: Focal Fossa
+                        major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group3
+                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '003'
-                      ip: 172.18.0.8
-                      lastKeepAlive: '2019-10-16T09:13:29Z'
-                      manager: wazuh-master
-                      mergedSum: e40515ffa928c72ee167ed41d88245c4
-                      name: wazuh-agent3
-                      node_name: master-node
-                      os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
+                      dateAdd: 2021-05-26T12:40:10Z
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                      manager: wazuh-worker2
+                      group: [default]
+                      registerIP: Any
+                      ip: 172.25.0.10
+                      name: a442e15bc84e
                       status: active
-                      version: Wazuh v3.10.0
+                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      version: Wazuh v4.3.0
+                      node_name: worker1
                   total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
                 message: 'All selected agents information was returned'
                 error: 0
         '400':
@@ -5676,6 +5682,7 @@ paths:
         content:
           application/json:
               schema:
+                type: object
                 properties:
                   name:
                     description: "Agent name"
@@ -5687,7 +5694,8 @@ paths:
                     type: string
                     format: alphanumeric
                   force_time:
-                    description: "Remove the old agent with the same IP if disconnected since <force_time> seconds"
+                    description: "Remove the old agent with the same name or IP if disconnected for <force_time>
+                    seconds"
                     type: integer
                     format: int32
                     minimum: 0
@@ -5710,9 +5718,11 @@ paths:
                       $ref: '#/components/schemas/AgentIdKey'
               example:
                 data:
-                  id: "007"
-                  key: "MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFj
-                  MGQyYzczY2VlYzRhZQ=="
+                  id: "009"
+                  key: "MDA5IE5ld0hvc3RfMiAxMC4wLjEwLjExIDhkNjllMzRiYTM2ZjcwMzgzZmVkNTIyNzk4MzFiZDg2NWQzZGRkZjJhMTkwZWR
+                    jMjY5YmRhOTY1ODU4M2JkMjg="
+                message: "User was successfully created"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5759,16 +5769,27 @@ paths:
               example:
                 data:
                   client:
-                    config-profile: "ubuntu, ubuntu18, ubuntu18.04"
+                    config-profile: "ubuntu, ubuntu20, ubuntu20.04"
                     notify_time: 10
                     time-reconnect: 60
+                    force_reconnect_interval: 0
+                    ip_update_interval: 0
                     auto_restart: "yes"
                     remote_conf: "yes"
                     crypto_method: "aes"
                     server:
-                      - address: "nginx-lb/172.18.0.2"
+                      - address: "nginx-lb/172.25.0.4"
                         port: 1514
+                        max_retries: 5
+                        retry_interval: 10
                         protocol: tcp
+                    enrollment:
+                      - enabled: "yes"
+                        delay_after_enrollment: 20
+                        port: 1515
+                        ssl_cipher: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
+                        auto_method: "no"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -5814,8 +5835,8 @@ paths:
                   affected_items:
                     - group1
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: 'Specified agent was removed from returned groups'
                 error: 0
         '400':
@@ -5860,9 +5881,9 @@ paths:
                   affected_items:
                     - id: '002'
                       synced: true
-                  failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: 'Sync info was returned for all selected agents'
                 error: 0
         '400':
@@ -5881,8 +5902,8 @@ paths:
       tags:
         - Agents
       summary: "Remove agent from group"
-      description: "Remove an agent from an specified group. If the agent has multigroups, it will preserve all
-      previous groups except the last one"
+      description: "Remove an agent from a specified group. If the agent belongs to several groups, only the specified
+      group will be deleted."
       operationId: api.controllers.agent_controller.delete_single_agent_single_group
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:modify_group'
@@ -5900,7 +5921,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Agent '004' removed from group 'dmz'"
+                message: "Agent '004' removed from 'dmz'."
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -5914,7 +5935,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     put:
       tags:
         - Agents
@@ -5942,8 +5962,8 @@ paths:
                   affected_items:
                     - "003"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected agents were assigned to group3"
                 error: 0
         '400':
@@ -5991,8 +6011,8 @@ paths:
                       key: "MDAyIHdhenVoLWFnZW50MiBhbnkgMzAxYzk0Y2I3NDc5MzliMjAyYTg0OGE3NGIwMTNkODQwZWJkNWUyZmIxMjQ3Nzhl
                       NDhjYzUxOGE4MWQyNDFkYw=="
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Obtained keys for all selected agents"
                 error: 0
         '400':
@@ -6036,8 +6056,8 @@ paths:
                     affected_items:
                       - "002"
                     total_affected_items: 1
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "Restart command sent to all agents"
                   error: 0
         '400':
@@ -6076,64 +6096,66 @@ paths:
                 data:
                   affected_items:
                     - global:
-                        start: 'Wed Jan 13 16:08:57 2021'
-                        end: 'Thu Jan 14 12:28:11 2021'
+                        start: '2021-05-27 08:01:38'
+                        end: '2021-05-27 08:08:13'
                         files:
-                          - targets:
+                          - location: df -P
+                            events: 20
+                            bytes: 1784
+                            targets:
                               - name: agent
                                 drops: 0
-                            location: df -P
-                            bytes: 51414
-                            events: 570
-                          - targets:
-                              - name: agent
-                                drops: 0
-                            location: last -n 20
-                            bytes: 3762
-                            events: 57
-                          - targets:
-                              - name: agent
-                                drops: 0
-                            location: /var/ossec/logs/active-responses.log
-                            bytes: 0
+                          - location: /var/log/dpkg.log
                             events: 0
-                          - targets:
+                            bytes: 0
+                            targets:
                               - name: agent
                                 drops: 0
-                            location: /var/log/dpkg.log
-                            bytes: 0
+                          - location: /var/ossec/logs/active-responses.log
                             events: 0
+                            bytes: 0
+                            targets:
+                              - name: agent
+                                drops: 0
+                          - location: last -n 20
+                            events: 2
+                            bytes: 132
+                            targets:
+                              - name: agent
+                                drops: 0
                       interval:
-                        start: 'Thu Jan 14 12:28:06 2021'
-                        end: 'Thu Jan 14 12:28:11 2021'
+                        start: '2021-05-27 08:08:08'
+                        end: '2021-05-27 08:08:08'
                         files:
-                          - targets:
+                          - location: df -P
+                            events: 0
+                            bytes: 0
+                            targets:
                               - name: agent
                                 drops: 0
-                            location: df -P
-                            bytes: 0
+                          - location: /var/log/dpkg.log
                             events: 0
-                          - targets:
+                            bytes: 0
+                            targets:
                               - name: agent
                                 drops: 0
-                            location: last -n 20
-                            bytes: 0
+                          - location: /var/ossec/logs/active-responses.log
                             events: 0
-                          - targets:
+                            bytes: 0
+                            targets:
                               - name: agent
                                 drops: 0
-                            location: /var/ossec/logs/active-responses.log
-                            bytes: 0
+                          - location: last -n 20
                             events: 0
-                          - targets:
+                            bytes: 0
+                            targets:
                               - name: agent
                                 drops: 0
-                            location: /var/log/dpkg.log
-                            bytes: 0
-                            events: 0
                   total_affected_items: 1
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
+                message: "Statistical information for each agent was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6178,7 +6200,7 @@ paths:
                       task_id: 2
                   total_affected_items: 2
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
                 message: "All upgrade tasks have been created"
                 error: 0
         '400':
@@ -6223,7 +6245,7 @@ paths:
                       task_id: 4
                   total_affected_items: 2
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
                 message: "All upgrade tasks have been created"
                 error: 0
         '400':
@@ -6271,7 +6293,7 @@ paths:
                       update_time: "2020/11/03 16:01:55"
                   total_affected_items: 1
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
                 message: "All agents have been updated"
                 error: 0
         '400':
@@ -6298,7 +6320,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
         - $ref: '#/components/parameters/group_id_query'
       responses:
         '200':
@@ -6321,9 +6343,9 @@ paths:
                     - '008'
                     - '010'
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
-                message: All selected agents were removed from group group1
+                  failed_items: []
+                message: "All selected agents were removed from group group1"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6337,7 +6359,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     put:
       tags:
         - Agents
@@ -6386,8 +6407,8 @@ paths:
                         - '011'
                   total_affected_items: 2
                   total_failed_items: 2
-                message: Some agents were not assigned to group2 and removed from the other groups
-                error: 2
+                  message: Some agents were not assigned to group2 and removed from the other groups
+                  error: 2
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6464,7 +6485,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/groups_list_delete'
+        - $ref: '#/components/parameters/groups_list_all'
       responses:
         '200':
           description: "Remove multiple group of multiple agents"
@@ -6477,19 +6498,18 @@ paths:
                   properties:
                     data:
                       allOf:
-                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
                       - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
                 data:
-                  affected_agents:
-                    - '002'
-                    - '005'
-                    - '003'
                   affected_items:
-                    - 'webserver'
-                    - 'dataserver'
+                    - webserver:
+                        - '002'
+                        - '003'
+                    - dataserver:
+                        - '005'
                   total_affected_items: 2
                   total_failed_items: 0
+                  failed_items: []
                   message: "All selected groups were deleted"
                   error: 0
         '400':
@@ -6502,7 +6522,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     get:
       tags:
         - Groups
@@ -6537,21 +6556,21 @@ paths:
               example:
                 data:
                   affected_items:
-                    - count: 2
-                      name: default
+                    - name: default
+                      count: 2
                       mergedSum: f8d49771911ed9d5c45b03a40babd065
                       configSum: ab73af41699f13fdd81903b5f23d8d00
-                    - count: 3
-                      name: dmz
+                    - name: dmz
+                      count: 3
                       mergedSum: 220d6c5fc253f251827ee7487341c0fc
                       configSum: cfbae9ecc10eb15f1b4fc736de6758cc
-                    - count: 0
-                      name: pciserver
+                    - name: pciserver
+                      count: 0
                       mergedSum: 220d6c5fc253f251827ee7487341c0fc
                       configSum: ab73af41699f13fdd81903b5f23d8d00
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected groups information was returned"
                 error: 0
         '400':
@@ -6564,7 +6583,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
     post:
       tags:
         - Groups
@@ -6580,6 +6598,7 @@ paths:
         content:
           application/json:
             schema:
+              type: object
               properties:
                 group_id:
                   description: "Group name"
@@ -6646,85 +6665,85 @@ paths:
               example:
                 data:
                   affected_items:
-                    - configSum: 29e0926e5a77442212e824868a2a61df
-                      dateAdd: '1970-01-01T00:00:00Z'
+                    - os:
+                        arch: x86_64
+                        codename: Focal Fossa
+                        major: 20
+                        minor: 04
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |b2497efbf876 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
+                      node_name: worker1
+                      ip: 172.20.0.7
+                      id: 004
+                      manager: wazuh-worker1
                       group:
                         - default
                         - group1
-                      id: '001'
-                      ip: 172.18.0.6
-                      lastKeepAlive: '2019-10-16T09:13:34Z'
-                      manager: wazuh-worker2
-                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
-                      name: wazuh-agent1
-                      node_name: worker2
-                      os:
+                      name: b2497efbf876
+                      configSum: 052374472f3a0d5c8508241dcc455ea7
+                      status: active
+                      dateAdd: 2021-05-27T09:14:19Z
+                      registerIP: any
+                      lastKeepAlive: 2021-05-27T09:23:59Z
+                      version: Wazuh v4.3.0
+                    - os:
                         arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
+                        codename: Focal Fossa
+                        major: 20
+                        minor: 04
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
-                      dateAdd: '1970-01-01T00:00:00Z'
+                        uname: Linux |600e27371700 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      node_name: worker1
+                      ip: 172.20.0.9
+                      id: 005
+                      manager: wazuh-worker1
                       group:
                         - default
                         - group2
-                      id: '002'
-                      ip: 172.18.0.7
-                      lastKeepAlive: '2019-10-16T09:13:28Z'
-                      manager: wazuh-worker2
-                      mergedSum: d6fde33dc232d8f91359b2e98994c933
-                      name: wazuh-agent2
-                      node_name: worker2
-                      os:
+                      name: 600e27371700
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                      status: active
+                      dateAdd: 2021-05-27T09:14:19Z
+                      registerIP: any
+                      lastKeepAlive: 2021-05-27T09:23:52Z
+                      version: Wazuh v4.3.0
+                    - os:
                         arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
+                        codename: Focal Fossa
+                        major: 20
+                        minor: 04
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
-                      dateAdd: '1970-01-01T00:00:00Z'
+                        uname: Linux |4bdac19ce5e3 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      node_name: worker2
+                      ip: 172.20.0.10
+                      id: 006
+                      manager: wazuh-worker2
                       group:
                         - default
                         - group3
-                      id: '003'
-                      ip: 172.18.0.8
-                      lastKeepAlive: '2019-10-16T09:13:29Z'
-                      manager: wazuh-master
-                      mergedSum: e40515ffa928c72ee167ed41d88245c4
-                      name: wazuh-agent3
-                      node_name: master-node
-                      os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
+                      name: 4bdac19ce5e3
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
                       status: active
-                      version: Wazuh v3.10.0
+                      dateAdd: 2021-05-27T09:14:19Z
+                      registerIP: any
+                      lastKeepAlive: 2021-05-27T09:23:52Z
+                      version: Wazuh v4.3.0
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
-                message: "All selected agents information is shown"
+                  failed_items: []
+                message: "All selected agents information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -6774,6 +6793,7 @@ paths:
                         format: int32
               example:
                 data:
+                  total_affected_items: 3
                   affected_items:
                     - filters:
                         name: agent_name
@@ -6793,9 +6813,7 @@ paths:
                         localfile:
                           - location: "/var/log/database.log"
                             log_format: syslog
-                  total_affected_items: 3
-                  failed_items: []
-                  total_failed_items: 0
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -6911,8 +6929,8 @@ paths:
                     - filename: win_malware_rcl.txt
                       hash: f5e0305e248bd00e05445f329bd1dd5e
                   total_affected_items: 10
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: 'All selected groups files were returned'
                 error: 0
         '400':
@@ -6933,7 +6951,7 @@ paths:
       tags:
         - Groups
       summary: "Get a file in group"
-      description: "Return the contents of the specified group file parsed to JSON"
+      description: "Return the content of the specified group file parsed to JSON"
       operationId: api.controllers.agent_controller.get_group_file_json
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
@@ -6960,16 +6978,22 @@ paths:
                 data:
                   vars: None
                   controls:
-                    - condition: all required
-                      name: CIS - Testing against the CIS Debian Linux Benchmark v1
-                      reference: CIS_Debian_Benchmark_v1.0pdf
+                    - name: "CIS - Testing against the CIS Debian Linux Benchmark v1."
+                      cis: []
+                      pci: []
+                      condition: "all required"
+                      reference: "CIS_Debian_Benchmark_v1.0pdf"
                       checks:
-                        - f:/etc/debian_version
+                        - "f:/etc/debian_version;"
+                        - "f:/proc/sys/kernel/ostype -> Linux;"
                     - name: "CIS - Debian Linux - 1.4 - Robust partition scheme - /tmp is not on its own partition"
+                      cis: []
+                      pci: []
                       condition: "any"
                       reference: "https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf"
                       checks:
                         - "f:/etc/fstab -> !r:/tmp;"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7033,8 +7057,8 @@ paths:
       tags:
         - Agents
       summary: "Add agent full"
-      description: "Add an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace
-      it using `force` parameter"
+      description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
+      same IP already exists, replace it using `force_time` parameter"
       operationId: api.controllers.agent_controller.insert_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:create'
@@ -7045,6 +7069,7 @@ paths:
         content:
           application/json:
               schema:
+                type: object
                 properties:
                   id:
                     $ref: '#/components/schemas/AgentID'
@@ -7065,7 +7090,8 @@ paths:
                     type: string
                     format: alphanumeric
                   force_time:
-                    description: "Remove the old agent with the same IP if disconnected for <force_time> seconds"
+                    description: "Remove the old agent with the same name, ID or IP if disconnected for <force_time>
+                    seconds"
                     type: integer
                     format: int32
                     minimum: 0
@@ -7090,9 +7116,10 @@ paths:
                       $ref: '#/components/schemas/AgentIdKey'
               example:
                 data:
-                  id: "001"
-                  key: "MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0
-                  dXZ3eHl6YWJjZGVmZ2hpNjQ="
+                  id: "010"
+                  key: "MDEwIHRlc3RfYWdlbnRfd2F6dWhfIDE3Mi4xNi4xNi4xNyBmZTNhYzUyYmUxMDc2MDgwOGI4Y2JiZTczNzFjZDIzMWJjYjF
+                    jZjUyMDVjYjMzNTI1YzhjZDEwZGIwYTkyM2E4"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7135,9 +7162,10 @@ paths:
                         $ref: '#/components/schemas/AgentIdKey'
               example:
                 data:
-                  id: "008"
-                  key: "MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2Jk
-                  MzdjZjA5YjZlM2M="
+                  id: "011"
+                  key: "MDExIHRlc3Rfd2F6dWhfcXVpY2sgYW55IDc3ZjNhY2RmMzBhN2ZlNzY0ODVmZTQ3YjUzMzc5ZWQ3ZDA1NDVhYzIyZDQ1NGY
+                  4YzcyZTZhNDU1MjVjYzY3OTM="
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7182,85 +7210,31 @@ paths:
               example:
                 data:
                   affected_items:
-                    - configSum: 29e0926e5a77442212e824868a2a61df
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group1
-                      id: '001'
-                      ip: 172.18.0.6
-                      lastKeepAlive: '2019-10-16T09:13:34Z'
-                      manager: wazuh-worker2
-                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
-                      name: wazuh-agent1
-                      node_name: worker2
-                      os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent1 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
+                    - node_name: unknown
+                      ip: 172.16.16.16
+                      id: 009
+                      name: test_agent_wazuh
+                      status: never_connected
+                      dateAdd: 2021-05-27T10:06:13Z
+                      registerIP: 172.16.16.16
+                    - node_name: unknown
+                      ip: 172.16.16.17
+                      id: 010
+                      name: test_agent_wazuh2
+                      status: never_connected
+                      dateAdd: 2021-05-27T10:06:27Z
+                      registerIP: 172.16.16.17
+                    - node_name: unknown
+                      ip: any
+                      id: 011
+                      name: test_wazuh_quick
+                      status: never_connected
+                      dateAdd: 2021-05-27T10:07:37Z
                       registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                    - configSum: e2f47d482da37c099fa1d6e4c43b523c
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group2
-                      id: '002'
-                      ip: 172.18.0.7
-                      lastKeepAlive: '2019-10-16T09:13:28Z'
-                      manager: wazuh-worker2
-                      mergedSum: d6fde33dc232d8f91359b2e98994c933
-                      name: wazuh-agent2
-                      node_name: worker2
-                      os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent2 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
-                    - configSum: dadc074e9a4f036c5d905c280c3b5bcc
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      group:
-                        - default
-                        - group3
-                      id: '003'
-                      ip: 172.18.0.8
-                      lastKeepAlive: '2019-10-16T09:13:29Z'
-                      manager: wazuh-master
-                      mergedSum: e40515ffa928c72ee167ed41d88245c4
-                      name: wazuh-agent3
-                      node_name: master-node
-                      os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent3 |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb
-                          12 13:35:51 UTC 2019 |x86_64
-                        version: 16.04.6 LTS
-                      registerIP: any
-                      status: active
-                      version: Wazuh v3.10.0
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
-                message: All selected agents information is shown
+                  failed_items: []
+                message: All selected agents information was returned
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -7303,12 +7277,12 @@ paths:
                   data:
                     affected_items:
                       - "002"
-                      - "003"
-                      - "007"
+                      - "006"
+                      - "008"
                     total_affected_items: 3
-                    failed_items: []
                     total_failed_items: 0
-                  message: "Restart command sent to all agents"
+                    failed_items: []
+                  message: "Restart command was sent to all agents"
                   error: 0
           '400':
             $ref: '#/components/responses/ResponseError'
@@ -7360,8 +7334,8 @@ paths:
                       id: "004"
                       name: dmz002
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: 'All selected agents information was returned'
                 error: 0
         '400':
@@ -7401,15 +7375,16 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: 'Force reconnect command was sent to all agents'
-                  error: 0
                   data:
                     affected_items:
+                      - '001'
                       - '002'
-                      - '004'
-                    total_affected_items: 2
-                    failed_items: [ ]
+                      - '003'
+                    total_affected_items: 3
                     total_failed_items: 0
+                    failed_items: []
+                  message: "Force reconnect command was sent to all agents"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7447,15 +7422,30 @@ paths:
                     data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: 'Restart command was sent to all agents'
-                  error: 0
                   data:
                     affected_items:
+                      - '001'
                       - '002'
+                      - '003'
                       - '004'
-                    total_affected_items: 2
-                    failed_items: []
-                    total_failed_items: 0
+                      - '005'
+                      - '006'
+                      - '007'
+                      - '008'
+                    total_affected_items: 8
+                    total_failed_items: 3
+                    failed_items:
+                      - error:
+                          code: 1707
+                          message: "Impossible to restart non-active agent: never_connected"
+                          remediation: "Please, make sure agent is active before attempting to restart"
+                        id:
+                          - '009'
+                          - '010'
+                          - '011'
+                  message: "Restart command was not sent to some agents"
+                  error: 2
+
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7485,7 +7475,6 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -7503,54 +7492,12 @@ paths:
                 data:
                   affected_items:
                     - os:
-                        arch: x86_64
-                        codename: Bionic Beaver
-                        major: '18'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-master |5.3.0-7642-generic |#34~1584408018~19.10~21df4b1-Ubuntu
-                          SMP Tue Mar 17 13:38:51 UTC  |x86_64
-                        version: 18.04.4 LTS
-                      registerIP: 127.0.0.1
-                      count: 1
-                      name: wazuh-master
-                      version: Wazuh v3.12.0
-                      ip: 127.0.0.1
-                      lastKeepAlive: '9999-12-31T23:59:59Z'
-                      dateAdd: '2020-04-14T10:14:16Z'
-                      node_name: master-node
-                      status: active
-                      manager: wazuh-master
-                      id: '000'
+                        version: "20.04.2 LTS"
+                      count: 2
                     - os:
-                        arch: x86_64
-                        codename: Xenial Xerus
-                        major: '16'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |wazuh-agent1 |5.3.0-7642-generic |#34~1584408018~19.10~21df4b1-Ubuntu
-                          SMP Tue Mar 17 13:38:51 UTC  |x86_64
-                        version: 16.04.6 LTS
-                      group:
-                        - default
-                        - group1
-                      registerIP: any
+                        version: "unknown"
                       count: 1
-                      name: wazuh-agent1
-                      mergedSum: a13d9b2edc5bdd5ef7331c0d5b9ecf34
-                      version: Wazuh v3.12.0
-                      ip: 172.24.0.6
-                      lastKeepAlive: '2020-04-15T11:33:31Z'
-                      internal_key: b7efaafcde1bb0f3d3cbbf5b32e6335878305f4e6a19bec2d065f5e53e134e65
-                      dateAdd: '1970-01-01T00:00:00Z'
-                      configSum: 29e0926e5a77442212e824868a2a61df
-                      node_name: master-node
-                      status: active
-                      manager: wazuh-master
-                      id: '001'
-                  total_affected_items: 13
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: 'All selected agents information was returned'
@@ -7592,9 +7539,9 @@ paths:
                     - ubuntu
                   totalItems: 1
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: Showing the operative system of all specified agents
+                  failed_items: []
+                message: "Showing the operative system of all specified agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -7633,11 +7580,12 @@ paths:
                       $ref: '#/components/schemas/AgentsSummaryStatus'
               example:
                 data:
-                  active: 2
+                  active: 8
                   disconnected: 0
-                  never_connected: 5
+                  never_connected: 3
                   pending: 0
-                  total: 7
+                  total: 11
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7702,9 +7650,9 @@ paths:
                         time: '2019-10-24T14:30:20.768Z'
                       score: 55
                       unknown: 0
-                  failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: 'All CISCAT results were returned'
                 error: 0
         '400':
@@ -7758,8 +7706,8 @@ paths:
                       cluster: "wazuh"
                       type: "master"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected information was returned"
                 error: 0
         '400':
@@ -7810,20 +7758,20 @@ paths:
                   affected_items:
                     - name: master-node
                       type: master
-                      version: 3.12.0
+                      version: 4.3.0
                       ip: wazuh-master
                     - name: worker1
                       type: worker
-                      version: 3.12.0
-                      ip: 172.26.0.5
+                      version: 4.3.0
+                      ip: 172.26.0.7
                     - name: worker2
                       type: worker
-                      version: 3.12.0
-                      ip: 172.26.0.4
+                      version: 4.3.0
+                      ip: 172.26.0.6
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: "All selected information was returned"
+                message: "All selected nodes information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -7866,36 +7814,68 @@ paths:
                 data:
                   affected_items:
                     - info:
-                        ip: "172.17.0.100"
-                        version: "3.9.0"
-                        type: "master"
-                        totalActiveAgents: 2
+                        name: master-node
+                        type: master
+                        version: 4.3.0
+                        ip: wazuh-master
+                        n_active_agents: 5
                     - info:
-                        ip: "172.17.0.101"
-                        version: "3.9.0"
-                        type: "worker"
-                        totalActiveAgents: 5
+                        name: worker1
+                        type: worker
+                        version: 4.3.0
+                        ip: 172.21.0.7
+                        n_active_agents: 3
                       status:
-                        last_sync_agentinfo:
-                          date_start_master: "2019-01-11T18:52:57.72Z"
-                          date_end_master: "2019-01-11T18:52:57.73Z"
-                          n_synced_chunks: 1
                         sync_integrity_free: true
-                        last_sync_agentgroups:
-                          date_end_master: "2019-01-11T18:52:51.56Z"
-                          total_agentgroups: 0
-                          date_start_master: "2019-01-11T18:52:51.56Z"
-                        last_sync_integrity:
-                          total_files:
-                            shared: 2
-                            missing: 4
-                            extra_valid: 0
-                            extra: 0
-                          date_end_master: "2019-01-11T18:52:45.47Z"
-                          date_start_master: "2019-01-11T18:52:44.36Z"
-                        last_keep_alive: "2019-01-11T18:52:16.66Z"
-                        sync_agentinfo_free: true
                         sync_extravalid_free: true
+                        last_check_integrity:
+                          date_start_master: 2021-05-27 10:50:51.325656
+                          date_end_master: 2021-05-27 10:50:51.342140
+                        last_sync_integrity:
+                          date_start_master: 2021-05-27 10:48:54.086973
+                          tmp_date_start_master: 2021-05-27 10:48:54.086973
+                          date_end_master: 2021-05-27 10:48:54.093328
+                          total_extra_valid: 0
+                          total_files:
+                            missing: 2
+                            extra: 0
+                            extra_valid: 0
+                            shared: 0
+                        last_sync_agentinfo:
+                          date_start_master: 2021-05-27 10:50:49.174463
+                          date_end_master: 2021-05-27 10:50:49.175921
+                          n_synced_chunks: 1
+                        last_keep_alive: 2021-05-27 10:50:08.985208
+                    - info:
+                        name: worker2
+                        type: worker
+                        version: 4.3.0
+                        ip: 172.21.0.6
+                        n_active_agents: 1
+                      status:
+                        sync_integrity_free: true
+                        sync_extravalid_free: true
+                        last_check_integrity:
+                          date_start_master: 2021-05-27 10:50:51.939323
+                          date_end_master: 2021-05-27 10:50:51.955007
+                        last_sync_integrity:
+                          date_start_master: 2021-05-27 10:48:54.706395
+                          tmp_date_start_master: 2021-05-27 10:48:54.706395
+                          date_end_master: 2021-05-27 10:48:54.726944
+                          total_extra_valid: 0
+                          total_files:
+                            missing: 2
+                            extra: 0
+                            extra_valid: 0
+                            shared: 0
+                        last_sync_agentinfo:
+                          date_start_master: 2021-05-27 10:50:48.832800
+                          date_end_master: 2021-05-27 10:50:48.833854
+                          n_synced_chunks: 1
+                        last_keep_alive: 2021-05-27 10:50:18.650204
+                  total_affected_items: 3
+                  total_failed_items: 0
+                  failed_items: []
                 message: "All selected nodes healthcheck information was returned"
                 error: 0
         '400':
@@ -7949,6 +7929,7 @@ paths:
                 data:
                   enabled: "yes"
                   running: "yes"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8021,18 +8002,18 @@ paths:
                 data:
                   affected_items:
                     - name: wazuh
-                      node_name: node02
-                      node_type: worker
+                      node_name: master-node
+                      node_type: master
                       key: 9d273b53510fef702b54a92e9cffc82e
                       port: 1516
                       bind_addr: 0.0.0.0
                       nodes:
-                        - 172.17.0.100
+                        - wazuh-master
                       hidden: no
                       disabled: false
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected information was returned"
                 error: 0
         '400':
@@ -8074,40 +8055,55 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ssl_protocol: "TLSv1.2"
+                          ssl_ciphers: ""
+                        logs:
+                          level: info
+                          path: /var/ossec/logs/api.log
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          expose_headers: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
                         access:
                           max_login_attempts: 50
                           block_time: 300
                           max_request_per_minute: 300
-                        logs:
-                          path: /var/ossec/logs/api.log
-                          level: info
-                        cors:
-                          enabled: false
-                          source_route: "*"
-                          allow_headers: "*"
-                          allow_credentials: false
-                        cache:
-                          enabled: true
-                          time: 0.75
-                        use_only_authd: false
-                        drop_privileges: true
-                        experimental_features: false
+                        remote_commands:
+                          localfile:
+                            enabled: True
+                            exceptions: []
+                        woodle_commands:
+                          enabled: True
+                          exceptions: []
                     - node_name: "worker1"
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
+                        use_only_authd: false
+                        drop_privileges: true
+                        experimental_features: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ssl_protocol: "TLSv1.2"
+                          ssl_ciphers: ""
                         logs:
                           path: /var/ossec/logs/api.log
                           level: info
@@ -8119,10 +8115,55 @@ paths:
                         cache:
                           enabled: true
                           time: 0.75
+                        access:
+                          max_login_attempts: 50
+                          block_time: 300
+                          max_request_per_minute: 300
+                        remote_commands:
+                          localfile:
+                            enabled: True
+                            exceptions: []
+                        woodle_commands:
+                          enabled: True
+                          exceptions: []
+                    - node_name: "worker2"
+                      node_api_config:
+                        host: 0.0.0.0
+                        port: 55000
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
-                  total_affected_items: 2
+                        https:
+                          enabled: true
+                          key: "/var/ossec/api/configuration/ssl/server.key"
+                          cert: "/var/ossec/api/configuration/ssl/server.crt"
+                          use_ca: false
+                          ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ssl_protocol: "TLSv1.2"
+                          ssl_ciphers: ""
+                        logs:
+                          path: /var/ossec/logs/api.log
+                          level: info
+                        cors:
+                          enabled: false
+                          source_route: "*"
+                          allow_headers: "*"
+                          allow_credentials: false
+                        cache:
+                          enabled: true
+                          time: 0.75
+                        access:
+                          max_login_attempts: 50
+                          block_time: 300
+                          max_request_per_minute: 300
+                        remote_commands:
+                          localfile:
+                            enabled: True
+                            exceptions: []
+                        woodle_commands:
+                          enabled: True
+                          exceptions: []
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: "API configuration was successfully read in all specified nodes"
@@ -8171,11 +8212,11 @@ paths:
                       wazuh-authd: stopped
                       wazuh-csyslogd: stopped
                       wazuh-dbd: stopped
+                      wazuh-monitord: running
                       wazuh-execd: running
                       wazuh-integratord: stopped
                       wazuh-logcollector: running
                       wazuh-maild: stopped
-                      wazuh-monitord: running
                       wazuh-remoted: running
                       wazuh-reportd: stopped
                       wazuh-syscheckd: running
@@ -8184,9 +8225,9 @@ paths:
                       wazuh-db: running
                       wazuh-modulesd: running
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Processes status was successfully read"
+                  failed_items: []
+                message: "Processes status was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8229,17 +8270,17 @@ paths:
                 data:
                   affected_items:
                     - path: /var/ossec
-                      version: v3.9.0
-                      compilation_date: "2019-03-06T11:24:59Z"
-                      type: manager
+                      version: v4.3.0
+                      compilation_date: "2021-05-27T09:06:48Z"
+                      type: server
                       max_agents: unlimited
                       openssl_support: yes
                       tz_offset: +0000
                       tz_name: UTC
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Basic information was successfully read"
+                  failed_items: []
+                message: "Basic information was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8265,7 +8306,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -8294,14 +8335,37 @@ paths:
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log
-                        queue_size: 131072
+                        agents_disconnection_time: "10m"
+                        agents_disconnection_alert_time: 0
                         white_list:
                           - 127.0.0.1
                           - ^localhost.localdomain$
-                          - 127.0.0.53
+                          - 80.58.61.250
+                          - 80.58.61.254
                       alerts:
                         log_alert_level: "3"
                         email_alert_level: "12"
+                      remote:
+                        connection: secure
+                        port: 1514
+                        protocol:
+                          - tcp
+                        queue_size: 131072
+                      rootcheck:
+                        disabled: no
+                        check_files: yes
+                        check_trojans: yes
+                        check_dev: yes
+                        check_sys: yes
+                        check_pids: yes
+                        check_ports: yes
+                        check_if: yes
+                        frequency: 43200
+                        rootkit_files:
+                          - etc/rootcheck/rootkit_files.txt
+                        rootkit_trojans:
+                          - etc/rootcheck/rootkit_trojans.txt
+                        skip_nfs: yes
                       cis-cat:
                         disabled: yes
                         timeout: 1800
@@ -8309,17 +8373,164 @@ paths:
                         scan-on-start: yes
                         java_path: wodles/java
                         ciscat_path: wodles/ciscat
+                      osquery:
+                        disabled: yes
+                        run_daemon: yes
+                        log_path: /var/log/osquery/osqueryd.results.log
+                        config_path: /etc/osquery/osquery.conf
+                        add_labels: yes
+                      syscollector:
+                        disabled: no
+                        interval: "1h"
+                        scan_on_start: yes
+                        hardware: yes
+                        os: yes
+                        network: yes
+                        packages: yes
+                        ports:
+                          all: no
+                          item: yes
+                        processes: yes
+                        synchronization: "\n      "
+                      sca:
+                        enabled: yes
+                        scan_on_start: yes
+                        interval: "12h"
+                        skip_nfs: yes
+                      vulnerability-detector:
+                        enabled: no
+                        interval: "5m"
+                        ignore_time: "6h"
+                        run_on_start: yes
+                        provider:
+                          name: nvd
+                          enabled: yes
+                          update_from_year: 2010
+                          update_interval: "1h"
+                      syscheck:
+                        disabled: no
+                        frequency: 43200
+                        scan_on_start: yes
+                        alert_new_files: yes
+                        auto_ignore:
+                          frequency: 10
+                          timeframe: 3600
+                          item: no
+                        directories:
+                          - path: /etc
+                          - path: /usr/bin
+                          - path: /usr/sbin
+                          - path: /bin
+                          - path: /sbin
+                          - path: /boot
+                        ignore:
+                          - /etc/mtab
+                          - /etc/hosts.deny
+                          - /etc/mail/statistics
+                          - /etc/random-seed
+                          - /etc/random.seed
+                          - /etc/adjtime
+                          - /etc/httpd/logs
+                          - /etc/utmpx
+                          - /etc/wtmpx
+                          - /etc/cups/certs
+                          - /etc/dumpdates
+                          - /etc/svc/volatile
+                          - type: sregex
+                            item: ".log$|.swp$"
+                        nodiff:
+                          - /etc/ssl/private.key
+                        skip_nfs: yes
+                        skip_dev: yes
+                        skip_proc: yes
+                        skip_sys: yes
+                        process_priority: 10
+                        max_eps: 100
+                        synchronization:
+                          enabled: yes
+                          interval: "5m"
+                          max_interval: "1h"
+                          max_eps: 10
                       command:
                         - name: disable-account
-                          executable: disable-account.sh
-                          expect: user
+                          executable: disable-account
                           timeout_allowed: yes
-                        - name: restart-ossec
-                          executable: restart-ossec.sh
+                        - name: restart-wazuh
+                          executable: restart-wazuh
+                        - name: firewall-drop
+                          executable: firewall-drop
+                          timeout_allowed: yes
+                        - name: host-deny
+                          executable: host-deny
+                          timeout_allowed: yes
+                        - name: route-null
+                          executable: route-null
+                          timeout_allowed: yes
+                        - name: win_route-null
+                          executable: route-null.exe
+                          timeout_allowed: yes
+                        - name: netsh
+                          executable: netsh.exe
+                          timeout_allowed: yes
+                      localfile:
+                        - log_format: syslog
+                          location: /var/ossec/logs/active-responses.log
+                        - log_format: syslog
+                          location: /var/log/dpkg.log
+                        - log_format: command
+                          command: "df -P"
+                          frequency: 360
+                        - log_format: full_command
+                          command: "netstat -tulpn | sed 's/\\([[:alnum:]]\\+\\)\\ \\+[[:digit:]]\\+\\ \\+[[:digit:]
+                          ]\\+\\ \\+\\(.*\\):\\([[:digit:]]*\\)\\ \\+\\([0-9\\.\\:\\*]\\+\\).\\+\\ \\([[:digit:]]*\\/[
+                          [:alnum:]\\-]*\\).*/\\1 \\2 == \\3 == \\4 \\5/' | sort -k 4 -g | sed 's/ == \\(.*\\) ==/:\\1/'
+                           | sed 1,2d"
+                          alias: netstat listening ports
+                          frequency: 360
+                        - log_format: full_command
+                          command: "last -n 20"
+                          frequency: 360
+                      ruleset:
+                        decoder_dir:
+                          - ruleset/decoders
+                          - etc/decoders
+                        rule_dir:
+                          - ruleset/rules
+                          - etc/rules
+                        rule_exclude:
+                          - 0215-policy_rules.xml
+                        list:
+                          - etc/lists/audit-keys
+                          - etc/lists/amazon/aws-eventnames
+                          - etc/lists/security-eventchannel
+                      auth:
+                        disabled: no
+                        port: "1515"
+                        use_source_ip: "no"
+                        force_insert: "yes"
+                        force_time: "0"
+                        purge: "yes"
+                        use_password: "no"
+                        ciphers: "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
+                        ssl_verify_host: "no"
+                        ssl_manager_cert: "etc/sslmanager.cert"
+                        ssl_manager_key: "etc/sslmanager.key"
+                        ssl_auto_negotiate: "no"
+                      cluster:
+                        name: "wazuh"
+                        node_name: "master-node"
+                        node_type: "master"
+                        key: "9d273b53510fef702b54a92e9cffc82e"
+                        port: "1516"
+                        bind_addr: "0.0.0.0"
+                        nodes:
+                          - "wazuh-master"
+                        hidden: no
+                        disabled: no
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Configuration was successfully read"
+                  failed_items: []
+                message: "Configuration was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8405,35 +8616,50 @@ paths:
               example:
                 data:
                   affected_items:
-                    - hour: 15
+                    - hour: 10
                       alerts:
-                        - sigid: 5303
-                          level: 3
-                          times: 1
-                        - sigid: 5501
-                          level: 3
-                          times: 4
-                        - sigid: 221
-                          level: 0
-                          times: 653
-                      totalAlerts: 658
-                      events: 4387
-                      firewall: 0
-                    - hour: 16
-                      alerts:
-                        - sigid: 5521
-                          level: 0
-                          times: 1
                         - sigid: 530
                           level: 0
-                          times: 120
-                      totalAlerts: 121
-                      events: 4379
-                      syscheck: 0
+                          times: 121
+                        - sigid: 501
+                          level: 3
+                          times: 5
+                        - sigid: 502
+                          level: 3
+                          times: 1
+                        - sigid: 503
+                          level: 3
+                          times: 1
+                        - sigid: 506
+                          level: 3
+                          times: 2
+                        - sigid: 515
+                          level: 0
+                          times: 12
+                        - sigid: 19000
+                          level: 0
+                          times: 980
+                        - sigid: 19007
+                          level: 7
+                          times: 470
+                        - sigid: 19008
+                          level: 3
+                          times: 305
+                        - sigid: 19009
+                          level: 3
+                          times: 185
+                        - sigid: 19004,
+                          level: 7,
+                          times: 10
+                      totalAlerts: 2092
+                      events: 2104
+                      syscheck: 12
                       firewall: 0
-                  total_affected_items: 2
-                  failed_items: []
+                  total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8501,8 +8727,10 @@ paths:
                         - 23
                       interactions: 0
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information per hour for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8733,8 +8961,10 @@ paths:
                         - 23
                         interactions: 0
                   total_affected_items: 7
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information per week for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8821,8 +9051,10 @@ paths:
                       archives_queue_usage: 0
                       archives_queue_size: 16384
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8864,15 +9096,18 @@ paths:
                   affected_items:
                     - queue_size: 0
                       total_queue_size: 131072
-                      tcp_sessions: 0
-                      evt_count: 0
-                      ctrl_msg_count: 0
+                      tcp_sessions: 4.0
+                      evt_count: 9089.0
+                      ctrl_msg_count: 2099.0
                       discarded_count: 0
-                      msg_sent: 0
-                      recv_bytes: 0
-                  total_affected_items: 0
-                  failed_items: []
+                      msg_sent: 4210.0
+                      recv_bytes: 4541779.0
+                      dequeued_after_close: 0.0
+                  total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
+                message: "Statistical information for each node was successfully read"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -8898,7 +9133,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
         - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/log_lines'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/tag'
@@ -8919,21 +9154,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: '2020-04-15T13:43:38+00:00'
-                      tag: wazuh-analysisd
-                      level: error
-                      description: " (1277): Invalid syscheck message received"
-                    - timestamp: '2020-04-15T13:43:38+00:00'
-                      tag: wazuh-analysisd
-                      level: error
-                      description: " (1277): Invalid syscheck message received"
-                    - timestamp: '2020-04-15T13:43:30+00:00'
-                      tag: wazuh-analysisd
-                      level: error
-                      description: " (1277): Invalid syscheck message received"
+                    - timestamp: '2021-05-27T12:18:08+00:00'
+                      tag: wazuh-remoted
+                      level: debug
+                      description: " TCP socket 20 already in keystore. Updating..."
+                    - timestamp: '2021-05-27T12:18:08+00:00'
+                      tag: wazuh-remoted
+                      level: debug
+                      description: " Agent '003' group is 'default'"
+                    - timestamp: '2021-05-27T12:18:08+00:00'
+                      tag: wazuh-remoted
+                      level: debug
+                      description: " Agent '003' with group 'default' file 'merged.mg' MD5
+                        '9a016508cea1e997ab8569f5cfab30f5'"
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Logs were successfully read in specified node"
                 error: 0
         '400':
@@ -8975,30 +9211,25 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-modulesd:
-                        info: 2
-                        all: 2
-                        critical: 0
-                        debug: 0
-                        error: 0
-                        warning: 0
                     - wazuh-db:
-                        info: 1
-                        all: 4
-                        critical: 0
-                        debug: 0
-                        error: 3
-                        warning: 0
-                    - wazuh-rootcheck:
-                        info: 8
-                        all: 8
-                        critical: 0
-                        debug: 0
+                        all: 356
+                        info: 0
                         error: 0
+                        critical: 0
                         warning: 0
-                  total_affected_items: 3
-                  failed_items: []
+                        debug: 356
+                    - wazuh-remoted:
+                        all: 842
+                        info: 0
+                        error: 0
+                        critical: 0
+                        warning: 0
+                        debug: 842
+                  total_affected_items: 2
                   total_failed_items: 0
+                  failed_items: []
+                message: "Log was successfully summarized in specified node"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9037,15 +9268,16 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseNodeIDs'
                 example:
-                  message: "Restart request sent to all specified nodes"
-                  error: 0
                   data:
                     affected_items:
                       - 'master-node'
                       - 'worker1'
-                    total_affected_items: 2
-                    failed_items: []
+                      - 'worker2'
+                    total_affected_items: 3
                     total_failed_items: 0
+                    failed_items: []
+                  message: "Restart request sent to  all specified nodes"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9092,9 +9324,9 @@ paths:
                       - name: worker2
                         status: OK
                     total_affected_items: 3
-                    failed_items: []
                     total_failed_items: 0
-                  message: Validation was successfully checked in all nodes
+                    failed_items: []
+                  message: "Validation was successfully checked in all nodes"
                   error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9122,7 +9354,6 @@ paths:
         - $ref: '#/components/parameters/node_id'
         - $ref: '#/components/parameters/component'
         - $ref: '#/components/parameters/configuration'
-
       responses:
         '200':
           description: "Cluster configuration on-demand"
@@ -9131,24 +9362,24 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-
               example:
                 data:
                   affected_items:
-                    - bind_addr: "0.0.0.0"
-                      disabled: "false"
-                      hidden: "no"
-                      key: "9d273b53510fef702b54a92e9cffc82e"
-                      name: "wazuh"
+                    - name: "wazuh"
                       node_name: "master-node"
                       node_type: "master"
-                      nodes: [
-                        "wazuh-master"
-                      ]
+                      key: "9d273b53510fef702b54a92e9cffc82e"
                       port: 1516
+                      bind_addr: "0.0.0.0"
+                      nodes:
+                        - "wazuh-master"
+                      hidden: "no"
+                      disabled: "false"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
+                message: "Active configuration was successfully read in specified node"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9196,20 +9427,6 @@ paths:
                 data:
                   affected_items:
                     - items:
-                        - key: AttachLoadBalancers
-                          value: Autoscaling
-                        - key: DetachLoadBalancers
-                          value: Autoscaling
-                        - key: PutScalingPolicy
-                          value: Autoscaling
-                        - key: TerminateInstanceInAutoScalingGroup
-                          value: Autoscaling
-                      relative_dirname: etc/lists/amazon
-                      filename: aws-eventnames
-                    - items: []
-                      relative_dirname: etc/lists/amazon
-                      filename: aws-sources
-                    - items:
                         - key: audit-wazuh-w
                           value: write
                         - key: audit-wazuh-r
@@ -9222,21 +9439,10 @@ paths:
                           value: command
                       relative_dirname: etc/lists
                       filename: audit-keys
-                    - items:
-                        - key: '200'
-                          value: ''
-                        - key: '201'
-                          value: ''
-                        - key: '203'
-                          value: ''
-                        - key: '202'
-                          value: ''
-                      relative_dirname: etc/lists
-                      filename: security-eventchannel
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
-                message: 'All specified lists were returned'
+                  failed_items: []
+                message: "All specified lists were returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9287,7 +9493,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: CDB list was returned
+                message: "CDB list was returned"
                 error: 0
             'text/plain':
               schema:
@@ -9443,8 +9649,8 @@ paths:
                     - relative_dirname: etc/lists
                       filename: security-eventchannel
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: 'All specified paths were returned'
                 error: 0
         '400':
@@ -9485,35 +9691,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                token:  bd83b45f
-                message: ["INFO: (7202): Session initialized with token 'bd83b45f'"]
-                output:
-                  timestamp: 2020-06-24T11:28:09.308+0200
-                  rule:
-                    description: "Systemd rules"
-                    id: 40700
-                    firedtimes: 1
-                    mail: false
-                    groups: ["local", "systemd"]
-                  agent:
-                    id: 000
-                    name: wazuh-master
-                  manager:
-                    name: wazuh-master
-                  id: "1598517414.1892559"
-                  cluster:
-                    name: wazuh
-                    node: master-node
-                  full_log: "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."
-                  predecoder:
-                    program_name: systemd
-                    timestamp: "Jun 24 11:54:19"
-                    hostname: Master
-                  decoder:
-                    name: systemd
-                  location: "master->/var/log/syslog"
-                alert: false
-                codemsg: 0
+                error: 0
+                data:
+                  messages:
+                    - "INFO: (7202): Session initialized with token '8cd2d6d1'"
+                  token: 8cd2d6d1
+                  output:
+                    timestamp: 2021-05-27T12:46:03.391+0000
+                    rule:
+                      level: 2
+                      description: "Unknown problem somewhere in the system."
+                      id: 1002
+                      firedtimes: 1
+                      mail: false
+                      groups:
+                        - "syslog"
+                        - "errors"
+                      gpg13:
+                        - 4.3
+                    agent:
+                      id: "000"
+                      name: "wazuh-master"
+                    manager:
+                      name: "wazuh-master"
+                    id: "1622119563.2682664"
+                    cluster:
+                      name: "wazuh"
+                      node: "master-node"
+                    full_log: "ERROR"
+                    decoder:
+                    location: "/var/log/syslog"
+                  alert: false
+                  codemsg: 1
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -9597,27 +9806,27 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-agentlessd: stopped
-                      wazuh-analysisd: running
-                      wazuh-authd: stopped
-                      wazuh-csyslogd: stopped
-                      wazuh-dbd: stopped
-                      wazuh-execd: running
-                      wazuh-integratord: stopped
-                      wazuh-logcollector: running
-                      wazuh-maild: stopped
-                      wazuh-monitord: running
-                      wazuh-remoted: running
-                      wazuh-reportd: stopped
-                      wazuh-syscheckd: running
-                      wazuh-apid: running
-                      wazuh-clusterd: running
-                      wazuh-db: running
-                      wazuh-modulesd: running
+                    - wazuh-agentlessd: "stopped"
+                      wazuh-analysisd: "running"
+                      wazuh-authd: "running"
+                      wazuh-csyslogd: "stopped"
+                      wazuh-dbd: "stopped"
+                      wazuh-monitor": "running"
+                      wazuh-execd: "running"
+                      wazuh-integratord: "stopped"
+                      wazuh-logcollector: "running"
+                      wazuh-maild: "stopped"
+                      wazuh-remoted: "running"
+                      wazuh-reportd: "stopped"
+                      wazuh-syscheckd: "running"
+                      wazuh-clusterd: "running"
+                      wazuh-modulesd: "running"
+                      wazuh-db: "running"
+                      wazuh-apid: "running"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Processes status successfully read"
+                  failed_items: []
+                message: "Processes status was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9658,17 +9867,17 @@ paths:
                 data:
                   affected_items:
                     - path: /var/ossec
-                      version: v3.9.0
-                      compilation_date: "2019-03-06T11:24:59Z"
-                      type: manager
+                      version: v4.3.0
+                      compilation_date: "2021-05-27T09:06:48Z"
+                      type: server
                       max_agents: unlimited
                       openssl_support: yes
                       tz_offset: +0000
                       tz_name: UTC
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
-                message: "Basic information was successfully read"
+                  failed_items: []
+                message: "Basic information was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9693,7 +9902,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/raw_conf'
+        - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -10319,7 +10528,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/log_lines'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/tag'
@@ -10565,8 +10774,8 @@ paths:
                       - name: "master-node"
                         status: "OK"
                     total_affected_items: 1
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "Validation was successfully checked in all nodes"
                   error: 0
         '400':
@@ -10605,15 +10814,29 @@ paths:
               example:
                 data:
                   affected_items:
-                    - remote:
-                        connection: "secure"
-                        ipv6: "no"
-                        protocol: "tcp"
-                        port: 1514
-                        queue_size: 131072
+                    - global:
+                        email_notification: "no"
+                        logall: "no"
+                        logall_json: "no"
+                        integrity_checking: 8
+                        rootkit_detection: 8
+                        host_information: 8
+                        prelude_output: "no"
+                        zeromq_output: "no"
+                        jsonout_output: "yes"
+                        alerts_log: "yes"
+                        stats: 4
+                        memory_size: 8192
+                        white_list:
+                          - "127.0.0.1"
+                          - "80.58.61.250"
+                          - "80.58.61.254"
+                          - "localhost.localdomain"
+                        rotate_interval: 0
+                        max_output_size: 0
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Active configuration was successfully read in specified node"
                 error: 0
         '400':
@@ -10663,14 +10886,14 @@ paths:
                   affected_items:
                     - mitre_version: '1.2'
                       deprecated: 0
+                      description: |-
+                        [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
+
+                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group
                       name: APT38
                       id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
                       modified_time: '2020-03-30 18:50:43.737000'
                       created_time: '2019-01-29 21:27:24.793000'
-                      description: |-
-                        [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
-
-                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group.
                       software:
                         - tool--03342581-f790-4f03-ba41-e82e67392e23
                         - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
@@ -10710,7 +10933,7 @@ paths:
                           source: "mitre-attack"
                   total_affected_items: 111
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
                 message: MITRE groups information was returned
                 error: 0
         '400':
@@ -10751,13 +10974,13 @@ paths:
               example:
                 data:
                   affected_items:
-                    - value: "1"
-                      key: "db_version"
-                    - value: "2.0"
-                      key: "mitre_version"
+                    - key: "db_version"
+                      value: "1"
+                    - key: "mitre_version"
+                      value: "2.0"
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "MITRE metadata information was returned"
                 error: 0
         '400':
@@ -10805,25 +11028,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: "course-of-action--00d7d21b-69d6-4797-88a2-c86f3fc97651"
-                      modified_time: '2019-07-25 11:22:19.139000'
+                    - mitre_version: "1.0"
                       deprecated: 1
+                      description: "Prevent files from having a trailing space after the extension."
+                      name: "Space after Filename Mitigation"
+                      id: "course-of-action--02f0f92a-0a51-4c94-9bda-6437b9a93f22"
+                      modified_time: '2019-07-25 11:46:32.010000'
                       created_time: '2018-10-17 00:14:20.652000'
-                      name: "Password Filter DLL Mitigation"
-                      mitre_version: "1.0"
-                      description: "Ensure only valid password filters are registered. Filter DLLs must be present in Windows installation directory (<code>C:\\Windows\\System32\\</code> by default) of a domain controller and/or local computer with a corresponding entry in <code>HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Notification Packages</code>. (Citation: Microsoft Install Password Filter n.d)"
                       techniques:
-                        - "attack-pattern--b8c5c9dd-a662-479d-9428-ae745872537c"
+                        - "attack-pattern--e2907cea-4b43-4ed7-a570-0fdf0fbeea00"
                       references:
-                        - source: "Microsoft Install Password Filter n.d"
-                          description: "Microsoft. (n.d.). Installing and Registering a Password Filter DLL. Retrieved November 21, 2017."
-                          url": "https://msdn.microsoft.com/library/windows/desktop/ms721766.aspx"
-                        - source: "mitre-attack"
-                          external_id: "T1174"
-                          url: "https://attack.mitre.org/mitigations/T1174"
-                  total_affected_items: 267
+                        - url: "https://attack.mitre.org/mitigations/T1151"
+                          source: "mitre-attack"
+                          external_id": "T1151"
+                  total_affected_items: 266
                   total_failed_items: 0
-                  failed_items: [ ]
+                  failed_items: []
                 message: "MITRE mitigations information was returned"
                 error: 0
         '400':
@@ -10871,14 +11091,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "Hosseini, A. (2017, July 18). Ten Process Injection Techniques: A Technical Survey Of Common And Trending Process Injection Techniques. Retrieved December 7, 2017."
-                      type: "technique"
+                    - url: "https://www.endgame.com/blog/technical-blog/ten-process-injection-techniques-technical-survey-common-and-trending-process"
+                      description: "Hosseini, A. (2017, July 18). Ten Process Injection Techniques: A Technical Survey Of Common And Trending Process Injection Techniques. Retrieved December 7, 2017."
                       source: "Endgame Process Injection July 2017"
-                      url: "https://www.endgame.com/blog/technical-blog/ten-process-injection-techniques-technical-survey-common-and-trending-process"
                       id: "attack-pattern--0042a9f5-f053-4769-b3ef-9ad018dfa298"
+                      type: "technique"
                   total_affected_items: 5212
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "MITRE references information was returned"
                 error: 0
         '400':
@@ -10926,31 +11146,31 @@ paths:
               example:
                 data:
                   affected_items:
-                    - deprecated: 0
-                      mitre_version: '1.0'
-                      created_time: '2017-05-31 21:32:40.801000'
-                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
-                      name: HDoor
-                      modified_time: '2019-04-25 02:33:53.419000'
+                    - mitre_version: '1.0'
+                      deprecated: 0
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
                         group. (Citation: Baumgartner Naikon 2015)"
+                      name: HDoor
+                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
+                      modified_time: '2019-04-25 02:33:53.419000'
+                      created_time: '2017-05-31 21:32:40.801000'
                       groups:
                         - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
                       techniques:
                         - attack-pattern--ac08589e-ee59-4935-8667-d845e38fe579
                         - attack-pattern--e3a12395-188d-4051-9a16-ea8e14d07b88
                       references:
-                        - source: "Baumgartner Naikon 2015"
+                        - url: "https://media.kasperskycontenthub.com/wp-content/uploads/sites/43/2018/03/07205555/TheNaikonAPT-MsnMM1.pdf"
                           description: "Baumgartner, K., Golovkin, M.. (2015, May). The MsnMM Campaigns: The Earliest Naikon APT Campaigns. Retrieved April 10, 2019."
-                          url: "https://media.kasperskycontenthub.com/wp-content/uploads/sites/43/2018/03/07205555/TheNaikonAPT-MsnMM1.pdf"
-                        - source: "mitre-attack"
+                          source: "Baumgartner Naikon 2015"
+                        - url: "https://attack.mitre.org/software/S0061"
+                          source: "mitre-attack"
                           external_id: "S0061"
-                          url: "https://attack.mitre.org/software/S0061"
                   total_affected_items: 444
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: MITRE software information was returned
+                  failed_items: []
+                message: "MITRE software information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10997,11 +11217,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
-                      created_time: "2018-10-17 00:14:20.652000"
-                      modified_time: "2019-07-19 17:44:36.953000"
-                      description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
+                    - description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
                       name: "Lateral Movement"
+                      id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
+                      modified_time: "2019-07-19 17:44:36.953000"
+                      created_time: "2018-10-17 00:14:20.652000"
                       short_name: "lateral-movement"
                       techniques:
                         - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
@@ -11028,12 +11248,12 @@ paths:
                         - "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf"
                         - "attack-pattern--f005e783-57d4-4837-88ad-dbe7faee1c51"
                       references:
-                        - source: "mitre-attack"
+                        - url: "https://attack.mitre.org/tactics/TA0008"
+                          source: "mitre-attack"
                           external_id: "TA0008"
-                          url: "https://attack.mitre.org/tactics/TA0008"
                   total_affected_items: 14
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All tactics information was returned"
                 error: 0
         '400':
@@ -11081,8 +11301,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - network_requirements: 0
-                      mitre_version: '1.0'
+                    - mitre_version: '1.0'
+                      network_requirements: 0
                       remote_support: 0
                       mitre_detection: |-
                         Much of this activity may have a very high occurrence and associated false positive rate, as well as potentially taking place outside the visibility of the target organization, making detection difficult for defenders.
@@ -11118,8 +11338,8 @@ paths:
                           url: "https://attack.mitre.org/techniques/T1590"
                   total_affected_items: 1
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: MITRE techniques information was returned
+                  failed_items: []
+                message: "MITRE techniques information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -11133,51 +11353,6 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rootcheck:
-    delete:
-      tags:
-      - Rootcheck
-      summary: "Clear results"
-      description: "Clear rootcheck database for all agents or a list of them"
-      operationId: api.controllers.rootcheck_controller.delete_rootcheck
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-      responses:
-        '200':
-          description: "Clear rootcheck database for all agents or a list of them"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "002"
-                    - "003"
-                  total_affected_items: 2
-                  failed_items: []
-                  total_failed_items: 0
-                message: "Rootcheck database was cleared on returned agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
     put:
       tags:
         - Rootcheck
@@ -11210,8 +11385,8 @@ paths:
                     - "002"
                     - "003"
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Rootcheck scan was restarted on returned agents"
                 error: 0
         '400':
@@ -11272,9 +11447,52 @@ paths:
                       date_last: "2020-10-23 10:33:49"
                       status: "outstanding"
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected rootcheck information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+        - Rootcheck
+      summary: "Clear results"
+      description: "Clear an agent's rootcheck database"
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Clear an agent's rootcheck database"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "001"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "Rootcheck database was cleared on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -11315,11 +11533,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - end: "2020-10-23 11:53:47"
-                      start: "2020-10-23 11:53:39"
+                    - start: "2021-05-28 11:49:50"
+                      end: "2021-05-28 11:49:59"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Last rootcheck scan of the agent was returned"
                 error: 0
         '400':
@@ -11380,43 +11598,38 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "Generic template for all syslog rules"
+                    - filename: "0020-syslog_rules.xml"
+                      relative_dirname: "ruleset/rules"
+                      id: 1001
+                      level: 2
+                      status: enabled
                       details:
-                        category: syslog
-                        noalert: '1'
-                      file: 0010-rules_config.xml
-                      gdpr: []
-                      gpg13: []
+                        match:
+                          pattern: "^Couldn't open /etc/securetty"
+                      pci_dss:
+                        - "0.2.4"
+                      gpg13:
+                        - "4.1"
+                      gdpr:
+                        - "IV_35.7.d"
+                      hipaa:
+                        - "164.312.b"
+                      nist_800_53:
+                        - "AU.14"
+                        - "AC.7"
+                      tsc:
+                        - "CC6.1"
+                        - "CC6.8"
+                        - "CC7.2"
+                        - "CC7.3"
+                      mitre: []
                       groups:
                         - syslog
-                      hipaa: []
-                      id: 1
-                      level: 0
-                      nist_800_53: []
-                      tsc: []
-                      path: ruleset/rules
-                      pci_dss: []
-                      status: enabled
-                    - description: "Generic template for all web proxy rules"
-                      details:
-                        category: squid
-                        noalert: '1'
-                      file: 0010-rules_config.xml
-                      gdpr: []
-                      gpg13: []
-                      groups:
-                        - squid
-                      hipaa: []
-                      id: 5
-                      level: 0
-                      nist_800_53: []
-                      tsc: []
-                      path: ruleset/rules
-                      pci_dss: []
-                      status: enabled
-                  total_affected_items: 54
-                  failed_items: []
+                        - errors
+                      description: "File missing. Root access unrestricted."
+                  total_affected_items: 707
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected rules were returned"
                 error: 0
         '400':
@@ -11468,8 +11681,8 @@ paths:
                     - gdpr_II_5.1.f
                     - gdpr_IV_30.1.g
                   total_affected_items: 6
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All groups in rules were returned"
                 error: 0
         '400':
@@ -11523,8 +11736,8 @@ paths:
                     - 11.4
                     - 11.5
                   total_affected_items: 7
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected rules were returned"
                 error: 0
         '400':
@@ -11573,20 +11786,20 @@ paths:
                 data:
                   affected_items:
                     - file: 0010-rules_config.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0015-ossec_rules.xml
                       path: ruleset/rules
                       status: enabled
                     - file: 0016-wazuh_rules.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0020-syslog_rules.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                   total_affected_items: 4
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All rules files were returned"
                 error: 0
         '400':
@@ -11884,35 +12097,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - description: "This document provides prescriptive guidance for establishing a secure
-                    configuration posture for Debian Linux 9"
-                      end_scan: '2019-11-13T10:57:09Z'
-                      fail: 26
-                      hash_file: c5ada687e0c2ae9504be13b965074cc262e62be4e68fe550d464018def4af61c
-                      invalid: 1
-                      name: CIS benchmark for Debian/Linux 9 L2
-                      pass: 2
-                      policy_id: cis_debian9_L2
-                      references: https://www.cisecurity.org/cis-benchmarks/
-                      score: 7
-                      start_scan: '2019-11-13T10:57:09Z'
-                      total_checks: 29
-                    - description: "This document provides prescriptive guidance for establishing a secure
-                    configuration posture for Debian Linux 9"
-                      end_scan: '2019-11-13T10:57:06Z'
-                      fail: 48
-                      hash_file: b44ecda10d854ecad25476ed99b5dfd9481e8a846c8d8a7684a1cc3b29f12993
-                      invalid: 16
-                      name: CIS benchmark for Debian/Linux 9 L1
-                      pass: 35
-                      policy_id: cis_debian9_L1
-                      references: https://www.cisecurity.org/cis-benchmarks/
-                      score: 42
-                      start_scan: '2019-11-13T10:57:06Z'
-                      total_checks: 99
-                  total_affected_items: 2
-                  failed_items: []
+                    - total_checks: 192
+                      name: "CIS Benchmark for Debian/Linux 10"
+                      score: 39
+                      pass: 61
+                      description: "This document provides prescriptive guidance for establishing a secure configuration
+                       posture for Debian Linux 10."
+                      start_scan: "2021-05-28T11:16:14Z"
+                      policy_id: "cis_debian10"
+                      invalid: 37
+                      fail: 94
+                      references: "https://www.cisecurity.org/cis-benchmarks/"
+                      hash_file: "f9bc11bb3e2cfa4017da658e833a38840f180cc339c07c01a6239c4d947d1bbe"
+                      end_scan: "2021-05-28T11:16:14Z"
+                  total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected sca information was returned"
                 error: 0
         '400':
@@ -12011,9 +12211,9 @@ paths:
                       value: "9"
                     - key: pci_dss
                       value: "2.2.2"
-                  failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected sca/policy information was returned"
                 error: 0
         '400':
@@ -12059,9 +12259,9 @@ paths:
                     - '001'
                     - '002'
                     - '003'
-                  failed_items: []
                   total_affected_items: 4
                   total_failed_items: 0
+                  failed_items: []
                 message: "Syscheck scan was restarted on returned agents"
                 error: 0
         '400':
@@ -12151,8 +12351,8 @@ paths:
                       uid: '0'
                       uname: root
                   total_affected_items: 1433
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "FIM findings of the agent were returned"
                 error: 0
         '400':
@@ -12195,8 +12395,8 @@ paths:
                   affected_items:
                     - '000'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Syscheck database was cleared on returned agents"
                 error: 0
         '400':
@@ -12239,11 +12439,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - end: '2019-11-22T10:47:56Z'
-                      start: '2019-11-22T10:47:32Z'
+                    - start: '2021-05-28T12:11:33Z'
+                      end: '2021-05-28T12:11:33Z'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Last syscheck scan of the agent was returned"
                 error: 0
         '400':
@@ -12295,29 +12495,31 @@ paths:
               example:
                 data:
                   affected_items:
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
+                    - filename: "0005-wazuh_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: wazuh
                       position: 0
                       details:
                         prematch:
                           pattern: "^wazuh: "
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
+                    - filename: "0005-wazuh_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: agent-buffer
                       position: 1
                       details:
                         parent: wazuh
                         prematch:
-                          pattern: "^Agent buffer:"
+                          pattern: "^wazuh: "
+                          offset: after_parent
                         regex:
                           pattern: "^ '(\\S+)'."
+                          offset: after_prematch
                         order: level
-                  total_affected_items: 2
-                  failed_items: []
+                  total_affected_items: 1140
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected decoders were returned"
                 error: 0
         '400':
@@ -12376,8 +12578,8 @@ paths:
                       relative_dirname: ruleset/decoders
                       status: enabled
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All decoder files were returned"
                 error: 0
         '400':
@@ -12473,7 +12675,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: Selected decoder was returned
+                message: "Selected decoder was returned"
                 error: 0
             application/xml:
               schema:
@@ -12574,9 +12776,9 @@ paths:
                 data:
                   affected_items:
                     - "etc/decoders/new_decoder.xml"
-                  failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "Decoder was successfully uploaded"
                 error: 0
         '400':
@@ -12619,9 +12821,9 @@ paths:
                 data:
                   affected_items:
                     - "etc/decoders/new_decoder.xml"
-                  failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "Decoder file was successfully deleted"
                 error: 0
         '400':
@@ -12668,25 +12870,73 @@ paths:
               example:
                 data:
                   affected_items:
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
+                    - filename: "0005-wazuh_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: wazuh
                       position: 0
                       details:
-                        prematch: "^wazuh: "
-                    - filename: 0006-json_decoders.xml
-                      relative_dirname: ruleset/decoders
+                        prematch:
+                          pattern: "^wazuh: "
+                    - filename: "0006-json_decoders.xml"
+                      relative_dirname: "ruleset/decoders"
                       status: enabled
                       name: json
                       position: 0
                       details:
-                        prematch: ^{\s*"
+                        prematch:
+                          patten: ^{\\s*\"
                         plugin_decoder: JSON_Decoder
-                  total_affected_items: 2
-                  failed_items: []
+                  total_affected_items: 182
                   total_failed_items: 0
+                  failed_items: []
                 message: "All selected decoders were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /experimental/rootcheck:
+    delete:
+      tags:
+        - Experimental
+      summary: "Clear rootcheck results"
+      description: "Clear rootcheck database for all agents or a list of them"
+      operationId: api.controllers.experimental_controller.clear_rootcheck_database
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list_all'
+      responses:
+        '200':
+          description: "Clear rootcheck database for all agents or a list of them"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "002"
+                    - "003"
+                  total_affected_items: 2
+                  failed_items: [ ]
+                  total_failed_items: 0
+                message: "Rootcheck database was cleared on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -12711,7 +12961,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list_delete'
+        - $ref: '#/components/parameters/agents_list_all'
       responses:
         '200':
           description: "Delete syscheck database"
@@ -12740,10 +12990,10 @@ paths:
                     - '010'
                     - '011'
                     - '012'
-                  failed_items: []
                   total_affected_items: 13
                   total_failed_items: 0
-                message: Cleared syscheck database on shown agents
+                  failed_items: []
+                message: "Syscheck database was cleared on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13692,9 +13942,9 @@ paths:
                       scan:
                         id: 1708048541
                         time: '2019-10-30T16:19:39Z'
-                  failed_items: []
                   total_affected_items: 2
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -13737,23 +13987,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - inode: 15952431
-                      local:
-                        ip: 127.0.0.11
-                        port: 45363
-                      protocol: tcp
-                      remote:
-                        ip: 0.0.0.0
-                        port: 0
-                      rx_queue: 0
+                    - cpu:
+                        cores: 4
+                        mhz: 1101
+                        name: "Intel(R) Core(TM) i5-7600K CPU @ 3.80GHz"
+                      ram:
+                        free: 12401548
+                        total: 32852420
+                        usage: 63
                       scan:
-                        id: 1708048540
-                        time: '2019-10-30T16:09:35Z'
-                      state: listening
-                      tx_queue: 0
+                        id: 0
+                        time: "2021-05-28T12:16:14Z"
+                      board_serial: "HA16934652"
+                      agent_id: "001"
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -13807,8 +14056,8 @@ paths:
                         id: 1708048540
                         time: '2019-10-30T16:09:35Z'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -13863,15 +14112,14 @@ paths:
                 data:
                   affected_items:
                     - address: 172.26.0.7
-                      broadcast: 172.26.255.255
                       iface: eth0
                       netmask: 255.255.0.0
+                      broadcast: 172.26.255.255
                       proto: ipv4
-                      scan:
-                        id: 476539860
+                      agent_id: 001
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -13934,27 +14182,27 @@ paths:
                 data:
                   affected_items:
                     - rx:
-                        bytes: 7774
+                        bytes: 679529
                         dropped: 0
                         errors: 0
-                        packets: 59
+                        packets: 3638
                       scan:
-                        id: 1248412797
-                        time: '2020-04-15T11:02:03Z'
+                        id: 0
+                        time: '2021-05-28T12:16:14Z'
                       tx:
-                        bytes: 211
+                        bytes: 1326491
                         dropped: 0
                         errors: 0
-                        packets: 4
-                      name: eth0
-                      state: up
+                        packets: 3828
                       type: ethernet
-                      mac: 02:42:ac:18:00:02
+                      name: eth0
                       mtu: 1500
-                      agent_id: '000'
+                      state: up
+                      mac: 02:42:ac:18:00:02
+                      agent_id: '001'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14007,15 +14255,15 @@ paths:
                 data:
                   affected_items:
                     - scan:
-                        id: 1248412797
-                      iface: eth0
-                      type: ipv4
+                        id: 0
                       gateway: 172.24.0.1
                       dhcp: "enabled"
-                      agent_id: '000'
+                      iface: eth0
+                      type: ipv4
+                      agent_id: '001'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14060,24 +14308,24 @@ paths:
                 data:
                   affected_items:
                     - os:
-                        codename: Bionic Beaver
-                        major: '18'
+                        codename: "focal"
+                        major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 18.04.4 LTS (Bionic Beaver)
+                        version: "20.04.2 LTS (Focal Fossa)"
                       scan:
-                        id: 496386874
-                        time: '2020-04-15T11:02:03Z'
+                        id: 0
+                        time: '22021-05-28T12:16:14Z'
                       sysname: Linux
-                      hostname: wazuh-master
-                      version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
-                      release: 5.3.0-7642-generic
+                      release: 5.8.0-45-generic
+                      version: "#51~20.04.1-Ubuntu SMP Tue Feb 23 13:46:31 UTC 2021"
                       architecture: x86_64
-                      agent_id: '000'
+                      hostname: wazuh-master
+                      agent_id: '001'
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14132,53 +14380,52 @@ paths:
                 data:
                   affected_items:
                     - scan:
-                        id: 1137251326
-                        time: '2020-04-15T11:02:03Z'
+                        id: 0
+                        time: '2021-05-28T11:16:15Z'
+                      multiarch: same
+                      description: "GCC Quad-Precision Math Library"
+                      source: krb5
                       name: libquadmath0
-                      size: 269
-                      version: 8.4.0-1ubuntu1~18.04
-                      source: gcc-8
+                      architecture: amd64
+                      vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                      size: 426
                       format: deb
+                      version: "8.4.0-1ubuntu1~18.04"
                       section: libs
-                      architecture: amd64
-                      multiarch: same
-                      description: GCC Quad-Precision Math Library
                       priority: optional
-                      vendor: Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
+                      agent_id: '002'
                     - scan:
-                        id: 1137251326
-                        time: '2020-04-15T11:02:03Z'
-                      name: libnpth0
-                      size: 32
-                      version: 1.5-3
-                      source: npth
-                      format: deb
-                      section: libs
-                      architecture: amd64
-                      multiarch: same
-                      description: replacement for GNU Pth using system threads
-                      priority: optional
-                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
-                    - scan:
-                        id: 1137251326
-                        time: '2020-04-15T11:02:03Z'
-                      name: fdisk
-                      size: 427
-                      version: 2.31.1-0.4ubuntu3.5
-                      source: util-linux
-                      format: deb
-                      section: utils
-                      architecture: amd64
+                        id: 0
+                        time: '2021-05-28T11:16:15Z'
                       multiarch: foreign
-                      description: collection of partitioning utilities
-                      priority: important
-                      vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
-                  total_affected_items: 3
-                  failed_items: []
+                      description: "secure shell (SSH) client, for secure access to remote machines"
+                      source: openssh
+                      name: openssh-client
+                      architecture: amd64
+                      vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                      size: 4117
+                      format: deb
+                      version: "1:8.2p1-4ubuntu0.2"
+                      section: net
+                      priority: standard
+                      agent_id: '002'
+                    - scan:
+                        id: 0
+                        time: '2021-05-28T11:16:16Z'
+                      description: "Foreign Function Interface for Python calling C code - backend"
+                      source: python-cffi
+                      name: lpython-cffi-backend
+                      architecture: amd64
+                      vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                      size: 210
+                      format: deb
+                      version: "1.14.0-1build1"
+                      section: python
+                      priority: optional
+                      agent_id: '002'
+                  total_affected_items: 307
                   total_failed_items: 0
+                  failed_items: []
                   message: "All specified syscollector information was returned"
                   error: 0
         '400':
@@ -14242,14 +14489,14 @@ paths:
                         ip: 0.0.0.0
                         port: 0
                       scan:
-                        id: 315935312
-                        time: '2020-04-15T11:02:07Z'
-                      rx_queue: 0
-                      state: listening
-                      protocol: tcp
+                        id: 0
+                        time: '2021-05-28T11:16:14Z'
                       inode: 12387152
+                      rx_queue: 0
+                      protocol: tcp
+                      pid: 0
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                     - local:
                         ip: 0.0.0.0
                         port: 1514
@@ -14257,14 +14504,15 @@ paths:
                         ip: 0.0.0.0
                         port: 0
                       scan:
-                        id: 315935312
-                        time: '2020-04-15T11:02:07Z'
-                      rx_queue: 0
+                        id: 0
+                        time: '2021-05-28T11:16:14Z'
                       state: listening
-                      protocol: tcp
                       inode: 12397927
+                      rx_queue: 0
+                      protocol: tcp
+                      pid: 0
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                     - local:
                         ip: 0.0.0.0
                         port: 1515
@@ -14274,15 +14522,15 @@ paths:
                       scan:
                         id: 315935312
                         time: '2020-04-15T11:02:07Z'
-                      rx_queue: 0
                       state: listening
-                      protocol: tcp
                       inode: 12397153
+                      rx_queue: 0
+                      protocol: tcp
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                   total_affected_items: 3
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified syscollector information was returned"
                 error: 0
         '400':
@@ -14345,74 +14593,42 @@ paths:
                 data:
                   affected_items:
                     - scan:
-                        id: 28643647
-                        time: '2020-04-15T11:02:07Z'
-                      name: bash
-                      suser: root
-                      nlwp: 1
-                      pgrp: 1
-                      state: S
-                      session: 1
-                      utime: 23
-                      egroup: root
-                      ruser: root
-                      argvs: "/scripts/entrypoint.sh,wazuh-master,master-node,master"
-                      size: 4593
-                      euser: root
-                      processor: 3
-                      resident: 793
-                      tty: 0
+                        id: 0
+                        time: 2021-05-28T12:16:15Z
                       nice: 0
-                      pid: '1'
-                      vm_size: 18372
-                      sgroup: root
-                      rgroup: root
-                      fgroup: root
-                      start_time: 1093372
+                      name: "bash"
+                      resident: 788
+                      egroup: "root"
+                      sgroup: "root"
+                      euser: "root"
+                      size: 996
                       tgid: 1
-                      stime: 1
-                      ppid: 0
-                      share: 726
+                      share: 729
+                      rgroup: "root"
+                      argvs: "/scripts/entrypoint.sh nginx-lb 4.3"
+                      start_time: 1217866
+                      stime: 0
+                      vm_size: 3984
                       priority: 20
-                      cmd: bash
-                      agent_id: '000'
-                    - scan:
-                        id: 28643647
-                        time: '2020-04-15T11:02:07Z'
-                      name: wazuh-control
-                      suser: root
+                      utime: 2
                       nlwp: 1
-                      pgrp: 1
-                      state: S
                       session: 1
-                      utime: 0
-                      egroup: root
-                      ruser: root
-                      argvs: "/var/ossec/bin/wazuh-control,restart"
-                      size: 1156
-                      euser: root
-                      processor: 6
-                      resident: 457
+                      processor: 2
+                      pgrp: 1
+                      suser: "root"
+                      state: "S"
+                      ppid: 0
+                      cmd: "bash"
                       tty: 0
-                      nice: 0
-                      pid: '15'
-                      vm_size: 4624
-                      sgroup: root
-                      rgroup: root
-                      fgroup: root
-                      start_time: 1093547
-                      tgid: 15
-                      stime: 3
-                      ppid: 1
-                      share: 417
-                      priority: 20
-                      cmd: "/bin/sh"
-                      agent_id: '000'
+                      pid: "1"
+                      fgroup: "root"
+                      ruser: "root"
+                      agent_id: "001"
                   total_affected_items: 2
-                  failed_items: []
                   total_failed_items: 0
-                  message: "All specified syscollector information was returned"
-                  error: 0
+                  failed_items: []
+                message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14449,7 +14665,9 @@ paths:
                       data:
                         $ref: '#/components/schemas/Token'
               example:
-                token: "<generated_token>"
+                data:
+                  token: "<generated_token>"
+                  error: 0
             text/plain:
               schema:
                 type: string
@@ -14477,8 +14695,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "User wazuh was successfully logged out"
-                error: 0
+                data:
+                  message: "User wazuh was successfully logged out"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14508,6 +14727,14 @@ paths:
           application/json:
             schema:
               type: object
+            example:
+              name: "Initial_auth"
+              auth:
+                name: "Wazuh"
+                office:
+                  - "20"
+                  - "21"
+                  - "30"
       responses:
         '200':
           description: "Login successful"
@@ -14519,7 +14746,9 @@ paths:
                   token:
                     type: string
               example:
-                token: "<generated_token>"
+                data:
+                  token: "<generated_token>"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14704,8 +14933,8 @@ paths:
                           - 1
                     total_affected_items: 1
                     total_failed_items: 0
-                    failed_items: [ ]
-                  message: Parameter allow_run_as has been enabled for the user
+                    failed_items: []
+                  message: "Parameter allow_run_as has been enabled for the user"
                   error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -14795,29 +15024,33 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
               example:
-                "*:*":
-                  description: "Resource applied in functions acting on resources that do not yet exist in the system.
-                                We call these functions, resourceless functions"
-                'agent:group':
-                  description: "Reference agents via group name (i.e. agent:group:web)"
-                agent:id:
-                  description: 'Reference agents via agent ID (i.e. agent:id:001)'
-                group:id:
-                  description: 'Reference agent groups via group ID (i.e. group:id:default)'
-                node:id:
-                  description: 'Reference cluster node via node ID (i.e. node:id:worker1)'
-                decoder:file:
-                  description: 'Reference decoder file via its path (i.e. decoder:file:0005-wazuh_decoders.xml)'
-                list:file:
-                  description: 'Reference list file via its path (i.e. list:file:audit-keys)'
-                rule:file:
-                  description: 'Reference rule file via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)'
-                policy:id:
-                  description: 'Reference security policy via its id (i.e. policy:id:1)'
-                role:id:
-                  description: 'Reference security role via its id (i.e. role:id:1)'
-                user:id:
-                  description: 'Reference security user via its id (i.e. user:id:1)'
+                data:
+                  "*:*":
+                    description: "Resource applied in functions acting on resources that do not yet exist in the system.
+                      We call these functions, resourceless functions"
+                  "agent:group":
+                    description: "Reference agents via group name (i.e. agent:group:web)"
+                  "agent:id":
+                    description: "Reference agents via agent ID (i.e. agent:id:001)"
+                  "group:id":
+                    description: "Reference agent groups via group ID (i.e. group:id:default)"
+                  "node:id":
+                    description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
+                  "decoder:file":
+                    description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
+                  "list:file":
+                    description: "Reference list files via its filename (i.e. list:file:audit-keys)"
+                  "rule:file":
+                    description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
+                  "policy:id":
+                    description: "Reference security policies via its id (i.e. policy:id:1)"
+                  "role:id":
+                    description: "Reference security roles via its id (i.e. role:id:1)"
+                  "rule:id":
+                    description: "Reference security rules via its id (i.e. rule:id:1)"
+                  "user:id":
+                    description: "Reference security users via its id (i.e. user:id:1)"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14903,9 +15136,9 @@ paths:
                         username: wazuh-wui
                         allow_run_as: true
                         roles: []
-                    failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
+                    failed_items: []
                   message: "All specified users were returned"
                   error: 0
         '400':
@@ -14962,11 +15195,13 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - roles: []
-                        username: wazuh1
-                    failed_items: []
+                      - id: 100
+                        username: TestWazuh
+                        allow_run_as: false
+                        roles: []
                     total_affected_items: 1
                     total_failed_items: 0
+                    failed_items: []
                   message: "User was successfully created"
                   error: 0
         '400':
@@ -15017,8 +15252,8 @@ paths:
                         roles:
                           - 6
                     total_affected_items: 2
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "Users were successfully deleted"
                   error: 0
         '400':
@@ -15075,8 +15310,8 @@ paths:
                         roles:
                           - 2
                     total_affected_items: 1
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "User was successfully updated"
                   error: 0
         '400':
@@ -15127,20 +15362,56 @@ paths:
                       name: 'administrator'
                       policies:
                         - 1
+                        - 2
+                        - 3
+                        - 6
+                        - 7
+                        - 8
+                        - 29
+                        - 30
+                        - 12
+                        - 14
+                        - 15
+                        - 18
+                        - 19
+                        - 21
+                        - 23
+                        - 24
+                        - 16
+                        - 25
+                        - 27
+                        - 28
+                        - 33
+                        - 34
+                        - 35
                       users:
                         - 1
+                        - 2
                       rules:
                         - 1
+                        - 2
                     - id: 2
-                      name: 'normal_user'
+                      name: 'readonly'
                       policies:
                         - 4
                         - 5
-                      users:
-                        - 3
-                      rules:
-                        - 3
-                  total_affected_items: 2
+                        - 12
+                        - 31
+                        - 32
+                        - 13
+                        - 17
+                        - 20
+                        - 22
+                        - 16
+                        - 25
+                        - 26
+                        - 28
+                        - 35
+                      users: []
+                      rules: []
+                  total_affected_items: 7
+                  total_failed_items: 0
+                  failed_items: []
                 message: "All specified roles were returned"
                 error: 0
         '400':
@@ -15187,9 +15458,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 2
-                      name: normal_user
+                    - id: 100
+                      name: TestWazuhRole
+                      policies: []
+                      users: []
+                      rules: []
                   total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
                 message: "Role was successfully created"
                 error: 0
         '400':
@@ -15244,9 +15520,9 @@ paths:
                       users:
                         - 101
                         - 104
-                  failed_items: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: All specified roles were deleted
                 error: 0
 
@@ -15302,7 +15578,10 @@ paths:
                       policies: []
                       rules:
                         - 100
+                      users: []
                   total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
                 message: "Role was successfully updated"
                 error: 0
         '400':
@@ -15356,17 +15635,22 @@ paths:
                 data:
                   affected_items:
                     - id: 1
-                      name: "admin_rule"
+                      name: wui_elastic_admin
                       rule:
                         FIND:
-                          r'^auth[a-zA-Z]+$':
-                            - "administrator"
+                          username: elastic
+                      roles:
+                        - 1
                     - id: 2
-                      name: "limit_access_rule"
+                      name: wui_opendistro_admin
                       rule:
-                        MATCH:
-                          privileges: 'limit_access'
+                        FIND:
+                          username: admin
+                      roles:
+                        - 1
                   total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
                 message: "All specified security rules were returned"
                 error: 0
         '400':
@@ -15417,15 +15701,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: "new_rule"
+                    - id: 100
+                      name: "TestWazuhRule"
                       rule:
                         MATCH:
-                          definition: "normalRule"
+                          definition: "test_rule"
                       roles: []
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Security rule was successfully created"
                 error: 0
         '400':
@@ -15471,15 +15755,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: "new_rule"
+                    - id: 100
+                      name: "TestWazuhRule"
                       rule:
                         MATCH:
-                          definition: "normalRule"
+                          definition: "test_rule"
                       roles: []
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified security rules were deleted"
                 error: 0
         '400':
@@ -15531,15 +15815,15 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - id: 3
-                        name: "new_name"
+                      - id: 100
+                        name: "TestWazuhRule"
                         rule:
                           MATCH:
-                            definition: "updated_rule"
+                            definition: "test_rule_updated"
                         roles: []
                     total_affected_items: 1
-                    failed_items: []
                     total_failed_items: 0
+                    failed_items: []
                   message: "Security rule was successfully updated"
                   error: 0
         '400':
@@ -15587,24 +15871,37 @@ paths:
                 data:
                   affected_items:
                     - id: 1
-                      name: wazuhPolicy
+                      name: agents_all_resourceless
                       policy:
                         actions:
-                          - "*:*"
-                        effect: allow
+                          - "agent:create"
+                          - "group:create"
                         resources:
-                          - "*:*"
+                          - "*:*:*"
+                        effect: allow
+                      roles:
+                        - 1
+                        - 5
                     - id: 2
-                      name: test_i
+                      name: agents_all_agents
                       policy:
                         actions:
-                          - agent:delete
-                        effect: allow
+                          - "agent:read"
+                          - "agent:delete"
+                          - "agent:modify_group"
+                          - "agent:reconnect"
+                          - "agent:restart"
+                          - "agent:upgrade"
                         resources:
-                          - agent:id:004
-                          - agent:id:005
-                          - agent:id:006
-                  total_affected_items: 2
+                          - "agent:id:*"
+                          - "agent:id:*"
+                        effect: allow
+                      roles:
+                        - 1
+                        - 5
+                  total_affected_items: 35
+                  total_failed_items: 0
+                  failed_items: []
                 message: "All specified policies were returned"
                 error: 0
         '400':
@@ -15659,18 +15956,18 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 2
-                      name: 'normal_policy'
+                    - id: 100
+                      name: "TestWazuhPolicy"
                       policy:
                         actions:
-                          - "agent:delete"
+                          - "security:delete"
                         resources:
-                          - "agent:id:001"
-                        effect: "allow"
+                          - "user:id:*"
+                        effect: deny
                       roles: []
                   total_affected_items: 1
-                  failed_items: []
                   total_failed_items: 0
+                  failed_items: []
                 message: "Policy was successfully created"
                 error: 0
         '400':
@@ -15716,20 +16013,18 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 8
-                      name: policy2
+                    - id: 100
+                      name: "TestWazuhPolicy"
                       policy:
                         actions:
-                          - role:read
-                        effect: allow
+                          - "security:delete"
                         resources:
-                          - role:id:1
-                      roles:
-                        - 3
-                        - 6
-                  failed_items: []
+                          - "user:id:*"
+                        effect: deny
+                      roles: []
                   total_affected_items: 1
                   total_failed_items: 0
+                  failed_items: []
                 message: "All specified policies were deleted"
                 error: 0
         '400':
@@ -15786,18 +16081,18 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 2
-                      name: wazuhPolicy
+                    - id: 100
+                      name: TestWazuhPolicy
                       policy:
                         actions:
-                          - agent:delete
-                        effect: allow
+                          - "security:delete"
                         resources:
-                          - agent:id:001
-                          - agent:id:002
-                          - agent:id:003
+                          - "user:id:*"
+                        effect: deny
                       roles: []
                   total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
                 message: "Policy was successfully updated"
                 error: 0
 
@@ -15846,15 +16141,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      username: string
+                    - id: 100
+                      username: TestWazuhUsername
+                      allow_run_as: false
                       roles:
-                        - 9
-                        - 8
-                  total_affected_items: 2
+                        - 1
+                  total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: All roles were linked to user 3
+                message: "All roles were linked to TestWazuhUsername"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -15895,13 +16190,14 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      username: string
+                    - id: 100
+                      username: TestWazuhUsername
+                      allow_run_as: false
                       roles: []
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: All roles were unlinked from user 3
+                message: "All roles were unlinked from user TestWazuhUsername"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -15940,18 +16236,16 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: normal
+                    - id: 100
+                      name: TestWazuhRole
                       policies:
-                        - 2
-                        - 3
-                      rules:
-                        - 5
+                        - 100
                       users: []
-                  failed_items: []
+                      rules: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All policies were linked to role 3
+                  failed_items: []
+                message: "All policies were linked to role 100"
                 error: 0
 
         '400':
@@ -15989,16 +16283,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: normal
+                    - id: 100
+                      name: TestWazuhRole
                       policies: []
-                      rules:
-                        - 1
                       users: []
-                  failed_items: []
+                      rules: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: All policies were unlinked from role 3
+                  failed_items: []
+                message: "All policies were unlinked from role 100"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16036,18 +16329,16 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 5
-                      name: normal
-                      policies:
-                        - 2
-                        - 3
-                      rules:
-                        - 3
+                    - id: 100
+                      name: TestWazuhRole
+                      policies: []
                       users: []
-                  failed_items: []
+                      rules:
+                        - 100
                   total_affected_items: 1
                   total_failed_items: 0
-                message: "All security rules were linked to role 5"
+                  failed_items: []
+                message: "All security rules were linked to role 100"
                 error: 0
 
         '400':
@@ -16085,15 +16376,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: 3
-                      name: normal
+                    - id: 100
+                      name: TestWazuhRole
                       policies: []
-                      rules: []
                       users: []
-                  failed_items: []
+                      rules: []
                   total_affected_items: 2
                   total_failed_items: 0
-                message: "All security rules were unlinked from role 3"
+                  failed_items: []
+                message: "All security rules were unlinked from role 100"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16134,65 +16425,58 @@ paths:
               example:
                 data:
                   nodes:
-                    items:
-                      - count: 1
-                        node_name: master-node
-                      - count: 1
-                        node_name: worker1
-                    totalItems: 2
+                    - node_name: "worker1"
+                      count: 1
+                    - node_name: "worker2"
+                      count: 1
+                    - node_name: "master-node"
+                      count: 1
                   groups:
-                    items:
-                      - count: 5
-                        name: default
-                        mergedSum: 8cf9a9972b793548a1bb6fbb00e58af6
-                        configSum: ab73af41699f13fdd81903b5f23d8d00
-                    totalItems: 1
+                    - name: "default"
+                      count: 6
+                      mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
+                      configSum: "ab73af41699f13fdd81903b5f23d8d00"
                   agent_os:
-                    items:
-                      - os:
-                          name: Ubuntu
-                          platform: ubuntu
-                          version: 18.04.2 LTS
-                        count: 6
-                    totalItems: 6
+                    - os:
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: "20.04.02 LTS"
+                      count: 6
                   agent_status:
-                    total: 6
                     active: 6
-                    disconnected: 0
+                    disconected: 0
                     never_connected: 0
                     pending: 0
+                    total: 6
                   agent_version:
-                    items:
-                      - version: Wazuh v4.0.0
-                        count: 1
-                      - version: Wazuh v3.11.0
-                        count: 5
-                    totalItems: 6
+                    - version: "Wazuh v4.3.0"
+                      count: 6
                   last_registered_agent:
-                    os:
-                      arch: x86_64
-                      codename: Bionic Beaver
-                      minor: "18"
-                      major: "04"
-                      name: Ubuntu
-                      platform: ubuntu
-                      uname: "Linux |ee7d4f51c0ae |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb 12 13:35:51 UTC
-                      2019 |x86_64"
-                      version: 18.04.2 LTS
-                    version: Wazuh v3.9.5
-                    dateAdd: "2019-08-20 11:42:14"
-                    node_name: master-node
-                    status: active
-                    group:
-                      - default
-                    mergedSum: 8cf9a9972b793548a1bb6fbb00e58af6
-                    name: ee7d4f51c0ae
-                    lastKeepAlive: "2019-08-20 11:48:20"
-                    configSum: ab73af41699f13fdd81903b5f23d8d00
-                    registerIP: any
-                    ip: "172.20.0.8"
-                    id: "005"
-                    manager: 1a683501f77f
+                    - os:
+                        arch: "x86_64"
+                        codename: "Focal Fossa"
+                        major: 20
+                        minor: 04
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: "Linux |77000bae7bd0 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                         23 13:46:31 UTC 2021 |x86_64"
+                        version: "20.04.02 LTS"
+                      node_name: worker1
+                      lastKeepAlive: "2021-05-31T10:56:52Z"
+                      configSum: "ab73af41699f13fdd81903b5f23d8d00"
+                      status: active
+                      ip: "172.18.0.7"
+                      group:
+                        - default
+                      name: "77000bae7bd0"
+                      registerIP: "any"
+                      dateAdd: "2021-05-31T09:49:28Z"
+                      manager: "wazuh-worker1"
+                      id: "004"
+                      mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
+                      version: "Wazuh v4.3.0"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -16224,8 +16508,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 900
-                rbac_mode: white
+                data:
+                  auth_token_exp_timeout: 900
+                  rbac_mode: white
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -16261,7 +16547,7 @@ paths:
               schema:
                 type: object
               example:
-                message: 'Configuration successfully updated'
+                message: "Configuration was successfully updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16293,7 +16579,7 @@ paths:
               schema:
                 type: object
               example:
-                message: 'Configuration successfully updated'
+                message: "Configuration was successfully updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -16349,8 +16635,9 @@ paths:
                       update_time: 2020/11/10 11:55:36
                   total_affected_items: 1
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: All specified task's status were returned
+                  failed_items: []
+                message: "All specified task's status were returned"
+                error: 0
 
   /vulnerability/{agent_id}:
     get:
@@ -16396,8 +16683,8 @@ paths:
                       name: bash
                   total_affected_items: 2
                   total_failed_items: 0
-                  failed_items: [ ]
-                message: All selected vulnerabilities were returned
+                  failed_items: []
+                message: "All selected vulnerabilities were returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
