@@ -51,12 +51,12 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     int counter = 0;
 
     if (new_day)
-        minfo("Running daily rotation of log files.");
+        mtinfo(WM_MONITOR_LOGTAG, "Running daily rotation of log files.");
     else {
         if (rotate_json)
-            minfo("Rotating '%s' file: Maximum size reached.", LOGJSONFILE);
+            mtinfo(WM_MONITOR_LOGTAG, "Rotating '%s' file: Maximum size reached.", LOGJSONFILE);
         else
-            minfo("Rotating '%s' file: Maximum size reached.", LOGFILE);
+            mtinfo(WM_MONITOR_LOGTAG, "Rotating '%s' file: Maximum size reached.", LOGFILE);
     }
 
     if (new_day)
@@ -91,11 +91,11 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     // Create folders
 
     if (IsDir(year_dir) < 0 && mkdir(year_dir, 0770) < 0) {
-        merror_exit(MKDIR_ERROR, year_dir, errno, strerror(errno));
+        mterror_exit(WM_MONITOR_LOGTAG, MKDIR_ERROR, year_dir, errno, strerror(errno));
     }
 
     if (IsDir(month_dir) < 0 && mkdir(month_dir, 0770) < 0) {
-        merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
+        mterror_exit(WM_MONITOR_LOGTAG, MKDIR_ERROR, month_dir, errno, strerror(errno));
     }
 
     if (new_day || (!new_day && !rotate_json)) {
@@ -117,7 +117,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename_ex(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        mterror(WM_MONITOR_LOGTAG, "Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         return;
                     }
                     counter++;
@@ -134,7 +134,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                     OS_CompressLog(new_path);
                 }
             } else {
-                merror("Couldn't rename '%s' to '%s': %s", old_path, new_path, strerror(errno));
+                mterror(WM_MONITOR_LOGTAG, "Couldn't rename '%s' to '%s': %s", old_path, new_path, strerror(errno));
             }
         }
 
@@ -161,7 +161,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename_ex(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        mterror(WM_MONITOR_LOGTAG, "Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         return;
                     }
                     counter++;
@@ -178,12 +178,12 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                     OS_CompressLog(new_path_json);
                 }
             } else {
-                merror("Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
+                mterror(WM_MONITOR_LOGTAG, "Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
             }
         }
     }
 
-    minfo("Starting new log after rotation.");
+    mtinfo(WM_MONITOR_LOGTAG, "Starting new log after rotation.");
 
     // Remove old compressed files
     remove_old_logs(base_dir, keep_log_days);
@@ -197,7 +197,7 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
+        mterror(WM_MONITOR_LOGTAG, "Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
@@ -223,7 +223,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
+        mterror(WM_MONITOR_LOGTAG, "Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
@@ -246,7 +246,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
         if (month < 12) {
             remove_old_logs_m(path, year, month, threshold);
         } else {
-            mwarn("Unexpected folder '%s'", path);
+            mtwarn(WM_MONITOR_LOGTAG, "Unexpected folder '%s'", path);
         }
     }
 
@@ -271,7 +271,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     tm.tm_sec = 0;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
+        mterror(WM_MONITOR_LOGTAG, "Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
@@ -286,7 +286,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                mtdebug2(WM_MONITOR_LOGTAG, "Removing old log '%s'", path);
                 unlink(path);
             }
         }
@@ -296,7 +296,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                mtdebug2(WM_MONITOR_LOGTAG, "Removing old log '%s'", path);
                 unlink(path);
             }
         }
@@ -306,7 +306,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                mtdebug2(WM_MONITOR_LOGTAG, "Removing old log '%s'", path);
                 unlink(path);
             }
         }
@@ -316,7 +316,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                mtdebug2(WM_MONITOR_LOGTAG, "Removing old log '%s'", path);
                 unlink(path);
             }
         }

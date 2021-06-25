@@ -13,6 +13,7 @@
 #include "wm_monitor.h"
 #include "wmodules.h"
 #include "defs.h"
+#include "os_net/os_net.h"
 
 #define DEFAULT_NO_AGENT 0
 #define DEFAULT_DAY_WAIT -1
@@ -29,6 +30,7 @@ const wm_context WM_MONITOR_CONTEXT = {
     (wm_routine)wm_monitor_main,
     (wm_routine)(void *)wm_monitor_destroy,
     (cJSON * (*)(const void *))wm_monitor_dump,
+    NULL,
     NULL,
 };
 

@@ -49,7 +49,7 @@ void Monitord()
     /* Connect to the message queue or exit */
     monitor_queue_connect();
     if (mond.a_queue < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+        mterror_exit(WM_MONITOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     // Start com request thread
@@ -58,7 +58,7 @@ void Monitord()
     /* Creating agents disconnected alert table */
     agents_to_alert_hash = OSHash_Create();
     if(!agents_to_alert_hash) {
-        merror(MEM_ERROR, errno, strerror(errno));
+        mterror(WM_MONITOR_LOGTAG, MEM_ERROR, errno, strerror(errno));
     }
 
     /* Get current time and initiate counters */
@@ -113,6 +113,7 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
     cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
     cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
+    cJSON_AddNumberToObject(monconf, "debug", wm_debug_level);
 
     return monconf;
 }
@@ -185,7 +186,7 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
 
     if (ReadConfig(modules, cfg, mond, NULL) < 0 ||
         ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        mterror_exit(WM_MONITOR_LOGTAG, CONFIG_ERROR, cfg);
     }
 
     return OS_SUCCESS;
@@ -196,7 +197,7 @@ void monitor_queue_connect() {
         /* Send startup message */
         if (SendMSG(mond.a_queue, OS_AD_STARTED, ARGV0, LOCALFILE_MQ) < 0) {
             mond.a_queue = -1;  // We keep trying to reconnect next time.
-            merror(QUEUE_SEND);
+            mterror(WM_MONITOR_LOGTAG, QUEUE_SEND);
         }
     }
 }
