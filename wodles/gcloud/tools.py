@@ -30,7 +30,7 @@ log_levels = {0: logging.NOTSET,
 logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 
 
-def get_script_arguments() -> args:
+def get_script_arguments():
     """Get script arguments."""
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring Google Cloud",

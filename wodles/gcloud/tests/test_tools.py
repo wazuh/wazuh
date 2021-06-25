@@ -20,7 +20,7 @@ wazuh_installation_path = '/var/ossec'
 def test_get_wazuh_queue():
     """Test get_wazuh_queue function."""
 
-    with patch(f'tools.common.find_wazuh_path', return_value=wazuh_installation_path):
+    with patch(f'tools.find_wazuh_path', return_value=wazuh_installation_path):
         wazuh_queue = get_wazuh_queue()
 
     assert "/var/ossec/queue/sockets/queue" == wazuh_queue
