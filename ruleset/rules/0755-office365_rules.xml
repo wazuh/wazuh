@@ -957,7 +957,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^FileMalwareDetected$</field>
         <description>Office 365: Detected malware in file $(office_365.SourceFileName).</description>
         <options>no_full_log</options>
-        <group>OneDrive,SharePoint</group>
+        <group>OneDrive,SharePoint,hipaa_164.312.b,pci_dss_10.6.1</group>
     </rule>
 
     <rule id="91701" level="5">
@@ -965,7 +965,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^DocumentSensitivityMismatchDetected$</field>
         <description>Office 365: Document sensitivity mismatch detected</description>
         <options>no_full_log</options>
-        <group>OneDrive,SharePoint</group>
+        <group>OneDrive,SharePoint,pci_dss_10.6.1,hipaa_164.312.b</group>
     </rule>
 
     <rule id="91702" level="4">
@@ -981,7 +981,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^PermissionLevelAdded$</field>
         <description>Office 365: A permission level was added to a site collection.</description>
         <options>no_full_log</options>
-        <group>OneDrive,SharePoint</group>
+        <group>OneDrive,SharePoint,hipaa_164.312.a.1</group>
     </rule>
 
     <rule id="91704" level="6">
@@ -989,7 +989,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^SharingInvitationBlocked$</field>
         <description>Office 365: Blocked sharing invitation</description>
         <options>no_full_log</options>
-        <group>OneDrive,SharePoint</group>
+        <group>OneDrive,SharePoint,pci_dss_10.2.4,hipaa_164.312.a.1</group>
         <mitre>
             <id>T1136</id>
         </mitre>
@@ -1000,7 +1000,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^Add-MailboxPermission$</field>
         <description>Office 365: Added delegate mailbox permissions</description>
         <options>no_full_log</options>
-        <group>Exchange</group>
+        <group>Exchange,hipaa_164.312.a.1</group>
     </rule>
 
     <rule id="91706" level="6">
@@ -1008,7 +1008,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^AddFolderPermissions$</field>
         <description>Office 365: Added permissions to folder</description>
         <options>no_full_log</options>
-        <group>Exchange</group>
+        <group>Exchange,hipaa_164.312.a.1</group>
     </rule>
 
     <rule id="91707" level="4">
@@ -1027,7 +1027,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^SendAs|SendOnBehalf$</field>
         <description>Office 365: Sent message using different permissions</description>
         <options>no_full_log</options>
-        <group>Exchange</group>
+        <group>Exchange,hipaa_164.312.a.2.I,pci_dss_8.1.2</group>
         <mitre>
             <id>T1114.003</id>
         </mitre>
@@ -1038,7 +1038,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^Add user.$</field>
         <description>Office 365: Added user</description>
         <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
+        <group>AzureActiveDirectory,pci_dss_8.1.2,hipaa_164.312.a.2.I</group>
         <mitre>
             <id>T1078</id>
             <id>T1098.001</id>
@@ -1050,7 +1050,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^Update user.$</field>
         <description>Office 365: Updated user</description>
         <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
+        <group>AzureActiveDirectory,pci_dss_8.1.2,hipaa_164.312.a.2.I</group>
         <mitre>
             <id>T1078</id>
         </mitre>
@@ -1061,7 +1061,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^Add member to role.$</field>
         <description>Office 365: Add member to role</description>
         <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
+        <group>AzureActiveDirectory,pci_dss_8.1.2,hipaa_164.312.a.2.I</group>
         <mitre>
             <id>T1078</id>
         </mitre>
@@ -1072,7 +1072,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^Add group.$</field>
         <description>Office 365: Added group</description>
         <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
+        <group>AzureActiveDirectory,pci_dss_8.1.2,hipaa_164.312.a.2.I</group>
     </rule>
 
     <rule id="91713" level="6">
@@ -1080,7 +1080,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^Add member to group.$</field>
         <description>Office 365: Added member to group</description>
         <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
+        <group>AzureActiveDirectory,pci_dss_8.1.2,hipaa_164.312.a.2.I</group>
     </rule>
 
     <rule id="91714" level="6">
@@ -1088,7 +1088,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^Add service principal credentials.$</field>
         <description>Office 365: Added credentials to a service principal</description>
         <options>no_full_log</options>
-        <group>AzureActiveDirectory</group>
+        <group>AzureActiveDirectory,pci_dss_8.1.2,hipaa_164.312.a.2.I</group>
     </rule>
 
     <rule id="91715" level="6">
@@ -1096,7 +1096,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^CaseAdminUpdated$</field>
         <description>Office 365: Changed eDiscovery administrator membership</description>
         <options>no_full_log</options>
-        <group>Discovery</group>
+        <group>Discovery,hipaa_164.312.a.2.I,pci_dss_8.1.2</group>
         <mitre>
             <id>T1526</id>
         </mitre>
@@ -1107,7 +1107,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^CaseAdminAdded$</field>
         <description>Office 365: Created eDiscovery administrator</description>
         <options>no_full_log</options>
-        <group>Discovery</group>
+        <group>Discovery,pci_dss_8.1.2,hipaa_164.312.a.2.I</group>
         <mitre>
             <id>T1526</id>
         </mitre>
@@ -1118,7 +1118,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^CaseAdded$</field>
         <description>Office 365: Created eDiscovery case</description>
         <options>no_full_log</options>
-        <group>Discovery</group>
+        <group>Discovery,hipaa_164.312.a.1</group>
         <mitre>
             <id>T1526</id>
         </mitre>
@@ -1129,7 +1129,7 @@ ID: 91531 - 91650
         <field name="office365.Operation" type="osregex">^SearchCreated$</field>
         <description>Office 365: Created content search</description>
         <options>no_full_log</options>
-        <group>Discovery</group>
+        <group>Discovery,hipaa_164.312.a.1</group>
         <mitre>
             <id>T1526</id>
         </mitre>
@@ -1163,7 +1163,7 @@ ID: 91531 - 91650
         <if_sid>91532</if_sid>
         <field name="office365.Operation" type="osregex">^QuarantineRelease$</field>
         <description>Office 365: Released quarantine message</description>
-        <options>no_full_log</options>
+        <options>no_full_log,pci_dss_10.2.2</options>
         <group>Exchange</group>
     </rule>
 
@@ -1194,7 +1194,7 @@ ID: 91531 - 91650
         <field name="office365.Parameters" type="pcre2">\"Value\":\s*\"FullAccess\"</field>
         <description>Office 365: User $(office_365.UserId) got FullAccess permissions in Exchange</description>
         <options>no_full_log</options>
-        <group>Exchange</group>
+        <group>Exchange,hipaa_164.312.a.1,pci_dss_10.2.2</group>
         <mitre>
             <id>T1098.002</id>
         </mitre>
