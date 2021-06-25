@@ -257,7 +257,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 data->changed = 1;
             }
 
-
             /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
 
@@ -1049,7 +1048,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     char *fmsg;
 
     if (!groups) {
-        /* Nothing to share with agent */
         mdebug2("Nothing to share with agent");
         return OS_INVALID;
     }
@@ -1077,7 +1075,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
     fmsg = message;
 
     // Skip agent-info and label data
-
     if (message = strchr(message, '\n'), !message) {
         merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
         w_mutex_unlock(&files_mutex);

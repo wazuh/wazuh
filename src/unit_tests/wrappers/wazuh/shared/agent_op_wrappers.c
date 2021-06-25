@@ -33,7 +33,7 @@ int __wrap_control_check_connection() {
 
 int __wrap_get_agent_group(const char *id, char *group, __attribute__((unused)) size_t size) {
     check_expected(id);
-    check_expected(group);
+    strncpy(group, mock_type(char *), OS_SIZE_65536);
     return mock();
 }
 
