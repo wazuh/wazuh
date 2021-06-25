@@ -23,17 +23,8 @@
 
 /* Forward declarations */
 void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock);
-//int lookfor_agent_group(const char *agent_id, char *msg, char **r_group);
 
-
-agent_group *__wrap_w_parser_get_agent(const char * name) {
-
-    check_expected(name);
-    return mock_type(agent_group *);
-}
-
-
-/* setup/teardown */
+/* setup - teardown */
 
 int setup_remoted(void **state) {
     return OS_SUCCESS;
@@ -45,12 +36,14 @@ int teardown_remoted(void **state) {
 
 /* tests */
 
-/* Tests save_controlmsg*/
+/* Tests save_controlmsg */
 
 void test_save_controlmsg(void **state)
 {
     assert_int_equal(OS_SUCCESS, 0);
 }
+
+/* Tests lookfor_agent_group */
 
 void test_lookfor_agent_group_null_groups(void **state)
 {
@@ -70,6 +63,9 @@ void test_lookfor_agent_group_set_default_group(void **state)
     const char *agent_id = "001";
     char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
     char *r_group = NULL;
+
+    // os_calloc(1, sizeof(char), r_group);
+    // os_strdup("", r_group);
 
     agent_group *agt_group = NULL;
 
@@ -108,7 +104,8 @@ void test_lookfor_agent_group_get_group_from_files_yml(void **state)
     char *r_group = NULL;
 
     agent_group *agt_group;
-    agt_group->group = strdup("group_from_files");
+    os_calloc(1, sizeof(agent_group), agt_group);
+    os_strdup("group_from_files", agt_group->group);
 
     static group_t *test_groups = NULL;
     // groups is a manager.c global variable
@@ -128,6 +125,7 @@ void test_lookfor_agent_group_get_group_from_files_yml(void **state)
     assert_string_equal(r_group, agt_group->group);
 
     os_free(agt_group->group);
+    os_free(agt_group);
     os_free(r_group);
 }
 
@@ -147,7 +145,7 @@ void test_lookfor_agent_group_msg_without_enter(void **state)
     will_return(__wrap_w_parser_get_agent, agt_group);
 
     expect_string(__wrap_get_agent_group, id, agent_id);
-    expect_string(__wrap_get_agent_group, group, "group_from_files");
+    expect_string(__wrap_get_agent_group, group, "");
     will_return(__wrap_get_agent_group, -1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '002' group is ''");

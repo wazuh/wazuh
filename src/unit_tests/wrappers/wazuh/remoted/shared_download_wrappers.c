@@ -15,7 +15,6 @@
 #include "shared_download_wrappers.h"
 
 agent_group * __wrap_w_parser_get_agent(const char * name) {
-
     check_expected(name);
-    return mock_type(agent_group);    
+    return mock_type(agent_group *);    
 }
