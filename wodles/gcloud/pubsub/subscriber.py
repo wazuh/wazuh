@@ -33,7 +33,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         max_messages : int
             Maximum number of messages to retrieve
         """
-        WazuhGCloudIntegration.__init__(self, logger)
+        super().__init__(logger)
 
         self.subscriber = self.get_subscriber_client(credentials_file).api
         self.subscription_path = self.get_subscription_path(project, subscription_id)
@@ -87,7 +87,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         """Check if permissions are OK for executing the wodle."""
         required_permissions = {'pubsub.subscriptions.consume'}
         response = self.subscriber.test_iam_permissions(self.subscription_path, required_permissions)
-        if required_permissions.difference(response.permissions) != set():
+        if required_permissions.difference(response.permissions):
             error_message = 'ERROR: No permissions for executing the wodle from this subscription'
             raise Exception(error_message)
 

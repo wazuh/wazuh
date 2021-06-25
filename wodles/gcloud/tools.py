@@ -11,11 +11,12 @@
 import argparse
 import logging
 import os
-import pytz
 import sys
 from datetime import datetime
 from functools import lru_cache
 from logging.handlers import TimedRotatingFileHandler
+
+import pytz
 
 
 logger_name = 'gcloud_wodle'
@@ -106,7 +107,7 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
 
     Returns
     -------
-    Logger configured with input parameters. Returns the messages in a output file
+    Logger configured with input parameters. Writes the messages in an output file.
     """
     logger_file = logging.getLogger(f'{logger_name}_debug')
     # set log level
@@ -158,8 +159,7 @@ def find_wazuh_path() -> str:
 
     wazuh_path = ''
     try:
-        for i in range(0, allparts.index('wodles')):
-            wazuh_path = os.path.join(wazuh_path, allparts[i])
+        wazuh_path = os.path.join(wazuh_path, *[allparts[i] for i in range(allparts.index('wodles'))])
     except ValueError:
         pass
 

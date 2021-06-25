@@ -6,13 +6,13 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module processes events from a Google Cloud subscription."""
+"""This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
-import tools
 import sys
 
-from pubsub.subscriber import WazuhGCloudSubscriber
+import tools
 from buckets.access_logs import GCSAccessLogs
+from pubsub.subscriber import WazuhGCloudSubscriber
 
 
 try:

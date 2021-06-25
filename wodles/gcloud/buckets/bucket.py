@@ -9,11 +9,10 @@
 import json
 import logging
 import os
-import pytz
 import sqlite3
 import sys
-
 from datetime import datetime
+import pytz
 
 try:
     from google.cloud import storage
@@ -49,7 +48,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         only_logs_after : str
             Date after which obtain logs
         """
-        WazuhGCloudIntegration.__init__(self, logger)
+        super().__init__(logger)
         self.bucket_name = bucket_name
         self.bucket = None
         self.client = storage.client.Client.from_service_account_json(credentials_file)
@@ -120,14 +119,14 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         try:
             self.bucket = self.client.get_bucket(self.bucket_name)
         except google_exceptions.NotFound:
-            raise Exception(f'The bucket "{self.bucket_name}" does not exists.')
+            raise Exception(f'The bucket "{self.bucket_name}" does not exist.')
         except google_exceptions.Forbidden:
             raise Exception(f'The Service Account provided does not have "storage.buckets.get" access to the '
                             f'Google Cloud Storage bucket.')
 
     def init_db(self):
         """Connect to the database and try to access the table. The database file and the table will be created if they
-         do not exists yet."""
+         do not exist yet."""
         self.db_connector = sqlite3.connect(self.db_path)
         try:
             self.db_connector.execute(self.sql_create_table.format(table_name=self.db_table_name,
@@ -135,7 +134,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                                                                    bucket_name=self.bucket_name,
                                                                    prefix=self.prefix))
         except sqlite3.OperationalError:
-            # The table already exists
+            # The table already exist
             pass
 
     def process_data(self):
@@ -178,7 +177,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
 
         def update_last_processed_files():
             """Remove the records for the previous execution and store the new values from the current one."""
-            if processed_files and processed_files != list():
+            if processed_files:
                 self.logger.info('Updating previously processed files.')
                 try:
                     self.db_connector.execute(self.sql_delete_processed_files.format(table_name=self.db_table_name,

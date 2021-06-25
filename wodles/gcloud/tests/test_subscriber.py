@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""Unit tests for integration module."""
+"""Unit tests for subscriber module."""
 
 import os
 import socket

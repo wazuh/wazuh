@@ -26,15 +26,26 @@ class GCSAccessLogs(WazuhGCloudBucket):
             Path to credentials file
         logger : logging.Logger
             Logger to use
+        kwargs : any
+            Additional named arguments for WazuhGCloudBucket
         """
         self.db_table_name = "access_logs"
-        WazuhGCloudBucket.__init__(self, credentials_file, logger, **kwargs)
+        super().__init__(credentials_file, logger, **kwargs)
 
     def load_information_from_file(self, msg: str):
-        """Load the contents of an Access Logs blob and processes it.
+        """Load the contents of an Access Logs blob and process them.
 
         GCS Access Logs blobs will always contain the fieldnames as the first line while the remaining lines store the
         data of the log itself.
+
+        Parameters
+        ----------
+        msg : str
+            A string with the contents of the blob file
+
+        Returns
+        -------
+        A list of JSON formatted events
         """
         # Clean and split each line in the file
         lines = msg.replace('"', '').split("\n")

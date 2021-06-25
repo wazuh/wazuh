@@ -36,7 +36,7 @@ class WazuhGCloudIntegration:
 
         Returns
         -------
-        An str with the formatted message
+        A str with the formatted message
         """
         # Insert msg as value of self.key_name key.
         return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
