@@ -18,8 +18,6 @@
 
 extern const wm_context WM_MONITOR_CONTEXT; // Context
 
-#define WM_MONITOR_LOGTAG ARGV0 ":monitor"  // Tag for log messages
-
 typedef struct wm_monitor_t {
     monitor_config *mond;
     bool *worker_node;

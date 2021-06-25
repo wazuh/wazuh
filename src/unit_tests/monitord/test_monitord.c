@@ -339,7 +339,8 @@ void test_monitor_queue_connect_msg_fail(void **state) {
     expect_string(__wrap_SendMSG, locmsg, ARGV0);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, -1);
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
+    expect_string(__wrap__mterror, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, QUEUE_SEND);
 
     monitor_queue_connect();
 
@@ -503,7 +504,8 @@ void test_MonitordConfig_fail(void **state) {
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, -1);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1202): Configuration error at '/config_path'.");
+    expect_string(__wrap__mterror_exit, tag, WM_MONITOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1202): Configuration error at '/config_path'.");
 
     MonitordConfig(cfg, &mond, no_agents, day_wait);
 }

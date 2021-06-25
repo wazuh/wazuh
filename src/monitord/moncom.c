@@ -26,14 +26,14 @@ size_t moncom_dispatch(char * command, char ** output) {
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            mdebug1("MONCOM getconfig needs arguments.");
+            mtdebug1(WM_MONITOR_LOGTAG, "MONCOM getconfig needs arguments.");
             os_strdup("err MONCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return moncom_getconfig(rcv_args, output);
 
     } else {
-        mdebug1("MONCOM Unrecognized command '%s'.", rcv_comm);
+        mtdebug1(WM_MONITOR_LOGTAG, "MONCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
@@ -83,7 +83,7 @@ size_t moncom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    mdebug1("At MONCOM getconfig: Could not get '%s' section", section);
+    mtdebug1(WM_MONITOR_LOGTAG, "At MONCOM getconfig: Could not get '%s' section", section);
     os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
@@ -97,10 +97,10 @@ void * moncom_main(__attribute__((unused)) void * arg) {
     ssize_t length;
     fd_set fdset;
 
-    mdebug1("Local requests thread ready");
+    mtdebug1(WM_MONITOR_LOGTAG, "Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(MON_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", MON_LOCAL_SOCK, errno, strerror(errno));
+        mterror(WM_MONITOR_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", MON_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -113,7 +113,7 @@ void * moncom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At moncom_main(): select(): %s", strerror(errno));
+                mterror_exit(WM_MONITOR_LOGTAG, "At moncom_main(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -124,7 +124,7 @@ void * moncom_main(__attribute__((unused)) void * arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At moncom_main(): accept(): %s", strerror(errno));
+                mterror(WM_MONITOR_LOGTAG, "At moncom_main(): accept(): %s", strerror(errno));
             }
 
             continue;
@@ -133,20 +133,20 @@ void * moncom_main(__attribute__((unused)) void * arg) {
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            merror("At moncom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            mterror(WM_MONITOR_LOGTAG, "At moncom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
             break;
 
         case -1:
-            merror("At moncom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+            mterror(WM_MONITOR_LOGTAG, "At moncom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mtdebug1(WM_MONITOR_LOGTAG, "Empty message from local client.");
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
+            mterror(WM_MONITOR_LOGTAG, "Received message > %i", MAX_DYN_STR);
             close(peer);
             break;
 
@@ -159,7 +159,7 @@ void * moncom_main(__attribute__((unused)) void * arg) {
         free(buffer);
     }
 
-    mdebug1("Local server thread finished.");
+    mtdebug1(WM_MONITOR_LOGTAG, "Local server thread finished.");
 
     close(sock);
     return NULL;
