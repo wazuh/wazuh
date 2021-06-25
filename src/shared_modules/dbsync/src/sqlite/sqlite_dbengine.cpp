@@ -497,10 +497,12 @@ void SQLiteDBEngine::initialize(const std::string& path,
     {
         throw dbengine_error { EMPTY_DATABASE_PATH };
     }
+
     if (!cleanDB(path))
     {
         throw dbengine_error { DELETE_OLD_DB_ERROR };
     }
+
     m_sqliteConnection = m_sqliteFactory->createConnection(path);
     const auto createDBQueryList { Utils::split(tableStmtCreation, ';') };
     m_sqliteConnection->execute("PRAGMA temp_store = memory;");
