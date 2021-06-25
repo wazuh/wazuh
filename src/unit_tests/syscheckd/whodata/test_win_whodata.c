@@ -156,25 +156,6 @@ int syscheck_teardown(void ** state) {
 
 int test_group_setup(void **state) {
     int ret;
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found ignore regex size 0");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found nodiff regex node ^file");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found nodiff regex size 0");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found nodiff regex node test_$");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Found nodiff regex size 1");
-    will_return_always(__wrap_getDefine_Int, 0);
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
@@ -187,6 +168,8 @@ int test_group_setup(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    will_return_always(__wrap_getDefine_Int, 0);
 
     ret = Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
     OS_ClearNode(chld_node);
