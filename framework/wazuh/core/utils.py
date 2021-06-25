@@ -50,7 +50,7 @@ def check_pid(daemon):
     Parameters
     ----------
     daemon : str
-        Daemon's name
+        Daemon's name.
     """
     regex = rf'{daemon}-(.*).pid'
     for pidfile in os.listdir(pidfiles_path):
