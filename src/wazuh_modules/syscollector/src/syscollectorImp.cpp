@@ -1237,7 +1237,7 @@ nlohmann::json Syscollector::getOSData()
 {
     nlohmann::json ret;
     ret[0] = m_spInfo->os();
-    ret[0]["checksum"] = getItemChecksum(ret[0]);
+    ret[0]["checksum"] = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
     return ret;
 }
 
