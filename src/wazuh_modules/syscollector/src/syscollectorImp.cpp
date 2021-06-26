@@ -1210,7 +1210,7 @@ nlohmann::json Syscollector::getHardwareData()
 {
     nlohmann::json ret;
     ret[0] = m_spInfo->hardware();
-    ret[0]["checksum"] = getItemChecksum(ret[0]);
+    ret[0]["checksum"] = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
     return ret;
 }
 
