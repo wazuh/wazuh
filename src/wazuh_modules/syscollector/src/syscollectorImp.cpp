@@ -1022,36 +1022,15 @@ Syscollector::Syscollector()
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
-    if (m_os)
-    {
-        ret += OS_SQL_STATEMENT;
-    }
-    if (m_hardware)
-    {
-        ret += HW_SQL_STATEMENT;
-    }
-    if (m_packages)
-    {
-        ret += PACKAGES_SQL_STATEMENT;
-        if (m_hotfixes)
-        {
-            ret += HOTFIXES_SQL_STATEMENT;
-        }
-    }
-    if (m_processes)
-    {
-        ret += PROCESSES_SQL_STATEMENT;
-    }
-    if (m_ports)
-    {
-        ret += PORTS_SQL_STATEMENT;
-    }
-    if (m_network)
-    {
-        ret += NETIFACE_SQL_STATEMENT;
-        ret += NETPROTO_SQL_STATEMENT;
-        ret += NETADDR_SQL_STATEMENT;
-    }
+    ret += OS_SQL_STATEMENT;
+    ret += HW_SQL_STATEMENT;
+    ret += PACKAGES_SQL_STATEMENT;
+    ret += HOTFIXES_SQL_STATEMENT;
+    ret += PROCESSES_SQL_STATEMENT;
+    ret += PORTS_SQL_STATEMENT;
+    ret += NETIFACE_SQL_STATEMENT;
+    ret += NETPROTO_SQL_STATEMENT;
+    ret += NETADDR_SQL_STATEMENT;
     return ret;
 }
 
@@ -1227,10 +1206,7 @@ void Syscollector::scanHardware()
 
 void Syscollector::syncHardware()
 {
-    if (m_hardware)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getOSData()
@@ -1254,10 +1230,7 @@ void Syscollector::scanOs()
 
 void Syscollector::syncOs()
 {
-    if (m_os)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(OS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(OS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getNetworkData()
@@ -1376,12 +1349,9 @@ void Syscollector::scanNetwork()
 
 void Syscollector::syncNetwork()
 {
-    if (m_network)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getPackagesData()
@@ -1448,14 +1418,8 @@ void Syscollector::scanPackages()
 
 void Syscollector::syncPackages()
 {
-    if (m_packages)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        if (m_hotfixes)
-        {
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-        }
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getPortsData()
@@ -1536,10 +1500,7 @@ void Syscollector::scanPorts()
 
 void Syscollector::syncPorts()
 {
-    if (m_ports)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getProcessesData()
@@ -1570,10 +1531,7 @@ void Syscollector::scanProcesses()
 
 void Syscollector::syncProcesses()
 {
-    if (m_processes)
-    {
-        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    }
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 void Syscollector::scan()
