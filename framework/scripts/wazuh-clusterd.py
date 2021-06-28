@@ -10,6 +10,8 @@ import os
 import sys
 from signal import signal, Signals, SIGTERM, SIG_DFL
 
+from wazuh.core.utils import check_pid
+
 
 #
 # Aux functions
@@ -30,6 +32,9 @@ def print_version():
 
 def exit_handler(signum, frame):
     main_logger.info(f'SIGNAL [({signum})-({Signals(signum).name})] received. Exit...')
+
+    # Remove cluster's pidfile
+    pyDaemonModule.delete_pid('wazuh-clusterd', os.getpid())
 
     if callable(original_sig_handler):
         original_sig_handler(signum, frame)
@@ -164,7 +169,12 @@ if __name__ == '__main__':
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
 
-    pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
+    check_pid('wazuh-clusterd')
+    pid = os.getpid()
+    pyDaemonModule.create_pid('wazuh-clusterd', pid)
+    if args.foreground:
+        print(f"Starting cluster in foreground (pid: {pid})")
+
     original_sig_handler = signal(SIGTERM, exit_handler)
 
     main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
@@ -177,3 +187,5 @@ if __name__ == '__main__':
                           "permission for 'wazuh' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
+    finally:
+        pyDaemonModule.delete_pid('wazuh-clusterd', pid)
