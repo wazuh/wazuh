@@ -257,6 +257,8 @@ int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
  */
 bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
 
+extern int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *const globf);
+
 extern int sample_log_length;
 extern int accept_remote;
 extern int N_INPUT_THREADS;
