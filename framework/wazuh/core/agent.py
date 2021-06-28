@@ -31,6 +31,9 @@ from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 
+from time import time
+import logging
+logger = logging.getLogger('wazuh-api')
 detect_wrong_lines = re.compile(r'(.+ .+ .+ .+)')
 detect_valid_lines = re.compile(r'^(\d+) (.*) (.*) (.*)', re.MULTILINE)
 
@@ -1091,7 +1094,9 @@ class Agent:
                 raise WazuhResourceNotFound(1710)
 
         # Get agent's group
+        start = time()
         group_name = Agent.get_agents_group_file(agent_id)
+        logger.info(f'After get_agents_group_file: {time()-start}')
         group_list = group_name.split(',')
         # Check agent belongs to group group_id
         if group_id not in group_list:
@@ -1109,7 +1114,9 @@ class Agent:
         else:
             multigroup_name = group_list[0]
         # Update group file
+        start = time()
         Agent.set_agent_group_file(agent_id, multigroup_name)
+        logger.info(f'After get_agents_group_file: {time() - start}')
 
         return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
                                                                    if set_default else "")

@@ -740,6 +740,9 @@ def remove_agents_from_group(agent_list=None, group_list=None):
     :param group_list: List of Group names.
     :return: AffectedItemsWazuhResult.
     """
+    from time import time
+    import logging
+    logger = logging.getLogger('wazuh-api')
     group_id = group_list[0]
     result = AffectedItemsWazuhResult(all_msg=f'All selected agents were removed from group {group_id}',
                                       some_msg=f'Some agents were not removed from group {group_id}',
@@ -752,6 +755,7 @@ def remove_agents_from_group(agent_list=None, group_list=None):
     if group_id not in system_groups:
         raise WazuhResourceNotFound(1710)
 
+    start = time()
     for agent_id in agent_list:
         try:
             if agent_id == '000':
@@ -762,6 +766,7 @@ def remove_agents_from_group(agent_list=None, group_list=None):
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
+    logger.info(f'[INFO] After for loop: {time()-start}')
     result.total_affected_items = len(result.affected_items)
     result.affected_items.sort(key=int)
 
