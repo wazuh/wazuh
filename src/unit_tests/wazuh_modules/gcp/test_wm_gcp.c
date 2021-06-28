@@ -27,11 +27,6 @@ cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data);
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data);
 void* wm_gcp_pubsub_main(wm_gcp_pubsub *data);
 
-void wm_gcp_bucket_run(const wm_gcp_bucket *data);
-cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket *data);
-void wm_gcp_bucket_destroy(wm_gcp_bucket * data);
-void* wm_gcp_bucket_main(wm_gcp_bucket *data);
-
 /* Auxiliar structs */
 typedef struct __gcp_pubsub_dump_s {
     wm_gcp_pubsub *config;
@@ -39,13 +34,6 @@ typedef struct __gcp_pubsub_dump_s {
     cJSON *root;
     cJSON *wm_wd;
 }gcp_pubsub_dump_t;
-
-typedef struct __gcp_bucket_dump_s {
-    wm_gcp_bucket *config;
-    cJSON *dump;
-    cJSON *root;
-    cJSON *wm_wd;
-}gcp_bucket_dump_t;
 
 /* setup/teardown */
 static int setup_group_pubsub(void **state) {
@@ -148,130 +136,6 @@ static int teardown_gcp_pubsub_destroy(void **state) {
     *state = gcp_config[1];
 
     free(gcp_config);
-
-    return 0;
-}
-
-static int setup_group_bucket(void **state) {
-    wm_gcp_bucket_base *gcp_config = calloc(1, sizeof(wm_gcp_bucket_base));
-    wm_gcp_bucket *bucket_config = calloc(1, sizeof(wm_gcp_bucket));
-
-    if(gcp_config == NULL)
-        return -1;
-
-    if(bucket_config == NULL)
-        return -1;
-
-    if(bucket_config->bucket = calloc(OS_SIZE_1024, sizeof(char)), bucket_config->bucket == NULL)
-        return -1;
-
-    if(bucket_config->type = calloc(OS_SIZE_1024, sizeof(char)), bucket_config->type == NULL)
-        return -1;
-
-    if(bucket_config->credentials_file = calloc(OS_SIZE_1024, sizeof(char)), bucket_config->credentials_file == NULL)
-        return -1;
-
-    *state->buckets = bucket_config;
-    *state = gcp_config;
-
-    return 0;
-}
-
-static int teardown_group_bucket(void **state) {
-    wm_gcp_bucket_base *gcp_config = *state;
-    wm_gcp_bucket *bucket_config = *state->buckets;
-
-    free(bucket_config->bucket);
-    free(bucket_config->type);
-    free(bucket_config->credentials_file);
-
-    free(bucket_config);
-    free(gcp_config);
-
-    return 0;
-}
-
-static int setup_gcp_bucket_dump(void **state) {
-    gcp_bucket_dump_t *dump_data = calloc(1, sizeof(gcp_bucket_dump_t));
-
-    if(dump_data == NULL)
-        return -1;
-
-    if(dump_data->root = __real_cJSON_CreateObject(), dump_data->root == NULL)
-        return -1;
-
-    if(dump_data->wm_wd = __real_cJSON_CreateObject(), dump_data->wm_wd == NULL)
-        return -1;
-
-    // Move some pointers around in order to add some info for these tests
-    dump_data->config = *state;
-    *state = dump_data;
-
-    return 0;
-}
-
-static int teardown_gcp_bucket_dump(void **state) {
-    gcp_bucket_dump_t *dump_data = *state;
-
-    // Make sure to keep the group information.
-    *state = dump_data->config;
-
-    // Free/delete everything else
-    cJSON_Delete(dump_data->dump);
-    free(dump_data);
-
-    return 0;
-}
-
-static int setup_gcp_bucket_destroy(void **state) {
-    wm_gcp_bucket_base **gcp_config;
-    wm_gcp_bucket **bucket_config = *state->buckets;
-
-    if(gcp_config = calloc(2, sizeof(wm_gcp_bucket_base*)), gcp_config == NULL)
-        return -1;
-
-    if(bucket_config = calloc(2, sizeof(wm_gcp_bucket*)), bucket_config == NULL)
-        return -1;
-
-    // Save the globally used gcp_config
-    gcp_config[1] = *state;
-    bucket_config[1] = *state->buckets;
-
-    // And create a new one to be destroyed by tests
-    if(gcp_config[0] = calloc(1, sizeof(wm_gcp_bucket_base)), gcp_config[0] == NULL)
-        return -1;
-
-    if(bucket_config[0] = calloc(1, sizeof(wm_gcp_bucket)), bucket_config[0] == NULL)
-        return -1;
-
-    if(bucket_config[0]->bucket = calloc(OS_SIZE_1024, sizeof(char)), bucket_config[0]->bucket == NULL)
-        return -1;
-
-    if(bucket_config[0]->type = calloc(OS_SIZE_1024, sizeof(char)), bucket_config[0]->type == NULL)
-        return -1;
-
-    if(bucket_config[0]->credentials_file = calloc(OS_SIZE_1024, sizeof(char)), bucket_config[0]->credentials_file == NULL)
-        return -1;
-
-    *state = gcp_config;
-    *state->buckets = bucket_config;
-
-    return 0;
-}
-
-static int teardown_gcp_bucket_destroy(void **state) {
-    wm_gcp_bucket_base **gcp_config;
-    wm_gcp_bucket **bucket_config;
-
-    gcp_config = *state;
-    bucket = *state->buckets;
-
-    // gcp_config[0] was destroyed by the test, restore the original into state
-    *state = gcp_config[1];
-    *state->buckets = bucket_config[1];
-
-    free(gcp_config);
-    free(bucket_config)
 
     return 0;
 }
@@ -1499,41 +1363,6 @@ static void test_wm_gcp_pubsub_main_pull_on_start(void **state) {
     assert_null(ret);
 }
 
-/* wm_gcp_bucket_run */
-static void test_wm_gcp_bucket_run_success_log_disabled(void **state) {
-    wm_gcp_bucket_base *gcp_config = *state;
-    wm_gcp_bucket *bucket_config = *state->buckets;
-
-    snprintf(bucket_config->bucket, OS_SIZE_1024, "wazuh-gcp-test");
-    snprintf(bucket_config->type, OS_SIZE_1024, "access-logs");
-    snprintf(bucket_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
-
-    gcp_config->logging = 0;    // disabled
-
-    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
-
-    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
-        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test "
-        "--credentials_file /wazuh/credentials/test.json");
-
-    expect_string(__wrap_wm_exec, command,
-        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test "
-        "--credentials_file /wazuh/credentials/test.json");
-    expect_value(__wrap_wm_exec, secs, 0);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-
-    will_return(__wrap_wm_exec, strdup("Test output"));
-    will_return(__wrap_wm_exec, 0);
-    will_return(__wrap_wm_exec, 0);
-
-    expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Logging disabled.");
-
-    wm_gcp_bucket_run(gcp_config);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* wm_gcp_pubsub_run */
@@ -1577,10 +1406,6 @@ int main(void) {
         /* wm_gcp_pubsub_main */
         cmocka_unit_test(test_wm_gcp_pubsub_main_disabled),
         cmocka_unit_test(test_wm_gcp_pubsub_main_pull_on_start),
-
-
-        /* wm_gcp_bucket_run */
-        cmocka_unit_test(test_wm_gcp_bucket_run_success_log_disabled),
     };
     return cmocka_run_group_tests(tests, setup_group_pubsub, teardown_group_pubsub);
 }
