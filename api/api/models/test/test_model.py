@@ -51,6 +51,7 @@ class TestModel(bm.Body):
     def arg_2(self, arg_2):
         self._arg_2 = arg_2
 
+
 class RequestMock:
     """Class Request mock."""
     def __init__(self, content_type):
@@ -180,7 +181,7 @@ def test_body_decode_body_ko():
 
 def test_body_validate_content_type():
     """Test class Body `validate_content_type` method."""
-    content_type ='application/json'
+    content_type = 'application/json'
     request = RequestMock(content_type)
 
     TestModel.validate_content_type(request, content_type)
