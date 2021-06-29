@@ -185,7 +185,6 @@ static void wm_syscheck_log_config(const wm_syscheck_t *sys) {
 void* wm_syscheck_main(wm_syscheck_t *sys) {
     syscheck_config* config = (syscheck_config*)sys;
     syscheck = *config;
-    read_internal(0);
     mtdebug1(SYSCHECK_LOGTAG, "Starting syscheck.");
     if (syscheck.disabled == 1) {
         if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
@@ -208,7 +207,6 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
         mtinfo(SYSCHECK_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
-    wm_syscheck_log_config(sys);
     /* Rootcheck config */
     syscheck.rootcheck = !rootcheck_init(0);
 #ifndef WIN32
@@ -249,6 +247,7 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
 #endif
     }
 #endif //WIN32
+    wm_syscheck_log_config(sys);
     /* Start the daemon */
     start_daemon();
     mtinfo(SYSCHECK_LOGTAG, "Module finished.");
