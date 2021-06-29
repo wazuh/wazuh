@@ -16,7 +16,7 @@ custom_api_configuration = {
     "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
-    "max_upload_size": 1048576,
+    "max_upload_size": 10485760,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",

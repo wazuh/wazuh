@@ -8058,7 +8058,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
-                        max_upload_size: 1048576
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8097,7 +8097,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
-                        max_upload_size: 1048576
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8135,7 +8135,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
-                        max_upload_size: 1048576
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -10702,7 +10702,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
-                        max_upload_size: 1048576
+                        max_upload_size: 10485760
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
