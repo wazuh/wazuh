@@ -1414,13 +1414,13 @@ components:
     AgentGroupDeleted:
       type: object
       required:
-      - affected_agents
+      - affected_items
       properties:
-        affected_agents:
+        affected_items:
           type: array
-          description: "List of agents which belonged to the group and might have been reassigned to group default"
+          description: "List of removed groups with the agents which belonged to it and might have been reassigned to group default"
           items:
-            $ref: '#/components/schemas/AgentID'
+            $ref: '#/components/schemas/GroupDelete'
 
     AgentIdKey:
       type: object
@@ -1522,6 +1522,12 @@ components:
       minLength: 1
       description: "Group name|all"
       format: group_names_or_all
+
+    GroupDelete:
+      type: object
+      description: "Deleted group with a list of agents that were assigned to it"
+      additionalProperties:
+        type: array
 
     AgentConfiguration:
       type: object
@@ -6492,20 +6498,18 @@ paths:
                   properties:
                     data:
                       allOf:
-                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
                       - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
                 data:
                   affected_items:
-                    - 'webserver'
-                    - 'dataserver'
+                    - webserver:
+                        - '002'
+                        - '003'
+                    - dataserver:
+                        - '005'
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                  affected_agents:
-                    - '002'
-                    - '003'
-                    - '005'
                   message: "All selected groups were deleted"
                   error: 0
         '400':
@@ -8054,6 +8058,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8092,6 +8097,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8129,6 +8135,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8580,6 +8587,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9558,6 +9567,8 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     delete:
@@ -10005,6 +10016,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10689,6 +10702,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -12011,6 +12025,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     delete:
@@ -12787,6 +12803,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     delete:
@@ -14753,6 +14771,8 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -15208,6 +15228,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -15830,6 +15852,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -16553,6 +16577,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

@@ -288,6 +288,19 @@ def api_test(request):
     else:
         rbac_mode = None
         module = test_filename[1]
+
+    def clean_up_env():
+        clean_tmp_folder()
+        if request.session.testsfailed > 0:
+            save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
+
+        # Get the environment current status
+        global environment_status
+        environment_status = get_health()
+        down_env()
+
+    request.addfinalizer(clean_up_env)
+
     clean_tmp_folder()
 
     if rbac_mode:
@@ -298,23 +311,23 @@ def api_test(request):
 
     general_procedure(module)
     values = build_and_up(interval=10, build=request.config.getoption('--nobuild'))
+
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'])
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
+        # Check if entrypoint was successful
+        try:
+            error_message = subprocess.check_output(["docker", "exec", "-t", "env_wazuh-master_1", "sh", "-c",
+                                                     "cat /entrypoint_error"]).decode().strip()
+            pytest.fail(error_message)
+        except subprocess.CalledProcessError:
+            pass
+
         if managers_health and agents_health:
             time.sleep(values['interval'])
-            yield
-            break
+            return
         else:
             values['retries'] += 1
-    clean_tmp_folder()
-    if request.session.testsfailed > 0:
-        save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
-
-    # Get the environment current status
-    global environment_status
-    environment_status = get_health()
-    down_env()
 
 
 def get_health():

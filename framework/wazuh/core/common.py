@@ -124,6 +124,7 @@ os_pidfile = os.path.join('var', 'run')
 analysisd_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-analysisd.state')
 remoted_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-remoted.state')
 ar_conf_path = os.path.join(wazuh_path, 'etc', 'shared', 'ar.conf')
+pidfiles_path = os.path.join(wazuh_path, 'var', 'run')
 
 # Ruleset
 # Ruleset paths

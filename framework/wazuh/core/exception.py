@@ -413,7 +413,6 @@ class WazuhException(Exception):
         3000: 'Cluster',
         3001: 'Error creating zip file',
         3002: {'message': 'Error creating PID file'},
-        3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
