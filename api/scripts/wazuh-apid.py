@@ -162,6 +162,9 @@ def start(foreground, root, config_file):
                 options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging,
                                          set_secure_headers]})
 
+    # Maximum body size that the API can accept (bytes)
+    app.app._client_max_size = configuration.api_conf['max_upload_size']
+
     # Enable CORS
     if api_conf['cors']['enabled']:
         import aiohttp_cors

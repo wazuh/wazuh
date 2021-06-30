@@ -1241,6 +1241,21 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  # PUT /manager/configuration
+  - name: Try to upload an invalid configuration with an invalid content-type
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+    response:
+      status_code: 406
+      json:
+        error: 6002
+
   # GET /manager/configuration/
   - name: Ensure the config didn't change
     request:
