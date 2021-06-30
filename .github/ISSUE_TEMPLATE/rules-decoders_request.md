@@ -26,7 +26,7 @@ Contributions from the community are really appreciated. If this is the case, pl
 <!-- Add any URL or doc related to service and/or vendor/module -->
 
 
-## Error/Improve
+## Errors/Improvements
 ### Current results
 <!--  Include current results -->
 
