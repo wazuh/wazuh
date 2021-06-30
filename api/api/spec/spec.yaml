@@ -1414,13 +1414,13 @@ components:
     AgentGroupDeleted:
       type: object
       required:
-      - affected_agents
+      - affected_items
       properties:
-        affected_agents:
+        affected_items:
           type: array
-          description: "List of agents which belonged to the group and might have been reassigned to group default"
+          description: "List of removed groups with the agents which belonged to it and might have been reassigned to group default"
           items:
-            $ref: '#/components/schemas/AgentID'
+            $ref: '#/components/schemas/GroupDelete'
 
     AgentIdKey:
       type: object
@@ -1522,6 +1522,12 @@ components:
       minLength: 1
       description: "Group name|all"
       format: group_names_or_all
+
+    GroupDelete:
+      type: object
+      description: "Deleted group with a list of agents that were assigned to it"
+      additionalProperties:
+        type: array
 
     AgentConfiguration:
       type: object
@@ -6492,20 +6498,18 @@ paths:
                   properties:
                     data:
                       allOf:
-                      - $ref: '#/components/schemas/AllItemsResponseGroupIDs'
                       - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
                 data:
                   affected_items:
-                    - 'webserver'
-                    - 'dataserver'
+                    - webserver:
+                        - '002'
+                        - '003'
+                    - dataserver:
+                        - '005'
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                  affected_agents:
-                    - '002'
-                    - '003'
-                    - '005'
                   message: "All selected groups were deleted"
                   error: 0
         '400':
@@ -8054,6 +8058,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8092,6 +8097,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8129,6 +8135,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -8580,6 +8587,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9558,6 +9567,8 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     delete:
@@ -10005,6 +10016,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10689,6 +10702,7 @@ paths:
                         use_only_authd: false
                         drop_privileges: true
                         experimental_features: false
+                        max_upload_size: 10485760
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -11349,53 +11363,6 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /rootcheck:
-    delete:
-      tags:
-      - Rootcheck
-      summary: "Clear results"
-      description: "Clear rootcheck database for all agents or a list of them"
-      operationId: api.controllers.rootcheck_controller.delete_rootcheck
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-      responses:
-        '200':
-          description: "Clear rootcheck database for all agents or a list of them"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "000"
-                    - "001"
-                    - "002"
-                    - "003"
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Rootcheck database was cleared on returned agents"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
     put:
       tags:
         - Rootcheck
@@ -11493,6 +11460,49 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected rootcheck information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+        - Rootcheck
+      summary: "Clear results"
+      description: "Clear an agent's rootcheck database"
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Clear an agent's rootcheck database"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "001"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: "Rootcheck database was cleared on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -12015,6 +12025,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     delete:
@@ -12791,6 +12803,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     delete:
@@ -12891,6 +12905,52 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All selected decoders were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /experimental/rootcheck:
+    delete:
+      tags:
+        - Experimental
+      summary: "Clear rootcheck results"
+      description: "Clear rootcheck database for all agents or a list of them"
+      operationId: api.controllers.experimental_controller.clear_rootcheck_database
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rootcheck:clear'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list_all'
+      responses:
+        '200':
+          description: "Clear rootcheck database for all agents or a list of them"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "002"
+                    - "003"
+                  total_affected_items: 2
+                  failed_items: [ ]
+                  total_failed_items: 0
+                message: "Rootcheck database was cleared on returned agents"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -14711,6 +14771,8 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -15166,6 +15228,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -15788,6 +15852,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -16511,6 +16577,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

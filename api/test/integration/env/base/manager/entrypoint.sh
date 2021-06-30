@@ -50,10 +50,16 @@ if [ "$3" == "master" ]; then
     . $sh_file
   done
 
+  exit_flag=0
+  [ -e /entrypoint_error ] && rm -f /entrypoint_error
   # Wait until Wazuh API is ready
   elapsed_time=0
-  while [[ $(grep 'Listening on' /var/ossec/logs/api.log | wc -l)  -eq 0 ]] && [[ $elapsed_time -lt 300 ]]
+  while [[ $(grep -c 'Listening on' /var/ossec/logs/api.log)  -eq 0 ]] && [[ $exit_flag -eq 0 ]]
   do
+    if [ $elapsed_time -gt 300 ]; then
+      echo "Timeout on API callback. Could not find 'Listening on'" > /entrypoint_error
+      exit_flag=1
+    fi
     sleep 1
     elapsed_time=$((elapsed_time+1))
   done
@@ -66,8 +72,12 @@ if [ "$3" == "master" ]; then
 
     # Insert the RBAC configuration again if database was locked
     elapsed_time=0
-    while [[ $(grep 'database is locked' /tmp/sql_lock_check | wc -l)  -eq 1 ]] && [[ $elapsed_time -lt 120 ]]
+    while [[ $(grep -c 'database is locked' /tmp/sql_lock_check)  -eq 1 ]] && [[ $exit_flag -eq 0 ]]
     do
+      if [ $elapsed_time -gt 120 ]; then
+        echo "Timeout on RBAC DB callback. Could not apply SQL file to RBAC DB" > /entrypoint_error
+        exit_flag=1
+      fi
       sleep 1
       elapsed_time=$((elapsed_time+1))
       sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file > /tmp/sql_lock_check 2>&1

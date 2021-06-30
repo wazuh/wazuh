@@ -7,11 +7,11 @@
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_github")
-list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror\
+list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror\
                         -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,StartMQ -Wl,--wrap,sleep \
                         -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,wm_sendmsg -Wl,--wrap,OSRegex_Compile \
                         -Wl,--wrap,wm_state_io -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
-                        -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_get_with_header -Wl,--wrap,strftime -Wl,--wrap,localtime_r")
+                        -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,localtime_r")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
@@ -53,22 +53,31 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    target_link_libraries(
-        ${test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        GITHUB_O
-        -lcmocka
-        -ldl
-        -fprofile-arcs
-        -ftest-coverage
-    )
+    if(${TARGET} STREQUAL "server")
+        target_link_libraries(
+            ${test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            GITHUB_O
+            -lcmocka
+            -ldl
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    else()
+        target_link_libraries(
+            ${test_name}
+            ${TEST_DEPS}
+        )
+    endif()
+
+
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(
             ${test_name}
             ${test_flags}
         )
     endif()
-    add_test(${test_name} ${test_name})
+    add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 

@@ -113,7 +113,7 @@ checks:
     title: "Ensure /tmp is configured"
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
-    remediation: "Configure /etc/fstab as appropriate. example: \"tmpfs  /tmp  tmpfs defaults,rw,nosuid,nodev,noexec,realtime  0 0\"  OR  Run the following commands to enable systemd /tmp mounting: # systemctl unmask tmp.mount # systemctl enable tmp.mount    Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to configure the /tmp mount:   [Mount] What=tmpfs Where=/tmp Type=tmpfs Options=mode=1777,strictatime,noexec,nodev,nosuid"
+    remediation: "Configure /etc/fstab as appropriate. example: \"tmpfs  /tmp  tmpfs defaults,rw,nosuid,nodev,noexec,relatime  0 0\"  OR  Run the following commands to enable systemd /tmp mounting: # systemctl unmask tmp.mount # systemctl enable tmp.mount    Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to configure the /tmp mount:   [Mount] What=tmpfs Where=/tmp Type=tmpfs Options=mode=1777,strictatime,noexec,nodev,nosuid"
     compliance:
       - cis: ["1.1.2"]
       - cis_csc: ["9.1"]

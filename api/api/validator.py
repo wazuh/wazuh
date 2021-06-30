@@ -63,6 +63,7 @@ api_config_schema = {
         "use_only_authd": {"type": "boolean"},
         "drop_privileges": {"type": "boolean"},
         "experimental_features": {"type": "boolean"},
+        "max_upload_size": {"type": "integer", "minimum": 0},
         "intervals": {
             "type": "object",
             "additionalProperties": False,

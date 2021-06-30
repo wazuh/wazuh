@@ -24,4 +24,5 @@ void expect_realtime_adddir_call(const char *path, int ret);
 int __wrap_fim_add_inotify_watch(const char *dir,
                                  const directory_t *configuration);
 
+void __wrap_realtime_process();
 #endif
