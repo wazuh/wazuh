@@ -38,6 +38,36 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 #endif
 
+/**
+ * @brief Retrieves the permissions of a specific file (Windows)
+ *
+ * @param [in] ace ACE structure
+ * @param [out] acl_json cJSON to write the permissions
+ * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
+ */
+static int process_ace_info(void *ace, cJSON *acl_json);
+
+/**
+ * @brief Retrieves the permissions of a specific file (Windows)
+ *
+ * @param [out] acl_json cJSON to write the permissions
+ * @param [in] sid The user ID associated to the user
+ * @param [in] account_name The account name associated to the sid
+ * @param [in] ace_type int with 0 if "allowed" ace, 1 if "denied" ace
+ * @param [in] mask Mask with the permissions
+ */
+static void add_ace_to_json(cJSON *acl_json, char *sid, char *account_name, const char *ace_type, int mask);
+
+/**
+ * @brief Retrieves the permissions of a specific file (Windows)
+ *
+ * @param [out] ace_json cJSON with the mask to process
+ * @param [in] mask Mask with the permissions
+ * @param [in] ace_type string "allowed" or "denied" depends on ace type
+ */
+static void make_mask_readable (cJSON *ace_json, int mask, char *ace_type);
+
+
 char *escape_syscheck_field(char *field) {
     char *esc_it;
 
@@ -765,7 +795,7 @@ end:
     return result;
 }
 
-int w_get_file_permissions(const char *file_path, char *permissions, int perm_size) {
+int w_get_file_permissions(const char *file_path, cJSON *acl_json) {
     int retval = 0;
     int error;
     unsigned int i;
@@ -775,9 +805,6 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
     int has_dacl, default_dacl;
     unsigned long size = 0;
     ACL_SIZE_INFORMATION acl_size;
-    char *perm_it = permissions;
-
-    *permissions = '\0';
 
     if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
         // We must have this error at this point
@@ -813,28 +840,96 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
     }
 
     for (i = 0; i < acl_size.AceCount; i++) {
-        int written;
-
         if (!GetAce(f_acl, i, &f_ace)) {
             mdebug1("ACE number %d could not be obtained.", i);
             retval = -2;
-            *permissions = '\0';
             goto end;
         }
-        written = copy_ace_info(f_ace, perm_it, perm_size);
-        if (written > 0) {
-            perm_it += written;
-            perm_size -= written;
-            if (perm_size > 0) {
-                continue;
-            }
+        if (process_ace_info(f_ace, acl_json)) {
+            mdebug1("ACE number %d could not be processed.", i);
         }
-        mdebug1("The parameters of ACE number %d from '%s' could not be extracted. %d bytes remaining.", i, file_path, perm_size);
     }
 
 end:
     free(s_desc);
     return retval;
+}
+
+int process_ace_info(void *ace, cJSON *acl_json) {
+    SID *sid;
+    char *sid_str = NULL;
+    char *account_name = NULL;
+    char *domain_name = NULL;
+    int mask;
+    int ace_type;
+    int error;
+
+	if (((ACCESS_ALLOWED_ACE *)ace)->Header.AceType == ACCESS_ALLOWED_ACE_TYPE) {
+		ACCESS_ALLOWED_ACE *allowed_ace = (ACCESS_ALLOWED_ACE *)ace;
+		sid = (SID *)&allowed_ace->SidStart;
+		mask = allowed_ace->Mask;
+		ace_type = 0;
+	} else if (((ACCESS_DENIED_ACE *)ace)->Header.AceType == ACCESS_DENIED_ACE_TYPE) {
+		ACCESS_DENIED_ACE *denied_ace = (ACCESS_DENIED_ACE *)ace;
+		sid = (SID *)&denied_ace->SidStart;
+		mask = denied_ace->Mask;
+		ace_type = 1;
+	} else {
+        mdebug2("Invalid ACE type.");
+        return 1;
+    }
+
+    if (!IsValidSid(sid)) {
+        mdebug2("Invalid SID found in ACE.");
+		return 1;
+	}
+
+    if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
+        mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
+    }
+
+    if (!ConvertSidToStringSid(sid, &sid_str)) {
+        mdebug2("Could not extract the SID.");
+        free(account_name);
+        free(domain_name);
+		return 1;
+    }
+
+    add_ace_to_json(acl_json, sid_str, account_name, ace_type ? "denied" : "allowed", mask);
+    LocalFree(sid_str);
+
+    return 0;
+}
+
+void add_ace_to_json(cJSON *acl_json, char *sid, char *account_name, const char *ace_type, int mask) {
+    cJSON *ace_json = NULL;
+    cJSON *mask_json = NULL;
+    int saved_mask;
+
+    assert(acl_json != NULL);
+    assert(strcmp(ace_type, "allowed") == 0 || strcmp(ace_type, "denied") == 0);
+
+    ace_json = cJSON_GetObjectItem(acl_json, sid);
+    if (ace_json == NULL) {
+        ace_json = cJSON_CreateObject();
+        if (ace_json == NULL) {
+            mwarn(FIM_CJSON_ERROR_CREATE_ITEM);
+            return;
+        }
+        cJSON_AddStringToObject(ace_json, "name", account_name);
+        cJSON_AddItemToObject(acl_json, sid, ace_json);
+    }
+
+    mask_json = cJSON_GetObjectItem(ace_json, ace_type);
+    if (mask_json == NULL) {
+        cJSON_AddNumberToObject(ace_json, ace_type, mask);
+        return;
+    }
+
+    saved_mask = mask_json->valueint;
+    cJSON_SetNumberValue(mask_json, (saved_mask | mask));
+
+    return;
 }
 
 int copy_ace_info(void *ace, char *perm, int perm_size) {
@@ -1168,6 +1263,84 @@ void decode_win_attributes(char *str, unsigned int attrs) {
     if (size > 2) {
         str[size - 2] = '\0';
     }
+}
+
+void decode_win_acl_json (cJSON *acl_json) {
+    cJSON *json_object = NULL;
+    cJSON *allowed_item = NULL;
+    cJSON *denied_item = NULL;
+
+    assert(acl_json != NULL);
+
+    cJSON_ArrayForEach(json_object, acl_json) {
+        allowed_item = cJSON_GetObjectItem(json_object, "allowed");
+        if (allowed_item) {
+            make_mask_readable(json_object, allowed_item->valueint, "allowed");
+        }
+        denied_item = cJSON_GetObjectItem(json_object, "denied");
+        if (denied_item) {
+            make_mask_readable(json_object, denied_item->valueint, "denied");
+        }
+    }
+}
+
+void make_mask_readable (cJSON *ace_json, int mask, char *ace_type) {
+    int i;
+    int perm_bits[] = {
+        GENERIC_READ,
+        GENERIC_WRITE,
+        GENERIC_EXECUTE,
+        GENERIC_ALL,
+        DELETE,
+        READ_CONTROL,
+        WRITE_DAC,
+        WRITE_OWNER,
+        SYNCHRONIZE,
+        FILE_READ_DATA,
+        FILE_WRITE_DATA,
+        FILE_APPEND_DATA,
+        FILE_READ_EA,
+        FILE_WRITE_EA,
+        FILE_EXECUTE,
+        FILE_READ_ATTRIBUTES,
+        FILE_WRITE_ATTRIBUTES,
+        0
+	};
+
+    static const char * const perm_strings[] = {
+        "generic_read",
+        "generic_write",
+        "generic_execute",
+        "generic_all",
+        "delete",
+        "read_control",
+        "write_dac",
+        "write_owner",
+        "synchronize",
+        "read_data",
+        "write_data",
+        "append_data",
+        "read_ea",
+        "write_ea",
+        "execute",
+        "read_attributes",
+        "write_attributes",
+        NULL
+	};
+
+    cJSON *perm_array = cJSON_CreateArray();
+    if (perm_array == NULL) {
+        mwarn(FIM_CJSON_ERROR_CREATE_ITEM);
+        return;
+    }
+
+    for (i = 0; perm_bits[i]; i++) {
+	    if (mask & perm_bits[i]) {
+            cJSON_AddItemToArray(perm_array, cJSON_CreateString(perm_strings[i]));
+	    }
+	}
+
+    cJSON_ReplaceItemInObject(ace_json, ace_type, perm_array);
 }
 
 char *decode_win_permissions(char *raw_perm) {
