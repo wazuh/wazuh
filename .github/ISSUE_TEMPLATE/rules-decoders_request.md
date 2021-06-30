@@ -1,11 +1,3 @@
----
-name: Ruleset issue
-about: Report a bug or make a feature request.
-title: ''
-labels: ''
-assignees: ''
-
----
 
 |Wazuh version| Component | Action type |
 |---| --- | --- |
