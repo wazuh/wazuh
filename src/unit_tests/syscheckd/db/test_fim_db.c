@@ -1535,10 +1535,6 @@ void test_fim_db_clean_file_disk_error() {
     expect_value(__wrap_fclose, _File, file->fd);
     will_return(__wrap_fclose, 1);
 
-    expect_string(__wrap_remove, filename, file->path);
-    will_return(__wrap_remove, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Failed to remove 'test': No such file or directory (2)");
 
     fim_db_clean_file(&file, FIM_DB_DISK);
 
@@ -2469,7 +2465,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_create_temp_file_memory, teardown_fim_tmp_file_memory),
         // fim_db_clean_file
         cmocka_unit_test(test_fim_db_clean_file_disk),
-        // cmocka_unit_test(test_fim_db_clean_file_disk_error),
+        cmocka_unit_test(test_fim_db_clean_file_disk_error),
         cmocka_unit_test(test_fim_db_clean_file_memory),
         // fim_db_multiple_row_query
         cmocka_unit_test(test_fim_db_multiple_row_query_null_decode_function),

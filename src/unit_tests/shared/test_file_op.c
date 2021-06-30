@@ -712,7 +712,6 @@ void test_w_homedir_stat_fail(void **state)
 {
     char *argv0 = "/fake/dir/bin";
     struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
-    char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
     will_return(__wrap_realpath, argv0);
@@ -723,8 +722,8 @@ void test_w_homedir_stat_fail(void **state)
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable.");
 
-    val = w_homedir(argv0);
-    assert_null(val);
+    expect_assert_failure(w_homedir(argv0));
+
 }
 #endif
 

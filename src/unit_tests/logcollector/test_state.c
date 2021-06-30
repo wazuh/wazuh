@@ -42,6 +42,7 @@ extern cJSON * g_lc_json_stats;
 extern w_lc_state_storage_t * g_lc_states_global;
 extern w_lc_state_storage_t * g_lc_states_interval;
 extern w_lc_state_type_t g_lc_state_type;
+OSHash * __real_OSHash_Create();
 
 void free_state_file(w_lc_state_file_t * data) {
     if (data == NULL) {
@@ -62,6 +63,13 @@ void free_state_file(w_lc_state_file_t * data) {
 
 /* setup/teardown */
 static int setup_local_hashmap(void **state) {
+    if (mock_hashmap == NULL) {
+        will_return(__wrap_time, (time_t) 50);
+        if (setup_hashmap(state) != 0) {
+            return 1;
+        }
+    }
+
     OSHash *hash;
 
     will_return(__wrap_time, (time_t) 50);
@@ -79,7 +87,20 @@ static int setup_local_hashmap(void **state) {
     return 0;
 }
 
+
+static int setup_hashmap_state_file(void **state) {
+    if (setup_local_hashmap(state) != 0) {
+        return 1;
+    }
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))free_state_file);
+
+    return 0;
+}
+
 static int teardown_local_hashmap(void **state) {
+    if (teardown_hashmap(state) != 0) {
+        return 1;
+    }
     OSHash *hash = *state;
 
     if (hash == NULL) {
@@ -106,12 +127,16 @@ static int setup_global_variables(void ** state) {
 }
 
 static int teardown_global_variables(void ** state) {
-    if (teardown_local_hashmap((void **)&(g_lc_states_global->states))) {
-        return -1;
+    if (g_lc_states_global != NULL) {
+        if (teardown_local_hashmap((void **)&(g_lc_states_global->states))) {
+            return -1;
+        }
     }
 
-    if (teardown_local_hashmap((void **)&(g_lc_states_interval->states))) {
-        return -1;
+    if (g_lc_states_interval != NULL) {
+        if (teardown_local_hashmap((void **)&(g_lc_states_interval->states))) {
+            return -1;
+        }
     }
 
     os_free(g_lc_states_global);
@@ -157,130 +182,100 @@ size_t __wrap_strftime(char *s, size_t max, const char *format,
 
 /* w_logcollector_state_init */
 void test_w_logcollector_state_init_fail_hash_create_global(void ** state) {
-
-    os_free(g_lc_states_global);
-    os_free(g_lc_states_interval);
-
     will_return(__wrap_time, (time_t) 50);
-    will_return(__wrap_time, (time_t) 51);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'logcollector_state' hash table");
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, 1);
-    will_return(__wrap_OSHash_setSize, 1);
-    will_return(__wrap_OSHash_setSize, 1);
-
-    w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true);
-
-    assert_non_null(g_lc_states_global);
-    assert_non_null(g_lc_states_interval);
-
-    os_free(g_lc_states_global);
-    os_free(g_lc_states_interval);
+    expect_assert_failure(w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true));
 }
 
 void test_w_logcollector_state_init_fail_hash_create_interval(void ** state) {
-
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
-
+    OSHash *mock_local_hash = *state;
     will_return(__wrap_time, (time_t) 50);
-    will_return(__wrap_time, (time_t) 51);
+
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, 2);
+    will_return(__wrap_OSHash_Create, mock_local_hash);
+
+    will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_time, 51);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
+
     expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'logcollector_state' hash table");
-
-    will_return(__wrap_OSHash_setSize, 1);
-    will_return(__wrap_OSHash_setSize, 1);
-
-    w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true);
-
-    assert_non_null(g_lc_states_global);
-    assert_non_null(g_lc_states_interval);
-
-    os_free(g_lc_states_global);
-    os_free(g_lc_states_interval);
+    expect_assert_failure(w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true));
 }
 
 void test_w_logcollector_state_init_fail_hash_setsize_global(void ** state) {
-
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
+
+    OSHash *mock_local_hash = *state;
 
     will_return(__wrap_time, (time_t) 50);
-    will_return(__wrap_time, (time_t) 51);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, 2);
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, 3);
-
+    will_return(__wrap_OSHash_Create, mock_local_hash);
     will_return(__wrap_OSHash_setSize, 0);
+
     expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'logcollector_state' hash table");
 
-    will_return(__wrap_OSHash_setSize, 1);
-
-    w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true);
-
-    assert_non_null(g_lc_states_global);
-    assert_non_null(g_lc_states_interval);
-
-    os_free(g_lc_states_global);
-    os_free(g_lc_states_interval);
+    expect_assert_failure(w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true));
 }
 
 void test_w_logcollector_state_init_fail_hash_setsize_interval(void ** state) {
-
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
+    will_return_always(__wrap_time, (time_t) 50);
 
-    will_return(__wrap_time, (time_t) 50);
-    will_return(__wrap_time, (time_t) 51);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, 1);
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, 1);
-
+    will_return(__wrap_OSHash_Create, __real_OSHash_Create());
     will_return(__wrap_OSHash_setSize, 1);
+
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, __real_OSHash_Create());
     will_return(__wrap_OSHash_setSize, 0);
+
     expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'logcollector_state' hash table");
 
-    w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true);
-
-    assert_non_null(g_lc_states_global);
-    assert_non_null(g_lc_states_interval);
-
-    os_free(g_lc_states_global);
-    os_free(g_lc_states_interval);
+    expect_assert_failure(w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true));
 }
 
 void test_w_logcollector_state_init_ok(void ** state) {
     g_lc_state_type = 0;
+    will_return(__wrap_time, (time_t) 50);
+    will_return(__wrap_time, (time_t) 51);
+
+    OSHash *global_state = __real_OSHash_Create();
+    OSHash *states_interval = __real_OSHash_Create();
 
     will_return(__wrap_time, (time_t) 50);
     will_return(__wrap_time, (time_t) 51);
-    will_return(__wrap_time, (time_t) 52);
-    will_return(__wrap_time, (time_t) 53);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, global_state);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, states_interval);
+
+    will_return(__wrap_OSHash_setSize, 1);
+    will_return(__wrap_OSHash_setSize, 1);
 
     w_logcollector_state_init(LC_STATE_GLOBAL | LC_STATE_INTERVAL, true);
 
     assert_non_null(g_lc_states_global);
     assert_non_null(g_lc_states_interval);
 
-    assert_non_null(g_lc_states_global->states);
-    assert_int_equal(g_lc_states_global->start, 50);
-    assert_non_null(g_lc_states_interval->states);
-    assert_int_equal(g_lc_states_interval->start, 52);
+    assert_ptr_equal(g_lc_states_global->states, global_state);
+    assert_ptr_equal(g_lc_states_interval->states, states_interval);
+
     assert_int_equal(g_lc_state_type, LC_STATE_GLOBAL | LC_STATE_INTERVAL);
 }
 
@@ -312,22 +307,26 @@ void test_w_logcollector_state_get_non_null(void ** state) {
 /* Test _w_logcollector_generate_state */
 void test__w_logcollector_generate_state_fail_get_node(void ** state) {
 
-    w_lc_state_storage_t stats = {.states = *state};
+    w_lc_state_storage_t stats = {.states = (OSHash *) 2};
     cJSON * retval;
+    expect_value(__wrap_OSHash_Begin, self, stats.states);
+    will_return(__wrap_OSHash_Begin, NULL);
 
     retval = _w_logcollector_generate_state(&stats, 0);
     assert_null(retval);
 }
 
 void test__w_logcollector_generate_state_one_target(void ** state) {
-    cJSON * retval;
-    w_lc_state_storage_t stats = {.states = *state };
+     cJSON * retval;
+    w_lc_state_storage_t stats = {.states = (OSHash *) 2 , };
     w_lc_state_target_t target = {.drops = 10, .name = "sock1"};
     w_lc_state_target_t * target_array[2] = {&target, NULL};
 
     w_lc_state_file_t data = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+    OSHashNode hash_node = {.data = &data, .key = "key_test"};
 
-    OSHash_Add(stats.states, "key_test", &data);
+    expect_value(__wrap_OSHash_Begin, self, stats.states);
+    will_return(__wrap_OSHash_Begin, &hash_node);
 
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -356,6 +355,9 @@ void test__w_logcollector_generate_state_one_target(void ** state) {
     expect_function_call(__wrap_cJSON_AddItemToObject);
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
+
+    expect_value(__wrap_OSHash_Next, self, stats.states);
+    will_return(__wrap_OSHash_Next, NULL);
 
     will_return(__wrap_strftime,"2019-02-05 12:18:37");
     will_return(__wrap_strftime, 20);
@@ -380,14 +382,15 @@ void test__w_logcollector_generate_state_one_target(void ** state) {
 void test__w_logcollector_generate_state_one_target_restart(void ** state) {
 
     cJSON * retval;
-    w_lc_state_storage_t stats = {.states = *state, .start = (time_t) 2020};
+    w_lc_state_storage_t stats = {.states = (OSHash *) 2, .start = (time_t) 2020};
     w_lc_state_target_t target = {.drops = 10, .name = "sock1"};
     w_lc_state_target_t * target_array[2] = {&target, NULL};
 
     w_lc_state_file_t data = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
     OSHashNode hash_node = {.data = &data, .key = "key_test"};
 
-    OSHash_Add(stats.states, "key_test", &data);
+    expect_value(__wrap_OSHash_Begin, self, stats.states);
+    will_return(__wrap_OSHash_Begin, &hash_node);
 
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -415,6 +418,9 @@ void test__w_logcollector_generate_state_one_target_restart(void ** state) {
     expect_function_call(__wrap_cJSON_AddItemToObject);
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
+
+    expect_value(__wrap_OSHash_Next, self, stats.states);
+    will_return(__wrap_OSHash_Next, NULL);
 
     will_return(__wrap_strftime,"2019-02-05 12:18:37");
     will_return(__wrap_strftime, 20);
@@ -440,10 +446,19 @@ void test__w_logcollector_generate_state_one_target_restart(void ** state) {
 
 /* Test _w_logcollector_state_update_file */
 void test__w_logcollector_state_update_file_new_data(void ** state) {
-    w_lc_state_storage_t stat = { .states = *state };
+    w_lc_state_storage_t stat = {0};
+    stat.states = *state;
+    __real_OSHash_SetFreeDataPointer(stat.states, (void (*)(void *))free_state_file);
 
-    // Free new data once the test is done
-    OSHash_SetFreeDataPointer(stat.states, (void (*)(void *))free_state_file);
+
+    expect_value(__wrap_OSHash_Get, self, stat.states);
+    expect_string(__wrap_OSHash_Get, key, "/test_path");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    will_return(__wrap_OSHash_Update, 0);
+
+    expect_value(__wrap_OSHash_Add, key, "/test_path");
+    will_return(__wrap_OSHash_Add, 2);
 
     _w_logcollector_state_update_file(&stat, "/test_path", 100);
 }
@@ -452,22 +467,23 @@ void test__w_logcollector_state_update_file_update(void ** state) {
     w_lc_state_storage_t stat = { .states = *state };
     w_lc_state_file_t *data = calloc(1, sizeof(w_lc_state_file_t));
 
-    if (OSHash_Add(stat.states, "/test_path", data) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
+    expect_value(__wrap_OSHash_Get, self, stat.states);
+    expect_string(__wrap_OSHash_Get, key, "/test_path");
+    will_return(__wrap_OSHash_Get, data);
+
+    will_return(__wrap_OSHash_Update, 1);
 
     _w_logcollector_state_update_file(&stat, "/test_path", 100);
 
-    // Free new data once the test is done
-    OSHash_SetFreeDataPointer(stat.states, (void (*)(void *))free_state_file);
-
     assert_int_equal(data->bytes, 100);
     assert_int_equal(data->events, 1);
+    free(data);
 }
 
 /* w_logcollector_state_update_file */
 void test__w_logcollector_state_update_file_fail_update(void ** state) {
     w_lc_state_storage_t stat = { .states = *state };
+    __real_OSHash_SetFreeDataPointer(stat.states, (void (*)(void *))free_state_file);
 
     w_lc_state_file_t * data = NULL;
     os_calloc(1, sizeof(w_lc_state_file_t), data);
@@ -498,24 +514,33 @@ void test_w_logcollector_state_update_file_null(void ** state) {
 void test__w_logcollector_state_update_target_get_file_stats_fail(void ** state) {
     g_lc_state_type = LC_STATE_GLOBAL | LC_STATE_INTERVAL;
     w_lc_state_storage_t stats = { .states = *state };
+    w_lc_state_file_t *mock_entry = calloc(1, sizeof(w_lc_state_file_t));
+    char *fpath = "/test_path";
+    char *target = "test";
 
-    char * fpath = "/test_path";
-    char * target = "test";
-
+    __real_OSHash_Add_ex(mock_hashmap, fpath, mock_entry);
     bool dropped = false;
 
-    _w_logcollector_state_update_target(&stats, fpath, target, dropped);
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, NULL);
 
-    // Allow teardown to remove allocated memory
-    OSHash_SetFreeDataPointer(stats.states, (void (*)(void *))free_state_file);
+    will_return(__wrap_OSHash_Update, 1);
+
+    _w_logcollector_state_update_target(&stats, fpath, target, dropped);
 }
 
 void test__w_logcollector_state_update_target_find_target_fail(void ** state) {
-
+    char * fpath = "/test_path";
+    char * target_str = "test2";
     g_lc_state_type = LC_STATE_GLOBAL | LC_STATE_INTERVAL;
-    w_lc_state_storage_t stats;
-    stats.states = (OSHash *) *state;
-    stats.start = (time_t) 2020;
+
+    __real_OSHash_Add_ex(mock_hashmap, fpath, calloc(1, sizeof(w_lc_state_file_t)));
+
+    w_lc_state_storage_t * stats = NULL;
+    os_calloc(1, sizeof(w_lc_state_storage_t), stats);
+    stats->states = *state;
+    stats->start = (time_t) 2020;
 
     w_lc_state_target_t * target;
     os_calloc(1, sizeof(w_lc_state_target_t), target);
@@ -532,23 +557,24 @@ void test__w_logcollector_state_update_target_find_target_fail(void ** state) {
     data->bytes = 100;
     data->events = 5;
 
-    if (OSHash_Add(stats.states, "/test_path", data) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
-
-    char * fpath = "/test_path";
-    char * target_str = "test2";
-
     bool dropped = false;
 
-    _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
+    expect_value(__wrap_OSHash_Get, self, stats->states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, data);
 
-    // Allow teardown to remove allocated memory
-    OSHash_SetFreeDataPointer(stats.states, (void (*)(void *))free_state_file);
+    will_return(__wrap_OSHash_Update, 1);
+
+    _w_logcollector_state_update_target(stats, fpath, target_str, dropped);
+    free(stats);
 }
 
-void test__w_logcollector_state_update_target_find_target_ok(void ** state) {
 
+void test__w_logcollector_state_update_target_find_target_ok(void ** state) {
+    char * fpath = "/test_path";
+    char * target_str = "test";
+
+    bool dropped = false;
     g_lc_state_type = LC_STATE_GLOBAL | LC_STATE_INTERVAL;
     w_lc_state_storage_t stats = {.states = *state, .start = (time_t) 2020};
     w_lc_state_target_t target = {.drops = 10, .name = "test"};
@@ -556,14 +582,12 @@ void test__w_logcollector_state_update_target_find_target_ok(void ** state) {
 
     w_lc_state_file_t data = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
 
-    if (OSHash_Add(stats.states, "/test_path", &data) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
 
-    char * fpath = "/test_path";
-    char * target_str = "test";
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, &data);
 
-    bool dropped = false;
+    will_return(__wrap_OSHash_Update, 1);
 
     _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
 }
@@ -580,10 +604,11 @@ void test__w_logcollector_state_update_target_dropped_true(void ** state) {
     char * fpath = "/test_path";
     char * target_str = "test";
 
-    if (OSHash_Add(stats.states, "/test_path", &data) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, &data);
 
+    will_return(__wrap_OSHash_Update, 1);
     bool dropped = true;
 
     _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
@@ -603,9 +628,15 @@ void test__w_logcollector_state_update_target_OSHash_Update_fail(void ** state) 
 
     bool dropped = true;
 
-    if (OSHash_Add(stats.states, "/test_path", &data) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
+
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 0);
+
+    expect_value(__wrap_OSHash_Add, key, "/test_path");
+    will_return(__wrap_OSHash_Add, 2);
 
     _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
 }
@@ -655,17 +686,20 @@ void test_w_logcollector_state_update_file_ok(void ** state) {
     w_lc_state_file_t data = {0};
     w_lc_state_file_t data2 = {.bytes = 10, .events = 5};
 
-    if (OSHash_Add(g_lc_states_global->states, "/test_path", &data) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
-
-    if (OSHash_Add(g_lc_states_interval->states, "/test_path", &data2) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
-
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Get, key, "/test_path");
+    will_return(__wrap_OSHash_Get, &data);
 
+    will_return(__wrap_OSHash_Update, 1);
+
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Get, key, "/test_path");
+    will_return(__wrap_OSHash_Get, &data2);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
     w_logcollector_state_update_file("/test_path", 500);
 
     assert_int_equal(data.bytes, 500);
@@ -684,26 +718,29 @@ void test_w_logcollector_state_update_target_null_path(void ** state) {
 }
 
 void test_w_logcollector_state_update_target_ok(void ** state) {
-
     g_lc_state_type = LC_STATE_GLOBAL | LC_STATE_INTERVAL;
 
     w_lc_state_target_t target = {.drops = 10, .name = "test_target"};
     w_lc_state_target_t * target_array[2] = {&target, NULL};
     w_lc_state_file_t data = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Get, key, "test_path");
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 1);
+
     w_lc_state_target_t target2 = {.drops = 10, .name = "test_target"};
     w_lc_state_target_t * target_array2[2] = {&target, NULL};
     w_lc_state_file_t data2 = {.targets = (w_lc_state_target_t **) &target_array2, .bytes = 100, .events = 5};
 
-    if (OSHash_Add(g_lc_states_global->states, "test_path", &data) != 2) {
-        fail_msg("Unable to add data to global hashmap.");
-    }
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Get, key, "test_path");
+    will_return(__wrap_OSHash_Get, &data2);
 
-    if (OSHash_Add(g_lc_states_interval->states, "test_path", &data2) != 2) {
-        fail_msg("Unable to add data to global hashmap.");
-    }
-
-    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_OSHash_Update, 1);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
@@ -712,17 +749,13 @@ void test_w_logcollector_state_update_target_ok(void ** state) {
 
 /* w_logcollector_state_generate */
 void test_w_logcollector_generate_state_ok(void ** state) {
-
     g_lc_state_type = LC_STATE_GLOBAL | LC_STATE_INTERVAL;;
 
     w_lc_state_target_t target = {.drops = 10, .name = "sock1"};
     w_lc_state_target_t * target_array[2] = {&target, NULL};
 
     w_lc_state_file_t data = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
-
-    if (OSHash_Add(g_lc_states_global->states, "key_test", &data) != 2) {
-        fail_msg("Unable to add data to global hashmap.");
-    }
+    OSHashNode hash_node = {.data = &data, .key = "key_test"};
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -730,6 +763,9 @@ void test_w_logcollector_generate_state_ok(void ** state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     will_return_always(__wrap_cJSON_CreateObject, (cJSON *) 10);
+
+    expect_value(__wrap_OSHash_Begin, self, g_lc_states_global->states);
+    will_return(__wrap_OSHash_Begin, &hash_node);
 
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -757,6 +793,9 @@ void test_w_logcollector_generate_state_ok(void ** state) {
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
 
+    expect_value(__wrap_OSHash_Next, self, g_lc_states_global->states);
+    will_return(__wrap_OSHash_Next, NULL);
+
     will_return(__wrap_strftime,"2019-02-05 12:18:37");
     will_return(__wrap_strftime, 20);
 
@@ -776,10 +815,10 @@ void test_w_logcollector_generate_state_ok(void ** state) {
     g_lc_states_interval->start = (time_t) 2020;
 
     w_lc_state_file_t data2 = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+    OSHashNode hash_node2 = {.data = &data2, .key = "key_test"};
 
-    if (OSHash_Add(g_lc_states_interval->states, "key_test", &data2) != 2) {
-        fail_msg("Unable to add data to global hashmap.");
-    }
+    expect_value(__wrap_OSHash_Begin, self, g_lc_states_interval->states);
+    will_return(__wrap_OSHash_Begin, &hash_node2);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
     expect_string(__wrap_cJSON_AddStringToObject, string, "sock1");
@@ -800,6 +839,9 @@ void test_w_logcollector_generate_state_ok(void ** state) {
 
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
+
+    expect_value(__wrap_OSHash_Next, self, g_lc_states_interval->states);
+    will_return(__wrap_OSHash_Next, NULL);
 
     will_return(__wrap_strftime,"2019-02-05 12:18:37");
     will_return(__wrap_strftime, 20);
@@ -905,15 +947,11 @@ void test_w_logcollector_state_main_ok(void ** state) {
     will_return(__wrap_FOREVER, 1);
     expect_value(__wrap_sleep, seconds, interval);
 
-    // w_logcollector_state_generate
     w_lc_state_target_t target = {.drops = 10, .name = "sock1"};
     w_lc_state_target_t * target_array[2] = {&target, NULL};
 
     w_lc_state_file_t data = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
-
-    if (OSHash_Add(g_lc_states_global->states, "key_test", &data) != 2) {
-        fail_msg("Unable to add data to global hashmap.");
-    }
+    OSHashNode hash_node = {.data = &data, .key = "key_test"};
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -921,6 +959,9 @@ void test_w_logcollector_state_main_ok(void ** state) {
     expect_function_call(__wrap_cJSON_Delete);
 
     will_return_always(__wrap_cJSON_CreateObject, (cJSON *) 10);
+
+    expect_value(__wrap_OSHash_Begin, self, g_lc_states_global->states);
+    will_return(__wrap_OSHash_Begin, &hash_node);
 
     will_return_always(__wrap_cJSON_AddNumberToObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -948,6 +989,9 @@ void test_w_logcollector_state_main_ok(void ** state) {
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
 
+    expect_value(__wrap_OSHash_Next, self, g_lc_states_global->states);
+    will_return(__wrap_OSHash_Next, NULL);
+
     will_return(__wrap_strftime,"2019-02-05 12:18:37");
     will_return(__wrap_strftime, 20);
 
@@ -967,10 +1011,10 @@ void test_w_logcollector_state_main_ok(void ** state) {
     g_lc_states_interval->start = (time_t) 2020;
 
     w_lc_state_file_t data2 = {.targets = (w_lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+    OSHashNode hash_node2 = {.data = &data2, .key = "key_test"};
 
-    if (OSHash_Add(g_lc_states_interval->states, "key_test", &data2) != 2) {
-        fail_msg("Unable to add data to global hashmap.");
-    }
+    expect_value(__wrap_OSHash_Begin, self, g_lc_states_interval->states);
+    will_return(__wrap_OSHash_Begin, &hash_node2);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, "name");
     expect_string(__wrap_cJSON_AddStringToObject, string, "sock1");
@@ -991,6 +1035,9 @@ void test_w_logcollector_state_main_ok(void ** state) {
     expect_function_call(__wrap_cJSON_AddItemToObject);
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
+
+    expect_value(__wrap_OSHash_Next, self, g_lc_states_interval->states);
+    will_return(__wrap_OSHash_Next, NULL);
 
     will_return(__wrap_strftime,"2019-02-05 12:18:37");
     will_return(__wrap_strftime, 20);
@@ -1036,12 +1083,15 @@ void test_w_logcollector_state_main_ok(void ** state) {
 void test__w_logcollector_state_delete_file_no_data(void ** state) {
     w_lc_state_storage_t storage = { .states = *state };
 
+    expect_value(__wrap_OSHash_Delete, self, storage.states);
+    expect_string(__wrap_OSHash_Delete, key, "test_path");
+    will_return(__wrap_OSHash_Delete, NULL);
+
     _w_logcollector_state_delete_file(&storage, "test_path");
 }
 
 void test__w_logcollector_state_delete_file_ok(void ** state) {
-
-    w_lc_state_storage_t storage = { .states = *state };
+    w_lc_state_storage_t storage = {.states = *state};
 
     w_lc_state_file_t * data = NULL;
     os_calloc(1, sizeof(w_lc_state_file_t), data);
@@ -1051,9 +1101,9 @@ void test__w_logcollector_state_delete_file_ok(void ** state) {
     os_calloc(1, sizeof(w_lc_state_target_t), data->targets[1]);
     os_strdup("target name 2", data->targets[1]->name);
 
-    if (OSHash_Add(storage.states, "test_path", data) != 2) {
-        fail_msg("Unable to add data to hash map.");
-    }
+    expect_value(__wrap_OSHash_Delete, self, storage.states);
+    expect_string(__wrap_OSHash_Delete, key, "test_path");
+    will_return(__wrap_OSHash_Delete, data);
 
     _w_logcollector_state_delete_file(&storage, "test_path");
 }
@@ -1070,42 +1120,59 @@ void test_w_logcollector_state_delete_file_fpath_NULL(void ** state) {
 
 void test_w_logcollector_state_delete_file_global(void ** state) {
     g_lc_state_type = 1;
+    char * fpath = "test";
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    w_logcollector_state_delete_file("test");
-
+    w_logcollector_state_delete_file(fpath);
 }
 
 void test_w_logcollector_state_delete_file_interval(void ** state) {
+    char * fpath = "test";
     g_lc_state_type = 2;
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    w_logcollector_state_delete_file("test");
+    w_logcollector_state_delete_file(fpath);
 }
 
 void test_w_logcollector_state_delete_file_global_interval(void ** state) {
+    char * fpath = "test";
     g_lc_state_type = 3;
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
+
+    expect_value(__wrap_OSHash_Delete, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Delete, key, fpath);
+    will_return(__wrap_OSHash_Delete, NULL);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    w_logcollector_state_delete_file("test");
+    w_logcollector_state_delete_file(fpath);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Tests w_logcollector_state_init
-        // cmocka_unit_test(test_w_logcollector_state_init_fail_hash_create_global),
-        // cmocka_unit_test(test_w_logcollector_state_init_fail_hash_create_interval),
-        // cmocka_unit_test(test_w_logcollector_state_init_fail_hash_setsize_global),
-        // cmocka_unit_test(test_w_logcollector_state_init_fail_hash_setsize_interval),
+        cmocka_unit_test_teardown(test_w_logcollector_state_init_fail_hash_create_global, teardown_global_variables),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_state_init_fail_hash_create_interval, setup_local_hashmap, teardown_global_variables),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_state_init_fail_hash_setsize_global, setup_local_hashmap, teardown_global_variables),
+        cmocka_unit_test_teardown(test_w_logcollector_state_init_fail_hash_setsize_interval, teardown_global_variables),
         cmocka_unit_test_teardown(test_w_logcollector_state_init_ok, teardown_global_variables),
 
         // Tests w_logcollector_state_get
@@ -1120,19 +1187,19 @@ int main(void) {
         // Tests _w_logcollector_state_update_file
         cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_new_data, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_update, setup_local_hashmap, teardown_local_hashmap),
-        // cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_fail_update, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_fail_update, setup_local_hashmap, teardown_local_hashmap),
 
         // Tests w_logcollector_state_update_file
         cmocka_unit_test(test_w_logcollector_state_update_file_null),
         cmocka_unit_test_setup_teardown(test_w_logcollector_state_update_file_ok, setup_global_variables, teardown_global_variables),
 
         // Tests _w_logcollector_state_update_target
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_get_file_stats_fail, setup_local_hashmap, teardown_local_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_find_target_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_get_file_stats_fail, setup_hashmap_state_file, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_find_target_fail, setup_hashmap_state_file, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_find_target_ok, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_dropped_true, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_OSHash_Update_fail, setup_local_hashmap, teardown_local_hashmap),
-        // cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_OSHash_Add_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_OSHash_Add_fail, setup_local_hashmap, teardown_local_hashmap),
 
         // Tests w_logcollector_state_update_target
         cmocka_unit_test(test_w_logcollector_state_update_target_null_path),

@@ -326,7 +326,7 @@ int __wrap_AddHash_Rule(RuleNode *node) {
 
 int __wrap_Accumulate_Init(OSHash **acm_store, int *acm_lookups, time_t *acm_purge_ts) {
     if (session_load_acm_store) {
-        *acm_store = (OSHash *) 1;
+        *acm_store = (OSHash *) 8;
     }
     return mock_type(int);
 }
@@ -611,34 +611,7 @@ void test_w_logtest_init_pthread_fail(void **state)
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1109): Unable to create new pthread.");
 
-    will_return(__wrap_CreateThread, 1);
-
-    //w_logtest_clients_handler
-    will_return(__wrap_FOREVER, 1);
-
-    will_return(__wrap_pthread_mutex_lock, 0);
-
-    will_return(__wrap_accept, 5);
-
-    will_return(__wrap_pthread_mutex_unlock, 0);
-
-    will_return(__wrap_OS_RecvSecureTCP, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(7314): Failure to receive message: empty or reception timeout");
-
-    will_return(__wrap_close, 0);
-    will_return(__wrap_FOREVER, 0);
-
-
-    will_return(__wrap_pthread_join, 0);
-    will_return(__wrap_close, 0);
-
-    expect_string(__wrap_unlink, file, LOGTEST_SOCK);
-    will_return(__wrap_unlink, 0);
-
-    will_return(__wrap_pthread_mutex_destroy, 0);
-
-    w_logtest_init();
+    expect_assert_failure(w_logtest_init());
     w_logtest_conf_threads = 1;
 
 }
@@ -807,7 +780,7 @@ void test_w_logtest_fts_init_setSize_failure(void **state)
     OSList *fts_list;
     OSHash *fts_store;
     OSList *list = (OSList *) 1;
-    OSHash *hash = (OSHash *) 1;
+    OSHash *hash = (OSHash *) 8;
 
     will_return(__wrap_getDefine_Int, 5);
 
@@ -832,7 +805,7 @@ void test_w_logtest_fts_init_success(void **state)
     OSList *fts_list;
     OSHash *fts_store;
     OSList *list = (OSList *) 1;
-    OSHash *hash = (OSHash *) 1;
+    OSHash *hash = (OSHash *) 8;
 
     will_return(__wrap_getDefine_Int, 5);
 
@@ -1460,7 +1433,7 @@ void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
     OSHash * fts_store;
     OSList * list;
     os_calloc(1, sizeof(OSList), list);
-    OSHash * hash = (OSHash *) 1;
+    OSHash * hash = (OSHash *) 8;
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OSList_Create, list);
     will_return(__wrap_OSList_SetMaxSize, 1);
@@ -1531,7 +1504,7 @@ void test_w_logtest_initialize_session_success(void ** state) {
     OSList * fts_list;
     OSHash * fts_store;
     OSList * list = (OSList *) 1;
-    OSHash * hash = (OSHash *) 1;
+    OSHash * hash = (OSHash *) 8;
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OSList_Create, list);
     will_return(__wrap_OSList_SetMaxSize, 1);
@@ -1600,7 +1573,7 @@ void test_w_logtest_initialize_session_success_duplicate_key(void ** state) {
     OSList * fts_list;
     OSHash * fts_store;
     OSList * list = (OSList *) 1;
-    OSHash * hash = (OSHash *) 1;
+    OSHash * hash = (OSHash *) 8;
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OSList_Create, list);
     will_return(__wrap_OSList_SetMaxSize, 1);
@@ -4756,7 +4729,7 @@ void test_w_logtest_process_request_log_processing_ok_session_expired(void ** st
     OSList * fts_list;
     OSHash * fts_store;
     OSList * list = (OSList *) 1;
-    OSHash * hash = (OSHash *) 1;
+    OSHash * hash = (OSHash *) 8;
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OSList_Create, list);
     will_return(__wrap_OSList_SetMaxSize, 1);

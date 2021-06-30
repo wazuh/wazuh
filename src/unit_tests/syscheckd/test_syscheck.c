@@ -84,7 +84,7 @@ void test_fim_initialize_error(void **state)
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
-    fim_initialize();
+    expect_assert_failure(fim_initialize());
 
     assert_null(syscheck.database);
 }

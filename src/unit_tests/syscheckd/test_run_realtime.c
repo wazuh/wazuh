@@ -518,14 +518,10 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state) {
     will_return(__wrap_OSHash_Add_ex, 0);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(6697): Out of memory. Exiting.");
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
     test_mode = 1;
-    ret = realtime_adddir(path, &config);
+    expect_assert_failure(realtime_adddir(path, &config));
     test_mode = 0;
-
-    assert_int_equal(ret, 1);
 }
 
 

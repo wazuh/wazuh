@@ -55,13 +55,21 @@ int __wrap_OSHash_Add(OSHash *self, const char *key, void *data) {
 
 int __real_OSHash_Add_ex(OSHash *self, const char *key, void *data);
 int __wrap_OSHash_Add_ex(OSHash *self, const char *key, void *data) {
+    int retval;
+
     if (test_mode){
         check_expected(self);
         check_expected(key);
         if (OSHash_Add_ex_check_data) {
             check_expected(data);
         }
-        return mock();
+        retval =  mock();
+
+        if (mock_hashmap != NULL && retval != 0) {
+            __real_OSHash_Add(self, key, data);
+        }
+
+        return retval;
     }
     return __real_OSHash_Add_ex(self, key, data);
 }
@@ -159,7 +167,13 @@ int __real_OSHash_Update(OSHash *self, const char *key, void *data);
 int __wrap_OSHash_Update(__attribute__((unused)) OSHash *self,
                             __attribute__((unused)) const char *key,
                             __attribute__((unused)) void *data) {
-    return mock();
+    int retval = mock();
+
+    if (mock_hashmap != NULL && retval != 0) {
+        __real_OSHash_Update(mock_hashmap, key, data);
+    }
+
+    return retval;
 }
 
 int __wrap_OSHash_Update_ex(__attribute__((unused)) OSHash *self,
