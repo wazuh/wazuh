@@ -536,7 +536,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
             if 'description' in reference_external_id:
                 reference_external_id.pop('description')
             # Delete the reference from references and update the object
-            if reference_external_id in software['references']:
+            if reference_external_id:
                 software['references'].remove(reference_external_id)
             software.update(reference_external_id)
 
