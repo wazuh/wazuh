@@ -67,6 +67,13 @@ time_t __wrap_time(time_t *timer) {
 
 static int setup_group(void ** state) {
 #ifdef TEST_WINAGENT
+#ifdef WIN_WHODATA
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#endif
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
@@ -125,16 +132,18 @@ static int setup_group(void ** state) {
 #ifndef TEST_WINAGENT
 
 static int setup_symbolic_links(void **state) {
-    if (syscheck.directories[1]->path != NULL) {
-        free(syscheck.directories[1]->path);
-        syscheck.directories[1]->path = NULL;
+    directory_t *config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
+
+    if (config->path != NULL) {
+        free(config->path);
+        config->path = NULL;
     }
 
-    syscheck.directories[1]->path = strdup("/link");
-    syscheck.directories[1]->symbolic_links = strdup("/folder");
-    syscheck.directories[1]->options |= REALTIME_ACTIVE;
+    config->path = strdup("/link");
+    config->symbolic_links = strdup("/folder");
+    config->options |= REALTIME_ACTIVE;
 
-    if (syscheck.directories[1]->path == NULL || syscheck.directories[1]->symbolic_links == NULL) {
+    if (config->path == NULL || config->symbolic_links == NULL) {
         return -1;
     }
 
@@ -142,20 +151,21 @@ static int setup_symbolic_links(void **state) {
 }
 
 static int teardown_symbolic_links(void **state) {
-    if (syscheck.directories[1]->path != NULL) {
-        free(syscheck.directories[1]->path);
-        syscheck.directories[1]->path = NULL;
+    directory_t *config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
+    if (config->path != NULL) {
+        free(config->path);
+        config->path = NULL;
     }
 
-    if (syscheck.directories[1]->symbolic_links != NULL) {
-        free(syscheck.directories[1]->symbolic_links);
-        syscheck.directories[1]->symbolic_links = NULL;
+    if (config->symbolic_links != NULL) {
+        free(config->symbolic_links);
+        config->symbolic_links = NULL;
     }
 
-    syscheck.directories[1]->path = strdup("/etc");
-    syscheck.directories[1]->options &= ~REALTIME_ACTIVE;
+    config->path = strdup("/etc");
+    config->options &= ~REALTIME_ACTIVE;
 
-    if (syscheck.directories[1]->path == NULL) {
+    if (config->path == NULL) {
         return -1;
     }
 
@@ -190,6 +200,14 @@ static int teardown_tmp_file(void **state) {
 
 static int teardown_group(void **state) {
 #ifdef TEST_WINAGENT
+#ifdef WIN_WHODATA
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
     if (syscheck.realtime) {
         if (syscheck.realtime->dirtb) {
             OSHash_Free(syscheck.realtime->dirtb);
@@ -228,6 +246,12 @@ void test_fim_whodata_initialize(void **state)
 {
     int ret;
 #ifdef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     int i;
     char *dirs[] = {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
@@ -324,6 +348,12 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -447,13 +477,19 @@ void test_set_whodata_mode_changes(void **state) {
     };
     char expanded_dirs[3][OS_SIZE_1024];
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     // Mark directories to be added in realtime
-    syscheck.directories[0]->dirs_status.status |= WD_CHECK_REALTIME;
-    syscheck.directories[0]->dirs_status.status &= ~WD_CHECK_WHODATA;
-    syscheck.directories[7]->dirs_status.status |= WD_CHECK_REALTIME;
-    syscheck.directories[7]->dirs_status.status &= ~WD_CHECK_WHODATA;
-    syscheck.directories[8]->dirs_status.status |= WD_CHECK_REALTIME;
-    syscheck.directories[8]->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_CHECK_REALTIME;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->dirs_status.status |= WD_CHECK_REALTIME;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 8))->dirs_status.status |= WD_CHECK_REALTIME;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 8))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -482,6 +518,12 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -604,60 +646,65 @@ void test_fim_send_scan_info(void **state) {
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
-    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.directories[1]->symbolic_links);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
 
+    expect_fim_checker_call(new_path, affected_config);
     expect_realtime_adddir_call(new_path, 0);
-    expect_fim_checker_call(new_path, syscheck.directories[1]);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->path);
 
-    fim_link_update(new_path, syscheck.directories[1]);
+    fim_link_update(new_path, affected_config);
 
-    assert_string_equal(syscheck.directories[1]->path, "/link");
-    assert_string_equal(syscheck.directories[1]->symbolic_links, new_path);
+    assert_string_equal(affected_config->path, "/link");
+    assert_string_equal(affected_config->symbolic_links, new_path);
 }
 
 void test_fim_link_update_already_added(void **state) {
     char *link_path = "/home";
     char error_msg[OS_SIZE_128];
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
-    free(syscheck.directories[1]->symbolic_links);
-    syscheck.directories[1]->symbolic_links = strdup("/home");
+    free(affected_config->symbolic_links);
+    affected_config->symbolic_links = strdup("/home");
 
     snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, error_msg);
 
-    fim_link_update(link_path, syscheck.directories[1]);
+    fim_link_update(link_path, affected_config);
 
-    assert_string_equal(syscheck.directories[1]->path, "/link");
-    assert_null(syscheck.directories[1]->symbolic_links);
+    assert_string_equal(affected_config->path, "/link");
+    assert_null(affected_config->symbolic_links);
 }
 
 void test_fim_link_check_delete(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
-    expect_string(__wrap_lstat, filename, syscheck.directories[1]->symbolic_links);
+    expect_string(__wrap_lstat, filename, affected_config->symbolic_links);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
 
-    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.directories[1]->symbolic_links);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
 
     expect_fim_configuration_directory_call(pointed_folder, NULL);
-    fim_link_check_delete(syscheck.directories[1]);
+    fim_link_check_delete(affected_config);
 
-    assert_string_equal(syscheck.directories[1]->path, link_path);
-    assert_null(syscheck.directories[1]->symbolic_links);
+    assert_string_equal(affected_config->path, link_path);
+    assert_null(affected_config->symbolic_links);
 }
 
 void test_fim_link_check_delete_lstat_error(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
     char error_msg[OS_SIZE_128];
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_string(__wrap_lstat, filename, pointed_folder);
     will_return(__wrap_lstat, 0);
@@ -669,44 +716,43 @@ void test_fim_link_check_delete_lstat_error(void **state) {
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, error_msg);
 
-    fim_link_check_delete(syscheck.directories[1]);
+    fim_link_check_delete(affected_config);
 
-    assert_string_equal(syscheck.directories[1]->path, link_path);
-    assert_string_equal(syscheck.directories[1]->symbolic_links, pointed_folder);
+    assert_string_equal(affected_config->path, link_path);
+    assert_string_equal(affected_config->symbolic_links, pointed_folder);
 }
 
 void test_fim_link_check_delete_noentry_error(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_string(__wrap_lstat, filename, pointed_folder);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
-    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.directories[1]->symbolic_links);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, affected_config->symbolic_links);
 
     errno = ENOENT;
 
-    fim_link_check_delete(syscheck.directories[1]);
+    fim_link_check_delete(affected_config);
 
     errno = 0;
 
-    assert_string_equal(syscheck.directories[1]->path, link_path);
-    assert_null(syscheck.directories[1]->symbolic_links);
+    assert_string_equal(affected_config->path, link_path);
+    assert_null(affected_config->symbolic_links);
 }
 
 void test_fim_delete_realtime_watches(void **state) {
-    (void) state;
-
     unsigned int pos;
     char *link_path = "/link";
     char *pointed_folder = "/folder";
 
-    expect_fim_configuration_directory_call(pointed_folder, syscheck.directories[0]);
-    expect_fim_configuration_directory_call("data", syscheck.directories[0]);
+    expect_fim_configuration_directory_call(pointed_folder, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    expect_fim_configuration_directory_call("data", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     will_return(__wrap_inotify_rm_watch, 1);
 
-    fim_delete_realtime_watches(syscheck.directories[1]);
+    fim_delete_realtime_watches(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
 
     assert_null(OSHash_Begin(syscheck.realtime->dirtb, &pos));
 }
@@ -716,7 +762,7 @@ void test_fim_link_delete_range(void **state) {
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
-    fim_link_delete_range(syscheck.directories[1]);
+    fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
 }
 
 void test_fim_link_delete_range_error(void **state) {
@@ -730,47 +776,52 @@ void test_fim_link_delete_range_error(void **state) {
     expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, error_msg);
 
-    fim_link_delete_range(syscheck.directories[1]);
+    fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
 }
 
 void test_fim_link_silent_scan(void **state) {
     char *link_path = "/link";
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3);
 
     expect_realtime_adddir_call(link_path, 0);
-    expect_fim_checker_call(link_path, syscheck.directories[3]);
+    expect_fim_checker_call(link_path, affected_config);
 
-    fim_link_silent_scan(link_path, syscheck.directories[3]);
+    fim_link_silent_scan(link_path, affected_config);
 }
 
 void test_fim_link_reload_broken_link_already_monitored(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
     char error_msg[OS_SIZE_128];
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, error_msg);
 
-    fim_link_reload_broken_link(link_path, syscheck.directories[1]);
+    fim_link_reload_broken_link(link_path, affected_config);
 
-    assert_string_equal(syscheck.directories[1]->path, link_path);
-    assert_string_equal(syscheck.directories[1]->symbolic_links, pointed_folder);
+    assert_string_equal(affected_config->path, link_path);
+    assert_string_equal(affected_config->symbolic_links, pointed_folder);
 }
 
 void test_fim_link_reload_broken_link_reload_broken(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/new_path";
+    directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
-    expect_fim_checker_call(pointed_folder, syscheck.directories[1]);
+    expect_fim_checker_call(pointed_folder, affected_config);
 
     expect_string(__wrap_realtime_adddir, dir, pointed_folder);
     will_return(__wrap_realtime_adddir, 0);
 
-    fim_link_reload_broken_link(pointed_folder, syscheck.directories[1]);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, link_path);
 
-    assert_string_equal(syscheck.directories[1]->path, link_path);
-    assert_string_equal(syscheck.directories[1]->symbolic_links, pointed_folder);
+    fim_link_reload_broken_link(pointed_folder, affected_config);
+
+    assert_string_equal(affected_config->path, link_path);
+    assert_string_equal(affected_config->symbolic_links, pointed_folder);
 }
 #endif
 

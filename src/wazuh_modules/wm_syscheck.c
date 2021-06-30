@@ -33,11 +33,13 @@ const wm_context WM_SYSCHECK_CONTEXT = {
 static void wm_syscheck_print_info(void) {
     int r = 0;
     directory_t *dir_it = NULL;
+    OSListNode *node_it;
 #ifdef WIN32
 #ifndef WIN_WHODATA
     int whodata_notification = 0;
     /* Remove whodata attributes */
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->options & WHODATA_ACTIVE) {
             if (!whodata_notification) {
                 whodata_notification = 1;
@@ -63,7 +65,8 @@ static void wm_syscheck_print_info(void) {
     }
 #endif //WIN32
     /* Print directories to be monitored */
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         char optstr[ 1024 ];
 
 #ifdef WIN32
@@ -153,7 +156,8 @@ static void wm_syscheck_print_info(void) {
     }
 
     /* Check directories set for real time */
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         if (dir_it->options & REALTIME_ACTIVE) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
             mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_MONITORING_DIRECTORY, dir_it->path);
@@ -184,15 +188,9 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
     read_internal(0);
     mtdebug1(SYSCHECK_LOGTAG, "Starting syscheck.");
     if (syscheck.disabled == 1) {
-        if (syscheck.directories == NULL || syscheck.directories[0] == NULL) {
+        if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
             mtinfo(SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
-            dump_syscheck_file(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
         }
-
-#ifdef WIN32
-        free_directory(syscheck.directories[0]);
-        syscheck.directories[0] = NULL;
-#endif //WIN32
 
         if (!syscheck.ignore) {
             os_calloc(1, sizeof(char *), syscheck.ignore);
@@ -210,7 +208,6 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
         mtinfo(SYSCHECK_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
-    wm_syscheck_log_config(sys);
     /* Rootcheck config */
     syscheck.rootcheck = !rootcheck_init(0);
 #ifndef WIN32
@@ -233,12 +230,13 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
 #ifdef ENABLE_AUDIT
         if (audit_init() < 0) {
             directory_t *dir_it;
-
+            OSListNode *node_it;
             mtwarn(SYSCHECK_LOGTAG, FIM_WARN_AUDIT_THREAD_NOSTARTED);
 
             // Switch who-data to real-time mode
 
-            foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
                 if (dir_it->options & WHODATA_ACTIVE) {
                     dir_it->options &= ~WHODATA_ACTIVE;
                     dir_it->options |= REALTIME_ACTIVE;
@@ -250,6 +248,7 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
 #endif
     }
 #endif //WIN32
+    wm_syscheck_log_config(sys);
     /* Start the daemon */
     start_daemon();
     mtinfo(SYSCHECK_LOGTAG, "Module finished.");

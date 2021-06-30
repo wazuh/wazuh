@@ -38,11 +38,13 @@ void free_whodata_event(whodata_evt *w_evt) {
 }
 
 cJSON *getSyscheckConfig(void) {
-
 #ifndef WIN32
-    if (!syscheck.directories) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    if (OSList_GetFirstNode(syscheck.directories) == NULL) {
+        w_rwlock_unlock(&syscheck.directories_lock);
         return NULL;
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 #endif
 
     cJSON *root = cJSON_CreateObject();
@@ -79,11 +81,14 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON_AddItemToObject(syscfg, "diff", diff);
 
-    if (syscheck.directories) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    if (OSList_GetFirstNode(syscheck.directories) != NULL) {
         directory_t *dir_it;
         cJSON *dirs = cJSON_CreateArray();
+        OSListNode *node_it;
 
-        foreach_array(dir_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             cJSON *pair = cJSON_CreateObject();
             cJSON *opts = cJSON_CreateArray();
             if (dir_it->options & CHECK_MD5SUM) {
@@ -152,6 +157,8 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg,"directories",dirs);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
     if (syscheck.nodiff) {
         cJSON *ndfs = cJSON_CreateArray();
         for (i=0;syscheck.nodiff[i];i++) {

@@ -308,11 +308,11 @@ static void test_fim_db_insert_registry_db_error(void **state) {
     }
 
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error getting registry rowid HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile: not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error getting registry rowid HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile: not an error (0)");
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry data '1': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry data '1': not an error (0)");
 
     // Insert entry
     ret = fim_db_insert_registry(syscheck.database, entry);
@@ -356,7 +356,7 @@ static void test_fim_db_insert_registry_key_db_error(void **state) {
     fim_entry *entry = *state;
 
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -373,7 +373,7 @@ static void test_fim_db_insert_registry_data_db_error(void **state) {
     fim_entry *entry = *state;
 
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry data \'1\': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error replacing registry data \'1\': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -426,7 +426,7 @@ static void test_fim_db_remove_registry_key_db_error(void **state) {
     fim_entry *entry = *state;
 
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error deleting data value from key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error deleting data value from key 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -445,7 +445,7 @@ static void test_fim_db_remove_registry_data_db_error(void **state) {
     fim_entry *entry = *state;
 
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error deleting entry name 'valuename': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error deleting entry name 'valuename': not an error (0)");
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_step, 1);
@@ -513,7 +513,7 @@ static void test_fim_db_set_registry_key_scanned_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, FIMDB_ERR);
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error setting scanned key path 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error setting scanned key path 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile': not an error (0)");
 
     execute_query(default_key_query);
 
@@ -545,7 +545,7 @@ static void test_fim_db_set_registry_data_scanned_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, FIMDB_ERR);
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mterror, formatted_msg, "Step error setting scanned data name 'valuename': not an error");
+    expect_string(__wrap__mterror, formatted_msg, "Step error setting scanned data name 'valuename': not an error (0)");
 
     execute_query(default_key_query);
     execute_query("INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");");

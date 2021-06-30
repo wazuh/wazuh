@@ -1,6 +1,6 @@
 # Security Configuration Assessment
 # CIS Checks for RHEL 7
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -620,8 +620,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - 'c:stat /boot/grub2/user.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|cannot stat'
+      - 'c:stat -L /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /boot/grub2/user.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)|cannot stat'
 
 # 1.5.3 Single user authentication
   - id: 4532
@@ -904,7 +904,7 @@ checks:
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 1.8.1.5 Configure /etc/issue permissions (Scored)
   - id: 4548
@@ -923,7 +923,7 @@ checks:
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 # 1.8.1.6 Configure /etc/issue.net permissions (Not Scored)
   - id: 4549
     title: "Ensure permissions on /etc/issue.net are configured"
@@ -941,7 +941,7 @@ checks:
       - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 
 # 1.9 Ensure updates, patches, and additional security software are installed
@@ -2742,7 +2742,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access: \(0\w00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0\w00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
@@ -2759,7 +2759,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 4646
@@ -2775,7 +2775,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 4647
@@ -2791,7 +2791,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
@@ -2808,7 +2808,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 4649
@@ -2824,7 +2824,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.8 Ensure cron is restricted to authorized users (Scored)
   - id: 4650
@@ -2840,9 +2840,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.deny -> r:No such file or directory$'
-      - 'c:stat /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.deny -> r:No such file or directory$'
+      - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 4651
@@ -2858,8 +2858,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/at.deny -> r:No such file or directory$'
-      - 'c:stat /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/at.deny -> r:No such file or directory$'
+      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 
@@ -2880,7 +2880,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 
@@ -2898,9 +2898,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat {} \; -> r:^Access: \(0\d400/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat -L {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat -L {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat -L {} \; -> r:^Access: \(0\d400/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 5.2.3 Ensure permissions on SSH public host key files are configured  (Automated)
@@ -2917,9 +2917,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d444/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat -L {} \; -> r:^Access: \(0\d444/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat -L {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat -L {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 5.2.4 Ensure SSH access is limited (Scored)
@@ -3468,7 +3468,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.3 Ensure permissions on /etc/shadow are configured (Automated)
   - id: 4686
@@ -3483,7 +3483,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.4 Ensure permissions on /etc/group are configured (Automated)
   - id: 4687
@@ -3499,7 +3499,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.5 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 4688
@@ -3515,7 +3515,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.6 Ensure permissions on /etc/passwd-are configured (Automated)
   - id: 4689
@@ -3531,7 +3531,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.7 Ensure permissions on /etc/shadow-are configured (Automated)
   - id: 4690
@@ -3547,7 +3547,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.8 Ensure permissions on /etc/group-are configured (Automated)
   - id: 4691
@@ -3563,7 +3563,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.9 Ensure permissions on /etc/gshadow-are configured (Automated)
   - id: 4692
@@ -3579,7 +3579,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 
 

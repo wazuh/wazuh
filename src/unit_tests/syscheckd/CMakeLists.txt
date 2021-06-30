@@ -1,5 +1,5 @@
 # Generate syscheck library
-file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o ${SRC_FOLDER}/syscheckd/*/*.o)
+file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o ${SRC_FOLDER}/syscheckd/*/*.o ${SRC_FOLDER}/config/wmodules_syscheck.o)
 list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
@@ -110,7 +110,7 @@ add_executable(test_create_db test_create_db.c)
 target_compile_options(test_create_db PRIVATE "-Wall")
 
 set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 \
-                          -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
+                          -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 \
                           -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode \
@@ -125,18 +125,22 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mtw
                           -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
                           -Wl,--wrap,fim_db_get_count_entries -Wl,--wrap,fim_db_get_path_from_pattern \
                           -Wl,--wrap,fim_db_file_is_scanned -Wl,--wrap,fim_db_data_exists \
-                          -Wl,--wrap,fim_db_append_paths_from_inode")
+                          -Wl,--wrap,fim_db_append_paths_from_inode -Wl,--wrap,pthread_rwlock_wrlock \
+                          -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
+                          -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                          -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
+                          -Wl,--wrap,fim_db_remove_wildcard_entry")
 
 target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
-                                          -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
-                                          -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+                                          -Wl,--wrap=decode_win_permissions,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                           -Wl,--wrap,get_UTC_modification_time")
 else()
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
-                                          -Wl,--wrap,get_user")
+                                          -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
+                                          -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
 endif()
 
 add_test(NAME test_create_db COMMAND test_create_db)
@@ -148,8 +152,9 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_mterror -Wl,--wrap,_mtwarn -Wl,--wr
                            -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
                            -Wl,--wrap,rename -Wl,--wrap,system -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
                            -Wl,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid,--wrap=_mtdebug2,--wrap=rmdir_ex,--wrap=rename_ex \
-                           -Wl,--wrap,_mtinfo,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid \
-                           -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                           -Wl,--wrap,_minfo,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid \
+                           -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=pthread_rwlock_wrlock -Wl,--wrap=pthread_mutex_lock \
+                           -Wl,--wrap=pthread_mutex_unlock -Wl,--wrap=pthread_rwlock_unlock -Wl,--wrap=pthread_rwlock_rdlock")
 
 list(APPEND syscheckd_tests_names "test_fim_diff_changes")
 if(${TARGET} STREQUAL "agent")
@@ -164,11 +169,12 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,read \
                              -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Get -Wl,--wrap,rbtree_insert \
                              -Wl,--wrap,_mterror -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,_mtwarn \
-                             -Wl,--wrap,_mdebug1 -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,_mterror_exit -Wl,--wrap,send_log_msg \
+                             -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,_mterror_exit -Wl,--wrap,send_log_msg \
                              -Wl,--wrap,rbtree_keys -Wl,--wrap,fim_realtime_event -Wl,--wrap,OSHash_Delete_ex \
                              -Wl,--wrap=OSHash_Begin -Wl,--wrap=OSHash_Next -Wl,--wrap=pthread_mutex_lock \
                              -Wl,--wrap=pthread_mutex_unlock -Wl,--wrap=getpid -Wl,--wrap=atexit -Wl,--wrap=os_random \
-                             -Wl,--wrap,inotify_rm_watch")
+                             -Wl,--wrap,inotify_rm_watch -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
+                             -Wl,--wrap,pthread_rwlock_rdlock")
 
 list(APPEND syscheckd_tests_names "test_run_realtime")
 if(${TARGET} STREQUAL "agent")
@@ -185,7 +191,10 @@ else()
 endif()
 
 set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtwarn \
-                                -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn")
+                                -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn \
+                                -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
+                                -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
+                                -Wl,--wrap,pthread_mutex_unlock")
 
 list(APPEND syscheckd_tests_names "test_syscheck_config")
 if(${TARGET} STREQUAL "agent")
@@ -198,7 +207,21 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mte
                          -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_merror_exit -Wl,--wrap,_minfo \
                          -Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int")
 list(APPEND syscheckd_tests_names "test_syscheck")
-list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
+
+if(${TARGET} STREQUAL "winagent")
+list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
+                                  -Wl,--wrap=os_wait \
+                                  -Wl,--wrap=rootcheck_init \
+                                  -Wl,--wrap=start_daemon \
+                                  -Wl,--wrap=File_DateofChange \
+                                  -Wl,--wrap,getpid, -Wl,--wrap,realtime_start \
+                                  -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
+                                  -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
+                                  -Wl,--wrap,pthread_mutex_unlock")
+
+else()
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
+endif()
 
 set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 \
                          -Wl,--wrap,_mterror -Wl,--wrap,_mtdebug2 -Wl,--wrap,queue_push_ex \
@@ -237,7 +260,8 @@ elseif(${TARGET} STREQUAL "winagent")
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
-                                                                    -Wl,--wrap=audit_restore")
+                                                                    -Wl,--wrap=audit_restore -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
+                                                                    -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_mutex_unlock")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
 endif()

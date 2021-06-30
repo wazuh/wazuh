@@ -37,6 +37,7 @@ const wm_context WM_GITHUB_CONTEXT = {
     (wm_routine)wm_github_main,
     (wm_routine)(void *)wm_github_destroy,
     (cJSON * (*)(const void *))wm_github_dump,
+    NULL,
     NULL
 };
 
@@ -54,10 +55,8 @@ void * wm_github_main(wm_github* github_config) {
         }
 #endif
 
-        if (github_config->run_on_start) {
-            // Execute initial scan
-            wm_github_execute_scan(github_config, 1);
-        }
+        // Execute initial scan
+        wm_github_execute_scan(github_config, 1);
 
         while (1) {
             sleep(github_config->interval);
@@ -126,11 +125,6 @@ cJSON *wm_github_dump(const wm_github* github_config) {
     } else {
         cJSON_AddStringToObject(wm_info, "enabled", "no");
     }
-    if (github_config->run_on_start) {
-        cJSON_AddStringToObject(wm_info, "run_on_start", "yes");
-    } else {
-        cJSON_AddStringToObject(wm_info, "run_on_start", "no");
-    }
     if (github_config->only_future_events) {
         cJSON_AddStringToObject(wm_info, "only_future_events", "yes");
     } else {
@@ -196,34 +190,37 @@ STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         memset(org_state_name, '\0', OS_SIZE_1024);
         snprintf(org_state_name, OS_SIZE_1024 -1, "%s-%s", WM_GITHUB_CONTEXT.name, current->org_name);
 
+        memset(&org_state_struc, 0, sizeof(org_state_struc));
+
         // Load state for organization
         if (wm_state_io(org_state_name, WM_IO_READ, &org_state_struc, sizeof(org_state_struc)) < 0) {
             memset(&org_state_struc, 0, sizeof(org_state_struc));
-            org_state_struc.last_log_time = 0;
+        }
+
+        new_scan_time = time(0) - github_config->time_delay;
+
+        if (initial_scan && (!org_state_struc.last_log_time || github_config->only_future_events)) {
+            org_state_struc.last_log_time = new_scan_time;
+            if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
+                mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
+            }
+            current = next;
+            continue;
         }
 
         last_scan_time = (time_t)org_state_struc.last_log_time + 1;
+
         char last_scan_time_str[80];
         memset(last_scan_time_str, '\0', 80);
         struct tm tm_last_scan = { .tm_sec = 0 };
         localtime_r(&last_scan_time, &tm_last_scan);
         strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_last_scan);
 
-        new_scan_time = time(0) - github_config->time_delay;
         char new_scan_time_str[80];
         memset(new_scan_time_str, '\0', 80);
         struct tm tm_new_scan = { .tm_sec = 0 };
         localtime_r(&new_scan_time, &tm_new_scan);
         strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_new_scan);
-
-        if (initial_scan && github_config->only_future_events) {
-            org_state_struc.last_log_time = new_scan_time;
-            if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
-                mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
-            }
-            scan_finished = 1;
-            fail = 0;
-        }
 
         memset(url, '\0', OS_SIZE_8192);
         snprintf(url, OS_SIZE_8192 -1, GITHUB_API_URL, current->org_name, last_scan_time_str, new_scan_time_str, github_config->event_type, ITEM_PER_PAGE);

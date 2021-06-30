@@ -16,11 +16,11 @@
 
 class IOSNetwork
 {
-public:
-    // LCOV_EXCL_START
-    virtual ~IOSNetwork() = default;
-    // LCOV_EXCL_STOP
-    virtual void buildNetworkData(nlohmann::json& network) = 0;
+    public:
+        // LCOV_EXCL_START
+        virtual ~IOSNetwork() = default;
+        // LCOV_EXCL_STOP
+        virtual void buildNetworkData(nlohmann::json& network) = 0;
 };
 
 

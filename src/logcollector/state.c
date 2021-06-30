@@ -65,6 +65,14 @@ STATIC void _w_logcollector_state_update_file(w_lc_state_storage_t * state, char
 STATIC void _w_logcollector_state_update_target(w_lc_state_storage_t * state, char * fpath, char * target, bool dropped);
 
 /**
+ * @brief Removes the `fpath` file from `state`
+ * 
+ * @param state state to be used
+ * @param fpath file path or locafile location value
+ */
+STATIC void _w_logcollector_state_delete_file(w_lc_state_storage_t * state, char * fpath);
+
+/**
  * @brief Dump state information to file
  *
  */
@@ -260,6 +268,7 @@ void _w_logcollector_state_update_target(w_lc_state_storage_t * state, char * fp
         if (OSHash_Add(state->states, fpath, data) != 2) {
             w_lc_state_target_t ** target = data->targets;
             while (*target != NULL) {
+                os_free((*target)->name);
                 os_free(*target);
                 target++;
             }
@@ -268,6 +277,44 @@ void _w_logcollector_state_update_target(w_lc_state_storage_t * state, char * fp
             mterror(WM_LOGCOLLECTOR_LOGTAG, HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
     }
+}
+
+void w_logcollector_state_delete_file(char * fpath) {
+
+    if (fpath == NULL) {
+        return;
+    }
+
+    w_mutex_lock(&g_lc_raw_stats_mutex);
+
+    if (g_lc_state_type & LC_STATE_GLOBAL) {
+        _w_logcollector_state_delete_file(g_lc_states_global, fpath);
+    }
+    if (g_lc_state_type & LC_STATE_INTERVAL) {
+        _w_logcollector_state_delete_file(g_lc_states_interval, fpath);
+    }
+
+    w_mutex_unlock(&g_lc_raw_stats_mutex);
+}
+
+void _w_logcollector_state_delete_file(w_lc_state_storage_t * state, char * fpath) {
+
+    w_lc_state_file_t * data = NULL;
+
+    if (data = (w_lc_state_file_t *) OSHash_Delete(state->states, fpath), data == NULL) {
+        return;
+    }
+
+    w_lc_state_target_t ** target = data->targets;
+    while (*target != NULL) {
+        os_free((*target)->name);
+        os_free(*target);
+        target++;
+    }
+    os_free(data->targets);
+    os_free(data);
+
+    return;
 }
 
 void w_logcollector_state_generate() {

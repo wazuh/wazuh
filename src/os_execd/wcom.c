@@ -204,7 +204,6 @@ size_t wcom_restart(char ** output) {
                 os_strdup("err Cannot fork", *output);
             break;
             case 0:
-                sleep(1);
                 if (execv(exec_cmd[0], exec_cmd) < 0) {
                     mterror(WM_EXECD_LOGTAG, EXEC_CMDERROR, *exec_cmd, strerror(errno));
                     _exit(1);

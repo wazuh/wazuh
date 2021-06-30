@@ -16,6 +16,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "sysInfo.h"
 #include "sym_load.h"
+#include "../os_net/os_net.h"
 
 HANDLE hMutex;
 int win_debug_level;
@@ -24,11 +25,13 @@ void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
-static void stop_wmodules()
+void stop_wmodules()
 {
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        cur_module->context->destroy(cur_module->data);
+        if (cur_module->context->stop) {
+            cur_module->context->stop(cur_module->data);
+        }
     }
 }
 
@@ -240,9 +243,8 @@ int local_start()
         }
     }
 
-    atexit(stop_wmodules);
     /* Send agent stopped message at exit */
-    atexit(send_agent_stopped_message);
+    atexit(stop_wmodules);
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         WaitForSingleObject((HANDLE)cur_module->thread, INFINITE);
@@ -344,21 +346,31 @@ char *get_agent_ip()
                 const cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 if (iface) {
                     const int size_ids = cJSON_GetArraySize(iface);
-                    for (int i = 0; i < size_ids; i++){
+                    for (int i = 0; i < size_ids; ++i){
                         const cJSON *element = cJSON_GetArrayItem(iface, i);
                         if(!element) {
                             continue;
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
                             const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
                             if (!ipv4) {
                                 continue;
                             }
-                            cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                            if (address && cJSON_GetStringValue(address))
-                            {
-                                strncpy(agent_ip, address->valuestring, IPSIZE);
+                            const int size_proto_interfaces = cJSON_GetArraySize(ipv4);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ipv4 = cJSON_GetArrayItem(ipv4, j);
+                                if(!element_ipv4) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ipv4, "address");
+                                if (address && cJSON_GetStringValue(address))
+                                {
+                                    strncpy(agent_ip, address->valuestring, IPSIZE);
+                                    break;
+                                }
+                            }
+                            if (agent_ip) {
                                 break;
                             }
                         }

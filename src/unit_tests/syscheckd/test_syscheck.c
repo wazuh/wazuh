@@ -23,12 +23,10 @@
 /* setup/teardowns */
 static int setup_group(void **state) {
     fdb_t *fdb = calloc(1, sizeof(fdb_t));
-
-    if(fdb == NULL)
+    if (fdb == NULL)
         return -1;
 
     *state = fdb;
-
     return 0;
 }
 
@@ -59,7 +57,8 @@ void test_fim_initialize_error(void **state)
     expect_value(__wrap_fim_db_init, memory, 0);
     will_return(__wrap_fim_db_init, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+    expect_string(__wrap__mterror_exit, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
 
     fim_initialize();
 
@@ -85,13 +84,13 @@ void test_read_internal_debug(void **state)
 }
 
 int main(void) {
+    int ret;
     const struct CMUnitTest tests[] = {
-            cmocka_unit_test(test_fim_initialize),
             cmocka_unit_test(test_fim_initialize),
             cmocka_unit_test(test_fim_initialize_error),
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
     };
 
-    return cmocka_run_group_tests(tests, setup_group, teardown_group);
+    ret = cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

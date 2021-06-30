@@ -81,6 +81,7 @@ const fim_registry_value_data DEFAULT_REGISTRY_VALUE = {
  * Successfully wrappes a fim_db_check_transaction() call
  * */
 void expect_fim_db_check_transaction() {
+    will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_fim_db_exec_simple_wquery("END;");
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_TAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Database transaction completed.");
@@ -163,6 +164,10 @@ void expect_fim_db_get_path_success(const char *path, const fim_entry *entry) {
 int setup_fim_db_group(void **state) {
     (void)state;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
 #ifndef TEST_SERVER
     will_return_always(__wrap_getDefine_Int, 0);
 #endif
@@ -189,6 +194,9 @@ int setup_fim_db_group(void **state) {
 }
 
 int teardown_fim_db_group(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     Free_Syscheck(&syscheck);
     w_mutex_destroy(&syscheck.fim_entry_mutex);
     test_mode = 0;

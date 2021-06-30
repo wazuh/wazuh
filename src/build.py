@@ -1,3 +1,12 @@
+# Copyright (C) 2015-2021, Wazuh Inc.
+# All right reserved.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+
 import argparse
 from ci import utils
 
@@ -52,6 +61,8 @@ class CommandLineParser:
         parser.add_argument("--cppcheck", help="Run cppcheck on the code. Example: python3 build.py --cppcheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
         parser.add_argument("--asan", help="Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
         parser.add_argument("--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
+        parser.add_argument("--scheck", help="Run AStyle on the code for checking purposes. Example: python3 build.py --scheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
+        parser.add_argument("--sformat", help="Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
 
         args = parser.parse_args()
 
@@ -82,6 +93,11 @@ class CommandLineParser:
                 action = True
             if self._targetIsValid(args.scanbuild):
                 utils.runScanBuild(args.scanbuild)
+            if self._argIsValid(args.scheck):
+                utils.runAStyleCheck(args.scheck)
+                action = True
+            if self._argIsValid(args.sformat):
+                utils.runAStyleFormat(args.sformat)
                 action = True
             if not action:
                 parser.print_help()
