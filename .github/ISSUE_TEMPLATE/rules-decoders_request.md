@@ -22,7 +22,7 @@ Contributions from the community are really appreciated. If this is the case, pl
 <!-- Detail the reason that motivates this proposed change on the ruleset -->
 
 ### Service
-<!-- Add a description of the service you are targeting with the ruleset, indicating vendor and/or module if available -->
+<!-- Add a description of the service that you are targeting with the ruleset, indicating vendor and/or module if available -->
 <!-- Add any URL or doc related to service and/or vendor/module -->
 
 
