@@ -37,9 +37,12 @@ void manage_files(int cday, int cmon, int cyear)
 
 void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext) {
     int i;
+    int logfile_size;
+    int logfile_compressable;
     char logfile[OS_FLSIZE + 1];
     char logfile_r[OS_FLSIZE + 1];
     char logfile_old[OS_FLSIZE + 1];
+
 
     snprintf(logfile, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, cyear, months[cmon], tag, cday);
     snprintf(logfile_old, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, pp_old->tm_year + 1900, months[pp_old->tm_mon], tag, pp_old->tm_mday);
@@ -50,10 +53,14 @@ void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct
         os_snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
         OS_CompressLog(logfile_r);
 
-        for (i = 1; !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
-            if (os_snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext) < OS_FLSIZE + 1) {
-                OS_CompressLog(logfile_r);
-            }
-        }
+	logfile_size = os_snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, 1, ext);
+        logfile_compressable = !IsFile(logfile_r) && FileSize(logfile_r);
+
+        for (i = 2; (logfile_size <  OS_FLSIZE + 1) && logfile_compressable; i++) {
+            OS_CompressLog(logfile_r);
+
+            logfile_size = os_snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext);
+            logfile_compressable = !IsFile(logfile_r) && FileSize(logfile_r);
+	}
     }
 }
