@@ -360,11 +360,10 @@ unsigned int w_get_file_attrs(const char *file_path);
  * @brief Retrieves the permissions of a specific file (Windows)
  *
  * @param [in] file_path The path of the file from which to check permissions
- * @param [out] permissions Buffer in which to write the permissions
- * @param [in] perm_size The size of the permissions buffer
+ * @param [out] acl_json cJSON in which to write the acl
  * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
  */
-int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
+int w_get_file_permissions(const char *file_path, cJSON *acl_json);
 
 /**
  * @brief Retrieves the group name from a group ID in windows
@@ -440,6 +439,13 @@ void decode_win_attributes(char *str, unsigned int attrs);
  * @return A string in human readable format with the Windows permission
  */
 char *decode_win_permissions(char *raw_perm);
+
+/**
+ * @brief Decodes a permission string and converts it to a human readable format
+ *
+ * @param [out] acl_json A cJSON with the permissions to decode
+ */
+void decode_win_acl_json(cJSON *acl_json);
 
 /**
  * @brief Transforms a bit mask of attributes into a human readable cJSON

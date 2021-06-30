@@ -181,6 +181,9 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     entry->file_entry.data->size = (unsigned int)sqlite3_column_int(stmt, 8);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 9), entry->file_entry.data->perm);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 10), entry->file_entry.data->attributes);
+#ifdef WIN32
+    entry->file_entry.data->perm_json = cJSON_Parse((char *)sqlite3_column_text(stmt, 10));
+#endif
     sqlite_strdup((char *)sqlite3_column_text(stmt, 11), entry->file_entry.data->uid);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 12), entry->file_entry.data->gid);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 13), entry->file_entry.data->user_name);
