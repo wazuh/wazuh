@@ -70,6 +70,19 @@ void test_Read_Syscheck_Config_success(void **state)
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_any_always(__wrap__mwarn, formatted_msg);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
+#ifdef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 1024);
+#endif //TEST_WINAGENT
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
@@ -133,6 +146,19 @@ void test_Read_Syscheck_Config_undefined(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
+#ifdef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 1024);
+#endif //TEST_WINAGENT
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
@@ -188,6 +214,16 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
     OS_XML xml;
     OS_ReadXML("test_empty_config.conf", &xml);
     assert_null(OS_GetElementsbyNode(&xml, NULL));
@@ -244,6 +280,19 @@ void test_getSyscheckConfig(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
+#ifdef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 1024);
+#endif //TEST_WINAGENT
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
@@ -392,6 +441,19 @@ void test_getSyscheckConfig_no_audit(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
+#ifdef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 1024);
+#endif //TEST_WINAGENT
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
@@ -515,6 +577,14 @@ void test_getSyscheckConfig_no_directories(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+    will_return(__wrap_getDefine_Int, 4096);
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
     OS_XML xml;
     OS_ReadXML("test_empty_config.conf", &xml);
     assert_null(OS_GetElementsbyNode(&xml, NULL));
@@ -535,6 +605,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+    will_return(__wrap_getDefine_Int, 0);
     OS_XML xml;
     OS_ReadXML("test_empty_config.conf", &xml);
     assert_null(OS_GetElementsbyNode(&xml, NULL));
@@ -621,6 +696,19 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
+#ifdef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 1024);
+#endif //TEST_WINAGENT
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
@@ -658,6 +746,19 @@ void test_getSyscheckInternalOptions(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
+#ifdef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 1024);
+#endif //TEST_WINAGENT
     OS_XML xml;
     XML_NODE node;
     XML_NODE chld_node;
