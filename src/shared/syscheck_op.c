@@ -1396,6 +1396,74 @@ error:
     return NULL;
 }
 
+static bool compare_win_aces(const cJSON * const ace1, const cJSON * const ace2) {
+    cJSON *ace1_helper, *ace2_helper;
+
+    assert(ace1 != NULL && ace2 != NULL);
+
+    ace1_helper = cJSON_GetObjectItem(ace1, "allowed");
+    ace2_helper = cJSON_GetObjectItem(ace2, "allowed");
+
+    if (ace1_helper == NULL) {
+        if (ace2_helper != NULL) {
+            return false;
+        }
+        // Both ace helpers are NULL, we consider them to be equal
+    } else if (ace2_helper == NULL) {
+        return false;
+    } else if (cJSON_Compare(ace1_helper, ace2_helper, true) == false) {
+        return false;
+    }
+
+    ace1_helper = cJSON_GetObjectItem(ace1, "denied");
+    ace2_helper = cJSON_GetObjectItem(ace2, "denied");
+
+    if (ace1_helper == NULL) {
+        if (ace2_helper != NULL) {
+            return false;
+        }
+        // Both ace helpers are NULL, we consider them to be equal
+    } else if (ace2_helper == NULL) {
+        return false;
+    } else if (cJSON_Compare(ace1_helper, ace2_helper, true) == false) {
+        return false;
+    }
+
+    return true;
+}
+
+bool compare_win_permissions(const cJSON * const acl1, const cJSON * const acl2) {
+    cJSON *ace1;
+    cJSON *ace2;
+
+    if (acl1 == NULL) {
+        return acl2 == NULL;
+    }
+
+    if (acl2 == NULL) {
+        return false;
+    }
+
+    if (cJSON_GetArraySize(acl1) != cJSON_GetArraySize(acl2)) {
+        return false;
+    }
+
+    cJSON_ArrayForEach(ace1, acl1) {
+        ace2 = cJSON_GetObjectItem(acl2, ace1->string);
+
+        if (ace2 == NULL) {
+            return false;
+        }
+
+        if (compare_win_aces(ace1, ace2) == false) {
+            return false;
+        }
+    }
+
+    // If we get here, both ACLs are identical
+    return true;
+}
+
 cJSON *attrs_to_json(const char *attributes) {
     cJSON *attrs_array;
 

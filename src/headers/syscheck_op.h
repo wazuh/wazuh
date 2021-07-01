@@ -434,6 +434,15 @@ void decode_win_attributes(char *str, unsigned int attrs);
 char *decode_win_permissions(char *raw_perm);
 
 /**
+ * @brief Compares 2 Windows ACLs in JSON format
+ *
+ * @param [in] acl1 A cJSON object holding a Windows ACL
+ * @param [in] acl2 A cJSON object holding a Windows ACL
+ * @return `true` if ACLs are equal to each other, `false` otherwise
+ */
+bool compare_win_permissions(const cJSON * const acl1, const cJSON * const acl2);
+
+/**
  * @brief Decodes a permission string and converts it to a human readable format
  *
  * @param [out] acl_json A cJSON with the permissions to decode
