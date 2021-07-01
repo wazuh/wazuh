@@ -1720,7 +1720,7 @@ void test_realtime_adddir_handle_error(void **state) {
 
 void test_realtime_adddir_success(void **state) {
     int ret;
-    syscheck.realtime->dirtb = *state;
+
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);

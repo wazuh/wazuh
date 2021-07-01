@@ -166,6 +166,7 @@ static int teardown_test(void **state) {
 /* connect_server */
 static void test_connect_server(void **state) {
     bool connected = false;
+    expect_any(__wrap__mdebug2, formatted_msg);
     /* Connect to first server (UDP)*/
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_OS_ConnectUDP, 11);

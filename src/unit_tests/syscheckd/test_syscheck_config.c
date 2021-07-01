@@ -282,6 +282,9 @@ void test_getSyscheckConfig(void **state)
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mdebug2, formatted_msg, "Duplicated registration entry: HKEY_SOME_KEY\\the_key9");
+#endif
 
     Read_Syscheck_Config("test_syscheck_config.conf");
     ret = getSyscheckConfig();

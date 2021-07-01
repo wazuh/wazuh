@@ -1008,25 +1008,14 @@ void test_w_load_files_status_OK(void ** state) {
 }
 
 /* w_initialize_file_status */
-/*
+
 void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'file_status' hash table");
 
-    will_return(__wrap_OSHash_setSize, 1);
-
-    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
-    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
-
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
-
-    w_initialize_file_status();
+    expect_assert_failure(w_initialize_file_status());
 }
 
 void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
@@ -1037,19 +1026,9 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'file_status' hash table");
 
-    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
-    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
-
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
-
-    w_initialize_file_status();
+    expect_assert_failure(w_initialize_file_status());
 
 }
-*/
 
 void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_function_call(__wrap_OSHash_Create);
@@ -1579,8 +1558,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_load_files_status_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_initialize_file_status
-        // cmocka_unit_test(test_w_initialize_file_status_OSHash_Create_fail),
-        // cmocka_unit_test(test_w_initialize_file_status_OSHash_setSize_fail),
+        cmocka_unit_test(test_w_initialize_file_status_OSHash_Create_fail),
+        cmocka_unit_test(test_w_initialize_file_status_OSHash_setSize_fail),
         cmocka_unit_test(test_w_initialize_file_status_fopen_fail),
         cmocka_unit_test(test_w_initialize_file_status_fread_fail),
         cmocka_unit_test_setup_teardown(test_w_initialize_file_status_OK, setup_local_hashmap, teardown_local_hashmap),

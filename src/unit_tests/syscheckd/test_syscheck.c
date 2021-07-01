@@ -142,8 +142,6 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
 
-    expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
-    expect_string(__wrap__minfo, formatted_msg, "(6001): File integrity monitoring disabled.");
 
     /* Conf file not found */
     will_return_always(__wrap_getDefine_Int, 1);
@@ -151,24 +149,7 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
     will_return(__wrap_File_DateofChange, -1);
     expect_string(__wrap__merror_exit, formatted_msg, "(1239): Configuration file not found: 'ossec.conf'.");
 
-    expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
-    will_return(__wrap_Read_Syscheck_Config, 0);
-
-    will_return(__wrap_rootcheck_init, 1);
-
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
-
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_os_wait);
-    expect_function_call(__wrap_start_daemon);
-
-    Start_win32_Syscheck();
+    expect_assert_failure(Start_win32_Syscheck());
 }
 
 void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
@@ -190,10 +171,8 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     expect_value(__wrap_fim_db_init, memory, 0);
     will_return(__wrap_fim_db_init, NULL);
     expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
-    expect_function_call(__wrap_os_wait);
-    expect_function_call(__wrap_start_daemon);
 
-    Start_win32_Syscheck();
+    expect_assert_failure(Start_win32_Syscheck());
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
@@ -228,11 +207,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
-    expect_function_call(__wrap_os_wait);
-
-    expect_function_call(__wrap_start_daemon);
-
-    Start_win32_Syscheck();
+    expect_assert_failure(Start_win32_Syscheck());
 }
 
 void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
@@ -264,12 +239,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-
-    expect_function_call(__wrap_os_wait);
-
-    expect_function_call(__wrap_start_daemon);
-
-    Start_win32_Syscheck();
+    expect_assert_failure(Start_win32_Syscheck());
 }
 
 void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
@@ -338,11 +308,8 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
-    expect_function_call(__wrap_os_wait);
 
-    expect_function_call(__wrap_start_daemon);
-
-    Start_win32_Syscheck();
+    expect_assert_failure(Start_win32_Syscheck());
 
     free_directory(directory0);
     OSList_DeleteThisNode(syscheck.directories, syscheck.directories->first_node);
@@ -398,10 +365,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
-    expect_function_call(__wrap_os_wait);
-    expect_function_call(__wrap_start_daemon);
-
-    Start_win32_Syscheck();
+    expect_assert_failure(Start_win32_Syscheck());
 
     free_directory(directory0);
     OSList_DeleteThisNode(syscheck.directories, syscheck.directories->first_node);

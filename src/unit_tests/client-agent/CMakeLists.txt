@@ -40,7 +40,7 @@ endif()
 
 list(APPEND client-agent_names "test_notify")
 list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix,--wrap,close \
-                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time,-${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agentd_state")
 if(${TARGET} STREQUAL "winagent")

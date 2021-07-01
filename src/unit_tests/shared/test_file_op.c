@@ -836,6 +836,7 @@ void test_expand_win32_wildcards_invalid_handle(void **state) {
     char *path = "C:\\wildcards*";
     char **result;
     expect_find_first_file(path, NULL, (DWORD) 0,  INVALID_HANDLE_VALUE);
+    expect_any(__wrap__mdebug2, formatted_msg);
     result = expand_win32_wildcards(path);
     *state = result;
 
