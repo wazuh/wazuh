@@ -1480,11 +1480,15 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("size"));
     }
 
+#ifndef WIN32
     if ( (old_data->options & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
     }
+#else
+    if ( (old_data->options & CHECK_PERM) && compare_win_permissions(old_data->perm_json, new_data->perm_json) == false ) {
+        cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
+    }
 
-#ifdef WIN32
     if ( (old_data->options & CHECK_ATTRS) && strcmp(old_data->attributes, new_data->attributes) != 0 ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
     }
@@ -1531,7 +1535,6 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
     if ( (old_data->options & CHECK_SHA256SUM) && (strcmp(old_data->hash_sha256, new_data->hash_sha256) != 0) ) {
         cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
     }
-
 
     return changed_attributes;
 }

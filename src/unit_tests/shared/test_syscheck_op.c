@@ -2589,6 +2589,256 @@ static void test_decode_win_permissions_overrun_inner_buffer(void **state) {
     assert_true(strlen(output) < MAX_WIN_PERM_SIZE);
 }
 
+/* compare_win_permissions */
+#define BASE_WIN_ALLOWED_ACE "[" \
+    "\"delete\"," \
+    "\"read_control\"," \
+    "\"write_dac\"," \
+    "\"write_owner\"," \
+    "\"synchronize\"," \
+    "\"read_data\"," \
+    "\"write_data\"," \
+    "\"append_data\"," \
+    "\"read_ea\"," \
+    "\"write_ea\"," \
+    "\"execute\"," \
+    "\"read_attributes\"," \
+    "\"write_attributes\"" \
+"]"
+
+#define BASE_WIN_DENIED_ACE "[" \
+    "\"read_control\"," \
+    "\"synchronize\"," \
+    "\"read_data\"," \
+    "\"read_ea\"," \
+    "\"execute\"," \
+    "\"read_attributes\"" \
+"]"
+
+#define BASE_WIN_ACE "{" \
+    "\"name\": \"Users\"," \
+    "\"allowed\": " BASE_WIN_ALLOWED_ACE "," \
+    "\"denied\": " BASE_WIN_DENIED_ACE \
+"}"
+
+static const char * const BASE_WIN_PERMS = "{\"S-1-5-32-636\": " BASE_WIN_ACE "}";
+
+static void test_compare_win_permissions_equal_acls(void **state) {
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(BASE_WIN_PERMS);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_true(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_null_acl1(void **state) {
+    cJSON *acl1 = NULL;
+    cJSON *acl2 = cJSON_Parse(BASE_WIN_PERMS);
+
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_null_acl2(void **state) {
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = NULL;
+
+    assert_non_null(acl1);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+}
+
+static void test_compare_win_permissions_both_acls_null(void **state) {
+    cJSON *acl1 = NULL;
+    cJSON *acl2 = NULL;
+
+    assert_true(compare_win_permissions(acl1, acl2));
+}
+
+static void test_compare_win_permissions_acl1_larger_than_acl2(void **state) {
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(BASE_WIN_PERMS);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    cJSON_AddItemToObject(acl1, "S-1-5-18", __real_cJSON_CreateObject());
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_acl2_larger_than_acl1(void **state) {
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(BASE_WIN_PERMS);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    cJSON_AddItemToObject(acl2, "S-1-5-18", __real_cJSON_CreateObject());
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_different_entries(void **state) {
+    const char * const ACL2 = "{ \"S-1-5-18\":" BASE_WIN_ACE "}";
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(ACL2);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_no_allowed_ace(void **state) {
+    const char *const NO_ALLOWED_ACE = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"denied\": " BASE_WIN_DENIED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(NO_ALLOWED_ACE);
+    cJSON *acl2 = cJSON_Parse(NO_ALLOWED_ACE);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_true(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_no_allowed_ace1(void **state) {
+    const char *const NO_ALLOWED_ACE = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"denied\": " BASE_WIN_DENIED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(NO_ALLOWED_ACE);
+    cJSON *acl2 = cJSON_Parse(BASE_WIN_PERMS);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_no_allowed_ace2(void **state) {
+    const char *const NO_ALLOWED_ACE = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"denied\": " BASE_WIN_DENIED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(NO_ALLOWED_ACE);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_no_denied_ace(void **state) {
+    const char *const NO_DENIED_ACE = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"allowed\": " BASE_WIN_ALLOWED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(NO_DENIED_ACE);
+    cJSON *acl2 = cJSON_Parse(NO_DENIED_ACE);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_true(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_no_denied_ace1(void **state) {
+    const char *const NO_DENIED_ACE = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"allowed\": " BASE_WIN_ALLOWED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(NO_DENIED_ACE);
+    cJSON *acl2 = cJSON_Parse(BASE_WIN_PERMS);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_no_denied_ace2(void **state) {
+    const char *const NO_DENIED_ACE = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"allowed\": " BASE_WIN_ALLOWED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(NO_DENIED_ACE);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_different_allowed_ace(void **state) {
+    const char *const CUSTOM_WIN_PERMS = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"allowed\": [\"read_control\"],"
+                                       "\"denied\": " BASE_WIN_DENIED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(CUSTOM_WIN_PERMS);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
+static void test_compare_win_permissions_different_denied_ace(void **state) {
+    const char *const CUSTOM_WIN_PERMS = "{\"S-1-5-32-636\": {"
+                                       "\"name\": \"Users\","
+                                       "\"denied\": [\"read_control\"],"
+                                       "\"allowed\": " BASE_WIN_ALLOWED_ACE "}}";
+    cJSON *acl1 = cJSON_Parse(BASE_WIN_PERMS);
+    cJSON *acl2 = cJSON_Parse(CUSTOM_WIN_PERMS);
+
+    assert_non_null(acl1);
+    assert_non_null(acl2);
+
+    assert_false(compare_win_permissions(acl1, acl2));
+
+    cJSON_Delete(acl1);
+    cJSON_Delete(acl2);
+}
+
 /* attrs_to_json tests */
 static void test_attrs_to_json_single_attribute(void **state) {
     char *input = "attribute";
@@ -4135,6 +4385,23 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_decode_win_permissions_fail_no_access_type, teardown_string),
         cmocka_unit_test_teardown(test_decode_win_permissions_fail_wrong_format, teardown_string),
         cmocka_unit_test_teardown(test_decode_win_permissions_overrun_inner_buffer, teardown_string),
+
+        /* compare_win_permissions */
+        cmocka_unit_test(test_compare_win_permissions_equal_acls),
+        cmocka_unit_test(test_compare_win_permissions_null_acl1),
+        cmocka_unit_test(test_compare_win_permissions_null_acl2),
+        cmocka_unit_test(test_compare_win_permissions_both_acls_null),
+        cmocka_unit_test(test_compare_win_permissions_acl1_larger_than_acl2),
+        cmocka_unit_test(test_compare_win_permissions_acl2_larger_than_acl1),
+        cmocka_unit_test(test_compare_win_permissions_different_entries),
+        cmocka_unit_test(test_compare_win_permissions_no_allowed_ace),
+        cmocka_unit_test(test_compare_win_permissions_no_allowed_ace1),
+        cmocka_unit_test(test_compare_win_permissions_no_allowed_ace2),
+        cmocka_unit_test(test_compare_win_permissions_no_denied_ace),
+        cmocka_unit_test(test_compare_win_permissions_no_denied_ace1),
+        cmocka_unit_test(test_compare_win_permissions_no_denied_ace2),
+        cmocka_unit_test(test_compare_win_permissions_different_allowed_ace),
+        cmocka_unit_test(test_compare_win_permissions_different_denied_ace),
 
         /* attrs_to_json tests */
         cmocka_unit_test_teardown(test_attrs_to_json_single_attribute, teardown_cjson),
