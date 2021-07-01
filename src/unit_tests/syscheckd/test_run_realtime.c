@@ -65,6 +65,20 @@ static int setup_group(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    will_return(__wrap_getDefine_Int, 5);
+    will_return(__wrap_getDefine_Int, 256);
+    will_return(__wrap_getDefine_Int, 1024);
+    will_return(__wrap_getDefine_Int, 600);
+#ifndef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 4096);
+#endif //TEST_WINAGENT
+#ifndef TEST_SERVER
+    will_return(__wrap_getDefine_Int, 0);
+#endif //TEST_SERVER
+#ifdef TEST_WINAGENT
+    will_return(__wrap_getDefine_Int, 1023);
+#endif //TEST_WINAGENT
+
     test_mode = 0;
     OS_XML xml;
     XML_NODE node;
