@@ -36,6 +36,9 @@ extern atomic_int_t audit_health_check_creation;
 extern atomic_int_t hc_thread_active;
 extern atomic_int_t audit_thread_active;
 
+#define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
+#define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
+
 int hc_success = 0;
 
 int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
@@ -78,11 +81,15 @@ static int free_string(void **state) {
     return 0;
 }
 
+static char *CUSTOM_KEY[] = { [0] = "custom_key", [1] = NULL };
+
 static int setup_syscheck_dir_links(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    syscheck.audit_key = CUSTOM_KEY;
 
     directory_t *directory0 = fim_create_directory("/test0", WHODATA_ACTIVE, NULL, 512,
                                                 NULL, -1, 0);
@@ -1162,36 +1169,325 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
     os_free(buffer);
 }
 
-void test_audit_no_rules_to_realtime(void **state) {
+void test_audit_rules_to_realtime(void **state) {
     char error_msg[OS_SIZE_128];
+    char error_msg2[OS_SIZE_128];
 
     // Mutex
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    will_return(__wrap_search_audit_rule, 0);
+    will_return(__wrap_audit_open, 1);
+    will_return(__wrap_audit_get_rule_list, 1);
+    will_return(__wrap_audit_close, 1);
+
+    will_return_count(__wrap_search_audit_rule, 0, 4);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test0");
-    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_TAG);
-    expect_string(__wrap__mtwarn, formatted_msg, error_msg);
+    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+    snprintf(error_msg2, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test1");
+    expect_string(__wrap__mwarn, formatted_msg, error_msg2);
 
-    will_return(__wrap_search_audit_rule, 1);
-
-    audit_no_rules_to_realtime();
+    audit_rules_to_realtime();
 
     // Check that the options have been correctly changed
     if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE) {
         fail();
     }
 
-    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & REALTIME_ACTIVE) {
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & WHODATA_ACTIVE) {
         fail();
     }
 }
 
+void test_audit_rules_to_realtime_first_search_audit_rule_fail(void **state) {
+    char error_msg[OS_SIZE_128];
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    will_return(__wrap_audit_open, 1);
+    will_return(__wrap_audit_get_rule_list, 1);
+    will_return(__wrap_audit_close, 1);
+
+    will_return(__wrap_search_audit_rule, 1);
+    will_return_count(__wrap_search_audit_rule, 0, 2);
+
+    snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test1");
+    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+
+    audit_rules_to_realtime();
+
+    // Check that the options have been correctly changed
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & ~WHODATA_ACTIVE) {
+        fail();
+    }
+
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & WHODATA_ACTIVE) {
+        fail();
+    }
+}
+
+void test_audit_rules_to_realtime_second_search_audit_rule_fail(void **state) {
+    char error_msg[OS_SIZE_128];
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    will_return(__wrap_audit_open, 1);
+    will_return(__wrap_audit_get_rule_list, 1);
+    will_return(__wrap_audit_close, 1);
+
+    will_return_count(__wrap_search_audit_rule, 0, 2);
+    will_return(__wrap_search_audit_rule, 1);
+
+    snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test0");
+    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+
+    audit_rules_to_realtime();
+
+    // Check that the options have been correctly changed
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE) {
+        fail();
+    }
+
+    if (((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options & ~WHODATA_ACTIVE) {
+        fail();
+    }
+}
+
+void test_audit_create_rules_file(void **state) {
+    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_any(__wrap_fclose, _File);
+    will_return(__wrap_fclose, 0);
+
+    expect_abspath(AUDIT_RULES_FILE, 0);
+
+    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
+    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
+    will_return(__wrap_symlink, 1);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
+
+    audit_create_rules_file();
+}
+
+void test_audit_create_rules_file_fopen_fail(void **state) {
+    char error_msg[OS_SIZE_128];
+
+    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 0);
+
+    snprintf(error_msg, OS_SIZE_128, FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    audit_create_rules_file();
+}
+
+void test_audit_create_rules_file_fclose_fail(void **state) {
+    char error_msg[OS_SIZE_128];
+
+    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_any(__wrap_fclose, _File);
+    will_return(__wrap_fclose, 1);
+
+    snprintf(error_msg, OS_SIZE_128, FCLOSE_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    audit_create_rules_file();
+}
+
+void test_audit_create_rules_file_symlink_exist(void **state) {
+    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_any(__wrap_fclose, _File);
+    will_return(__wrap_fclose, 0);
+
+    expect_abspath(AUDIT_RULES_FILE, 0);
+
+    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
+    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
+    will_return(__wrap_symlink, -1);
+
+    errno = EEXIST;
+
+    expect_string(__wrap_unlink, file, AUDIT_RULES_LINK);
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
+    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
+    will_return(__wrap_symlink, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
+
+    audit_create_rules_file();
+}
+
+void test_audit_create_rules_file_unlink_fail(void **state) {
+    char error_msg[OS_SIZE_128];
+
+    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_any(__wrap_fclose, _File);
+    will_return(__wrap_fclose, 0);
+
+    expect_abspath(AUDIT_RULES_FILE, 0);
+
+    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
+    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
+    will_return(__wrap_symlink, -1);
+
+    errno = EEXIST;
+
+    expect_string(__wrap_unlink, file, AUDIT_RULES_LINK);
+    will_return(__wrap_unlink, -1);
+
+    snprintf(error_msg, OS_SIZE_128, UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    audit_create_rules_file();
+}
+
+void test_audit_create_rules_file_symlink_fail(void **state) {
+    char error_msg[OS_SIZE_256];
+
+    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+
+    expect_any(__wrap_fprintf, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_any(__wrap_fclose, _File);
+    will_return(__wrap_fclose, 0);
+
+    expect_abspath(AUDIT_RULES_FILE, 0);
+
+    expect_string(__wrap_symlink, path1, AUDIT_RULES_FILE);
+    expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
+    will_return(__wrap_symlink, -1);
+
+    errno = 1;
+
+    snprintf(error_msg, OS_SIZE_256, LINK_ERROR, AUDIT_RULES_LINK, AUDIT_RULES_FILE, errno, strerror(errno));
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    audit_create_rules_file();
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1225,7 +1521,15 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_endline, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
-        cmocka_unit_test_setup_teardown(test_audit_no_rules_to_realtime, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_first_search_audit_rule_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_second_search_audit_rule_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_create_rules_file, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_fopen_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_fclose_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_symlink_exist, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_unlink_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup_teardown(test_audit_create_rules_file_symlink_fail, setup_syscheck_dir_links, teardown_syscheck_dir_links),
         };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

@@ -372,7 +372,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -397,7 +396,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -422,12 +420,11 @@ stages:
       json:
         error: 0
         data:
-          affected_agents:
-            - '003'
-            - '006'
-            - '007'
           affected_items:
-            - 'group3'
+            - group3:
+                - '003'
+                - '006'
+                - '007'
           total_affected_items: 1
     delay_after: !float "{global_db_delay}"
 
@@ -488,7 +485,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -514,11 +510,10 @@ stages:
       json:
         error: 2
         data:
-          affected_agents:
-            - '007'
-            - '009'
           affected_items:
-            - 'group1'
+            - group1:
+                - '007'
+                - '009'
           failed_items:
             - error:
                 code: 1712
@@ -543,9 +538,8 @@ stages:
       json:
         error: 0
         data:
-          affected_agents: []
           affected_items:
-            - 'group2'
+            - group2: []
           total_affected_items: 1
 
 ---

@@ -825,10 +825,24 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     // Calculate checksum of the first half
     for (i = 0; i < m; i++) {
         char *path, *checksum;
-        if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
-            mterror(SYSCHECK_LOGTAG, "Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
-                   sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
-            return FIMDB_ERR;
+
+        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]])) {
+            case SQLITE_ROW:
+                break;
+
+            case SQLITE_DONE:
+                mdebug2("Received a synchronization message with empty range, first half 'start %s' 'top %s' (i:%d)", start,
+                        top, i);
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
+
+            default:
+                merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
+                       sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
         }
 
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
@@ -852,13 +866,26 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
     //Calculate checksum of the second half
     for (i = m; i < n; i++) {
         char *path, *checksum;
-        if (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]]) != SQLITE_ROW) {
-            mterror(SYSCHECK_LOGTAG, "Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
-                   sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
-            os_free(*str_pathlh);
-            os_free(*str_pathuh);
-            return FIMDB_ERR;
+
+        switch (sqlite3_step(fim_sql->stmt[RANGE_QUERY[type]])) {
+            case SQLITE_ROW:
+                break;
+
+            case SQLITE_DONE:
+                mdebug2("Received a synchronization message with empty range, second half 'start %s' 'top %s' (i:%d)", start,
+                        top, i);
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
+
+            default:
+                merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
+                       sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+                os_free(*str_pathlh);
+                os_free(*str_pathuh);
+                return FIMDB_ERR;
         }
+
         decoded_row = fim_db_decode_string_array(fim_sql->stmt[RANGE_QUERY[type]]);
         if (decoded_row == NULL || decoded_row[0] == NULL || decoded_row[1] == NULL) {
             free_strarray(decoded_row);

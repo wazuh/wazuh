@@ -217,6 +217,38 @@ long int wm_read_http_size(char *header) {
     return size;
 }
 
+char* wm_read_http_header_element(char *header, char *regex) {
+    char *element = NULL;
+    OSRegex os_regex;
+
+    if (!header || !regex) {
+        merror("Missing parameters.");
+        return NULL;
+    }
+
+    if (!OSRegex_Compile(regex, &os_regex, OS_RETURN_SUBSTRING)) {
+        mwarn("Cannot compile regex.");
+        return NULL;
+    }
+
+    if (!OSRegex_Execute(header, &os_regex)) {
+        mdebug1("No match regex.");
+        OSRegex_FreePattern(&os_regex);
+        return NULL;
+    }
+
+    if (!os_regex.d_sub_strings[0]) {
+        mdebug1("No element was captured.");
+        OSRegex_FreePattern(&os_regex);
+        return NULL;
+    }
+
+    os_strdup(os_regex.d_sub_strings[0], element);
+
+    OSRegex_FreePattern(&os_regex);
+    return element;
+}
+
 void wm_free(wmodule * config) {
     wmodule *cur_module;
     wmodule *next_module;

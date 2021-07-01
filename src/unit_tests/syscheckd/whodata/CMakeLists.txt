@@ -63,7 +63,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
                               -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
                               -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,OS_SHA1_Str \
-                              -Wl,--wrap,OS_SHA1_File")
+                              -Wl,--wrap,OS_SHA1_File -Wl,--wrap,audit_open -Wl,--wrap,audit_close")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
 

@@ -370,15 +370,6 @@ void realtime_sanitize_watch_map() {
 
 #elif defined(WIN32)
 
-typedef struct _win32rtfim {
-    HANDLE h;
-    OVERLAPPED overlap;
-
-    char *dir;
-    TCHAR buffer[65536];
-    unsigned int watch_status;
-} win32rtfim;
-
 void free_win32rtfim_data(win32rtfim *data);
 int realtime_win32read(win32rtfim *rtlocald);
 int fim_check_realtime_directory(win32rtfim *rtlocald);
@@ -481,6 +472,23 @@ void free_win32rtfim_data(win32rtfim *data) {
     os_free(data);
 }
 
+static unsigned int _get_realtime_watches() {
+    if (syscheck.realtime != NULL) {
+        return OSHash_Get_Elem_ex(syscheck.realtime->dirtb);
+    }
+    return 0;
+}
+
+unsigned int get_realtime_watches() {
+    unsigned int n_elements = 0;
+
+    w_mutex_lock(&syscheck.fim_realtime_mutex);
+    n_elements = _get_realtime_watches();
+    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
+    return n_elements;
+}
+
 int realtime_start() {
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
@@ -503,7 +511,6 @@ int realtime_start() {
     }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
 
-    syscheck.realtime->fd = -1;
     syscheck.realtime->evt = CreateEvent(NULL, TRUE, FALSE, NULL);
 
     return (0);
@@ -570,13 +577,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
         return 1;
 #endif
     }
-    /* Maximum limit for realtime on Windows */
     w_mutex_lock(&syscheck.fim_realtime_mutex);
-    if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
-        mterror(SYSCHECK_LOGTAG, FIM_ERROR_REALTIME_MAXNUM_WATCHES, dir);
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        return (0);
-    }
 
     /* Set key for hash */
     wdchar[260] = '\0';
@@ -584,76 +585,63 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
 
     rtlocald = OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
     if(rtlocald != NULL) {
-        fim_check_realtime_directory(rtlocald);
+        if (!w_directory_exists(rtlocald->dir)) {
+            if (rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
+                mdebug1(FIM_REALTIME_CALLBACK, rtlocald->dir);
+                rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, rtlocald->dir);
+                free_win32rtfim_data(rtlocald);
+            } else if (rtlocald->h != NULL && rtlocald->h != INVALID_HANDLE_VALUE) {
+                CloseHandle(rtlocald->h);
+                rtlocald->watch_status = FIM_RT_HANDLE_CLOSED;
+            }
+        }
+
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 1;
     }
-    else {
-        os_calloc(1, sizeof(win32rtfim), rtlocald);
 
-        rtlocald->h = CreateFile(dir,
-                                FILE_LIST_DIRECTORY,
-                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                NULL,
-                                OPEN_EXISTING,
-                                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-                                NULL);
-
-        if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
-            free(rtlocald);
-            rtlocald = NULL;
-            mtdebug2(SYSCHECK_LOGTAG, FIM_REALTIME_ADD, dir);
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-            return (0);
-        }
-        syscheck.realtime->fd++;
-
-        /* Add final elements to the hash */
-        os_strdup(dir, rtlocald->dir);
-        os_strdup(dir, rtlocald->overlap.hEvent);
-        rtlocald->watch_status = FIM_RT_HANDLE_OPEN;
-
-        /* Add directory to be monitored */
-        if(realtime_win32read(rtlocald) == 0) {
-            mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
-            free_win32rtfim_data(rtlocald);
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-            return 0;
-        }
-
-        if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) {
-            mterror_exit(SYSCHECK_LOGTAG, FIM_CRITICAL_ERROR_OUT_MEM);
-        }
-
-        mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_NEWDIRECTORY, dir);
+    /* Maximum limit for realtime on Windows */
+    if (_get_realtime_watches() >= syscheck.max_fd_win_rt) {
+        mdebug1(FIM_REALTIME_MAXNUM_WATCHES, dir);
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 0;
     }
+
+    os_calloc(1, sizeof(win32rtfim), rtlocald);
+
+    rtlocald->h = CreateFile(dir, FILE_LIST_DIRECTORY, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                             OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+
+    if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
+        os_free(rtlocald);
+        mdebug2(FIM_REALTIME_ADD, dir);
+
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 0;
+    }
+
+    /* Add final elements to the hash */
+    os_strdup(dir, rtlocald->dir);
+    os_strdup(dir, rtlocald->overlap.hEvent);
+    rtlocald->watch_status = FIM_RT_HANDLE_OPEN;
+
+    /* Add directory to be monitored */
+    if(realtime_win32read(rtlocald) == 0) {
+        mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
+        free_win32rtfim_data(rtlocald);
+
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        return 0;
+    }
+
+    if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) {
+        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+    }
+
+    mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
-
     return 1;
-}
-
-int fim_check_realtime_directory(win32rtfim *rtlocald) {
-    assert(rtlocald != NULL);
-
-    if (!w_directory_exists(rtlocald->dir)) {
-        /* If directory monitored doesn't exist now,
-        close handle to remove watcher and set watch_status to one.
-        Maybe, it will be removed from the hash table in RTCallBack.
-        If it doesn't happend, we will remove in next call to the function */
-
-        if (rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
-            mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_CALLBACK, rtlocald->dir);
-            rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, rtlocald->dir);
-            free_win32rtfim_data(rtlocald);
-            return 1;
-        }
-
-        if (rtlocald->h != NULL && rtlocald->h != INVALID_HANDLE_VALUE) {
-            CloseHandle(rtlocald->h);
-            rtlocald->watch_status = FIM_RT_HANDLE_CLOSED;
-            return 1;
-        }
-    }
-
-    return 0;
 }
 
 // LCOV_EXCL_START

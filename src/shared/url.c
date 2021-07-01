@@ -13,9 +13,19 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
 
+#ifdef WAZUH_UNIT_TESTING
+    #ifdef WIN32
+        #include "unit_tests/wrappers/windows/url_wrappers.h"
+    #else
+        #include "unit_tests/wrappers/wazuh/shared/url_wrappers.h"
+    #endif
+#endif
+
 struct MemoryStruct {
   char *memory;
   size_t size;
+  size_t max_response_size;
+  bool max_size_error;
 };
 
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
@@ -23,8 +33,14 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
+  if ((mem->size + realsize) > mem->max_response_size) {
+    mwarn("Response buffer size limit reached.");
+    mem->max_size_error = true;
+    return 0;
+  }
+
   char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-  if(ptr == NULL) {
+  if (ptr == NULL) {
     return 0;
   }
 
@@ -77,7 +93,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         char const *cert = find_cert_list();
 
         old_mask = umask(0006);
-        fp = fopen(dest,"wb");
+        fp = fopen(dest, "wb");
         umask(old_mask);
         if (!fp) {
             mdebug1(FOPEN_ERROR, dest, errno, strerror(errno));
@@ -103,7 +119,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         }
 
         // Enable SSL check if url is HTTPS
-        if (!strncmp(url,"https",5)) {
+        if (!strncmp(url, "https", 5)) {
             if (NULL != cert) {
                 res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
             }
@@ -146,9 +162,9 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     return 0;
 }
 
-int w_download_status(int status,const char *url,const char *dest){
+int w_download_status(int status,const char *url,const char *dest) {
 
-    switch(status){
+    switch(status) {
         case OS_FILERR:
             mwarn(WURL_WRITE_FILE_ERROR,dest);
             break;
@@ -299,7 +315,7 @@ int wurl_check_connection() {
     }
 }
 
-char * wurl_http_get(const char * url) {
+char * wurl_http_get(const char * url, size_t max_size) {
     CURL *curl;
     CURLcode res;
     curl = curl_easy_init();
@@ -309,8 +325,10 @@ char * wurl_http_get(const char * url) {
 
     chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
     chunk.size = 0;    /* no data at this point */
+    chunk.max_response_size = max_size;
+    chunk.max_size_error = false;
 
-    if (curl){
+    if (curl) {
         char const *cert = find_cert_list();
 
         res = curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -318,7 +336,7 @@ char * wurl_http_get(const char * url) {
         res += curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
 
         // Enable SSL check if url is HTTPS
-        if(!strncmp(url,"https",5)){
+        if (!strncmp(url, "https", 5)) {
             if (NULL != cert) {
                 res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
             }
@@ -336,7 +354,7 @@ char * wurl_http_get(const char * url) {
 
         res = curl_easy_perform(curl);
 
-        if(res){
+        if (res) {
             mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             free(chunk.memory);
@@ -404,13 +422,18 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
-curl_response* wurl_http_get_with_header(const char *header, const char* url) {
+curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size) {
     curl_response *response;
-    struct curl_slist* headers = NULL;
+    struct curl_slist* headers_list = NULL;
     struct curl_slist* headers_tmp = NULL;
     CURLcode res;
     struct MemoryStruct req;
     struct MemoryStruct req_header;
+
+    if (!url) {
+        mdebug1("url not defined");
+        return NULL;
+    }
 
     CURL* curl = curl_easy_init();
 
@@ -419,62 +442,68 @@ curl_response* wurl_http_get_with_header(const char *header, const char* url) {
         return NULL;
     }
 
-    if (!header) {
-        mdebug1("curl header NULL");
-        curl_easy_cleanup(curl);
-        return NULL;
-    }
-
 #ifndef WIN32
     char const *cert = find_cert_list();
 
     // Enable SSL check if url is HTTPS
-    if(!strncmp(url,"https",5)){
+    if (!strncmp(url, "https", 5)) {
         if (NULL != cert) {
             curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
         }
     }
 #endif
 
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
 
-    headers = curl_slist_append(headers, "User-Agent: curl/7.58.0");
+    headers_list = curl_slist_append(headers_list, "User-Agent: curl/7.58.0");
 
-    if (headers == NULL) {
+    if (headers_list == NULL) {
         curl_easy_cleanup(curl);
         mdebug1("curl append header failure");
         return NULL;
     }
 
-    headers_tmp = curl_slist_append(headers, header);
+    // Append custom headers
+    char** ptr = headers;
+    for (char* header = *ptr; header; header=*++ptr) {
+        headers_tmp = curl_slist_append(headers_list, header);
 
-    if (headers_tmp == NULL) {
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-        mdebug1("curl append header failure");
-        return NULL;
+        if (headers_tmp == NULL) {
+            curl_slist_free_all(headers_list);
+            curl_easy_cleanup(curl);
+            mdebug1("curl append custom header failure");
+            return NULL;
+        }
+
+        headers_list = headers_tmp;
     }
-
-    headers = headers_tmp;
 
     req.memory = malloc(1);  /* will be grown as needed by the realloc above */
     req.size = 0;    /* no data at this point */
+    req.max_response_size = max_size;
+    req.max_size_error = false;
 
     req_header.memory = malloc(1);  /* will be grown as needed by the realloc above */
     req_header.size = 0;    /* no data at this point */
+    req_header.max_response_size = max_size;
+    req_header.max_size_error = false;
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers_list);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
-    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
+
+    if (payload) {
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
+    }
 
     res = curl_easy_perform(curl);
 
-    if (res != CURLE_OK) {
+    if (res != CURLE_OK && !(req.max_size_error || req_header.max_size_error)) {
         mdebug1("curl_easy_perform() failed: %s", curl_easy_strerror(res));
-        curl_slist_free_all(headers);
+        curl_slist_free_all(headers_list);
         curl_easy_cleanup(curl);
         os_free(req.memory);
         os_free(req_header.memory);
@@ -486,8 +515,18 @@ curl_response* wurl_http_get_with_header(const char *header, const char* url) {
     response->header = req_header.memory;
     response->body = req.memory;
 
-    curl_slist_free_all(headers);
+    if (req.max_size_error || req_header.max_size_error) {
+        response->max_size_reached = true;
+    }
+
+    curl_slist_free_all(headers_list);
     curl_easy_cleanup(curl);
 
     return response;
+}
+
+void wurl_free_response(curl_response* response) {
+    os_free(response->header);
+    os_free(response->body);
+    os_free(response);
 }

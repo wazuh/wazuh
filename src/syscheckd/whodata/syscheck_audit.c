@@ -18,12 +18,13 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
-#define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
-#define AUDIT_CONF_LINK "af_wazuh.conf"
+#define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
+#define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
+#define PLUGINS_DIR_AUDIT_2         "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT_3         "/etc/audit/plugins.d"
+#define AUDIT_CONF_LINK             "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
-#define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
-
+#define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -203,11 +204,17 @@ int init_auditd_socket(void) {
     return sfd;
 }
 
-void audit_no_rules_to_realtime() {
-    int found;
+void audit_create_rules_file() {
     char *real_path = NULL;
     directory_t *dir_it = NULL;
     OSListNode *node_it;
+    FILE *fp;
+
+    fp = fopen(AUDIT_RULES_FILE, "w");
+    if (!fp) {
+        merror(FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
+        return;
+    }
 
     w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {
@@ -216,16 +223,98 @@ void audit_no_rules_to_realtime() {
             continue;
         }
         real_path = fim_get_real_path(dir_it);
-        found = search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY);
 
-        if (found == 0) {   // No rule found
-            mtwarn(SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
-            dir_it->options &= ~WHODATA_ACTIVE;
-            dir_it->options |= REALTIME_ACTIVE;
-        }
+        mdebug2(FIM_ADDED_RULE_TO_FILE, real_path);
+        fprintf(fp, "-w %s -p wa -k %s\n", real_path, AUDIT_KEY);
+
         free(real_path);
     }
     w_rwlock_unlock(&syscheck.directories_lock);
+
+    if (fclose(fp)) {
+        merror(FCLOSE_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
+        return;
+    }
+
+    char abs_rules_file_path[PATH_MAX] = {'\0'};
+    abspath(AUDIT_RULES_FILE, abs_rules_file_path, PATH_MAX);
+
+    // Create symlink to audit rules file
+    if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
+        if (errno != EEXIST) {
+            merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
+            return;
+        }
+        if (unlink(AUDIT_RULES_LINK) < 0) {
+            merror(UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
+            return;
+        }
+        if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
+            merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
+            return;
+        }
+    }
+
+    minfo(FIM_AUDIT_CREATED_RULE_FILE);
+}
+
+void audit_rules_to_realtime() {
+    char *real_path = NULL;
+    directory_t *dir_it = NULL;
+    OSListNode *node_it;
+    int found;
+    int realtime_check = 0;
+
+    // Initialize audit_rule_list
+    int auditd_fd = audit_open();
+    int res = audit_get_rule_list(auditd_fd);
+    audit_close(auditd_fd);
+
+    if (!res) {
+        merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
+    }
+
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+
+        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
+            continue;
+        }
+
+        found = 0;
+        real_path = fim_get_real_path(dir_it);
+
+        if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
+            free(real_path);
+            continue;
+        }
+
+        for (int j = 0; syscheck.audit_key[j]; j++) {
+            if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found){
+            realtime_check = 1;
+            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
+            dir_it->options &= ~WHODATA_ACTIVE;
+            dir_it->options |= REALTIME_ACTIVE;
+        }
+
+        free(real_path);
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    if (realtime_check) {
+        w_mutex_lock(&syscheck.fim_realtime_mutex);
+        if (syscheck.realtime == NULL) {
+            realtime_start();
+        }
+        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    }
 }
 
 // LCOV_EXCL_START
@@ -287,7 +376,8 @@ int audit_init(void) {
 
     switch (audit_data.mode) {
     case AUDIT_IMMUTABLE:
-        audit_no_rules_to_realtime();
+        audit_create_rules_file();
+        audit_rules_to_realtime();
         break;
     case AUDIT_ENABLED:
         fim_rules_initial_load();

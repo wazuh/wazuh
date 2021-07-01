@@ -83,51 +83,16 @@ typedef struct _Eventinfo {
     char hour[10];
     char mon[4];
 
-    /* SYSCHECK Results variables */
-    syscheck_event_t event_type;
-    char *filename;
-    char *mode;
-    char *hard_links;
-    char *sk_tag;
-    char *sym_path;
-    char *perm_before;
-    char *md5_before;
-    char *sha1_before;
-    char *sha256_before;
-    char *size_before;
-    char *owner_before;
-    char *gowner_before;
-    char *uname_before;
-    char *gname_before;
-    long mtime_before;
-    long mtime_after;
-    long inode_before;
-    long inode_after;
-    char *attributes_before;
-    char *diff;
     char *previous;
     wlabel_t *labels;
-    // Whodata fields. They are duplicated by 'fields'
-    char *user_id;
-    char *user_name;
-    char *group_id;
-    char *group_name;
-    char *process_name;
-    char *cwd;
-    char *audit_uid;
-    char *audit_name;
-    char *effective_uid;
-    char *effective_name;
-    char *parent_name;
-    char *parent_cwd;
-    char *ppid;
-    char *process_id;
+
     u_int16_t decoder_syscheck_id;
     int rootcheck_fts;
     int is_a_copy;
     char **last_events;
     int r_firedtimes;
     int queue_added;
+
     // Node reference
     EventNode *node;
     // Process thread id
@@ -274,4 +239,13 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
 #define add_lastevt(x, y, z) os_realloc(x, sizeof(char *) * (y + 2), x); \
                              os_strdup(z, x[y]); \
                              x[y + 1] = NULL;
+
+/**
+ * @brief Function to extract the module name from eventinfo location field
+ *
+ * @param location location field from eventinfo structure
+ * @return returns the name of the module from which the event is coming from
+ */
+const char *extract_module_from_location(const char *location);
+
 #endif /* EVTINFO_H */
