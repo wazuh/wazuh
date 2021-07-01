@@ -370,7 +370,7 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
 
     watches = get_realtime_watches();
     if (watches != 0) {
-        mdebug2(FIM_NUM_WATCHES, watches);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_NUM_WATCHES, watches);
     }
 
     while (FOREVER()) {
@@ -384,7 +384,7 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
             log_realtime_status(1);
 
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+                mterror(SYSCHECK_LOGTAG, FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
             }
         } else {
             sleep(SYSCHECK_WAIT);
@@ -408,7 +408,7 @@ void *fim_run_realtime(__attribute__((unused)) void * args) {
     int nfds = -1;
     w_mutex_lock(&syscheck.fim_realtime_mutex);
     if (syscheck.realtime != NULL) {
-        mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
+        mtdebug2(SYSCHECK_LOGTAG, FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
     }
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
 

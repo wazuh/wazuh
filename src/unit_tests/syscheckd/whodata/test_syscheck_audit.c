@@ -1187,9 +1187,11 @@ void test_audit_rules_to_realtime(void **state) {
     will_return_count(__wrap_search_audit_rule, 0, 4);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test0");
-    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, error_msg);
     snprintf(error_msg2, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test1");
-    expect_string(__wrap__mwarn, formatted_msg, error_msg2);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, error_msg2);
 
     audit_rules_to_realtime();
 
@@ -1221,7 +1223,8 @@ void test_audit_rules_to_realtime_first_search_audit_rule_fail(void **state) {
     will_return_count(__wrap_search_audit_rule, 0, 2);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test1");
-    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, error_msg);
 
     audit_rules_to_realtime();
 
@@ -1253,7 +1256,8 @@ void test_audit_rules_to_realtime_second_search_audit_rule_fail(void **state) {
     will_return(__wrap_search_audit_rule, 1);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test0");
-    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, error_msg);
 
     audit_rules_to_realtime();
 
@@ -1279,13 +1283,15 @@ void test_audit_create_rules_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
@@ -1300,7 +1306,8 @@ void test_audit_create_rules_file(void **state) {
     expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
     will_return(__wrap_symlink, 1);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
+    expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
 
     audit_create_rules_file();
 }
@@ -1313,7 +1320,8 @@ void test_audit_create_rules_file_fopen_fail(void **state) {
     will_return(__wrap_fopen, 0);
 
     snprintf(error_msg, OS_SIZE_128, FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, error_msg);
 
     audit_create_rules_file();
 }
@@ -1332,13 +1340,15 @@ void test_audit_create_rules_file_fclose_fail(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
@@ -1348,7 +1358,8 @@ void test_audit_create_rules_file_fclose_fail(void **state) {
     will_return(__wrap_fclose, 1);
 
     snprintf(error_msg, OS_SIZE_128, FCLOSE_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, error_msg);
 
     audit_create_rules_file();
 }
@@ -1365,13 +1376,15 @@ void test_audit_create_rules_file_symlink_exist(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
@@ -1395,7 +1408,8 @@ void test_audit_create_rules_file_symlink_exist(void **state) {
     expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
     will_return(__wrap_symlink, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
+    expect_string(__wrap__mtinfo, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
 
     audit_create_rules_file();
 }
@@ -1414,13 +1428,15 @@ void test_audit_create_rules_file_unlink_fail(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
@@ -1441,7 +1457,8 @@ void test_audit_create_rules_file_unlink_fail(void **state) {
     will_return(__wrap_unlink, -1);
 
     snprintf(error_msg, OS_SIZE_128, UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, error_msg);
 
     audit_create_rules_file();
 }
@@ -1460,13 +1477,15 @@ void test_audit_create_rules_file_symlink_fail(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test0' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test0 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6365): Added directory '/test1' to audit rules file.");
 
     expect_any(__wrap_fprintf, __stream);
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
@@ -1484,7 +1503,8 @@ void test_audit_create_rules_file_symlink_fail(void **state) {
     errno = 1;
 
     snprintf(error_msg, OS_SIZE_256, LINK_ERROR, AUDIT_RULES_LINK, AUDIT_RULES_FILE, errno, strerror(errno));
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, error_msg);
 
     audit_create_rules_file();
 }

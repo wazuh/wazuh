@@ -212,7 +212,7 @@ void audit_create_rules_file() {
 
     fp = fopen(AUDIT_RULES_FILE, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
+        mterror(SYSCHECK_LOGTAG, FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
         return;
     }
 
@@ -224,7 +224,7 @@ void audit_create_rules_file() {
         }
         real_path = fim_get_real_path(dir_it);
 
-        mdebug2(FIM_ADDED_RULE_TO_FILE, real_path);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_ADDED_RULE_TO_FILE, real_path);
         fprintf(fp, "-w %s -p wa -k %s\n", real_path, AUDIT_KEY);
 
         free(real_path);
@@ -232,7 +232,7 @@ void audit_create_rules_file() {
     w_rwlock_unlock(&syscheck.directories_lock);
 
     if (fclose(fp)) {
-        merror(FCLOSE_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
+        mterror(SYSCHECK_LOGTAG, FCLOSE_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
         return;
     }
 
@@ -242,20 +242,20 @@ void audit_create_rules_file() {
     // Create symlink to audit rules file
     if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
         if (errno != EEXIST) {
-            merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
+            mterror(SYSCHECK_LOGTAG, LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
             return;
         }
         if (unlink(AUDIT_RULES_LINK) < 0) {
-            merror(UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
+            mterror(SYSCHECK_LOGTAG, UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
             return;
         }
         if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
-            merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
+            mterror(SYSCHECK_LOGTAG, LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
             return;
         }
     }
 
-    minfo(FIM_AUDIT_CREATED_RULE_FILE);
+    mtinfo(SYSCHECK_LOGTAG, FIM_AUDIT_CREATED_RULE_FILE);
 }
 
 void audit_rules_to_realtime() {
@@ -271,7 +271,7 @@ void audit_rules_to_realtime() {
     audit_close(auditd_fd);
 
     if (!res) {
-        merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
     }
 
     w_rwlock_wrlock(&syscheck.directories_lock);
@@ -299,7 +299,7 @@ void audit_rules_to_realtime() {
 
         if (!found){
             realtime_check = 1;
-            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
+            mtwarn(SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
             dir_it->options &= ~WHODATA_ACTIVE;
             dir_it->options |= REALTIME_ACTIVE;
         }

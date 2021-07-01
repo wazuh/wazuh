@@ -74,6 +74,7 @@ time_t __wrap_time(time_t *timer) {
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
+
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -81,7 +82,6 @@ static int setup_group(void ** state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
@@ -94,7 +94,6 @@ static int setup_group(void ** state) {
 #else // !TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.swp$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.swp$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
@@ -420,7 +419,8 @@ void test_fim_run_realtime_first_error(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
     snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_FOREVER, 1);
@@ -428,7 +428,8 @@ void test_fim_run_realtime_first_error(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_select, -1);
-    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_SELECT);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, FIM_ERROR_SELECT);
 
     will_return(__wrap_FOREVER, 0);
 
@@ -441,7 +442,8 @@ void test_fim_run_realtime_first_timeout(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
     snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_FOREVER, 1);
@@ -462,7 +464,8 @@ void test_fim_run_realtime_first_sleep(void **state) {
     char debug_msg[OS_SIZE_128] = {0};
     expect_function_call(__wrap_pthread_mutex_lock);
     snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_FOREVER, 1);
@@ -482,7 +485,8 @@ void test_fim_run_realtime_first_process(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
     snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_FOREVER, 1);
@@ -502,7 +506,8 @@ void test_fim_run_realtime_process_after_timeout(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
     snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_FOREVER, 1);
@@ -536,7 +541,8 @@ void test_fim_run_realtime_w_first_timeout(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // set_priority_windows_thread
-    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
     expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 
@@ -552,14 +558,16 @@ void test_fim_run_realtime_w_first_timeout(void **state) {
     will_return(__wrap_FOREVER, 1);
 
     snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, added_dirs);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
 
     expect_value(wrap_WaitForSingleObjectEx, hHandle, (DWORD)234);
     expect_value(wrap_WaitForSingleObjectEx, dwMilliseconds, SYSCHECK_WAIT * 1000);
     expect_value(wrap_WaitForSingleObjectEx, bAlertable, TRUE);
     will_return(wrap_WaitForSingleObjectEx, WAIT_FAILED);
 
-    expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
         if (dir_it->options & REALTIME_ACTIVE) {
@@ -586,7 +594,8 @@ void test_fim_run_realtime_w_wait_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // set_priority_windows_thread
-    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
     expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 
@@ -603,7 +612,8 @@ void test_fim_run_realtime_w_wait_success(void **state) {
     will_return(__wrap_FOREVER, 1);
 
     snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, added_dirs);
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
 
     expect_value(wrap_WaitForSingleObjectEx, hHandle, (DWORD)234);
     expect_value(wrap_WaitForSingleObjectEx, dwMilliseconds, SYSCHECK_WAIT * 1000);
@@ -637,7 +647,8 @@ void test_fim_run_realtime_w_sleep(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // set_priority_windows_thread
-    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
     expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 

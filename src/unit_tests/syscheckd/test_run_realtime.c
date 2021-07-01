@@ -68,7 +68,7 @@ static int setup_group(void **state) {
     will_return(__wrap_getDefine_Int, 0);
 #endif //TEST_SERVER
 #ifdef TEST_WINAGENT
-    will_return(__wrap_getDefine_Int, 1023);
+    will_return(__wrap_getDefine_Int, 256);
 #endif //TEST_WINAGENT
 
     test_mode = 0;
@@ -1573,7 +1573,8 @@ void test_realtime_adddir_max_limit_reached(void **state) {
     will_return(__wrap_OSHash_Get_Elem_ex, 257);
 
     snprintf(msg, OS_SIZE_256, FIM_REALTIME_MAXNUM_WATCHES, "C:\\a\\path");
-    expect_string(__wrap__mdebug1, formatted_msg, msg);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, msg);
 
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 

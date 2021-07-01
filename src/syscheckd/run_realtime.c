@@ -587,7 +587,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     if(rtlocald != NULL) {
         if (!w_directory_exists(rtlocald->dir)) {
             if (rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
-                mdebug1(FIM_REALTIME_CALLBACK, rtlocald->dir);
+                mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_CALLBACK, rtlocald->dir);
                 rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, rtlocald->dir);
                 free_win32rtfim_data(rtlocald);
             } else if (rtlocald->h != NULL && rtlocald->h != INVALID_HANDLE_VALUE) {
@@ -602,7 +602,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
 
     /* Maximum limit for realtime on Windows */
     if (_get_realtime_watches() >= syscheck.max_fd_win_rt) {
-        mdebug1(FIM_REALTIME_MAXNUM_WATCHES, dir);
+        mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_MAXNUM_WATCHES, dir);
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return 0;
     }
@@ -614,7 +614,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
 
     if (rtlocald->h == INVALID_HANDLE_VALUE || rtlocald->h == NULL) {
         os_free(rtlocald);
-        mdebug2(FIM_REALTIME_ADD, dir);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_REALTIME_ADD, dir);
 
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return 0;
@@ -627,7 +627,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
 
     /* Add directory to be monitored */
     if(realtime_win32read(rtlocald) == 0) {
-        mdebug1(FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
+        mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_DIRECTORYCHANGES, rtlocald->dir);
         free_win32rtfim_data(rtlocald);
 
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
@@ -635,10 +635,10 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     }
 
     if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) {
-        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+        mterror_exit(SYSCHECK_LOGTAG, FIM_CRITICAL_ERROR_OUT_MEM);
     }
 
-    mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+    mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_NEWDIRECTORY, dir);
 
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
     return 1;

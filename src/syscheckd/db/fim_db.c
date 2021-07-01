@@ -831,14 +831,14 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
                 break;
 
             case SQLITE_DONE:
-                mdebug2("Received a synchronization message with empty range, first half 'start %s' 'top %s' (i:%d)", start,
+                mtdebug2(SYSCHECK_LOGTAG, "Received a synchronization message with empty range, first half 'start %s' 'top %s' (i:%d)", start,
                         top, i);
                 os_free(*str_pathlh);
                 os_free(*str_pathuh);
                 return FIMDB_ERR;
 
             default:
-                merror("Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
+                mterror(SYSCHECK_LOGTAG, "Step error getting path range, first half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
                        sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
                 os_free(*str_pathlh);
                 os_free(*str_pathuh);
@@ -872,14 +872,14 @@ int fim_db_get_checksum_range(fdb_t *fim_sql,
                 break;
 
             case SQLITE_DONE:
-                mdebug2("Received a synchronization message with empty range, second half 'start %s' 'top %s' (i:%d)", start,
+                mtdebug2(SYSCHECK_LOGTAG, "Received a synchronization message with empty range, second half 'start %s' 'top %s' (i:%d)", start,
                         top, i);
                 os_free(*str_pathlh);
                 os_free(*str_pathuh);
                 return FIMDB_ERR;
 
             default:
-                merror("Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
+                mterror(SYSCHECK_LOGTAG, "Step error getting path range, second half 'start %s' 'top %s' (i:%d): %s (%d)", start, top, i,
                        sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
                 os_free(*str_pathlh);
                 os_free(*str_pathuh);
