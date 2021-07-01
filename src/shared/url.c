@@ -499,7 +499,7 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
         res += curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
     }
 
-    if (res != 0) {
+    if (res != CURLE_OK) {
         mdebug1("Parameter setup error at CURL");
         curl_slist_free_all(headers_list);
         curl_easy_cleanup(curl);
