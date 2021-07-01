@@ -168,9 +168,7 @@ int setup_fim_db_group(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-#ifndef TEST_SERVER
     will_return_always(__wrap_getDefine_Int, 0);
-#endif
 
     OS_XML xml;
     XML_NODE node;
