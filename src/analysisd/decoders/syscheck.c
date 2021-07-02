@@ -101,6 +101,15 @@ static int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state
 // Replace the coded fields with the decoded ones in the checksum
 static void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
 
+/**
+ * @brief Decode a cJSON with Windows permissions and convert to old format string
+ *
+ * @param perm_json cJSON with the permissions
+ *
+ * @returns A string with the old format Windows permissions
+*/
+static char *perm_json_to_old_format(cJSON *perm_json);
+
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -1724,12 +1733,72 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
             if (dst_data) {
                 os_strdup(attr_it->valuestring, *dst_data);
             }
+        } else if (attr_it->type == cJSON_Object) {
+            if (strcmp(attr_it->string, "perm") == 0) {
+                if (new_state) {
+                    lf->fields[FIM_PERM].value = perm_json_to_old_format(attr_it);
+                } else {
+                    lf->fields[FIM_PERM_BEFORE].value = perm_json_to_old_format(attr_it);
+                }
+            }
         } else {
             mdebug1("Unknown FIM data type.");
         }
     }
 
     return 0;
+}
+
+char *perm_json_to_old_format(cJSON *perm_json){
+    int perm_array_size;
+    char *account_name;
+    char *aux_buffer;
+    char buffer[MAX_WIN_PERM_SIZE];
+    buffer[0] = '\0';
+    cJSON *json_it;
+    cJSON *allowed_item_array;
+    cJSON *denied_item_array;
+
+    assert(perm_json != NULL);
+
+    cJSON_ArrayForEach(json_it, perm_json) {
+        account_name = cJSON_GetStringValue(cJSON_GetObjectItem(json_it, "name"));
+        assert(account_name != NULL);
+
+        allowed_item_array = cJSON_GetObjectItem(json_it, "allowed");
+        if (allowed_item_array) {
+            strcat(buffer, account_name);
+            strcat(buffer, " (allowed): ");
+
+            perm_array_size = cJSON_GetArraySize(allowed_item_array);
+            for (int i = 0; i < perm_array_size; i++) {
+                aux_buffer = strdup(cJSON_GetStringValue(cJSON_GetArrayItem(allowed_item_array, i)));
+                str_uppercase(aux_buffer);
+                strcat(buffer, aux_buffer);
+                strcat(buffer, i < perm_array_size - 1 ? "|" : ", ");
+
+                free(aux_buffer);
+            }
+        }
+        denied_item_array = cJSON_GetObjectItem(json_it, "denied");
+        if (denied_item_array) {
+            strcat(buffer, account_name);
+            strcat(buffer, " (denied): ");
+
+            perm_array_size = cJSON_GetArraySize(denied_item_array);
+            for (int i = 0; i < perm_array_size; i++) {
+                aux_buffer = strdup(cJSON_GetStringValue(cJSON_GetArrayItem(denied_item_array, i)));
+                str_uppercase(aux_buffer);
+                strcat(buffer, aux_buffer);
+                strcat(buffer, i < perm_array_size - 1 ? "|" : ", ");
+
+                free(aux_buffer);
+            }
+        }
+    }
+    buffer[strlen(buffer)] = '\0';
+
+    return strdup(buffer);
 }
 
 void fim_adjust_checksum(sk_sum_t *newsum, char **checksum) {
