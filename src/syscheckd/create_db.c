@@ -1499,9 +1499,17 @@ cJSON * fim_json_compare_attrs(const fim_file_data * old_data, const fim_file_da
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
         }
 
+#ifndef WIN32
         if (old_data->user_name && new_data->user_name && strcmp(old_data->user_name, new_data->user_name) != 0) {
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
         }
+#else
+        // AD might fail to solve the user name, we don't trigger an event if the user name is empty
+        if (old_data->user_name && *old_data->user_name != '\0' && new_data->user_name &&
+            *new_data->user_name != '\0' && strcmp(old_data->user_name, new_data->user_name) != 0) {
+            cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
+        }
+#endif
     }
 
     if (old_data->options & CHECK_GROUP) {
