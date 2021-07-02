@@ -38,6 +38,7 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 #endif
 
+#ifdef WIN32
 /**
  * @brief Retrieves the permissions of a specific file (Windows)
  *
@@ -66,7 +67,7 @@ static void add_ace_to_json(cJSON *acl_json, char *sid, char *account_name, cons
  * @param [in] ace_type string "allowed" or "denied" depends on ace type
  */
 static void make_mask_readable (cJSON *ace_json, int mask, char *ace_type);
-
+#endif
 
 char *escape_syscheck_field(char *field) {
     char *esc_it;
@@ -1265,25 +1266,6 @@ void decode_win_attributes(char *str, unsigned int attrs) {
     }
 }
 
-void decode_win_acl_json (cJSON *acl_json) {
-    cJSON *json_object = NULL;
-    cJSON *allowed_item = NULL;
-    cJSON *denied_item = NULL;
-
-    assert(acl_json != NULL);
-
-    cJSON_ArrayForEach(json_object, acl_json) {
-        allowed_item = cJSON_GetObjectItem(json_object, "allowed");
-        if (allowed_item) {
-            make_mask_readable(json_object, allowed_item->valueint, "allowed");
-        }
-        denied_item = cJSON_GetObjectItem(json_object, "denied");
-        if (denied_item) {
-            make_mask_readable(json_object, denied_item->valueint, "denied");
-        }
-    }
-}
-
 void make_mask_readable (cJSON *ace_json, int mask, char *ace_type) {
     int i;
     int perm_bits[] = {
@@ -1341,6 +1323,25 @@ void make_mask_readable (cJSON *ace_json, int mask, char *ace_type) {
 	}
 
     cJSON_ReplaceItemInObject(ace_json, ace_type, perm_array);
+}
+
+void decode_win_acl_json (cJSON *acl_json) {
+    cJSON *json_object = NULL;
+    cJSON *allowed_item = NULL;
+    cJSON *denied_item = NULL;
+
+    assert(acl_json != NULL);
+
+    cJSON_ArrayForEach(json_object, acl_json) {
+        allowed_item = cJSON_GetObjectItem(json_object, "allowed");
+        if (allowed_item) {
+            make_mask_readable(json_object, allowed_item->valueint, "allowed");
+        }
+        denied_item = cJSON_GetObjectItem(json_object, "denied");
+        if (denied_item) {
+            make_mask_readable(json_object, denied_item->valueint, "denied");
+        }
+    }
 }
 
 char *decode_win_permissions(char *raw_perm) {
