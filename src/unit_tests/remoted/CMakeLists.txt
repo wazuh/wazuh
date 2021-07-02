@@ -19,18 +19,21 @@ set_target_properties(
 
 target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate remoted tests
 list(APPEND remoted_names "test_manager")
 list(APPEND remoted_flags "-W")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
-                            -Wl,--wrap,_mdebug2 -Wl,--wrap,sleep -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
+                            -Wl,--wrap,sleep -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
                             -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap=key_lock_write -Wl,--wrap=key_unlock -Wl,--wrap=time \
-                            -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                            -Wl,--wrap,fgetpos -Wl,--wrap=fgetc ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "-Wl,--wrap,_mwarn")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND remoted_names "test_syslogtcp")
 list(APPEND remoted_flags "-W")
 

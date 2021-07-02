@@ -1,11 +1,12 @@
-
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate msgs tests
 list(APPEND os_crypto_shared_tests_names "test_msgs")
 list(APPEND os_crypto_shared_tests_flags "-Wl,--wrap,merror_exit -Wl,--wrap,linked_queue_push_ex -Wl,--wrap,fprintf -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
-                            -Wl,--wrap,_mdebug2 -Wl,--wrap,sleep -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
+                            -Wl,--wrap,sleep -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek \
                             -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap=key_lock_write -Wl,--wrap=key_unlock -Wl,--wrap=time \
-                            -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                            -Wl,--wrap,fgetpos -Wl,--wrap=fgetc ${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH os_crypto_shared_tests_names count)

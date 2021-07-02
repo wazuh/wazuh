@@ -433,6 +433,7 @@ void test_syscollector_dbsync_invalid_json(void **state)
 {
     Eventinfo *lf = *state;
     expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event.");
+    expect_any(__wrap__mdebug2, formatted_msg);
     int ret = DecodeSyscollector(lf, 0);
 
     assert_int_equal(ret, 0);
@@ -692,4 +693,3 @@ int main()
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }
-

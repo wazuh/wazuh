@@ -22,15 +22,18 @@ set_target_properties(
 
 target_link_libraries(OS_AUTH_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate Analysisd tests
 list(APPEND os_auth_names "test_auth_parse")
-list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_auth_validate")
-list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 \
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
                            -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,OS_RemoveAgentGroup -Wl,--wrap,add_remove \
                            -Wl,--wrap,OS_AgentAntiquity")
 list(APPEND os_auth_names "test_auth_add")
-list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_ssl")
 list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
 

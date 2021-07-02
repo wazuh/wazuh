@@ -61,7 +61,7 @@ void free_state_file(w_lc_state_file_t * data) {
 }
 
 /* setup/teardown */
-static int setup_hashmap(void **state) {
+static int setup_local_hashmap(void **state) {
     OSHash *hash;
 
     will_return(__wrap_time, (time_t) 50);
@@ -79,7 +79,7 @@ static int setup_hashmap(void **state) {
     return 0;
 }
 
-static int teardown_hashmap(void **state) {
+static int teardown_local_hashmap(void **state) {
     OSHash *hash = *state;
 
     if (hash == NULL) {
@@ -94,11 +94,11 @@ static int setup_global_variables(void ** state) {
     os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_global);
     os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_interval);
 
-    if (setup_hashmap((void **)&(g_lc_states_global->states))) {
+    if (setup_local_hashmap((void **)&(g_lc_states_global->states))) {
         return -1;
     }
 
-    if (setup_hashmap((void **)&(g_lc_states_interval->states))) {
+    if (setup_local_hashmap((void **)&(g_lc_states_interval->states))) {
         return -1;
     }
 
@@ -106,11 +106,11 @@ static int setup_global_variables(void ** state) {
 }
 
 static int teardown_global_variables(void ** state) {
-    if (teardown_hashmap((void **)&(g_lc_states_global->states))) {
+    if (teardown_local_hashmap((void **)&(g_lc_states_global->states))) {
         return -1;
     }
 
-    if (teardown_hashmap((void **)&(g_lc_states_interval->states))) {
+    if (teardown_local_hashmap((void **)&(g_lc_states_interval->states))) {
         return -1;
     }
 
@@ -1113,26 +1113,26 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_state_get_non_null),
 
         // Tests _w_logcollector_generate_state
-        cmocka_unit_test_setup_teardown(test__w_logcollector_generate_state_fail_get_node, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_generate_state_one_target, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_generate_state_one_target_restart, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_generate_state_fail_get_node, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_generate_state_one_target, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_generate_state_one_target_restart, setup_local_hashmap, teardown_local_hashmap),
 
         // Tests _w_logcollector_state_update_file
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_new_data, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_update, setup_hashmap, teardown_hashmap),
-        // cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_fail_update, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_new_data, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_update, setup_local_hashmap, teardown_local_hashmap),
+        // cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_file_fail_update, setup_local_hashmap, teardown_local_hashmap),
 
         // Tests w_logcollector_state_update_file
         cmocka_unit_test(test_w_logcollector_state_update_file_null),
         cmocka_unit_test_setup_teardown(test_w_logcollector_state_update_file_ok, setup_global_variables, teardown_global_variables),
 
         // Tests _w_logcollector_state_update_target
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_get_file_stats_fail, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_find_target_fail, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_find_target_ok, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_dropped_true, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_OSHash_Update_fail, setup_hashmap, teardown_hashmap),
-        // cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_OSHash_Add_fail, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_get_file_stats_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_find_target_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_find_target_ok, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_dropped_true, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_OSHash_Update_fail, setup_local_hashmap, teardown_local_hashmap),
+        // cmocka_unit_test_setup_teardown(test__w_logcollector_state_update_target_OSHash_Add_fail, setup_local_hashmap, teardown_local_hashmap),
 
         // Tests w_logcollector_state_update_target
         cmocka_unit_test(test_w_logcollector_state_update_target_null_path),
@@ -1152,8 +1152,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_logcollector_state_main_ok, setup_global_variables, teardown_global_variables),
 
         // Test _w_logcollector_state_delete_file
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_delete_file_no_data, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test__w_logcollector_state_delete_file_ok, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_delete_file_no_data, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test__w_logcollector_state_delete_file_ok, setup_local_hashmap, teardown_local_hashmap),
 
         // Test _w_logcollector_state_delete_file
         cmocka_unit_test(test_w_logcollector_state_delete_file_fpath_NULL),

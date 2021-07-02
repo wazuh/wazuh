@@ -19,19 +19,21 @@ set_target_properties(
 
 target_link_libraries(EXECD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate Execd tests
 if(${TARGET} STREQUAL "winagent")
     list(APPEND execd_names "test_win_execd")
-    list(APPEND execd_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_merror \
-                             -Wl,--wrap,ReadExecConfig -Wl,--wrap,GetCommandbyName -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fwrite \
+    list(APPEND execd_flags "-Wl,--wrap,ReadExecConfig -Wl,--wrap,GetCommandbyName -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fwrite \
                              -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
-                             -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                             -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND execd_names "test_execd")
-    list(APPEND execd_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,time -Wl,--wrap,select -Wl,--wrap,OS_RecvUnix \
+    list(APPEND execd_flags "-Wl,--wrap,time -Wl,--wrap,select -Wl,--wrap,OS_RecvUnix \
                              -Wl,--wrap,ReadExecConfig -Wl,--wrap,GetCommandbyName -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fwrite \
                              -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
-                             -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                             -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(LENGTH execd_names count)

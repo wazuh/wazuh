@@ -101,6 +101,8 @@ void test_wdb_task_delete_old_entries_cache_err(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     int ret = wdb_task_delete_old_entries(data->wdb, timestamp);
 
     assert_int_equal(ret, OS_INVALID);
@@ -113,6 +115,8 @@ void test_wdb_task_delete_old_entries_begin2_err(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_delete_old_entries(data->wdb, timestamp);
 
@@ -281,6 +285,8 @@ void test_wdb_task_set_timeout_status_timeout_cache_err(void **state)
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     int ret = wdb_task_set_timeout_status(data->wdb, now, timeout, &next_timeout);
 
     assert_int_equal(ret, OS_INVALID);
@@ -298,6 +304,8 @@ void test_wdb_task_set_timeout_status_cache_err(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     int ret = wdb_task_set_timeout_status(data->wdb, now, timeout, &next_timeout);
 
     assert_int_equal(ret, OS_INVALID);
@@ -313,6 +321,8 @@ void test_wdb_task_set_timeout_status_begin2_err(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_set_timeout_status(data->wdb, now, timeout, &next_timeout);
 
@@ -448,6 +458,8 @@ void test_wdb_task_insert_task_begin2_err(void **state)
 
     will_return(__wrap_wdb_begin2, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     int ret = wdb_task_insert_task(data->wdb, agent_id, node, module, command);
 
     assert_int_equal(ret, OS_INVALID);
@@ -464,6 +476,8 @@ void test_wdb_task_insert_task_stmt_cache_err(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_insert_task(data->wdb, agent_id, node, module, command);
 
@@ -562,6 +576,8 @@ void test_wdb_task_insert_task_cache2_err(void **state)
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_insert_task(data->wdb, agent_id, node, module, command);
 
@@ -774,6 +790,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending_cache_err(voi
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_get_upgrade_task_status(data->wdb, agent_id, node, &status);
 
@@ -846,6 +863,7 @@ void test_wdb_task_get_upgrade_task_status_cache_err(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_get_upgrade_task_status(data->wdb, agent_id, node, &status);
 
@@ -863,6 +881,7 @@ void test_wdb_task_get_upgrade_task_status_begin2_err(void **state)
 
     will_return(__wrap_wdb_begin2, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_get_upgrade_task_status(data->wdb, agent_id, node, &status);
 
@@ -1046,6 +1065,8 @@ void test_wdb_task_update_upgrade_task_status_begin2_err(void **state)
 
     will_return(__wrap_wdb_begin2, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     int ret = wdb_task_update_upgrade_task_status(data->wdb, agent_id, node, status, NULL);
 
     assert_int_equal(ret, OS_INVALID);
@@ -1061,6 +1082,8 @@ void test_wdb_task_update_upgrade_task_status_cache_err(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_update_upgrade_task_status(data->wdb, agent_id, node, status, NULL);
 
@@ -1121,6 +1144,8 @@ void test_wdb_task_update_upgrade_task_status_cache2_err(void **state)
     will_return(__wrap_sqlite3_column_text, status_old);
 
     will_return(__wrap_wdb_stmt_cache, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_update_upgrade_task_status(data->wdb, agent_id, node, status, NULL);
 
@@ -1203,6 +1228,8 @@ void test_wdb_task_get_upgrade_task_by_agent_id_begin2_err(void **state)
 
     will_return(__wrap_wdb_begin2, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     int ret = wdb_task_get_upgrade_task_by_agent_id(data->wdb, agent_id, &node, &module, &command, &status, &error, &update_time, &last_update);
 
     assert_int_equal(ret, OS_INVALID);
@@ -1223,6 +1250,8 @@ void test_wdb_task_get_upgrade_task_by_agent_id_cache_err(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_get_upgrade_task_by_agent_id(data->wdb, agent_id, &node, &module, &command, &status, &error, &update_time, &last_update);
 
@@ -1422,6 +1451,8 @@ void test_wdb_task_cancel_upgrade_tasks_cache_err(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, -1);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     int ret = wdb_task_cancel_upgrade_tasks(data->wdb, node);
 
     assert_int_equal(ret, OS_INVALID);
@@ -1434,6 +1465,8 @@ void test_wdb_task_cancel_upgrade_tasks_begin2_err(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, -1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int ret = wdb_task_cancel_upgrade_tasks(data->wdb, node);
 

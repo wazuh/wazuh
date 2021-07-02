@@ -13,6 +13,11 @@
 
 #include "hash_op.h"
 
+extern OSHash *mock_hashmap;
+
+int setup_hashmap(void **state);
+int teardown_hashmap(void **state);
+
 int __wrap_OSHash_Add(OSHash *self, const char *key, void *data);
 
 int __real_OSHash_Add_ex(OSHash *self, const char *key, void *data);
@@ -27,6 +32,7 @@ OSHash *__wrap_OSHash_Create();
 
 void *__wrap_OSHash_Delete_ex(OSHash *self, const char *key);
 
+void *__real_OSHash_Delete(OSHash *self, const char *key);
 void *__wrap_OSHash_Delete(OSHash *self, const char *key);
 
 void *__wrap_OSHash_Get(const OSHash *self, const char *key);
@@ -36,6 +42,7 @@ void *__wrap_OSHash_Get_ex(const OSHash *self, const char *key);
 
 void *__wrap_OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
 
+int __real_OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *));
 int __wrap_OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *));
 
 int __wrap_OSHash_setSize(OSHash *self, unsigned int new_size);

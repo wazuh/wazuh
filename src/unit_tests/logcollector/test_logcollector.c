@@ -59,7 +59,7 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-static int setup_hashmap(void **state) {
+static int setup_local_hashmap(void **state) {
     files_status = OSHash_Create();
     if (files_status == NULL) {
         return 1;
@@ -70,13 +70,13 @@ static int setup_hashmap(void **state) {
     return 0;
 }
 
-static int teardown_hashmap(void **state) {
+static int teardown_local_hashmap(void **state) {
     OSHash_Free(files_status);
     return 0;
 }
 
 static int setup_log_context(void **state) {
-    if (setup_hashmap(state) != 0) {
+    if (setup_local_hashmap(state) != 0) {
         return 1;
     }
 
@@ -98,7 +98,7 @@ static int setup_log_context(void **state) {
 }
 
 static int teardown_log_context(void **state) {
-    if (teardown_hashmap(state) != 0) {
+    if (teardown_local_hashmap(state) != 0) {
         return 1;
     }
     test_logcollector_t *test_struct = *state;
@@ -122,7 +122,7 @@ static int setup_status(void **state) {
         return 1;
     }
 
-    if (setup_hashmap(NULL) != 0) {
+    if (setup_local_hashmap(NULL) != 0) {
         return 1;
     }
 
@@ -1558,23 +1558,23 @@ int main(void) {
 
         // Test w_update_file_status
         // cmocka_unit_test(test_w_update_file_status_fail_update_add_table_hash),
-        cmocka_unit_test_setup_teardown(test_w_update_file_status_update_fail_add_OK, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_update_file_status_update_OK, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_file_status_update_fail_add_OK, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_file_status_update_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_set_to_pos
-        cmocka_unit_test_setup_teardown(test_w_set_to_pos_localfile_NULL, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_set_to_pos_fseek_error, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_set_to_pos_OK, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_pos_localfile_NULL, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_pos_fseek_error, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_pos_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_save_files_status_to_cJSON
-        cmocka_unit_test_setup_teardown(test_w_save_files_status_to_cJSON_begin_NULL, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_save_files_status_to_cJSON_OK, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_files_status_to_cJSON_begin_NULL, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_files_status_to_cJSON_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_save_file_status
-        cmocka_unit_test_setup_teardown(test_w_save_file_status_str_NULL, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_status, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_status, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_status, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_str_NULL, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_status, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_status, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_status, teardown_local_hashmap),
 
         // Test w_load_files_status
         cmocka_unit_test(test_w_load_files_status_empty_array),
@@ -1586,34 +1586,34 @@ int main(void) {
         cmocka_unit_test(test_w_load_files_status_offset_NULL),
         cmocka_unit_test(test_w_load_files_status_offset_str_NULL),
         cmocka_unit_test(test_w_load_files_status_invalid_offset),
-        // cmocka_unit_test_setup_teardown(test_w_load_files_status_update_add_fail, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_load_files_status_update_hash_fail, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_load_files_status_update_fail, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_load_files_status_OK, setup_hashmap, teardown_hashmap),
+        // cmocka_unit_test_setup_teardown(test_w_load_files_status_update_add_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_load_files_status_update_hash_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_load_files_status_update_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_load_files_status_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_initialize_file_status
         // cmocka_unit_test(test_w_initialize_file_status_OSHash_Create_fail),
         // cmocka_unit_test(test_w_initialize_file_status_OSHash_setSize_fail),
-        cmocka_unit_test_teardown(test_w_initialize_file_status_fopen_fail, teardown_hashmap),
-        cmocka_unit_test_teardown(test_w_initialize_file_status_fread_fail, teardown_hashmap),
-        cmocka_unit_test_teardown(test_w_initialize_file_status_OK, teardown_hashmap),
+        cmocka_unit_test_teardown(test_w_initialize_file_status_fopen_fail, teardown_local_hashmap),
+        cmocka_unit_test_teardown(test_w_initialize_file_status_fread_fail, teardown_local_hashmap),
+        cmocka_unit_test_teardown(test_w_initialize_file_status_OK, teardown_local_hashmap),
 
         // Test w_update_hash_node
         cmocka_unit_test(test_w_update_hash_node_path_NULL),
         cmocka_unit_test(test_w_update_hash_node_sha_fail),
-        cmocka_unit_test_setup_teardown(test_w_update_hash_node_update_fail, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_hash_node_update_fail, setup_local_hashmap, teardown_local_hashmap),
         // cmocka_unit_test(test_w_update_hash_node_add_fail),
-        cmocka_unit_test_setup_teardown(test_w_update_hash_node_OK, setup_hashmap, teardown_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_update_hash_node_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_set_to_last_line_read
         cmocka_unit_test(test_w_set_to_last_line_read_null_reader),
-        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OSHash_Get_ex_fail, setup_hashmap, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_fstat_fail, setup_status, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail, setup_status, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_diferent_file, setup_status, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file, setup_status, teardown_hashmap),
-        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file_rotate, setup_status, teardown_hashmap),
-        // cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_update_hash_node_error, setup_status, teardown_hashmap)
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OSHash_Get_ex_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_fstat_fail, setup_status, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail, setup_status, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_diferent_file, setup_status, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file, setup_status, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file_rotate, setup_status, teardown_local_hashmap),
+        // cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_update_hash_node_error, setup_status, teardown_local_hashmap)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

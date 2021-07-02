@@ -23,10 +23,14 @@ set_target_properties(
 
 target_link_libraries(WIN32 ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Generate win32 tests
 list(APPEND win32_names "test_win_utils")
-list(APPEND win32_flags "-Wl,--wrap,_merror -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize \
-                        -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,time")
+list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize \
+                        -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,time \
+                        ${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH win32_names count)
 math(EXPR count "${count} - 1")

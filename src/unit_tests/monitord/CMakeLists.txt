@@ -38,18 +38,19 @@ set_target_properties(
 target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 target_link_libraries(MAILD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 list(APPEND monitord_tests_names "test_monitord")
-list(APPEND monitord_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,time\
+list(APPEND monitord_tests_flags "-Wl,--wrap,time\
                                   -Wl,--wrap,StartMQ -Wl,--wrap,SendMSG -Wl,--wrap,getDefine_Int -Wl,--wrap,ReadConfig\
-                                  -Wl,--wrap,_merror_exit")
+                                  ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND monitord_tests_names "test_monitor_actions")
-list(APPEND monitord_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,SendMSG -Wl,--wrap,wdb_find_agent\
-                                  -Wl,--wrap,wdb_disconnect_agents -Wl,--wrap,time -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex\
-                                  -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Get -Wl,--wrap,wdb_get_agent_info\
-                                  -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Delete -Wl,--wrap,auth_connect\
+list(APPEND monitord_tests_flags "-Wl,--wrap,SendMSG -Wl,--wrap,wdb_find_agent\
+                                  -Wl,--wrap,wdb_disconnect_agents -Wl,--wrap,time -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,auth_connect\
                                   -Wl,--wrap,get_agent_id_from_name -Wl,--wrap,auth_remove_agent -Wl,--wrap,wdb_get_agents_by_connection_status\
-                                  -Wl,--wrap,w_rotate_log -Wl,--wrap,stat")
+                                  -Wl,--wrap,w_rotate_log -Wl,--wrap,stat ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 # Add extra compiling flags
 add_compile_options(-Wall)

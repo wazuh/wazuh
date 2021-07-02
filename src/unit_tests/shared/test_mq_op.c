@@ -28,28 +28,6 @@
 
 /* Redefinitons/wrapping */
 
-void __wrap__merror(const char * file, int line, const char * func, const char * msg, ...){
-    char formatted_msg[OS_SIZE_64];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_SIZE_64, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
-void __wrap__mdebug1(const char * file, int line, const char * func, const char * msg, ...){
-    char formatted_msg[OS_SIZE_1024];
-    va_list args;
-
-    va_start(args, msg);
-    vsnprintf(formatted_msg, sizeof(formatted_msg), msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
-}
-
 int __wrap_OS_getsocketsize(int ossock) {
     return SOCKET_SIZE;
 }

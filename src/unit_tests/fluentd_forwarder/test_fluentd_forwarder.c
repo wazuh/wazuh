@@ -171,6 +171,9 @@ void test_check_default_connection(void **state) {
     data->fluent->port = 24224;
     data->fluent->timeout = 0;
 
+    expect_any(__wrap__mtdebug2, tag);
+    expect_any(__wrap__mtdebug2, formatted_msg);
+
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
@@ -193,6 +196,9 @@ void test_check_default_handshake(void **state) {
     expect_string(__wrap__mtinfo, tag, "fluent-forward");
     expect_string(__wrap__mtinfo, formatted_msg, "Connected to host localhost:24224");
 
+    expect_any(__wrap__mtdebug2, tag);
+    expect_any(__wrap__mtdebug2, formatted_msg);
+
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
@@ -214,6 +220,9 @@ void test_check_send(void **state) {
 
     expect_string(__wrap__mtinfo, tag, "fluent-forward");
     expect_string(__wrap__mtinfo, formatted_msg, "Connected to host localhost:24224");
+
+    expect_any(__wrap__mtdebug2, tag);
+    expect_any(__wrap__mtdebug2, formatted_msg);
 
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);

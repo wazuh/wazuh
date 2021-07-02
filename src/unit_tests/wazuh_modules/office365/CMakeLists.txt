@@ -5,12 +5,14 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+#include wrappers
+include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+
 # Tests list and flags
 list(APPEND tests_names "test_wm_office365")
-list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,access \
-                        -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,wurl_http_request \
+list(APPEND tests_flags "-Wl,--wrap,access -Wl,--wrap,wurl_http_request \
                         -Wl,--wrap,wurl_free_response -Wl,--wrap,wm_sendmsg -Wl,--wrap,strftime -Wl,--wrap,localtime_r \
-                        -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ")
+                        -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND use_shared_libs 1)
 
@@ -79,4 +81,3 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
-

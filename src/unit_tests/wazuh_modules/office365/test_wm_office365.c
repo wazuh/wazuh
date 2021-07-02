@@ -2366,6 +2366,8 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_any(__wrap_wurl_http_request, max_size);
     will_return(__wrap_wurl_http_request, get_content_blobs_response);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API content blobs URL: 'https://manage.office.com/api/v1.0/test_client_id/activity/feed/subscriptions/content?contentType=test_subscription_name&startTime=2021-05-07 12:24:56&endTime=2021-05-07 12:24:56'");
 
@@ -2377,7 +2379,6 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
     expect_any(__wrap_wurl_http_request, method);
 
-    expHeader[OS_SIZE_8192];
     snprintf(expHeader, OS_SIZE_8192 -1, "Authorization: Bearer wazuh");
 
     expect_string(__wrap_wurl_http_request, header, expHeader);
@@ -2788,6 +2789,8 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
     get_content_blobs_response->max_size_reached = false;
     os_strdup("[{\"contentUri\":\"https://contentUri1.com\"}]", get_content_blobs_response->body);
     os_strdup("test", get_content_blobs_response->header);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);

@@ -69,6 +69,8 @@ void test_close_fp_main_queue_empty(void **state)
 {
     logr.rids_closing_time = 10;
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
 
@@ -98,6 +100,8 @@ void test_close_fp_main_first_node_no_close_first(void **state)
     // Queue with one element
     w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, first_node_key);
     keys.opened_fp_queue->first = node1;
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
@@ -137,6 +141,8 @@ void test_close_fp_main_close_first(void **state)
 
     // Queue with one element
     w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, first_node_key);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
@@ -190,6 +196,8 @@ void test_close_fp_main_close_first_queue_2(void **state)
     // Queue with one element
     w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, first_node_key);
     w_linked_queue_node_t *node2 = linked_queue_push(keys.opened_fp_queue, second_node_key);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
@@ -254,6 +262,8 @@ void test_close_fp_main_close_first_queue_2_close_2(void **state)
     w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, first_node_key);
     w_linked_queue_node_t *node2 = linked_queue_push(keys.opened_fp_queue, second_node_key);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
 
@@ -316,6 +326,8 @@ void test_close_fp_main_close_fp_null(void **state)
 
     // Queue with one element
     w_linked_queue_node_t *node1 = linked_queue_push(keys.opened_fp_queue, first_node_key);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     // sleep
     expect_value(__wrap_sleep, seconds, 10);
