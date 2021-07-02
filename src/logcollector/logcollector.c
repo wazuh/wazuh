@@ -130,6 +130,9 @@ static OSHash *excluded_binaries = NULL;
 /* Handle file management */
 void LogCollectorStart()
 {
+
+    cJSON_Hooks hooks = { malloc, free };
+    cJSON_InitHooks(&hooks);
     int i = 0, j = -1, tg;
     int f_check = 0;
     int f_reload = 0;

@@ -132,3 +132,65 @@ void *memset_secure(void *v, int c, size_t n)
 
     return v;
 }
+
+static long n_alloc = 0;
+static long n_frees = 0;
+static long n_realloc = 0;
+
+extern void * __real_malloc(size_t size);
+extern void __real_free(void *ptr);
+extern void * __real_calloc(size_t nmemb, size_t size);
+extern void  *__real_realloc(void *ptr, size_t size);
+extern char * __real_strdup(const char *s);
+extern char * __real_cJSON_Print(void *);
+extern char * __real_cJSON_PrintUnformatted(void *);
+
+void * __wrap_malloc(size_t size) {
+    void * ptr = __real_malloc(size);
+    n_alloc += (ptr != NULL);
+    return ptr;
+}
+
+void __wrap_free(void *ptr) {
+    n_frees += (ptr != NULL);
+    __real_free(ptr);
+}
+void * __wrap_calloc(size_t nmemb, size_t size) {
+    void * ptr = __real_calloc(nmemb, size);
+    n_alloc += (ptr != NULL);
+    return ptr;
+}
+
+void * __wrap_realloc(void *ptr, size_t size) {
+    void * ptr2 = __real_realloc(ptr, size);
+
+    if (ptr2 != NULL) {
+        if (ptr == NULL) {
+            n_alloc++;
+        } else {
+            n_realloc++;
+        }
+    }
+
+    return ptr2;
+}
+
+extern char * __wrap_strdup(const char *s) {
+    char * s2 = __real_strdup(s);
+    n_alloc += (s2 != NULL);
+    return s2;
+}
+
+char * __wrap_cJSON_Print(void * p) {
+    n_alloc+=1000000;
+    return __real_cJSON_Print(p);
+}
+
+char * __wrap_cJSON_PrintUnformatted(void * p) {
+    n_alloc+=1000000;
+    return __real_cJSON_PrintUnformatted(p);
+}
+
+void print_alloc() {
+    minfo("n_alloc = %ld, n_frees = %ld, n_realloc = %ld, n_chunks = %ld", n_alloc, n_frees, n_realloc, n_alloc - n_frees);
+}

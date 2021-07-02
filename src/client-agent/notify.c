@@ -124,6 +124,7 @@ void run_notify()
     g_saved_time = curr_time;
 
     mdebug1("Sending agent notification.");
+    print_alloc();
 
     /* Send the message
      * Message is going to be the uname\n checksum file\n checksum file\n
