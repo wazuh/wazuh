@@ -416,6 +416,24 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BY
 }
 
 /**
+ * @brief Free all memory associated with a registry key.
+ *
+ * @param data A fim_registry_key object to be free'd.
+ */
+void fim_registry_free_key(fim_registry_key *key) {
+    if (key) {
+        os_free(key->path);
+        os_free(key->perm);
+        cJSON_Delete(key->perm_json);
+        os_free(key->uid);
+        os_free(key->gid);
+        os_free(key->user_name);
+        os_free(key->group_name);
+        free(key);
+    }
+}
+
+/**
  * @brief Gets all information from a given registry key.
  *
  * @param key_handle A handle to the key whose information we want.
@@ -441,17 +459,23 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
     }
 
     if (configuration->opts & CHECK_PERM) {
-        char permissions[OS_SIZE_6144 + 1];
-        int retval = 0;
+        int error;
 
-        retval = get_registry_permissions(key_handle, permissions);
-
-        if (retval != ERROR_SUCCESS) {
-            mwarn(FIM_EXTRACT_PERM_FAIL, path, retval);
-            os_strdup("", key->perm);
-        } else {
-            key->perm = decode_win_permissions(permissions);
+        key->perm_json = cJSON_CreateObject();
+        if (key->perm_json == NULL) {
+            mwarn(FIM_CJSON_ERROR_CREATE_ITEM);
+            return NULL;
         }
+
+        error = get_registry_permissions(key_handle, key->perm_json);
+        if (error) {
+            mdebug1(FIM_EXTRACT_PERM_FAIL, path, error);
+            fim_registry_free_key(key);
+            return NULL;
+        }
+
+        decode_win_acl_json(key->perm_json);
+        key->perm = cJSON_PrintUnformatted(key->perm_json);
     }
 
     if (configuration->opts & CHECK_MTIME) {
@@ -463,23 +487,6 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
     fim_registry_get_checksum_key(key);
 
     return key;
-}
-
-/**
- * @brief Free all memory associated with a registry key.
- *
- * @param data A fim_registry_key object to be free'd.
- */
-void fim_registry_free_key(fim_registry_key *key) {
-    if (key) {
-        os_free(key->path);
-        os_free(key->perm);
-        os_free(key->uid);
-        os_free(key->gid);
-        os_free(key->user_name);
-        os_free(key->group_name);
-        free(key);
-    }
 }
 
 /**

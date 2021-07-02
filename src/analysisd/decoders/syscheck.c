@@ -1749,10 +1749,35 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     return 0;
 }
 
-char *perm_json_to_old_format(cJSON *perm_json){
+void decode_ace_json(cJSON *perm_array, char *buffer, char *account_name, char *ace_type, int buffer_size) {
     int perm_array_size;
+    char *aux_buffer1;
+    char *aux_buffer2;
+
+    if (perm_array == NULL) {
+        return;
+    }
+
+    strncat(buffer,account_name, buffer_size);
+    strncat(buffer," (", buffer_size);
+    strncat(buffer,ace_type, buffer_size);
+    strncat(buffer,"): ", buffer_size);
+
+    perm_array_size = cJSON_GetArraySize(perm_array);
+    for (int i = 0; i < perm_array_size; i++) {
+        aux_buffer1 = cJSON_GetStringValue(cJSON_GetArrayItem(perm_array, i));
+        aux_buffer2 = strdup(aux_buffer1);
+        str_uppercase(aux_buffer2);
+
+        strncat(buffer,aux_buffer2, buffer_size);
+        strncat(buffer,i < perm_array_size - 1 ? "|" : ", ", buffer_size);
+
+        free(aux_buffer2);
+    }
+}
+
+char *perm_json_to_old_format(cJSON *perm_json){
     char *account_name;
-    char *aux_buffer;
     char buffer[MAX_WIN_PERM_SIZE];
     buffer[0] = '\0';
     cJSON *json_it;
@@ -1763,40 +1788,16 @@ char *perm_json_to_old_format(cJSON *perm_json){
 
     cJSON_ArrayForEach(json_it, perm_json) {
         account_name = cJSON_GetStringValue(cJSON_GetObjectItem(json_it, "name"));
-        assert(account_name != NULL);
+        if (account_name == NULL) {
+            account_name = json_it->string;
+        }
 
         allowed_item_array = cJSON_GetObjectItem(json_it, "allowed");
-        if (allowed_item_array) {
-            strcat(buffer, account_name);
-            strcat(buffer, " (allowed): ");
-
-            perm_array_size = cJSON_GetArraySize(allowed_item_array);
-            for (int i = 0; i < perm_array_size; i++) {
-                aux_buffer = strdup(cJSON_GetStringValue(cJSON_GetArrayItem(allowed_item_array, i)));
-                str_uppercase(aux_buffer);
-                strcat(buffer, aux_buffer);
-                strcat(buffer, i < perm_array_size - 1 ? "|" : ", ");
-
-                free(aux_buffer);
-            }
-        }
+        decode_ace_json(allowed_item_array, buffer, account_name, "allowed", MAX_WIN_PERM_SIZE);
         denied_item_array = cJSON_GetObjectItem(json_it, "denied");
-        if (denied_item_array) {
-            strcat(buffer, account_name);
-            strcat(buffer, " (denied): ");
-
-            perm_array_size = cJSON_GetArraySize(denied_item_array);
-            for (int i = 0; i < perm_array_size; i++) {
-                aux_buffer = strdup(cJSON_GetStringValue(cJSON_GetArrayItem(denied_item_array, i)));
-                str_uppercase(aux_buffer);
-                strcat(buffer, aux_buffer);
-                strcat(buffer, i < perm_array_size - 1 ? "|" : ", ");
-
-                free(aux_buffer);
-            }
-        }
+        decode_ace_json(denied_item_array, buffer, account_name, "denied", MAX_WIN_PERM_SIZE);
     }
-    buffer[strlen(buffer)] = '\0';
+    buffer[strlen(buffer) - 2] = '\0';
 
     return strdup(buffer);
 }

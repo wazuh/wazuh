@@ -179,7 +179,7 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const regi
     cJSON_AddStringToObject(attributes, "type", "registry_key");
 
     if (configuration->opts & CHECK_PERM) {
-        cJSON_AddStringToObject(attributes, "perm", data->perm);
+        cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
     }
 
     if (configuration->opts & CHECK_OWNER) {

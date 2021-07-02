@@ -305,6 +305,7 @@ typedef struct fim_file_data {
 typedef struct fim_registry_key {
     unsigned int id;
     char * path;
+    cJSON * perm_json;
     char * perm;
     char * uid;
     char * gid;

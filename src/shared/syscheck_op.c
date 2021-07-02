@@ -1121,7 +1121,7 @@ end:
     return result;
 }
 
-DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
+DWORD get_registry_permissions(HKEY hndl, cJSON *acl_json) {
     PSECURITY_DESCRIPTOR pSecurityDescriptor;
     ACL_SIZE_INFORMATION aclsizeinfo;
     ACCESS_ALLOWED_ACE *pAce = NULL;
@@ -1133,9 +1133,6 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
     BOOL bRtnBool = TRUE;
     BOOL fDaclPresent = FALSE;
     BOOL fDaclDefaulted = TRUE;
-    int written;
-    int perm_size = OS_SIZE_6144;
-    char *permissions = perm_key;
 
     if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) !=
         ERROR_INSUFFICIENT_BUFFER) {
@@ -1197,16 +1194,8 @@ DWORD get_registry_permissions(HKEY hndl, char *perm_key) {
             mdebug2("GetAce failed. GetLastError returned: %ld", GetLastError());
             continue;
         }
-
-        written = copy_ace_info(pAce, permissions, perm_size);
-
-        if (written > 0) {
-            permissions += written;
-            perm_size -= written;
-
-            if (perm_size > 0) {
-                continue;
-            }
+        if (process_ace_info(pAce, acl_json)) {
+            mdebug1("ACE number %lu could not be processed.", cAce);
         }
     }
 
