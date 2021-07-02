@@ -1168,7 +1168,6 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         }
 
         decode_win_acl_json(data->perm_json);
-
         data->perm = cJSON_PrintUnformatted(data->perm_json);
 #else
         data->perm = agent_file_perm(statbuf->st_mode);

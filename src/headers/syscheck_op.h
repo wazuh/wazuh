@@ -391,7 +391,7 @@ char *get_registry_group(char **sid, HANDLE hndl);
  *
  * @return Permissions in perm_key. ERROR_SUCCESS on success, different otherwise
 */
-DWORD get_registry_permissions(HKEY hndl, char *perm_key);
+DWORD get_registry_permissions(HKEY hndl, cJSON *perm_key);
 
 /**
  * @brief Get last modification time from registry key.
