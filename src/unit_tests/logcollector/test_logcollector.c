@@ -920,7 +920,8 @@ void test_w_load_files_status_update_hash_fail (void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, -1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(9000): File 'test' no longer exists.");
+    expect_string(__wrap__mtdebug1, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(9000): File 'test' no longer exists.");
 
     w_load_files_status(global_json);
 }
