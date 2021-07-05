@@ -42,26 +42,6 @@ extern void mock_assert(const int result, const char* const expression,
 /**
  * @brief Retrieves the permissions of a specific file (Windows)
  *
- * @param [in] ace ACE structure
- * @param [out] acl_json cJSON to write the permissions
- * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
- */
-static int process_ace_info(void *ace, cJSON *acl_json);
-
-/**
- * @brief Retrieves the permissions of a specific file (Windows)
- *
- * @param [out] acl_json cJSON to write the permissions
- * @param [in] sid The user ID associated to the user
- * @param [in] account_name The account name associated to the sid
- * @param [in] ace_type int with 0 if "allowed" ace, 1 if "denied" ace
- * @param [in] mask Mask with the permissions
- */
-static void add_ace_to_json(cJSON *acl_json, char *sid, char *account_name, const char *ace_type, int mask);
-
-/**
- * @brief Retrieves the permissions of a specific file (Windows)
- *
  * @param [out] ace_json cJSON with the mask to process
  * @param [in] mask Mask with the permissions
  * @param [in] ace_type string "allowed" or "denied" depends on ace type
@@ -796,119 +776,19 @@ end:
     return result;
 }
 
-int w_get_file_permissions(const char *file_path, cJSON *acl_json) {
-    int retval = 0;
-    int error;
-    unsigned int i;
-    SECURITY_DESCRIPTOR *s_desc = NULL;
-    ACL *f_acl = NULL;
-    void *f_ace;
-    int has_dacl, default_dacl;
-    unsigned long size = 0;
-    ACL_SIZE_INFORMATION acl_size;
 
-    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
-        // We must have this error at this point
-        if (error = GetLastError(), error != ERROR_INSUFFICIENT_BUFFER) {
-            return GetLastError();
-        }
-    }
-
-    if (os_calloc(size, 1, s_desc), !s_desc) {
-        return GetLastError();
-    }
-
-    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, s_desc, size, &size)) {
-        retval = GetLastError();
-        goto end;
-    }
-
-    if (!GetSecurityDescriptorDacl(s_desc, &has_dacl, &f_acl, &default_dacl)) {
-        mdebug1("The DACL of the file could not be obtained.");
-        retval = GetLastError();
-        goto end;
-    }
-
-    if (!has_dacl || !f_acl) {
-        mdebug1("'%s' has no DACL, so no permits can be extracted.", file_path);
-        goto end;
-    }
-
-    if (!GetAclInformation(f_acl, &acl_size, sizeof(acl_size), AclSizeInformation)) {
-        mdebug1("No information could be obtained from the ACL.");
-        retval = GetLastError();
-        goto end;
-    }
-
-    for (i = 0; i < acl_size.AceCount; i++) {
-        if (!GetAce(f_acl, i, &f_ace)) {
-            mdebug1("ACE number %d could not be obtained.", i);
-            retval = -2;
-            goto end;
-        }
-        if (process_ace_info(f_ace, acl_json)) {
-            mdebug1("ACE number %d could not be processed.", i);
-        }
-    }
-
-end:
-    free(s_desc);
-    return retval;
-}
-
-int process_ace_info(void *ace, cJSON *acl_json) {
-    SID *sid;
-    char *sid_str = NULL;
-    char *account_name = NULL;
-    char *domain_name = NULL;
-    int mask;
-    int ace_type;
-    int error;
-
-	if (((ACCESS_ALLOWED_ACE *)ace)->Header.AceType == ACCESS_ALLOWED_ACE_TYPE) {
-		ACCESS_ALLOWED_ACE *allowed_ace = (ACCESS_ALLOWED_ACE *)ace;
-		sid = (SID *)&allowed_ace->SidStart;
-		mask = allowed_ace->Mask;
-		ace_type = 0;
-	} else if (((ACCESS_DENIED_ACE *)ace)->Header.AceType == ACCESS_DENIED_ACE_TYPE) {
-		ACCESS_DENIED_ACE *denied_ace = (ACCESS_DENIED_ACE *)ace;
-		sid = (SID *)&denied_ace->SidStart;
-		mask = denied_ace->Mask;
-		ace_type = 1;
-	} else {
-        mdebug2("Invalid ACE type.");
-        return 1;
-    }
-
-    if (!IsValidSid(sid)) {
-        mdebug2("Invalid SID found in ACE.");
-		return 1;
-	}
-
-    if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
-        mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
-    }
-
-    if (!ConvertSidToStringSid(sid, &sid_str)) {
-        mdebug2("Could not extract the SID.");
-        free(account_name);
-        free(domain_name);
-		return 1;
-    }
-
-    add_ace_to_json(acl_json, sid_str, account_name, ace_type ? "denied" : "allowed", mask);
-    LocalFree(sid_str);
-
-    return 0;
-}
-
-void add_ace_to_json(cJSON *acl_json, char *sid, char *account_name, const char *ace_type, int mask) {
+/**
+ * @brief Retrieves the permissions of a specific file (Windows)
+ *
+ * @param [out] acl_json cJSON to write the permissions
+ * @param [in] sid The user ID associated to the user
+ * @param [in] account_name The account name associated to the sid
+ * @param [in] ace_type int with 0 if "allowed" ace, 1 if "denied" ace
+ * @param [in] mask Mask with the permissions
+ */
+static void add_ace_to_json(cJSON *acl_json, char *sid, char *account_name, const char *ace_type, int mask) {
     cJSON *ace_json = NULL;
     cJSON *mask_json = NULL;
-    int saved_mask;
-
-    assert(acl_json != NULL);
-    assert(strcmp(ace_type, "allowed") == 0 || strcmp(ace_type, "denied") == 0);
 
     ace_json = cJSON_GetObjectItem(acl_json, sid);
     if (ace_json == NULL) {
@@ -927,67 +807,175 @@ void add_ace_to_json(cJSON *acl_json, char *sid, char *account_name, const char 
         return;
     }
 
-    saved_mask = mask_json->valueint;
-    cJSON_SetNumberValue(mask_json, (saved_mask | mask));
+    cJSON_SetNumberValue(mask_json, (mask_json->valueint | mask));
 
     return;
 }
 
-int copy_ace_info(void *ace, char *perm, int perm_size) {
+
+/**
+ * @brief Retrieves the permissions of a specific file (Windows)
+ *
+ * @param [in] ace ACE structure
+ * @param [out] acl_json cJSON to write the permissions
+ * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
+ */
+static int process_ace_info(void *ace, cJSON *acl_json) {
     SID *sid;
     char *sid_str = NULL;
     char *account_name = NULL;
     char *domain_name = NULL;
     int mask;
     int ace_type;
-    int written = 0;
     int error;
 
-	if (((ACCESS_ALLOWED_ACE *)ace)->Header.AceType == ACCESS_ALLOWED_ACE_TYPE) {
-		ACCESS_ALLOWED_ACE *allowed_ace = (ACCESS_ALLOWED_ACE *)ace;
-		sid = (SID *)&allowed_ace->SidStart;
-		mask = allowed_ace->Mask;
-		ace_type = 0;
-	} else if (((ACCESS_DENIED_ACE *)ace)->Header.AceType == ACCESS_DENIED_ACE_TYPE) {
-		ACCESS_DENIED_ACE *denied_ace = (ACCESS_DENIED_ACE *)ace;
-		sid = (SID *)&denied_ace->SidStart;
-		mask = denied_ace->Mask;
-		ace_type = 1;
-	} else {
+    if (((ACCESS_ALLOWED_ACE *)ace)->Header.AceType == ACCESS_ALLOWED_ACE_TYPE) {
+        ACCESS_ALLOWED_ACE *allowed_ace = (ACCESS_ALLOWED_ACE *)ace;
+        sid = (SID *)&allowed_ace->SidStart;
+        mask = allowed_ace->Mask;
+        ace_type = 0;
+    } else if (((ACCESS_DENIED_ACE *)ace)->Header.AceType == ACCESS_DENIED_ACE_TYPE) {
+        ACCESS_DENIED_ACE *denied_ace = (ACCESS_DENIED_ACE *)ace;
+        sid = (SID *)&denied_ace->SidStart;
+        mask = denied_ace->Mask;
+        ace_type = 1;
+    } else {
         mdebug2("Invalid ACE type.");
-        return 0;
+        return 1;
     }
-
 
     if (!IsValidSid(sid)) {
         mdebug2("Invalid SID found in ACE.");
-		return 0;
-	}
-
+        return 1;
+    }
 
     if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
         mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
-        if (!ConvertSidToStringSid(sid, &sid_str)) {
-            mdebug2("Could not extract the SID.");
+    }
+
+    if (!ConvertSidToStringSid(sid, &sid_str)) {
+        mdebug2("Could not extract the SID.");
+        free(account_name);
+        free(domain_name);
+        return 1;
+    }
+
+    add_ace_to_json(acl_json, sid_str, account_name, ace_type ? "denied" : "allowed", mask);
+    LocalFree(sid_str);
+
+    return 0;
+}
+
+/**
+ * @brief Translates an ACL permissions to JSON.
+ *
+ * @param [in] pSecurityDescriptor A security descriptor to be translated.
+ * @param [out] acl_json A pointer to a cJSON object where information will be stored.
+ * @retval 0 on success.
+ * @retval -1 if the cJSON object could not be initialized.
+ * @retval -2 if no DACL is retrieved.
+ * @retval An error code retrieved from `GetLastError` otherwise.
+ */
+static int get_win_permissions(PSECURITY_DESCRIPTOR pSecurityDescriptor, cJSON **output_acl) {
+    ACL_SIZE_INFORMATION aclsizeinfo;
+    ACCESS_ALLOWED_ACE *pAce = NULL;
+    PACL pDacl = NULL;
+    BOOL fDaclPresent = FALSE;
+    BOOL fDaclDefaulted = TRUE;
+    BOOL bRtnBool = TRUE;
+    DWORD dwErrorCode = 0;
+    DWORD cAce;
+    cJSON *acl_json = cJSON_CreateObject();
+
+    if (acl_json == NULL) {
+        mwarn(FIM_CJSON_ERROR_CREATE_ITEM);
+        return -1;
+    }
+
+    // Retrieve a pointer to the DACL in the security descriptor.
+    bRtnBool = GetSecurityDescriptorDacl(pSecurityDescriptor,   // Structure that contains the DACL
+                                         &fDaclPresent,         // Indicates the presence of a DACL
+                                         &pDacl,                // Pointer to ACL
+                                         &fDaclDefaulted);      // Flag set to the value of the SE_DACL_DEFAULTED flag
+
+    if (bRtnBool == FALSE) {
+        dwErrorCode = GetLastError();
+        mdebug2("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
+
+        cJSON_Delete(acl_json);
+        return dwErrorCode;
+    }
+
+    // Check whether no DACL or a NULL DACL was retrieved from the security descriptor buffer.
+    if (fDaclPresent == FALSE || pDacl == NULL) {
+        mdebug2("No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
+
+        cJSON_Delete(acl_json);
+        return -2;
+    }
+
+    // Retrieve the ACL_SIZE_INFORMATION structure to find the number of ACEs in the DACL.
+    bRtnBool = GetAclInformation(pDacl,                 // Pointer to an ACL
+                                 &aclsizeinfo,          // Pointer to a buffer to receive the requested information
+                                 sizeof(aclsizeinfo),   // The size, in bytes, of the buffer
+                                 AclSizeInformation);   // Fill the buffer with an ACL_SIZE_INFORMATION structure
+
+    if (bRtnBool == FALSE) {
+        dwErrorCode = GetLastError();
+        mdebug2("GetAclInformation failed. GetLastError returned: %ld", dwErrorCode);
+
+        cJSON_Delete(acl_json);
+        return dwErrorCode;
+    }
+
+    // Loop through the ACEs to get the information.
+    for (cAce = 0; cAce < aclsizeinfo.AceCount; cAce++) {
+        // Get ACE info
+        if (GetAce(pDacl, cAce, (LPVOID*)&pAce) == FALSE) {
+            mdebug2("GetAce failed. GetLastError returned: %ld", GetLastError());
+            continue;
+        }
+        if (process_ace_info(pAce, acl_json)) {
+            mdebug1("ACE number %lu could not be processed.", cAce);
+        }
+    }
+
+    *output_acl = acl_json;
+
+    return 0;
+}
+
+
+int w_get_file_permissions(const char *file_path, cJSON **output_acl) {
+    int retval = 0;
+    SECURITY_DESCRIPTOR *s_desc = NULL;
+    unsigned long size = 0;
+
+    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, 0, 0, &size)) {
+        retval = GetLastError();
+
+        // We must have this error at this point
+        if (retval != ERROR_INSUFFICIENT_BUFFER) {
             goto end;
         }
     }
 
-    written = snprintf(NULL, 0, "|%s,%d,%d", sid_str ? sid_str : account_name, ace_type, mask);
+    os_calloc(size, 1, s_desc);
 
-    if (written > 0 && written + 1 < perm_size) {
-        written = snprintf(perm, perm_size, "|%s,%d,%d", sid_str ? sid_str : account_name, ace_type, mask);
-    } else {
-        written = 0;
+    if (!GetFileSecurity(file_path, DACL_SECURITY_INFORMATION, s_desc, size, &size)) {
+        retval = GetLastError();
+        goto end;
+    }
+
+    retval = get_win_permissions(s_desc, output_acl);
+
+    if (retval != 0) {
+        goto end;
     }
 
 end:
-    if (sid_str) {
-        LocalFree(sid_str);
-    }
-    free(account_name);
-    free(domain_name);
-    return written;
+    free(s_desc);
+    return retval;
 }
 
 int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
@@ -1121,22 +1109,14 @@ end:
     return result;
 }
 
-DWORD get_registry_permissions(HKEY hndl, cJSON *acl_json) {
+DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl) {
     PSECURITY_DESCRIPTOR pSecurityDescriptor;
-    ACL_SIZE_INFORMATION aclsizeinfo;
-    ACCESS_ALLOWED_ACE *pAce = NULL;
-    PACL pDacl = NULL;
-    DWORD cAce;
     DWORD dwRtnCode = 0;
     DWORD dwErrorCode = 0;
     DWORD lpcbSecurityDescriptor = 0;
-    BOOL bRtnBool = TRUE;
-    BOOL fDaclPresent = FALSE;
-    BOOL fDaclDefaulted = TRUE;
 
     if (RegGetKeySecurity(hndl, DACL_SECURITY_INFORMATION, NULL, &lpcbSecurityDescriptor) !=
         ERROR_INSUFFICIENT_BUFFER) {
-
         dwErrorCode = GetLastError();
         return dwErrorCode;
     }
@@ -1145,7 +1125,7 @@ DWORD get_registry_permissions(HKEY hndl, cJSON *acl_json) {
 
     // Get the security information.
     dwRtnCode = RegGetKeySecurity(hndl,                         // Handle to an open key
-                                  DACL_SECURITY_INFORMATION,    // Requeste DACL security information
+                                  DACL_SECURITY_INFORMATION,    // Request DACL security information
                                   pSecurityDescriptor,          // Pointer that receives the DACL information
                                   &lpcbSecurityDescriptor);     // Pointer that specifies the size, in bytes
 
@@ -1154,49 +1134,11 @@ DWORD get_registry_permissions(HKEY hndl, cJSON *acl_json) {
         return dwRtnCode;
     }
 
-    // Retrieve a pointer to the DACL in the security descriptor.
-    bRtnBool = GetSecurityDescriptorDacl(pSecurityDescriptor,   // Structure that contains the DACL
-                                         &fDaclPresent,         // Indicates the presence of a DACL
-                                         &pDacl,                // Pointer to ACL
-                                         &fDaclDefaulted);      // Flag set to the value of the SE_DACL_DEFAULTED flag
+    dwRtnCode = get_win_permissions(pSecurityDescriptor, output_acl);
 
-    if (bRtnBool == FALSE) {
-        dwErrorCode = GetLastError();
-        mdebug2("GetSecurityDescriptorDacl failed. GetLastError returned: %ld", dwErrorCode);
+    if (dwRtnCode != 0) {
         os_free(pSecurityDescriptor);
-        return dwErrorCode;
-    }
-
-    // Check whether no DACL or a NULL DACL was retrieved from the security descriptor buffer.
-    if (fDaclPresent == FALSE || pDacl == NULL) {
-        mdebug2("No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
-        os_free(pSecurityDescriptor);
-        return -1;
-    }
-
-    // Retrieve the ACL_SIZE_INFORMATION structure to find the number of ACEs in the DACL.
-    bRtnBool = GetAclInformation(pDacl,                 // Pointer to an ACL
-                                 &aclsizeinfo,          // Pointer to a buffer to receive the requested information
-                                 sizeof(aclsizeinfo),   // The size, in bytes, of the buffer
-                                 AclSizeInformation);   // Fill the buffer with an ACL_SIZE_INFORMATION structure
-
-    if (bRtnBool == FALSE) {
-        dwErrorCode = GetLastError();
-        mdebug2("GetAclInformation failed. GetLastError returned: %ld", dwErrorCode);
-        os_free(pSecurityDescriptor);
-        return dwErrorCode;
-    }
-
-    // Loop through the ACEs to get the information.
-    for (cAce = 0; cAce < aclsizeinfo.AceCount; cAce++) {
-        // Get ACE info
-        if (GetAce(pDacl, cAce, (LPVOID*)&pAce) == FALSE) {
-            mdebug2("GetAce failed. GetLastError returned: %ld", GetLastError());
-            continue;
-        }
-        if (process_ace_info(pAce, acl_json)) {
-            mdebug1("ACE number %lu could not be processed.", cAce);
-        }
+        return dwRtnCode;
     }
 
     os_free(pSecurityDescriptor);
@@ -1276,7 +1218,7 @@ void make_mask_readable (cJSON *ace_json, int mask, char *ace_type) {
         FILE_READ_ATTRIBUTES,
         FILE_WRITE_ATTRIBUTES,
         0
-	};
+    };
 
     static const char * const perm_strings[] = {
         "generic_read",
@@ -1297,7 +1239,7 @@ void make_mask_readable (cJSON *ace_json, int mask, char *ace_type) {
         "read_attributes",
         "write_attributes",
         NULL
-	};
+    };
 
     cJSON *perm_array = cJSON_CreateArray();
     if (perm_array == NULL) {
@@ -1306,10 +1248,10 @@ void make_mask_readable (cJSON *ace_json, int mask, char *ace_type) {
     }
 
     for (i = 0; perm_bits[i]; i++) {
-	    if (mask & perm_bits[i]) {
+        if (mask & perm_bits[i]) {
             cJSON_AddItemToArray(perm_array, cJSON_CreateString(perm_strings[i]));
-	    }
-	}
+        }
+    }
 
     cJSON_ReplaceItemInObject(ace_json, ace_type, perm_array);
 }

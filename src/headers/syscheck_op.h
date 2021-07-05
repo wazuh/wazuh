@@ -360,10 +360,12 @@ unsigned int w_get_file_attrs(const char *file_path);
  * @brief Retrieves the permissions of a specific file (Windows)
  *
  * @param [in] file_path The path of the file from which to check permissions
- * @param [out] acl_json cJSON in which to write the acl
- * @return 0 on success, the error code on failure, -2 if ACE could not be obtained
+ * @param [out] output_acl A cJSON pointer to an object holding the ACL of the file.
+ * @retval 0 on success.
+ * @retval -1 if the cJSON object could not be initialized.
+ * @retval An error code retrieved from `GetLastError` otherwise.
  */
-int w_get_file_permissions(const char *file_path, cJSON *acl_json);
+int w_get_file_permissions(const char *file_path, cJSON **output_acl);
 
 /**
  * @brief Retrieves the group name from a group ID in windows
@@ -386,12 +388,13 @@ char *get_registry_group(char **sid, HANDLE hndl);
 /**
  * @brief Retrieves the permissions of a registry key.
  *
- * @param hndl Handle for the registry key to check the permissions of.
- * @param perm_key Permissions associated to the registry key.
- *
- * @return Permissions in perm_key. ERROR_SUCCESS on success, different otherwise
+ * @param [in] hndl Handle for the registry key to check the permissions of.
+ * @param [out] output_acl A cJSON pointer to an object holding the ACL of the file.
+ * @retval 0 on success.
+ * @retval -1 if the cJSON object could not be initialized.
+ * @retval An error code retrieved from `GetLastError` otherwise.
 */
-DWORD get_registry_permissions(HKEY hndl, cJSON *perm_key);
+DWORD get_registry_permissions(HKEY hndl, cJSON **output_acl);
 
 /**
  * @brief Get last modification time from registry key.
@@ -401,16 +404,6 @@ DWORD get_registry_permissions(HKEY hndl, cJSON *perm_key);
  * @return Last modification time of registry key in POSIX format.
 */
 unsigned int get_registry_mtime(HKEY hndl);
-
-/**
- * @brief Copy ACE information into buffer
- *
- * @param [in] ace ACE structure
- * @param [out] perm Buffer in which to write the ACE information
- * @param [in] perm_size The size of the buffer
- * @return 0 on failure, the number of bytes written into perm on success
- */
-int copy_ace_info(void *ace, char *perm, int perm_size);
 
 /**
  * @brief Retrieves the account information (name and domain) from SID
