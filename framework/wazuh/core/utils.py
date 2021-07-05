@@ -1402,15 +1402,8 @@ class WazuhDBQuery(object):
         raise NotImplementedError
 
     def _filter_date(self, date_filter, filter_db_name):
-        # date_filter['value'] can be either a timeframe or a date in format %Y-%m-%d %H:%M:%S
-        if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
-            query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
-            self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += "{0} IS NOT NULL AND {0} {1}" \
-                          " strftime('%s', 'now') - :{2} ".format(self.fields[filter_db_name],
-                                                                   query_operator,
-                                                                   date_filter['field'])
-        elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}Z?)?', date_filter['value']):
+        # date_filter['value'] can be a date in format %Y-%m-%d, %Y-%m-%d %H:%M:%S or %Y-%m-%dT%H:%M:%SZ
+        if re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}Z?)?', date_filter['value']):
             self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', :{2})".format(
                 self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
