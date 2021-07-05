@@ -173,7 +173,8 @@ char *w_logtest_generate_error_response(char * msg){
 }
 
 
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg) {
+cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated,
+                              char ** debug_rules_str, OSList * list_msg) {
 
     cJSON *output = NULL;
     Eventinfo *lf = NULL;
@@ -202,7 +203,7 @@ cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, boo
     }
 
     /* Rules matching */
-    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, list_msg), check_add_event == -1) {
+    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, debug_rules_str, list_msg), check_add_event == -1) {
         Free_Eventinfo(lf);
         return output;
     }
@@ -289,7 +290,8 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session) {
 }
 
 
-int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg) {
+int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
+                                  char ** debug_rules_str, OSList * list_msg) {
 
     RuleNode * rulenode = NULL;
     RuleInfo * ruleinformation = NULL;
@@ -312,7 +314,7 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
 
         /* Search the rule that match */
         if (ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist, &session->cdblistnode,
-            rulenode, &session->rule_match, &session->fts_list, &session->fts_store, false), !ruleinformation) {
+            rulenode, &session->rule_match, &session->fts_list, &session->fts_store, false, debug_rules_str), !ruleinformation) {
             continue;
         }
 
@@ -762,10 +764,11 @@ int w_logtest_check_input_remove_session(cJSON * root, char ** msg) {
 
 int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) {
 
-    cJSON * location;
-    cJSON * log_format;
-    cJSON * event;
-    cJSON * token;
+    cJSON * location = NULL;
+    cJSON * log_format = NULL;
+    cJSON * event = NULL;
+    cJSON * token = NULL;
+    cJSON * options = NULL;
 
     /* Check JSON fields */
     location = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_LOCATION);
@@ -808,8 +811,9 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
         return W_LOGTEST_CODE_INVALID_JSON;
     }
 
+    /* Session may not be initialized */
     token = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
-    if (token && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
+    if (token != NULL && (!cJSON_IsString(token) || !valid_str_session(token, W_LOGTEST_TOKEN_LENGH)) {
 
         char * str_token = NULL;
 
@@ -824,6 +828,13 @@ int w_logtest_check_input_request(cJSON * root, char ** msg, OSList * list_msg) 
         os_free(str_token);
 
         cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_TOKEN);
+    }
+
+    /* The optional parameters must be in a json object. Otherwise, they will be dismissed. */
+    options = cJSON_GetObjectItemCaseSensitive(root, W_LOGTEST_JSON_OPT);
+    if (options != NULL && !cJSON_IsObject(options)) {
+        cJSON_DeleteItemFromObjectCaseSensitive(root, W_LOGTEST_JSON_OPT);
+        smwarn(list_msg, LOGTEST_WARN_IGNORE_JSON_OPTION_OFIELD, W_LOGTEST_JSON_OPT);
     }
 
     return W_LOGTEST_CODE_SUCCESS;
@@ -1019,15 +1030,27 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     w_logtest_session_t * current_session = NULL;
     int retval = W_LOGTEST_RCODE_SUCCESS;
 
+    bool alert_generated = false;
+    
+    /* Get options */
+    cJSON * j_processing_opt = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_OPT);
+    cJSON * j_rule_verbose = (j_processing_opt != NULL)
+                             ? cJSON_GetObjectItemCaseSensitive(j_processing_opt, W_LOGTEST_JSON_OPT_RULE_DEBUG)
+                             : NULL;
+
+    /* Rule verbose mode */
+    char * rule_verbose_str = NULL;
+    bool is_enabled_rule_verbose = false;
+
     /* Search an active session */
     cJSON * j_token;
     char * s_token = NULL;
 
-    if (j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_TOKEN), j_token) {
+    if (j_token = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_TOKEN), j_token != NULL) {
         s_token = j_token->valuestring;
     }
 
-    if (s_token) {
+    if (s_token != NULL) {
 
         w_rwlock_wrlock(&w_logtest_sessions->mutex);
 
@@ -1064,16 +1087,25 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_TOKEN, current_session->token);
 
     /* Proccess log */
-    bool alert_generated = false;
-    cJSON * json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, list_msg);
+    // TODO add warn msg, if j_rule_verbose is not a bool
+    if (j_rule_verbose != NULL && cJSON_IsBool(j_rule_verbose) && cJSON_IsTrue(j_rule_verbose)) {
+        is_enabled_rule_verbose = true;
+    }
+    cJSON * json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, 
+                                                      is_enabled_rule_verbose ? &rule_verbose_str : NULL, list_msg);
 
     w_mutex_unlock(&current_session->mutex);
 
-    if (json_log_processed) {
+    if (json_log_processed != NULL) {
         cJSON_AddItemToObject(json_response, W_LOGTEST_JSON_OUTPUT, json_log_processed);
     } else {
         smerror(list_msg, LOGTEST_ERROR_PROCESS_EVENT);
         mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
+    }
+
+    if (rule_verbose_str != NULL) {
+        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_RULE_DEBUG, rule_verbose_str);
+        os_free(rule_verbose_str);
     }
 
     /* Generate response */

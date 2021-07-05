@@ -50,6 +50,10 @@
 #define W_LOGTEST_JSON_MESSAGES              "messages"   ///< Message format field name of json output
 #define W_LOGTEST_JSON_CODE                   "codemsg"   ///< Code of message field name of json output (number)
 #define W_LOGTEST_JSON_OUTPUT                  "output"   ///< Output field name of json output
+#define W_LOGTEST_JSON_RULE_DEBUG          "rule_debug"   ///< Output field name of json rule_debug (string)
+#define W_LOGTEST_JSON_OPT                    "options"   ///< Requests options
+#define W_LOGTEST_JSON_OPT_RULE_DEBUG      "rule_debug"   ///< Enables rules debug option
+
 
 /* Commands allowed */
 #define W_LOGTEST_COMMAND_REMOVE_SESSION   "remove_session"    ///< Command used to remove a session
@@ -144,11 +148,13 @@ void *w_logtest_clients_handler();
  * @brief Process client's request
  * @param request client input
  * @param session client session
+ * @param debug_rules_str returns debugging rules message in *debug_rules_str if debug_rules_str is non-null
  * @param alert_generated returns true if the alert should be generated
  * @param list_msg list of error/warn/info messages
  * @return NULL on failure, otherwise the alert generated
  */
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg);
+cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated,
+                             char ** debug_rules_str, OSList * list_msg);
 
 /**
  * @brief Preprocessing phase
@@ -178,13 +184,15 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
  *
  * @param lf struct to save the event processed
  * @param session client session
+ * @param debug_rules_str returns debugging rules message in *debug_rules_str if debug_rules_str is non-null
  * @param list_msg list of error/warn/info messages
  * @retval -1 on error
  * @retval  0 on success
  * @retval  1 on success and the event lf is added to the event list
 
  */
-int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg);
+int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
+                                  char ** debug_rules_str, OSList * list_msg);
 
 /**
  * @brief Create resources necessary to service client

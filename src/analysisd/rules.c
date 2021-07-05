@@ -2598,7 +2598,8 @@ STATIC int doesRuleExist(int sid, RuleNode *r_node)
 RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                               ListNode **cdblists, RuleNode *curr_node,
                               regex_matching *rule_match, OSList **fts_list,
-                              OSHash **fts_store, const bool save_fts_value) {
+                              OSHash **fts_store, const bool save_fts_value,
+                              char ** debug_rules_str) {
 
     /* We check for:
      * decoded_as,
@@ -2633,6 +2634,13 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                   rule->comment);
     }
 #endif
+    if (debug_rules_str != NULL) {
+        char rule_str[50] = {0};
+        snprintf(rule_str, 50, "    Trying rule: %d - ", rule->sigid);
+        wm_strcat(debug_rules_str, rule_str, 0);
+        wm_strcat(debug_rules_str, rule->comment, 0);
+        wm_strcat(debug_rules_str, "\n", 0);
+    }
 
     /* Check if any decoder pre-matched here for syscheck event */
     if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
@@ -3111,6 +3119,11 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         print_out("       *Rule %d matched.", rule->sigid);
     }
 #endif
+    if (debug_rules_str != NULL) {
+        char rule_str[50] = {0};
+        snprintf(rule_str, 50, "       *Rule %d matched.\n", rule->sigid);
+        wm_strcat(debug_rules_str, rule_str, 0);
+    }
 
     /* Search for dependent rules */
     if (curr_node->child) {
@@ -3121,9 +3134,13 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             print_out("       *Trying child rules.");
         }
 #endif
+        if (debug_rules_str != NULL) {
+            wm_strcat(debug_rules_str, "       *Trying child rules.\n", 0);
+        }
+
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match,
-                                             fts_list, fts_store, save_fts_value);
+                                             fts_list, fts_store, save_fts_value, debug_rules_str);
             if (child_rule != NULL) {
                 if (!child_rule->prev_rule) {
                     child_rule->prev_rule = rule;

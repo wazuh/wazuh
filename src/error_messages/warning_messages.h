@@ -74,6 +74,8 @@
 #define LOGTEST_INV_NUM_TIMEOUT                 "(7002): Number of maximum user timeouts in logtest too high. Only allows %ds maximum timeouts"
 #define LOGTEST_WARN_TOKEN_EXPIRED              "(7003): '%s' token expires"
 #define LOGTEST_WARN_SESSION_NOT_FOUND          "(7004): No session found for token '%s'"
+#define LOGTEST_WARN_IGNORE_JSON_OPTION_OFIELD  "(7005): '%s' field must be a JSON object. The parameter will be ignored"
+
 
 /* Ruleset reading warnings */
 #define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
