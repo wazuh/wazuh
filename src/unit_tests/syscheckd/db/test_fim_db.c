@@ -1075,6 +1075,29 @@ static void fim_db_get_checksum_range_fail_step_on_first_half(void **state) {
     assert_int_equal(retval, FIMDB_ERR);
 }
 
+static void fim_db_get_checksum_empty_range_fail_step_on_first_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    int retval;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg,
+                  "Received a synchronization message with empty range, first half 'start start' 'top top' (i:0)");
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
 static void fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half(void **state) {
     fdb_t fim_sql;
     const char *start = "start";
@@ -1128,6 +1151,39 @@ static void fim_db_get_checksum_range_fail_step_on_second_half(void **state) {
     expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
     expect_string(__wrap__mterror, formatted_msg,
                  "Step error getting path range, second half 'start start' 'top top' (i:1): ERROR MESSAGE (111)");
+
+    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
+                                       &higher_half_path);
+    assert_int_equal(retval, FIMDB_ERR);
+}
+
+static void fim_db_get_checksum_empty_range_fail_step_on_second_half(void **state) {
+    fdb_t fim_sql;
+    const char *start = "start";
+    const char *top = "top";
+    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
+    char *lower_half_path = NULL, *higher_half_path = NULL;
+    const char *array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
+    int retval;
+
+    expect_fim_db_clean_stmt();
+    expect_fim_db_bind_range(start, top, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_fim_db_decode_string_array(2, array);
+
+    expect_string(__wrap_EVP_DigestUpdate, data, "0123456789ABCDEF0123456789ABCDEF01234567");
+    expect_value(__wrap_EVP_DigestUpdate, count, 40);
+    will_return(__wrap_EVP_DigestUpdate, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg,
+                  "Received a synchronization message with empty range, second half 'start start' 'top top' (i:1)");
 
     retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
                                        &higher_half_path);
@@ -2435,6 +2491,8 @@ int main(void) {
         cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_first_half),
         cmocka_unit_test(fim_db_get_checksum_range_fail_step_on_second_half),
         cmocka_unit_test(fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half),
+        cmocka_unit_test(fim_db_get_checksum_empty_range_fail_step_on_first_half),
+        cmocka_unit_test(fim_db_get_checksum_empty_range_fail_step_on_second_half),
         cmocka_unit_test_teardown(fim_db_get_checksum_range_success, teardown_string_array),
         // fim_db_get_count_range
         cmocka_unit_test_setup_teardown(test_fim_db_get_count_range_error_stepping, test_fim_db_setup,

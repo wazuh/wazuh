@@ -37,6 +37,14 @@ void set_whodata_mode_changes();
 #endif
 /* External 'static' functions prototypes */
 void fim_send_msg(char mq, const char * location, const char * msg);
+#ifdef WIN32
+DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
+
+extern void free_win32rtfim_data(win32rtfim *data);
+
+#else
+void * fim_run_realtime(__attribute__((unused)) void * args);
+#endif
 
 #ifndef TEST_WINAGENT
 void fim_link_update(const char *new_path, directory_t *configuration);
@@ -66,14 +74,14 @@ time_t __wrap_time(time_t *timer) {
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
+
 #ifdef TEST_WINAGENT
-#ifdef WIN_WHODATA
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-#endif
+
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
@@ -83,7 +91,9 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
-#else
+#else // !TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.swp$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.swp$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
@@ -92,7 +102,7 @@ static int setup_group(void ** state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
 
     syscheck.database = fim_db_init(FIM_DB_DISK);
-#endif
+#endif // TEST_WINAGENT
 
     will_return(__wrap_getDefine_Int, 5);
     will_return(__wrap_getDefine_Int, 256);
@@ -135,10 +145,11 @@ static int setup_group(void ** state) {
         return -1;
     }
 
-    OSHash_Add_ex(syscheck.realtime->dirtb, "key", strdup("data"));
 
 #ifdef TEST_WINAGENT
     time_mock_value = 1;
+#else
+    OSHash_Add_ex(syscheck.realtime->dirtb, "key", strdup("data"));
 #endif
     return 0;
 }
@@ -146,6 +157,9 @@ static int setup_group(void ** state) {
 #ifndef TEST_WINAGENT
 
 static int setup_symbolic_links(void **state) {
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     directory_t *config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     if (config->path != NULL) {
@@ -165,6 +179,9 @@ static int setup_symbolic_links(void **state) {
 }
 
 static int teardown_symbolic_links(void **state) {
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     directory_t *config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
     if (config->path != NULL) {
         free(config->path);
@@ -214,13 +231,10 @@ static int teardown_tmp_file(void **state) {
 
 static int teardown_group(void **state) {
 #ifdef TEST_WINAGENT
-#ifdef WIN_WHODATA
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-#endif
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     if (syscheck.realtime) {
         if (syscheck.realtime->dirtb) {
@@ -229,6 +243,9 @@ static int teardown_group(void **state) {
         free(syscheck.realtime);
         syscheck.realtime = NULL;
     }
+#else
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
     fim_db_clean();
@@ -254,6 +271,49 @@ static int teardown_max_fps(void **state) {
     return 0;
 }
 
+#ifdef TEST_WINAGENT
+
+static int setup_hash(void **state) {
+    directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    win32rtfim *rtlocald;
+    rtlocald = calloc(1, sizeof(win32rtfim));
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            OSHash_Add_ex(syscheck.realtime->dirtb, dir_it->path, rtlocald);
+        }
+    }
+    syscheck.realtime->evt = (HANDLE)234;
+    return 0;
+}
+
+static int teardown_hash(void **state) {
+    directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            free_win32rtfim_data(OSHash_Delete_ex(syscheck.realtime->dirtb, dir_it->path));
+        }
+    }
+    return 0;
+}
+#endif
 /* tests */
 
 void test_fim_whodata_initialize(void **state)
@@ -351,7 +411,272 @@ void test_fim_send_msg_retry_error(void **state) {
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
 }
 
-#ifdef TEST_WINAGENT
+#ifndef TEST_WINAGENT
+
+void test_fim_run_realtime_first_error(void **state) {
+    char debug_msg[OS_SIZE_128] = {0};
+    syscheck.realtime->fd = 4;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_FOREVER, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_select, -1);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, FIM_ERROR_SELECT);
+
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
+
+void test_fim_run_realtime_first_timeout(void **state) {
+    syscheck.realtime->fd = 4;
+    char debug_msg[OS_SIZE_128] = {0};
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_FOREVER, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+
+    will_return(__wrap_select, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
+
+void test_fim_run_realtime_first_sleep(void **state) {
+
+    syscheck.realtime->fd = -1;
+    char debug_msg[OS_SIZE_128] = {0};
+    expect_function_call(__wrap_pthread_mutex_lock);
+    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_FOREVER, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_value(__wrap_sleep, seconds, SYSCHECK_WAIT);
+
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
+
+void test_fim_run_realtime_first_process(void **state) {
+    syscheck.realtime->fd = 4;
+    char debug_msg[OS_SIZE_128] = {0};
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_FOREVER, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_select, 4);
+    expect_function_call(__wrap_realtime_process);
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
+
+void test_fim_run_realtime_process_after_timeout(void **state) {
+    syscheck.realtime->fd = 4;
+    char debug_msg[OS_SIZE_128] = {0};
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, 1);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_FOREVER, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_select, 0);
+
+    will_return(__wrap_FOREVER, 1);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_select, 4);
+    expect_function_call(__wrap_realtime_process);
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
+#else
+
+void test_fim_run_realtime_w_first_timeout(void **state) {
+    char debug_msg[OS_SIZE_128] = {0};
+    directory_t *dir_it;
+    OSListNode *node_it;
+    int added_dirs = 0;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    // set_priority_windows_thread
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
+
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+            will_return(__wrap_realtime_adddir, 0);
+            added_dirs++;
+        }
+    }
+    will_return(__wrap_FOREVER, 1);
+
+    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, added_dirs);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
+
+    expect_value(wrap_WaitForSingleObjectEx, hHandle, (DWORD)234);
+    expect_value(wrap_WaitForSingleObjectEx, dwMilliseconds, SYSCHECK_WAIT * 1000);
+    expect_value(wrap_WaitForSingleObjectEx, bAlertable, TRUE);
+    will_return(wrap_WaitForSingleObjectEx, WAIT_FAILED);
+
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+            will_return(__wrap_realtime_adddir, 0);
+            added_dirs++;
+        }
+    }
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
+
+void test_fim_run_realtime_w_wait_success(void **state) {
+    char debug_msg[OS_SIZE_128] = {0};
+    directory_t *dir_it;
+    OSListNode *node_it;
+    int added_dirs = 0;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    // set_priority_windows_thread
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
+
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+            will_return(__wrap_realtime_adddir, 0);
+            added_dirs++;
+        }
+    }
+
+    will_return(__wrap_FOREVER, 1);
+
+    snprintf(debug_msg, OS_SIZE_128, FIM_NUM_WATCHES, added_dirs);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, debug_msg);
+
+    expect_value(wrap_WaitForSingleObjectEx, hHandle, (DWORD)234);
+    expect_value(wrap_WaitForSingleObjectEx, dwMilliseconds, SYSCHECK_WAIT * 1000);
+    expect_value(wrap_WaitForSingleObjectEx, bAlertable, TRUE);
+    will_return(wrap_WaitForSingleObjectEx, WAIT_IO_COMPLETION);
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+            will_return(__wrap_realtime_adddir, 0);
+            added_dirs++;
+        }
+    }
+
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
+
+void test_fim_run_realtime_w_sleep(void **state) {
+    char debug_msg[OS_SIZE_128] = {0};
+    directory_t *dir_it;
+    OSListNode *node_it;
+    int added_dirs = 0;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    // set_priority_windows_thread
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
+    will_return(wrap_GetCurrentThread, (HANDLE)123456);
+    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
+
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+            will_return(__wrap_realtime_adddir, 0);
+        }
+    }
+    will_return(__wrap_FOREVER, 1);
+
+    expect_value(wrap_Sleep, dwMilliseconds, SYSCHECK_WAIT * 1000);
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+            will_return(__wrap_realtime_adddir, 0);
+            added_dirs++;
+        }
+    }
+
+    will_return(__wrap_FOREVER, 0);
+
+    fim_run_realtime(NULL);
+}
 
 void test_fim_whodata_initialize_fail_set_policies(void **state)
 {
@@ -606,6 +931,8 @@ void test_send_syscheck_msg_10_eps(void ** state) {
     }
 
     // We must not sleep the first 9 times
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     for (int i = 1; i < syscheck.max_eps; i++) {
         expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
@@ -660,6 +987,8 @@ void test_fim_send_scan_info(void **state) {
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
@@ -676,6 +1005,9 @@ void test_fim_link_update(void **state) {
 }
 
 void test_fim_link_update_already_added(void **state) {
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     char *link_path = "/home";
     char error_msg[OS_SIZE_128];
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
@@ -697,6 +1029,9 @@ void test_fim_link_update_already_added(void **state) {
 void test_fim_link_check_delete(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_string(__wrap_lstat, filename, affected_config->symbolic_links);
@@ -718,6 +1053,9 @@ void test_fim_link_check_delete_lstat_error(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
     char error_msg[OS_SIZE_128];
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_string(__wrap_lstat, filename, pointed_folder);
@@ -739,6 +1077,9 @@ void test_fim_link_check_delete_lstat_error(void **state) {
 void test_fim_link_check_delete_noentry_error(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_string(__wrap_lstat, filename, pointed_folder);
@@ -761,6 +1102,9 @@ void test_fim_delete_realtime_watches(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_fim_configuration_directory_call(pointed_folder, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
     expect_fim_configuration_directory_call("data", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
@@ -774,6 +1118,9 @@ void test_fim_delete_realtime_watches(void **state) {
 void test_fim_link_delete_range(void **state) {
     fim_tmp_file *tmp_file = *state;
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
     fim_link_delete_range(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1)));
@@ -782,6 +1129,9 @@ void test_fim_link_delete_range(void **state) {
 void test_fim_link_delete_range_error(void **state) {
     char error_msg[OS_SIZE_128];
     fim_tmp_file *tmp_file = *state;
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/folder/%");
     expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
@@ -795,6 +1145,10 @@ void test_fim_link_delete_range_error(void **state) {
 
 void test_fim_link_silent_scan(void **state) {
     char *link_path = "/link";
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3);
 
     expect_realtime_adddir_call(link_path, 0);
@@ -807,6 +1161,10 @@ void test_fim_link_reload_broken_link_already_monitored(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
     char error_msg[OS_SIZE_128];
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
@@ -823,6 +1181,10 @@ void test_fim_link_reload_broken_link_already_monitored(void **state) {
 void test_fim_link_reload_broken_link_reload_broken(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/new_path";
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     directory_t *affected_config = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
 
     expect_fim_checker_call(pointed_folder, affected_config);
@@ -840,11 +1202,16 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 #endif
 
 void test_check_max_fps_no_sleep(void **state) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     will_return(__wrap_gettime, last_time + 1);
+
     check_max_fps();
 }
 
 void test_check_max_fps_sleep(void **state) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     last_time = 10;
     files_read = syscheck.max_files_per_second;
 
@@ -879,6 +1246,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
 #ifndef TEST_WINAGENT
+        cmocka_unit_test(test_fim_run_realtime_first_error),
+        cmocka_unit_test(test_fim_run_realtime_first_timeout),
+        cmocka_unit_test(test_fim_run_realtime_first_sleep),
+        cmocka_unit_test(test_fim_run_realtime_first_process),
+        cmocka_unit_test(test_fim_run_realtime_process_after_timeout),
         cmocka_unit_test_setup_teardown(test_fim_link_update, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_update_already_added, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_check_delete, setup_symbolic_links, teardown_symbolic_links),
@@ -890,6 +1262,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_link_silent_scan, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_already_monitored, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_reload_broken, setup_symbolic_links, teardown_symbolic_links),
+#else
+        cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_first_timeout, setup_hash, teardown_hash),
+        cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
+        cmocka_unit_test(test_fim_run_realtime_w_sleep),
 #endif
     };
 

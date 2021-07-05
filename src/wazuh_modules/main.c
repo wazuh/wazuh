@@ -205,13 +205,8 @@ void wm_handler(int signum)
         // For the moment only gracefull shutdown will be for syscollector, in the future
         // it will be modified for all wmodules, modifying the mainloop of each thread.
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
-            if (0 == strncmp(cur_module->context->name, "syscollector", strlen(cur_module->context->name))) {
-                cur_module->context->destroy(cur_module->data);
-                if (0 != pthread_join(cur_module->thread, NULL)) {
-                    mdebug2("Thread cannot be joined.");
-                }
-            } else if (0 == strncmp(cur_module->context->name, "execd", strlen(cur_module->context->name))) {
-                cur_module->context->destroy(cur_module->data);
+            if (cur_module->context->stop) {
+                cur_module->context->stop(cur_module->data);
             }
         }
         exit(EXIT_SUCCESS);

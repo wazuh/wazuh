@@ -23,7 +23,8 @@ void expect_fim_diff_delete_compress_folder(struct dirent *dir) {
 
     expect_any(__wrap_rmdir_ex, name);
     will_return(__wrap_rmdir_ex, 0);
-    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_any(__wrap__mtdebug2, formatted_msg);
 
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, dir);

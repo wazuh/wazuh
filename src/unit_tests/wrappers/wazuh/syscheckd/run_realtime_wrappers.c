@@ -24,6 +24,9 @@ int __wrap_realtime_adddir(const char *dir,
 int __wrap_realtime_start() {
     return 0;
 }
+void __wrap_realtime_process() {
+    function_called();
+}
 
 void expect_realtime_adddir_call(const char *path, int ret) {
     expect_string(__wrap_realtime_adddir, dir, path);
