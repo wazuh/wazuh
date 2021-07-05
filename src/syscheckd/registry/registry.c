@@ -467,7 +467,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
             return NULL;
         }
 
-        error = get_registry_permissions(key_handle, key->perm_json);
+        error = get_registry_permissions(key_handle, &(key->perm_json));
         if (error) {
             mdebug1(FIM_EXTRACT_PERM_FAIL, path, error);
             fim_registry_free_key(key);

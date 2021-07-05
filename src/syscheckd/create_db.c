@@ -1154,13 +1154,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 #ifdef WIN32
         int error;
 
-        data->perm_json = cJSON_CreateObject();
-        if (data->perm_json == NULL) {
-            mwarn(FIM_CJSON_ERROR_CREATE_ITEM);
-            return NULL;
-        }
-
-        error = w_get_file_permissions(file, data->perm_json);
+        error = w_get_file_permissions(file, &(data->perm_json));
         if (error) {
             mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
             free_file_data(data);
