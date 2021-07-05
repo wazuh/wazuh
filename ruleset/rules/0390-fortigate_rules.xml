@@ -106,7 +106,7 @@ ID: 81600 - 80799
         <same_source_ip />
         <description>Fortigate: Multiple default tunneling setting events from same source.</description>
         <mitre>
-            <id>T1071</id>
+            <id>T1562.004</id>
         </mitre>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     </rule>
@@ -288,4 +288,3 @@ ID: 81600 - 80799
     </rule>
 
 </group>
-
