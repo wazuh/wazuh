@@ -482,9 +482,28 @@ cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *data) {
     cJSON *wm_wd = cJSON_CreateObject();
 
     sched_scan_dump(&(data->scan_config), wm_wd);
-
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "run_on_start", data->run_on_start ? "yes" : "no");
+
+    if (data->buckets) {
+        wm_gcp_bucket *cur_bucket;
+        cJSON *arr_buckets = cJSON_CreateArray();
+        for (cur_bucket = data->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
+            cJSON *buck = cJSON_CreateObject();
+            if (cur_bucket->bucket) cJSON_AddStringToObject(buck, "bucket", cur_bucket->bucket);
+            if (cur_bucket->type) cJSON_AddStringToObject(buck, "type", cur_bucket->type);
+            if (cur_bucket->credentials_file) cJSON_AddStringToObject(buck, "credentials_file", cur_bucket->credentials_file);
+            if (cur_bucket->prefix) cJSON_AddStringToObject(buck, "prefix", cur_bucket->prefix);
+            if (cur_bucket->only_logs_after) cJSON_AddStringToObject(buck, "only_logs_after", cur_bucket->only_logs_after);
+            if (cur_bucket->remove_from_bucket) cJSON_AddNumberToObject(buck, "remove_from_bucket", cur_bucket->remove_from_bucket);
+            cJSON_AddItemToArray(arr_buckets, buck);
+        }
+        if (cJSON_GetArraySize(arr_buckets) > 0) {
+            cJSON_AddItemToObject(wm_wd, "buckets", arr_buckets);
+        } else {
+            cJSON_free(arr_buckets);
+        }
+    }
 
     switch (data->logging) {
         case 0:
