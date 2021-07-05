@@ -61,7 +61,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _filter_date(self, date_filter, filter_db_name):
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
-        self.query = self.query[:-1] + ' AND id != 0'
+        self.query += ' AND id != 0'
 
     def _sort_query(self, field):
         if field == 'os.version':

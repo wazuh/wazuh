@@ -1406,13 +1406,13 @@ class WazuhDBQuery(object):
         if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
             query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += "({0} IS NOT NULL AND {0} {1}" \
-                          " strftime('%s', 'now') - :{2}) ".format(self.fields[filter_db_name],
+            self.query += "{0} IS NOT NULL AND {0} {1}" \
+                          " strftime('%s', 'now') - :{2} ".format(self.fields[filter_db_name],
                                                                    query_operator,
                                                                    date_filter['field'])
-        elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
-            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name],
-                                                                    date_filter['operator'], date_filter['field'])
+        elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}Z?)?', date_filter['value']):
+            self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', :{2})".format(
+                self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
             raise WazuhError(1412, date_filter['value'])
