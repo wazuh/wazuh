@@ -177,6 +177,7 @@ int main(int argc, char **argv)
     }
 
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Prepare JSON Structure */
     if(json_output)
@@ -195,16 +196,6 @@ int main(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
-
-    /* Chroot to the default directory */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-
-    os_free(home_path);
-
-    /* Inside chroot now */
-    nowChroot();
 
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {

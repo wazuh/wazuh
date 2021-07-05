@@ -45,7 +45,6 @@
 #define DELETE_ERROR  "(1129): Could not unlink file '%s' due to [(%d)-(%s)]."
 #define SETGID_ERROR  "(1130): Unable to switch to group '%s' due to [(%d)-(%s)]."
 #define SETUID_ERROR  "(1131): Unable to switch to user '%s' due to [(%d)-(%s)]."
-#define CHROOT_ERROR  "(1132): Unable to chroot to directory '%s' due to [(%d)-(%s)]."
 #define CHDIR_ERROR   "(1133): Unable to chdir to directory '%s' due to [(%d)-(%s)]."
 #define LINK_ERROR    "(1134): Unable to link from '%s' to '%s' due to [(%d)-(%s)]."
 #define CHOWN_ERROR   "(1135): Could not chown object '%s' due to [(%d)-(%s)]."

@@ -13,8 +13,6 @@
 
 #include "headers/defs.h"
 
-int __wrap_isChroot();
-
 void __wrap__mdebug1(const char * file,
                      int line,
                      const char * func,

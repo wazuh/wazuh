@@ -259,7 +259,7 @@ static void help_analysisd(char * home_path)
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chdir into (default: %s)", home_path);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -373,6 +373,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Start daemon */
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
@@ -492,20 +493,10 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* Chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-    nowChroot();
-
     /* Set the user */
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
-
-    /* Verbose message */
-    mdebug1(PRIVSEP_MSG, home_path, user);
-    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

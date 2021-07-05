@@ -115,11 +115,13 @@ int main(int argc, char ** argv)
     }
 
     // Reset template. Basically, remove queue/db/.template.db
-    // The prefix is needed here, because we are not yet chrooted
+    // The prefix is needed here
     char path_template[OS_FLSIZE + 1];
     snprintf(path_template, sizeof(path_template), "%s/%s/%s", home_path, WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed: %s", path_template);
+
+    os_free(home_path);
 
     // Set max open files limit
     struct rlimit rlimit = { nofile, nofile };
@@ -144,16 +146,10 @@ int main(int argc, char ** argv)
 
         // Change root
 
-        if (Privsep_Chroot(home_path) < 0) {
-            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-        }
-
         if (Privsep_SetUser(uid) < 0) {
             merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
         }
     }
-
-    os_free(home_path);
 
     // Signal manipulation
 
@@ -225,8 +221,8 @@ int main(int argc, char ** argv)
     OSHash_Free(open_dbs);
 
     // Reset template here too, remove queue/db/.template.db again
-    // Without the prefix, because chrooted at that point
-    snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
+    // The prefix is needed here
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", home_path, WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
 

@@ -23,7 +23,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     available_server = 0;
 
-    /* Initial random numbers must happen before chroot */
     srandom_init();
 
     /* Initialize sender */

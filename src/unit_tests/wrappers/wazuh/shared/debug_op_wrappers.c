@@ -7,17 +7,13 @@
  * Foundation
  */
 
-#include "debug_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
-
-int __wrap_isChroot() {
-    return mock();
-}
+#include "debug_op_wrappers.h"
 
 void __wrap__mdebug1(__attribute__((unused)) const char * file,
                      __attribute__((unused)) int line,

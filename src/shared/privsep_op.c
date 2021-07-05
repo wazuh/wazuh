@@ -164,22 +164,4 @@ int Privsep_SetGroup(gid_t gid)
     return (OS_SUCCESS);
 }
 
-int Privsep_Chroot(const char *path)
-{
-    if (chdir(path) < 0) {
-        return (OS_INVALID);
-    }
-
-    if (chroot(path) < 0) {
-        return (OS_INVALID);
-    }
-
-    if (chdir("/") < 0) {
-        return (OS_INVALID);
-    }
-
-    nowChroot();
-    return (OS_SUCCESS);
-}
-
 #endif /* !WIN32 */

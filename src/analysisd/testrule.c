@@ -56,7 +56,7 @@ static void help_logtest(char * home_path)
     print_out("    -a          Alerts output");
     print_out("    -v          Verbose (full) output/rule debugging");
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chdir into (default: %s)", home_path);
     print_out("    -U <rule:alert:decoder>  Unit test. Refer to ruleset/testing/runtests.py");
     print_out(" ");
     os_free(home_path);
@@ -150,6 +150,7 @@ int main(int argc, char **argv)
     }
 
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Read configuration file */
     if (GlobalConf(cfg) < 0) {
@@ -198,12 +199,6 @@ int main(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
-
-    /* Chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-    nowChroot();
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
