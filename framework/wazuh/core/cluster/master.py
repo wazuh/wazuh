@@ -180,7 +180,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                     not key.startswith('tmp')},
                            'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
                                                    not key.startswith('tmp')},
-                           'last_sync_agentinfo': self.integrity_check_status,
+                           'last_sync_agentinfo': self.sync_agent_info_status,
                            'last_keep_alive': self.last_keepalive}
                 }
 
