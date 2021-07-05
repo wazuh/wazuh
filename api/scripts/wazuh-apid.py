@@ -6,8 +6,9 @@
 
 import argparse
 import sys
+from atexit import register
 
-from wazuh.core import common
+from wazuh.core import common, utils
 
 
 def start(foreground, root, config_file):
@@ -130,11 +131,13 @@ def start(foreground, root, config_file):
         print(f"Starting API as root")
 
     # Foreground/Daemon
+    utils.check_pid('wazuh-apid')
     if not foreground:
         pyDaemonModule.pyDaemon()
-        pyDaemonModule.create_pid('wazuh-apid', os.getpid())
-    else:
-        print(f"Starting API in foreground")
+    pid = os.getpid()
+    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    if foreground:
+        print(f"Starting API in foreground (pid: {pid})")
 
     # Load the SPEC file into memory to use as a reference for future calls
     wazuh.security.load_spec()
@@ -158,6 +161,9 @@ def start(foreground, root, config_file):
                 pass_context_arg_name='request',
                 options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging,
                                          set_secure_headers]})
+
+    # Maximum body size that the API can accept (bytes)
+    app.app._client_max_size = configuration.api_conf['max_upload_size']
 
     # Enable CORS
     if api_conf['cors']['enabled']:

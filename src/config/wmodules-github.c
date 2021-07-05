@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
 */
-#if defined (WIN32) || (__linux__) || defined (__MACH__)
+#if defined(WIN32) || defined(__linux__) || defined(__MACH__)
 
 #include "wazuh_modules/wmodules.h"
 
@@ -14,6 +14,7 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_TIME_DELAY = "time_delay";
 static const char *XML_ONLY_FUTURE_EVENTS = "only_future_events";
+static const char *XML_CURL_MAX_SIZE = "curl_max_size";
 
 static const char *XML_API_AUTH = "api_auth";
 static const char *XML_ORG_NAME = "org_name";
@@ -25,34 +26,6 @@ static const char *XML_EVENT_TYPE = "event_type";
 static const char *EVENT_TYPE_ALL = "all";
 static const char *EVENT_TYPE_GIT = "git";
 static const char *EVENT_TYPE_WEB = "web";
-
-time_t time_convert(const char *time_c) {
-    char *endptr;
-    time_t time_i = strtoul(time_c, &endptr, 0);
-
-    if (time_i <= 0 || time_i >= INT_MAX) {
-        return OS_INVALID;
-    }
-
-    switch (*endptr) {
-    case 'd':
-        time_i *= 86400;
-        break;
-    case 'h':
-        time_i *= 3600;
-        break;
-    case 'm':
-        time_i *= 60;
-        break;
-    case 's':
-        break;
-    case '\0':
-        break;
-    default:
-        return OS_INVALID;
-    }
-    return time_i;
-}
 
 // Parse XML
 int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
@@ -72,6 +45,7 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         github_config->only_future_events = WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS;
         github_config->interval =           WM_GITHUB_DEFAULT_INTERVAL;
         github_config->time_delay =         WM_GITHUB_DEFAULT_DELAY;
+        github_config->curl_max_size =      WM_GITHUB_DEFAULT_CURL_MAX_SIZE;
         os_strdup(EVENT_TYPE_ALL, github_config->event_type);
         module->data = github_config;
     } else {
@@ -96,14 +70,20 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            github_config->interval = time_convert(nodes[i]->content);
-            if (github_config->interval == OS_INVALID) {
+            github_config->interval = w_parse_time(nodes[i]->content);
+            if (github_config->interval < 0) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_INTERVAL, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
+            github_config->curl_max_size = w_parse_size(nodes[i]->content);
+            if (github_config->curl_max_size < 1024) {
+                merror("Invalid content for tag '%s' at module '%s'. The minimum value allowed is 1KB.", XML_CURL_MAX_SIZE, WM_GITHUB_CONTEXT.name);
+                return OS_INVALID;
+            }
         } else if (!strcmp(nodes[i]->element, XML_TIME_DELAY)) {
-            github_config->time_delay = time_convert(nodes[i]->content);
-            if (github_config->time_delay == OS_INVALID) {
+            github_config->time_delay = w_parse_time(nodes[i]->content);
+            if (github_config->time_delay < 0) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_TIME_DELAY, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
