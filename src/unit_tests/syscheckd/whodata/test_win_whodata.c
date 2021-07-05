@@ -78,8 +78,7 @@ int SIZE_EVENTS;
 
 const PWCHAR WCS_TEST_PATH = L"C:\\Windows\\a\\path";
 const char *STR_TEST_PATH = "c:\\windows\\a\\path";
-int __real_OSHash_Add(OSHash *hash, const char *key, void *data);
-void *__real_OSHash_Get(const OSHash *self, const char *key);
+
 /**************************************************************************/
 /*******************Helper functions*************************************/
 static void successful_whodata_event_render(EVT_HANDLE event, PEVT_VARIANT raw_data) {

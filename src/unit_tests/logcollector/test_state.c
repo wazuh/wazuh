@@ -42,7 +42,6 @@ extern cJSON * g_lc_json_stats;
 extern w_lc_state_storage_t * g_lc_states_global;
 extern w_lc_state_storage_t * g_lc_states_interval;
 extern w_lc_state_type_t g_lc_state_type;
-OSHash * __real_OSHash_Create();
 
 void free_state_file(w_lc_state_file_t * data) {
     if (data == NULL) {
@@ -74,9 +73,8 @@ static int setup_local_hashmap(void **state) {
 
     will_return(__wrap_time, (time_t) 50);
 
-    test_mode = 0;
-    hash = OSHash_Create();
-    test_mode = 1;
+
+    hash = __real_OSHash_Create();
 
     if (hash == NULL) {
         return -1;
