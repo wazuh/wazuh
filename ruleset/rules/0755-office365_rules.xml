@@ -1164,8 +1164,8 @@ ID: 91531 - 91650
         <if_sid>91532</if_sid>
         <field name="office365.Operation" type="osregex">^QuarantineRelease$</field>
         <description>Office 365: Released quarantine message</description>
-        <options>no_full_log,pci_dss_10.2.2</options>
-        <group>Exchange,hipaa_164.312.a.1,hipaa_164.312.b,pci_dss_5.3,pci_dss_10.6.1,pci_dss_11.4,pci_dss_11.5</group>
+        <options>no_full_log</options>
+        <group>Exchange,hipaa_164.312.a.1,hipaa_164.312.b,pci_dss_5.3,pci_dss_10.2.2,pci_dss_10.6.1,pci_dss_11.4,pci_dss_11.5</group>
     </rule>
 
     <rule id="91723" level="6">
