@@ -30,7 +30,7 @@ const wm_context WM_SYSCHECK_CONTEXT = {
     (int(*)(const char*))NULL,
 };
 
-static void wm_syscheck_print_info(void) {
+static void wm_syscheck_print_info(int* start_reatime) {
     int r = 0;
     directory_t *dir_it = NULL;
     OSListNode *node_it;
@@ -161,6 +161,21 @@ static void wm_syscheck_print_info(void) {
         if (dir_it->options & REALTIME_ACTIVE) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
             mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_MONITORING_DIRECTORY, dir_it->path);
+            *start_reatime = 1;
+#else
+            mtwarn(SYSCHECK_LOGTAG, FIM_WARN_REALTIME_DISABLED, dir_it->path);
+            dir_it->options &= ~REALTIME_ACTIVE;
+            dir_it->options |= SCHEDULED_ACTIVE;
+#endif
+        }
+    }
+
+    OSList_foreach(node_it, syscheck.wildcards) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+#if defined (INOTIFY_ENABLED) || defined (WIN32)
+            *start_reatime = 1;
+            break;
 #else
             mtwarn(SYSCHECK_LOGTAG, FIM_WARN_REALTIME_DISABLED, dir_it->path);
             dir_it->options &= ~REALTIME_ACTIVE;
@@ -185,6 +200,7 @@ static void wm_syscheck_log_config(const wm_syscheck_t *sys) {
 void* wm_syscheck_main(wm_syscheck_t *sys) {
     syscheck_config* config = (syscheck_config*)sys;
     syscheck = *config;
+    int start_realtime = 0;
     mtdebug1(SYSCHECK_LOGTAG, "Starting syscheck.");
     if (syscheck.disabled == 1) {
         if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {
@@ -210,6 +226,10 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
     /* Rootcheck config */
     syscheck.rootcheck = !rootcheck_init(0);
 #ifndef WIN32
+    /* Setup libmagic */
+#ifdef USE_MAGIC
+    init_magic(&magic_cookie);
+#endif
     // Start com request thread
     w_create_thread(syscom_main, NULL);
 
@@ -221,8 +241,11 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
         mterror_exit(SYSCHECK_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
     }
 #endif //WIN32
-    wm_syscheck_print_info();
+    wm_syscheck_print_info(&start_realtime);
     fim_initialize();
+    if (start_realtime == 1) {
+        realtime_start();
+    }
 #ifndef WIN32
     // Audit events thread
     if (syscheck.enable_whodata) {
@@ -245,6 +268,19 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
 #else
         mterror(SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif
+    }
+#else //WIN32
+    if (syscheck.realtime == NULL) {
+        directory_t *dir_it;
+        OSListNode *node_it;
+        // Check if a wildcard might require realtime later
+        OSList_foreach(node_it, syscheck.wildcards) {
+            dir_it = node_it->data;
+            if (dir_it->options & REALTIME_ACTIVE) {
+                realtime_start();
+                break;
+            }
+        }
     }
 #endif //WIN32
     wm_syscheck_log_config(sys);

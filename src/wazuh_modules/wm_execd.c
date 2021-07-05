@@ -21,6 +21,7 @@
 
 static void* wm_execd_main(wm_execd_t *data);        // Module main function. It won't return
 static void wm_execd_destroy(wm_execd_t *data);      // Destroy data
+static void wm_execd_stop(wm_execd_t *data);         // Module stopper
 const char *WM_EXECD_LOCATION = "execd";             // Location field for event sending
 cJSON *wm_execd_dump(const wm_execd_t *data);
 
@@ -29,7 +30,7 @@ const wm_context WM_EXECD_CONTEXT = {
     (wm_routine)wm_execd_main,
     (wm_routine)(void *)wm_execd_destroy,
     (cJSON * (*)(const void *))wm_execd_dump,
-    NULL,
+    (wm_routine)(void *)wm_execd_stop,
 };
 
 #ifdef WIN32
@@ -109,8 +110,11 @@ void* wm_execd_main(wm_execd_t *data) {
     return 0;
 }
 
-void wm_execd_destroy(wm_execd_t *data) {
+void wm_execd_stop(wm_execd_t *data) {
     execd_shutdown();
+}
+
+void wm_execd_destroy(wm_execd_t *data) {
     os_free(data);
 }
 

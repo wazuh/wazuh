@@ -75,6 +75,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const
         return (OS_INVALID);
     }
     OSList_SetFreeDataPointer(config->directories, (void (*)(void *))free_directory);
+    config->wildcards = NULL;
     config->enable_synchronization = 1;
     config->restart_audit  = 1;
     config->enable_whodata = 0;

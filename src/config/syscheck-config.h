@@ -160,14 +160,31 @@ typedef enum fdb_stmt {
 typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
+#ifndef WIN32
 typedef struct _rtfim {
-    int fd;
     unsigned int queue_overflow:1;
     OSHash *dirtb;
-#ifdef WIN32
-    HANDLE evt;
-#endif
+    int fd;
 } rtfim;
+
+#else
+
+typedef struct _rtfim {
+    unsigned int queue_overflow:1;
+    OSHash *dirtb;
+    HANDLE evt;
+} rtfim;
+
+typedef struct _win32rtfim {
+    HANDLE h;
+    OVERLAPPED overlap;
+
+    char *dir;
+    TCHAR buffer[65536];
+    unsigned int watch_status;
+} win32rtfim;
+
+#endif
 
 typedef enum fim_type {FIM_TYPE_FILE, FIM_TYPE_REGISTRY} fim_type;
 
@@ -361,6 +378,7 @@ typedef struct _config {
     unsigned int enable_whodata:1;  /* At least one directory configured with whodata */
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
     unsigned int enable_registry_synchronization:1; /* Enable registry database synchronization */
+    unsigned int realtime_change:1;                    /* Variable to activate the change to realtime from a whodata monitoring*/
 
     OSList *directories;            /* List of directories to be monitored */
     OSList *wildcards;              /* List of wildcards to be monitored */
@@ -396,13 +414,12 @@ typedef struct _config {
 
     /* Windows only registry checking */
 #ifdef WIN32
-    char realtime_change;                              /* Variable to activate the change to realtime from a whodata monitoring*/
     registry_ignore *key_ignore;                       /* List of registry keys to ignore */
     registry_ignore_regex *key_ignore_regex;           /* Regex of registry keys to ignore */
     registry_ignore *value_ignore;                     /* List of registry values to ignore*/
     registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
     registry *registry;                                /* array of registry entries to be scanned */
-    int max_fd_win_rt;                                 /* Maximum number of descriptors in realtime */
+    unsigned int max_fd_win_rt;                        /* Maximum number of descriptors in realtime */
     whodata wdata;
     registry *registry_nodiff;                         /* list of values/registries to never output diff */
     registry_ignore_regex *registry_nodiff_regex;      /* regex of values/registries to never output diff */

@@ -2257,8 +2257,9 @@ ifneq ($(wildcard external/libarchive/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
 endif
 
-ifneq ($(wildcard external/pacman/lib/libalpm/libalpm.a),)
-	rm $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+ifneq ($(wildcard external/pacman/lib/libalpm/*),)
+	rm -f $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+	rm -f $(EXTERNAL_PACMAN)lib/libalpm/*.o
 endif
 endif
 
@@ -2303,6 +2304,7 @@ clean-internals: clean-unit-tests
 	rm -f ${wdb_o}
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
+	rm -f $(WAZUH_LIB)
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
 	rm -rf $(SHARED_UTILS_TEST)build

@@ -6,7 +6,7 @@
 import os
 import sqlite3
 import sys
-from unittest.mock import ANY, patch, mock_open, call
+from unittest.mock import ANY, patch, mock_open, call, MagicMock
 
 import pytest
 from freezegun import freeze_time
@@ -586,28 +586,6 @@ def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
     with pytest.raises(WazuhError, match='.* 1757 .*'):
         agent = Agent(3)
         agent.reconnect(mock_queue)
-
-
-@patch('wazuh.core.agent.WazuhQueue')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_restart(socket_mock, send_mock, mock_queue):
-    """Test if method restart calls other methods with correct params."""
-    agent = Agent(0)
-    agent.restart()
-
-    # Assert methods are called with correct params
-    mock_queue.assert_called_once()
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_restart_ko(socket_mock, send_mock):
-    """Test if method restart raises exception."""
-    # Assert exception is raised when status of agent is not 'active'
-    with pytest.raises(WazuhError, match='.* 1707 .*'):
-        agent = Agent(3)
-        agent.restart()
 
 
 @pytest.mark.parametrize('status', [
@@ -1375,27 +1353,6 @@ def test_agent_set_agent_group_file_ko():
         Agent.set_agent_group_file('002', 'test_group')
 
 
-@pytest.mark.parametrize('groups, expected_result', [
-    ('default0,default1,default2,default3', True),
-    ('default0,default1', False),
-    ('', False)
-])
-@patch('wazuh.core.common.max_groups_per_multigroup', new=3)
-def test_agent_check_multigroup_limit(groups, expected_result):
-    """Test if check_multigroup_limit() returns True when limit of groups is reached
-
-    Parameters
-    ----------
-    groups : str
-        Groups to which the agent belongs.
-    expected_result : bool
-        Expected result.
-    """
-    with patch('wazuh.core.agent.Agent.get_agents_group_file', return_value=groups):
-        result = Agent.check_multigroup_limit('002')
-        assert result == expected_result, f'check_multigroup_limit returns {result} but should return {expected_result}'
-
-
 @pytest.mark.parametrize('agent_id, group_id, force, previous_groups, set_default', [
     ('002', 'test_group', False, 'default,test_group,another_test', False),
     ('002', 'test_group', True, 'default,test_group,another_test', False),
@@ -1537,8 +1494,9 @@ def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
     (['001', '002', '003', '004'],
      [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
 ])
-@patch('wazuh.core.agent.WazuhQueue')
-def test_send_restart_command(mock_wazuh_queue, agents_list, versions_list):
+@patch('wazuh.core.agent.WazuhQueue.send_msg_to_agent')
+@patch('wazuh.core.agent.WazuhQueue.__init__', return_value=None)
+def test_send_restart_command(wq_mock, wq_send_msg, agents_list, versions_list):
     """Test that restart_command calls send_msg_to_agent with correct params.
 
     Parameters
@@ -1550,10 +1508,11 @@ def test_send_restart_command(mock_wazuh_queue, agents_list, versions_list):
     """
     with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
         for agent_id, agent_version in zip(agents_list, versions_list):
-            send_restart_command(agent_id, agent_version['version'])
-            expected_msg = mock_wazuh_queue.RESTART_AGENTS_JSON if WazuhVersion(
-                agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else mock_wazuh_queue.RESTART_AGENTS
-            mock_wazuh_queue.return_value.send_msg_to_agent.assert_called_with(expected_msg, agent_id)
+            wq = WazuhQueue(common.ARQUEUE)
+            send_restart_command(agent_id, agent_version['version'], wq)
+            expected_msg = WazuhQueue.RESTART_AGENTS_JSON if WazuhVersion(
+                agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else WazuhQueue.RESTART_AGENTS
+            wq_send_msg.assert_called_with(expected_msg, agent_id)
 
 
 def test_get_agents_info():

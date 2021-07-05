@@ -26,7 +26,8 @@ void expect_fim_send_msg(char mq, const char *location, const char *msg, int ret
 }
 
 void expect_send_syscheck_msg(const char *msg) {
-    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_any(__wrap__mtdebug2, formatted_msg);
 
     expect_fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg, 0);
 }
