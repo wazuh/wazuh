@@ -106,6 +106,14 @@ typedef struct w_logtest_session_t {
 } w_logtest_session_t;
 
 /**
+ * @brief This structure encapsulates extra data used as input; output and control for processing logs
+ */
+typedef struct {
+    bool alert_generated;         ///< It is set to true when an alert is generated
+    cJSON * rules_debug_list;     ///< It contains a list of the processed rules messages if the verbose mode is enabled
+} w_logtest_extra_data_t;
+
+/**
  * @brief List of client actives
  */
 extern OSHash *w_logtest_sessions;
@@ -147,13 +155,12 @@ void *w_logtest_clients_handler();
  * @brief Process client's request
  * @param request client input
  * @param session client session
- * @param debug_rules_str returns debugging rules message in *debug_rules_str if debug_rules_str is non-null
- * @param alert_generated returns true if the alert should be generated
+ * @param extra_data it stores input; output and control data
  * @param list_msg list of error/warn/info messages
  * @return NULL on failure, otherwise the alert generated
  */
 cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
-                              response_data_t * response_data, 
+                              w_logtest_extra_data_t * extra_data,
                               OSList * list_msg);
 
 /**
@@ -184,7 +191,7 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
  *
  * @param lf struct to save the event processed
  * @param session client session
- * @param debug_rules_str returns debugging rules message in *debug_rules_str if debug_rules_str is non-null
+ * @param rules_debug_list it is filled with a list of the processed rules messages if it is a non-null pointer
  * @param list_msg list of error/warn/info messages
  * @retval -1 on error
  * @retval  0 on success
@@ -192,8 +199,7 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
 
  */
 int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
-                                  response_data_t * response_data,
-                                  OSList * list_msg);
+                                  cJSON * rules_debug_list, OSList * list_msg);
 
 /**
  * @brief Create resources necessary to service client

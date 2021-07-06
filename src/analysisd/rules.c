@@ -2599,7 +2599,7 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                                ListNode **cdblists, RuleNode *curr_node,
                                regex_matching *rule_match, OSList **fts_list,
                                OSHash **fts_store, const bool save_fts_value,
-                               response_data_t * response_data) {
+                               cJSON * rules_debug_list) {
 
     /* We check for:
      * decoded_as,
@@ -2635,12 +2635,10 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
     }
 #endif
 
-    if (response_data != NULL) {
-        char rule_str[30] = {0};
-        snprintf(rule_str, 30, "Trying rule: %d - ", rule->sigid);
-        wm_strcat(&(response_data->rules_debug_str), rule_str, 0);
-        wm_strcat(&(response_data->rules_debug_str), rule->comment, 0);
-        wm_strcat(&(response_data->rules_debug_str), "\n", 0);
+    if (rules_debug_list != NULL) {
+        char rule_str[RULES_DEBUG_MSG_I_MAX_LEN];
+        snprintf(rule_str, RULES_DEBUG_MSG_I_MAX_LEN, RULES_DEBUG_MSG_I, rule->sigid, rule->comment);
+        cJSON_AddItemToArray(rules_debug_list, cJSON_CreateString(rule_str));
     }
 
     /* Check if any decoder pre-matched here for syscheck event */
@@ -3121,10 +3119,10 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
     }
 #endif
 
-    if (response_data != NULL) {
-        char rule_str[30] = {0};
-        snprintf(rule_str, 30, "*Rule %d matched.\n", rule->sigid);
-        wm_strcat(&(response_data->rules_debug_str), rule_str, 0);
+    if (rules_debug_list != NULL) {
+        char rule_str[RULES_DEBUG_MSG_II_MAX_LEN];
+        snprintf(rule_str, RULES_DEBUG_MSG_II_MAX_LEN, RULES_DEBUG_MSG_II, rule->sigid);
+        cJSON_AddItemToArray(rules_debug_list, cJSON_CreateString(rule_str));
     }
 
     /* Search for dependent rules */
@@ -3136,15 +3134,16 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             print_out("       *Trying child rules.");
         }
 #endif
-        if (response_data != NULL) {
-            wm_strcat(&(response_data->rules_debug_str), "*Trying child rules.\n", 0);
+
+        if (rules_debug_list != NULL) {
+            cJSON_AddItemToArray(rules_debug_list, cJSON_CreateString(RULES_DEBUG_MSG_III));
         }
 
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists,
                                              child_node, rule_match, fts_list,
                                              fts_store, save_fts_value,
-                                             response_data);
+                                             rules_debug_list);
             if (child_rule != NULL) {
                 if (!child_rule->prev_rule) {
                     child_rule->prev_rule = rule;

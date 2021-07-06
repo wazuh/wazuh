@@ -85,6 +85,12 @@
 
 #define MAX_RULEINFODETAIL  32
 
+#define RULES_DEBUG_MSG_I_MAX_LEN   1056
+#define RULES_DEBUG_MSG_I           "Trying rule: %d - %s"
+#define RULES_DEBUG_MSG_II_MAX_LEN  32
+#define RULES_DEBUG_MSG_II          "*Rule %d matched"
+#define RULES_DEBUG_MSG_III         "*Trying child rules"
+
 typedef struct EventList EventList;
 struct _Eventinfo;
 
@@ -224,12 +230,6 @@ typedef struct _RuleNode {
 } RuleNode;
 
 
-typedef struct {
-    bool alert_generated;
-    bool do_debug_rules;
-    char * rules_debug_str;
-} response_data_t;
-
 /**
  * @brief Structure to save all rules read in starting.
  */
@@ -273,14 +273,14 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
  * @param curr_node rule to compare with the event "lf"
  * @param rule_match stores the regex of the rule
  * @param save_fts_value determine if fts value can be saved in fts-queue file
- * @param debug_rules_str returns debugging rules message in *debug_rules_str if debug_rules_str is non-null
+ * @param rules_debug_list it is filled with a list of the processed rules messages if it is a non-null pointer
  * @return the rule information if it matches, otherwise null
  */
 RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                                ListNode **cdblists, RuleNode *curr_node,
                                regex_matching *rule_match, OSList **fts_list,
                                OSHash **fts_store, const bool save_fts_value,
-                               response_data_t * response_data);
+                               cJSON * rules_debug_list);
 
 /**
  * @brief Set os_analysisd_rulelist to null
