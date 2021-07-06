@@ -2747,7 +2747,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
         os_sha1 output;
 
         if (OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset) < 0) {
-            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, LOGCOLLECTOR_FILE_NOT_EXIST, path_str);
+            mdebug1(LOGCOLLECTOR_FILE_NOT_EXIST, path_str);
             os_free(data);
             return;
         }
