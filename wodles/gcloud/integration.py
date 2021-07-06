@@ -10,134 +10,59 @@
 
 import logging
 import socket
-
-from google.api_core import exceptions as google_exceptions
-from google.cloud import pubsub_v1 as pubsub
-from wazuh.core import common
-
 import tools
 
-logger = logging.getLogger(tools.logger_name)
 
-
-class WazuhGCloudSubscriber:
+class WazuhGCloudIntegration:
     """Class for sending events from Google Cloud to Wazuh."""
 
     header = '1:Wazuh-GCloud:'
     key_name = 'gcp'
 
-    def __init__(self, credentials_file: str, project: str,
-                 subscription_id: str):
-        """Instantiate a WazuhGCloudSubscriber object.
-        :params credentials_file: Path to credentials file
-        :params project: Project name
-        :params subscription_id: Subscription ID
-        """
-        # get Wazuh paths
-        self.wazuh_path = common.find_wazuh_path()
+    def __init__(self, logger: logging.Logger):
         self.wazuh_queue = tools.get_wazuh_queue()
-        self.wazuh_version = common.get_wazuh_version()
-        # get subscriber
-        self.subscriber = self.get_subscriber_client(credentials_file).api
-        self.subscription_path = self.get_subscription_path(project,
-                                                            subscription_id)
+        self.logger = logger
 
-    def get_subscriber_client(self, credentials_file: str) \
-            -> pubsub.subscriber.Client:
-        """Get a subscriber client.
-        :param credentials_file: Path to credentials file
-        :return: Instance of subscriber client object created with the
-            provided key
-        """
-        return pubsub.subscriber.Client.from_service_account_file(credentials_file)  # noqa: E501
+    def check_permissions(self):
+        raise NotImplementedError
 
-    def get_subscription_path(self, project: str, subscription_id: str) \
-            -> str:
-        """Get the subscription path.
-        :param project: Project name
-        :param subscription_id: Subscription ID
-        :return: String with the subscription path
+    def format_msg(self, msg: str) -> str:
+        """Format a message.
+
+        Parameters
+        ----------
+        msg : str
+            Message to be formatted
+
+        Returns
+        -------
+        A str with the formatted message
         """
-        return self.subscriber.subscription_path(project, subscription_id)
+        # Insert msg as value of self.key_name key.
+        return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
+
+    def process_data(self):
+        raise NotImplementedError
 
     def send_msg(self, msg: str):
         """Send an event to the Wazuh queue.
-        :param msg: Event to be sent
+
+        Parameters
+        ----------
+        msg : str
+            Event to be sent
         """
         event_json = f'{self.header}{msg}'.encode(errors='replace')  # noqa: E501
         try:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
+            self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
             s.send(event_json)
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                logger.critical('Wazuh must be running')
+                self.logger.critical('Wazuh must be running')
                 raise e
             else:
-                logger.critical('Error sending event to Wazuh')
+                self.logger.critical('Error sending event to Wazuh')
                 raise e
-
-    def format_msg(self, msg: str) -> str:
-        """Format a message.
-        :param msg: Message to be formatted
-        """
-        # Insert msg as value of self.key_name key.
-        return f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
-
-    def process_message(self, ack_id: str, data: bytes):
-        """Send a message to Wazuh queue.
-        :param ack_id: ACK_ID from event
-        :param data: Data to be sent to Wazuh
-        """
-        formatted_msg = self.format_msg(data.decode(errors='replace'))
-        self.send_msg(formatted_msg)
-        self.subscriber.acknowledge(self.subscription_path, [ack_id])
-
-    def check_permissions(self):
-        """Check if permissions are OK for executing the wodle."""
-        required_permissions = {'pubsub.subscriptions.consume'}
-        response = self.subscriber.test_iam_permissions(self.subscription_path,
-                                                        required_permissions)
-        if required_permissions.difference(response.permissions) != set():
-            error_message = 'ERROR: No permissions for executing the ' \
-                'wodle from this subscription'
-            raise Exception(error_message)
-
-    def pull_request(self, max_messages: int = 100) \
-            -> pubsub.types.PullResponse:
-        """Make request for pulling messages from the subscription.
-        :param max_messages: Maximum number of messages to retrieve
-        :return: Response of pull request. If the deadline is exceeded,
-            the method will return an empty PullResponse object
-        """
-        try:
-            response = self.subscriber.pull(self.subscription_path,
-                                            max_messages=max_messages,
-                                            return_immediately=True)
-        except google_exceptions.DeadlineExceeded:
-            logger.warning('Deadline exceeded when pulling messages. '
-                           'No more messages will be retrieved on this '
-                           'execution')
-            response = pubsub.types.PullResponse()
-
-        return response
-
-    def process_messages(self, max_messages: int = 100) -> int:
-        """Process the available messages in the subscription.
-        :param max_messages: Maximum number of messages to retrieve
-        :return: Number of processed messages
-        """
-        processed_messages = 0
-        response = self.pull_request(max_messages)
-        while len(response.received_messages) > 0 and processed_messages < max_messages:
-            for message in response.received_messages:
-                message_data: bytes = message.message.data
-                if logger.getEffectiveLevel() == logging.DEBUG:
-                    logger.debug(f'Processing event:\n{self.format_msg(message_data.decode(errors="replace"))}')
-                self.process_message(message.ack_id, message_data)
-                processed_messages += 1  # increment processed_messages counter
-            # get more messages
-            if processed_messages < max_messages:
-                response = self.pull_request(max_messages - processed_messages)
-        return processed_messages

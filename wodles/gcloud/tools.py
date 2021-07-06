@@ -12,9 +12,12 @@ import argparse
 import logging
 import os
 import sys
+from datetime import datetime
+from functools import lru_cache
 from logging.handlers import TimedRotatingFileHandler
 
-from wazuh.core import common
+import pytz
+
 
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
@@ -31,24 +34,38 @@ logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 def get_script_arguments():
     """Get script arguments."""
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
-                                     description="Wazuh wodle for monitoring Google Cloud",  # noqa: E501
-                                     formatter_class=argparse.RawTextHelpFormatter)  # noqa: E501
+                                     description="Wazuh wodle for monitoring Google Cloud",
+                                     formatter_class=argparse.RawTextHelpFormatter)
+
+    parser.add_argument('-t', '--integration_type', dest='integration_type',
+                        help='Supported integration types: pubsub, access_logs', required=True)
 
     parser.add_argument('-p', '--project', dest='project',
-                        help='Project ID', required=True)
+                        help='Project ID')
 
     parser.add_argument('-s', '--subscription_id', dest='subscription_id',
-                        help='Subscription name', required=True)
+                        help='Subscription name')
 
     parser.add_argument('-c', '--credentials_file', dest='credentials_file',
                         help='Path to credentials file', required=True)
 
     parser.add_argument('-m', '--max_messages', dest='max_messages', type=int,
-                        help='Number of maximum messages pulled in each iteration',  # noqa: E501
-                        required=False, default=100)
+                        help='Number of maximum messages pulled in each iteration', default=100)
 
     parser.add_argument('-l', '--log_level', dest='log_level', type=int,
                         help='Log level', required=False, default=3)
+
+    parser.add_argument('-b', '--bucket_name', dest='bucket_name',
+                        help='The name of the bucket to read the logs from')
+
+    parser.add_argument('-P', '--prefix', dest='prefix', help='The relative path to the logs', default='')
+
+    parser.add_argument('-r', '--remove', action='store_true', dest='delete_file',
+                        help='Remove processed blobs from the GCS bucket', default=False)
+
+    parser.add_argument('-o', '--only_logs_after', dest='only_logs_after',
+                        help='Only parse logs after this date - format YYYY-MMM-DD',
+                        default=datetime.strftime(datetime.utcnow(), '%Y-%b-%d'), type=arg_valid_date)
 
     return parser.parse_args()
 
@@ -56,10 +73,16 @@ def get_script_arguments():
 def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
     """Create a logger which returns the messages by stdout.
 
-    :param name: Logger name
-    :param level: Log level to be set
-    :return: Logger configured with input parameters. Returns the messages by
-        stdout
+    Parameters
+    ----------
+    name : str
+        Logger name
+    level : int
+        Log level to be set
+
+    Returns
+    -------
+    Logger configured with input parameters. Returns the messages by stdout
     """
     logger_stdout = logging.getLogger(name)
     # set log level
@@ -75,8 +98,16 @@ def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
 def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
     """Create a logger which returns the messages in a file. Useful for debugging.
 
-    :return: Logger configured with input parameters. Returns the messages in
-        a output file
+    Parameters
+    ----------
+    output_file : str
+        Path to the output file
+    level : int
+        Logging level
+
+    Returns
+    -------
+    Logger configured with input parameters. Writes the messages in an output file.
     """
     logger_file = logging.getLogger(f'{logger_name}_debug')
     # set log level
@@ -93,6 +124,62 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
 
     return logger_file
 
+
 def get_wazuh_queue() -> str:
-    """Get Wazuh queue"""
-    return os.path.join(common.find_wazuh_path(), 'queue', 'sockets', 'queue')
+    """Get Wazuh queue
+
+    Returns
+    -------
+    A str containing the path to Wazuh queue"""
+    return os.path.join(find_wazuh_path(), 'queue', 'sockets', 'queue')
+
+
+@lru_cache(maxsize=None)
+def find_wazuh_path() -> str:
+    """
+    Gets the path where Wazuh is installed dynamically
+
+    Returns
+    -------
+    A str path where Wazuh is installed or empty string if there is no framework in the environment
+    """
+    abs_path = os.path.abspath(os.path.dirname(__file__))
+    allparts = []
+    while 1:
+        parts = os.path.split(abs_path)
+        if parts[0] == abs_path:  # sentinel for absolute paths
+            allparts.insert(0, parts[0])
+            break
+        elif parts[1] == abs_path:  # sentinel for relative paths
+            allparts.insert(0, parts[1])
+            break
+        else:
+            abs_path = parts[0]
+            allparts.insert(0, parts[1])
+
+    wazuh_path = ''
+    try:
+        wazuh_path = os.path.join(wazuh_path, *[allparts[i] for i in range(allparts.index('wodles'))])
+    except ValueError:
+        pass
+
+    return wazuh_path
+
+
+def arg_valid_date(arg_string : str):
+    """Validation function for only_logs_after dates.
+
+    Parameters
+    ----------
+    arg_string : str
+        The only_logs_after value in YYYY-MMM-DD format.
+
+    Returns
+    -------
+    The formatted date
+    """
+    try:
+        return datetime.strptime(arg_string, "%Y-%b-%d").replace(tzinfo=pytz.UTC)
+    except ValueError:
+        raise argparse.ArgumentTypeError("Argument not a valid date in format YYYY-MMM-DD: '{0}'.".format(arg_string))
+

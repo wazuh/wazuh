@@ -1,0 +1,259 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+#
+# Copyright (C) 2015-2021, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute
+# it and/or modify it under the terms of GPLv2
+
+import json
+import logging
+import os
+import sqlite3
+import sys
+from datetime import datetime
+import pytz
+
+try:
+    from google.cloud import storage
+except ImportError:
+    print('ERROR: google-cloud-storage module is required.')
+    sys.exit(1)
+from google.api_core import exceptions as google_exceptions
+
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
+from integration import WazuhGCloudIntegration
+
+
+class WazuhGCloudBucket(WazuhGCloudIntegration):
+    """Class for getting Google Cloud Storage Bucket logs"""
+
+    def __init__(self, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
+                 delete_file: bool = False, only_logs_after: datetime = None):
+        """Class constructor.
+
+        Parameters
+        ----------
+        credentials_file : str
+            Path to credentials file
+        logger : logging.Logger
+            Logger to use
+        bucket_name : str
+            Name of the bucket to read the logs from
+        prefix : prefix
+            Expected prefix for the logs. It can be used to specify the relative path where the logs are stored
+        delete_file : bool
+            Indicate whether blobs should be deleted after being processed
+        only_logs_after : str
+            Date after which obtain logs
+        """
+        super().__init__(logger)
+        self.bucket_name = bucket_name
+        self.bucket = None
+        self.client = storage.client.Client.from_service_account_json(credentials_file)
+        self.project_id = self.client.project
+        self.prefix = prefix
+        self.delete_file = delete_file
+        self.only_logs_after = only_logs_after
+
+        self.db_path = "gcloud.db"
+        self.db_connector = None
+        self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
+
+        self.sql_create_table = """
+                            CREATE TABLE
+                                {table_name} (
+                                project_id 'text' NOT NULL,
+                                bucket_name 'text' NOT NULL,
+                                prefix 'text' NULL,
+                                blob_name 'text' NOT NULL,
+                                creation_time 'text' NOT NULL,
+                                PRIMARY KEY (project_id, bucket_name, prefix, blob_name));"""
+        self.sql_delete_processed_files = """
+                                DELETE FROM
+                                    {table_name}
+                                WHERE 
+                                    project_id='{project_id}' AND
+                                    bucket_name='{bucket_name}' AND
+                                    prefix ='{prefix}';"""
+        self.sql_insert_processed_file = """
+                                        INSERT INTO {table_name} (
+                                            project_id,
+                                            bucket_name,
+                                            prefix,
+                                            blob_name,
+                                            creation_time)
+                                        VALUES
+                                            ('{project_id}',
+                                            '{bucket_name}',
+                                            '{prefix}',
+                                            '{blob_name}',
+                                            '{creation_time}');"""
+        self.sql_find_last_creation_time = """
+                                        SELECT
+                                            creation_time
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            project_id='{project_id}' AND
+                                            bucket_name='{bucket_name}' AND
+                                            prefix ='{prefix}'
+                                        ORDER BY
+                                            creation_time DESC
+                                        LIMIT 1;"""
+        self.sql_find_processed_files = """
+                                        SELECT
+                                            blob_name
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            project_id='{project_id}' AND
+                                            bucket_name='{bucket_name}' AND
+                                            prefix ='{prefix}'
+                                        ORDER BY
+                                            blob_name;"""
+
+    def check_permissions(self):
+        """Check if the Service Account has access to the bucket."""
+        try:
+            self.bucket = self.client.get_bucket(self.bucket_name)
+        except google_exceptions.NotFound:
+            raise Exception(f'The bucket "{self.bucket_name}" does not exist.')
+        except google_exceptions.Forbidden:
+            raise Exception(f'The Service Account provided does not have "storage.buckets.get" access to the '
+                            f'Google Cloud Storage bucket.')
+
+    def init_db(self):
+        """Connect to the database and try to access the table. The database file and the table will be created if they
+         do not exist yet."""
+        self.db_connector = sqlite3.connect(self.db_path)
+        try:
+            self.db_connector.execute(self.sql_create_table.format(table_name=self.db_table_name,
+                                                                   project_id=self.project_id,
+                                                                   bucket_name=self.bucket_name,
+                                                                   prefix=self.prefix))
+        except sqlite3.OperationalError:
+            # The table already exist
+            pass
+
+    def process_data(self):
+        """Iterate over the contents of the bucket and process each blob contained.
+        As the 'list_blobs' function will always return the complete list of blobs contained in the bucket this function
+        checks if a particular file should be processed by taking into account the 'only_logs_after' and 'prefix', as
+        well as the creation time of each blob.
+
+        Returns
+        -------
+        The number of processed blobs
+        """
+        def get_last_creation_time():
+            """Get the latest creation time value stored in the database for the given project, bucket_name and
+            prefix."""
+            creation_time = datetime.min.replace(tzinfo=pytz.UTC)
+            query_creation_time = self.db_connector.execute(
+                self.sql_find_last_creation_time.format(table_name=self.db_table_name,
+                                                        project_id=self.project_id,
+                                                        bucket_name=self.bucket_name,
+                                                        prefix=self.prefix))
+            try:
+                creation_time = query_creation_time.fetchone()[0]
+                creation_time = datetime.strptime(creation_time, self.datetime_format)
+            except (TypeError, IndexError):
+                pass
+            return creation_time
+
+        def get_last_processed_files():
+            """Get the names of the blobs processed during the last execution."""
+            processed_files = self.db_connector.execute(
+                self.sql_find_processed_files.format(table_name=self.db_table_name,
+                                                     project_id=self.project_id,
+                                                     bucket_name=self.bucket_name,
+                                                     prefix=self.prefix))
+            try:
+                return [p[0] for p in processed_files.fetchall()]
+            except (TypeError, IndexError):
+                return list()
+
+        def update_last_processed_files():
+            """Remove the records for the previous execution and store the new values from the current one."""
+            if processed_files:
+                self.logger.info('Updating previously processed files.')
+                try:
+                    self.db_connector.execute(self.sql_delete_processed_files.format(table_name=self.db_table_name,
+                                                                                     project_id=self.project_id,
+                                                                                     bucket_name=self.bucket_name,
+                                                                                     prefix=self.prefix))
+                except sqlite3.IntegrityError:
+                    pass
+
+                for blob_name in processed_files:
+                    self.db_connector.execute(self.sql_insert_processed_file.format(table_name=self.db_table_name,
+                                                                                    project_id=self.project_id,
+                                                                                    bucket_name=self.bucket_name,
+                                                                                    prefix=self.prefix,
+                                                                                    blob_name=blob_name,
+                                                                                    creation_time=new_creation_time))
+
+        processed_files = list()
+        try:
+            bucket_contents = self.bucket.list_blobs(prefix=self.prefix)
+
+            processed_messages = 0
+            new_creation_time = datetime.min.replace(tzinfo=pytz.UTC)
+
+            self.init_db()
+            last_creation_time = get_last_creation_time()
+            previous_processed_files = get_last_processed_files()
+
+            for blob in bucket_contents:
+                # Skip folders
+                if blob.name.endswith('/'):
+                    continue
+
+                current_creation_time = blob.time_created
+
+                if current_creation_time >= self.only_logs_after:
+                    if (current_creation_time > last_creation_time) or \
+                            (current_creation_time == last_creation_time and blob.name not in previous_processed_files):
+                        self.logger.info(f'Processing {blob.name}')
+                        self.process_blob(blob)
+
+                        if current_creation_time > new_creation_time:
+                            processed_files.clear()
+                            new_creation_time = current_creation_time
+
+                        processed_files.append(blob.name)
+                        processed_messages += 1
+                    else:
+                        self.logger.info(f'Skipping previously processed file: {blob.name}')
+                else:
+                    self.logger.info(f'The creation time of {blob.name} is older than {self.only_logs_after}. '
+                                     f'Skipping it...')
+        finally:
+            # Ensure the changes are committed to the database even if an exception was raised
+            if self.db_connector:
+                update_last_processed_files()
+                self.db_connector.commit()
+                self.db_connector.close()
+        return processed_messages
+
+    def load_information_from_file(self, msg: str):
+        raise NotImplementedError
+
+    def process_blob(self, blob):
+        """Format every event obtained from `load_information_from_file` and send them to Analysisd. If the
+        `delete_file` was used the blob will be removed from the bucket after being processed.
+
+        Parameters
+        ----------
+        blob : google.cloud.storage.blob.Blob
+            A blob object obtained from the bucket
+        """
+        try:
+            for event in self.load_information_from_file(blob.download_as_text()):
+                self.send_msg(self.format_msg(json.dumps(event)))
+            if self.delete_file:
+                self.bucket.delete_blob(blob.name)
+        except google_exceptions.NotFound:
+            self.logger.warning(f'Unable to find "{blob.name}" in {self.bucket_name}')

@@ -27,26 +27,6 @@ subscription_id = 'testing'
 test_message = 'test-message'.encode()
 
 
-@patch('integration.pubsub.subscriber.Client.from_service_account_file')
-def get_wazuhgcloud_subscriber(mock_client):
-    """Return a WazuhGCloudSubscriber client."""
-    client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
-    return client
-
-
-def test_get_subscriber():
-    """Check if an instance of WazuhGCloudSubscriber is created properly."""
-    expected_attributes = ['wazuh_path', 'wazuh_version', 'wazuh_queue',
-                           'subscriber', 'subscription_path']
-
-    client = get_wazuhgcloud_subscriber()
-
-    assert isinstance(client, WazuhGCloudSubscriber)
-
-    for attribute in expected_attributes:
-        assert hasattr(client, attribute)
-
-
 @patch('integration.socket.socket')
 def test_send_msg_ok(mock_socket):
     """Test if messages are sent to Wazuh queue socket."""
