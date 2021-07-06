@@ -637,3 +637,6 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
 #ifdef __cplusplus
 }
 #endif
+#ifdef __cplusplus
+}
+#endif
