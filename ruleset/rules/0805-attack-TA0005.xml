@@ -148,5 +148,15 @@
         </mitre>
     </rule>
 
+    <!-- Sample: {"win":{"eventdata":{"originalFileName":"MsMpEng.exe","image":"C:\\\\Windows\\\\MsMpEng.exe","product":"Microsoft® Windows® Operating System","parentProcessGuid":"{4dc16835-5b4e-60e3-1b01-000000004800}","description":"Antimalware Service Executable","logonGuid":"{4dc16835-599e-60e3-ad77-240000000000}","parentCommandLine":"\\\"C:\\\\Windows\\\\system32\\\\cmd.exe\\\"","processGuid":"{4dc16835-68de-60e3-7d01-000000004800}","logonId":"0x2477ad","parentProcessId":"5616","processId":"4304","currentDirectory":"C:\\\\Windows\\\\","utcTime":"2021-07-05 20:17:34.077","hashes":"SHA1=85536AD6AFEE43B728ED12EE8CFFCA41F74F6446,MD5=CA2DE21D04A42228B707ABCE64EBBC8B,SHA256=2CCB6063389F3512BE2EF169E236C7474380C542ABD82B4B6BCAA8DEE2E3DCBE,IMPHASH=E568A0358C31B8910DC7FFF649D3FE0D","parentImage":"C:\\\\Windows\\\\System32\\\\cmd.exe","ruleName":"technique_id=T1059.003,technique_name=Windows Command Shell","company":"Microsoft Corporation","commandLine":"msmpeng","integrityLevel":"High","fileVersion":"4.18.1909.6 (WinBuild.160101.0800)","user":"EXCHANGETEST\\\\AtomicRed","terminalSessionId":"1"},"system":{"eventID":"1","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Process Create:\r\nRuleName: technique_id=T1059.003,technique_name=Windows Command Shell\r\nUtcTime: 2021-07-05 20:17:34.077\r\nProcessGuid: {4dc16835-68de-60e3-7d01-000000004800}\r\nProcessId: 4304\r\nImage: C:\\Windows\\MsMpEng.exe\r\nFileVersion: 4.18.1909.6 (WinBuild.160101.0800)\r\nDescription: Antimalware Service Executable\r\nProduct: Microsoft® Windows® Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: MsMpEng.exe\r\nCommandLine: msmpeng\r\nCurrentDirectory: C:\\Windows\\\r\nUser: EXCHANGETEST\\AtomicRed\r\nLogonGuid: {4dc16835-599e-60e3-ad77-240000000000}\r\nLogonId: 0x2477AD\r\nTerminalSessionId: 1\r\nIntegrityLevel: High\r\nHashes: SHA1=85536AD6AFEE43B728ED12EE8CFFCA41F74F6446,MD5=CA2DE21D04A42228B707ABCE64EBBC8B,SHA256=2CCB6063389F3512BE2EF169E236C7474380C542ABD82B4B6BCAA8DEE2E3DCBE,IMPHASH=E568A0358C31B8910DC7FFF649D3FE0D\r\nParentProcessGuid: {4dc16835-5b4e-60e3-1b01-000000004800}\r\nParentProcessId: 5616\r\nParentImage: C:\\Windows\\System32\\cmd.exe\r\nParentCommandLine: \"C:\\Windows\\system32\\cmd.exe\" \"","version":"5","systemTime":"2021-07-05T20:17:34.0803610Z","eventRecordID":"253242","threadID":"3184","computer":"hrmanager.ExchangeTest.com","task":"1","processID":"2184","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
+    <rule id="92062" level="13">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)MsMpEng\.exe</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]:\\(ProgramData\\Microsoft|Program Files)\\Windows Defender</field>
+        <description>Windows Defender executed from suspicious path, possile DLL side-loading</description>
+        <mitre>
+            <id>T1574.002</id>
+        </mitre>
+    </rule>
 
 </group>
