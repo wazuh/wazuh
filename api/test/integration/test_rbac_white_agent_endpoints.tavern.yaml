@@ -980,7 +980,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -1004,10 +1003,9 @@ stages:
       json:
         error: 0
         data:
-          affected_agents:
-            - '003'
           affected_items:
-            - 'group3'
+            - group3:
+                - '003'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -1032,7 +1030,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -1056,7 +1053,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -1618,18 +1614,13 @@ stages:
     response:
       status_code: 200
       json:
-        error: 2
+        error: 0
         data:
           affected_items:
             - '004'
-          failed_items:
-            - error:
-                code: 1707
-                message: !anystr
-              id:
-                - '012'
+          failed_items: []
           total_affected_items: 1
-          total_failed_items: 1
+          total_failed_items: 0
     delay_after: !float "{restart_delay}"
 
 ---
