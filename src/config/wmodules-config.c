@@ -127,7 +127,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
 #endif
-    } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
+    } else if (!strcmp(node->values[0], "azure-logs")) {
 #ifndef WIN32
         if (wm_azure_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
