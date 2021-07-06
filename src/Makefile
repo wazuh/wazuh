@@ -58,7 +58,7 @@ RSYNC=${SHARED_MODULES}rsync/
 SHARED_UTILS_TEST=${SHARED_MODULES}utils/tests/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SYSINFO=data_provider/
-
+FIMDB=syscheckd/db/
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
@@ -85,6 +85,7 @@ SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
 endif
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
+FIMDB_TEST=-DUNIT_TEST=ON
 DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
 RSYNC_TEST=-DUNIT_TEST=ON #--coverage
 SYSCOLLECTOR_TEST=-DUNIT_TEST=ON #--coverage
@@ -400,6 +401,7 @@ endif #winagent
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
 OSSEC_CCBIN   =${QUIET_CCBIN}${MING_BASE}${CC}
+OSSEC_CXXBIN  =${QUIET_CCBIN}${MING_BASE}${CXX}
 OSSEC_SHARED  =${QUIET_CCBIN}${MING_BASE}${CC} -shared
 OSSEC_LINK    =${QUIET_LINK}${MING_BASE}ar -crus
 OSSEC_RANLIB  =${QUIET_RANLIB}${MING_BASE}ranlib
@@ -1835,13 +1837,17 @@ rootcheck.a: ${rootcheck_o_lib}
 syscheck_sql := syscheckd/db/schema_fim_db.sql
 
 syscheck_c := $(wildcard syscheckd/*.c)
-syscheck_c += $(wildcard syscheckd/db/*.c)
 syscheck_c += $(wildcard syscheckd/whodata/*.c)
 syscheck_c += $(wildcard syscheckd/registry/*.c)
+
+syscheck_db_cpp += $(wildcard syscheckd/db/src/*.cpp)
 
 syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
+
+${FIMDB}build/lib/libfimdb.a: $(WAZUHEXT_LIB) $(syscheck_db_cpp)
+	cd ${FIMDB} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FIMDB_TEST} ${SHARED_MODULES_RELEASE_TYPE} -DLIBOUT=lib .. && ${MAKE}
 
 syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
 	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | sed s/\\\\\\\/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\/g | tr -d \\\n`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
@@ -1852,8 +1858,8 @@ syscheckd/%.o: syscheckd/%.c
 syscheckd/%-event.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@
 
-wazuh-syscheckd: ${syscheck_o} rootcheck.a
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+wazuh-syscheckd: ${syscheck_o} rootcheck.a ${FIMDB}build/lib/libfimdb.a
+	${OSSEC_CXXBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${DBSYNC_LIB} -o $@
 
 #### Monitor #######
 
@@ -2192,7 +2198,7 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o ${FIMDB}build/lib/libfimdb.a
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
@@ -2323,6 +2329,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SHARED_UTILS_TEST)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
+	rm -rf $(FIMDB)build
 	rm -rf libwazuhext
 
 clean-unit-tests:

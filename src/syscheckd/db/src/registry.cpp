@@ -5,9 +5,12 @@
  *
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef WIN32
-#include "fim_db_registries.h"
+#include "db.hpp"
 
 extern const char *SQL_STMT[];
 
@@ -632,4 +635,7 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
     return FIMDB_OK;
 }
 
+#endif
+#ifdef __cplusplus
+}
 #endif
