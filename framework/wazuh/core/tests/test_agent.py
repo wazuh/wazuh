@@ -1548,7 +1548,8 @@ def test_get_groups():
 @pytest.mark.parametrize('group, expected_agents', [
     ('group1', {'000'}),
     ('group2', {'001'}),
-    ('*', {'000', '001', '002', '005'})
+    ('group21', {'006'}),
+    ('*', {'000', '001', '002', '005', '006'})
 ])
 def test_expand_group(group, expected_agents):
     """Test that expand_group() returns expected agent IDs
@@ -1564,7 +1565,7 @@ def test_expand_group(group, expected_agents):
     reset_context_cache()
     test_get_agents_info()
 
-    id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': ''}
+    id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': 'group21'}
     agent_groups = os.path.join(test_data_path, 'agent-groups')
 
     with patch('wazuh.core.common.groups_path', new=agent_groups):
