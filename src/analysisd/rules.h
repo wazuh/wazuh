@@ -223,6 +223,13 @@ typedef struct _RuleNode {
     struct _RuleNode *child;
 } RuleNode;
 
+
+typedef struct {
+    bool alert_generated;
+    bool do_debug_rules;
+    char * rules_debug_str;
+} response_data_t;
+
 /**
  * @brief Structure to save all rules read in starting.
  */
@@ -269,11 +276,11 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
  * @param debug_rules_str returns debugging rules message in *debug_rules_str if debug_rules_str is non-null
  * @return the rule information if it matches, otherwise null
  */
-RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
-                              ListNode **cdblists, RuleNode *curr_node,
-                              regex_matching *rule_match, OSList **fts_list,
-                              OSHash **fts_store, const bool save_fts_value,
-                              char ** debug_rules_str);
+RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
+                               ListNode **cdblists, RuleNode *curr_node,
+                               regex_matching *rule_match, OSList **fts_list,
+                               OSHash **fts_store, const bool save_fts_value,
+                               response_data_t * response_data);
 
 /**
  * @brief Set os_analysisd_rulelist to null

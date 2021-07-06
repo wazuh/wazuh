@@ -153,8 +153,9 @@ void *w_logtest_clients_handler();
  * @param list_msg list of error/warn/info messages
  * @return NULL on failure, otherwise the alert generated
  */
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated,
-                             char ** debug_rules_str, OSList * list_msg);
+cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
+                              response_data_t * response_data, 
+                              OSList * list_msg);
 
 /**
  * @brief Preprocessing phase
@@ -192,7 +193,8 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
 
  */
 int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
-                                  char ** debug_rules_str, OSList * list_msg);
+                                  response_data_t * response_data,
+                                  OSList * list_msg);
 
 /**
  * @brief Create resources necessary to service client

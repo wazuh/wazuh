@@ -174,8 +174,9 @@ char *w_logtest_generate_error_response(char * msg){
 }
 
 
-cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated,
-                              char ** debug_rules_str, OSList * list_msg) {
+cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
+                              response_data_t * response_data, 
+                              OSList * list_msg) {
 
     cJSON *output = NULL;
     Eventinfo *lf = NULL;
@@ -204,7 +205,7 @@ cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bo
     }
 
     /* Rules matching */
-    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, debug_rules_str, list_msg), check_add_event == -1) {
+    if (check_add_event = w_logtest_rulesmatching_phase(lf, session, response_data, list_msg), check_add_event == -1) {
         Free_Eventinfo(lf);
         return output;
     }
@@ -212,7 +213,7 @@ cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bo
     /* Add alert description to the event and check alert level if exist a match */
     if (lf->generated_rule) {
         lf->comment = ParseRuleComment(lf);
-        *alert_generated = ((check_add_event == 1) && Config.logbylevel <= lf->generated_rule->level) ? true : false;
+        response_data->alert_generated = ((check_add_event == 1) && Config.logbylevel <= lf->generated_rule->level);
     }
 
     /* Parse the alert */
@@ -292,8 +293,8 @@ void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session) {
 
 
 int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
-                                  char ** debug_rules_str, OSList * list_msg) {
-
+                                  response_data_t * response_data,
+                                  OSList * list_msg) {
     RuleNode * rulenode = NULL;
     RuleInfo * ruleinformation = NULL;
     bool added_list_event = false;
@@ -314,8 +315,14 @@ int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
         }
 
         /* Search the rule that match */
-        if (ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist, &session->cdblistnode,
-            rulenode, &session->rule_match, &session->fts_list, &session->fts_store, false, debug_rules_str), !ruleinformation) {
+        response_data_t * response_data_aux = response_data->do_debug_rules ? response_data : NULL;
+        ruleinformation = OS_CheckIfRuleMatch(lf, session->eventlist,
+                                              &session->cdblistnode, rulenode,
+                                              &session->rule_match,
+                                              &session->fts_list,
+                                              &session->fts_store, false,
+                                              response_data_aux);
+        if (!ruleinformation) {
             continue;
         }
 
@@ -1030,18 +1037,14 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
 
     w_logtest_session_t * current_session = NULL;
     int retval = W_LOGTEST_RCODE_SUCCESS;
-
-    bool alert_generated = false;
     
     /* Get options */
-    cJSON * j_processing_opt = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_OPT);
-    cJSON * j_rule_verbose = (j_processing_opt != NULL)
-                             ? cJSON_GetObjectItemCaseSensitive(j_processing_opt, W_LOGTEST_JSON_OPT_RULE_DEBUG)
-                             : NULL;
+    cJSON * j_processing_opt = NULL;
+    cJSON * j_rule_verbose = NULL;
 
-    /* Rule verbose mode */
-    char * rule_verbose_str = NULL;
-    bool is_enabled_rule_verbose = false;
+    cJSON * json_log_processed = NULL;
+
+    response_data_t response_data = { .alert_generated = false, .do_debug_rules= false, .rules_debug_str = NULL};
 
     /* Search an active session */
     cJSON * j_token;
@@ -1089,11 +1092,17 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
 
     /* Proccess log */
     // TODO add warn msg, if j_rule_verbose is not a bool
-    if (j_rule_verbose != NULL && cJSON_IsBool(j_rule_verbose) && cJSON_IsTrue(j_rule_verbose)) {
-        is_enabled_rule_verbose = true;
+    j_processing_opt = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_OPT);
+    if (j_processing_opt != NULL) {
+        
+        j_rule_verbose = cJSON_GetObjectItemCaseSensitive(j_processing_opt, W_LOGTEST_JSON_OPT_RULE_DEBUG);
+
+        if (j_rule_verbose != NULL && cJSON_IsBool(j_rule_verbose) && cJSON_IsTrue(j_rule_verbose)) {
+            response_data.do_debug_rules = true;
+        }
     }
-    cJSON * json_log_processed = w_logtest_process_log(json_request, current_session, &alert_generated, 
-                                                      is_enabled_rule_verbose ? &rule_verbose_str : NULL, list_msg);
+
+    json_log_processed = w_logtest_process_log(json_request, current_session, &response_data, list_msg);
 
     w_mutex_unlock(&current_session->mutex);
 
@@ -1104,16 +1113,16 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
         mdebug1(LOGTEST_ERROR_PROCESS_EVENT);
     }
 
-    if (rule_verbose_str != NULL) {
-        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_RULE_DEBUG, rule_verbose_str);
-        os_free(rule_verbose_str);
+    if (response_data.rules_debug_str != NULL) {
+        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_RULE_DEBUG, response_data.rules_debug_str);
+        os_free(response_data.rules_debug_str);
     }
 
     /* Generate response */
     w_logtest_add_msg_response(json_response, list_msg, &retval);
 
     if (retval >= W_LOGTEST_RCODE_SUCCESS) {
-        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, alert_generated ? 1 : 0);
+        cJSON_AddBoolToObject(json_response, W_LOGTEST_JSON_ALERT, response_data.alert_generated ? 1 : 0);
     }
 
     return retval;
