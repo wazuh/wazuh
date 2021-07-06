@@ -5,8 +5,11 @@
  *
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "fim_db_files.h"
+#include "db.hpp"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -127,7 +130,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 // LCOV_EXCL_START
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = TRUE, .type = FIM_DELETE };
+    event_data_t evt_data;
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
                                     (void *)&evt_data, NULL, NULL);
 }
@@ -171,7 +174,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
     os_strdup((char *)sqlite3_column_text(stmt, 0), entry->file_entry.path);
 
     os_calloc(1, sizeof(fim_file_data), entry->file_entry.data);
-    entry->file_entry.data->mode = (unsigned int)sqlite3_column_int(stmt, 1);
+    entry->file_entry.data->mode = (fim_event_mode)sqlite3_column_int(stmt, 1);
     entry->file_entry.data->last_event = (time_t)sqlite3_column_int(stmt, 2);
     entry->file_entry.data->scanned = (time_t)sqlite3_column_int(stmt, 3);
     entry->file_entry.data->options = (time_t)sqlite3_column_int(stmt, 4);
@@ -474,3 +477,6 @@ int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *da
 
     return retval;
 }
+#ifdef __cplusplus
+}
+#endif
