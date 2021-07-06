@@ -651,7 +651,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
     if(rtlocald != NULL) {
         if (!w_directory_exists(rtlocald->dir)) {
             if (rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
-                mdebug1(FIM_REALTIME_CALLBACK, rtlocald->dir);
+                mdebug2(FIM_REALTIME_CALLBACK, rtlocald->dir);
                 rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, rtlocald->dir);
                 free_win32rtfim_data(rtlocald);
             } else if (rtlocald->h != NULL && rtlocald->h != INVALID_HANDLE_VALUE) {
@@ -702,7 +702,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
     }
 
-    mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+    mdebug2(FIM_REALTIME_NEWDIRECTORY, dir);
 
     w_mutex_unlock(&syscheck.fim_realtime_mutex);
     return 1;
