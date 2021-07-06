@@ -85,7 +85,7 @@ def main():
 
     options = dict()
     if args.verbose:
-        options['rule_debug'] = True
+        options['rules_debug'] = True
 
     # Initialize wazuh-logtest component
     w_logtest = WazuhLogtest(location=args.location)
@@ -370,10 +370,10 @@ class WazuhLogtest:
             logging.info('\tNo decoder matched.')
 
         # Rule phase
-        if 'rule_debug' in output:
+        if 'rules_debug' in output:
             logging.info('')
             logging.info('**Rule debugging:')
-            logging.info(output['rule_debug'])
+            logging.info(output['rules_debug'])
 
         if 'rule' in output_data:
             logging.info('')

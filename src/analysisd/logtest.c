@@ -1095,7 +1095,7 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     j_processing_opt = cJSON_GetObjectItemCaseSensitive(json_request, W_LOGTEST_JSON_OPT);
     if (j_processing_opt != NULL) {
         
-        j_rule_verbose = cJSON_GetObjectItemCaseSensitive(j_processing_opt, W_LOGTEST_JSON_OPT_RULE_DEBUG);
+        j_rule_verbose = cJSON_GetObjectItemCaseSensitive(j_processing_opt, W_LOGTEST_JSON_OPT_RULES_DEBUG);
 
         if (j_rule_verbose != NULL && cJSON_IsBool(j_rule_verbose) && cJSON_IsTrue(j_rule_verbose)) {
             response_data.do_debug_rules = true;
@@ -1114,7 +1114,7 @@ int w_logtest_process_request_log_processing(cJSON * json_request, cJSON * json_
     }
 
     if (response_data.rules_debug_str != NULL) {
-        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_RULE_DEBUG, response_data.rules_debug_str);
+        cJSON_AddStringToObject(json_response, W_LOGTEST_JSON_OPT_RULES_DEBUG, response_data.rules_debug_str);
         os_free(response_data.rules_debug_str);
     }
 

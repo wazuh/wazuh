@@ -50,9 +50,8 @@
 #define W_LOGTEST_JSON_MESSAGES              "messages"   ///< Message format field name of json output
 #define W_LOGTEST_JSON_CODE                   "codemsg"   ///< Code of message field name of json output (number)
 #define W_LOGTEST_JSON_OUTPUT                  "output"   ///< Output field name of json output
-#define W_LOGTEST_JSON_RULE_DEBUG          "rule_debug"   ///< Output field name of json rule_debug (string)
 #define W_LOGTEST_JSON_OPT                    "options"   ///< Requests options
-#define W_LOGTEST_JSON_OPT_RULE_DEBUG      "rule_debug"   ///< Enables rules debug option
+#define W_LOGTEST_JSON_OPT_RULES_DEBUG    "rules_debug"   ///< Enables rules debug option
 
 
 /* Commands allowed */
