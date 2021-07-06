@@ -65,7 +65,12 @@ bool connect_server(int server_id, bool verbose)
     /* Check if we have a hostname */
     tmp_str = strchr(agt->server[server_id].rip, '/');
     if (tmp_str) {
-        tmp_str++;
+        resolve_hostname(&agt->server[server_id].rip, 5);
+
+        tmp_str = strchr(agt->server[server_id].rip, '/');
+        if (tmp_str) {
+            tmp_str++;
+        }
     } else {
         tmp_str = agt->server[server_id].rip;
     }
