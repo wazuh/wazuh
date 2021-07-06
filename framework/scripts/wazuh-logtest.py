@@ -54,6 +54,11 @@ def init_argparse():
         dest='quiet',
         action="store_true"
     )
+    parser.add_argument(
+        "-v", help='Verbose (full) output/rule debugging',
+        dest='verbose',
+        action="store_true"
+    )
     return parser
 
 
@@ -77,6 +82,10 @@ def main():
         if len(ut) != 3:
             logging.error('Unit test configuration wrong syntax: %s', args.ut)
             sys.exit(1)
+
+    options = dict()
+    if args.verbose:
+        options['rule_debug'] = True
 
     # Initialize wazuh-logtest component
     w_logtest = WazuhLogtest(location=args.location)
@@ -112,7 +121,7 @@ def main():
 
         # Process log event
         try:
-            output = w_logtest.process_log(event, session_token)
+            output = w_logtest.process_log(event, session_token, options)
         except ValueError as error:
             logging.error('** Wazuh-logtest error ' + str(error))
             continue
@@ -235,7 +244,7 @@ class WazuhLogtest:
         self.last_token = ""
         self.ut = [''] * 3
 
-    def process_log(self, log, token=None):
+    def process_log(self, log, token=None, options=None):
         """Send log event to wazuh-logtest and receive the outcome
 
         Args:
@@ -253,6 +262,9 @@ class WazuhLogtest:
         if token:
             data['token'] = token
         data['event'] = log
+
+        if options:
+            data['options'] = options
 
         # Create a wrapper to log_processing
         request = self.protocol.wrap('log_processing', data)
@@ -356,7 +368,13 @@ class WazuhLogtest:
                 WazuhLogtest.show_phase_info(output_data['data'])
         else:
             logging.info('\tNo decoder matched.')
+
         # Rule phase
+        if 'rule_debug' in output:
+            logging.info('')
+            logging.info('**Rule debugging:')
+            logging.info(output['rule_debug'])
+
         if 'rule' in output_data:
             logging.info('')
             logging.info('**Phase 3: Completed filtering (rules).')
