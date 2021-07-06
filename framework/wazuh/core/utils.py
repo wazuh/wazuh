@@ -928,6 +928,16 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+    def check_date_format(s_date):
+        date_patterns = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
+
+        for pattern in date_patterns:
+            try:
+                return datetime.strptime(s_date, pattern)
+            except ValueError:
+                pass
+
+        return s_date
 
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
@@ -953,11 +963,14 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                     return True
             else:
                 # cast value2 to integer if value1 is integer
+                value2 = check_date_format(value2)
+                if type(value2) == datetime:
+                    val = check_date_format(val)
                 value2 = int(value2) if type(val) == int else value2
                 if operators[op](val, value2):
                     return True
-        else:
-            return False
+
+        return False
 
     def get_match_candidates(iterable, key_list: list, candidates: list):
         """Get the match candidates following a list of keys.
