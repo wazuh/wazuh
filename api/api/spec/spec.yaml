@@ -9159,15 +9159,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: '2021-05-27T12:18:08+00:00'
+                    - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
                       description: " TCP socket 20 already in keystore. Updating..."
-                    - timestamp: '2021-05-27T12:18:08+00:00'
+                    - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
                       description: " Agent '003' group is 'default'"
-                    - timestamp: '2021-05-27T12:18:08+00:00'
+                    - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
                       description: " Agent '003' with group 'default' file 'merged.mg' MD5
@@ -10558,15 +10558,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: '2020-04-15T14:47:54+00:00'
+                    - timestamp: '2020-04-15T14:47:54Z'
                       tag: wazuh-modulesd:syscollector
                       level: info
                       description: "Start syscheck scan"
-                    - timestamp: '2020-04-15T14:47:51+00:00'
+                    - timestamp: '2020-04-15T14:47:51Z'
                       tag: wazuh-modulesd:syscollector
                       level: info
                       description: "Starting evaluation"
-                    - timestamp: '2020-04-15T13:50:24+00:00'
+                    - timestamp: '2020-04-15T13:50:24Z'
                       tag: wazuh-maild
                       level: error
                       description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
@@ -10902,8 +10902,8 @@ paths:
                         North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group
                       name: APT38
                       id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
-                      modified_time: '2020-03-30 18:50:43.737000'
-                      created_time: '2019-01-29 21:27:24.793000'
+                      modified_time: '2020-03-30T18:50:43.737000Z'
+                      created_time: '2019-01-29T21:27:24.793000Z'
                       software:
                         - tool--03342581-f790-4f03-ba41-e82e67392e23
                         - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
@@ -11043,8 +11043,8 @@ paths:
                       description: "Prevent files from having a trailing space after the extension."
                       name: "Space after Filename Mitigation"
                       id: "course-of-action--02f0f92a-0a51-4c94-9bda-6437b9a93f22"
-                      modified_time: '2019-07-25 11:46:32.010000'
-                      created_time: '2018-10-17 00:14:20.652000'
+                      modified_time: '2019-07-25T11:46:32.010000Z'
+                      created_time: '2018-10-17T00:14:20.652000Z'
                       techniques:
                         - "attack-pattern--e2907cea-4b43-4ed7-a570-0fdf0fbeea00"
                       references:
@@ -11163,8 +11163,8 @@ paths:
                         group. (Citation: Baumgartner Naikon 2015)"
                       name: HDoor
                       id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
-                      modified_time: '2019-04-25 02:33:53.419000'
-                      created_time: '2017-05-31 21:32:40.801000'
+                      modified_time: '2019-04-25T02:33:53.419000Z'
+                      created_time: '2017-05-31T21:32:40.801000Z'
                       groups:
                         - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
                       techniques:
@@ -11230,8 +11230,8 @@ paths:
                     - description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
                       name: "Lateral Movement"
                       id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
-                      modified_time: "2019-07-19 17:44:36.953000"
-                      created_time: "2018-10-17 00:14:20.652000"
+                      modified_time: "2019-07-19T17:44:36.953000Z"
+                      created_time: "2018-10-17T00:14:20.652000Z"
                       short_name: "lateral-movement"
                       techniques:
                         - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
@@ -11319,9 +11319,9 @@ paths:
 
                         Detection efforts may be focused on related stages of the adversary lifecycle, such as during Initial Access.
                       id: attack-pattern--9d48cab2-7929-4812-ad22-f536665f0109
-                      modified_time: '2020-10-25 22:58:23.086000'
+                      modified_time: '2020-10-25T22:58:23.086000Z'
                       deprecated: 0
-                      created_time: '2020-10-02 15:45:17.628000'
+                      created_time: '2020-10-02T15:45:17.628000Z'
                       name: Gather Victim Network Information
                       description: |-
                         Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
@@ -11543,8 +11543,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - start: "2021-05-28 11:49:50"
-                      end: "2021-05-28 11:49:59"
+                    - start: "2021-05-28T11:49:50Z"
+                      end: "2021-05-28T11:49:59Z"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []

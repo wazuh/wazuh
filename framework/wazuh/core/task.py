@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+from datetime import datetime
 from json import dumps, loads
 
 from wazuh.core import common
@@ -32,6 +33,7 @@ class WazuhDBQueryTask(WazuhDBQuery):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table=table, sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='ASC',
                               filters=filters, query=query, count=count, get_data=get_data,
+                              date_fields={'create_time', 'last_update_time'},
                               min_select_fields=min_select_fields, backend=WazuhDBBackend(query_format='task'))
 
     def _final_query(self):
@@ -49,6 +51,14 @@ class WazuhDBQueryTask(WazuhDBQuery):
             self.request[field_filter] = q_filter['value']
         else:
             super()._process_filter(field_name, field_filter, q_filter)
+
+    def _format_data_into_dictionary(self):
+        for t in self._data:
+            if t.keys() >= {'create_time', 'last_update_time'}:
+                t['create_time'] = datetime.utcfromtimestamp(t['create_time']).strftime("%Y-%m-%dT%H:%M:%SZ")
+                t['last_update_time'] = datetime.utcfromtimestamp(t['last_update_time']).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        return {'items': self._data, 'totalItems': self.total_items}
 
 
 def send_to_tasks_socket(command):

@@ -67,8 +67,8 @@ def get_ossec_logs(limit=2000):
             date, tag, level, description = log_fields
 
             # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-            log_line = {'timestamp': date.astimezone(timezone.utc),
-                        'tag': tag, 'level': level, 'description': description}
+            log_line = {'timestamp': date.strftime('%Y-%m-%dT%H:%M:%SZ'), 'tag': tag,
+                        'level': level, 'description': description}
             logs.append(log_line)
 
     return logs

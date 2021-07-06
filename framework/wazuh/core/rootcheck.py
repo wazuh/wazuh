@@ -67,7 +67,7 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
             if field_name in ['date_first', 'date_last']:
-                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
+                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%dT%H:%M:%SZ")
             else:
                 return value
 
@@ -99,12 +99,12 @@ def last_scan(agent_id):
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event WHERE "
                               "log = 'Ending rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    end = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
+    end = datetime.utcfromtimestamp(time).strftime("%Y-%m-%dT%H:%M:%SZ") if time is not None else None
 
     # start time
     result = wdb_conn.execute(f"agent {agent_id} sql SELECT max(date_last) FROM pm_event "
                               "WHERE log = 'Starting rootcheck scan.'")
     time = list(result[0].values())[0] if result else None
-    start = datetime.utcfromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S") if time is not None else None
+    start = datetime.utcfromtimestamp(time).strftime("%Y-%m-%dT%H:%M:%SZ") if time is not None else None
 
     return {'start': start, 'end': None if start is None else None if end is None or end < start else end}
