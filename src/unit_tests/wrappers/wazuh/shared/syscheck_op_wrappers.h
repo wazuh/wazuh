@@ -16,7 +16,11 @@
 #include <windows.h>
 #endif // WIN32
 
+#include <cJSON.h>
+
 char *__wrap_decode_win_permissions(char *raw_perm);
+
+void __wrap_decode_win_acl_json(cJSON *perms);
 
 int __wrap_delete_target_file(const char *path);
 
@@ -34,7 +38,7 @@ unsigned int __wrap_w_directory_exists(const char *path);
 
 unsigned int __wrap_w_get_file_attrs(const char *file_path);
 
-int __wrap_w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
+int __wrap_w_get_file_permissions(const char *file_path, cJSON **output_acl);
 
 int __wrap_remove_empty_folders(const char *folder);
 
@@ -52,17 +56,17 @@ void expect_get_file_user(const char *path, char *sid, char *user);
 /**
  * @brief This function loads the expect and will return of the function w_get_file_permissions
  */
-void expect_w_get_file_permissions(const char *file_path, char *perms, int ret);
+void expect_w_get_file_permissions(const char *file_path, cJSON *perms, int ret);
 
 /**
  * @brief Mock calls to get_registry_permissions
  */
-DWORD __wrap_get_registry_permissions(HKEY hndl,  char *perm_key);
+DWORD __wrap_get_registry_permissions(__attribute__((unused)) HKEY hndl, cJSON **output_acl);
 
 /**
  * @brief This function loads the expect and will return of the function get_registry_permissions
  */
-void expect_get_registry_permissions(const char *permissions, DWORD retval);
+void expect_get_registry_permissions(cJSON *permissions, DWORD retval);
 
 #else
 /**

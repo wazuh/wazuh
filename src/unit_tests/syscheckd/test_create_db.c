@@ -120,6 +120,9 @@ static int setup_fim_data(void **state) {
     // Setup mock old fim_entry
     fim_data->old_data->size = 1500;
     fim_data->old_data->perm = strdup("0664");
+#ifdef TEST_WINAGENT
+    fim_data->old_data->perm_json = cJSON_CreateObject();
+#endif
     fim_data->old_data->attributes = strdup("r--r--r--");
     fim_data->old_data->uid = strdup("100");
     fim_data->old_data->gid = strdup("1000");
@@ -140,6 +143,9 @@ static int setup_fim_data(void **state) {
     // Setup mock new fim_entry
     fim_data->new_data->size = 1501;
     fim_data->new_data->perm = strdup("0666");
+#ifdef TEST_WINAGENT
+    fim_data->new_data->perm_json = create_win_permissions_object();
+#endif
     fim_data->new_data->attributes = strdup("rw-rw-rw-");
     fim_data->new_data->uid = strdup("101");
     fim_data->new_data->gid = strdup("1001");
@@ -542,11 +548,12 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
     expect_get_user(0, user);
     expect_get_group(0, group);
 #else
-    expect_get_file_user(file_path, "0", user);
-    expect_w_get_file_permissions(file_path, "permissions", 0);
+    cJSON *perms = cJSON_CreateObject();
 
-    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
-    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    expect_get_file_user(file_path, "0", user);
+    expect_w_get_file_permissions(file_path, perms, 0);
+
+    expect_value(__wrap_decode_win_acl_json, perms, perms);
 
     expect_string(__wrap_get_UTC_modification_time, file_path, file_path);
     will_return(__wrap_get_UTC_modification_time, 123456);
@@ -861,7 +868,11 @@ static void test_fim_attributes_json(void **state) {
     assert_non_null(size);
     assert_int_equal(size->valueint, 1500);
     cJSON *perm = cJSON_GetObjectItem(fim_data->json, "perm");
+#ifndef TEST_WINAGENT
     assert_string_equal(cJSON_GetStringValue(perm), "0664");
+#else
+    assert_non_null(perm);
+#endif
     cJSON *uid = cJSON_GetObjectItem(fim_data->json, "uid");
     assert_string_equal(cJSON_GetStringValue(uid), "100");
     cJSON *gid = cJSON_GetObjectItem(fim_data->json, "gid");
@@ -1426,6 +1437,7 @@ static void test_fim_file_modify(void **state) {
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
+    cJSON *permissions = create_win_permissions_object();
 #else
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
@@ -1463,10 +1475,9 @@ static void test_fim_file_modify(void **state) {
 #else
 
     expect_get_file_user(file_path, "0", strdup("user"));
-    expect_w_get_file_permissions(file_path, "permissions", 0);
+    expect_w_get_file_permissions(file_path, permissions, 0);
 
-    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
-    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
 
     expect_OS_MD5_SHA1_SHA256_File_call(file_path, file_path, "d41d8cd98f00b204e9800998ecf8427e",
@@ -1505,6 +1516,7 @@ static void test_fim_file_no_attributes(void **state) {
 
 #ifdef TEST_WINAGENT
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
+    cJSON *permissions = create_win_permissions_object();
 #else
     char file_path[] = "/bin/ls";
 #endif
@@ -1519,11 +1531,9 @@ static void test_fim_file_no_attributes(void **state) {
 #else
     expect_get_file_user(file_path, "0", strdup("user"));
 
-    expect_w_get_file_permissions(file_path, "permissions", 0);
+    expect_w_get_file_permissions(file_path, permissions, 0);
 
-
-    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
-    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
 
     expect_OS_MD5_SHA1_SHA256_File_call(file_path,
@@ -1556,6 +1566,7 @@ static void test_fim_file_error_on_insert(void **state) {
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
+    cJSON *permissions = create_win_permissions_object();
 #else
     char file_path[OS_SIZE_256] = "/bin/ls";
 #endif
@@ -1591,10 +1602,9 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_get_group(0, strdup("group"));
 #else
     expect_get_file_user(file_path, "0", strdup("user"));
-    expect_w_get_file_permissions(file_path, "permissions", 0);
+    expect_w_get_file_permissions(file_path, permissions, 0);
 
-    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
-    will_return(__wrap_decode_win_permissions, "decoded_perms");
+    expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, file_path);
 #ifndef TEST_WINAGENT
@@ -4209,7 +4219,8 @@ static void test_fim_get_data(void **state) {
 #ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
 #else
-    assert_string_equal(fim_data->local_data->perm, "decoded_perms");
+    assert_string_equal(fim_data->local_data->perm, "{}");
+    assert_non_null(fim_data->local_data->perm_json);
 #endif
     assert_string_equal(fim_data->local_data->hash_md5, "d41d8cd98f00b204e9800998ecf8427e");
     assert_string_equal(fim_data->local_data->hash_sha1, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
@@ -4234,7 +4245,8 @@ static void test_fim_get_data_no_hashes(void **state) {
 #ifndef TEST_WINAGENT
     assert_string_equal(fim_data->local_data->perm, "r--r--r--");
 #else
-    assert_string_equal(fim_data->local_data->perm, "decoded_perms");
+    assert_string_equal(fim_data->local_data->perm, "{}");
+    assert_non_null(fim_data->local_data->perm_json);
 #endif
     assert_string_equal(fim_data->local_data->hash_md5, "");
     assert_string_equal(fim_data->local_data->hash_sha1, "");
@@ -4285,7 +4297,7 @@ static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "(6325): It was not possible to extract the permissions of 'test'. Error: 5");
 
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
-    will_return(__wrap_w_get_file_permissions, "");
+    will_return(__wrap_w_get_file_permissions, NULL);
     will_return(__wrap_w_get_file_permissions, ERROR_ACCESS_DENIED);
 
 
