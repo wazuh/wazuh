@@ -195,7 +195,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> sort=-score,limit=1
+  - name: Parameters -> sort=-score,limit=10
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -203,48 +203,15 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 1
+        limit: 10
         sort: -score
     response:
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_001
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
             reverse: True
-
-  - name: Parameters -> sort=+score,limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        sort: +score
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_001
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-      verify_response_with:
-        - function: tavern_utils:test_sort_response
-          extra_kwargs:
-            key: "score"
 
   # Testing GET /sca/006
   - name: Parameters -> limit=2
@@ -414,21 +381,12 @@ stages:
         limit: 2
         sort: -score
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_006
-            - <<: *sca_agent_result_006
-          failed_items: [ ]
-          total_affected_items: 2
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
             reverse: True
+      status_code: 200
 
   - name: Parameters -> sort=+score,limit=2
     request:
@@ -441,20 +399,11 @@ stages:
         limit: 2
         sort: +score
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_006
-            - <<: *sca_agent_result_006
-          failed_items: [ ]
-          total_affected_items: 2
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
+      status_code: 200
 
 ---
 test_name: GET /sca/001/checks/cis_debian9 (001 is an agent with version >=4.2.0)
@@ -556,21 +505,12 @@ stages:
         limit: 2
         sort: -id
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_check_result_001
-            - <<: *sca_check_result_001
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "id"
             reverse: True
+      status_code: 200
 
   - name: Parameters -> search=passwd,limit=1
     request:
@@ -1014,16 +954,12 @@ stages:
         limit: 2
         sort: -id
     response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+            reverse: true
       status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-            - <<: *sca_check_result_006
-          failed_items: []
-          total_failed_items: 0
 
   - name: Parameters -> search=passwd,limit=1
     request:

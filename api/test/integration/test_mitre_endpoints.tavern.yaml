@@ -160,13 +160,6 @@ stages:
             key: "techniques"
             reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Show mitigations using valid select
     request:
@@ -441,22 +434,14 @@ stages:
       verify: False
       <<: *general_references_request
       params:
-        sort: -source
+        sort: source
         limit: 3
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "source"
-            reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Show references using valid select
     request:
@@ -751,13 +736,6 @@ stages:
             key: "techniques"
             reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Try to show tactics using valid select
     request:
@@ -1055,13 +1033,6 @@ stages:
             key: "mitigations"
             reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Try to show techniques using valid select
     request:
@@ -1350,13 +1321,6 @@ stages:
             key: "software"
             reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Show groups using valid select
     request:
@@ -1645,13 +1609,6 @@ stages:
             key: "groups"
             reverse: True
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
 
   - name: Show softwares using valid select
     request:

@@ -908,7 +908,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -932,7 +931,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -961,7 +959,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:
@@ -985,7 +982,6 @@ stages:
       json:
         error: 1
         data:
-          affected_agents: []
           affected_items: []
           failed_items:
             - error:

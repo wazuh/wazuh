@@ -219,12 +219,12 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
     (['000'], [], 1703),
     (['001', '500'], ['001'], 1701)
 ])
-@patch('wazuh.core.agent.Agent.restart')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list, expected_items,
-                              error_code):
+def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+                              expected_items, error_code):
     """Test `restart_agents` function from agent module.
 
     Parameters
@@ -245,27 +245,26 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['000', '001', '002'], ['001', '002'], None),
+    (['000', '001', '002'], ['001', '002'], 1703),
     (['001', '500'], ['001'], 1701)
 ])
-@patch('wazuh.core.agent.Agent.restart')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list,
-                                      expected_items,
-                                      error_code):
+def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
+                                      expected_items,  error_code):
     """Test `restart_agents_by_node` function from agent module.
 
-        Parameters
-        ----------
-        agent_list : List of str
-            List of agent ID's.
-        expected_items : List of str
-            List of expected agent ID's returned by 'restart_agents'.
-        error_code : int
-            The expected error code.
-        """
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'restart_agents'.
+    error_code : int
+        The expected error code.
+    """
     result = restart_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
@@ -639,7 +638,7 @@ def test_create_group_exceptions(group_id, exception, exception_code):
     ['random-1', 'random-2'],
 ])
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.agent.remove_agents_from_group', return_value=AffectedItemsWazuhResult())
+@patch('wazuh.agent.remove_agents_from_group', return_value=AffectedItemsWazuhResult(affected_items=['000']))
 @patch('wazuh.agent.Agent.delete_single_group')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -662,7 +661,14 @@ def test_agent_delete_groups(socket_mock, send_mock, mock_delete, mock_remove_ag
     assert isinstance(result.affected_items, list)
     # Check affected items
     assert result.total_affected_items == len(result.affected_items)
-    assert set(result.affected_items).difference(set(group_list)) == set()
+    group_set = set(group_list)
+    for affected_item in result.affected_items:
+        key = next(iter(affected_item))
+        group_set -= {key}
+        assert affected_item[key] == ['000']
+
+    assert group_set == set()
+
     # Check failed items
     assert result.total_failed_items == 0
 

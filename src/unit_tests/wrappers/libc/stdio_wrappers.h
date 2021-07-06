@@ -57,4 +57,6 @@ FILE *__wrap_popen(const char *command, const char *type);
 
 int __wrap_pclose(FILE *stream);
 
+int __wrap_fputc(char character, FILE *stream);
+
 #endif
