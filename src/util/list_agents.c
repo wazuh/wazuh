@@ -44,6 +44,10 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     char * home_path = w_homedir(argv[0]);
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
     mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
 
