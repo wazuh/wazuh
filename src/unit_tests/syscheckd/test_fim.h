@@ -15,6 +15,8 @@ void expect_send_syscheck_msg(const char *msg);
 
 void expect_fim_diff_delete_compress_folder(struct dirent *dir);
 
+cJSON *create_win_permissions_object();
+
 /**********************************************************************************************************************\
  * Setups/Teardowns
 \**********************************************************************************************************************/
