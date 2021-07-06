@@ -1,13 +1,17 @@
 /**
- * @file fim_db.c
+ * @file db.cpp
  * @brief Definition of FIM database library.
  * @date 2019-08-28
  *
  * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
-#include "fim_db.h"
-#include "../registry/registry.h"
+#include "dbsync.hpp"
+#include "db.hpp"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -89,7 +93,33 @@ static char *find_key_value_limiter(char *input);
 
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
-    char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
+
+    constexpr auto DATABASE_TEMP {"TEMP.db"};
+    const auto sql{R"fim(CREATE TABLE IF NOT EXISTS file_entry (
+                        path TEXT NOT NULL,
+                        mode INTEGER,
+                        last_event INTEGER,
+                        scanned INTEGER,
+                        options INTEGER,
+                        checksum TEXT NOT NULL,
+                        dev INTEGER,
+                        inode INTEGER,
+                        size INTEGER,
+                        perm TEXT,
+                        attributes TEXT,
+                        uid INTEGER,
+                        gid INTEGER,
+                        user_name TEXT,
+                        group_name TEXT,
+                        hash_md5 TEXT,
+                        hash_sha1 TEXT,
+                        hash_sha256 TEXT,
+                        mtime INTEGER,
+                        PRIMARY KEY(path));)fim"
+                    };
+    DBSync dbsync{HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql};
+
+    const char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
     os_calloc(1, sizeof(fdb_t), fim);
     fim->transaction.interval = COMMIT_INTERVAL;
@@ -1039,7 +1069,7 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
 
 #ifndef WIN32
 // LCOV_EXCL_START
-inline int fim_db_get_count_entries(fdb_t *fim_sql) {
+int fim_db_get_count_entries(fdb_t *fim_sql) {
     return fim_db_get_count_file_entry(fim_sql);
 }
 // LCOV_EXCL_STOP
@@ -1063,3 +1093,6 @@ int fim_db_is_full(fdb_t *fim_sql) {
 
     return retval;
 }
+#ifdef __cplusplus
+}
+#endif

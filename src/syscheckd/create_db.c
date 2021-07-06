@@ -13,8 +13,7 @@
 #include "syscheck_op.h"
 #include "integrity_op.h"
 #include "time_op.h"
-#include "db/fim_db_files.h"
-#include "db/fim_db_registries.h"
+#include "db/include/db.hpp"
 #include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING

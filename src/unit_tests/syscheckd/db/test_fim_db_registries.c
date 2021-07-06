@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "../../../syscheckd/db/fim_db.h"
+#include "../../../syscheckd/db/db.hpp"
 
 extern int _base_line;
 
