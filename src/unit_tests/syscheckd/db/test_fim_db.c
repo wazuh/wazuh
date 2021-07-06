@@ -1190,38 +1190,6 @@ static void fim_db_get_checksum_empty_range_fail_step_on_second_half(void **stat
     assert_int_equal(retval, FIMDB_ERR);
 }
 
-static void fim_db_get_checksum_empty_range_fail_step_on_second_half(void **state) {
-    fdb_t fim_sql;
-    const char *start = "start";
-    const char *top = "top";
-    EVP_MD_CTX *ctx_left = (EVP_MD_CTX *)123456, *ctx_right = (EVP_MD_CTX *)234567;
-    char *lower_half_path = NULL, *higher_half_path = NULL;
-    const char *array[] = { "/some/path", "0123456789ABCDEF0123456789ABCDEF01234567", NULL };
-    int retval;
-
-    expect_fim_db_clean_stmt();
-    expect_fim_db_bind_range(start, top, 0);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_fim_db_decode_string_array(2, array);
-
-    expect_string(__wrap_EVP_DigestUpdate, data, "0123456789ABCDEF0123456789ABCDEF01234567");
-    expect_value(__wrap_EVP_DigestUpdate, count, 40);
-    will_return(__wrap_EVP_DigestUpdate, 0);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_string(__wrap__mdebug2, formatted_msg,
-                  "Received a synchronization message with empty range, second half 'start start' 'top top' (i:1)");
-
-    retval = fim_db_get_checksum_range(&fim_sql, FIM_TYPE_FILE, start, top, 2, ctx_left, ctx_right, &lower_half_path,
-                                       &higher_half_path);
-    assert_int_equal(retval, FIMDB_ERR);
-}
-
 static void fim_db_get_checksum_range_fail_to_decode_string_array_on_second_half(void **state) {
     fdb_t fim_sql;
     const char *start = "start";
