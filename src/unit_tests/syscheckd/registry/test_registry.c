@@ -27,6 +27,8 @@
 #include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 
+#include "test_fim.h"
+
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
@@ -97,12 +99,9 @@ void expect_fim_registry_get_key_data_call(LPSTR usid,
     expect_ConvertSidToStringSid_call(gsid, 1);
     expect_LookupAccountSid_call((PSID)gname, "domain", 1);
 
-    expect_get_registry_permissions("sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
-                                    ERROR_SUCCESS);
+    expect_get_registry_permissions(create_win_permissions_object(), ERROR_SUCCESS);
 
-    expect_string(__wrap_decode_win_permissions, raw_perm,
-                  "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
-    will_return(__wrap_decode_win_permissions, permissions);
+    expect_any(__wrap_decode_win_acl_json, perms);
 
     expect_RegQueryInfoKeyA_call(&last_write_time, ERROR_SUCCESS);
 }
@@ -663,12 +662,11 @@ static void test_fim_registry_get_key_data_check_perm(void **state) {
     configuration->opts = CHECK_PERM;
     HKEY key_handle = HKEY_LOCAL_MACHINE;
     fim_registry_key *ret_key;
+    cJSON *permissions = create_win_permissions_object();
 
-    expect_get_registry_permissions("permissions", ERROR_SUCCESS);
+    expect_get_registry_permissions(permissions, ERROR_SUCCESS);
 
-    expect_string(__wrap_decode_win_permissions, raw_perm, "permissions");
-    will_return(__wrap_decode_win_permissions,
-                "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
+    expect_string(__wrap_decode_win_acl_json, perms, permissions);
 
     ret_key = fim_registry_get_key_data(key_handle, path, configuration);
 
@@ -676,7 +674,8 @@ static void test_fim_registry_get_key_data_check_perm(void **state) {
     assert_null(ret_key->user_name);
     assert_null(ret_key->gid);
     assert_null(ret_key->group_name);
-    assert_string_equal(ret_key->perm, "sid (allowed): delete|write_dac|write_data|append_data|write_attributes");
+    assert_non_null(ret_key->perm);
+    assert_non_null(ret_key->perm_json);
     assert_null(ret_key->mtime);
 }
 

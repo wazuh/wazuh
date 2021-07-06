@@ -67,6 +67,46 @@ typedef struct __registry_group_information {
     char *id;
 } registry_group_information_t;
 
+#ifdef TEST_WINAGENT
+#define BASE_WIN_ALLOWED_ACE "[" \
+    "\"delete\"," \
+    "\"read_control\"," \
+    "\"write_dac\"," \
+    "\"write_owner\"," \
+    "\"synchronize\"," \
+    "\"read_data\"," \
+    "\"write_data\"," \
+    "\"append_data\"," \
+    "\"read_ea\"," \
+    "\"write_ea\"," \
+    "\"execute\"," \
+    "\"read_attributes\"," \
+    "\"write_attributes\"" \
+"]"
+
+#define BASE_WIN_DENIED_ACE "[" \
+    "\"read_control\"," \
+    "\"synchronize\"," \
+    "\"read_data\"," \
+    "\"read_ea\"," \
+    "\"execute\"," \
+    "\"read_attributes\"" \
+"]"
+
+#define BASE_WIN_ACE "{" \
+    "\"name\": \"Users\"," \
+    "\"allowed\": " BASE_WIN_ALLOWED_ACE "," \
+    "\"denied\": " BASE_WIN_DENIED_ACE \
+"}"
+
+#define BASE_WIN_SID "S-1-5-32-636"
+
+static cJSON *create_win_permissions_object() {
+    static const char * const BASE_WIN_PERMS = "{\"" BASE_WIN_SID "\": " BASE_WIN_ACE "}";
+    return cJSON_Parse(BASE_WIN_PERMS);
+}
+#endif
+
 /* setup/teardown */
 
 static int teardown_string(void **state) {
@@ -2980,117 +3020,8 @@ void test_w_get_account_info_success(void **state) {
     assert_string_equal(array[1], "domainName");
 }
 
-void test_copy_ace_info_invalid_ace(void **state) {
-    int ret;
-    char perm[OS_SIZE_1024] = { '\0' };
-    ACCESS_ALLOWED_ACE ace = {
-        .Header.AceType = SYSTEM_AUDIT_ACE_TYPE,
-    };
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Invalid ACE type.");
-
-    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_copy_ace_info_invalid_sid(void **state) {
-    int ret;
-    char perm[OS_SIZE_1024] = { '\0' };
-    ACCESS_ALLOWED_ACE ace = {
-        .Header.AceType = ACCESS_DENIED_ACE_TYPE,
-    };
-
-    will_return(wrap_IsValidSid, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Invalid SID found in ACE.");
-
-    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_copy_ace_info_no_information_from_account_or_sid(void **state) {
-    int ret;
-    char perm[OS_SIZE_1024] = { '\0' };
-    ACCESS_ALLOWED_ACE ace = {
-        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
-    };
-
-    will_return(wrap_IsValidSid, 1);
-
-    // Inside w_get_account_info
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_LookupAccountSid, 0);
-
-    will_return(wrap_GetLastError, ERROR_INVALID_NAME);
-    will_return(wrap_GetLastError, ERROR_INVALID_NAME);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "No information could be extracted from the account linked to the SID. Error: 123.");
-
-    will_return(wrap_ConvertSidToStringSid, NULL);
-    will_return(wrap_ConvertSidToStringSid, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Could not extract the SID.");
-
-    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_copy_ace_info_success(void **state) {
-    int ret;
-    char perm[OS_SIZE_1024] = { '\0' };
-    ACCESS_ALLOWED_ACE ace = {
-        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
-        .Mask = 123456,
-    };
-
-    will_return(wrap_IsValidSid, 1);
-
-    // Inside w_get_account_info
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_LookupAccountSid, 1);
-
-    will_return(wrap_LookupAccountSid, "accountName");
-    will_return(wrap_LookupAccountSid, "domainName");
-    will_return(wrap_LookupAccountSid, 1);
-
-    ret = copy_ace_info(&ace, perm, OS_SIZE_1024);
-
-    assert_int_equal(ret, 21);
-    assert_string_equal(perm, "|accountName,0,123456");
-}
-
-void test_copy_ace_info_insufficient_size(void **state) {
-    int ret;
-    char perm[OS_SIZE_1024] = { '\0' };
-    ACCESS_ALLOWED_ACE ace = {
-        .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
-        .Mask = 123456,
-    };
-
-    will_return(wrap_IsValidSid, 1);
-
-    // Inside w_get_account_info
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_LookupAccountSid, 1);
-
-    will_return(wrap_LookupAccountSid, "accountName");
-    will_return(wrap_LookupAccountSid, "domainName");
-    will_return(wrap_LookupAccountSid, 1);
-
-    ret = copy_ace_info(&ace, perm, 10);
-
-    assert_int_equal(ret, 0);
-    assert_string_equal(perm, "");
-}
-
 void test_w_get_file_permissions_GetFileSecurity_error_on_size(void **state) {
-    char permissions[OS_SIZE_1024];
+    cJSON *permissions = NULL;
     int ret;
 
     expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
@@ -3098,15 +3029,15 @@ void test_w_get_file_permissions_GetFileSecurity_error_on_size(void **state) {
     will_return(wrap_GetFileSecurity, 0);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
-    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
     assert_int_equal(ret, ERROR_ACCESS_DENIED);
+    assert_null(permissions);
 }
 
 void test_w_get_file_permissions_GetFileSecurity_error(void **state) {
-    char permissions[OS_SIZE_1024];
+    cJSON *permissions = NULL;
     int ret;
 
     expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
@@ -3119,13 +3050,14 @@ void test_w_get_file_permissions_GetFileSecurity_error(void **state) {
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
     assert_int_equal(ret, ERROR_ACCESS_DENIED);
+    assert_null(permissions);
 }
 
-void test_w_get_file_permissions_GetSecurityDescriptorDacl_error(void **state) {
-    char permissions[OS_SIZE_1024];
+void test_w_get_file_permissions_create_cjson_error(void **state) {
+    cJSON *permissions = NULL;
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
@@ -3136,21 +3068,47 @@ void test_w_get_file_permissions_GetSecurityDescriptorDacl_error(void **state) {
     expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
     will_return(wrap_GetFileSecurity, &sec_desc);
     will_return(wrap_GetFileSecurity, 1);
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_CJSON_ERROR_CREATE_ITEM);
+
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
+
+    assert_int_equal(ret, -1);
+    assert_null(permissions);
+}
+
+void test_w_get_file_permissions_GetSecurityDescriptorDacl_error(void **state) {
+    cJSON *permissions = NULL;
+    int ret;
+    SECURITY_DESCRIPTOR sec_desc;
+
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, OS_SIZE_1024);
+    will_return(wrap_GetFileSecurity, 1);
+
+    expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
+    will_return(wrap_GetFileSecurity, &sec_desc);
+    will_return(wrap_GetFileSecurity, 1);
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(wrap_GetSecurityDescriptorDacl, FALSE);
     will_return(wrap_GetSecurityDescriptorDacl, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "The DACL of the file could not be obtained.");
+    expect_string(__wrap__mdebug2, formatted_msg, "GetSecurityDescriptorDacl failed. GetLastError returned: 5");
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
     assert_int_equal(ret, ERROR_ACCESS_DENIED);
+    assert_null(permissions);
 }
 
 void test_w_get_file_permissions_no_dacl(void **state) {
-    char permissions[OS_SIZE_1024];
+    cJSON *permissions = NULL;
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
@@ -3161,19 +3119,22 @@ void test_w_get_file_permissions_no_dacl(void **state) {
     expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
     will_return(wrap_GetFileSecurity, &sec_desc);
     will_return(wrap_GetFileSecurity, 1);
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(wrap_GetSecurityDescriptorDacl, FALSE);
     will_return(wrap_GetSecurityDescriptorDacl, 1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "'C:\\a\\path' has no DACL, so no permits can be extracted.");
+    expect_string(__wrap__mdebug2, formatted_msg, "No DACL was found (all access is denied), or a NULL DACL (unrestricted access) was found.");
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, -2);
+    assert_null(permissions);
 }
 
 void test_w_get_file_permissions_GetAclInformation_error(void **state) {
-    char permissions[OS_SIZE_1024];
+    cJSON *permissions = NULL;
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
 
@@ -3184,6 +3145,8 @@ void test_w_get_file_permissions_GetAclInformation_error(void **state) {
     expect_string(wrap_GetFileSecurity, lpFileName, "C:\\a\\path");
     will_return(wrap_GetFileSecurity, &sec_desc);
     will_return(wrap_GetFileSecurity, 1);
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     will_return(wrap_GetSecurityDescriptorDacl, TRUE);
     will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
@@ -3192,17 +3155,18 @@ void test_w_get_file_permissions_GetAclInformation_error(void **state) {
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "No information could be obtained from the ACL.");
-
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    expect_string(__wrap__mdebug2, formatted_msg, "GetAclInformation failed. GetLastError returned: 5");
+
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
     assert_int_equal(ret, ERROR_ACCESS_DENIED);
+    assert_null(permissions);
 }
 
 void test_w_get_file_permissions_GetAce_error(void **state) {
-    char permissions[OS_SIZE_1024];
+    cJSON *permissions = NULL;
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
@@ -3215,6 +3179,8 @@ void test_w_get_file_permissions_GetAce_error(void **state) {
     will_return(wrap_GetFileSecurity, &sec_desc);
     will_return(wrap_GetFileSecurity, 1);
 
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+
     will_return(wrap_GetSecurityDescriptorDacl, TRUE);
     will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
     will_return(wrap_GetSecurityDescriptorDacl, 1);
@@ -3225,16 +3191,18 @@ void test_w_get_file_permissions_GetAce_error(void **state) {
     will_return(wrap_GetAce, NULL);
     will_return(wrap_GetAce, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "ACE number 0 could not be obtained.");
+    will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
+    expect_string(__wrap__mdebug2, formatted_msg, "GetAce failed. GetLastError returned: 5");
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
-    assert_int_equal(ret, -2);
-    assert_string_equal(permissions, "");
+    assert_int_equal(ret, 0);
+    assert_non_null(permissions);
+    cJSON_Delete(permissions);
 }
 
 void test_w_get_file_permissions_success(void **state) {
-    char permissions[OS_SIZE_1024];
+    cJSON *permissions = NULL;
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
     ACL_SIZE_INFORMATION acl_size = {
@@ -3252,6 +3220,8 @@ void test_w_get_file_permissions_success(void **state) {
     will_return(wrap_GetFileSecurity, &sec_desc);
     will_return(wrap_GetFileSecurity, 1);
 
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+
     will_return(wrap_GetSecurityDescriptorDacl, TRUE);
     will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
     will_return(wrap_GetSecurityDescriptorDacl, 1);
@@ -3262,7 +3232,7 @@ void test_w_get_file_permissions_success(void **state) {
     will_return(wrap_GetAce, &ace);
     will_return(wrap_GetAce, 1);
 
-    // Inside copy_ace_info
+    // Inside process_ace_info
     {
         will_return(wrap_IsValidSid, 1);
 
@@ -3274,16 +3244,31 @@ void test_w_get_file_permissions_success(void **state) {
         will_return(wrap_LookupAccountSid, "accountName");
         will_return(wrap_LookupAccountSid, "domainName");
         will_return(wrap_LookupAccountSid, 1);
+
+        expect_ConvertSidToStringSid_call(BASE_WIN_SID, TRUE);
     }
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    // Inside add_ace_to_json
+    {
+        will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+    }
+
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
     assert_int_equal(ret, 0);
-    assert_string_equal(permissions, "|accountName,0,0");
+    assert_non_null(permissions);
+
+    cJSON *ace_json = cJSON_GetObjectItem(permissions, BASE_WIN_SID);
+    assert_non_null(ace_json);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(ace_json, "name")), "accountName");
+    assert_int_equal(cJSON_GetObjectItem(ace_json, "allowed")->valueint, 0);
+    assert_null(cJSON_GetObjectItem(ace_json, "denied"));
+
+    cJSON_Delete(permissions);
 }
 
-void test_w_get_file_permissions_copy_ace_info_error(void **state) {
-    char permissions[OS_SIZE_1024];
+void test_w_get_file_permissions_process_ace_info_error(void **state) {
+    cJSON *permissions = NULL;
     int ret;
     SECURITY_DESCRIPTOR sec_desc;
     ACL_SIZE_INFORMATION acl_size = {
@@ -3301,6 +3286,8 @@ void test_w_get_file_permissions_copy_ace_info_error(void **state) {
     will_return(wrap_GetFileSecurity, &sec_desc);
     will_return(wrap_GetFileSecurity, 1);
 
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+
     will_return(wrap_GetSecurityDescriptorDacl, TRUE);
     will_return(wrap_GetSecurityDescriptorDacl, (PACL)123456);
     will_return(wrap_GetSecurityDescriptorDacl, 1);
@@ -3311,16 +3298,16 @@ void test_w_get_file_permissions_copy_ace_info_error(void **state) {
     will_return(wrap_GetAce, &ace);
     will_return(wrap_GetAce, 1);
 
-    // Inside copy_ace_info
+    // Inside process_ace_info
     expect_string(__wrap__mdebug2, formatted_msg, "Invalid ACE type.");
 
     expect_string(__wrap__mdebug1, formatted_msg,
-        "The parameters of ACE number 0 from 'C:\\a\\path' could not be extracted. 1024 bytes remaining.");
+        "ACE number 0 could not be processed.");
 
-    ret = w_get_file_permissions("C:\\a\\path", permissions, OS_SIZE_1024);
+    ret = w_get_file_permissions("C:\\a\\path", &permissions);
 
     assert_int_equal(ret, 0);
-    assert_string_equal(permissions, "");
+    assert_non_null(permissions);
 }
 
 void test_w_get_file_attrs_error(void **state) {
@@ -3510,61 +3497,65 @@ void test_get_registry_group_success(void **state) {
 void test_get_registry_permissions_RegGetKeySecurity_insufficient_buffer(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
-    char permissions[OS_SIZE_6144 + 1];
+    cJSON *permissions = NULL;
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_ACCESS_DENIED);
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
 
-    retval = get_registry_permissions(hndl, permissions);
+    retval = get_registry_permissions(hndl, &permissions);
 
     assert_int_equal(retval, ERROR_ACCESS_DENIED);
-    assert_string_equal(permissions, "");
+    assert_null(permissions);
 }
 
 void test_get_registry_permissions_RegGetKeySecurity_fails(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
-    char permissions[OS_SIZE_6144 + 1];
+    cJSON *permissions = NULL;
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_ACCESS_DENIED);
 
-    retval = get_registry_permissions(hndl, permissions);
+    retval = get_registry_permissions(hndl, &permissions);
 
     assert_int_equal(retval, ERROR_ACCESS_DENIED);
-    assert_string_equal(permissions, "");
+    assert_null(permissions);
 }
 
 void test_get_registry_permissions_GetSecurityDescriptorDacl_fails(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
-    char permissions[OS_SIZE_6144 + 1];
+    cJSON *permissions = NULL;
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)0, FALSE);
 
     expect_GetLastError_call(ERROR_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "GetSecurityDescriptorDacl failed. GetLastError returned: 0");
 
-    retval = get_registry_permissions(hndl, permissions);
+    retval = get_registry_permissions(hndl, &permissions);
 
     assert_int_equal(retval, ERROR_SUCCESS);
-    assert_string_equal(permissions, "");
+    assert_null(permissions);
 }
 
 void test_get_registry_permissions_GetSecurityDescriptorDacl_no_DACL(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
-    char permissions[OS_SIZE_6144 + 1];
+    cJSON *permissions = NULL;
     char error_msg[OS_SIZE_1024];
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)0, TRUE);
 
@@ -3575,20 +3566,22 @@ void test_get_registry_permissions_GetSecurityDescriptorDacl_no_DACL(void **stat
 
     expect_string(__wrap__mdebug2, formatted_msg, error_msg);
 
-    retval = get_registry_permissions(hndl, permissions);
+    retval = get_registry_permissions(hndl, &permissions);
 
     assert_int_not_equal(retval, ERROR_SUCCESS);
-    assert_string_equal(permissions, "");
+    assert_null(permissions);
 }
 
 void test_get_registry_permissions_GetAclInformation_fails(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
-    char permissions[OS_SIZE_6144 + 1];
+    cJSON *permissions = NULL;
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)4321, TRUE);
 
@@ -3597,21 +3590,23 @@ void test_get_registry_permissions_GetAclInformation_fails(void **state) {
     expect_GetLastError_call(ERROR_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "GetAclInformation failed. GetLastError returned: 0");
 
-    retval = get_registry_permissions(hndl, permissions);
+    retval = get_registry_permissions(hndl, &permissions);
 
     assert_int_equal(retval, ERROR_SUCCESS);
-    assert_string_equal(permissions, "");
+    assert_null(permissions);
 }
 
 void test_get_registry_permissions_GetAce_fails(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
-    char permissions[OS_SIZE_6144 + 1];
+    cJSON *permissions = NULL;
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_INSUFFICIENT_BUFFER);
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
 
     expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)4321, TRUE);
 
@@ -3622,16 +3617,16 @@ void test_get_registry_permissions_GetAce_fails(void **state) {
     expect_GetLastError_call(ERROR_SUCCESS);
     expect_string(__wrap__mdebug2, formatted_msg, "GetAce failed. GetLastError returned: 0");
 
-    retval = get_registry_permissions(hndl, permissions);
+    retval = get_registry_permissions(hndl, &permissions);
 
     assert_int_equal(retval, ERROR_SUCCESS);
-    assert_string_equal(permissions, "");
+    assert_non_null(permissions);
 }
 
 void test_get_registry_permissions_success(void **state) {
     HKEY hndl = (HKEY)123456;
     unsigned int retval = 0;
-    char permissions[OS_SIZE_6144 + 1];
+    cJSON *permissions = NULL;
     ACL_SIZE_INFORMATION acl_size = { .AceCount = 1 };
     ACCESS_ALLOWED_ACE ace = {
         .Header.AceType = ACCESS_ALLOWED_ACE_TYPE,
@@ -3641,13 +3636,15 @@ void test_get_registry_permissions_success(void **state) {
 
     expect_RegGetKeySecurity_call((LPDWORD)120, ERROR_SUCCESS);
 
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+
     expect_GetSecurityDescriptorDacl_call(TRUE, (PACL*)4321, TRUE);
 
     expect_GetAclInformation_call(&acl_size, TRUE);
 
     expect_GetAce_call((LPVOID*)&ace, TRUE);
 
-    // Inside copy_ace_info
+    // Inside process_ace_info
     {
         will_return(wrap_IsValidSid, 1);
 
@@ -3659,12 +3656,24 @@ void test_get_registry_permissions_success(void **state) {
         will_return(wrap_LookupAccountSid, "accountName");
         will_return(wrap_LookupAccountSid, "domainName");
         will_return(wrap_LookupAccountSid, 1);
+
+        expect_ConvertSidToStringSid_call(BASE_WIN_SID, TRUE);
+
+        will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
     }
 
-    retval = get_registry_permissions(hndl, permissions);
+    retval = get_registry_permissions(hndl, &permissions);
 
     assert_int_equal(retval, ERROR_SUCCESS);
-    assert_string_equal(permissions, "|accountName,0,0");
+    assert_non_null(permissions);
+
+    cJSON *ace_json = cJSON_GetObjectItem(permissions, BASE_WIN_SID);
+    assert_non_null(ace_json);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(ace_json, "name")), "accountName");
+    assert_int_equal(cJSON_GetObjectItem(ace_json, "allowed")->valueint, 0);
+    assert_null(cJSON_GetObjectItem(ace_json, "denied"));
+
+    cJSON_Delete(permissions);
 }
 
 void test_get_registry_mtime_RegQueryInfoKeyA_fails(void **state) {
@@ -3865,22 +3874,16 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_setup_teardown(test_w_get_account_info_LookupAccountSid_error_second_call, setup_string_array, teardown_string_array),
         cmocka_unit_test_setup_teardown(test_w_get_account_info_success, setup_string_array, teardown_string_array),
 
-        /* copy_ace_info tests */
-        cmocka_unit_test(test_copy_ace_info_invalid_ace),
-        cmocka_unit_test(test_copy_ace_info_invalid_sid),
-        cmocka_unit_test(test_copy_ace_info_no_information_from_account_or_sid),
-        cmocka_unit_test(test_copy_ace_info_success),
-        cmocka_unit_test(test_copy_ace_info_insufficient_size),
-
         /* w_get_file_permissions tests */
         cmocka_unit_test(test_w_get_file_permissions_GetFileSecurity_error_on_size),
         cmocka_unit_test(test_w_get_file_permissions_GetFileSecurity_error),
+        cmocka_unit_test(test_w_get_file_permissions_create_cjson_error),
         cmocka_unit_test(test_w_get_file_permissions_GetSecurityDescriptorDacl_error),
         cmocka_unit_test(test_w_get_file_permissions_no_dacl),
         cmocka_unit_test(test_w_get_file_permissions_GetAclInformation_error),
         cmocka_unit_test(test_w_get_file_permissions_GetAce_error),
         cmocka_unit_test(test_w_get_file_permissions_success),
-        cmocka_unit_test(test_w_get_file_permissions_copy_ace_info_error),
+        cmocka_unit_test(test_w_get_file_permissions_process_ace_info_error),
 
         /* w_get_file_attrs tests */
         cmocka_unit_test(test_w_get_file_attrs_error),
