@@ -1250,7 +1250,7 @@ def expand_group(group_name):
             try:
                 with open(path.join(common.groups_path, file), 'r') as f:
                     file_content = f.readlines()
-                len(file_content) == 1 and group_name in file_content[0] and agents_ids.add(file)
+                len(file_content) == 1 and group_name in file_content[0].split(',') and agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
                 pass
