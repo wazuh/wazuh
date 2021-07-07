@@ -6,6 +6,7 @@
 
 import os
 import sys
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -58,6 +59,13 @@ def sort_entries(entries, sort_key='id'):
     return sorted(entries, key=lambda k: k[sort_key])
 
 
+def check_datetime(element, key):
+    if key in {'created_time', 'modified_time'}:
+        element[key] = datetime.strptime(element[key], '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    return element[key]
+
+
 # Tests
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
@@ -76,8 +84,8 @@ def test_mitre_mitigations(mock_mitre_db, mitre_db):
     result = mitre.mitre_mitigations()
     rows = mitre_query(mitre_db, "SELECT * FROM mitigation")
 
-    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
-               for key in row)
+    assert all(item[key] == check_datetime(row, key) for item, row in zip(sort_entries(result.affected_items),
+                                                                          sort_entries(rows)) for key in row)
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
@@ -91,7 +99,7 @@ def test_mitre_references(mock_mitre_dbmitre, mitre_db):
     sorted_rows = sort_entries(sort_entries(sort_entries(rows, sort_key='id'), sort_key='source'), sort_key='url')
 
     assert result.affected_items
-    assert all(item[key] == row[key] for item, row in zip(sorted_result, sorted_rows) for key in row)
+    assert all(item[key] == check_datetime(row, key) for item, row in zip(sorted_result, sorted_rows) for key in row)
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
@@ -101,8 +109,8 @@ def test_mitre_tactics(mock_mitre_db, mitre_db):
     rows = mitre_query(mitre_db, "SELECT * FROM tactic")
 
     assert result.affected_items
-    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
-               for key in row)
+    assert all(item[key] == check_datetime(row, key) for item, row in zip(sort_entries(result.affected_items),
+                                                                          sort_entries(rows)) for key in row)
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
@@ -112,8 +120,8 @@ def test_mitre_techniques(mock_mitre_db, mitre_db):
     rows = mitre_query(mitre_db, "SELECT * FROM technique")
 
     assert result.affected_items
-    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
-               for key in row)
+    assert all(item[key] == check_datetime(row, key) for item, row in zip(sort_entries(result.affected_items),
+                                                                          sort_entries(rows)) for key in row)
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
@@ -123,8 +131,8 @@ def test_mitre_groups(mock_mitre_db, mitre_db):
     rows = mitre_query(mitre_db, "SELECT * FROM `group`")
 
     assert result.affected_items
-    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
-               for key in row)
+    assert all(item[key] == check_datetime(row, key) for item, row in zip(sort_entries(result.affected_items),
+                                                                          sort_entries(rows)) for key in row)
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
@@ -134,5 +142,5 @@ def test_mitre_software(mock_mitre_db, mitre_db):
     rows = mitre_query(mitre_db, "SELECT * FROM software")
 
     assert result.affected_items
-    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
-               for key in row)
+    assert all(item[key] == check_datetime(row, key) for item, row in zip(sort_entries(result.affected_items),
+                                                                          sort_entries(rows)) for key in row)

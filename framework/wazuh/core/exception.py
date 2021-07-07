@@ -166,7 +166,7 @@ class WazuhException(Exception):
         1409: 'Invalid query operator.',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
-        1412: 'Date filter not valid. Valid formats are timeframe, YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
+        1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
         1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',
                'remediation': 'Please, make sure you have read permissions over the file'

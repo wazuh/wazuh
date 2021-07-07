@@ -53,6 +53,7 @@ class WazuhDBQueryTask(WazuhDBQuery):
             super()._process_filter(field_name, field_filter, q_filter)
 
     def _format_data_into_dictionary(self):
+        """Standardization of dates to the ISO 8601 format."""
         for t in self._data:
             if t.keys() >= {'create_time', 'last_update_time'}:
                 t['create_time'] = datetime.utcfromtimestamp(t['create_time']).strftime("%Y-%m-%dT%H:%M:%SZ")

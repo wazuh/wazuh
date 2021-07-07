@@ -161,8 +161,8 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
     test._data = [{'log': 'Testing', 'date_first': 1603645251, 'status': 'solved', 'date_last': 1603648851,
          'cis': '2.3 Debian Linux', 'pci_dss': '4.1'}]
     result = test._format_data_into_dictionary()
-    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime("%Y-%m-%d %H:%M:%S") and\
-           result['items'][0]['date_last'] == datetime.utcfromtimestamp(1603648851).strftime("%Y-%m-%d %H:%M:%S")
+    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime("%Y-%m-%dT%H:%M:%SZ") and\
+           result['items'][0]['date_last'] == datetime.utcfromtimestamp(1603648851).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 @patch('wazuh.core.agent.Agent.get_basic_information')
@@ -171,7 +171,7 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
 def test_last_scan(mock_connect, mock_send, mock_info):
     """Check if last_scan function returns expected datetime according to the database"""
     result = rootcheck.last_scan('001')
-    assert result == {'end': '2020-10-27 12:29:40', 'start': '2020-10-27 12:19:40'}
+    assert result == {'end': '2020-10-27T12:29:40Z', 'start': '2020-10-27T12:19:40Z'}
 
 
 remove_db(test_data_path)

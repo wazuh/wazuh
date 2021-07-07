@@ -928,16 +928,28 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
-    def check_date_format(s_date):
+    def check_date_format(element):
+        """Check if a given field is a date. If so, transform the date to the standard API format (ISO 8601).
+        If not, return the field.
+
+        Parameters
+        ----------
+        element : str
+            Item to check.
+
+        Returns
+        -------
+        In case of a date, return the element after its conversion. Otherwise it return the element.
+        """
         date_patterns = ['%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
 
         for pattern in date_patterns:
             try:
-                return datetime.strptime(s_date, pattern)
+                return datetime.strptime(element, pattern)
             except ValueError:
                 pass
 
-        return s_date
+        return element
 
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
