@@ -124,7 +124,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
     int overwrite = -1;
 
     if (syscheck->registry == NULL) {
-        os_calloc(2, sizeof(registry), syscheck->registry);
+        os_calloc(2, sizeof(registry_t), syscheck->registry);
         syscheck->registry[pl + 1].entry = NULL;
         syscheck->registry[pl].tag = NULL;
         syscheck->registry[pl + 1].tag = NULL;
@@ -144,7 +144,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
             pl++;
         }
         if (overwrite < 0) {
-            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry), syscheck->registry);
+            os_realloc(syscheck->registry, (pl + 2) * sizeof(registry_t), syscheck->registry);
             syscheck->registry[pl + 1].entry = NULL;
             syscheck->registry[pl].tag = NULL;
             syscheck->registry[pl + 1].tag = NULL;
@@ -254,12 +254,12 @@ void dump_registry_nodiff(syscheck_config *syscheck, const char *entry, int arch
                     strcmp(syscheck->registry_nodiff[ign_size].entry, entry) == 0)
                 return;
 
-        os_realloc(syscheck->registry_nodiff, sizeof(registry) * (ign_size + 2),
+        os_realloc(syscheck->registry_nodiff, sizeof(registry_t) * (ign_size + 2),
                    syscheck->registry_nodiff);
 
         syscheck->registry_nodiff[ign_size + 1].entry = NULL;
     } else {
-        os_calloc(2, sizeof(registry), syscheck->registry_nodiff);
+        os_calloc(2, sizeof(registry_t), syscheck->registry_nodiff);
         syscheck->registry_nodiff[0].entry = NULL;
         syscheck->registry_nodiff[1].entry = NULL;
     }

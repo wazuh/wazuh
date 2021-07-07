@@ -626,14 +626,14 @@ void audit_restore();
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 
 /**
- * @brief Function that generates the diff file of a Windows registry when the option report_changes is activated
+ * @brief Function that generates the diff file of a Windows registry_t when the option report_changes is activated
  * It creates a file with the content of the value, to compute differences
  *
- * @param key_name Path of the registry key monitored
+ * @param key_name Path of the registry_t key monitored
  * @param value_name Name of the value that has generated the alert
  * @param value_data Content of the value to be checked
  * @param data_type The type of value we are checking
- * @param registry Config of the registry key
+ * @param registry_t Config of the registry_t key
  * @return String with the changes to add to the alert
  */
 
@@ -641,7 +641,7 @@ char *fim_registry_value_diff(const char *key_name,
                               const char *value_name,
                               const char *value_data,
                               DWORD data_type,
-                              const registry *configuration);
+                              const registry_t *configuration);
 #endif
 
 /**
@@ -663,9 +663,9 @@ char *fim_file_diff(const char *filename, const directory_t *configuration);
 int fim_diff_process_delete_file(const char *filename);
 
 /**
- * @brief Deletes the registry diff folder and modify diff_folder_size if disk_quota enabled
+ * @brief Deletes the registry_t diff folder and modify diff_folder_size if disk_quota enabled
  *
- * @param key_name Path of the registry that has been deleted
+ * @param key_name Path of the registry_t that has been deleted
  * @param arch Arch type of the registry
  * @return 0 if success, -1 on error
  */
@@ -674,7 +674,7 @@ int fim_diff_process_delete_registry(const char *key_name, int arch);
 /**
  * @brief Deletes the value diff folder and modifies diff_folder_size if disk_quota enabled
  *
- * @param key_name Path of the registry that contains the deleted value
+ * @param key_name Path of the registry_t that contains the deleted value
  * @param value_name Path of the value that has been deleted
  * @param arch Arch type of the registry
  * @return 0 if success, -1 on error

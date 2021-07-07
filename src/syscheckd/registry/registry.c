@@ -35,7 +35,7 @@ static int _base_line = 0;
  * @brief Set the root key and subkey associated with a given key.
  *
  * @param root_key_handle A pointer to a handle which will hold the root key handle on success, NULL on failure.
- * @param full_key A string holding the full path to a registry key.
+ * @param full_key A string holding the full path to a registry_t key.
  * @param sub_key A pointer to a pointer which will point to the byte where the first sub key of full_key starts,
  * unchanged on error.
  * @return 0 if the root key is properly set, -1 otherwise.
@@ -74,11 +74,11 @@ int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **s
     return 0;
 }
 
-registry *fim_registry_configuration(const char *key, int arch) {
+registry_t *fim_registry_configuration(const char *key, int arch) {
     int it = 0;
     int top = 0;
     int match;
-    registry *ret = NULL;
+    registry_t *ret = NULL;
 
     for (it = 0; syscheck.registry[it].entry; it++) {
         if (arch != syscheck.registry[it].arch) {
@@ -101,13 +101,13 @@ registry *fim_registry_configuration(const char *key, int arch) {
 }
 
 /**
- * @brief Validates the recursion level of a registry key.
+ * @brief Validates the recursion level of a registry_t key.
  *
  * @param key_path Path of the key
- * @param configuration The configuration associated with the registry entry.
+ * @param configuration The configuration associated with the registry_t entry.
  * @return 0 if the path is valid, -1 if the path is to be excluded.
  */
-int fim_registry_validate_recursion_level(const char *key_path, const registry *configuration) {
+int fim_registry_validate_recursion_level(const char *key_path, const registry_t *configuration) {
     const char *pos;
     int depth = 0;
     unsigned int parent_path_size;
@@ -118,7 +118,7 @@ int fim_registry_validate_recursion_level(const char *key_path, const registry *
 
     /* Verify recursion level */
     parent_path_size = strlen(configuration->entry);
-    // Recursion level only for registry keys
+    // Recursion level only for registry_t keys
     if (parent_path_size > strlen(key_path)) {
         return -1;
     }
@@ -138,14 +138,14 @@ int fim_registry_validate_recursion_level(const char *key_path, const registry *
 }
 
 /**
- * @brief Validates ignore restrictions of registry entry.
+ * @brief Validates ignore restrictions of registry_t entry.
  *
  * @param entry A string holding the full path of the key or the name of the value to be validated.
- * @param configuration The configuration associated with the registry entry.
+ * @param configuration The configuration associated with the registry_t entry.
  * @param key 1 if the entry is a key, 0 if the entry is a value.
  * @return 0 if the path is valid, -1 if the path is to be excluded.
  */
-int fim_registry_validate_ignore(const char *entry, const registry *configuration, int key) {
+int fim_registry_validate_ignore(const char *entry, const registry_t *configuration, int key) {
     int ign_it;
     registry_ignore **ignore_list;
     registry_ignore_regex **ignore_list_regex;
@@ -192,9 +192,9 @@ int fim_registry_validate_ignore(const char *entry, const registry *configuratio
     return 0;
 }
 /**
- * @brief Compute checksum of a registry key
+ * @brief Compute checksum of a registry_t key
  *
- * @param data FIM registry key whose checksum will be computed
+ * @param data FIM registry_t key whose checksum will be computed
  */
 void fim_registry_get_checksum_key(fim_registry_key *data) {
     char *checksum = NULL;
@@ -227,9 +227,9 @@ void fim_registry_get_checksum_key(fim_registry_key *data) {
 }
 
 /**
- * @brief Compute checksum of a registry value
+ * @brief Compute checksum of a registry_t value
  *
- * @param data FIM registry value whose checksum will be computed
+ * @param data FIM registry_t value whose checksum will be computed
  */
 void fim_registry_get_checksum_value(fim_registry_value_data *data) {
     char *checksum = NULL;
@@ -261,7 +261,7 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
 /**
  * @brief Initialize digest context according to a provided configuration
  *
- * @param opts An integer holding the registry configuration.
+ * @param opts An integer holding the registry_t configuration.
  * @param md5_ctx An uninitialized md5 context.
  * @param sha1_ctx An uninitialized sha1 context.
  * @param sha256_ctx An uninitialized sha256 context.
@@ -285,7 +285,7 @@ void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SH
  *
  * @param buffer A raw data buffer used to update digests.
  * @param length An integer holding the length of buffer.
- * @param opts An integer holding the registry configuration.
+ * @param opts An integer holding the registry_t configuration.
  * @param md5_ctx An MD5 CTX to be updated with the contents of buffer.
  * @param sha1_ctx An SHA1 CTX to be updated with the contents of buffer.
  * @param sha256_ctx An SHA256 CTX to be updated with the contents of buffer.
@@ -312,7 +312,7 @@ void fim_registry_update_digests(const BYTE *buffer,
 /**
  * @brief Prints out hashes from the provided contexts, destryoing them in the process.
  *
- * @param opts An integer holding the registry configuration.
+ * @param opts An integer holding the registry_t configuration.
  * @param md5_ctx An MD5 CTX used to print the corresponding hash.
  * @param sha1_ctx An SHA1 CTX used to print the corresponding hash.
  * @param sha256_ctx An SHA256 CTX used to print the corresponding hash.
@@ -364,7 +364,7 @@ void fim_registry_final_digests(int opts,
  * @param configuration The confguration associated with the value.
  * @param data_buffer Raw buffer holding the value's contents.
  */
-void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BYTE *data_buffer) {
+void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, BYTE *data_buffer) {
     MD5_CTX md5_ctx;
     SHA_CTX sha1_ctx;
     SHA256_CTX sha256_ctx;
@@ -415,14 +415,14 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry *configuration, BY
 }
 
 /**
- * @brief Gets all information from a given registry key.
+ * @brief Gets all information from a given registry_t key.
  *
  * @param key_handle A handle to the key whose information we want.
  * @param path A string holding the full path to the key we want to query.
  * @param configuration The confguration associated with the key.
  * @return A fim_registry_key object holding the information from the queried key, NULL on error.
  */
-fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry *configuration) {
+fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry_t *configuration) {
     fim_registry_key *key;
 
     os_calloc(1, sizeof(fim_registry_key), key);
@@ -465,7 +465,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
 }
 
 /**
- * @brief Free all memory associated with a registry key.
+ * @brief Free all memory associated with a registry_t key.
  *
  * @param data A fim_registry_key object to be free'd.
  */
@@ -482,7 +482,7 @@ void fim_registry_free_key(fim_registry_key *key) {
 }
 
 /**
- * @brief Free all memory associated with a registry value.
+ * @brief Free all memory associated with a registry_t value.
  *
  * @param data A fim_registry_value_data object to be free'd.
  */
@@ -502,11 +502,11 @@ void fim_registry_free_entry(fim_entry *entry) {
 }
 
 /**
- * @brief Process and trigger delete events for a given registry value.
+ * @brief Process and trigger delete events for a given registry_t value.
  *
  * @param fim_sql An object holding all information corresponding to the FIM DB.
  * @param data A fim_entry object holding the deleted value information retrieved from the FIM DB.
- * @param mutex A mutex to be locked before operating on the registry tables from the FIM DB.
+ * @param mutex A mutex to be locked before operating on the registry_t tables from the FIM DB.
  * @param _alert A pointer to an integer specifying if an alert should be generated.
  * @param _ev_mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
  * @param _w_evt A whodata object holding information corresponding to the event.
@@ -519,7 +519,7 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
                                              __attribute__((unused)) void *_w_evt) {
     int alert = *(int *)_alert;
     fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
-    registry *configuration;
+    registry_t *configuration;
 
     configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
     if (configuration == NULL) {
@@ -544,11 +544,11 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
 }
 
 /**
- * @brief Process and trigger delete events for a given registry key.
+ * @brief Process and trigger delete events for a given registry_t key.
  *
  * @param fim_sql An object holding all information corresponding to the FIM DB.
  * @param data A fim_entry object holding the deleted key information retrieved from the FIM DB.
- * @param mutex A mutex to be locked before operating on the registry tables from the FIM DB.
+ * @param mutex A mutex to be locked before operating on the registry_t tables from the FIM DB.
  * @param _alert A pointer to an integer specifying if an alert should be generated.
  * @param _ev_mode A value specifying if the event has been triggered in scheduled, realtime or whodata mode.
  * @param _w_evt A whodata object holding information corresponding to the event.
@@ -562,7 +562,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
     int alert = *(int *)_alert;
     fim_event_mode event_mode = *(fim_event_mode *)_ev_mode;
     fim_tmp_file *file;
-    registry *configuration;
+    registry_t *configuration;
     int result;
 
     configuration = fim_registry_configuration(data->registry_entry.key->path, data->registry_entry.key->arch);
@@ -594,7 +594,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
 }
 
 /**
- * @brief Process and trigger delete events for all unscanned registry elements.
+ * @brief Process and trigger delete events for all unscanned registry_t elements.
  */
 void fim_registry_process_unscanned_entries() {
     fim_tmp_file *file;
@@ -636,7 +636,7 @@ void fim_registry_process_value_event(fim_entry *new,
                                       BYTE *data_buffer) {
     char *value_path;
     size_t value_path_length;
-    registry *configuration;
+    registry_t *configuration;
     cJSON *json_event;
     char *diff = NULL;
 
@@ -760,7 +760,7 @@ void fim_read_values(HKEY key_handle,
 }
 
 /**
- * @brief Open a registry key and scan its contents.
+ * @brief Open a registry_t key and scan its contents.
  *
  * @param root_key_handle A handle to the root key to which the key to be scanned belongs.
  * @param full_key A string holding the full path to the key to scan.
@@ -774,7 +774,7 @@ void fim_open_key(HKEY root_key_handle,
                   const char *sub_key,
                   int arch,
                   fim_event_mode mode,
-                  registry *parent_configuration) {
+                  registry_t *parent_configuration) {
     HKEY current_key_handle = NULL;
     REGSAM access_rights;
     DWORD sub_key_count = 0;
@@ -784,7 +784,7 @@ void fim_open_key(HKEY root_key_handle,
     FILETIME file_time = { 0 };
     DWORD i;
     fim_entry new, saved;
-    registry *configuration;
+    registry_t *configuration;
 
     if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
         return;
@@ -796,7 +796,7 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     if (mode == FIM_SCHEDULED && parent_configuration != NULL && parent_configuration != configuration) {
-        // If a more specific configuration is available in scheduled mode, we will scan this registry later.
+        // If a more specific configuration is available in scheduled mode, we will scan this registry_t later.
         return;
     }
 
@@ -920,14 +920,14 @@ void fim_registry_scan() {
     fim_db_set_all_registry_data_unscanned(syscheck.database);
     fim_db_set_all_registry_key_unscanned(syscheck.database);
 
-    /* Get sub class and a valid registry entry */
+    /* Get sub class and a valid registry_t entry */
     for (i = 0; syscheck.registry[i].entry; i++) {
         /* Ignored entries are zeroed */
         if (*syscheck.registry[i].entry == '\0') {
             continue;
         }
 
-        /* Read syscheck registry entry */
+        /* Read syscheck registry_t entry */
         mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ",
                 syscheck.registry[i].entry);
 

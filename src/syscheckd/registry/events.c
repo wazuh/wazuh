@@ -15,7 +15,7 @@ static const char *FIM_EVENT_TYPE_ARRAY[] = { "added", "deleted", "modified" };
 
 static const char *FIM_EVENT_MODE[] = { "scheduled", "realtime", "whodata" };
 
-cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration) {
+cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry_t *configuration) {
     static const char *VALUE_TYPE[] = {
         [REG_NONE] = "REG_NONE",
         [REG_SZ] = "REG_SZ",
@@ -74,7 +74,7 @@ cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, c
  */
 cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
                                         const fim_registry_value_data *old_data,
-                                        const registry *configuration) {
+                                        const registry_t *configuration) {
     cJSON *changed_attributes = cJSON_CreateArray();
 
     if ((configuration->opts & CHECK_SIZE) && old_data->size != new_data->size) {
@@ -114,7 +114,7 @@ cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
  */
 cJSON *fim_registry_value_json_event(const fim_entry *new_data,
                                      const fim_entry *old_data,
-                                     const registry *configuration,
+                                     const registry_t *configuration,
                                      fim_event_mode mode,
                                      unsigned int type,
                                      __attribute__((unused)) whodata_evt *w_evt,
@@ -173,7 +173,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
  * @param configuration The configuration associated with the registry key.
  * @return A pointer to a cJSON object the translated key attributes.
  */
-cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry *configuration) {
+cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry_t *configuration) {
     cJSON *attributes = cJSON_CreateObject();
 
     cJSON_AddStringToObject(attributes, "type", "registry_key");
@@ -220,7 +220,7 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const regi
  */
 cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
                                       const fim_registry_key *old_data,
-                                      const registry *configuration) {
+                                      const registry_t *configuration) {
     cJSON *changed_attributes = cJSON_CreateArray();
 
     if ((configuration->opts & CHECK_PERM) && strcmp(old_data->perm, new_data->perm) != 0) {
@@ -268,7 +268,7 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
  */
 cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
                                    const fim_registry_key *old_data,
-                                   const registry *configuration,
+                                   const registry_t *configuration,
                                    fim_event_mode mode,
                                    unsigned int type,
                                    __attribute__((unused)) whodata_evt *w_evt) {
@@ -312,7 +312,7 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
 
 cJSON *fim_registry_event(const fim_entry *new,
                           const fim_entry *saved,
-                          const registry *configuration,
+                          const registry_t *configuration,
                           fim_event_mode mode,
                           unsigned int event_type,
                           __attribute__((unused)) whodata_evt *w_evt,
