@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-message("${SRC_FOLDER} ${CMAKE_SOURCE_DIR}")
+
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
@@ -27,11 +27,7 @@ if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
-if(NOT LIBOUT)
-set(LIB_DIR ${CMAKE_BINARY_DIR})
-else()
-set(LIB_DIR ${CMAKE_BINARY_DIR}/${LIBOUT})
-endif()
+set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
@@ -45,9 +41,7 @@ include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
-include_directories(${SRC_FOLDER}/external/procps/)
 include_directories(${SRC_FOLDER}/external/bzip2/)
-include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
@@ -61,16 +55,17 @@ link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 link_directories(${SRC_FOLDER})
 
-link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
-link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_definitions(-DWIN32=1
-                  -D_WIN32_WINNT=0x600
+include_directories(${SRC_FOLDER}/external/openssl/include/)
+link_directories(${SRC_FOLDER}/external/openssl/)
+
+add_definitions(-DWIN32=1
+-D_WIN32_WINNT=0x600
                   -DWIN_EXPORT)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
@@ -82,8 +77,7 @@ add_library(fimdb STATIC
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(fimdb PROPERTIES
         LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
-        POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
-        # MinGW generates position-independent-code for DLL by default
+
   )
   target_sources(fimdb PUBLIC ${CMAKE_SOURCE_DIR}/src/registry.cpp)
 elseif(UNIX AND NOT APPLE)

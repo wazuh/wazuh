@@ -30,7 +30,7 @@
 #include "wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
 
-#include "db/db.hpp"
+#include "db/include/db.hpp"
 #include "config/syscheck-config.h"
 
 #include "test_fim_db.h"
