@@ -121,8 +121,6 @@ int main(int argc, char ** argv)
     unlink(path_template);
     mdebug1("Template file removed: %s", path_template);
 
-    os_free(home_path);
-
     // Set max open files limit
     struct rlimit rlimit = { nofile, nofile };
 
@@ -226,6 +224,8 @@ int main(int argc, char ** argv)
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
 
+    os_free(home_path);
+    
     return EXIT_SUCCESS;
 
 failure:

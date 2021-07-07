@@ -840,9 +840,6 @@ InstallCommon()
 
   ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
 
-    if [ -f /etc/TIMEZONE ]; then
-         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
-    fi
     # Solaris Needs some extra files
     if [ ${DIST_NAME} = "SunOS" ]; then
       ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/
