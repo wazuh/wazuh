@@ -104,6 +104,7 @@ int main(int argc, char **argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
@@ -148,10 +149,6 @@ int main(int argc, char **argv)
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
-
-    mdebug1(PRIVSEP_MSG, home_path, user);
-
-    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

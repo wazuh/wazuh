@@ -61,6 +61,7 @@ int main(int argc, char **argv)
         os_free(home_path);
         exit(1);
     }
+    os_free(home_path);
 
     while((c = getopt(argc, argv, "Vdhtfu:g:")) != -1){
         switch(c){
@@ -160,10 +161,6 @@ int main(int argc, char **argv)
 
     // Start com request thread
     w_create_thread(intgcom_main, NULL);
-
-    /* Basic start up completed. */
-    mdebug1(PRIVSEP_MSG, home_path, user);
-    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
