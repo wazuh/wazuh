@@ -89,10 +89,10 @@ stages:
         data:
           affected_items: &task
             - agent_id: !anystr
-              create_time: !anyint
+              create_time: !anystr
               node: !anystr
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               command: "upgrade"
               module: "upgrade_module"
               task_id: 2
@@ -113,10 +113,10 @@ stages:
         data:
           affected_items:
             - agent_id: !anystr
-              create_time: !anyint
+              create_time: !anystr
               node: !anystr
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               command: "upgrade"
               module: "upgrade_module"
               task_id: 1
@@ -281,12 +281,12 @@ stages:
           affected_items:
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               agent_id: !anystr
               task_id: 3
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               agent_id: !anystr
               task_id: 4
           failed_items: []
@@ -310,7 +310,7 @@ stages:
           affected_items:
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               agent_id: "003"
               task_id: !anyint
           failed_items: []
@@ -353,23 +353,23 @@ stages:
           affected_items:
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               task_id: 1
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               task_id: 2
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               task_id: 3
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               task_id: 4
             - <<: *task
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               task_id: 5
           failed_items: []
           total_affected_items: 5
