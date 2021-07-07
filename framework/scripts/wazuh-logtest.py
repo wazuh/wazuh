@@ -370,10 +370,13 @@ class WazuhLogtest:
             logging.info('\tNo decoder matched.')
 
         # Rule phase
+
+        ## Rules Debugging
         if 'rules_debug' in output:
             logging.info('')
             logging.info('**Rule debugging:')
-            logging.info(output['rules_debug'])
+            for debug_msg in output['rules_debug']:
+                logging.info(('\t\t' if debug_msg[0] == '*' else '\t') + debug_msg)
 
         if 'rule' in output_data:
             logging.info('')
