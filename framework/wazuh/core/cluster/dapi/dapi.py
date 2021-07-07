@@ -41,8 +41,7 @@ class DistributedAPI:
                  debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
-                 rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None,
-                 origin_module: str = 'api'):
+                 rbac_permissions: Dict = None, nodes: list = None, api_timeout: int = None):
         """Class constructor.
 
         Parameters
@@ -79,8 +78,6 @@ class DistributedAPI:
             User who started the request
         api_timeout : int
             Timeout set in source API for the request
-        origin_module : str
-            Origin module that created the DistributedAPI object. This value can be api or framework. Default `api`
         """
         self.logger = logger
         self.f = f
@@ -96,7 +93,7 @@ class DistributedAPI:
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
         self.current_user = current_user
-        self.origin_module = origin_module
+        self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db')
