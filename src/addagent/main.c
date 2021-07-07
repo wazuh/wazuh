@@ -103,6 +103,7 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
+    os_free(home_path);
 #endif
 
     while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:F:L")) != -1) {
@@ -201,7 +202,6 @@ int main(int argc, char **argv)
     /* Get current time */
     time1 = time(0);
 
-    /* Before chroot */
     srandom_init();
     getuname();
 
@@ -237,16 +237,6 @@ int main(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
-
-    /* Chroot to the default directory */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-
-    os_free(home_path);
-
-    /* Inside chroot now */
-    nowChroot();
 
     /* Start signal handler */
     StartSIG2(ARGV0, manage_shutdown);

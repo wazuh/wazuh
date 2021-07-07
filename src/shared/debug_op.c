@@ -16,7 +16,6 @@
 #endif
 
 static int dbg_flag = 0;
-static int chroot_flag = 0;
 static int daemon_flag = 0;
 static int pid;
 
@@ -140,7 +139,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
     }
 
     if (flags.log_plain) {
-      /* If under chroot, log directly to /logs/ossec.log */
+      /* log directly to /logs/ossec.log */
 
 #ifndef WIN32
         int oldmask;
@@ -479,11 +478,6 @@ void _mterror_exit(const char *tag, const char * file, int line, const char * fu
     exit(1);
 }
 
-void nowChroot()
-{
-    chroot_flag = 1;
-}
-
 void nowDaemon()
 {
     daemon_flag = 1;
@@ -514,11 +508,6 @@ void nowDebug()
 int isDebug(void)
 {
     return dbg_flag;
-}
-
-int isChroot()
-{
-    return (chroot_flag);
 }
 
 #ifdef WIN32

@@ -83,7 +83,7 @@ static void help_authd(char * home_path)
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", home_path);
+    print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
@@ -463,8 +463,8 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
+    os_free(home_path);
 
-    /* Before chroot */
     srandom_init();
     getuname();
 
@@ -472,14 +472,6 @@ int main(int argc, char **argv)
         strncpy(shost, "localhost", sizeof(shost) - 1);
         shost[sizeof(shost) - 1] = '\0';
     }
-
-    /* Chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-
-    nowChroot();
-    os_free(home_path);
 
     /* Initialize queues */
     insert_tail = &queue_insert;

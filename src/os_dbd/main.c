@@ -53,7 +53,7 @@ static void help_dbd(char *home_path)
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chdir into (default: %s)", home_path);
     print_out(" ");
     print_out("  Database Support:");
     print_db_info();
@@ -136,6 +136,7 @@ int main(int argc, char **argv)
         os_free(home_path);
         exit(1);
     }
+    os_free(home_path);
 
     /* Setup random */
     srandom_init();
@@ -237,14 +238,6 @@ int main(int argc, char **argv)
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
-    /* chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-
-    /* Now in chroot */
-    nowChroot();
-
     /* Insert server info into the db */
     db_config.server_id = OS_Server_ReadInsertDB(&db_config);
     if (db_config.server_id <= 0) {
@@ -260,10 +253,6 @@ int main(int argc, char **argv)
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
-
-    /* Basic start up completed */
-    mdebug1(PRIVSEP_MSG, home_path, user);
-    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

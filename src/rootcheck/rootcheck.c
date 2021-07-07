@@ -44,7 +44,7 @@ void help_rootcheck(char * home_path)
     print_out("    -s          Scan the whole system");
     print_out("    -r          Read all the files for kernel-based detection");
     print_out("    -c <config> Configuration file to use");
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chdir into (default: %s)", home_path);
     print_out(" ");
     os_free(home_path);
     exit(1);

@@ -81,16 +81,10 @@ cJSON *getLoggingConfig(void);
 char * win_strerror(unsigned long error);
 #endif
 
-/* Use these three functions to set when you
- * enter in debug, chroot or daemon mode
- */
 void nowDebug(void);
 int isDebug(void);
 
-void nowChroot(void);
 void nowDaemon(void);
-
-int isChroot(void);
 
 /* Debug analysisd */
 #ifdef DEBUGAD

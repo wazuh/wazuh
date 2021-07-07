@@ -44,7 +44,7 @@ static void help_maild(char *home_path)
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chdir into (default: %s)", home_path);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -117,6 +117,7 @@ int main(int argc, char **argv)
         os_free(home_path);
         exit(1);
     }
+    os_free(home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
@@ -187,22 +188,12 @@ int main(int argc, char **argv)
         }
 
         free(aux_smtp_server);
-
-        /* chroot */
-        if (Privsep_Chroot(home_path) < 0) {
-            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-        }
-        nowChroot();
-        mdebug1(PRIVSEP_MSG, home_path, user);
     }
 
     /* Change user */
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
-
-    mdebug1(PRIVSEP_MSG, home_path, user);
-    os_free(home_path);
 
     // Start com request thread
     w_create_thread(mailcom_main, NULL);
