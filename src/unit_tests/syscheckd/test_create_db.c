@@ -34,7 +34,7 @@
 
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
-#include "../syscheckd/db/db.hpp"
+#include "db/include/db.hpp"
 
 #include "test_fim.h"
 
