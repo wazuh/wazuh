@@ -317,7 +317,25 @@ stages:
       verify: False
       <<: *general_mitigations_request
       params:
-        q: "created_time<2020-10-19 14:57:59;created_time>2020-10-19 14:57:57"
+        q: "created_time=2020-10-19T14:57:58.771000Z"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *mitigations_response
+              created_time: "2020-10-19T14:57:58.771000Z"
+          failed_items: [ ]
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filter mitigations using q parameter (complex query)
+    request:
+      verify: False
+      <<: *general_mitigations_request
+      params:
+        q: "created_time<2020-10-19T14:57:59;created_time>2020-10-18"
     response:
       status_code: 200
       json:

@@ -769,6 +769,32 @@ stages:
           total_affected_items: 4
           total_failed_items: 0
 
+  - name: Filter agents by query (datetime)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        q: dateAdd<2021-07-01 00:00:00;lastKeepAlive>2021-07-01
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: '001'
+            - id: '002'
+            - id: '003'
+            - id: '004'
+            - id: '005'
+            - id: '006'
+            - id: '007'
+            - id: '008'
+            - id: '009'
+            - id: '010'
+          failed_items: [ ]
+          total_affected_items: 10
+          total_failed_items: 0
+
   - name: Filter agents by complex query
     request:
       verify: False
