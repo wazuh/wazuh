@@ -229,6 +229,7 @@ int main(int argc, char ** argv)
     return EXIT_SUCCESS;
 
 failure:
+    os_free(home_path);
     os_free(worker_pool);
     return EXIT_FAILURE;
 }
