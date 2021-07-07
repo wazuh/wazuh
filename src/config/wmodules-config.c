@@ -127,6 +127,15 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
 #endif
+    } else if (!strcmp(node->values[0], "azure-logs")) {
+#ifndef WIN32
+        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+#else
+        mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->values[0]);
+#endif
     }
 #ifndef WIN32
 #ifndef CLIENT
@@ -134,11 +143,6 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         mwarn("A deprecated Vulnerability Detector configuration block was found. It will be ignored.");
         OS_ClearNode(children);
         return 0;
-    } else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
-        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
     } else if (!strcmp(node->values[0], WM_KEY_REQUEST_CONTEXT.name)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);

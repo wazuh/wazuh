@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#ifndef CLIENT
+#ifndef WIN32
 #ifndef WM_AZURE
 #define WM_AZURE
 
