@@ -2184,6 +2184,295 @@ static void test_decode_win_attributes_some_attributes(void **state) {
                              "READONLY, RECALL_ON_OPEN, SPARSE_FILE, TEMPORARY");
 }
 
+/* decode_win_acl_json */
+void assert_ace_full_perms(const cJSON * const ace) {
+    int i;
+    const char *it;
+    cJSON *element;
+    static const char * const perm_strings[] = {
+        "generic_read",
+        "generic_write",
+        "generic_execute",
+        "generic_all",
+        "delete",
+        "read_control",
+        "write_dac",
+        "write_owner",
+        "synchronize",
+        "read_data",
+        "write_data",
+        "append_data",
+        "read_ea",
+        "write_ea",
+        "execute",
+        "read_attributes",
+        "write_attributes",
+        NULL
+    };
+
+    assert_non_null(ace);
+    assert_true(cJSON_IsArray(ace));
+
+    for (i = 0, it = perm_strings[0]; it; it = perm_strings[++i]) {
+        int fail = 1;
+        cJSON_ArrayForEach(element, ace) {
+            if (strcmp(cJSON_GetStringValue(element), it) == 0) {
+                fail = 0;
+                break;
+            }
+        }
+
+        if (fail) {
+            fail_msg("%s not found", it);
+        }
+    }
+}
+
+#define set_full_perms(x)                                                                                   \
+    x |= GENERIC_READ | GENERIC_WRITE | GENERIC_EXECUTE | GENERIC_ALL | DELETE | READ_CONTROL | WRITE_DAC | \
+         WRITE_OWNER | SYNCHRONIZE | FILE_READ_DATA | FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_READ_EA |   \
+         FILE_WRITE_EA | FILE_EXECUTE | FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES
+
+static void test_decode_win_acl_json_null_json(void **state) {
+    expect_assert_failure(decode_win_acl_json(NULL));
+}
+
+static void test_decode_win_acl_fail_creating_object(void **state) {
+    int full_perms, i;
+    const char * it;
+    cJSON *acl = __real_cJSON_CreateObject();
+    cJSON *ace = __real_cJSON_CreateObject();
+    cJSON *element;
+
+    if (acl == NULL || ace == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    *state = acl;
+    set_full_perms(full_perms);
+
+    cJSON_AddItemToObject(acl, "S-1-5-32-636", ace);
+
+    cJSON_AddItemToObject(ace, "allowed", cJSON_CreateNumber(full_perms));
+
+    will_return(__wrap_cJSON_CreateArray, NULL);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_CJSON_ERROR_CREATE_ITEM);
+
+    decode_win_acl_json(acl);
+
+    ace = cJSON_GetObjectItem(acl, "S-1-5-32-636");
+    assert_non_null(ace);
+
+    cJSON *denied = cJSON_GetObjectItem(ace, "denied");
+    assert_null(denied);
+
+    cJSON *allowed = cJSON_GetObjectItem(ace, "allowed");
+    assert_non_null(allowed);
+    assert_int_equal(full_perms, allowed->valueint);
+}
+
+static void test_decode_win_acl_json_allowed_ace_only(void **state) {
+    int full_perms, i;
+    const char * it;
+    cJSON *acl = __real_cJSON_CreateObject();
+    cJSON *ace = __real_cJSON_CreateObject();
+    cJSON *element;
+
+    if (acl == NULL || ace == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    *state = acl;
+    set_full_perms(full_perms);
+
+    cJSON_AddItemToObject(acl, "S-1-5-32-636", ace);
+
+    cJSON_AddItemToObject(ace, "allowed", cJSON_CreateNumber(full_perms));
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    decode_win_acl_json(acl);
+
+    ace = cJSON_GetObjectItem(acl, "S-1-5-32-636");
+    assert_non_null(ace);
+
+    cJSON *denied = cJSON_GetObjectItem(ace, "denied");
+    assert_null(denied);
+
+    cJSON *allowed = cJSON_GetObjectItem(ace, "allowed");
+    assert_ace_full_perms(allowed);
+}
+
+static void test_decode_win_acl_json_denied_ace_only(void **state) {
+    int full_perms, i;
+    const char * it;
+    cJSON *acl = __real_cJSON_CreateObject();
+    cJSON *ace = __real_cJSON_CreateObject();
+    cJSON *element;
+
+    if (acl == NULL || ace == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    *state = acl;
+    set_full_perms(full_perms);
+
+    cJSON_AddItemToObject(acl, "S-1-5-32-636", ace);
+
+    cJSON_AddItemToObject(ace, "denied", cJSON_CreateNumber(full_perms));
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    decode_win_acl_json(acl);
+
+    ace = cJSON_GetObjectItem(acl, "S-1-5-32-636");
+    assert_non_null(ace);
+
+    cJSON *allowed = cJSON_GetObjectItem(ace, "allowed");
+    assert_null(allowed);
+
+    cJSON *denied = cJSON_GetObjectItem(ace, "denied");
+    assert_ace_full_perms(denied);
+}
+
+static void test_decode_win_acl_json_both_ace_types(void **state) {
+    int full_perms, i;
+    const char * it;
+    cJSON *acl = __real_cJSON_CreateObject();
+    cJSON *ace = __real_cJSON_CreateObject();
+    cJSON *element;
+
+    if (acl == NULL || ace == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    *state = acl;
+    set_full_perms(full_perms);
+
+    cJSON_AddItemToObject(acl, "S-1-5-32-636", ace);
+
+    cJSON_AddItemToObject(ace, "name", cJSON_CreateString("username"));
+    cJSON_AddItemToObject(ace, "denied", cJSON_CreateNumber(full_perms));
+    cJSON_AddItemToObject(ace, "allowed", cJSON_CreateNumber(full_perms));
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    decode_win_acl_json(acl);
+
+    ace = cJSON_GetObjectItem(acl, "S-1-5-32-636");
+    assert_non_null(ace);
+
+    cJSON *allowed = cJSON_GetObjectItem(ace, "allowed");
+    assert_ace_full_perms(allowed);
+
+    cJSON *denied = cJSON_GetObjectItem(ace, "denied");
+    assert_ace_full_perms(denied);
+
+    // User name must be untouched, same as other unused fields
+    cJSON *name = cJSON_GetObjectItem(ace, "name");
+    assert_non_null(name);
+    assert_string_equal("username", cJSON_GetStringValue(name));
+}
+
+static void test_decode_win_acl_json_empty_acl(void **state) {
+    cJSON *acl = __real_cJSON_CreateObject();
+
+    if (acl == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    decode_win_acl_json(acl);
+
+    assert_int_equal(0, cJSON_GetArraySize(acl));
+}
+
+static void test_decode_win_acl_json_empty_ace(void **state) {
+    int full_perms, i;
+    const char * it;
+    cJSON *acl = __real_cJSON_CreateObject();
+    cJSON *ace = __real_cJSON_CreateObject();
+    cJSON *element;
+
+    if (acl == NULL || ace == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    *state = acl;
+    set_full_perms(full_perms);
+
+    cJSON_AddItemToObject(acl, "S-1-5-32-636", ace);
+
+    decode_win_acl_json(acl);
+
+    ace = cJSON_GetObjectItem(acl, "S-1-5-32-636");
+    assert_non_null(ace);
+    assert_int_equal(0, cJSON_GetArraySize(ace));
+}
+
+static void test_decode_win_acl_json_multiple_aces(void **state) {
+    const char * const SIDS[] = {
+        [0] = "S-1-5-32-636",
+        [1] = "S-1-5-32-363",
+        [2] = "S-1-5-32-444",
+        [3] = NULL
+    };
+    const char * const USERNAMES[] = {
+        [0] = "username",
+        [1] = "someone",
+        [2] = "anon",
+        [3] = NULL
+    };
+    int full_perms, i;
+    const char * it;
+    cJSON *acl = __real_cJSON_CreateObject();
+    cJSON *ace = __real_cJSON_CreateObject();
+    cJSON *element;
+
+    if (acl == NULL || ace == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    *state = acl;
+    set_full_perms(full_perms);
+
+    for (i = 0, it = SIDS[0]; it; it = SIDS[++i]) {
+        ace = __real_cJSON_CreateObject();
+        if (ace == NULL) {
+            fail_msg("Failed to create cJSON object");
+        }
+
+        cJSON_AddItemToObject(acl, it, ace);
+
+        cJSON_AddItemToObject(ace, "name", cJSON_CreateString(USERNAMES[i]));
+        cJSON_AddItemToObject(ace, "denied", cJSON_CreateNumber(full_perms));
+        cJSON_AddItemToObject(ace, "allowed", cJSON_CreateNumber(full_perms));
+
+        will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+        will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    }
+
+    decode_win_acl_json(acl);
+
+    for (i = 0, it = SIDS[0]; it; it = SIDS[++i]) {
+        ace = cJSON_GetObjectItem(acl, it);
+        assert_non_null(ace);
+
+        cJSON *allowed = cJSON_GetObjectItem(ace, "allowed");
+        assert_ace_full_perms(allowed);
+
+        cJSON *denied = cJSON_GetObjectItem(ace, "denied");
+        assert_ace_full_perms(denied);
+
+        // User name must be untouched, same as other unused fields
+        cJSON *name = cJSON_GetObjectItem(ace, "name");
+        assert_non_null(name);
+        assert_string_equal(USERNAMES[i], cJSON_GetStringValue(name));
+    }
+}
+
+
 /* decode_win_permissions tests */
 static void test_decode_win_permissions_success_all_permissions(void **state) {
     char raw_perm[OS_SIZE_1024] = { '\0' };
@@ -3826,6 +4115,16 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_decode_win_attributes_all_attributes),
         cmocka_unit_test(test_decode_win_attributes_no_attributes),
         cmocka_unit_test(test_decode_win_attributes_some_attributes),
+
+        /* decode_win_acl_json */
+        cmocka_unit_test(test_decode_win_acl_json_null_json),
+        cmocka_unit_test_teardown(test_decode_win_acl_fail_creating_object, teardown_cjson),
+        cmocka_unit_test_teardown(test_decode_win_acl_json_allowed_ace_only, teardown_cjson),
+        cmocka_unit_test_teardown(test_decode_win_acl_json_denied_ace_only, teardown_cjson),
+        cmocka_unit_test_teardown(test_decode_win_acl_json_both_ace_types, teardown_cjson),
+        cmocka_unit_test_teardown(test_decode_win_acl_json_empty_acl, teardown_cjson),
+        cmocka_unit_test_teardown(test_decode_win_acl_json_empty_ace, teardown_cjson),
+        cmocka_unit_test_teardown(test_decode_win_acl_json_multiple_aces, teardown_cjson),
 
         /* decode_win_permissions tests */
         cmocka_unit_test_teardown(test_decode_win_permissions_success_all_permissions, teardown_string),
