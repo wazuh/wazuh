@@ -24,7 +24,7 @@
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 
 #include "../syscheckd/syscheck.h"
-#include "../syscheckd/db/db.hpp"
+#include "db/include/db.hpp"
 
 /* Globals */
 extern long fim_sync_cur_id;
