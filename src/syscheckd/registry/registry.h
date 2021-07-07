@@ -15,13 +15,13 @@
 #include "../syscheck.h"
 
 /**
- * @brief Retrieves the configuration associated with a given registry element.
+ * @brief Retrieves the configuration associated with a given registry_t element.
  *
- * @param key A string holding the full path to the registry element.
+ * @param key A string holding the full path to the registry_t element.
  * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
- * @return A pointer to the associated registry configuration, NULL on error or if no valid configuration was found.
+ * @return A pointer to the associated registry_t configuration, NULL on error or if no valid configuration was found.
  */
-registry *fim_registry_configuration(const char *key, int arch);
+registry_t *fim_registry_configuration(const char *key, int arch);
 
 /**
  * @brief Free all memory associated with a registry.
@@ -31,7 +31,7 @@ registry *fim_registry_configuration(const char *key, int arch);
 void fim_registry_free_entry(fim_entry *entry);
 
 /**
- * @brief Main scheduled algorithm for registry scan
+ * @brief Main scheduled algorithm for registry_t scan
  */
 void fim_registry_scan();
 
@@ -40,25 +40,25 @@ void fim_registry_scan();
  * configuration.
  *
  * @param data A fim_registry_value_data object holding the value attributes to be tranlated.
- * @param configuration The configuration associated with the registry value.
+ * @param configuration The configuration associated with the registry_t value.
  * @return A pointer to a cJSON object the translated value attributes.
  */
-cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry *configuration);
+cJSON *fim_registry_value_attributes_json(const fim_registry_value_data *data, const registry_t *configuration);
 
 /**
  * @brief Create a cJSON object holding the attributes associated with a fim_registry_key according to its
  * configuration.
  *
  * @param data A fim_registry_key object holding the key attributes to be tranlated.
- * @param configuration The configuration associated with the registry key.
+ * @param configuration The configuration associated with the registry_t key.
  * @return A pointer to a cJSON object the translated key attributes.
  */
-cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry *configuration);
+cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const registry_t *configuration);
 
 /**
  * @brief Check and trigger a FIM event on a registry.
  *
- * @param new New data aquired from the actual registry entry.
+ * @param new New data aquired from the actual registry_t entry.
  * @param saved Registry information retrieved from the FIM DB.
  * @param configuration Configuration associated with the given registry.
  * @param mode FIM event mode which caused the event.
@@ -67,9 +67,9 @@ cJSON *fim_registry_key_attributes_json(const fim_registry_key *data, const regi
  * @param diff A string holding the difference between the original and new value of the registry.
  * @return A cJSON object holding the generated event, NULL on error.
  */
-cJSON *fim_registry_event(const fim_entry *new,
+cJSON *fim_registry_event(const fim_entry *new_entry,
                           const fim_entry *saved,
-                          const registry *configuration,
+                          const registry_t  *configuration,
                           fim_event_mode mode,
                           unsigned int event_type,
                           whodata_evt *w_evt,

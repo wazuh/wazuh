@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
-
+message("${SRC_FOLDER} ${CMAKE_SOURCE_DIR}")
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
@@ -53,6 +53,7 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
+include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
@@ -73,23 +74,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                   -DWIN_EXPORT)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-file(GLOB FIM_DB_SRC
-    "${CMAKE_SOURCE_DIR}/src/*.cpp"
-    )
-
 add_library(fimdb STATIC
-    ${FIM_DB_SRC}
+            ${CMAKE_SOURCE_DIR}/src/db.cpp
+            ${CMAKE_SOURCE_DIR}/src/file.cpp
     )
 
-message(CMAKE_SYSTEM_NAME)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(fimdb PROPERTIES
-        PREFIX ""
-        SUFFIX ".dll"
         LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
+  target_sources(fimdb PUBLIC ${CMAKE_SOURCE_DIR}/src/registry.cpp)
 elseif(UNIX AND NOT APPLE)
   set_target_properties(fimdb PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")

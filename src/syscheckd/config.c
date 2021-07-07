@@ -14,7 +14,7 @@
 #include "rootcheck/rootcheck.h"
 
 #ifdef WIN32
-static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
+static registry_t REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
 #endif
 
 

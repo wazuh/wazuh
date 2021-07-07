@@ -18,10 +18,12 @@ extern "C" {
 
 #include "shared.h"
 #include <openssl/evp.h>
-#include "../../syscheck.h"
+#include "syscheck.h"
 #include "external/sqlite/sqlite3.h"
 #include "config/syscheck-config.h"
-
+#ifdef WIN32
+#include "registry/registry.h"
+#endif
 #define FIM_DB_MEMORY_PATH  ":memory:"
 
 #ifndef WAZUH_UNIT_TESTING
@@ -146,7 +148,7 @@ void fim_db_clean_file(fim_tmp_file **file, int storage);
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
 
 /**
- * @brief Read paths and registry paths which are stored in a temporal storage.
+ * @brief Read paths and registry_t paths which are stored in a temporal storage.
  *
  * @param fim_sql FIM database structure.
  * @param type Type of entry that will be used. It can be FIM_TYPE_REGISTRY or FIM_TYPE_FILE.
@@ -626,7 +628,7 @@ int fim_db_file_update(fdb_t *fim_sql, const char *path, const fim_file_data *da
 #ifdef WIN32
 
 /**
- * @brief Read registry data that are stored in a temporal storage.
+ * @brief Read registry_t data that are stored in a temporal storage.
  *
  * @param fim_sql FIM database structure.
  * @param file Structure of the file which contains all the key ids and value names.
@@ -659,7 +661,7 @@ void fim_db_callback_save_reg_data_name(fdb_t *fim_sql, fim_entry *entry, int st
 // Registry functions.
 
 /**
- * @brief Get checksum of all registry key.
+ * @brief Get checksum of all registry_t key.
  *
  * @param fim_sql FIM database struct.
  * @param arg CTX object.
@@ -669,7 +671,7 @@ void fim_db_callback_save_reg_data_name(fdb_t *fim_sql, fim_entry *entry, int st
 int fim_db_get_registry_key_checksum(fdb_t *fim_sql, void * arg);
 
 /**
- * @brief Get checksum of all registry data.
+ * @brief Get checksum of all registry_t data.
  *
  * @param fim_sql FIM database struct.
  * @param arg CTX object.
@@ -689,50 +691,50 @@ int fim_db_get_registry_data_checksum(fdb_t *fim_sql, void * arg);
 int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int arch, unsigned int *rowid);
 
 /**
- * @brief Get registry data using its key_id and name. This function must not be called from outside fim_db,
+ * @brief Get registry_t data using its key_id and name. This function must not be called from outside fim_db,
  * use `fim_db_get_registry_data` instead.
  *
  * @param fim_sql FIM database struct.
  * @param key_id ID of the registry.
- * @param name Name of the registry value.
+ * @param name Name of the registry_t value.
  *
- * @return FIM registry data struct on success, NULL on error.
+ * @return FIM registry_t data struct on success, NULL on error.
  */
 fim_registry_value_data *_fim_db_get_registry_data(fdb_t *fim_sql, unsigned int key_id, const char *name);
 
 /**
- * @brief Get registry data using its key_id and name.
+ * @brief Get registry_t data using its key_id and name.
  *
  * @param fim_sql FIM database struct.
  * @param key_id ID of the registry.
- * @param name Name of the registry value.
+ * @param name Name of the registry_t value.
  *
- * @return FIM registry data struct on success, NULL on error.
+ * @return FIM registry_t data struct on success, NULL on error.
  */
 fim_registry_value_data *fim_db_get_registry_data(fdb_t *fim_sql, unsigned int key_id, const char *name);
 
 /**
- * @brief Get a registry key using its path. This function must not be called from outside fim_db,
+ * @brief Get a registry_t key using its path. This function must not be called from outside fim_db,
  * use `fim_db_get_registry_key` instead.
  *
  * @param fim_sql FIM database struct.
  * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
- * @param path Path to registry key.
+ * @param path Path to registry_t key.
  * @param arch Architecture of the registry
  *
- * @return FIM registry key struct on success, NULL on error.
+ * @return FIM registry_t key struct on success, NULL on error.
 */
 fim_registry_key *_fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsigned int arch);
 
 /**
- * @brief Get a registry key using its path.
+ * @brief Get a registry_t key using its path.
  *
  * @param fim_sql FIM database struct.
  * @param arch An integer specifying the bit count of the register element, must be ARCH_32BIT or ARCH_64BIT.
- * @param path Path to registry key.
+ * @param path Path to registry_t key.
  * @param arch Architecture of the registry
  *
- * @return FIM registry key struct on success, NULL on error.
+ * @return FIM registry_t key struct on success, NULL on error.
 */
 fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsigned int arch);
 
@@ -741,14 +743,14 @@ fim_registry_key *fim_db_get_registry_key(fdb_t *fim_sql, const char *path, unsi
  * @brief Get all the key paths
  *
  * @param fim_sql FIM databse struct.
- * @param key_id key_id of the registry data table.
+ * @param key_id key_id of the registry_t data table.
  *
  * @return char** An array of the paths asociated to the key_id.
  */
 char **fim_db_get_all_registry_key(fdb_t *fim_sql, unsigned long int key_id);
 
 /**
- * @brief Insert or update registry data.
+ * @brief Insert or update registry_t data.
  *
  * @param fim_sql FIM database struct.
  * @param data Registry data to be inserted.
@@ -763,7 +765,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
                                 unsigned int replace_entry);
 
 /**
- * @brief Insert or update registry key.
+ * @brief Insert or update registry_t key.
  *
  * @param fim_sql FIM database struct.
  * @param entry Registry key to be inserted.
@@ -774,7 +776,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
 int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned int rowid);
 
 /**
- * @brief Calculate checksum of registry keys between @start and @top.
+ * @brief Calculate checksum of registry_t keys between @start and @top.
  *
  * Said range will be split into two and the resulting checksums will
  * be sent as sync messages.
@@ -804,7 +806,7 @@ int fim_db_registry_key_checksum_range(fdb_t *fim_sql, const char *start, const 
 int fim_db_get_registry_key_count_range(fdb_t *fim_sql, char *start, char *top, int *counter);
 
 /**
- * @brief Count the number of registry data entries between range @start and @top.
+ * @brief Count the number of registry_t data entries between range @start and @top.
  *
  * @param fim_sql FIM database struct
  * @param start First entry of the range.
@@ -857,7 +859,7 @@ int fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql);
 int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql);
 
 /**
- * @brief Set a registry key as scanned.
+ * @brief Set a registry_t key as scanned.
  *
  * @param fim_sql FIM database struct.
  * @param path Registry key path.
@@ -867,11 +869,11 @@ int fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql);
 int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path, unsigned int arch);
 
 /**
- * @brief Set a registry data as scanned.
+ * @brief Set a registry_t data as scanned.
  *
  * @param fim_sql FIM database struct.
  * @param name Value name.
- * @param key_id key_id of the registry data table.
+ * @param key_id key_id of the registry_t data table.
  * @param file_path File path.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
@@ -901,25 +903,25 @@ int fim_db_get_registry_keys_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, i
 int fim_db_get_registry_data_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage);
 
 /**
- * @brief Get count of all entries in registry data table.
+ * @brief Get count of all entries in registry_t data table.
  *
  * @param fim_sql FIM database struct.
  *
- * @return Number of entries in registry data table.
+ * @return Number of entries in registry_t data table.
  */
 int fim_db_get_count_registry_data(fdb_t *fim_sql);
 
 /**
- * @brief Get count of all entries in registry key table.
+ * @brief Get count of all entries in registry_t key table.
  *
  * @param fim_sql FIM database struct.
  *
- * @return Number of entries in registry data table.
+ * @return Number of entries in registry_t data table.
  */
 int fim_db_get_count_registry_key(fdb_t *fim_sql);
 
 /**
- * @brief Get registry keys between @start and @top. (stored in @file).
+ * @brief Get registry_t keys between @start and @top. (stored in @file).
  *
  * @param fim_sql FIM database struct.
  * @param start First entry of the range.
@@ -934,7 +936,7 @@ int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const cha
                                     int storage);
 
 /**
- * @brief Removes a range of registry keys from the database.
+ * @brief Removes a range of registry_t keys from the database.
  * The key paths are alphabetically ordered.
  * The range is given by start and top parameters.
  *
@@ -948,7 +950,7 @@ int fim_db_get_registry_value_range(fdb_t *fim_sql, const char *start, const cha
 int fim_db_delete_registry_key_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
 
 /**
- * @brief Removes a range of registry data from the database.
+ * @brief Removes a range of registry_t data from the database.
  * The key paths are alphabetically ordered.
  * The range is given by start and top parameters.
  *
@@ -961,7 +963,7 @@ int fim_db_delete_registry_key_range(fdb_t * fim_sql, fim_tmp_file *file, pthrea
  */
 int fim_db_delete_registry_value_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage);
 /**
- * @brief Remove a range of registry keys from database if they have a
+ * @brief Remove a range of registry_t keys from database if they have a
  * specific monitoring mode.
  *
  * @param fim_sql FIM database struct.
@@ -977,7 +979,7 @@ int fim_db_process_missing_registry_key_entry(fdb_t *fim_sql, fim_tmp_file *file
                                               fim_event_mode mode, whodata_evt * w_evt);
 
 /**
- * @brief Remove a range of registry data from database if they have a
+ * @brief Remove a range of registry_t data from database if they have a
  * specific monitoring mode.
  *
  * @param fim_sql FIM database struct.
@@ -994,16 +996,16 @@ int fim_db_process_missing_registry_data_entry(fdb_t *fim_sql, fim_tmp_file *fil
 
 
 /**
- * @brief Get count of all entries in registry key and registry data table.
+ * @brief Get count of all entries in registry_t key and registry_t data table.
  *
  * @param fim_sql FIM database struct.
  *
- * @return Number of entries in registry key table.
+ * @return Number of entries in registry_t key table.
  */
 int fim_db_get_count_registry_key_data(fdb_t *fim_sql);
 
 /**
- * @brief Delete registry using registry entry.
+ * @brief Delete registry_t using registry_t entry.
  *
  * @param fim_sql FIM database struct.
  * @param entry Registry entry.
@@ -1011,7 +1013,7 @@ int fim_db_get_count_registry_key_data(fdb_t *fim_sql);
 int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry);
 
 /**
- * @brief Delete registry data using fim_registry_value_data entry.
+ * @brief Delete registry_t data using fim_registry_value_data entry.
  *
  * @param fim_sql FIM database struct.
  * @param entry fim_registry_value_data entry.
@@ -1021,17 +1023,17 @@ int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry);
 int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *entry);
 
 /**
- * @brief Get a registry using it's id.
+ * @brief Get a registry_t using it's id.
  *
  * @param fim_sql FIM database struct.
- * @param id Id of the registry key
+ * @param id Id of the registry_t key
  *
  * @return fim_registry_key structure.
  */
 fim_registry_key *fim_db_get_registry_key_using_id(fdb_t *fim_sql, unsigned int id);
 
 /**
- * @brief Get all registry values from given id.
+ * @brief Get all registry_t values from given id.
  *
  * Given an id, save in a fim_tmp_file all its values.
  *
@@ -1063,7 +1065,7 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt);
 fim_registry_value_data * fim_db_decode_registry_value(sqlite3_stmt *stmt);
 
 /**
- * @brief Decodes a row from the registry database to be saved in a registry key structure.
+ * @brief Decodes a row from the registry_t database to be saved in a registry_t key structure.
  *
  * @param stmt The statement to be decoded.
  * @param index Index of the statement.

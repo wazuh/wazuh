@@ -45,7 +45,7 @@ static const char *STR_MORE_CHANGES = "More changes...";
  *
  * @return Structure with all the data necessary to compute differences
  */
-diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry *configuration);
+diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry_t *configuration);
 
 /**
  * @brief Creates file with the value, writing the data according to its type
@@ -159,7 +159,7 @@ char *gen_diff_str(const diff_data *diff);
 int is_file_nodiff(const char *filename);
 
 /**
- * @brief Checks if a specific registry value has been configured with the ``nodiff`` option
+ * @brief Checks if a specific registry_t value has been configured with the ``nodiff`` option
  *
  * @param key_name The name of the key to check
  * @param value_name The name of the value to check
@@ -201,7 +201,7 @@ char *fim_registry_value_diff(const char *key_name,
                               const char *value_name,
                               const char *value_data,
                               DWORD data_type,
-                              const registry *configuration) {
+                              const registry_t *configuration) {
 
     char *diff_changes = NULL;
     int limits_reached;
@@ -284,7 +284,7 @@ cleanup:
 }
 
 
-diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry *configuration) {
+diff_data *initialize_registry_diff_data(const char *key_name, const char *value_name, const registry_t *configuration) {
     diff_data *diff;
     char buffer[PATH_MAX];
 
