@@ -124,6 +124,7 @@ os_pidfile = os.path.join('var', 'run')
 analysisd_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-analysisd.state')
 remoted_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-remoted.state')
 ar_conf_path = os.path.join(wazuh_path, 'etc', 'shared', 'ar.conf')
+pidfiles_path = os.path.join(wazuh_path, 'var', 'run')
 
 # Ruleset
 # Ruleset paths
@@ -178,7 +179,7 @@ agent_info_sleep = 2  # Seconds between retries
 
 # Common variables
 database_limit = 500
-maximum_database_limit = 1000
+maximum_database_limit = 100000
 limit_seconds = 1800  # 600*3
 
 _wazuh_uid = None

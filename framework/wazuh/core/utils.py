@@ -7,6 +7,7 @@ import glob
 import hashlib
 import json
 import operator
+import os
 import re
 import stat
 import sys
@@ -14,6 +15,7 @@ import tempfile
 import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
+from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk
 from os.path import join, basename, relpath
@@ -22,12 +24,14 @@ from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
 
+from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
 from defusedxml.minidom import parseString
 
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
+from wazuh.core.common import pidfiles_path
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -35,6 +39,27 @@ from wazuh.core.wdb import WazuhDBConnection
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
+
+# Temporary cache
+t_cache = TTLCache(maxsize=4500, ttl=60)
+
+
+def check_pid(daemon):
+    """Check the existence of '.pid' files for a specified daemon.
+
+    Parameters
+    ----------
+    daemon : str
+        Daemon's name.
+    """
+    regex = rf'{daemon}-(.*).pid'
+    for pidfile in os.listdir(pidfiles_path):
+        if match := re.match(regex, pidfile):
+            try:
+                os.kill(int(match.group(1)), 0)
+            except OSError:
+                print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
+                os.remove(f'{pidfiles_path}/{pidfile}')
 
 
 def find_nth(string, substring, n):
@@ -783,8 +808,8 @@ def load_wazuh_xml(xml_path, data=None):
     # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
-    # replace \< by &lt;
-    data = re.sub(r'&backslash;<', '&backslash;&lt;', data)
+    # replace \< by &lt, only outside xml tags;
+    data = re.sub(r'^&backslash;<(.*[^>])$', '&backslash;&lt;\g<1>', data)
 
     # replace \> by &gt;
     data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
@@ -1760,3 +1785,33 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
         Relative path to `full_path` from `prefix`.
     """
     return relpath(full_path, prefix)
+
+
+def clear_temporary_caches():
+    """Clear all saved temporary caches."""
+    t_cache.clear()
+
+
+def temporary_cache():
+    """Apply cache depending on whether function has its `cache` parameter set to `True` or not.
+
+    Returns
+    -------
+    Requested function.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            apply_cache = kwargs.pop('cache', None)
+
+            @cached(cache=t_cache)
+            def f(*_args, **_kwargs):
+                return func(*_args, **_kwargs)
+
+            if apply_cache:
+                return f(*args, **kwargs)
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

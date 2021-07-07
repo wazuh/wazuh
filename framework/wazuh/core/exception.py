@@ -413,7 +413,6 @@ class WazuhException(Exception):
         3000: 'Cluster',
         3001: 'Error creating zip file',
         3002: {'message': 'Error creating PID file'},
-        3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
@@ -465,7 +464,6 @@ class WazuhException(Exception):
                'remediation': f"[Update](https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
-        3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found.",
         3035: "String couldn't be found",
         3036: "JSON couldn't be loaded",
@@ -548,8 +546,8 @@ class WazuhException(Exception):
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
-        6001: {'message': 'Maximum number of request per minute reached',
-               'remediation': f'This limit can be changed in security.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+        6001: {'message': 'Maximum number of requests per minute reached',
+               'remediation': f'This limit can be changed in api.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},

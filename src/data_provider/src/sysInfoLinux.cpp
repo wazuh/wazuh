@@ -200,21 +200,21 @@ void SysInfo::getMemory(nlohmann::json& info) const
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_MEM_DIR, ":", systemInfo);
 
-    auto memTotal{ 1l };
-    auto memFree{ 0l };
+    auto memTotal{ 1ull };
+    auto memFree{ 0ull };
 
     const auto& itTotal { systemInfo.find("MemTotal") };
 
     if (itTotal != systemInfo.end())
     {
-        memTotal = std::stol(itTotal->second);
+        memTotal = std::stoull(itTotal->second);
     }
 
     const auto& itFree { systemInfo.find("MemFree") };
 
     if (itFree != systemInfo.end())
     {
-        memFree = std::stol(itFree->second);
+        memFree = std::stoull(itFree->second);
     }
 
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };

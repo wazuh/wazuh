@@ -8,7 +8,7 @@ from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhClusterError
 from wazuh.core.utils import filter_array_by_query
 
 
@@ -49,10 +49,14 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
     else:
         arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                      'select': select, 'filter_type': filter_type}
-    result = json.loads(await lc.execute(command=b'get_nodes',
-                                         data=json.dumps(arguments).encode(),
-                                         wait_for_complete=False),
-                        object_hook=as_wazuh_object)
+    response = await lc.execute(command=b'get_nodes',
+                                data=json.dumps(arguments).encode(),
+                                wait_for_complete=False)
+    try:
+        result = json.loads(response, object_hook=as_wazuh_object)
+    except json.JSONDecodeError as e:
+        raise WazuhClusterError(3020) if 'timeout' in response else e
+
     if isinstance(result, Exception):
         raise result
 
@@ -85,9 +89,14 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     """
     arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': None, 'search': None,
                  'select': select, 'filter_type': 'all'}
-    node_info_array = json.loads(await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
-                                                  wait_for_complete=False),
-                                 object_hook=as_wazuh_object)
+
+    response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
+                                wait_for_complete=False)
+    try:
+        node_info_array = json.loads(response, object_hook=as_wazuh_object)
+    except json.JSONDecodeError as e:
+        raise WazuhClusterError(3020) if 'timeout' in response else e
+
     if isinstance(node_info_array, Exception):
         raise node_info_array
 
@@ -112,10 +121,15 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     result : dict
         Basic information of each node and synchronization process related information.
     """
-    result = json.loads(await lc.execute(command=b'get_health',
-                                         data=json.dumps(filter_node).encode(),
-                                         wait_for_complete=False),
-                        object_hook=as_wazuh_object)
+    response = await lc.execute(command=b'get_health',
+                                data=json.dumps(filter_node).encode(),
+                                wait_for_complete=False)
+
+    try:
+        result = json.loads(response, object_hook=as_wazuh_object)
+    except json.JSONDecodeError as e:
+        raise WazuhClusterError(3020) if 'timeout' in response else e
+
     if isinstance(result, Exception):
         raise result
 
@@ -153,10 +167,14 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
                   'wait_for_complete': False
                   }
 
-    result = json.loads(await lc.execute(command=b'dapi',
-                                         data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
-                                         wait_for_complete=False),
-                        object_hook=as_wazuh_object)
+    response = await lc.execute(command=b'dapi',
+                                data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
+                                wait_for_complete=False)
+
+    try:
+        result = json.loads(response, object_hook=as_wazuh_object)
+    except json.JSONDecodeError as e:
+        raise WazuhClusterError(3020) if 'timeout' in response else e
 
     if isinstance(result, Exception):
         raise result

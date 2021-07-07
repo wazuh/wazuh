@@ -26,9 +26,10 @@ typedef void* (*wm_routine)(void*);     // Standard routine pointer
 typedef struct wm_context {
     const char *name;                   // Name for module
     wm_routine start;                   // Main function
-    wm_routine destroy;                 // Destructor
+    wm_routine destroy;                 // Configuration destructor
     cJSON *(* dump)(const void *);
     int (* sync)(const char*);          // Sync
+    wm_routine stop;                    // Module destructor
 } wm_context;
 
 // Main module structure

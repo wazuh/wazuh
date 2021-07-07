@@ -18,6 +18,7 @@
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/wazuh/config/syscheck_config_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
@@ -38,6 +39,9 @@
 #include "test_fim.h"
 
 extern fim_state_db _db_state;
+
+void update_wildcards_config();
+void fim_process_wildcard_removed(directory_t *configuration);
 
 /* auxiliary structs */
 typedef struct __fim_data_s {
@@ -61,6 +65,8 @@ const struct stat DEFAULT_STATBUF = { .st_mode = S_IFREG | 00444,
                                       .st_dev = 2345,
                                       .st_mtime = 3456 };
 
+static OSList *removed_entries;
+
 /* redefinitons/wrapping */
 
 #ifdef TEST_WINAGENT
@@ -69,8 +75,6 @@ void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
     check_expected(attrs);
 }
 #endif
-
-/* setup/teardowns */
 
 static int setup_fim_data(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
@@ -179,6 +183,12 @@ static int setup_group(void **state) {
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -187,6 +197,68 @@ static int setup_group(void **state) {
     syscheck.file_max_size = 1024;
 
     test_mode = 1;
+
+    removed_entries = OSList_Create();
+    if (removed_entries == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return -1;
+    }
+    OSList_SetFreeDataPointer(removed_entries, (void (*)(void *))free_directory);
+
+#ifdef TEST_WINAGENT
+    char *path = "C:\\a\\random\\path";
+#else
+    char *path = "/a/random/path";
+#endif
+    directory_t *directory0 = fim_create_directory(path, WHODATA_ACTIVE, NULL, 512, NULL, 1024, 1);
+
+    OSList_InsertData(removed_entries, NULL, directory0);
+
+    return 0;
+}
+
+static int setup_wildcards(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    // Wildcards list
+    syscheck.wildcards = OSList_Create();
+    if (syscheck.wildcards == NULL) {
+        return -1;
+    }
+    OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
+
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_realpath, path, "/testdir?");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/*/path");
+    will_return(__wrap_realpath, NULL);
+
+    char buffer1[20] = "/testdir?";
+    char buffer2[20] = "/*/path";
+    int options = WHODATA_ACTIVE | CHECK_FOLLOW;
+#else
+    char buffer1[20] = "c:\\testdir?";
+    char buffer2[20] = "c:\\*\\path";
+    int options = WHODATA_ACTIVE;
+#endif
+
+    directory_t *wildcard0 = fim_create_directory(buffer1, options, NULL, 512,
+                                                  NULL, -1, 1);
+
+    directory_t *wildcard1 = fim_create_directory(buffer2, options, NULL, 512,
+                                                  NULL, -1, 1);
+
+    OSList_InsertData(syscheck.wildcards, NULL, wildcard0);
+    OSList_InsertData(syscheck.wildcards, NULL, wildcard1);
+
+    // Directories list
+    syscheck.directories = OSList_Create();
+    if (syscheck.directories == NULL) {
+        return -1;
+    }
 
     return 0;
 }
@@ -197,6 +269,12 @@ static int setup_root_group(void **state) {
 
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck_top_level.conf");
@@ -213,6 +291,11 @@ static int setup_root_group(void **state) {
 static int teardown_group(void **state) {
     test_mode = 0;
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     if(teardown_fim_data(state) != 0)
         return -1;
 
@@ -224,6 +307,27 @@ static int teardown_group(void **state) {
     syscheck.key_ignore = NULL;
     syscheck.key_ignore_regex = NULL;
 #endif
+
+    return 0;
+}
+
+static int teardown_wildcards(void **state) {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    if (syscheck.wildcards) {
+        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
+        OSList_Destroy(syscheck.wildcards);
+        syscheck.wildcards = NULL;
+    }
+
+    if (syscheck.directories) {
+        OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
 
     return 0;
 }
@@ -420,6 +524,11 @@ static int teardown_process_file_from_db(void **state) {
         return 0;
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     teardown_os_list((void **)&(data->list));
     teardown_rb_tree((void **)&(data->tree));
 
@@ -570,7 +679,12 @@ static void test_fim_json_event_whodata(void **state) {
     };
     directory_t configuration = { .tag = "tag1,tag2" };
 
-    syscheck.directories[1]->options |= CHECK_SEECHANGES;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
 
 #ifndef TEST_WINAGENT
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606061, 12345678, NULL);
@@ -578,7 +692,7 @@ static void test_fim_json_event_whodata(void **state) {
 
     fim_data->json = fim_json_event(&entry, fim_data->old_data, &configuration, &evt_data, "diff");
 
-    syscheck.directories[1]->options &= ~CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
 
     assert_non_null(fim_data->json);
     cJSON *type = cJSON_GetObjectItem(fim_data->json, "type");
@@ -1102,7 +1216,11 @@ static void test_fim_check_depth_success(void **state) {
 #ifndef TEST_WINAGENT
     char * path = "/usr/bin/folder1/folder2/folder3/file";
     directory_t configuration = { .path = "/usr/bin", .recursion_level = 4 };
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 #else
+
     char *aux_path = "c:\\windows\\sysnative\\wbem\\folder1\\folder2\\folder3\\path.exe";
     directory_t configuration = { .path = "c:\\windows\\sysnative\\wbem", .recursion_level = 4 };
     char path[OS_MAXSTR];
@@ -1123,6 +1241,11 @@ static void test_fim_check_depth_failure_strlen(void **state) {
     directory_t configuration = { .path = "/usr/bin", .recursion_level = 4 };
     int ret;
 
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
     ret = fim_check_depth(path, &configuration);
 
     assert_int_equal(ret, -1);
@@ -1133,6 +1256,11 @@ static void test_fim_check_depth_failure_null_directory(void **state) {
     char * path = "/usr/bin";
     directory_t configuration = { .path = "/usr/bin", .recursion_level = 6 };
     int ret;
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     // Pos 4 = "/usr/bin"
     ret = fim_check_depth(path, &configuration);
@@ -1156,16 +1284,28 @@ static void test_fim_configuration_directory_file(void **state) {
 
     const char * path = "/media";
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     ret = fim_configuration_directory(path);
 
     assert_non_null(ret);
-    assert_ptr_equal(ret, syscheck.directories[3]);
+    assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
 }
 #else
 static void test_fim_configuration_directory_file(void **state) {
     char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
     char path[OS_MAXSTR];
     directory_t *ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
@@ -1174,7 +1314,7 @@ static void test_fim_configuration_directory_file(void **state) {
 
     ret = fim_configuration_directory(path);
 
-    assert_ptr_equal(ret, syscheck.directories[3]);
+    assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
 }
 #endif
 
@@ -1184,6 +1324,19 @@ static void test_fim_configuration_directory_not_found(void **state) {
     directory_t *ret;
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/invalid'");
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     ret = fim_configuration_directory(path);
 
@@ -1225,6 +1378,10 @@ static void test_fim_file_add(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES };
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1234,9 +1391,6 @@ static void test_fim_file_add(void **state) {
     expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
     will_return(__wrap_fim_db_file_is_scanned, 0);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
@@ -1257,9 +1411,6 @@ static void test_fim_file_add(void **state) {
 
     expect_fim_file_diff(file_path, strdup("diff"));
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     fim_file(file_path, &configuration, &evt_data);
 }
 
@@ -1269,6 +1420,10 @@ static void test_fim_file_modify(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1296,9 +1451,6 @@ static void test_fim_file_modify(void **state) {
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
 
     expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
     will_return(__wrap_fim_db_file_is_scanned, 0);
@@ -1337,9 +1489,6 @@ static void test_fim_file_modify(void **state) {
 #endif
     expect_fim_db_insert(syscheck.database, file_path, FIMDB_OK);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
 
     fim_file(file_path, &configuration, &evt_data);
 }
@@ -1350,6 +1499,10 @@ static void test_fim_file_no_attributes(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1359,9 +1512,6 @@ static void test_fim_file_no_attributes(void **state) {
     expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
     will_return(__wrap_fim_db_file_is_scanned, 0);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     // Inside fim_get_data
 #ifndef TEST_WINAGENT
     expect_get_user(0, strdup("user"));
@@ -1391,9 +1541,6 @@ static void test_fim_file_no_attributes(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, buffer1);
     expect_string(__wrap__mdebug1, formatted_msg, buffer2);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
 
     fim_file(file_path, &configuration, &evt_data);
 }
@@ -1403,6 +1550,10 @@ static void test_fim_file_error_on_insert(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1430,9 +1581,6 @@ static void test_fim_file_error_on_insert(void **state) {
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
 
     expect_string(__wrap_fim_db_file_is_scanned, path, file_path);
     will_return(__wrap_fim_db_file_is_scanned, 0);
@@ -1474,9 +1622,6 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, file_path);
     will_return(__wrap_fim_db_insert, -1);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
 
     fim_file(file_path, &configuration, &evt_data);
 }
@@ -1484,6 +1629,18 @@ static void test_fim_file_error_on_insert(void **state) {
 static void test_fim_checker_scheduled_configuration_directory_error(void **state) {
     char * path = "/not/found/test.file";
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/not/found/test.file'");
 
@@ -1493,6 +1650,18 @@ static void test_fim_checker_scheduled_configuration_directory_error(void **stat
 static void test_fim_checker_not_scheduled_configuration_directory_error(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/not/found/test.file";
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/not/found/test.file'");
 
@@ -1504,20 +1673,32 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/a/test.file";
 
-    syscheck.directories[3]->recursion_level = 0;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 0;
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/a/test.file'");
 
     fim_checker(path, &evt_data, NULL);
 
-    syscheck.directories[3]->recursion_level = 50;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
 }
 
 static void test_fim_checker_deleted_file(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     struct stat statbuf = DEFAULT_STATBUF;
     const char *path = "/media/test.file";
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "(6222): Stat() function failed on: '/media/test.file' due to [(1)-(Operation not permitted)]");
@@ -1539,7 +1720,13 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     const char *path = "/media/test.file";
 
-    syscheck.directories[3]->options |= CHECK_SEECHANGES;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options |= CHECK_SEECHANGES;
 
     fim_data->fentry->file_entry.path = strdup("/media/test.file");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -1579,13 +1766,19 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_checker(path, &evt_data, NULL);
 
     errno = 0;
-    syscheck.directories[3]->options &= ~CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options &= ~CHECK_SEECHANGES;
 }
 
 static void test_fim_checker_no_file_system(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     struct stat statbuf = DEFAULT_STATBUF;
     const char *path = "/media/test.file";
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
@@ -1607,6 +1800,12 @@ static void test_fim_checker_fim_regular(void **state) {
                             .st_gid = 0,
                             .st_mtime = 1433395216,
                             .st_size = 1500 };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
@@ -1646,6 +1845,12 @@ static void test_fim_checker_fim_regular_warning(void **state) {
                             .st_mtime = 1433395216,
                             .st_size = 1500 };
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
@@ -1676,6 +1881,12 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = NULL, .report_event = true };
     const char *path = "/etc/mtab";
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
@@ -1692,6 +1903,12 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/test";
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
@@ -1711,6 +1928,12 @@ static void test_fim_checker_fim_directory(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/";
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     directory_stat.st_mode = S_IFDIR;
 
     expect_string(__wrap_lstat, filename, "/media/");
@@ -1725,10 +1948,10 @@ static void test_fim_checker_fim_directory(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/media/test");
     will_return_always(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap_realtime_adddir, dir, "/media/");
-    will_return(__wrap_realtime_adddir, 0);
-    expect_string(__wrap_realtime_adddir, dir, "/media/test");
-    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_fim_add_inotify_watch, dir, "/media/test");
+    will_return(__wrap_fim_add_inotify_watch, 0);
+    expect_string(__wrap_fim_add_inotify_watch, dir, "/media/");
+    will_return(__wrap_fim_add_inotify_watch, 0);
 
     strcpy(fim_data->entry->d_name, "test");
 
@@ -1746,9 +1969,15 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media";
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
     statbuf.st_mode = S_IFDIR;
 
-    syscheck.directories[3]->recursion_level = 0;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 0;
 
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
@@ -1757,8 +1986,8 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
     expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap_realtime_adddir, dir, path);
-    will_return(__wrap_realtime_adddir, 0);
+    expect_string(__wrap_fim_add_inotify_watch, dir, path);
+    will_return(__wrap_fim_add_inotify_watch, 0);
 
     will_return(__wrap_opendir, 1);
     strcpy(fim_data->entry->d_name, "test");
@@ -1778,12 +2007,18 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     fim_checker(path, &evt_data, NULL);
 
-    syscheck.directories[3]->recursion_level = 50;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
 }
 
 static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/media/test.file";
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/test.file'");
@@ -1795,6 +2030,12 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
     const char *path = "/test.file";
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     statbuf.st_size = 0;
 
@@ -1832,6 +2073,13 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     struct stat file_buf = { .st_mode = S_IFREG };
     struct dirent *file = *state;
     directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -1845,7 +2093,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1853,10 +2102,13 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
         }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -1878,6 +2130,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/boot");
     will_return(__wrap_HasFilesystem, 0);
 
+    expect_string(__wrap_fim_add_inotify_watch, dir, "/boot");
+    will_return(__wrap_fim_add_inotify_watch, 0);
     expect_string(__wrap_realtime_adddir, dir, "/boot");
     will_return(__wrap_realtime_adddir, 0);
 
@@ -1900,13 +2154,13 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_get_user(0, strdup("user"));
         expect_get_group(0, strdup("group"));
 
+        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+        expect_string(__wrap_fim_db_get_path, file_path, "/boot/test_file");
+        will_return(__wrap_fim_db_get_path, NULL);
+
         expect_value(__wrap_fim_db_data_exists, inode, 0);
         expect_value(__wrap_fim_db_data_exists, dev, 0);
         will_return(__wrap_fim_db_data_exists, 0);
-
-        expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_get_path, file_path, "/boot/test_file");
-        will_return(__wrap_fim_db_get_path, FIMDB_OK);
 
         expect_fim_db_insert(syscheck.database, "/boot/test_file", FIMDB_FULL);
     }
@@ -1933,6 +2187,13 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 static void test_fim_scan_db_full_not_double_scan(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -1946,7 +2207,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1954,10 +2216,13 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
         }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -1988,6 +2253,13 @@ static void test_fim_scan_realtime_enabled(void **state) {
     rtfim realtime = { .queue_overflow = true, .dirtb = &dirtb };
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     syscheck.realtime = &realtime;
 
@@ -2003,7 +2275,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2011,10 +2284,13 @@ static void test_fim_scan_realtime_enabled(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
         }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2057,6 +2333,13 @@ static void test_fim_scan_realtime_enabled(void **state) {
 static void test_fim_scan_db_free(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2070,7 +2353,8 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2078,10 +2362,14 @@ static void test_fim_scan_db_free(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
         }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
+
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
     }
@@ -2113,6 +2401,13 @@ static void test_fim_scan_db_free(void **state) {
 static void test_fim_scan_no_limit(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     directory_t *dir_it;
+    OSListNode *node_it;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2126,7 +2421,8 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2134,10 +2430,13 @@ static void test_fim_scan_no_limit(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (dir_it->options & REALTIME_ACTIVE) {
-            expect_string_count(__wrap_realtime_adddir, dir, dir_it->path, 2);
-            will_return_count(__wrap_realtime_adddir, 0, 2);
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
+            will_return(__wrap_fim_add_inotify_watch, 0);
         }
+
+        expect_string(__wrap_realtime_adddir, dir, dir_it->path);
+        will_return(__wrap_realtime_adddir, 0);
 
         will_return(__wrap_opendir, 1);
         will_return(__wrap_readdir, NULL);
@@ -2187,6 +2486,12 @@ void test_fim_delete_file_event_delete_error(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
 
 
@@ -2218,6 +2523,12 @@ void test_fim_delete_file_event_remove_success(void **state) {
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     char buffer[OS_SIZE_128] = {0};
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
@@ -2259,6 +2570,12 @@ void test_fim_delete_file_event_no_conf(void **state) {
     char buffer_msg[OS_SIZE_128] = {0};
     char buffer_config[OS_SIZE_128] = {0};
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     snprintf(buffer_msg, OS_SIZE_128, FIM_DELETE_EVENT_PATH_NOCONF, fim_data->fentry->file_entry.path);
     snprintf(buffer_config, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "file", fim_data->fentry->file_entry.path);
 
@@ -2296,6 +2613,12 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     char buffer[OS_SIZE_128] = {0};
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     // inside fim_json_event
@@ -2332,6 +2655,11 @@ void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
@@ -2361,6 +2689,12 @@ void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
@@ -2392,6 +2726,12 @@ void test_fim_delete_file_event_report_changes(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     configuration = fim_configuration_directory(fim_data->fentry->file_entry.path);
     configuration->options |= CHECK_SEECHANGES;
 
@@ -2416,7 +2756,13 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
 
-    syscheck.directories[2]->recursion_level = 0;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->recursion_level = 0;
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -2435,6 +2781,12 @@ static void test_fim_checker_deleted_file(void **state) {
     struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: 'c:\\windows\\system32\\drivers\\etc\\test.exe' due to [(1)-(Operation not permitted)]");
 
@@ -2461,7 +2813,13 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     char expanded_path[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
 
-    syscheck.directories[7]->options |= CHECK_SEECHANGES;
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->options |= CHECK_SEECHANGES;
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2498,20 +2856,16 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 
     expect_fim_diff_process_delete_file(expanded_path, 0);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     fim_checker(expanded_path, &evt_data, NULL);
 
     errno = 0;
-    syscheck.directories[7]->options &= ~CHECK_SEECHANGES;
+    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 7))->options &= ~CHECK_SEECHANGES;
 }
 
 static void test_fim_checker_fim_regular(void **state) {
@@ -2520,6 +2874,12 @@ static void test_fim_checker_fim_regular(void **state) {
     char *path = "%WINDIR%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
     char expanded_path[OS_SIZE_128];
     event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     if (!ExpandEnvironmentStrings(path, expanded_path, OS_SIZE_128)) {
         fail();
@@ -2539,15 +2899,9 @@ static void test_fim_checker_fim_regular(void **state) {
 
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
     will_return(__wrap_fim_db_get_path, NULL);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, expanded_path);
     will_return(__wrap_fim_db_insert, 0);
@@ -2561,6 +2915,12 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2587,6 +2947,12 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     char debug_msg[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -2611,6 +2977,12 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     char expanded_path[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -2628,15 +3000,9 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, expanded_path);
     will_return(__wrap_fim_db_get_path, NULL);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, expanded_path);
     will_return(__wrap_fim_db_insert, -1);
@@ -2652,6 +3018,12 @@ static void test_fim_checker_fim_directory(void **state) {
     char expanded_path[OS_MAXSTR];
     char expanded_path_test[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -2690,6 +3062,12 @@ static void test_fim_checker_root_ignore_file_under_recursion_level(void **state
     char * path = "c:\\windows\\test.file";
     event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 'c:\\windows\\test.file'");
 
@@ -2701,6 +3079,12 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true, .w_evt = NULL };
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     statbuf.st_size = 0;
 
     // Inside fim_file
@@ -2709,11 +3093,9 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_string(__wrap_w_get_file_attrs, file_path, "c:\\test.file");
     will_return(__wrap_w_get_file_attrs, 123456);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "c:\\test.file");
     will_return(__wrap_fim_db_get_path, NULL);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_fim_db_insert, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_insert, file_path, "c:\\test.file");
@@ -2754,6 +3136,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2816,6 +3201,10 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2882,6 +3271,10 @@ static void test_fim_scan_db_free(void **state) {
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -2952,6 +3345,10 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
@@ -3002,6 +3399,12 @@ void test_fim_delete_file_event_delete_error(void **state) {
     char expanded_path[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .type=FIM_DELETE };
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -3027,9 +3430,7 @@ void test_fim_delete_file_event_delete_error(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
@@ -3039,6 +3440,12 @@ void test_fim_delete_file_event_remove_success(void **state) {
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     char buffer[OS_SIZE_128] = {0};
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
@@ -3066,9 +3473,7 @@ void test_fim_delete_file_event_remove_success(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
@@ -3081,6 +3486,12 @@ void test_fim_delete_file_event_no_conf(void **state) {
     char *path = "C:\\A\\random\\path";
     char expanded_path[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -3126,6 +3537,12 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     char buffer[OS_SIZE_128] = {0};
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true };
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
@@ -3151,9 +3568,7 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
     expect_string(__wrap__mdebug2, formatted_msg, buffer);
@@ -3166,6 +3581,12 @@ void test_fim_delete_file_event_different_mode_abort_realtime(void **state) {
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_WHODATA, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -3200,6 +3621,12 @@ void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
@@ -3241,15 +3668,12 @@ void test_fim_delete_file_event_different_mode_abort_whodata(void **state) {
 /* fim_check_db_state */
 static void test_fim_check_db_state_normal_to_empty(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
 
     fim_check_db_state();
@@ -3259,13 +3683,11 @@ static void test_fim_check_db_state_normal_to_empty(void **state) {
 
 static void test_fim_check_db_state_empty_to_empty(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
 
     fim_check_db_state();
@@ -3275,13 +3697,11 @@ static void test_fim_check_db_state_empty_to_empty(void **state) {
 
 static void test_fim_check_db_state_empty_to_full(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3295,13 +3715,11 @@ static void test_fim_check_db_state_empty_to_full(void **state) {
 
 static void test_fim_check_db_state_full_to_empty(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3315,13 +3733,11 @@ static void test_fim_check_db_state_full_to_empty(void **state) {
 
 static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3335,13 +3751,11 @@ static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
 
 static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3355,13 +3769,11 @@ static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
 
 static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3375,13 +3787,11 @@ static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
 
 static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 0);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3395,13 +3805,11 @@ static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
 
 static void test_fim_check_db_state_empty_to_normal(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     assert_int_equal(_db_state, FIM_STATE_DB_EMPTY);
 
     fim_check_db_state();
@@ -3411,13 +3819,11 @@ static void test_fim_check_db_state_empty_to_normal(void **state) {
 
 static void test_fim_check_db_state_normal_to_normal(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 20000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
 
     fim_check_db_state();
@@ -3427,13 +3833,11 @@ static void test_fim_check_db_state_normal_to_normal(void **state) {
 
 static void test_fim_check_db_state_normal_to_full(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3446,15 +3850,13 @@ static void test_fim_check_db_state_normal_to_full(void **state) {
 }
 
 static void test_fim_check_db_state_full_to_normal(void **state) {
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3468,14 +3870,12 @@ static void test_fim_check_db_state_full_to_normal(void **state) {
 
 static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3489,14 +3889,12 @@ static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
 
 static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3510,13 +3908,11 @@ static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
 
 static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3530,14 +3926,12 @@ static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
 
 static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 42000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     assert_int_equal(_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
     fim_check_db_state();
@@ -3547,13 +3941,11 @@ static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state)
 
 static void test_fim_check_db_state_80_percentage_to_full(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3567,14 +3959,12 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
 
 static void test_fim_check_db_state_full_to_80_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3588,13 +3978,11 @@ static void test_fim_check_db_state_full_to_80_percentage(void **state) {
 
 static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3608,14 +3996,12 @@ static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state)
 
 static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 48000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     assert_int_equal(_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
     fim_check_db_state();
@@ -3625,13 +4011,11 @@ static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state)
 
 static void test_fim_check_db_state_90_percentage_to_full(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mwarn, formatted_msg, "(6927): Sending DB 100% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3645,14 +4029,12 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
 
 static void test_fim_check_db_state_full_to_full(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 60000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     assert_int_equal(_db_state, FIM_STATE_DB_FULL);
 
     fim_check_db_state();
@@ -3662,14 +4044,12 @@ static void test_fim_check_db_state_full_to_full(void **state) {
 
 static void test_fim_check_db_state_full_to_90_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 46000);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 90% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3683,13 +4063,11 @@ static void test_fim_check_db_state_full_to_90_percentage(void **state) {
 
 static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 41000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6039): Sending DB 80% full alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3703,13 +4081,11 @@ static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state)
 
 static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 10000);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__minfo, formatted_msg, "(6038): Sending DB back to normal alert.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
@@ -3723,13 +4099,11 @@ static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
 
 static void test_fim_check_db_state_nodes_count_database_error(void **state) {
     (void) state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_wrapper_fim_db_get_count_entries(syscheck.database, -1);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mwarn, formatted_msg, "(6948): Unable to get the number of entries in database.");
 
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
@@ -3744,6 +4118,18 @@ static void test_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
     int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     strcpy(fim_data->entry->d_name, "test");
 
@@ -3911,10 +4297,12 @@ static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
 
 static void test_check_deleted_files(void **state) {
     fim_tmp_file *file = *state;
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, file);
@@ -3927,10 +4315,10 @@ static void test_check_deleted_files(void **state) {
 }
 
 static void test_check_deleted_files_error(void **state) {
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_get_not_scanned, storage, FIM_DB_DISK);
     will_return(__wrap_fim_db_get_not_scanned, NULL);
@@ -3946,6 +4334,20 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
     fim_data_t *fim_data = *state;
     struct stat buf = { .st_mode = 0 };
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     fim_data->fentry->file_entry.path = strdup("file");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -3985,6 +4387,10 @@ static void test_fim_realtime_event_file_exists(void **state) {
 }
 
 static void test_fim_realtime_event_file_missing(void **state) {
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     struct stat stat_buf = { .st_mode = 0 };
 #ifdef TEST_WINAGENT
     char *path = "C:\\a\\random\\path";
@@ -4005,20 +4411,10 @@ static void test_fim_realtime_event_file_missing(void **state) {
 #endif
     errno = ENOENT;
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_fim_db_get_path_from_pattern(syscheck.database, buff, NULL, FIM_DB_DISK, FIMDB_ERR);
 
     fim_realtime_event(path);
@@ -4029,6 +4425,12 @@ static void test_fim_whodata_event_file_exists(void **state) {
 
     fim_data_t *fim_data = *state;
     struct stat buf = { .st_mode = 0 };
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap_lstat, filename, fim_data->w_evt->path);
@@ -4049,6 +4451,11 @@ static void test_fim_whodata_event_file_missing(void **state) {
     fim_data_t *fim_data = *state;
     struct stat buf = { .st_mode = 0 };
 
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
 #ifndef TEST_WINAGENT
     expect_string(__wrap_lstat, filename, fim_data->w_evt->path);
     will_return(__wrap_lstat, &buf);
@@ -4068,18 +4475,11 @@ static void test_fim_whodata_event_file_missing(void **state) {
 
 #ifdef TEST_WINAGENT
     // Inside fim_process_missing_entry
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
     will_return(__wrap_fim_db_get_path, NULL);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     expect_fim_db_get_path_from_pattern(syscheck.database, "./test/test.file\\%", NULL, FIM_DB_DISK, FIMDB_ERR);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 #else
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, paths);
 
@@ -4106,6 +4506,10 @@ static void test_fim_whodata_event_file_missing(void **state) {
 }
 
 static void test_fim_process_missing_entry_no_data(void **state) {
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char *path = "C:\\a\\random\\path";
 #else
@@ -4115,23 +4519,13 @@ static void test_fim_process_missing_entry_no_data(void **state) {
     char buff[OS_SIZE_128] = {0};
     snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_fim_db_get_path_from_pattern(syscheck.database, buff, NULL, FIM_DB_DISK, FIMDB_ERR);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
 
     fim_process_missing_entry(path, FIM_REALTIME, NULL);
 }
@@ -4139,6 +4533,10 @@ static void test_fim_process_missing_entry_no_data(void **state) {
 static void test_fim_process_missing_entry_failure(void **state) {
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
     file->elements = 1;
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
 #ifdef TEST_WINAGENT
     char *path = "C:\\a\\random\\path";
 #else
@@ -4150,22 +4548,12 @@ static void test_fim_process_missing_entry_failure(void **state) {
     snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
     snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
     expect_fim_db_get_path_from_pattern(syscheck.database, buff, file, FIM_DB_DISK, FIMDB_OK);
 
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_value(__wrap_fim_db_process_missing_entry, fim_sql, syscheck.database);
     expect_value(__wrap_fim_db_process_missing_entry, file, file);
     expect_value(__wrap_fim_db_process_missing_entry, storage, FIM_DB_DISK);
@@ -4203,18 +4591,118 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
     fim_data->local_data->scanned = 123456;
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_lock);
-#endif
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/test");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
-#ifdef TEST_WINAGENT
-    expect_function_call(__wrap_pthread_mutex_unlock);
-#endif
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
 
     fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
+}
+
+static void test_fim_process_wildcard_removed_no_data(void **state) {
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
+
+    char buff[OS_SIZE_128] = {0};
+    snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
+
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_fim_db_get_path_from_pattern(syscheck.database, buff, NULL, FIM_DB_DISK, FIMDB_ERR);
+
+
+    fim_process_wildcard_removed(directory0);
+}
+
+static void test_fim_process_wildcard_removed_failure(void **state) {
+    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
+    file->elements = 1;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
+
+    char buff[OS_SIZE_128] = {0};
+    char error_msg[OS_SIZE_256] = {0};
+
+    snprintf(buff, OS_SIZE_128, "%s%c%%", directory0->path, PATH_SEP);
+    snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_fim_db_get_path_from_pattern(syscheck.database, buff, file, FIM_DB_DISK, FIMDB_OK);
+
+    expect_value(__wrap_fim_db_remove_wildcard_entry, fim_sql, syscheck.database);
+    expect_value(__wrap_fim_db_remove_wildcard_entry, file, file);
+    expect_value(__wrap_fim_db_remove_wildcard_entry, storage, FIM_DB_DISK);
+    will_return(__wrap_fim_db_remove_wildcard_entry, FIMDB_ERR);
+
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    fim_process_wildcard_removed(directory0);
+
+    free(file);
+}
+
+static void test_fim_process_wildcard_removed_data_exists(void **state) {
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    fim_data_t *fim_data = *state;
+    directory_t *directory0 = OSList_GetFirstNode(removed_entries)->data;
+
+    fim_data->fentry->file_entry.path = strdup("file");
+    fim_data->fentry->file_entry.data = fim_data->local_data;
+
+    fim_data->local_data->size = 1500;
+    fim_data->local_data->perm = strdup("0664");
+    fim_data->local_data->attributes = strdup("r--r--r--");
+    fim_data->local_data->uid = strdup("100");
+    fim_data->local_data->gid = strdup("1000");
+    fim_data->local_data->user_name = strdup("test");
+    fim_data->local_data->group_name = strdup("testing");
+    fim_data->local_data->mtime = 1570184223;
+    fim_data->local_data->inode = 606060;
+    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
+    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
+    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    fim_data->local_data->mode = FIM_REALTIME;
+    fim_data->local_data->last_event = 1570184220;
+    fim_data->local_data->dev = 12345678;
+    fim_data->local_data->scanned = 123456;
+    fim_data->local_data->options = 511;
+    strcpy(fim_data->local_data->checksum, "");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, directory0->path);
+    will_return(__wrap_fim_db_get_path, fim_data->fentry);
+
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
+
+    fim_process_wildcard_removed(directory0);
 }
 
 void test_fim_diff_folder_size(void **state) {
@@ -4331,6 +4819,12 @@ static void test_fim_process_file_from_db_deleted_file_not_in_configuration(void
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
     will_return(__wrap_fim_db_get_path, entry);
@@ -4367,6 +4861,12 @@ static void test_fim_process_file_from_db_deleted_file_fail_to_remove_entry_from
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
     will_return(__wrap_fim_db_get_path, entry);
@@ -4401,6 +4901,12 @@ static void test_fim_process_file_from_db_deleted_file_event_generated(void **st
     if (entry->file_entry.path == NULL) {
         fail_msg("Failed to set an invalid path.");
     }
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4444,6 +4950,12 @@ static void test_fim_process_file_from_db_file_without_conflict(void **state) {
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
     will_return(__wrap_fim_db_get_path, entry);
@@ -4477,6 +4989,12 @@ static void test_fim_process_file_from_db_conflicting_file_current_inode_free_in
     if (entry->file_entry.path == NULL) {
         fail_msg("Failed to set an invalid path.");
     }
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
@@ -4517,6 +5035,11 @@ static void test_fim_process_file_from_db_conflicting_file_current_inode_taken_i
         fail_msg("Failed to set an invalid path.");
     }
 
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
     will_return(__wrap_fim_db_get_path, entry);
@@ -4555,6 +5078,12 @@ static void test_fim_process_file_from_db_conflicting_file_infinite_loop(void **
     if (entry->file_entry.path == NULL) {
         fail_msg("Failed to set an invalid path.");
     }
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     entry->file_entry.data->perm = strdup("rw-r--r--");
 
@@ -4627,6 +5156,11 @@ int fim_resolve_db_collision(unsigned long inode, unsigned long dev);
 static void test_fim_resolve_db_collision_no_paths_appended(void **state) {
     int ret;
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
     expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
     will_return(__wrap_fim_db_append_paths_from_inode, NULL);
@@ -4654,6 +5188,12 @@ static void test_fim_resolve_db_collision_normal_operation(void **state) {
     if (entry->file_entry.path == NULL) {
         fail_msg("Failed to set an invalid path.");
     }
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
     expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
@@ -4699,6 +5239,12 @@ static void test_fim_resolve_db_collision_with_appended_paths(void **state) {
     if (disposable_entries == NULL) {
         fail_msg("Failed to allocate disposable entry.");
     }
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     disposable_entries[0] = calloc(1, sizeof(fim_entry));
     disposable_entries[0]->file_entry.path = strdup("/etc/another/valid");
@@ -4776,6 +5322,11 @@ static void test_fim_resolve_db_collision_with_appended_paths(void **state) {
 static void test_fim_resolve_db_collision_error_on_db(void **state) {
     char *paths[] = { "/etc/valid", NULL };
     int ret;
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_value(__wrap_fim_db_append_paths_from_inode, inode, 1234);
     expect_value(__wrap_fim_db_append_paths_from_inode, dev, 2080);
@@ -4860,6 +5411,11 @@ static void test_fim_update_db_data_added_file_data_collision(void **state) {
     fim_entry *saved;
     int ret;
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
     will_return(__wrap_fim_db_get_path, NULL);
@@ -4891,6 +5447,9 @@ static void test_fim_update_db_data_modified_entry_up_to_date(void **state) {
     strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
     strcpy(db_entry.file_entry.data->checksum, "0123456789abcdef0123456789abcdef01234567");
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
     will_return(__wrap_fim_db_get_path, &db_entry);
@@ -4914,6 +5473,9 @@ static void test_fim_update_db_data_modified_unchanged_inode(void **state) {
     strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
     strcpy(db_entry.file_entry.data->checksum, "76543210fedcba9876543210fedcba9876543210");
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
     will_return(__wrap_fim_db_get_path, &db_entry);
@@ -4936,6 +5498,9 @@ static void test_fim_update_db_data_modified_error_on_db(void **state) {
 
     strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
     strcpy(db_entry.file_entry.data->checksum, "76543210fedcba9876543210fedcba9876543210");
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
@@ -4961,6 +5526,11 @@ static void test_fim_update_db_data_modified_data_collision(void **state) {
 
     strcpy(data.checksum, "0123456789abcdef0123456789abcdef01234567");
     strcpy(db_entry.file_entry.data->checksum, "76543210fedcba9876543210fedcba9876543210");
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
     expect_string(__wrap_fim_db_get_path, file_path, "/testpath");
@@ -5043,6 +5613,127 @@ static void test_fim_update_db_data_modified() {
 }
 
 #endif
+
+static void test_update_wildcards_config() {
+    char **paths;
+#ifndef TEST_WINAGENT
+    char wildcard1[20] = "/testdir?";
+    char wildcard2[20] = "/*/path";
+    char resolvedpath1[20] = "/testdir1";
+    char resolvedpath2[20] = "/testdir2";
+#else
+    char wildcard1[20] = "c:\\testdir?";
+    char wildcard2[20] = "c:\\*\\path";
+    char resolvedpath1[20] = "c:\\testdir1";
+    char resolvedpath2[20] = "c:\\testdir2";
+#endif
+    os_calloc(3, sizeof(char *), paths);
+    os_strdup(resolvedpath1, paths[0]);
+    os_strdup(resolvedpath2, paths[1]);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_START);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_FINALIZE);
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_string(__wrap_expand_wildcards, path, wildcard1);
+    will_return(__wrap_expand_wildcards, paths);
+    expect_string(__wrap_expand_wildcards, path, wildcard2);
+    will_return(__wrap_expand_wildcards, NULL);
+
+#ifndef WIN32
+    expect_string_count(__wrap_realpath, path, wildcard1, 2);
+    will_return_count(__wrap_realpath, NULL, 2);
+#endif
+
+    update_wildcards_config();
+
+    // Filled config
+    directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
+    assert_string_equal(directory0->path, resolvedpath1);
+    directory_t *directory1 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
+    assert_string_equal(directory1->path, resolvedpath2);
+}
+
+static void test_update_wildcards_config_remove_config() {
+#ifndef TEST_WINAGENT
+    char wildcard1[20] = "/testdir?";
+    char wildcard2[20] = "/*/path";
+    char resolvedpath1[20] = "/testdir1";
+    char resolvedpath2[20] = "/testdir2";
+    char pattern1[20] = "/testdir1/%";
+    char pattern2[20] = "/testdir2/%";
+#else
+    char wildcard1[20] = "c:\\testdir?";
+    char wildcard2[20] = "c:\\*\\path";
+    char resolvedpath1[20] = "c:\\testdir1";
+    char resolvedpath2[20] = "c:\\testdir2";
+    char pattern1[20] = "c:\\testdir1\\%";
+    char pattern2[20] = "c:\\testdir2\\%";
+#endif
+
+    char error_msg[OS_MAXSTR];
+    char error_msg2[OS_MAXSTR];
+
+    snprintf(error_msg, OS_MAXSTR, FIM_WILDCARDS_REMOVE_DIRECTORY, resolvedpath1);
+    snprintf(error_msg2, OS_MAXSTR, FIM_WILDCARDS_REMOVE_DIRECTORY, resolvedpath2);
+
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_START);
+    expect_string(__wrap__mdebug2, formatted_msg, error_msg2);
+    expect_string(__wrap__mdebug2, formatted_msg, error_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_WILDCARDS_UPDATE_FINALIZE);
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_expand_wildcards, path, wildcard1);
+    will_return(__wrap_expand_wildcards, NULL);
+    expect_string(__wrap_expand_wildcards, path, wildcard2);
+    will_return(__wrap_expand_wildcards, NULL);
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath1);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, resolvedpath2);
+#endif
+
+    // Remove configuration loop
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath2);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_fim_db_get_path_from_pattern(syscheck.database, pattern2, NULL, FIM_DB_DISK, FIMDB_ERR);
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, resolvedpath1);
+    will_return(__wrap_fim_db_get_path, NULL);
+
+    expect_fim_db_get_path_from_pattern(syscheck.database, pattern1, NULL, FIM_DB_DISK, FIMDB_ERR);
+
+    update_wildcards_config();
+
+    // Empty config
+    directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
+    assert_null(directory0);
+}
+
+static void test_update_wildcards_config_list_null() {
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    if (syscheck.wildcards) {
+        OSList_Destroy(syscheck.wildcards);
+        syscheck.wildcards = NULL;
+    }
+    update_wildcards_config();
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -5194,6 +5885,11 @@ int main(void) {
         cmocka_unit_test(test_fim_process_missing_entry_failure),
         cmocka_unit_test_setup(test_fim_process_missing_entry_data_exists, setup_fim_entry),
 
+        /* fim_process_wildcard_removed */
+        cmocka_unit_test(test_fim_process_wildcard_removed_no_data),
+        cmocka_unit_test(test_fim_process_wildcard_removed_failure),
+        cmocka_unit_test_setup(test_fim_process_wildcard_removed_data_exists, setup_fim_entry),
+
         /* fim_diff_folder_size */
         cmocka_unit_test(test_fim_diff_folder_size),
 
@@ -5253,10 +5949,17 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
         cmocka_unit_test(test_fim_checker_root_file_within_recursion_level),
     };
+    const struct CMUnitTest wildcards_tests[] = {
+        /* update_wildcards_config */
+        cmocka_unit_test(test_update_wildcards_config),
+        cmocka_unit_test(test_update_wildcards_config_remove_config),
+        cmocka_unit_test(test_update_wildcards_config_list_null),
+    };
     int retval;
 
     retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
+    retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
 
     return retval;
 }

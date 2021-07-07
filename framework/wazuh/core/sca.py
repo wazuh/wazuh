@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 
 from wazuh.core.agent import Agent
-from wazuh.core.common import database_limit
+from wazuh.core.common import maximum_database_limit
 from wazuh.core.exception import WazuhError
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
 
@@ -115,7 +115,7 @@ class WazuhDBQuerySCACheck(WazuhDBQuerySCA):
 
     def _add_limit_to_query(self):
         if self.limit:
-            if self.limit > database_limit:
+            if self.limit > maximum_database_limit:
                 raise WazuhError(1405, str(self.limit))
 
             # We add offset and limit only to the inner SELECT (subquery)

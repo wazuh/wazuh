@@ -16,13 +16,15 @@ custom_api_configuration = {
     "use_only_authd": False,
     "drop_privileges": True,
     "experimental_features": False,
+    "max_upload_size": 10485760,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
-        "ssl_cipher": "TLSv1.2"
+        "ssl_protocol": "TLSv1.2",
+        "ssl_ciphers": ""
     },
     "logs": {
         "level": "info",
@@ -103,6 +105,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'use_only_authd': 'invalid_type'},
     {'drop_privileges': 'invalid_type'},
     {'experimental_features': 'invalid_type'},
+    {'max_upload_size': 'invalid_type'},
     {'https': {'enabled': 'invalid_type'}},
     {'https': {'key': 12345}},
     {'https': {'cert': 12345}},
