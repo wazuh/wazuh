@@ -123,7 +123,7 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
 
         attributes = fim_attributes_json(entry->file_entry.data);
     } else if (entry->registry_entry.value == NULL) {
-        registry *configuration = fim_registry_configuration(entry->registry_entry.key->path,
+        registry_t *configuration = fim_registry_configuration(entry->registry_entry.key->path,
                                                              entry->registry_entry.key->arch);
 
         cJSON_AddStringToObject(root, "path", entry->registry_entry.key->path);
@@ -133,7 +133,7 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
         attributes = fim_registry_key_attributes_json(entry->registry_entry.key, configuration);
     } else {
         char buffer[OS_MAXSTR];
-        registry *configuration;
+        registry_t *configuration;
 
         cJSON_AddNumberToObject(root, "timestamp", entry->registry_entry.value->last_event);
 

@@ -242,7 +242,7 @@ typedef struct whodata_evt {
 
 #ifdef WIN32
 
-typedef struct registry {
+typedef struct _registry_s {
     char *entry;
     int arch;
     int opts;
@@ -251,7 +251,7 @@ typedef struct registry {
     OSMatch *restrict_key;
     OSMatch *restrict_value;
     char *tag;
-} registry;
+} registry_t;
 
 typedef struct registry_ignore {
     char *entry;
@@ -408,10 +408,10 @@ typedef struct _config {
     registry_ignore_regex *key_ignore_regex;           /* Regex of registry keys to ignore */
     registry_ignore *value_ignore;                     /* List of registry values to ignore*/
     registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
-    registry *registry;                                /* array of registry entries to be scanned */
+    registry_t *registry;                                /* array of registry entries to be scanned */
     unsigned int max_fd_win_rt;                        /* Maximum number of descriptors in realtime */
     whodata wdata;
-    registry *registry_nodiff;                         /* list of values/registries to never output diff */
+    registry_t *registry_nodiff;                         /* list of values/registries to never output diff */
     registry_ignore_regex *registry_nodiff_regex;      /* regex of values/registries to never output diff */
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */

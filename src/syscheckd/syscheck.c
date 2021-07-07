@@ -217,12 +217,12 @@ int Start_win32_Syscheck() {
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
                 minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
-        /* Print registry ignores. */
+        /* Print registry_t ignores. */
         if(syscheck.key_ignore)
             for (r = 0; syscheck.key_ignore[r].entry != NULL; r++)
                 minfo(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
 
-        /* Print sregex registry ignores. */
+        /* Print sregex registry_t ignores. */
         if(syscheck.key_ignore_regex)
             for (r = 0; syscheck.key_ignore_regex[r].regex != NULL; r++)
                 minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
@@ -231,20 +231,20 @@ int Start_win32_Syscheck() {
             for (r = 0; syscheck.value_ignore[r].entry != NULL; r++)
                 minfo(FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
 
-        /* Print sregex registry ignores. */
+        /* Print sregex registry_t ignores. */
         if(syscheck.value_ignore_regex)
             for (r = 0; syscheck.value_ignore_regex[r].regex != NULL; r++)
                 minfo(FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
 
-        /* Print registry values with nodiff. */
+        /* Print registry_t values with nodiff. */
         if(syscheck.registry_nodiff)
             for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
-                minfo(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
+                minfo(FIM_NO_DIFF_REGISTRY, "registry_t value", syscheck.registry_nodiff[r].entry);
 
-        /* Print sregex registry values with nodiff. */
+        /* Print sregex registry_t values with nodiff. */
         if(syscheck.registry_nodiff_regex)
             for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
-                minfo(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
+                minfo(FIM_NO_DIFF_REGISTRY, "registry_t sregex", syscheck.registry_nodiff_regex[r].regex->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
