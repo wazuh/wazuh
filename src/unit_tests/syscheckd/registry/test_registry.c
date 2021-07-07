@@ -14,7 +14,7 @@
 
 #include "../syscheckd/syscheck.h"
 #include "../syscheckd/registry/registry.h"
-#include "../syscheckd/db/db.hpp"
+#include "db/include/db.hpp"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/windows/sddl_wrappers.h"

@@ -9,7 +9,6 @@
 extern "C" {
 #endif
 
-#ifdef WIN32
 #include "db.hpp"
 
 extern const char *SQL_STMT[];
@@ -31,7 +30,7 @@ static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, int index, con
 
 
 /**
- * @brief Binds path into registry_t statement
+ * @brief Binds path into statement
  *
  * @param fim_sql FIM database structure.
  * @param index Index of the particular statement.
@@ -41,7 +40,7 @@ static void fim_db_bind_registry_data_name_key_id(fdb_t *fim_sql, int index, con
 static void fim_db_bind_registry_path(fdb_t *fim_sql, unsigned int index, const char *path, unsigned int arch);
 
 /**
- * @brief Bind registry_t data into an insert registry_t data statement
+ * @brief Bind registry data into an insert registry data statement
  *
  * @param fim_sql FIM database structure.
  * @param data Structure that contains the fields of the inserted data.
@@ -50,7 +49,7 @@ static void fim_db_bind_registry_path(fdb_t *fim_sql, unsigned int index, const 
 static void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_value_data *data, unsigned int key_id);
 
 /**
- * @brief Bind registry_t data into an insert registry_t key statement
+ * @brief Bind registry data into an insert registry key statement
  *
  * @param fim_sql FIM database structure.
  * @param registry_key Structure that contains the fields of the inserted key.
@@ -59,18 +58,18 @@ static void fim_db_bind_insert_registry_data(fdb_t *fim_sql, fim_registry_value_
 static void fim_db_bind_insert_registry_key(fdb_t *fim_sql, fim_registry_key *registry_key, unsigned int id);
 
 /**
- * @brief Bind id into get registry_t key statement.
+ * @brief Bind id into get registry key statement.
  *
  * @param fim_sql FIM database structure.
- * @param id ID of the registry_t key.
+ * @param id ID of the registry key.
  */
 static void fim_db_bind_get_registry_key_id(fdb_t *fim_sql, unsigned int id);
 
 /**
- * @brief Bind id into get registry_t value statement.
+ * @brief Bind id into get registry value statement.
  *
  * @param fim_sql FIM database structure.
- * @param key_id ID of the registry_t key.
+ * @param key_id ID of the registry key.
  */
 static void fim_db_bind_get_registry_data_key_id(fdb_t *fim_sql, unsigned int key_id);
 
@@ -372,7 +371,7 @@ int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int
         *rowid = 0;
     }
     else {
-        merror("Step error getting registry_t rowid %s: %s (%d)", path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        merror("Step error getting registry rowid %s: %s (%d)", path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
@@ -472,7 +471,7 @@ int fim_db_get_count_registry_key(fdb_t *fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_REG_KEY);
 
     if(res == FIMDB_ERR) {
-        merror("Step error getting count registry_t key: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        merror("Step error getting count registry key: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
     }
 
     return res;
@@ -482,7 +481,7 @@ int fim_db_get_count_registry_data(fdb_t *fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_REG_DATA);
 
     if(res == FIMDB_ERR) {
-        merror("Step error getting count registry_t data: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        merror("Step error getting count registry data: %s (%d)", sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
     }
 
     return res;
@@ -519,7 +518,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
     fim_db_bind_insert_registry_data(fim_sql, data, key_id);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA]), res != SQLITE_DONE) {
-        merror("Step error replacing registry_t data '%d': %s (%d)", key_id, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        merror("Step error replacing registry data '%d': %s (%d)", key_id, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
@@ -556,7 +555,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
     fim_db_bind_insert_registry_key(fim_sql, entry, rowid);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY]), res != SQLITE_DONE) {
-        merror("Step error replacing registry_t key '%s': %s (%d)", entry->path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
+        merror("Step error replacing registry key '%s': %s (%d)", entry->path, sqlite3_errmsg(fim_sql->db), sqlite3_extended_errcode(fim_sql->db));
         w_mutex_unlock(&fim_sql->mutex);
         return FIMDB_ERR;
     }
@@ -635,7 +634,6 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
     return FIMDB_OK;
 }
 
-#endif
 #ifdef __cplusplus
 }
 #endif
