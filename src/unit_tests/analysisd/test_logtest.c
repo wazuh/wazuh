@@ -34,8 +34,12 @@ char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * co
 char * w_logtest_generate_error_response(char * msg);
 int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request);
 void w_logtest_decoding_phase(Eventinfo * lf, w_logtest_session_t * session);
-int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session, OSList * list_msg);
-cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session, bool * alert_generated, OSList * list_msg);
+int w_logtest_rulesmatching_phase(Eventinfo * lf, w_logtest_session_t * session,
+                                  cJSON * rules_debug_list,
+                                  OSList * list_msg);
+cJSON *w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
+                              w_logtest_extra_data_t * extra_data,
+                              OSList * list_msg);
 int w_logtest_process_request_remove_session(cJSON * json_request, cJSON * json_response, OSList * list_msg,
                                              w_logtest_connection_t * connection);
 void * w_logtest_clients_handler(w_logtest_connection_t * connection);
@@ -59,9 +63,15 @@ Eventinfo * event_OS_AddEvent = NULL;
 
 w_logtest_session_t * stored_session = NULL;
 bool store_session = false;
+
+extern OSHash *w_logtest_sessions;
+
 /* setup/teardown */
 
-
+static int setup_group(void **state) {
+    w_logtest_sessions = (OSHash *) 8;
+    return 0;
+}
 
 /* wraps */
 
@@ -326,7 +336,7 @@ int __wrap_AddHash_Rule(RuleNode *node) {
 
 int __wrap_Accumulate_Init(OSHash **acm_store, int *acm_lookups, time_t *acm_purge_ts) {
     if (session_load_acm_store) {
-        *acm_store = (OSHash *) 1;
+        *acm_store = (OSHash *) 8;
     }
     return mock_type(int);
 }
@@ -580,7 +590,7 @@ void test_w_logtest_init_OSHash_setSize_fail(void **state)
 
     will_return(__wrap_OS_BindUnixDomain, OS_SUCCESS);
 
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
 
     expect_in_range(__wrap_OSHash_setSize, new_size, 1, 400);
     will_return(__wrap_OSHash_setSize, NULL);
@@ -598,7 +608,7 @@ void test_w_logtest_init_pthread_fail(void **state)
 
     will_return(__wrap_OS_BindUnixDomain, OS_SUCCESS);
 
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
 
     expect_in_range(__wrap_OSHash_setSize, new_size, 1, 400);
     will_return(__wrap_OSHash_setSize, 1);
@@ -650,7 +660,7 @@ void test_w_logtest_init_unlink_fail(void **state)
 
     will_return(__wrap_OS_BindUnixDomain, OS_SUCCESS);
 
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
 
     expect_in_range(__wrap_OSHash_setSize, new_size, 1, 400);
     will_return(__wrap_OSHash_setSize, 1);
@@ -704,7 +714,7 @@ void test_w_logtest_init_done(void **state)
 
     will_return(__wrap_OS_BindUnixDomain, OS_SUCCESS);
 
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
 
     expect_in_range(__wrap_OSHash_setSize, new_size, 1, 400);
     will_return(__wrap_OSHash_setSize, 1);
@@ -766,7 +776,7 @@ void test_w_logtest_fts_init_SetMaxSize_failure(void **state)
 {
     OSList *fts_list;
     OSHash *fts_store;
-    OSList *list = (OSList *) 1;
+    OSList *list = (OSList *) 8;
 
     will_return(__wrap_getDefine_Int, 5);
 
@@ -1395,7 +1405,7 @@ void test_w_logtest_initialize_session_error_fts_init(void ** state) {
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
     will_return(__wrap__setlevels, 0);
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
 
     /* FTS init fail */
@@ -1452,7 +1462,7 @@ void test_w_logtest_initialize_session_error_accumulate_init(void ** state) {
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
     will_return(__wrap__setlevels, 0);
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
 
     /* FTS init success */
@@ -1524,7 +1534,7 @@ void test_w_logtest_initialize_session_success(void ** state) {
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
     will_return(__wrap__setlevels, 0);
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
 
     /* FTS init success */
@@ -1593,7 +1603,7 @@ void test_w_logtest_initialize_session_success_duplicate_key(void ** state) {
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
     will_return(__wrap__setlevels, 0);
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
 
     /* FTS init success */
@@ -3102,7 +3112,9 @@ void test_w_logtest_rulesmatching_phase_no_load_rules(void ** state)
 
     session.rule_list = NULL;
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
 
@@ -3125,7 +3137,9 @@ void test_w_logtest_rulesmatching_phase_ossec_alert(void ** state)
     os_calloc(1, sizeof(RuleNode), session.rule_list);
     session.rule_list->next = NULL;
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
 
@@ -3156,7 +3170,9 @@ void test_w_logtest_rulesmatching_phase_dont_match_category(void ** state)
     session.rule_list->next = NULL;
     session.rule_list->ruleinfo = &ruleinfo;
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
 
@@ -3189,7 +3205,9 @@ void test_w_logtest_rulesmatching_phase_dont_match(void ** state)
 
     will_return(__wrap_OS_CheckIfRuleMatch, NULL);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
 
@@ -3223,7 +3241,9 @@ void test_w_logtest_rulesmatching_phase_match_level_0(void ** state)
 
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3260,7 +3280,9 @@ void test_w_logtest_rulesmatching_phase_match_dont_ignore_first_time(void ** sta
 
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3299,7 +3321,9 @@ void test_w_logtest_rulesmatching_phase_match_ignore_time_ignore(void ** state)
 
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3337,7 +3361,9 @@ void test_w_logtest_rulesmatching_phase_match_dont_ignore_time_out_windows(void 
 
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3374,7 +3400,9 @@ void test_w_logtest_rulesmatching_phase_match_ignore_event(void ** state)
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
     will_return(__wrap_IGnore, 1);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3415,7 +3443,9 @@ void test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_ok(void ** stat
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
     will_return(__wrap_OSList_AddData, 1);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3443,7 +3473,6 @@ void test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_fail(void ** st
     ruleinfo.category = SYSLOG;
     ruleinfo.ckignore = 0;
 
-
     OSList pre_matched_list = {0};
     pre_matched_list.last_node = (OSListNode *) 10;
     ruleinfo.sid_prev_matched = &pre_matched_list;
@@ -3461,8 +3490,9 @@ void test_w_logtest_rulesmatching_phase_match_and_if_matched_sid_fail(void ** st
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "Unable to add data to sig list.");
 
+    cJSON * rules_debug_list = NULL;
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3509,8 +3539,9 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched_fail(void *
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "Unable to add data to grp list.");
 
+    cJSON * rules_debug_list = NULL;
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3555,7 +3586,9 @@ void test_w_logtest_rulesmatching_phase_match_and_group_prev_matched(void ** sta
     will_return(__wrap_OS_CheckIfRuleMatch, &ruleinfo);
     will_return(__wrap_OSList_AddData, 1);
 
-    retval = w_logtest_rulesmatching_phase(&lf, &session, &list_msg);
+    cJSON * rules_debug_list = NULL;
+
+    retval = w_logtest_rulesmatching_phase(&lf, &session, rules_debug_list, &list_msg);
 
     assert_int_equal(retval, expect_retval);
     assert_ptr_equal(lf.generated_rule, &ruleinfo);
@@ -3570,7 +3603,9 @@ void test_w_logtest_process_log_preprocessing_fail(void ** state)
 {
     Config.decoder_order_size = 1;
 
-    bool alert_generated = false;
+    w_logtest_extra_data_t extra_data;
+
+    extra_data.alert_generated = false;
 
     cJSON request = {0};
     cJSON json_event = {0};
@@ -3596,10 +3631,10 @@ void test_w_logtest_process_log_preprocessing_fail(void ** state)
     expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(1106): String not correctly formatted.");
 
-    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &extra_data, &list_msg);
 
     assert_null(retval);
-    assert_false(alert_generated);
+    assert_false(extra_data.alert_generated);
     os_free(str_location);
     os_free(raw_event);
 }
@@ -3608,7 +3643,10 @@ void test_w_logtest_process_log_rule_match_fail(void ** state)
 {
     Config.decoder_order_size = 1;
 
-    bool alert_generated = false;
+    w_logtest_extra_data_t extra_data;
+
+    extra_data.alert_generated = false;
+
     cJSON request = {0};
     cJSON json_event = {0};
     json_event.child = false;
@@ -3634,10 +3672,10 @@ void test_w_logtest_process_log_rule_match_fail(void ** state)
     will_return(__wrap_OS_CleanMSG, 0);
     expect_value(__wrap_DecodeEvent, node, session.decoderlist_forpname);
 
-    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &extra_data, &list_msg);
 
     assert_null(retval);
-    assert_false(alert_generated);
+    assert_false(extra_data.alert_generated);
     os_free(str_location);
     os_free(raw_event);
     refill_OS_CleanMSG = false;
@@ -3651,7 +3689,10 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
     cJSON * output;
     os_calloc(1, sizeof(cJSON), output);
 
-    bool alert_generated = false;
+    w_logtest_extra_data_t extra_data;
+
+    extra_data.alert_generated = false;
+
     cJSON request = {0};
     cJSON json_event = {0};
     json_event.child = false;
@@ -3692,10 +3733,10 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 0);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 0);
 
-    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &extra_data, &list_msg);
 
     assert_non_null(retval);
-    assert_false(alert_generated);
+    assert_false(extra_data.alert_generated);
     os_free(str_location);
     os_free(raw_event);
     os_free(session.rule_list);
@@ -3707,7 +3748,11 @@ void test_w_logtest_process_log_rule_dont_match(void ** state)
 void test_w_logtest_process_log_rule_match(void ** state)
 {
     Config.decoder_order_size = 1;
-    bool alert_generated = false;
+
+    w_logtest_extra_data_t extra_data;
+
+    extra_data.alert_generated = false;
+
     Config.logbylevel = 3;
 
     cJSON * output;
@@ -3760,9 +3805,9 @@ void test_w_logtest_process_log_rule_match(void ** state)
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
 
-    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &extra_data, &list_msg);
 
-    assert_true(alert_generated);
+    assert_true(extra_data.alert_generated);
     assert_non_null(retval);
 
     Free_Eventinfo(event_OS_AddEvent);
@@ -3776,7 +3821,11 @@ void test_w_logtest_process_log_rule_match(void ** state)
 void test_w_logtest_process_log_rule_match_level_0(void ** state)
 {
     Config.decoder_order_size = 1;
-    bool alert_generated = false;
+
+    w_logtest_extra_data_t extra_data;
+
+    extra_data.alert_generated = false;
+
     Config.logbylevel = 3;
 
     cJSON * output;
@@ -3832,9 +3881,9 @@ void test_w_logtest_process_log_rule_match_level_0(void ** state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
     will_return(__wrap_cJSON_AddNumberToObject, NULL);
 
-    retval = w_logtest_process_log(&request, &session, &alert_generated, &list_msg);
+    retval = w_logtest_process_log(&request, &session, &extra_data, &list_msg);
 
-    assert_false(alert_generated);
+    assert_false(extra_data.alert_generated);
     assert_non_null(retval);
 
     os_free(str_location);
@@ -4749,7 +4798,7 @@ void test_w_logtest_process_request_log_processing_ok_session_expired(void ** st
     will_return(__wrap_Lists_OP_LoadList, 0);
     will_return(__wrap_Rules_OP_ReadRules, 0);
     will_return(__wrap__setlevels, 0);
-    will_return(__wrap_OSHash_Create, 1);
+    will_return(__wrap_OSHash_Create, 8);
     will_return(__wrap_AddHash_Rule, 0);
 
     /* FTS init success */
