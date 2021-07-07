@@ -430,10 +430,26 @@ void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucke
 }
 
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data) {
+    if (data->project_id) os_free(data->project_id);
+    if (data->subscription_name) os_free(data->subscription_name);
+    if (data->credentials_file) os_free(data->credentials_file);
+
     os_free(data);
 }
 
 void wm_gcp_bucket_destroy(wm_gcp_bucket_base * data) {
+    wm_gcp_bucket *cur_bucket;
+    wm_gcp_bucket *next_bucket = data->buckets;
+    while(next_bucket){
+        cur_bucket = next_bucket;
+        next_bucket = next_bucket->next;
+        if (cur_bucket->bucket) os_free(cur_bucket->bucket);
+        if (cur_bucket->type) os_free(cur_bucket->type);
+        if (cur_bucket->credentials_file) os_free(cur_bucket->credentials_file);
+        if (cur_bucket->prefix) os_free(cur_bucket->prefix);
+        if (cur_bucket->only_logs_after) os_free(cur_bucket->only_logs_after);
+        os_free(cur_bucket);
+    }
     os_free(data);
 }
 
@@ -480,7 +496,7 @@ cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data) {
 cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
-
+    cJSON *buck = cJSON_CreateObject();
     sched_scan_dump(&(data->scan_config), wm_wd);
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "run_on_start", data->run_on_start ? "yes" : "no");
@@ -489,7 +505,6 @@ cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *data) {
         wm_gcp_bucket *cur_bucket;
         cJSON *arr_buckets = cJSON_CreateArray();
         for (cur_bucket = data->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
-            cJSON *buck = cJSON_CreateObject();
             if (cur_bucket->bucket) cJSON_AddStringToObject(buck, "bucket", cur_bucket->bucket);
             if (cur_bucket->type) cJSON_AddStringToObject(buck, "type", cur_bucket->type);
             if (cur_bucket->credentials_file) cJSON_AddStringToObject(buck, "credentials_file", cur_bucket->credentials_file);
@@ -498,6 +513,7 @@ cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *data) {
             if (cur_bucket->remove_from_bucket) cJSON_AddNumberToObject(buck, "remove_from_bucket", cur_bucket->remove_from_bucket);
             cJSON_AddItemToArray(arr_buckets, buck);
         }
+
         if (cJSON_GetArraySize(arr_buckets) > 0) {
             cJSON_AddItemToObject(wm_wd, "buckets", arr_buckets);
         } else {
