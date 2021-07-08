@@ -48,6 +48,27 @@ class WazuhDBQueryMitre(WazuhDBQuery):
     def _filter_status(self, status_filter):
         pass
 
+    def _move_external_id_mitre_resource(self, mitre_resource: dict):
+        """Extract the dictionary with external id, source and url from references and move it to the external level of
+        the MITRE resource.
+
+        Parameters
+        ----------
+        mitre_resource : dict
+            MITRE resource we want to update the reference from.
+        """
+        # Take the reference with external_id checking it is not None
+        reference_external_id = next(
+            (row_no_id for row_no_id in mitre_resource['references'] if
+             'external_id' in row_no_id and row_no_id['external_id']), {})
+        if 'description' in reference_external_id:
+            reference_external_id.pop('description')
+
+        # Delete the reference from references and update the MITRE object
+        if reference_external_id:
+            mitre_resource['references'].remove(reference_external_id)
+        mitre_resource.update(reference_external_id)
+
 
 class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
 
@@ -189,17 +210,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
             mitigation['references'] = [row_no_id for row, row_no_id in
                                         zip(references['items'], references_no_id['items']) if
                                         row['id'] == mitigation['id']]
-
-            # Take reference with external_id checking it is not None
-            reference_external_id = next(
-                (row_no_id for row_no_id in mitigation['references'] if
-                 'external_id' in row_no_id and row_no_id['external_id']), {})
-            if 'description' in reference_external_id:
-                reference_external_id.pop('description')
-            # Delete the reference from references and update the object
-            if reference_external_id:
-                mitigation['references'].remove(reference_external_id)
-            mitigation.update(reference_external_id)
+            self._move_external_id_mitre_resource(mitigation)
 
 
 class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
@@ -285,17 +296,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
             tactic['references'] = [row_no_id for row, row_no_id in
                                     zip(references['items'], references_no_id['items']) if
                                     row['id'] == tactic['id']]
-
-            # Take reference with external_id checking it is not None
-            reference_external_id = next(
-                (row_no_id for row_no_id in tactic['references'] if
-                 'external_id' in row_no_id and row_no_id['external_id']), {})
-            if 'description' in reference_external_id:
-                reference_external_id.pop('description')
-            # Delete the reference from references and update the object
-            if reference_external_id:
-                tactic['references'].remove(reference_external_id)
-            tactic.update(reference_external_id)
+            self._move_external_id_mitre_resource(tactic)
 
 
 class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
@@ -372,17 +373,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             technique['references'] = [row_no_id for row, row_no_id in
                                        zip(references['items'], references_no_id['items']) if
                                        row['id'] == technique['id']]
-
-            # Take reference with external_id checking it is not None
-            reference_external_id = next(
-                (row_no_id for row_no_id in technique['references'] if
-                 'external_id' in row_no_id and row_no_id['external_id']), {})
-            if 'description' in reference_external_id:
-                reference_external_id.pop('description')
-            # Delete the reference from references and update the object
-            if reference_external_id:
-                technique['references'].remove(reference_external_id)
-            technique.update(reference_external_id)
+            self._move_external_id_mitre_resource(technique)
 
 
 class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
@@ -449,17 +440,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             group['references'] = [row_no_id for row, row_no_id in
                                    zip(references['items'], references_no_id['items']) if
                                    row['id'] == group['id']]
-
-            # Take reference with external_id checking it is not None
-            reference_external_id = next(
-                (row_no_id for row_no_id in group['references'] if
-                 'external_id' in row_no_id and row_no_id['external_id']), {})
-            if 'description' in reference_external_id:
-                reference_external_id.pop('description')
-            # Delete the reference from references and update the object
-            if reference_external_id:
-                group['references'].remove(reference_external_id)
-            group.update(reference_external_id)
+            self._move_external_id_mitre_resource(group)
 
 
 class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
@@ -528,18 +509,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
             software['references'] = [row_no_id for row, row_no_id in
                                       zip(references['items'], references_no_id['items']) if
                                       row['id'] == software['id']]
-
-            # Take reference with external_id checking it is not None
-            reference_external_id = next(
-                (row_no_id for row_no_id in software['references'] if
-                 'external_id' in row_no_id and row_no_id['external_id']), {})
-            if 'description' in reference_external_id:
-                reference_external_id.pop('description')
-            # Delete the reference from references and update the object
-            if reference_external_id:
-                software['references'].remove(reference_external_id)
-            software.update(reference_external_id)
-
+            self._move_external_id_mitre_resource(software)
 
 @lru_cache(maxsize=None)
 def get_mitre_items(mitre_class: callable):
