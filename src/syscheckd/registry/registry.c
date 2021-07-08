@@ -464,6 +464,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         key->perm_json = cJSON_CreateObject();
         if (key->perm_json == NULL) {
             mwarn(FIM_CJSON_ERROR_CREATE_ITEM);
+            fim_registry_free_key(key);
             return NULL;
         }
 
