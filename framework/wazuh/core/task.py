@@ -54,10 +54,8 @@ class WazuhDBQueryTask(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         """Standardization of dates to the ISO 8601 format."""
-        for t in self._data:
-            if t.keys() >= {'create_time', 'last_update_time'}:
-                t['create_time'] = datetime.utcfromtimestamp(t['create_time']).strftime("%Y-%m-%dT%H:%M:%SZ")
-                t['last_update_time'] = datetime.utcfromtimestamp(t['last_update_time']).strftime("%Y-%m-%dT%H:%M:%SZ")
+        [t.update((k, datetime.utcfromtimestamp(v).strftime("%Y-%m-%dT%H:%M:%SZ"))
+                  for k, v in t.items() if k in self.date_fields) for t in self._data]
 
         return {'items': self._data, 'totalItems': self.total_items}
 

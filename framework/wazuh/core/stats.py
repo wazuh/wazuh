@@ -4,6 +4,7 @@
 
 import json
 import os
+from datetime import datetime
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
@@ -59,7 +60,10 @@ def get_daemons_stats_from_socket(agent_id, daemon):
 
     # Format response
     try:
-        return json.loads(rec_msg)['data']
+        data = json.loads(rec_msg)['data']
+        [d.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime("%Y-%m-%dT%H:%M:%SZ"))
+                  for k, v in d.items() if k in {'last_keepalive', 'last_ack'}) for d in data['data']]
+        return data
     except Exception:
         rec_msg = rec_msg.split(" ", 1)[1]
         raise WazuhError(1117, extra_message=rec_msg)

@@ -5425,7 +5425,7 @@ paths:
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
                 hostname: "wazuh"
-                timestamp: "2019-04-02T08:08:11+0000"
+                timestamp: "2019-04-02T08:08:11Z"
 
   /active-response:
     put:
@@ -6096,8 +6096,8 @@ paths:
                 data:
                   affected_items:
                     - global:
-                        start: '2021-05-27 08:01:38'
-                        end: '2021-05-27 08:08:13'
+                        start: '2021-05-27T08:01:38Z'
+                        end: '2021-05-27T08:08:13Z'
                         files:
                           - location: df -P
                             events: 20
@@ -6124,8 +6124,8 @@ paths:
                               - name: agent
                                 drops: 0
                       interval:
-                        start: '2021-05-27 08:08:08'
-                        end: '2021-05-27 08:08:08'
+                        start: '2021-05-27T08:08:08Z'
+                        end: '2021-05-27T08:08:08Z'
                         files:
                           - location: df -P
                             events: 0
@@ -6289,8 +6289,8 @@ paths:
                       module: "upgrade_module"
                       command: "upgrade"
                       status: "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
-                      create_time: "2020/11/03 15:59:32"
-                      update_time: "2020/11/03 16:01:55"
+                      create_time: "2020-11-03T15:59:32Z"
+                      update_time: "2020-11-03T16:01:55Z"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -7829,12 +7829,12 @@ paths:
                         sync_integrity_free: true
                         sync_extravalid_free: true
                         last_check_integrity:
-                          date_start_master: 2021-05-27 10:50:51.325656
-                          date_end_master: 2021-05-27 10:50:51.342140
+                          date_start_master: 2021-05-27T10:50:51.325656Z
+                          date_end_master: 2021-05-27T10:50:51.342140Z
                         last_sync_integrity:
-                          date_start_master: 2021-05-27 10:48:54.086973
-                          tmp_date_start_master: 2021-05-27 10:48:54.086973
-                          date_end_master: 2021-05-27 10:48:54.093328
+                          date_start_master: 2021-05-27T10:48:54.086973Z
+                          tmp_date_start_master: 2021-05-27T10:48:54.086973Z
+                          date_end_master: 2021-05-27T10:48:54.093328Z
                           total_extra_valid: 0
                           total_files:
                             missing: 2
@@ -7842,10 +7842,10 @@ paths:
                             extra_valid: 0
                             shared: 0
                         last_sync_agentinfo:
-                          date_start_master: 2021-05-27 10:50:49.174463
-                          date_end_master: 2021-05-27 10:50:49.175921
+                          date_start_master: 2021-05-27T10:50:49.174463Z
+                          date_end_master: 2021-05-27T10:50:49.175921Z
                           n_synced_chunks: 1
-                        last_keep_alive: 2021-05-27 10:50:08.985208
+                        last_keep_alive: 2021-05-27T10:50:08.985208Z
                     - info:
                         name: worker2
                         type: worker
@@ -7856,12 +7856,12 @@ paths:
                         sync_integrity_free: true
                         sync_extravalid_free: true
                         last_check_integrity:
-                          date_start_master: 2021-05-27 10:50:51.939323
-                          date_end_master: 2021-05-27 10:50:51.955007
+                          date_start_master: 2021-05-27T10:50:51.939323Z
+                          date_end_master: 2021-05-27T10:50:51.955007Z
                         last_sync_integrity:
-                          date_start_master: 2021-05-27 10:48:54.706395
-                          tmp_date_start_master: 2021-05-27 10:48:54.706395
-                          date_end_master: 2021-05-27 10:48:54.726944
+                          date_start_master: 2021-05-27T10:48:54.706395Z
+                          tmp_date_start_master: 2021-05-27T10:48:54.706395Z
+                          date_end_master: 2021-05-27T10:48:54.726944Z
                           total_extra_valid: 0
                           total_files:
                             missing: 2
@@ -7869,10 +7869,10 @@ paths:
                             extra_valid: 0
                             shared: 0
                         last_sync_agentinfo:
-                          date_start_master: 2021-05-27 10:50:48.832800
-                          date_end_master: 2021-05-27 10:50:48.833854
+                          date_start_master: 2021-05-27T10:50:48.832800Z
+                          date_end_master: 2021-05-27T10:50:48.833854Z
                           n_synced_chunks: 1
-                        last_keep_alive: 2021-05-27 10:50:18.650204
+                        last_keep_alive: 2021-05-27T10:50:18.650204Z
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -9704,7 +9704,7 @@ paths:
                     - "INFO: (7202): Session initialized with token '8cd2d6d1'"
                   token: 8cd2d6d1
                   output:
-                    timestamp: 2021-05-27T12:46:03.391+0000
+                    timestamp: 2021-05-27T12:46:03.391000Z
                     rule:
                       level: 2
                       description: "Unknown problem somewhere in the system."
@@ -11448,13 +11448,13 @@ paths:
               example:
                 data:
                   affected_items:
-                    - date_first: "2020-10-23 10:34:09"
+                    - date_first: "2020-10-23T10:34:09Z"
                       log: "Ending CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
-                      date_last: "2020-10-23 10:34:09"
+                      date_last: "2020-10-23T10:34:09Z"
                       status: "outstanding"
-                    - date_first: "2020-10-23 10:33:43"
+                    - date_first: "2020-10-23T10:33:43Z"
                       log: "Starting CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
-                      date_last: "2020-10-23 10:33:49"
+                      date_last: "2020-10-23T10:33:49Z"
                       status: "outstanding"
                   total_affected_items: 2
                   total_failed_items: 0
@@ -16653,8 +16653,8 @@ paths:
                       module: upgrade_module
                       command: upgrade
                       status: In progress
-                      create_time: 2020/11/10 11:55:33
-                      update_time: 2020/11/10 11:55:36
+                      create_time: 2020-11-10T11:55:33Z
+                      update_time: 2020-11-10T11:55:36Z
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []

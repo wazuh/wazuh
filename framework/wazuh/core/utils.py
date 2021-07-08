@@ -1369,7 +1369,7 @@ class WazuhDBQuery(object):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
-            # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
+            # Filter a date, only if it is a string and it can be derived into a date.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
         elif 'rbac' in field_name:
