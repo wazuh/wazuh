@@ -66,5 +66,17 @@
         </mitre>
     </rule>
 
+    <!-- {"win":{"eventdata":{"serviceType":"user mode service","accountName":"LocalSystem","imagePath":"%systemroot%\\\\TQkHeboM.exe","startType":"demand start","serviceName":"uxoN"},"system":{"eventID":"7045","eventSourceName":"Service Control Manager","keywords":"0x8080000000000000","providerGuid":"{555908d1-a6d7-4695-8e1e-26931d2012f4}","level":"4","channel":"System","opcode":"0","message":"\"A service was installed in the system.\r\n\r\nService Name:  uxoN\r\nService File Name:  %systemroot%\\TQkHeboM.exe\r\nService Type:  user mode service\r\nService Start Type:  demand start\r\nService Account:  LocalSystem\"","version":"0","systemTime":"2021-06-25T18:33:57.953556700Z","eventRecordID":"171981","threadID":"9104","computer":"bankdc.ExchangeTest.com","task":"0","processID":"544","severityValue":"INFORMATION","providerName":"Service Control Manager"}}} -->
+    <rule id="92031" level="12">
+        <if_sid>61138</if_sid>
+        <field name="win.eventdata.imagePath">^%systemroot%\\\\\w+\.exe$</field>
+        <description>New Windows Service Created to start from windows root path. Suspicious event as the binary may have been dropped using Windows Admin Shares</description>
+        <mitre>
+            <id>T1021.002</id>
+            <id>T1569.002</id>
+        </mitre>
+        <options>no_full_log</options>
+    </rule>
+
 
 </group>
