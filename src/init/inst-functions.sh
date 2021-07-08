@@ -182,12 +182,9 @@ InstallSecurityConfigurationAssessmentFiles()
     cd ..
 
     CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-
-    if [ "X$1" = "Xmanager" ]; then
-        CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
     cd ./src
-    if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
+    
+    if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ] || [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_PARAM" ]; then
         echo "SCA policies are not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
     else
         echo "Removing old SCA policies..."
@@ -200,18 +197,6 @@ InstallSecurityConfigurationAssessmentFiles()
                 ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca
             else
                 echo "ERROR: SCA policy not found: ../ruleset/sca/$FILE"
-            fi
-        done
-    fi
-
-    if [ "X$1" = "Xmanager" ]; then
-        echo "Installing additional SCA policies..."
-        CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH)
-        for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
-            FILENAME=$(basename $FILE)
-            if [ -f "../ruleset/sca/$FILE" ] && [ ! -f "${INSTALLDIR}/ruleset/sca/$FILENAME" ]; then
-                ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca/
-                mv ${INSTALLDIR}/ruleset/sca/$FILENAME ${INSTALLDIR}/ruleset/sca/$FILENAME.disabled
             fi
         done
     fi
