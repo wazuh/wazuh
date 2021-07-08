@@ -55,9 +55,9 @@ def init_argparse():
         action="store_true"
     )
     parser.add_argument(
-        "-v", help='Verbose (full) output/rule debugging',
+        '-v', help='Verbose (full) output/rule debugging',
         dest='verbose',
-        action="store_true"
+        action='store_true'
     )
     return parser
 
