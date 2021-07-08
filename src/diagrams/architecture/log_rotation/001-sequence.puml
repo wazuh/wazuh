@@ -11,10 +11,6 @@ loop
             monitor_actions -> rotate_log : w_rotate_log(mond.compress, mond.keep_log_days, 0 (new_day), 0 (rotate_json), mond.daily_rotations)
             monitor_actions -> rotate_log : w_rotate_log(mond.compress, mond.keep_log_days, 0 (new_day), 1 (rotate_json), mond.daily_rotations)
         end
-        monitord -> generate_reports : generate_reports()
-        alt mond.smtpserver && mond.reports
-            generate_reports -> generate_reports : fork_and_wait()
-        end
         monitord -> manage_files : manage_files()
         manage_files -> manage_files : manage_log(EVENTS, cday, cmon, cyear, &tm_result, "archive", "log")
         manage_files -> sign_log : OS_SignLog()
