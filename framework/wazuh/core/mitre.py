@@ -511,6 +511,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
                                       row['id'] == software['id']]
             self._move_external_id_mitre_resource(software)
 
+
 @lru_cache(maxsize=None)
 def get_mitre_items(mitre_class: callable):
     """This function loads the MITRE data in order to speed up the use of the Framework function.
