@@ -559,6 +559,10 @@
                     <Directory Id="SYSCHECK" Name="syscheck" />
                     <Directory Id="INCOMING" Name="incoming" />
                     <Directory Id="UPGRADE" Name="upgrade" />
+                    <Directory Id="VAR" Name="var">
+                        <Directory Id="RUN" Name="run">
+                        </Directory>
+                    </Directory>
                 </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder">
@@ -705,6 +709,20 @@
                 <RemoveFolder Id="purgue_shared_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
+        <DirectoryRef Id="VAR">
+            <Component Id="CMP_VAR" Guid="3ad8df7b-9710-4323-b745-43975c52bcae" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_var" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_var_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="RUN">
+            <Component Id="CMP_RUN" Guid="217e0148-7d83-4b80-9ae3-d25a4407a41d" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_run" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_run_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="REGISTRY_INSTALL_DIR" />
             <ComponentRef Id="AGENT_AUTH.EXE" />
@@ -786,6 +804,8 @@
             <ComponentRef Id="W10_CONF_PROFILE" />
             <ComponentRef Id="W2016_CONF_PROFILE" />
             <ComponentRef Id="W2019_CONF_PROFILE" />
+            <ComponentRef Id="CMP_VAR" />
+            <ComponentRef Id="CMP_RUN" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
