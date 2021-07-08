@@ -2545,6 +2545,62 @@ void test_w_logtest_check_input_request_bad_token_type(void ** state) {
     os_free(event.valuestring);
 }
 
+void test_w_logtest_check_input_request_debug_rules(void ** state) {
+
+    cJSON root = {0};
+    char * msg = NULL;
+
+    int retval;
+    const int ret_expect = W_LOGTEST_CODE_SUCCESS;
+
+    OSList * list_msg = (OSList *) 2;
+
+    /* location */
+    cJSON location = {0};
+    location.valuestring = strdup("location str");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &location);
+    will_return(__wrap_cJSON_IsString, true);
+
+    /* log_format */
+    cJSON log_format = {0};
+    log_format.valuestring = strdup("log format str");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &log_format);
+    will_return(__wrap_cJSON_IsString, true);
+
+    /* event */
+    cJSON event = {0};
+    event.valuestring = strdup("event str");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &event);
+    will_return(__wrap_cJSON_IsString, true);
+
+    /* token */
+    cJSON token = {0};
+    token.valuestring = strdup("12345678");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &token);
+    will_return(__wrap_cJSON_IsString, true);
+    will_return(__wrap_cJSON_IsString, true);
+
+    /* The optional parameters */
+    cJSON options = {0};
+    options.valuestring = strdup("options");
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &options);
+
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7005): 'options' field must be a JSON object. The parameter will be ignored");
+    will_return(__wrap_cJSON_IsObject, 0);
+
+    retval = w_logtest_check_input_request(&root, &msg, list_msg);
+
+    assert_int_equal(retval, ret_expect);
+    assert_null(msg);
+    os_free(location.valuestring);
+    os_free(log_format.valuestring);
+    os_free(event.valuestring);
+    os_free(token.valuestring);
+}
+
+
 // w_logtest_check_input_remove_session
 void test_w_logtest_check_input_remove_session_not_string(void ** state)
 {
@@ -5036,6 +5092,7 @@ int main(void)
         cmocka_unit_test(test_w_logtest_check_input_request_full),
         cmocka_unit_test(test_w_logtest_check_input_request_bad_token_lenght),
         cmocka_unit_test(test_w_logtest_check_input_request_bad_token_type),
+        cmocka_unit_test(test_w_logtest_check_input_request_debug_rules),
         // Tests w_logtest_check_input_remove_session
         cmocka_unit_test(test_w_logtest_check_input_remove_session_not_string),
         cmocka_unit_test(test_w_logtest_check_input_remove_session_invalid_token),
