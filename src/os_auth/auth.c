@@ -144,27 +144,26 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
 
     /* Check for IP when client uses -i option */
 
-    char client_source_ip[IPSIZE + 1] = {0};
-    char client_source_ip_token[3] = "IP:";
+    char client_source_ip[IPSIZE] = {0};
 
-    if(strncmp(++buf,client_source_ip_token,3)==0) {
+    if (strncmp(++buf, "IP:", 3) == 0) {
+
         char format[15];
         sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
-        sscanf(buf, format ,client_source_ip);
+        sscanf(buf, format, client_source_ip);
 
         /* If IP: != 'src' overwrite the provided ip */
-        if(strncmp(client_source_ip,"src",3) != 0)
-        {
-            if (!OS_IsValidIP(client_source_ip, NULL)) {
+        if (strncmp(client_source_ip, "src", 3) != 0) {
+
+            if (OS_IsValidIP(client_source_ip, NULL) == 0) {
+
                 merror("Invalid IP: '%s'", client_source_ip);
                 snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
                 return OS_INVALID;
             }
             snprintf(ip, IPSIZE, "%s", client_source_ip);
         }
-
-    }
-    else if(!config.flags.use_source_ip) {
+    } else if(!config.flags.use_source_ip) {
         // use_source-ip = 0 and no -I argument in agent
         snprintf(ip, IPSIZE, "any");
     }
