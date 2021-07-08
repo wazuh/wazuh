@@ -14,8 +14,8 @@
     <!-- Sample: {"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","eventID":"11","version":"2","level":"4","task":"11","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-04-28T20:11:55.0310966Z","eventRecordID":"144500","processID":"2204","threadID":"3300","channel":"Microsoft-Windows-Sysmon/Operational","computer":"DESKTOP-2QKFOBA","severityValue":"INFORMATION","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-04-28 20:11:55.021\r\nProcessGuid: {4dc16835-c189-6089-a003-000000002e00}\r\nProcessId: 6876\r\nImage: C:\\Windows\\system32\\cscript.exe\r\nTargetFilename: C:\\Users\\AtomicRedTeamTest\\AppData\\Roaming\\TransbaseOdbcDriver\\starter.vbs\r\nCreationUtcTime: 2021-04-28 20:11:55.021\""},"eventdata":{"utcTime":"2021-04-28 20:11:55.021","processGuid":"{4dc16835-c189-6089-a003-000000002e00}","processId":"6876","image":"C:\\\\Windows\\\\system32\\\\cscript.exe","targetFilename":"C:\\\\Users\\\\AtomicRedTeamTest\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\starter.vbs","creationUtcTime":"2021-04-28 20:11:55.021"}}} -->
     <rule id="92000" level="4">
         <if_group>sysmon_event_11</if_group>
-        <field name="win.eventdata.image" type="pcre2">\\(c|w)script\.exe</field>
-        <field name="win.eventdata.targetFilename" type="pcre2">[c-z]:\\(Windows\\Temp)|Users\\.+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\(c|w)script\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
         <description>Script created a new scripting file under System or User data folder</description>
         <mitre>
             <id>T1059</id>
