@@ -4551,6 +4551,8 @@ void test_w_logtest_process_request_log_processing_fail_process_log(void ** stat
 
     will_return(__wrap_OSList_GetFirstNode, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
+
     /* Fail w_logtest_process_log */
     cJSON json_event = {0};
     json_event.child = false;
@@ -4674,6 +4676,8 @@ void test_w_logtest_process_request_log_processing_ok_and_alert(void ** state)
     will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
 
     will_return(__wrap_OSList_GetFirstNode, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
 
     /* Alert w_logtest_process_log */
     Config.decoder_order_size = 1;
@@ -4876,6 +4880,9 @@ void test_w_logtest_process_request_log_processing_ok_session_expired(void ** st
     will_return(__wrap_OSList_GetFirstNode, NULL);
 
     will_return(__wrap_cJSON_AddStringToObject, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
+
     /* Alert w_logtest_process_log */
     Config.decoder_order_size = 1;
     cJSON json_event = {0};
