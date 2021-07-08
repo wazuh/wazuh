@@ -2174,6 +2174,9 @@ void test_w_logtest_check_input_type_request_ok(void ** state) {
     /* token */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
 
+    /* The optional parameters */
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
+
     retval = w_logtest_check_input(input_raw_json, &request, &command, &msg, list_msg);
 
     assert_int_equal(retval, ret_expect);
@@ -2373,6 +2376,9 @@ void test_w_logtest_check_input_request_full(void ** state) {
     will_return(__wrap_cJSON_IsString, true);
     will_return(__wrap_cJSON_IsString, true);
 
+    /* The optional parameters */
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
+
     retval = w_logtest_check_input_request(&root, &msg, list_msg);
 
     assert_int_equal(retval, ret_expect);
@@ -2412,6 +2418,9 @@ void test_w_logtest_check_input_request_full_empty_token(void ** state) {
     will_return(__wrap_cJSON_IsString, true);
 
     /* token */
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
+
+    /* The optional parameters */
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
 
     retval = w_logtest_check_input_request(&root, &msg, list_msg);
@@ -2464,6 +2473,9 @@ void test_w_logtest_check_input_request_bad_token_lenght(void ** state) {
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
     expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7309): '1234' is not a valid token");
+
+    /* The optional parameters */
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
 
     retval = w_logtest_check_input_request(&root, &msg, list_msg);
 
@@ -2520,6 +2532,9 @@ void test_w_logtest_check_input_request_bad_token_type(void ** state) {
     expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
     expect_value(__wrap__os_analysisd_add_logmsg, list, list_msg);
     expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg, "(7309): '1234' is not a valid token");
+
+    /* The optional parameters */
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
 
     retval = w_logtest_check_input_request(&root, &msg, list_msg);
 

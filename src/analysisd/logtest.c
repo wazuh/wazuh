@@ -55,7 +55,6 @@ void *w_logtest_init() {
 
         for (int i = 0; i < num_extra_threads; i++) {
             if (CreateThreadJoinable(logtest_threads + i, w_logtest_clients_handler, &connection)) {
-                os_free(logtest_threads);
                 merror_exit(THREAD_ERROR);
             }
         }
