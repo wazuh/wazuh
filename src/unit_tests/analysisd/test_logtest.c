@@ -2830,6 +2830,9 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     will_return(__wrap_cJSON_IsString, true);
     will_return(__wrap_cJSON_IsString, true);
 
+    /* The optional parameters */
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, NULL);
+
     /* w_logtest_process_request */
     cJSON parameters = {0};
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &parameters);
