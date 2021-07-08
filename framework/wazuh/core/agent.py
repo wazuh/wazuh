@@ -1373,5 +1373,11 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()
+    for agent_info in data['data']:
+        if agent_info['message'] == 'Success':
+            agent_info['create_time'] = datetime.strptime(agent_info['create_time'],
+                                                          "%Y/%m/%d %H:%M:%S").strftime("%Y-%m-%dT%H:%M:%SZ")
+            agent_info['update_time'] = datetime.strptime(agent_info['update_time'],
+                                                          "%Y/%m/%d %H:%M:%S").strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return data

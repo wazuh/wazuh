@@ -743,7 +743,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     non_nested_dict = {f: data[f] for f in data.keys() if f.split(split_character)[0]
                        not in nested_dict.keys()}
 
-    # append both dictonaries
+    # append both dictionaries
     nested_dict.update(non_nested_dict)
 
     return nested_dict
