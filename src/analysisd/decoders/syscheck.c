@@ -1674,6 +1674,7 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     char buf_ptr[26];
 
     assert(lf != NULL);
+    assert(lf->fields != NULL);
 
     cJSON_ArrayForEach(attr_it, attr) {
         if (!attr_it->string) {
@@ -1753,7 +1754,6 @@ char *decode_ace_json(const cJSON *const perm_array, const char *const account_n
     cJSON *it;
     char *output = NULL;
     char *perms = NULL;
-    int perm_array_size;
     int length;
 
     if (perm_array == NULL) {
@@ -1770,26 +1770,22 @@ char *decode_ace_json(const cJSON *const perm_array, const char *const account_n
 
     snprintf(output, length + 1, "%s (%s): ", account_name, ace_type);
 
-    perm_array_size = cJSON_GetArraySize(perm_array);
-    if (perm_array_size == 0) {
-        wm_strcat(&output, ", ", '\0');
-        return output;
-    }
-
     cJSON_ArrayForEach(it, perm_array) {
         wm_strcat(&perms, cJSON_GetStringValue(it), '|');
     }
 
-    str_uppercase(perms);
-    wm_strcat(&output, perms, '\0');
-    free(perms);
+    if (perms) {
+        str_uppercase(perms);
+        wm_strcat(&output, perms, '\0');
+        free(perms);
+    }
 
     wm_strcat(&output, ", ", '\0');
 
     return output;
 }
 
-char *perm_json_to_old_format(cJSON *perm_json){
+char *perm_json_to_old_format(cJSON *perm_json) {
     char *account_name;
     char *output = NULL;
     int length;
@@ -1815,6 +1811,10 @@ char *perm_json_to_old_format(cJSON *perm_json){
             wm_strcat(&output, ace, '\0');
             free(ace);
         }
+    }
+
+    if (output == NULL) {
+        return NULL;
     }
 
     length = strlen(output);

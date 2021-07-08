@@ -3498,6 +3498,21 @@ static void test_perm_json_to_old_format_both_aces(void **state) {
     free(decoded);
 }
 
+static void test_perm_json_to_old_format_empty_acl(void **state) {
+    cJSON *acl = cJSON_CreateObject();
+    char *decoded;
+
+    if (acl == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
+
+    *state = acl;
+
+    decoded = perm_json_to_old_format(acl);
+
+    assert_null(decoded);
+}
+
 static void test_perm_json_to_old_format_empty_aces(void **state) {
     cJSON *acl = cJSON_CreateObject();
     cJSON *ace = cJSON_CreateObject();
@@ -3764,6 +3779,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_perm_json_to_old_format_allowed_ace_only, teardown_cjson),
         cmocka_unit_test_teardown(test_perm_json_to_old_format_denied_ace_only, teardown_cjson),
         cmocka_unit_test_teardown(test_perm_json_to_old_format_both_aces, teardown_cjson),
+        cmocka_unit_test_teardown(test_perm_json_to_old_format_empty_acl, teardown_cjson),
         cmocka_unit_test_teardown(test_perm_json_to_old_format_empty_aces, teardown_cjson),
         cmocka_unit_test_teardown(test_perm_json_to_old_format_multiple_aces, teardown_cjson),
 
