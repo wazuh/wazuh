@@ -22,7 +22,7 @@
 /**
  * queue main structure 
  * */
-typedef struct queue_t {
+typedef struct w_queue_s {
     void ** data; ///> Pointer to the circular buffer
     size_t begin; ///> Stores the index of the next empty space
     size_t end;   ///> Stores the index of the next element
