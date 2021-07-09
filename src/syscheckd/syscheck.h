@@ -633,7 +633,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
  * @param value_name Name of the value that has generated the alert
  * @param value_data Content of the value to be checked
  * @param data_type The type of value we are checking
- * @param registry_t Config of the registry key
+ * @param configuration Config of the registry key
  * @return String with the changes to add to the alert
  */
 
