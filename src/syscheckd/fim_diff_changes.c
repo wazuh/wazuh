@@ -159,7 +159,7 @@ char *gen_diff_str(const diff_data *diff);
 int is_file_nodiff(const char *filename);
 
 /**
- * @brief Checks if a specific registry_t value has been configured with the ``nodiff`` option
+ * @brief Checks if a specific registry value has been configured with the ``nodiff`` option
  *
  * @param key_name The name of the key to check
  * @param value_name The name of the value to check
