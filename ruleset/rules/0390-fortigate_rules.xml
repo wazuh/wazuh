@@ -172,24 +172,6 @@ ID: 81600 - 80799
         <group>pci_dss_1.4,pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,</group>
     </rule>
 
-
-    <!--
-    date=2016-06-15 time=21:35:09 devname=Device_Name devid=FGTXXXX9999999999 logid=0101039426 type=event subtype=vpn level=alert vd="root" logdesc="SSL VPN login fail" action="ssl-login-fail" tunneltype="ssl-web" tunnelid=0 remip=2.4.6.8 tunnelip=(null) user="my_user_name" group="N/A" dst_host="N/A" reason="sslvpn_login_unknown_user" msg="SSL user failed to logged in"
-    -->
-    <rule id="81614" level="4">
-        <if_sid>81603</if_sid>
-        <match>ssl-login-fail</match>
-        <description>Fortigate: SSL VPN User failed login attempt</description>
-        <group>authentication_failed,invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
-    </rule>
-
-    <rule id="81615" level="7" frequency="18" timeframe="45" ignore="240">
-        <if_matched_sid>81614</if_matched_sid>
-        <same_source_ip />
-        <description>Fortigate: Multiple Firewall SSL VPN failed login events from same source.</description>
-        <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,</group>
-    </rule>
-
     <!--
     date=2016-06-16 time=08:48:28 devname=Device_Name devid=FGTXXXX9999999999 logid=0100032003 type=event subtype=system level=information vd="root" logdesc="Admin logout successful" sn=1466062693 user="a@b.com.na" ui=https(4.3.5.253) action=logout status=success duration=615 state="Config-Changed" reason=exit msg="Administrator a@b.com.na logged out from https(2.3.8.1)"
     -->
