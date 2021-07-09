@@ -8,6 +8,7 @@ import argparse
 import sys
 from atexit import register
 
+from api.constants import MIN_VALUE_MAX_MEMORY_USAGE
 from wazuh.core import common, utils
 
 
@@ -29,6 +30,7 @@ def start(foreground, root, config_file):
     import asyncio
     import logging
     import os
+    import resource
     import ssl
 
     import connexion
@@ -49,6 +51,17 @@ def start(foreground, root, config_file):
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
 
+    def limit_memory(size: int):
+        """Change the limit of memory that can be allocated by the process.
+
+        Parameters
+        ----------
+        size : int
+            New maximum memory usage limit. This value is an integer representing bytes.
+        """
+        _, hard = resource.getrlimit(resource.RLIMIT_AS)
+        resource.setrlimit(resource.RLIMIT_AS, (size, hard))
+
     def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
             api_logger = alogging.APILogger(
@@ -60,11 +73,19 @@ def start(foreground, root, config_file):
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
-    log_path = api_conf['logs']['path']
 
     # Set up logger
+    log_path = api_conf['logs']['path']
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
     logger = logging.getLogger('wazuh-api')
+
+    # Set memory usage limit
+    max_memory_usage = int(api_conf['access']['max_memory_usage'])
+    if max_memory_usage >= MIN_VALUE_MAX_MEMORY_USAGE:
+        limit_memory(max_memory_usage)
+    else:
+        logger.error(str(APIError(1105)))
+        sys.exit(1)
 
     # Set correct permissions on api.log file
     if os.path.exists(os.path.join(common.wazuh_path, log_path)):
@@ -107,7 +128,7 @@ def start(foreground, root, config_file):
                 try:
                     ssl_context.set_ciphers(ssl_ciphers)
                 except ssl.SSLError:
-                    logger.error(str(APIError(2003, details='SSL ciphers can not be selected')))         
+                    logger.error(str(APIError(2003, details='SSL ciphers can not be selected')))
                     sys.exit(1)
 
         except ssl.SSLError:

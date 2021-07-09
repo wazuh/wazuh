@@ -14,3 +14,4 @@ SECURITY_PATH = os.path.join(CONFIG_PATH, 'security')
 SECURITY_CONFIG_PATH = os.path.join(SECURITY_PATH, 'security.yaml')
 RELATIVE_SECURITY_PATH = os.path.relpath(SECURITY_PATH, common.wazuh_path)
 API_LOG_FILE_PATH = os.path.join(common.wazuh_path, 'logs', 'api.log')
+MIN_VALUE_MAX_MEMORY_USAGE = 1073741824

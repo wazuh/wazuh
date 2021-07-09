@@ -42,6 +42,7 @@
 #  max_login_attempts: 50
 #  block_time: 300
 #  max_request_per_minute: 300
+#  max_memory_usage: 1073741824
 
 # Force the use of authd when adding and removing agents. Values: yes, no
 # use_only_authd: no

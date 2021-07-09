@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH
+from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH, MIN_VALUE_MAX_MEMORY_USAGE
 
 
 class APIException(Exception):
@@ -34,7 +34,9 @@ class APIException(Exception):
             2008: 'Experimental features are disabled. '
                   'It can be changed in the API configuration',
             2009: 'Semicolon (;) is a reserved character and must '
-                  'be percent-encoded (%3B) to use it.'
+                  'be percent-encoded (%3B) to use it.',
+            2010: f'Error loading max_memory_usage. Minimum value '
+                  f'must be {MIN_VALUE_MAX_MEMORY_USAGE}.'
         }
 
     def __str__(self):
