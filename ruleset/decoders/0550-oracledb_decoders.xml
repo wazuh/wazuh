@@ -1,0 +1,31 @@
+<!--
+  -  OracleDB 12C decoder
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  localfile implementation example:
+  <localfile>
+    <log_format>multi-line-regex</log_format>
+    <location>/opt/oracle/app/oracle/admin/CDBTST93/adump/*.aud</location>
+    <multiline_regex replace="wspace">^\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}$|\w{3}\s\w{3}\s\d{1,2}\s\d{2}:\d{2}:\d{2}\s\d{4}\s\+\d{2}:\d{2}</multiline_regex>
+    <out_format>$(timestamp) $(hostname) oracledb: $(log)</out_format>
+  </localfile>
+-->
+<!--
+Log example:
+
+
+-->
+
+<decoder name="oracledb_log">
+    <program_name>^oracledb$</program_name>
+</decoder>
+
+<decoder name="oracledb_length">
+    <parent>oracledb_log</parent>
+    <regex type="pcre2">(?U)\\nLENGTH\s:\s\'(\d+)\'\\nACTION\s:\[(\d+)\]\s\'(.+)\'\\nDATABASE\sUSER:\[(\d+)\]\s\'(.+)\'\\nPRIVILEGE\s:\[(\d+)\]\s\'(.+)\'\\nCLIENT\sUSER:\[(\d+)\]\s\'(.*)\'\\nCLIENT\sTERMINAL:\[(\d+)\]\s\'(.+)\'\\nSTATUS:\[(\d+)\]\s\'(.+)\'\\nDBID:\[(\d+)\]\s\'(.+)\'</regex>
+    <order>length, action.length, action.action, db_user.id, db_user.name, privilege.id, privilege.level, client_user.id, client_user.name, client_terminal.id, client_terminal.name, status.id, status.name, db.id, db.name</order>
+</decoder>
