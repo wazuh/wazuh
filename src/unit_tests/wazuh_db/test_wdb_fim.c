@@ -28,7 +28,52 @@ static const char* VALID_ENTRY = "{"
     "\"attributes\": {}\n"
     "}";
 
-static cJSON *prepare_valid_entry(sqlite3_int64 inode) {
+#define BASE_WIN_ALLOWED_ACE \
+    "["                      \
+    "\"delete\","            \
+    "\"read_control\","      \
+    "\"write_dac\","         \
+    "\"write_owner\","       \
+    "\"synchronize\","       \
+    "\"read_data\","         \
+    "\"write_data\","        \
+    "\"append_data\","       \
+    "\"read_ea\","           \
+    "\"write_ea\","          \
+    "\"execute\","           \
+    "\"read_attributes\","   \
+    "\"write_attributes\""   \
+    "]"
+
+#define BASE_WIN_DENIED_ACE \
+    "["                     \
+    "\"read_control\","     \
+    "\"synchronize\","      \
+    "\"read_data\","        \
+    "\"read_ea\","          \
+    "\"execute\","          \
+    "\"read_attributes\""   \
+    "]"
+
+#define BASE_WIN_ACE                         \
+    "{"                                      \
+    "\"name\": \"Users\","                   \
+    "\"allowed\": " BASE_WIN_ALLOWED_ACE "," \
+    "\"denied\": " BASE_WIN_DENIED_ACE "}"
+
+#define BASE_WIN_SID "S-1-5-32-636"
+
+static cJSON *create_win_permissions_object() {
+    static const char *const BASE_WIN_PERMS = "{\"" BASE_WIN_SID "\": " BASE_WIN_ACE "}";
+    return cJSON_Parse(BASE_WIN_PERMS);
+}
+
+typedef enum { PERM_JSON = 0, PERM_STRING = 1 } perm_format_t;
+
+#define prepare_valid_entry(inode) _prepare_valid_entry(inode, "yes", PERM_STRING)
+#define prepare_valid_entry_json(inode, perm) _prepare_valid_entry(inode, perm, PERM_JSON)
+
+static cJSON *_prepare_valid_entry(sqlite3_int64 inode, void *perm, perm_format_t perm_format) {
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
 
@@ -36,7 +81,15 @@ static cJSON *prepare_valid_entry(sqlite3_int64 inode) {
     cJSON_AddItemToObject(object, "mtime", cJSON_CreateNumber(10));
     cJSON_AddItemToObject(object, "inode", cJSON_CreateNumber(inode));
     cJSON_AddItemToObject(object, "type", cJSON_CreateString("test_type"));
-    cJSON_AddItemToObject(object, "perm", cJSON_CreateString("yes"));
+
+    if (perm_format == PERM_JSON) {
+        cJSON_AddItemToObject(object, "perm", perm);
+    } else if (perm_format == PERM_STRING) {
+        cJSON_AddItemToObject(object, "perm", cJSON_CreateString(perm));
+    } else {
+        fail_msg("Invalid format for permission (%d)", perm_format);
+    }
+
     cJSON_AddItemToObject(object, "uid", cJSON_CreateString("00000"));
     cJSON_AddItemToObject(object, "gid", cJSON_CreateString("AAAAA"));
     cJSON_AddItemToObject(object, "hash_md5", cJSON_CreateString("AAAA23BCD1113A"));
@@ -54,8 +107,10 @@ static cJSON *prepare_valid_entry(sqlite3_int64 inode) {
 }
 
 /* expect functions */
+#define expect_wdb_fim_insert_entry2_success(inode) _expect_wdb_fim_insert_entry2_success(inode, "yes")
+#define expect_wdb_fim_insert_entry2_perm_success(inode, perm) _expect_wdb_fim_insert_entry2_success(inode, perm)
 
-void expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode) {
+void _expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode, const char *const perm) {
     expect_cJSON_GetStringValue_call("/test");
     expect_cJSON_IsNumber_call(true);
     expect_cJSON_IsObject_call(true);
@@ -74,7 +129,7 @@ void expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode) {
     expect_sqlite3_bind_int_call(12, 10, 1);
     expect_sqlite3_bind_int64_call(13, inode, 1);
 
-    expect_sqlite3_bind_text_call(5, "yes", 1);
+    expect_sqlite3_bind_text_call(5, perm, 1);
     expect_sqlite3_bind_text_call(6, "00000", 1);
     expect_sqlite3_bind_text_call(7, "AAAAA", 1);
     expect_sqlite3_bind_text_call(8, "AAAA23BCD1113A", 1);
@@ -691,9 +746,68 @@ static void test_wdb_fim_insert_entry2_large_inode(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_wdb_fim_insert_entry2_json_perms(void **state) {
+    wdb_t *wdb = *state;
+    int ret;
+    cJSON *win_perms = create_win_permissions_object();
+
+    if (win_perms == NULL) {
+        fail_msg("Failed to create Windows permissions object");
+    }
+
+    char * win_perms_str = cJSON_PrintUnformatted(win_perms);
+    if (win_perms_str == NULL) {
+        fail_msg("Failed formatting Windows permissions object");
+    }
+
+    cJSON *data = prepare_valid_entry_json(2311061769, win_perms);
+
+    expect_wdb_fim_insert_entry2_perm_success(2311061769, win_perms_str);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    free(win_perms_str);
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_insert_entry2_invalid_json_object(void **state) {
+    wdb_t *wdb = *state;
+    int ret;
+    cJSON *object = cJSON_CreateObject();
+    cJSON* data = cJSON_Parse(VALID_ENTRY);
+
+    if (object == NULL || data == NULL) {
+        fail_msg("Failed to create object");
+    }
+
+    cJSON_AddItemToObject(cJSON_GetObjectItem(data, "attributes"), "invalid", object);
+
+    expect_cJSON_GetStringValue_call("/test");
+    expect_cJSON_IsNumber_call(true);
+    expect_cJSON_IsObject_call(true);
+    expect_cJSON_GetStringValue_call("file");
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_sqlite3_bind_text_call(1, "/test", 1);
+    expect_sqlite3_bind_text_call(2, "file", 1);
+    expect_sqlite3_bind_int64_call(3, 10, 0);
+    expect_sqlite3_bind_text_call(18, NULL, 1);
+    expect_sqlite3_bind_text_call(19, NULL, 1);
+    expect_sqlite3_bind_text_call(21, "/test", 1);
+
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Invalid attribute name: invalid");
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
-        //Test wdb_syscheck_save2
+        // Test wdb_syscheck_save2
         cmocka_unit_test(test_wdb_syscheck_save2_wbs_null),
         cmocka_unit_test(test_wdb_syscheck_save2_payload_null),
         cmocka_unit_test(test_wdb_syscheck_save2_data_null),
@@ -701,7 +815,7 @@ int main(void) {
         cmocka_unit_test(test_wdb_syscheck_save2_fail_file_entry),
         cmocka_unit_test(test_wdb_syscheck_save2_success),
 
-        //Test wdb_fim_insert_entry2
+        // Test wdb_fim_insert_entry2
         cmocka_unit_test(test_wdb_fim_insert_entry2_wdb_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_data_null),
         cmocka_unit_test(test_wdb_fim_insert_entry2_path_null),
@@ -722,6 +836,8 @@ int main(void) {
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_succesful),
         cmocka_unit_test(test_wdb_fim_insert_entry2_success),
         cmocka_unit_test(test_wdb_fim_insert_entry2_large_inode),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_json_perms),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object),
     };
 
     return cmocka_run_group_tests(tests, setup_wdb_t, teardown_wdb_t);
