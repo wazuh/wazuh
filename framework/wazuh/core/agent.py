@@ -23,7 +23,7 @@ import api.configuration as aconf
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
+from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, date_format
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
@@ -1373,7 +1373,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()
-    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime("%Y-%m-%dT%H:%M:%SZ"))
+    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format))
                        for k, v in agent_info.items() if k in {'create_time', 'update_time'})
      for agent_info in data['data']]
 

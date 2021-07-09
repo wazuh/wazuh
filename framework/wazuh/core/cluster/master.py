@@ -19,6 +19,7 @@ from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
+from wazuh.core.common import decimals_date_format
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -149,7 +150,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_extra_valid_free = True
         self.sync_agent_info_free = True
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
-        default_date = datetime.fromtimestamp(0).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        default_date = datetime.fromtimestamp(0).strftime(decimals_date_format)
         self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
         self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
                                       'date_end_master': default_date, 'total_extra_valid': 0,
@@ -552,12 +553,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Send result to worker
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
-        self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                                            'date_end_master': datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        date_end_master = datetime.now()
+        self.sync_agent_info_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
+                                            'date_end_master': date_end_master.strftime(decimals_date_format),
                                             'n_synced_chunks': result['updated_chunks']})
-        logger.info("Finished in {:.3f}s ({} chunks updated).".format((self.sync_agent_info_status['date_end_master'] -
-                                                                       self.sync_agent_info_status['date_start_master'])
-                                                                      .total_seconds(), result['updated_chunks']))
+        logger.info("Finished in {:.3f}s ({} chunks updated).".format((date_end_master - date_start_master
+                                                                       ).total_seconds(), result['updated_chunks']))
 
         return response
 
@@ -663,8 +664,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                            files_metadata, self.name)
 
         total_time = (datetime.now() - date_start_master).total_seconds()
-        self.integrity_check_status.update({'date_start_master': date_start_master.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                                            'date_end_master': datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")})
+        self.integrity_check_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
+                                            'date_end_master': datetime.now().strftime(decimals_date_format)})
 
         # Get the total number of files that require some change.
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
@@ -992,7 +993,7 @@ class Master(server.AbstractServer):
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']
-                                           ).strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
+                                           ).strftime(decimals_date_format))
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
 
