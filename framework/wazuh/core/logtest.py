@@ -29,7 +29,10 @@ def send_logtest_msg(command: str = None, parameters: dict = None):
     logtest_socket.send(full_message)
     response = logtest_socket.receive(raw=True)
     logtest_socket.close()
-    response['data']['output']['timestamp'] = datetime.strptime(
-        response['data']['output']['timestamp'], "%Y-%m-%dT%H:%M:%S.%f+0000").strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    try:
+        response['data']['output']['timestamp'] = datetime.strptime(
+            response['data']['output']['timestamp'], "%Y-%m-%dT%H:%M:%S.%f+0000").strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    except KeyError:
+        pass
 
     return response

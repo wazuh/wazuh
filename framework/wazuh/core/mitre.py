@@ -73,7 +73,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         """Standardization of dates to the ISO 8601 format."""
-        [t.update((k, datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%SZ"))
+        [t.update((k, datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
                   for k, v in t.items() if k in self.date_fields) for t in self._data]
 
         return {'items': self._data, 'totalItems': self.total_items}

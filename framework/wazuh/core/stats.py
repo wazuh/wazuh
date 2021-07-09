@@ -61,8 +61,8 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     # Format response
     try:
         data = json.loads(rec_msg)['data']
-        [d.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime("%Y-%m-%dT%H:%M:%SZ"))
-                  for k, v in d.items() if k in {'last_keepalive', 'last_ack'}) for d in data['data']]
+        data.update((k, datetime.strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%dT%H:%M:%SZ"))
+                    for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
         return data
     except Exception:
         rec_msg = rec_msg.split(" ", 1)[1]
