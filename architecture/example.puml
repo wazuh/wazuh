@@ -1,0 +1,22 @@
+@startwbs
++ wazuh
+ + architecture
+ + log_rotation
+  +_ 001-component.puml
+  +_ 002-sequence.puml
+  +_ 003-class.puml
+  +_ 004-der.puml
+  +_ Readme.md
+ + reports
+  +_ 001-component.puml
+  +_ 002-sequence.puml
+  +_ 003-class.puml
+  +_ 004-der.puml
+  +_ Readme.md
+ + install_tree
+  +_ 001-deployment.puml
+  +_ 002-tree_agent_unix_based.puml
+  +_ 003-tree_manager_unix_based.puml
+  +_ 004-tree_agent_windows_based.puml
+  +_ Readme.md
+@endwbs
