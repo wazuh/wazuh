@@ -186,6 +186,7 @@ fim_registry_key *fim_db_decode_registry_key(sqlite3_stmt *stmt) {
     entry->id = (unsigned int)sqlite3_column_int(stmt, 0);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 1), entry->path);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 2), entry->perm);
+    entry->perm_json = cJSON_Parse(entry->perm);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 3), entry->uid);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 4), entry->gid);
     sqlite_strdup((char *)sqlite3_column_text(stmt, 5), entry->user_name);
