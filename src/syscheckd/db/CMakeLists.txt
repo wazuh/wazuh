@@ -14,6 +14,10 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
+if(SOLARIS)
+  add_definitions(-DSOLARIS=ON)
+endif(SOLARIS)
+
 set(CMAKE_CXX_FLAGS
     "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread"
 )
