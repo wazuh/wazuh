@@ -31,7 +31,7 @@
     - Jan 11 10:13:05 web01 nginx: domain.com 10.11.12.13 - - [12/Sep/2016:15:24:41 +0000] "GET /url/errors.php?mode=js HTTP/1.1" 200 0 "https://domain.com/tt-rss/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.101 Safari/537.36"
     - Jan 11 10:13:05 web01 nginx: 10.10.10.11 10.10.10.12 - - [10/Apr/2017:13:18:05 -0700] "GET /injection/%0d%0aSet-Cookie HTTP/1.1" 404 271 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:22.0) Gecko/20100101 Firefox/22.0"
     - Jan 11 10:13:05 web01 apache: 10.10.10.11 10.10.10.12 - - [10/Apr/2017:13:18:05 -0700] "GET /injection/%0d%0aSet-Cookie HTTP/1.1" 404 271 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:22.0) Gecko/20100101 Firefox/22.0"
-    
+
   2 IPs:
   10.10.10.11 10.10.10.12 - - [10/Apr/2017:13:18:05 -0700] "GET /injection/%0d%0aSet-Cookie HTTP/1.1" 404 271 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:22.0) Gecko/20100101 Firefox/22.0"
   -->
@@ -52,7 +52,7 @@
     <parent>web-accesslog</parent>
     <prematch>^\S+.\D+</prematch>
     <regex>^\S+ (\S+) \S+ \.*[\S+ \S\d+] "(\w+) (\S+) HTTP\S+" (\d+) </regex>
-    <order>srcip, protocol, url, id</or der>
+    <order>srcip, protocol, url, id</order>
 </decoder>
 
 <decoder name="web-accesslog-ip-ip">
