@@ -141,8 +141,8 @@ Install()
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
-        # Update versions previous to Wazuh 1.2
-        UpdateOldVersions
+        # Update versions previous to Wazuh 5.0.0
+        UpdateOldVersions $breaking_upgrade
         echo "Starting Wazuh..."
         UpdateStartOSSEC
     fi
@@ -890,6 +890,13 @@ main()
             esac
         done
 
+        # Only if the update is for a version lower than 5.0.0
+        USER_OLD_VERSION=`getPreinstalledVersion`
+        VERSIONv5="v5.0.0"
+
+        if [ "$USER_OLD_VERSION" \< "$VERSIONv5" ]; then
+            breaking_upgrade="yes"
+        fi
 
         # Do some of the update steps.
         if [ "X${update_only}" = "Xyes" ]; then

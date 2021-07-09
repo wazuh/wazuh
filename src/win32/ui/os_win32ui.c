@@ -276,7 +276,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                     break;
 
                 case UI_MENU_VIEW_LOGS:
-                    _spawnlp( _P_NOWAIT, "notepad", "notepad " OSSECLOGS, NULL );
+                    _spawnlp( _P_NOWAIT, "notepad", "notepad " WAZUHLOGS, NULL );
                     break;
                 case UI_MENU_VIEW_CONFIG:
                     _spawnlp( _P_NOWAIT, "notepad", "notepad " CONFIG, NULL );

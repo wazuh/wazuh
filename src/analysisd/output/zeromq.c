@@ -115,7 +115,7 @@ void zeromq_output_event(const Eventinfo *lf)
     char *json_alert = Eventinfo_to_jsonstr(lf, false);
 
     zmsg_t *msg = zmsg_new();
-    zmsg_addstr(msg, "ossec.alerts");
+    zmsg_addstr(msg, "wazuh.alerts");
     zmsg_addstr(msg, json_alert);
     zmsg_send(&msg, zeromq_pubsocket);
     free(json_alert);
@@ -126,7 +126,7 @@ void zeromq_output_event(const Eventinfo *lf)
     char *json_alert = Eventinfo_to_jsonstr(lf, false);
 
     zmsg_t *msg = zmsg_new();
-    zmsg_addstr(msg, "ossec.alerts");
+    zmsg_addstr(msg, "wazuh.alerts");
     zmsg_addstr(msg, json_alert);
     zmsg_send(&msg, zeromq_pubsocket);
     free(json_alert);

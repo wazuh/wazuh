@@ -41,8 +41,8 @@ void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct
     char logfile_r[OS_FLSIZE + 1];
     char logfile_old[OS_FLSIZE + 1];
 
-    snprintf(logfile, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, cyear, months[cmon], tag, cday);
-    snprintf(logfile_old, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, pp_old->tm_year + 1900, months[pp_old->tm_mon], tag, pp_old->tm_mday);
+    snprintf(logfile, OS_FLSIZE + 1, "%s/%d/%s/wazuh-%s-%02d", logdir, cyear, months[cmon], tag, cday);
+    snprintf(logfile_old, OS_FLSIZE + 1, "%s/%d/%s/wazuh-%s-%02d", logdir, pp_old->tm_year + 1900, months[pp_old->tm_mon], tag, pp_old->tm_mday);
 
     OS_SignLog(logfile, logfile_old, ext);
 
