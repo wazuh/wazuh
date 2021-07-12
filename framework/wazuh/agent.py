@@ -238,6 +238,29 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
+@expose_resources(actions=["group:read"], resources=["group:id:{group_id}"], post_proc_func=None)
+def restart_agents_by_group(group_id: list = None) -> AffectedItemsWazuhResult:
+    """Restart the agents of a given group.
+
+    Parameters
+    ----------
+    group_id : list
+        List with the specified group ID.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    counter = 0
+    agent_list = set()
+    while agent_chunk := {(agent["id"], agent.get("version", None)) for agent in get_agents_in_group(
+            group_list=group_id, select=["id", "version"], limit=500, offset=500 * counter).affected_items}:
+        agent_list.update(agent_chunk)
+        counter += 1
+
+    return restart_agents(agent_list=[agent[0] for agent in agent_list])
+
+
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'], post_proc_func=None)
 def restart_agents_by_node(agent_list=None):
     """Restart all agents belonging to a node.
