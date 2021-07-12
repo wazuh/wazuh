@@ -1,0 +1,55 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml monitord
+loop
+    monitord -> monitord : monitor_step_time()
+    monitord -> monitord : check_log_timer()
+    alt new day
+        monitord -> monitor_actions : monitor_logs(!CHECK_LOGS_SIZE)
+        alt mond.rotate_log
+            monitor_actions -> monitor_actions : sleep(mond.day_wait)
+            monitor_actions -> rotate_log : w_rotate_log(mond.compress, mond.keep_log_days, 1 (new_day), 0 (rotate_json), mond.daily_rotations)
+        else mond.rotate_log && mond.size_rotate
+            monitor_actions -> rotate_log : w_rotate_log(mond.compress, mond.keep_log_days, 0 (new_day), 0 (rotate_json), mond.daily_rotations)
+            monitor_actions -> rotate_log : w_rotate_log(mond.compress, mond.keep_log_days, 0 (new_day), 1 (rotate_json), mond.daily_rotations)
+        end
+        monitord -> manage_files : manage_files()
+        manage_files -> manage_files : manage_log(EVENTS, cday, cmon, cyear, &tm_result, "archive", "log")
+        manage_files -> sign_log : OS_SignLog()
+        alt mond.compress
+            manage_files -> compress_log : OS_CompressLog()
+        end
+        manage_files -> manage_files : manage_log(EVENTS, cday, cmon, cyear, &tm_result, "archive", "json")
+        manage_files -> sign_log : OS_SignLog()
+        alt mond.compress
+            manage_files -> compress_log : OS_CompressLog()
+        end
+        manage_files -> manage_files : manage_log(ALERTS, cday, cmon, cyear, &tm_result, "alerts", "log")
+        manage_files -> sign_log : OS_SignLog()
+        alt mond.compress
+            manage_files -> compress_log : OS_CompressLog()
+        end
+        manage_files -> manage_files : manage_log(ALERTS, cday, cmon, cyear, &tm_result, "alerts", "json")
+        manage_files -> sign_log : OS_SignLog()
+        alt mond.compress
+            manage_files -> compress_log : OS_CompressLog()
+        end
+        manage_files -> manage_files : manage_log(FWLOGS, cday, cmon, cyear, &tm_result, "firewall", "log")
+        manage_files -> sign_log : OS_SignLog()
+        alt mond.compress
+            manage_files -> compress_log : OS_CompressLog()
+        end
+        monitord -> monitord : monitor_update_date()
+    else
+        monitord -> monitor_actions : monitor_logs(CHECK_LOGS_SIZE)
+        alt mond.rotate_log && mond.size_rotate
+            monitor_actions -> rotate_log : w_rotate_log(mond.compress, mond.keep_log_days, 0 (new_day), 0 (rotate_json), mond.daily_rotations)
+            monitor_actions -> rotate_log : w_rotate_log(mond.compress, mond.keep_log_days, 0 (new_day), 1 (rotate_json), mond.daily_rotations)
+        end
+    end
+    monitord -> monitord : sleep(1)
+end
+@enduml
+

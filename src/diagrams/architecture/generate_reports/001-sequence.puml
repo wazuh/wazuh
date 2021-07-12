@@ -1,0 +1,42 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml monitord
+loop
+    monitord -> monitord : monitor_step_time()
+    monitord -> monitord : check_log_timer()
+    alt new day
+        monitord -> generate_reports : generate_reports()
+        alt mond.smtpserver && mond.reports
+            loop each report
+                generate_reports -> system : fork()
+                generate_reports -> reports_op : os_ReportdStart()
+                generate_reports -> sendcustomemail: OS_SendCustomEmail()
+                generate_reports -> generate_reports : sleep(20)
+                generate_reports -> generate_reports : childs++
+            end
+        
+            loop while child > 0
+                generate_reports -> system : waitpid()
+                generate_reports <- system : wp
+                alt wp < 0
+                    generate_reports -> debug_op : merror()
+                else wp = 0
+                    generate_reports -> generate_reports : sleep(5)
+                    alt between 2 and 9 wait retries
+                        generate_reports -> generate_reports : sleep(10)
+                    else more than 10 wait retries
+                        monitord <- generate_reports
+                    end
+                else
+                    generate_reports -> generate_reports : childs--
+                end
+            end
+
+        end
+    end
+    monitord -> monitord : sleep(1)
+end
+@enduml
+
