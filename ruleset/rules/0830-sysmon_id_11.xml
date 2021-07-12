@@ -1,0 +1,41 @@
+<!--
+  -  Sysmon Event ID 11 rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="sysmon_eid1_detections,">
+    <!-- Sample: {"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","eventID":"11","version":"2","level":"4","task":"11","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-04-28T20:11:55.0310966Z","eventRecordID":"144500","processID":"2204","threadID":"3300","channel":"Microsoft-Windows-Sysmon/Operational","computer":"DESKTOP-2QKFOBA","severityValue":"INFORMATION","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-04-28 20:11:55.021\r\nProcessGuid: {4dc16835-c189-6089-a003-000000002e00}\r\nProcessId: 6876\r\nImage: C:\\Windows\\system32\\cscript.exe\r\nTargetFilename: C:\\Users\\AtomicRedTeamTest\\AppData\\Roaming\\TransbaseOdbcDriver\\starter.vbs\r\nCreationUtcTime: 2021-04-28 20:11:55.021\""},"eventdata":{"utcTime":"2021-04-28 20:11:55.021","processGuid":"{4dc16835-c189-6089-a003-000000002e00}","processId":"6876","image":"C:\\\\Windows\\\\system32\\\\cscript.exe","targetFilename":"C:\\\\Users\\\\AtomicRedTeamTest\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\starter.vbs","creationUtcTime":"2021-04-28 20:11:55.021"}}} -->
+    <rule id="92000" level="4">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\(c|w)script\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users).+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
+        <description>Script created a new scripting file under System or User data folder</description>
+        <mitre>
+            <id>T1059</id>
+        </mitre>
+    </rule>
+
+    <!-- {"win":{"eventdata":{"image":"System","processGuid":"{86107A5D-0B6A-60D6-EB03-000000000000}","processId":"4","utcTime":"2021-06-25 18:09:57.530","targetFilename":"C:\\\\Windows\\\\tiny.exe","creationUtcTime":"2021-06-24 23:36:43.555"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-06-25 18:09:57.530\r\nProcessGuid: {86107A5D-0B6A-60D6-EB03-000000000000}\r\nProcessId: 4\r\nImage: System\r\nTargetFilename: C:\\Windows\\tiny.exe\r\nCreationUtcTime: 2021-06-24 23:36:43.555\"","version":"2","systemTime":"2021-06-25T18:09:57.530600200Z","eventRecordID":"647283","threadID":"3784","computer":"bankdc.ExchangeTest.com","task":"11","processID":"2620","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
+    <rule id="92104" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">^System$</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\.+(.exe$|\.dll)$</field>
+        <description>Binary dropped in Windows root folder by System process. Possible abuse of Windows admin shares</description>
+        <mitre>
+            <id>T1570</id>
+        </mitre>
+    </rule>
+
+    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe","processGuid":"{4dc16835-3136-609c-2c01-000000003b00}","processId":"1488","utcTime":"2021-05-12 19:53:22.467","targetFilename":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\pscp.exe","creationUtcTime":"2021-05-12 19:53:22.467"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-05-12 19:53:22.467\r\nProcessGuid: {4dc16835-3136-609c-2c01-000000003b00}\r\nProcessId: 1488\r\nImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nTargetFilename: C:\\Users\\AtomicRed\\AppData\\Roaming\\TransbaseOdbcDriver\\pscp.exe\r\nCreationUtcTime: 2021-05-12 19:53:22.467\"","version":"2","systemTime":"2021-05-12T19:53:22.4784997Z","eventRecordID":"198839","threadID":"3320","computer":"hrmanager.ExchangeTest.com","task":"11","processID":"2080","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
+    <rule id="92041" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">\\(?i)powershell\.exe</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)AppData\\\\Roaming\\\\.*\\\\.+\.(exe|bin|dll)</field>
+        <description>Powershell process created executable file in AppData temp folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+</group>
