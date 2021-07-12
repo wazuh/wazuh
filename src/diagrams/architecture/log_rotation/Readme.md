@@ -22,5 +22,5 @@ Monitord checks every 1 seconds the size of the logs and decides if they need to
 
 ## Findings
 A number of issues related to synchronization and timing were found during the code walkthrough when creating the sequence diagrams.
-Generate reports and logs rotations runs on the same thread and both features has different timings and synchronization needs that are configured independently and should no be affected by others features configurations. This issue affects agents monitoring as well.
-In the future each selfcontained feature that runs as part of monitord module should be isolated and executed in a dedicated thread to avoid coupling and timing/sync issues.
+* Generate reports and logs rotations runs on the same thread and both features has different timings and synchronization needs that are configured independently and should no be affected by others features configurations. This issue affects agents monitoring as well.
+* In the future each selfcontained feature that runs as part of monitord module should be isolated and executed in a dedicated thread to avoid coupling and timing/sync issues.
