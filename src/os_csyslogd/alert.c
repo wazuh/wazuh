@@ -310,6 +310,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
         field_add_truncated(syslog_msg, OS_SIZE_61440, " message=\"%s\"", al_data->log[0], 2 );
     }
 
+    mdebug2("OS_Alert_SendSyslog(): sending '%s'", syslog_msg);
     if (OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg) != 0) {
         OS_CloseSocket(syslog_config->socket);
         syslog_config->socket = -1;
