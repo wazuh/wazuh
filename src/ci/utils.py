@@ -443,7 +443,7 @@ def runASAN(moduleName):
         runTestTool(str(moduleName), testToolCommand,
                     element['is_smoke_with_configuration'])
 
-    printGreen("<"+moduleName+">"+"[ASAN: PASSED]"+"<"+moduleName+">")
+    printGreen(f'<{moduleName}>[ASAN: PASSED]<{moduleName}>')
 
 
 def _getFoldersToAStyle(moduleName):
@@ -481,8 +481,8 @@ def runAStyleCheck(moduleName):
 
         if (stdoutString.find("Formatted") != -1):
             printFail('One or more files do not follow the Coding Style convention.')
-            printFail('Execute astyle --options=ci/input/astyle.config moduleName/*.h moduleName/*.cpp for further'
-                      'information.')
+            printFail(f'Execute astyle --options=ci/input/astyle.config {moduleName}/*.h {moduleName}/*.cpp for further'
+                      f'information.')
 
             printFail('[AStyle: FAILED]')
             raise ValueError("Code is not complaint with the expected guidelines")
