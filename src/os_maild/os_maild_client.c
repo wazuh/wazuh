@@ -413,53 +413,53 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         strcat(logs, "\nAttributes\n");
         body_size -= 12;
 
-        add_field_from_json(json_object, "size_after", logs, &body_size, " - Size: ");
-        add_field_from_json(json_object, "perm_after", logs, &body_size, " - Permissions: ");
-        add_field_from_json(json_object, "mtime_after", logs, &body_size, " - Date: ");
-        add_field_from_json(json_object, "inode_after", logs, &body_size, " - Inode: ");
-        add_field_from_json(json_object, "uname_after", logs, &body_size, " - User name: ");
-        add_field_from_json(json_object, "uid_after", logs, &body_size, " - User ID: ");
-        add_field_from_json(json_object, "gname_after", logs, &body_size, " - Group name: ");
-        add_field_from_json(json_object, "gid_after", logs, &body_size, " - Group ID: ");
-        add_field_from_json(json_object, "md5_after", logs, &body_size, " - MD5: ");
-        add_field_from_json(json_object, "sha1_after", logs, &body_size, " - SHA1: ");
-        add_field_from_json(json_object, "sha256_after", logs, &body_size, " - SHA256: ");
+        add_field_from_json(json_object, "size_after", logs, &body_size, " - size_after: ");
+        add_field_from_json(json_object, "perm_after", logs, &body_size, " - perm_after: ");
+        add_field_from_json(json_object, "mtime_after", logs, &body_size, " - mtime_after: ");
+        add_field_from_json(json_object, "inode_after", logs, &body_size, " - inode_after: ");
+        add_field_from_json(json_object, "uname_after", logs, &body_size, " - uname_after: ");
+        add_field_from_json(json_object, "uid_after", logs, &body_size, " - uid_after: ");
+        add_field_from_json(json_object, "gname_after", logs, &body_size, " - gname_after: ");
+        add_field_from_json(json_object, "gid_after", logs, &body_size, " - gid_after: ");
+        add_field_from_json(json_object, "md5_after", logs, &body_size, " - md5_after: ");
+        add_field_from_json(json_object, "sha1_after", logs, &body_size, " - sha1_after: ");
+        add_field_from_json(json_object, "sha256_after", logs, &body_size, " - sha256_after: ");
 
         // get audit information
         if (json_audit = cJSON_GetObjectItem(json_object,"audit"), json_audit) {
 
             json_field = cJSON_GetObjectItem(json_audit,"user");
             if (json_field) {
-                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) User name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- audit.user.name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"login_user");
             if (json_field) {
-                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Audit name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- audit.login_user.name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"effective_user");
             if (json_field) {
-                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Effective name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- audit.effective_user.name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"group");
             if (json_field) {
-                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Group name: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- audit.group.name: ");
             }
 
             json_field = cJSON_GetObjectItem(json_audit,"process");
             if (json_field) {
-                add_field_from_json(json_field, "id", logs, &body_size, "- (Audit) Process id: ");
-                add_field_from_json(json_field, "name", logs, &body_size, "- (Audit) Process name: ");
-                add_field_from_json(json_field, "cwd", logs, &body_size, "- (Audit) Process cwd: ");
-                add_field_from_json(json_field, "parent_name", logs, &body_size, "- (Audit) Parent process name: ");
-                add_field_from_json(json_field, "ppid", logs, &body_size, "- (Audit) Parent process id: ");
-                add_field_from_json(json_field, "parent_cwd", logs, &body_size, "- (Audit) Parent process cwd: ");
+                add_field_from_json(json_field, "id", logs, &body_size, "- audit.process.id: ");
+                add_field_from_json(json_field, "name", logs, &body_size, "- audit.process.name: ");
+                add_field_from_json(json_field, "cwd", logs, &body_size, "- audit.process.cwd: ");
+                add_field_from_json(json_field, "parent_name", logs, &body_size, "- audit.process.parent_name: ");
+                add_field_from_json(json_field, "ppid", logs, &body_size, "- audit.process.ppid: ");
+                add_field_from_json(json_field, "parent_cwd", logs, &body_size, "- audit.process.parent_cwd: ");
             }
         }
 
-        add_field_from_json(json_object, "diff", logs, &body_size, "\r\n- Changed content:\r\n");
+        add_field_from_json(json_object, "diff", logs, &body_size, "\r\n- diff:\r\n");
 
         json_field = cJSON_GetObjectItem(json_object, "tags");
         if (json_field != NULL && body_size > 7) {
