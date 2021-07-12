@@ -197,31 +197,31 @@ void test_OS_Log_syscheck_event(void **state) {
                            "full_log\n", 0);
 
     will_return(__wrap_fwrite, 13); // "Attributes:\n"
-    expect_fprintf(&fp, " - Size: 5000\n", 0);
-    expect_fprintf(&fp, " - Permissions: permission\n", 0);
+    expect_fprintf(&fp, " - size_after: 5000\n", 0);
+    expect_fprintf(&fp, " - perm_after: permission\n", 0);
 
     expect_any(__wrap_ctime_r, timep);
     will_return(__wrap_ctime_r, "Sat May 23 21:21:18 1970\n");
 
-    expect_fprintf(&fp, " - Date: Sat May 23 21:21:18 1970\n", 0);
-    expect_fprintf(&fp, " - Inode: 2222\n", 0);
-    expect_fprintf(&fp, " - User: user (1000)\n", 0);
-    expect_fprintf(&fp, " - Group: group (1000)\n", 0);
-    expect_fprintf(&fp, " - MD5: 12345\n", 0);
-    expect_fprintf(&fp, " - SHA1: 12345\n", 0);
-    expect_fprintf(&fp, " - SHA256: 12345\n", 0);
-    expect_fprintf(&fp, " - File attributes: attributes\n", 0);
-    expect_fprintf(&fp, " - (Audit) User name: user_name\n", 0);
-    expect_fprintf(&fp, " - (Audit) Audit name: audit_name\n", 0);
-    expect_fprintf(&fp, " - (Audit) Effective name: effective_name\n", 0);
-    expect_fprintf(&fp, " - (Audit) Group name: group_name\n", 0);
-    expect_fprintf(&fp, " - (Audit) Process id: proc_id\n", 0);
-    expect_fprintf(&fp, " - (Audit) Process name: proc_name\n", 0);
-    expect_fprintf(&fp, " - (Audit) Process cwd: /audit/cwd\n", 0);
-    expect_fprintf(&fp, " - (Audit) Parent process name: proc_pname\n", 0);
-    expect_fprintf(&fp, " - (Audit) Parent process id: ppid\n", 0);
-    expect_fprintf(&fp, " - (Audit) Parent process cwd: /audit/pcwd\n", 0);
-    expect_fprintf(&fp, "\nWhat changed:\ndiff\n", 0);
+    expect_fprintf(&fp, " - mtime_after: Sat May 23 21:21:18 1970\n", 0);
+    expect_fprintf(&fp, " - inode_after: 2222\n", 0);
+    expect_fprintf(&fp, " - uname_after (uid_after): user (1000)\n", 0);
+    expect_fprintf(&fp, " - gname_after (gid_after): group (1000)\n", 0);
+    expect_fprintf(&fp, " - md5_after: 12345\n", 0);
+    expect_fprintf(&fp, " - sha1_after: 12345\n", 0);
+    expect_fprintf(&fp, " - sha256_after: 12345\n", 0);
+    expect_fprintf(&fp, " - attrs_after: attributes\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.user.name: user_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.login_user.name: audit_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.effective_user.name: effective_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.group.name: group_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.process.id: proc_id\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.process.name: proc_name\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.process.cwd: /audit/cwd\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.process.parent_name: proc_pname\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.process.ppid: ppid\n", 0);
+    expect_fprintf(&fp, " - (Audit) audit.process.parent_cwd: /audit/pcwd\n", 0);
+    expect_fprintf(&fp, "\ndiff:\ndiff\n", 0);
     will_return(__wrap_fwrite, 8); // "\nTags:\n"
     expect_fprintf(&fp, " - tag1\n", 0);
     expect_fprintf(&fp, " - tag2\n", 0);
