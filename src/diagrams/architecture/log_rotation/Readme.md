@@ -15,9 +15,9 @@ Logs rotation feature was created to rotate the internal logs on daily basis or 
 
 ## Sequence diagram
 Sequence diagram shows the basic flow of logs rotation feature hosted in monitord module. Each time the current day change is detected monitord module performs logs rotation, signing and compression based on the current configuration. Steps are:
-1- rotate logs.
-2- sign rotated logs.
-2- compress rotated logs.
+1. Rotate logs.
+2. Sign rotated logs.
+3. Compress rotated logs.
 Monitord checks every 1 seconds the size of the logs and decides if they need to be rotated based on the max size configured. In this case, logs are only rotated but not singed neither compressed.
 
 ## Findings
