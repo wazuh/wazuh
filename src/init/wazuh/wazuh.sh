@@ -141,6 +141,15 @@ WazuhUpgrade()
         rm -rf $PREINSTALLEDDIR/queue/ossec
     fi
 
+    # Migrate .agent_info and .wait files to /var/run
+
+    if [ -f $PREINSTALLEDDIR/queue/sockets/.agent_info ]; then
+        mv -f $PREINSTALLEDDIR/queue/sockets/.agent_info $PREINSTALLEDDIR/var/run/.agent_info
+    fi
+    if [ -f $PREINSTALLEDDIR/queue/sockets/.wait ]; then
+        mv -f $PREINSTALLEDDIR/queue/sockets/.wait $PREINSTALLEDDIR/var/run/.wait
+    fi
+
     # Move rotated logs to new folder and remove the existing one
 
     if [ -d $PREINSTALLEDDIR/logs/ossec ]; then

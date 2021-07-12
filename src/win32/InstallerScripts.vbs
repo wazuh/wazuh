@@ -62,6 +62,16 @@ End If
 
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
+' Move .agent_info
+If objFSO.fileExists(home_dir & ".agent_info") Then
+    objFSO.MoveFile home_dir & ".agent_info", home_dir & "\var\run\"
+End If
+
+' Move .wait
+If objFSO.fileExists(home_dir & ".wait") Then
+    objFSO.MoveFile home_dir & ".wait", home_dir & "\var\run\"
+End If
+
 ' Create an empty client.keys file on first install
 If Not objFSO.fileExists(home_dir & "client.keys") Then
     objFSO.CreateTextFile(home_dir & "client.keys")
