@@ -1,0 +1,19 @@
+
+<!-- Parent decoder for oracledb .log files -->
+<decoder name="oracledb-log-decoder">
+    <prematch type="pcre2">ORA-\d+</prematch>
+</decoder>
+
+<!-- Timestamp -->
+<decoder name="oracledb-log-decoder-fields">
+    <parent>oracledb-log-decoder</parent>
+    <regex type="pcre2">(\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4})</regex>
+    <order>timestamp</order>
+</decoder>
+
+<!-- Ora numbers -->
+<decoder name="oracledb-log-decoder-fields">
+    <parent>oracledb-log-decoder</parent>
+    <regex type="pcre2">(?:ORA-(\d+))+</regex>
+    <order>ora.code1, ora.code2, ora.code3, ora.code4</order>
+</decoder>
