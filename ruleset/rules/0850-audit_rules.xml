@@ -80,17 +80,4 @@
     </rule>
 
 
-    <!-- Sample: {"win":{"eventdata":{"destinationPort":"3389","image":"C:\\\\Windows\\\\System32\\\\svchost.exe","sourcePort":"25387","initiated":"false","destinationIp":"0:0:0:0:0:0:0:1","protocol":"tcp","processGuid":"{86107A5D-6C0C-60DF-04DD-600100000000}","sourceIp":"0:0:0:0:0:0:0:1","processId":"7728","sourceHostname":"bankdc.ExchangeTest.com","utcTime":"2021-07-02 20:19:28.870","destinationPortName":"ms-wbt-server","ruleName":"technique_id=T1021,technique_name=Remote Services","destinationIsIpv6":"true","user":"NT AUTHORITY\\\\NETWORK SERVICE","destinationHostname":"bankdc.ExchangeTest.com","sourceIsIpv6":"true"},"system":{"eventID":"3","keywords":"0x8000000000000000","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Network connection detected:\r\nRuleName: technique_id=T1021,technique_name=Remote Services\r\nUtcTime: 2021-07-02 20:19:28.870\r\nProcessGuid: {86107A5D-6C0C-60DF-04DD-600100000000}\r\nProcessId: 7728\r\nImage: C:\\Windows\\System32\\svchost.exe\r\nUser: NT AUTHORITY\\NETWORK SERVICE\r\nProtocol: tcp\r\nInitiated: false\r\nSourceIsIpv6: true\r\nSourceIp: 0:0:0:0:0:0:0:1\r\nSourceHostname: bankdc.ExchangeTest.com\r\nSourcePort: 25387\r\nSourcePortName: -\r\nDestinationIsIpv6: true\r\nDestinationIp: 0:0:0:0:0:0:0:1\r\nDestinationHostname: bankdc.ExchangeTest.com\r\nDestinationPort: 3389\r\nDestinationPortName: ms-wbt-server\"","version":"5","systemTime":"2021-07-02T20:19:29.969938200Z","eventRecordID":"1122514","threadID":"3504","computer":"bankdc.ExchangeTest.com","task":"3","processID":"2528","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
-    <rule id="92107" level="15">
-        <if_group>sysmon_event3</if_group>
-        <field name="win.eventdata.destinationPort" type="pcre2">3389</field>
-        <field name="win.eventdata.destinationIp" type="pcre2">0:0:0:0:0:0:0:1|127\.0\.0\.1</field>
-        <field name="win.eventdata.sourceIp" type="pcre2">0:0:0:0:0:0:0:1|127\.0\.0\.1</field>
-        <description>Network activity using RDP port from-to loopback address, possible exploit using reverse tunneling</description>
-        <mitre>
-            <id>T1021.001</id>
-        </mitre>
-    </rule>
-
-
 </group>
