@@ -9,23 +9,38 @@
   localfile implementation example:
   <localfile>
     <log_format>multi-line-regex</log_format>
-    <location>/opt/oracle/app/oracle/admin/CDBTST93/adump/*.aud</location>
-    <multiline_regex replace="wspace">^\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}$|\w{3}\s\w{3}\s\d{1,2}\s\d{2}:\d{2}:\d{2}\s\d{4}\s\+\d{2}:\d{2}</multiline_regex>
+    <location>/tmp/oracle/CDBTST111_j000_11111_11111111111111111111111111.aud</$
+    <multiline_regex match="all">(?m)\n\n</multiline_regex>
     <out_format>$(timestamp) $(hostname) oracledb: $(log)</out_format>
   </localfile>
 -->
 <!--
 Log example:
-
-
+  Fri Jul 09 11:11:00 2021 +05:32
+  LENGTH : '563'
+  ACTION :[412] 'select /*+  no_parallel(t) no_parallel_index(t) dbms_stats cursor_sharing_exact use_weak_name_resl dynamic_sampling(0) no_monitoring xmlindex_sel_idx_tbl no_substrb_pad  */ substrb(dump("INSTANCE_NUMBER",16,0,64),1,240) val, 
+                        rowidtochar(rowid) rwid from "SYS"."WRH$_SEG_STAT" t where rowid in (chartorowid('AAAAAAAAAAAAAAAAAA'),chartorowid('AAAAAAAAAAAAAAAAAA')) order by "INSTANCE_NUMBER"'
+  DATABASE USER:[3] 'SYS'
+  PRIVILEGE :[4] 'NONE'
+  CLIENT USER:[0] ''
+  CLIENT TERMINAL:[7] 'UNKNOWN'
+  STATUS:[1] '0'
+  DBID:[10] '3320902093'
 -->
 
 <decoder name="oracledb_log">
     <program_name>^oracledb$</program_name>
 </decoder>
 
-<decoder name="oracledb_length">
+<decoder name="oracledb_transactions_fields">
     <parent>oracledb_log</parent>
-    <regex type="pcre2">(?U)\\nLENGTH\s:\s\'(\d+)\'\\nACTION\s:\[(\d+)\]\s\'(.+)\'\\nDATABASE\sUSER:\[(\d+)\]\s\'(.+)\'\\nPRIVILEGE\s:\[(\d+)\]\s\'(.+)\'\\nCLIENT\sUSER:\[(\d+)\]\s\'(.*)\'\\nCLIENT\sTERMINAL:\[(\d+)\]\s\'(.+)\'\\nSTATUS:\[(\d+)\]\s\'(.+)\'\\nDBID:\[(\d+)\]\s\'(.+)\'</regex>
-    <order>length, action.length, action.action, db_user.id, db_user.name, privilege.id, privilege.level, client_user.id, client_user.name, client_terminal.id, client_terminal.name, status.id, status.name, db.id, db.name</order>
+    <regex>(?Ums)^LENGTH : '(\d+)'\n</regex>
+    <regex>^ACTION :\[\d+] '(.+)'\n</regex>
+    <regex>^DATABASE USER:\[\d+] '(.+)'\n</regex>
+    <regex>^PRIVILEGE :\[\d+] '(.+)'\n</regex>
+    <regex>^CLIENT USER:\[\d+] '(.*)'\n</regex>
+    <regex>^CLIENT TERMINAL:\[\d+] '(.*)'\n</regex>
+    <regex>^STATUS:\[\d+] '(.*)'\n</regex>
+    <regex type="pcre2">^DBID:\[\d+] '(.*)'</regex>
+    <order>length, action, database_user, privilege, client_user, client_terminal, status, database_id</order>
 </decoder>
