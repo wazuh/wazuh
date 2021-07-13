@@ -1116,6 +1116,34 @@ def test_agent_get_agents_overview_query(socket_mock, send_mock, query, totalIte
     assert len(agents['items']) == totalItems
 
 
+@pytest.mark.parametrize("filters, totalItems", [
+    ({"id": range(1)}, 1),
+    ({"id": range(0, 2000)}, 2000),
+    ({"id": range(5, 15)}, 10)
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agents_overview_filter(socket_mock, send_mock, filters, totalItems):
+    """
+
+    Parameters
+    ----------
+    filters : dict
+        Defines the filter to use for the query.
+    totalItems : int
+        Expected number of items to be returned.
+    """
+    filters['id'] = list(filters['id'])
+
+    def mock_WazuhDBQueryAgents_run(self):
+        data = {'items': filters['id'], 'totalItems': len(filters['id'])}
+        return data
+
+    with patch('wazuh.core.agent.WazuhDBQueryAgents.run', mock_WazuhDBQueryAgents_run):
+        agents = Agent.get_agents_overview(filters=filters)
+        assert len(agents['items']) == totalItems
+
+
 @pytest.mark.parametrize("status, older_than, totalItems", [
     ('active', '9m', 4),
     ('all', '1s', 8),

@@ -10,6 +10,7 @@ import re
 import tempfile
 import threading
 from base64 import b64encode
+from copy import deepcopy
 from datetime import date, datetime
 from functools import lru_cache
 from json import dumps, loads
@@ -952,10 +953,10 @@ class Agent:
         """
         data = None
         if filters and 'id' in filters and len(filters['id']) > common.database_limit:
-            steps, mod = divmod(len(filters['id']), common.database_limit)
-            for partial_filter in range(steps):
+            original_filters = deepcopy(filters)
+            for partial_filter in range(int(len(filters['id']) / common.database_limit)):
                 filters['id'] = \
-                    filters['id'][partial_filter*common.database_limit:(partial_filter+1)*common.database_limit]
+                    original_filters['id'][partial_filter*common.database_limit:(partial_filter+1)*common.database_limit]
 
                 db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                               filters=filters, query=q)
