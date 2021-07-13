@@ -2226,7 +2226,13 @@ STATIC int getattributes(char **attributes, char **values,
         }
         /* Rule noalert */
         else if (strcasecmp(attributes[k], xml_noalert) == 0) {
-            *noalert = 1;
+            if (strcmp(values[k], "0") == 0) {
+                *noalert = 0;
+            } else if (strcmp(values[k], "1") == 0) {
+                *noalert = 1;
+            } else {
+                smwarn(log_msg, "Invalid value for attribute '%s'", xml_noalert);
+            }
         } else if (strcasecmp(attributes[k], xml_overwrite) == 0) {
             if (strcmp(values[k], "yes") == 0) {
                 *overwrite = 1;

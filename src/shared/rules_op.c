@@ -1428,7 +1428,13 @@ static int _OS_GetRulesAttributes(char **attributes, char **values,
         }
         /* Rule noalert */
         else if (strcasecmp(attributes[k], xml_noalert) == 0) {
-            ruleinfo_pt->alert_opts |= NO_ALERT;
+            if (strcmp(values[k], "0") == 0) {
+                ruleinfo_pt->alert_opts &= ~NO_ALERT;
+            } else if (strcmp(values[k], "1") == 0) {
+                ruleinfo_pt->alert_opts |= NO_ALERT;
+            } else {
+                mwarn("Invalid value for attribute '%s'", xml_noalert);
+            }
         } else if (strcasecmp(attributes[k], xml_overwrite) == 0) {
             if (strcmp(values[k], "yes") == 0) {
                 ruleinfo_pt->alert_opts |= DO_OVERWRITE;
