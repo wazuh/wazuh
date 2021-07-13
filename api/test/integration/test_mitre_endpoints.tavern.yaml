@@ -161,6 +161,20 @@ stages:
             reverse: True
       status_code: 200
 
+  - name: Sort mitigations by external_id
+    request:
+      verify: False
+      <<: *general_mitigations_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
+            reverse: True
+      status_code: 200
+
   - name: Show mitigations using valid select
     request:
       verify: False
@@ -737,6 +751,20 @@ stages:
             reverse: True
       status_code: 200
 
+  - name: Sort tactics by external_id
+    request:
+      verify: False
+      <<: *general_tactics_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
+            reverse: True
+      status_code: 200
+
   - name: Try to show tactics using valid select
     request:
       verify: False
@@ -1034,6 +1062,20 @@ stages:
             reverse: True
       status_code: 200
 
+  - name: Sort techniques by external_id
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
+            reverse: True
+      status_code: 200
+
   - name: Try to show techniques using valid select
     request:
       verify: False
@@ -1322,6 +1364,20 @@ stages:
             reverse: True
       status_code: 200
 
+  - name: Sort groups by external_id
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
+            reverse: True
+      status_code: 200
+
   - name: Show groups using valid select
     request:
       verify: False
@@ -1607,6 +1663,20 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "groups"
+            reverse: True
+      status_code: 200
+
+  - name: Sort softwares by external_id
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
             reverse: True
       status_code: 200
 
