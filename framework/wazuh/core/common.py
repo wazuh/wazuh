@@ -181,6 +181,8 @@ agent_info_sleep = 2  # Seconds between retries
 database_limit = 500
 maximum_database_limit = 100000
 limit_seconds = 1800  # 600*3
+date_format = "%Y-%m-%dT%H:%M:%SZ"
+decimals_date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 _wazuh_uid = None
 _wazuh_gid = None

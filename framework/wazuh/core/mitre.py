@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import copy
+from datetime import datetime
 from functools import lru_cache
 from typing import Union
 
@@ -41,6 +42,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                               fields=fields, default_sort_field=default_sort_field,
                               default_sort_order=default_sort_order, filters=filters, query=query, count=count,
                               get_data=True, min_select_fields=min_select_fields,
+                              date_fields={'created_time', 'modified_time'},
                               backend=WazuhDBBackend(query_format='mitre', request_slice=request_slice))
 
         self.relation_fields = set()  # This variable contains valid fields not included in the database (relations)
@@ -68,6 +70,13 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         if reference_external_id:
             mitre_resource['references'].remove(reference_external_id)
         mitre_resource.update(reference_external_id)
+
+    def _format_data_into_dictionary(self):
+        """Standardization of dates to the ISO 8601 format."""
+        [t.update((k, datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime(common.decimals_date_format))
+                  for k, v in t.items() if k in self.date_fields) for t in self._data]
+
+        return {'items': self._data, 'totalItems': self.total_items}
 
 
 class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
