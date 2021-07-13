@@ -561,7 +561,7 @@ void test_audit_parse_delete(void **state) {
     will_return(__wrap_fim_manipulated_audit_rules, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -587,12 +587,12 @@ void test_audit_parse_delete_recursive(void **state) {
     expect_value(__wrap_atomic_int_set, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_set, 0);
 
-    expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 5);
+    expect_string_count(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed", 5);
     expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 6);
     expect_value_count(__wrap_SendMSG, loc, LOCALFILE_MQ, 6);
     will_return_always(__wrap_SendMSG, 1);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Max rules reload retries");
     int i;
     for (i = 0; i < 5; i++) {
         audit_parse(buffer);
@@ -884,7 +884,7 @@ void test_audit_parse_delete_folder(void **state) {
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "110");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Monitored directory was removed: Audit rule removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -937,7 +937,7 @@ void test_audit_parse_delete_folder_hex(void **state) {
     expect_string(__wrap_fim_whodata_event, w_evt->inode, "110");
     expect_value(__wrap_fim_whodata_event, w_evt->ppid, 4340);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Monitored directory was removed: Audit rule removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -965,7 +965,7 @@ void test_audit_parse_delete_folder_hex3_error(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_function_call(__wrap_fim_audit_reload_rules);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -1014,7 +1014,7 @@ void test_audit_parse_delete_folder_hex4_error(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_function_call(__wrap_fim_audit_reload_rules);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
@@ -1065,7 +1065,7 @@ void test_audit_parse_delete_folder_hex5_error(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
     expect_function_call(__wrap_fim_audit_reload_rules);
 
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);

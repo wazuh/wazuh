@@ -166,13 +166,13 @@ void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH
 
     if (check_logs_size == FALSE && mond.rotate_log) {
         sleep(mond.day_wait);
-        /* Daily rotation and compression of ossec.log/ossec.json */
+        /* Daily rotation and compression of wazuh.log/wazuh.json */
         w_rotate_log(mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
 
     } else if (check_logs_size == TRUE && mond.rotate_log && mond.size_rotate > 0){
         if (stat(path, &buf) == 0) {
             size = buf.st_size;
-            /* If log file reachs maximum size, rotate ossec.log */
+            /* If log file reachs maximum size, rotate wazuh.log */
             if ( (unsigned long) size >= mond.size_rotate) {
                 w_rotate_log(mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
             }
@@ -180,7 +180,7 @@ void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH
 
         if (stat(path_json, &buf) == 0) {
             size = buf.st_size;
-            /* If log file reachs maximum size, rotate ossec.json */
+            /* If log file reachs maximum size, rotate wazuh.json */
             if ( (unsigned long) size >= mond.size_rotate) {
                 w_rotate_log(mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
             }
