@@ -32,7 +32,7 @@ Log example:
     <program_name>^oracledb$</program_name>
 </decoder>
 
-<decoder name="oracledb_transactions_fields">
+<decoder name="oracledb_transaction_fields">
     <parent>oracledb_log</parent>
     <regex>(?Ums)^LENGTH : '(\d+)'\n</regex>
     <regex>^ACTION :\[\d+] '(.+)'\n</regex>
