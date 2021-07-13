@@ -9,7 +9,7 @@
   localfile implementation example:
   <localfile>
     <log_format>multi-line-regex</log_format>
-    <location>/tmp/oracle/CDBTST111_j000_11111_11111111111111111111111111.aud</$
+    <location>/tmp/oracle/*.aud</$
     <multiline_regex match="all">(?m)\n\n</multiline_regex>
     <out_format>$(timestamp) $(hostname) oracledb: $(log)</out_format>
   </localfile>
