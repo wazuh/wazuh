@@ -5,6 +5,7 @@
 import json
 import socket
 
+from wazuh.core.common import origin_module
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
@@ -42,7 +43,7 @@ class WazuhQueue:
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
-    RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
+    RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': origin_module.get()},
                                                                  command="restart-wazuh0",
                                                                  parameters={"extra_args": [],
                                                                              "alert": {}}))  # Agents, not manager (000)
