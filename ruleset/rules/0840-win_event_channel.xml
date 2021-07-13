@@ -53,4 +53,14 @@
         </mitre>
     </rule>
 
+    <!-- Sample: {"win":{"system":{"eventID":"808","keywords":"0x8000000000020000","providerGuid":"{747ef6fd-e535-4d16-b510-42c90f6873a1}","level":"2","channel":"Microsoft-Windows-PrintService/Admin","opcode":"12","message":"\"The print spooler failed to load a plug-in module C:\\Windows\\system32\\spool\\DRIVERS\\x64\\3\\mimispool.dll, error code 0x45A. See the event user data for context information.\"","version":"0","systemTime":"2021-07-12T14:40:42.8983599Z","eventRecordID":"3","threadID":"6544","computer":"hrmanager.ExchangeTest.com","task":"36","processID":"1804","severityValue":"ERROR","providerName":"Microsoft-Windows-PrintService"},"loadPluginFailed":{"context":"112","errorCode":"0x45a","pluginDllName":"C:\\\\Windows\\\\system32\\\\spool\\\\DRIVERS\\\\x64\\\\3\\\\mimispool.dll"}}}-->
+    <rule id="92170" level="15">
+        <if_sid>60011</if_sid>
+        <field name="win.system.eventID" type="pcre2">808</field>
+        <description>Printer driver failed to load, possible remote code execution using PrinterNightmare exploit: CVE-2021-34527</description>
+        <mitre>
+            <id>T1210</id>
+            <id>T1547.012</id>
+        </mitre>
+    </rule>
 </group>
