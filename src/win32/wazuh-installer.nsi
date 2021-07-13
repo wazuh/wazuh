@@ -183,6 +183,8 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\wodles"
     CreateDirectory "$INSTDIR\ruleset\"
     CreateDirectory "$INSTDIR\ruleset\sca"
+    CreateDirectory "$INSTDIR\var"
+    CreateDirectory "$INSTDIR\var\run"
 
     ; install files
     File wazuh-agent.exe
@@ -497,6 +499,8 @@ Section "Uninstall"
     Delete "$INSTDIR\queue\syscollector\*"
     Delete "$INSTDIR\ruleset\sca\*"
     Delete "$INSTDIR\ruleset\*"
+    Delete "$INSTDIR\var\run\*"
+    Delete "$INSTDIR\var\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -522,6 +526,8 @@ Section "Uninstall"
     RMDir "$INSTDIR\wodles"
     RMDir "$INSTDIR\ruleset\sca"
     RMDir "$INSTDIR\ruleset"
+    RMDir "$INSTDIR\var\run"
+    RMDir "$INSTDIR\var"
     RMDir "$INSTDIR"
 SectionEnd
 

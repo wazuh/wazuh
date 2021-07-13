@@ -242,19 +242,14 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Rule path */
 #define RULEPATH        "rules"
 
+/* Run path */
+#define RUNPATH         "var/run/"
+
 /* Wait file */
-#ifndef WIN32
-#define WAIT_FILE       "queue/sockets/.wait"
-#else
-#define WAIT_FILE       ".wait"
-#endif
+#define WAIT_FILE       RUNPATH ".wait"
 
 /* Agent information file */
-#ifndef WIN32
-#define AGENT_INFO_FILE "queue/sockets/.agent_info"
-#else
-#define AGENT_INFO_FILE ".agent_info"
-#endif
+#define AGENT_INFO_FILE RUNPATH ".agent_info"
 
 /* Agentless directories */
 #define AGENTLESSDIR        "agentless"
