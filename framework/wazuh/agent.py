@@ -12,7 +12,7 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
     WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding, \
-    send_restart_command, expand_group
+    send_restart_command
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -236,23 +236,6 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         result.affected_items.sort(key=int)
 
     return result
-
-
-@expose_resources(actions=["group:read"], resources=["group:id:{group_id}"], post_proc_func=None)
-def get_agents_in_group_restart(group_id: list = None) -> list:
-    """Get the agents of a given group in order to restart them.
-
-    Parameters
-    ----------
-    group_id : list
-        List with the specified group ID.
-
-    Returns
-    -------
-    List
-        List of agents belonging to the specified group.
-    """
-    return list(expand_group(group_name=group_id[0]))
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'], post_proc_func=None)

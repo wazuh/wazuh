@@ -951,25 +951,11 @@ class Agent:
         -------
         Information gathered from the database query
         """
-        data = None
-        if filters and 'id' in filters and len(filters['id']) > common.database_limit:
-            original_filters = deepcopy(filters)
-            for partial_filter in range(int(len(filters['id']) / common.database_limit)):
-                filters['id'] = \
-                    original_filters['id'][partial_filter*common.database_limit:(partial_filter+1)*common.database_limit]
-
-                db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                              filters=filters, query=q)
-                new_data = db_query.run()
-                if data:
-                    data['items'].extend(new_data['items'])
-                    data['totalItems'] += new_data['totalItems']
-                else:
-                    data = new_data
-        else:
-            db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                          filters=filters, query=q)
-            data = db_query.run()
+        pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
+                                    filters=filters) if 'id' in filters else {'filters': filters}
+        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                      query=q, **pfilters)
+        data = db_query.run()
 
         return data
 

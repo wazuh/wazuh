@@ -19,6 +19,7 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -1002,7 +1003,18 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
     -------
     Response
     """
-    agent_list = agent.get_agents_in_group_restart(group_id=[group_id])
+    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
+    dapi = DistributedAPI(f=agent.get_agents_in_group,
+                          f_kwargs=f_kwargs,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    agents = raise_if_exc(await dapi.distribute_function())
+
+    agent_list = [a['id'] for a in agents.affected_items]
     if not agent_list:
         data = AffectedItemsWazuhResult(none_msg='Restart command was not sent to any agent')
         return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
