@@ -12,7 +12,7 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
     WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding, \
-    send_restart_command
+    send_restart_command, expand_group
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -239,8 +239,8 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_id}"], post_proc_func=None)
-def restart_agents_by_group(group_id: list = None) -> AffectedItemsWazuhResult:
-    """Restart the agents of a given group.
+def get_agents_in_group_restart(group_id: list = None) -> list:
+    """Get the agents of a given group in order to restart them.
 
     Parameters
     ----------
@@ -249,16 +249,10 @@ def restart_agents_by_group(group_id: list = None) -> AffectedItemsWazuhResult:
 
     Returns
     -------
-    AffectedItemsWazuhResult
+    List
+        List of agents belonging to the specified group.
     """
-    counter = 0
-    agent_list = set()
-    while agent_chunk := {(agent["id"], agent.get("version", None)) for agent in get_agents_in_group(
-            group_list=group_id, select=["id", "version"], limit=500, offset=500 * counter).affected_items}:
-        agent_list.update(agent_chunk)
-        counter += 1
-
-    return restart_agents(agent_list=[agent[0] for agent in agent_list])
+    return list(expand_group(group_name=group_id[0]))
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'], post_proc_func=None)
