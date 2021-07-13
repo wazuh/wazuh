@@ -22,7 +22,7 @@
 #define LASTCONFIG      "last-agent.conf"
 #define VERSION_FILE    "VERSION"
 #define REVISION_FILE   "REVISION"
-#define OSSECLOGS       "ossec.log"
+#define WAZUHLOGS       "wazuh.log"
 #define HELPTXT         "help.txt"
 #define SENDER_FILE     "rids\\sender_counter"
 #define DEFDIR          "C:\\Program Files\\ossec-agent"

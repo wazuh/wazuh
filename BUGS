@@ -14,7 +14,7 @@ the following information:
 -Output of "WAZUH_HOME/bin/wazuh-control info"
 -Content of WAZUH_HOME/etc/manager.conf
 -Content of WAZUH_HOME/etc/agent.conf
--Content of WAZUH_HOME/logs/ossec.log
+-Content of WAZUH_HOME/logs/wazuh.log
 -Operating system name/version (uname -a if Unix)
 -Any other relevant information.
 

@@ -423,11 +423,34 @@ UpdateOldVersions()
     # Update versions previous to Wazuh 5.0.0, which is a breaking change
     if [ "X$1" = "Xyes" ]; then
 
+        echo "Renaming and deleting old files..."
+
+        OSSEC_LOG_FILE="$PREINSTALLEDDIR/logs/ossec.log"
+        OSSEC_JSON_FILE="$PREINSTALLEDDIR/logs/ossec.json"
+        LOG_WAZUH_FOLDER="$PREINSTALLEDDIR/logs/wazuh"
+
+        # Remove ossec.log and ossec.json
+        rm -v $OSSEC_LOG_FILE
+        rm -v $OSSEC_JSON_FILE
+
+        # Remove all rotated logs
+        if [ -d $LOG_WAZUH_FOLDER ]; then
+            rm -rfv $LOG_WAZUH_FOLDER/*
+        fi
+
         OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
         OSSEC_CONF_FILE_BACKUP="$PREINSTALLEDDIR/etc/ossec.conf.backup"
 
         # Rename ossec.conf to ossec.conf.backup
         mv $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
+
+        OLD_TEMPLATE="$PREINSTALLEDDIR/etc/shared/agent-template.conf"
+        NEW_TEMPLATE="$PREINSTALLEDDIR/etc/shared/shared-template.conf"
+
+        # Delete template agent-template.conf
+        if [ -f "$OLD_TEMPLATE" ]; then
+            rm $OLD_TEMPLATE
+        fi
 
         # Delete centralized agent.conf
         if [ ! "$INSTYPE" = "agent" ]; then
@@ -435,17 +458,16 @@ UpdateOldVersions()
             do
                 OLD_GROUP_SHARED_FILE="$item_path/agent.conf"
                 NEW_GROUP_SHARED_FILE="$item_path/shared.conf"
-                OLD_TEMPLATE="$item_path/agent-template.conf"
-                NEW_TEMPLATE="$item_path/shared-template.conf"
+                OLD_GROUP_TEMPLATE="$item_path/agent-template.conf"
+
                 if [ -d "$item_path" ]; then
                     if [ -f "$OLD_GROUP_SHARED_FILE" ]; then
                         rm $OLD_GROUP_SHARED_FILE
-                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_GROUP_SHARED_FILE
+                        cp -pf $NEW_TEMPLATE $NEW_GROUP_SHARED_FILE
                     fi
 
-                    if [ -f "$OLD_TEMPLATE" ]; then
-                        rm $OLD_TEMPLATE
-                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_TEMPLATE
+                    if [ -f "$OLD_GROUP_TEMPLATE" ]; then
+                        rm $OLD_GROUP_TEMPLATE
                     fi
                 fi
             done
@@ -454,6 +476,7 @@ UpdateOldVersions()
             do
                 OLD_MULTIGROUP_FILE="$item_multigroup/agent.conf"
                 OLD_MULTIGROUP_TEMPLATE="$item_multigroup/agent-template.conf"
+
                 if [ -d "$item_multigroup" ]; then
                     if [ -f "$OLD_MULTIGROUP_FILE" ]; then
                         rm $OLD_MULTIGROUP_FILE
@@ -466,6 +489,7 @@ UpdateOldVersions()
             done
         else
             OLD_SHARED_FILE="$PREINSTALLEDDIR/etc/shared/agent.conf"
+
             if [ -f "$OLD_SHARED_FILE" ]; then
                 rm $OLD_SHARED_FILE
             fi

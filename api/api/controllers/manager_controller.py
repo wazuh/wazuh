@@ -252,7 +252,7 @@ async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limi
                 'level': level,
                 'q': q}
 
-    dapi = DistributedAPI(f=manager.ossec_log,
+    dapi = DistributedAPI(f=manager.wazuh_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -273,7 +273,7 @@ async def get_log_summary(request, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=manager.ossec_log_summary,
+    dapi = DistributedAPI(f=manager.wazuh_log_summary,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,

@@ -119,7 +119,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         /* Incorrect message size */
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
-            // truncate str before logging to ossec.log
+            // truncate str before logging to wazuh.log
 
             if (!__ms_reported) {
                 merror("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, (char* ) str);

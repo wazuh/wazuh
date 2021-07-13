@@ -250,7 +250,7 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
 
 
 def save_logs(test_name):
-    """Save api, cluster and ossec log if tests fail.
+    """Save api, cluster and wazuh log if tests fail.
 
     Parameters
     ----------
@@ -258,7 +258,7 @@ def save_logs(test_name):
         Name of the test.
     """
     logs_path = '/var/ossec/logs'
-    logs = ['api.log', 'cluster.log', 'ossec.log']
+    logs = ['api.log', 'cluster.log', 'wazuh.log']
     test_logs_path = os.path.join(current_path, '_test_results', 'logs')
     os.makedirs(test_logs_path, exist_ok=True)
     for log in logs:

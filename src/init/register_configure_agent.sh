@@ -32,7 +32,7 @@ edit_value_tag() {
     fi
 
     if [ "$?" != "0" ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> ${INSTALLDIR}/logs/ossec.log
+        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> ${INSTALLDIR}/logs/wazuh.log
     fi
 }
 
@@ -180,10 +180,10 @@ main () {
     get_deprecated_vars
 
     if [ ! -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
-        if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
-            touch -f ${INSTALLDIR}/logs/ossec.log
-            chmod 660 ${INSTALLDIR}/logs/ossec.log
-            chown root:wazuh ${INSTALLDIR}/logs/ossec.log
+        if [ ! -f ${INSTALLDIR}/logs/wazuh.log ]; then
+            touch -f ${INSTALLDIR}/logs/wazuh.log
+            chmod 660 ${INSTALLDIR}/logs/wazuh.log
+            chown root:wazuh ${INSTALLDIR}/logs/wazuh.log
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
@@ -211,7 +211,7 @@ main () {
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
     elif [ -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${INSTALLDIR}/logs/ossec.log
+        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${INSTALLDIR}/logs/wazuh.log
     fi
 
     if [ ! -s ${INSTALLDIR}/etc/client.keys ] && [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
@@ -224,7 +224,7 @@ main () {
         OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_REGISTRATION_CA}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_REGISTRATION_KEY}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_REGISTRATION_CERTIFICATE}")
-        ${INSTALLDIR}/bin/agent-auth ${OPTIONS} >> ${INSTALLDIR}/logs/ossec.log 2>/dev/null
+        ${INSTALLDIR}/bin/agent-auth ${OPTIONS} >> ${INSTALLDIR}/logs/wazuh.log 2>/dev/null
     fi
 
     unset_vars ${uname_s}

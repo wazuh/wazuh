@@ -43,14 +43,14 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     today = tm.tm_mday;
 
 #ifdef WIN32
-    // ossec.log
+    // wazuh.log
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    // ossec.json
+    // wazuh.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
-    // /var/ossec/logs/ossec.log
+    // /var/ossec/logs/wazuh.log
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    // /var/ossec/logs/ossec.json
+    // /var/ossec/logs/wazuh.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
@@ -60,7 +60,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
 
         if (today != tm.tm_mday) {
             sleep(day_wait);
-            /* Daily rotation and compression of ossec.log/ossec.json */
+            /* Daily rotation and compression of wazuh.log/wazuh.json */
             w_rotate_log(log_compress, keep_log_days, 1, 0, daily_rotations);
             today = tm.tm_mday;
         }
@@ -68,7 +68,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         if (size_rotate > 0) {
             if (stat(path, &buf) == 0) {
                 size = buf.st_size;
-                /* If log file reachs maximum size, rotate ossec.log */
+                /* If log file reachs maximum size, rotate wazuh.log */
                 if ( (unsigned long) size >= size_rotate) {
                     w_rotate_log(log_compress, keep_log_days, 0, 0, daily_rotations);
                 }
@@ -76,7 +76,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
 
             if (stat(path_json, &buf) == 0) {
                 size = buf.st_size;
-                /* If log file reachs maximum size, rotate ossec.json */
+                /* If log file reachs maximum size, rotate wazuh.json */
                 if ( (unsigned long) size >= size_rotate) {
                     w_rotate_log(log_compress, keep_log_days, 0, 1, daily_rotations);
                 }

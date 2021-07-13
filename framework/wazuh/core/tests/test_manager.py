@@ -14,7 +14,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.exception import WazuhException
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
-ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
+wazuh_log_path = '{0}/wazuh_log.log'.format(test_data_path)
 
 
 class InitManager:
@@ -41,7 +41,7 @@ def test_manager():
 
 
 def get_logs():
-    with open(ossec_log_path) as f:
+    with open(wazuh_log_path) as f:
         return f.read()
 
 
@@ -90,9 +90,9 @@ def test_get_status(manager_glob, manager_exists, test_manager, process_status):
         manager_exists.assert_any_call("/proc/0234")
 
 
-def test_get_ossec_log_fields():
-    """Test get_ossec_log_fields() method returns a tuple"""
-    result = get_ossec_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
+def test_get_wazuh_log_fields():
+    """Test get_wazuh_log_fields() method returns a tuple"""
+    result = get_wazuh_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
     assert isinstance(result, tuple), 'The result is not a tuple'
     assert result[0] == datetime(2020, 7, 14, 6, 10, 40)
     assert result[1] == 'wazuh-rootcheck'
@@ -100,18 +100,18 @@ def test_get_ossec_log_fields():
     assert result[3] == ' Ending rootcheck scan.'
 
 
-def test_get_ossec_log_fields_ko():
-    """Test get_ossec_log_fields() method returns None when nothing matches """
-    result = get_ossec_log_fields('DEBUG')
+def test_get_wazuh_log_fields_ko():
+    """Test get_wazuh_log_fields() method returns None when nothing matches """
+    result = get_wazuh_log_fields('DEBUG')
     assert not result
 
 
-def test_get_ossec_logs():
-    """Test get_ossec_logs() method returns result with expected information"""
+def test_get_wazuh_logs():
+    """Test get_wazuh_logs() method returns result with expected information"""
     logs = get_logs().splitlines()
 
     with patch('wazuh.core.manager.tail', return_value=logs):
-        result = get_ossec_logs()
+        result = get_wazuh_logs()
         assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
 
 
