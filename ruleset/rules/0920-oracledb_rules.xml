@@ -18,5 +18,4 @@
         <if_sid>89100</if_sid>
         <description>OracleDB transaction</description>
     </rule>
-
 </group>

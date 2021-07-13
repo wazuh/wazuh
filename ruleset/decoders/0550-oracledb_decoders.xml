@@ -42,7 +42,7 @@ Log example:
     <regex>^CLIENT TERMINAL:\[\d+] '(.*)'\n</regex>
     <regex>^STATUS:\[\d+] '(.*)'\n</regex>
     <regex type="pcre2">^DBID:\[\d+] '(.*)'</regex>
-    <order>length, action, database_user, privilege, client_user, client_terminal, status, database_id</order>
+    <order>length, action, database_user, privilege_level, client_user, client_terminal, status, database_id</order>
 </decoder>
 
 <!-- Parent decoder for oracledb .log files -->
