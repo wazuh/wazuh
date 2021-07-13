@@ -77,6 +77,22 @@ If Not objFSO.fileExists(home_dir & "client.keys") Then
     objFSO.CreateTextFile(home_dir & "client.keys")
 End If
 
+' Remove ossec.log
+If objFSO.fileExists(home_dir & "ossec.log") Then
+    objFSO.DeleteFile(home_dir & "ossec.log")
+End If
+
+' Remove ossec.json
+If objFSO.fileExists(home_dir & "ossec.json") Then
+    objFSO.DeleteFile(home_dir & "ossec.json")
+End If
+
+' Remove all rotated logs
+If objFSO.folderExists(home_dir & "logs\") Then
+    objFSO.DeleteFolder(home_dir & "logs")
+    objFSO.CreateFolder(home_dir & "logs")
+End If
+
 If objFSO.fileExists(home_dir & "ossec.conf") Then
     ' Reading ossec.conf file
     Const ForReading = 1

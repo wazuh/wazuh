@@ -60,11 +60,11 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                     continue;
                 }
 
-                snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
+                snprintf(aname, 255, "%s/%d/%s/wazuh-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
 
                 for (i = 1; !IsFile(aname); i++) {
                     /* Open the log file */
-                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
+                    snprintf(aname, 255, "%s/%d/%s/wazuh-%s-%02d.log", ALERTS, cyear, monthss[cmon], "alerts", cday);
                     os_strdup(aname, mond.reports[s]->r_filter.filename);
 
                     /* Start report */
@@ -90,7 +90,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                     free(mond.reports[s]->r_filter.filename);
                     mond.reports[s]->r_filter.filename = NULL;
 
-                    snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d-%.3d.log", ALERTS, cyear, monthss[cmon], "alerts", cday, i);
+                    snprintf(aname, 255, "%s/%d/%s/wazuh-%s-%02d-%.3d.log", ALERTS, cyear, monthss[cmon], "alerts", cday, i);
                 }
 
                 exit(0);

@@ -423,14 +423,14 @@ void audit_parse(char *buffer) {
                 minfo(FIM_AUDIT_REMOVE_RULE, p_dir);
                 // Send alert
                 char msg_alert[512 + 1];
-                snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
+                snprintf(msg_alert, 512, "wazuh: Audit: Monitored directory was removed: Audit rule removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
             } else if (fim_manipulated_audit_rules() == 0) {
                 // If the manipulation wasn't done by syscheck, increase the number of retries
                 mwarn(FIM_WARN_AUDIT_RULES_MODIFIED);
                 // Send alert
                 char msg_alert[512 + 1];
-                snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+                snprintf(msg_alert, 512, "wazuh: Audit: Detected rules manipulation: Audit rules removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 
                 count_reload_retries++;
@@ -441,7 +441,7 @@ void audit_parse(char *buffer) {
                 } else {
                     // Send alert
                     char msg_alert[512 + 1];
-                    snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
+                    snprintf(msg_alert, 512, "wazuh: Audit: Detected rules manipulation: Max rules reload retries");
                     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
                     // Stop thread
                     atomic_int_set(&audit_thread_active, 0);
