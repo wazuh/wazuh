@@ -133,7 +133,7 @@ def test_clear(mock_connect, mock_info, agent_list, expected_affected_items, exp
 def test_get_last_scan(mock_connect, mock_send, mock_info):
     """Check if get_last_scan() returned results have expected format and content"""
     result = rootcheck.get_last_scan(['001']).render()['data']['affected_items'][0]
-    assert result['start'] == '2020-10-27 12:19:40' and result['end'] == '2020-10-27 12:29:40'
+    assert result['start'] == '2020-10-27T12:19:40Z' and result['end'] == '2020-10-27T12:29:40Z'
 
 
 @pytest.mark.parametrize('limit', [
