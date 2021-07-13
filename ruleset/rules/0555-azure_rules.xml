@@ -1,13 +1,12 @@
 <!--
   -  Microsoft Azure ruleset
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
-ID: 87800-87899
 -->
 
 <!--
-
+ID: 87800-87899
 #Log-analytics
 
 {"Category": "Administrative", "ResourceProvider": "Microsoft.Compute", "ActivitySubstatus": "", "TenantId": "d6b...efa", "ActivityStatus": "Started", "Type": "AzureActivity", "Authorization": "{\r\n  \"action\": \"Microsoft.Compute/virtualMachines/start/action\",\r\n  \"scope\": \"/subscriptions/d17...6dd/resourceGroups/WazuhGroup/providers/Microsoft.Compute/virtualMachines/Logstash\"\r\n}", "OperationId": "d3ebb2e7-56d8-4927-bf83-01542e81c24f", "azure_tag": "azure-log-analytics", "ResourceId": "/subscriptions/d17...6dd/resourceGroups/WazuhGroup/providers/Microsoft.Compute/virtualMachines/Logstash", "OperationName": "Microsoft.Compute/virtualMachines/start/action", "Properties": "", "CorrelationId": "d3ebb2e7-56d8-4927-bf83-01542e81c24f", "HTTPRequest": "{\r\n  \"clientRequestId\": \"ce682d26-c7e5-4fac-94e2-824e208e1005\",\r\n  \"clientIpAddress\": \"83.49.98.225\",\r\n  \"method\": \"POST\"\r\n}", "log_analytics_tag": "azure-activity", "Resource": "Logstash", "Level": "Informational", "Caller": "sample@wazuh.com", "TimeGenerated": "2018-05-25T15:43:16.52Z", "ResourceGroup": "WazuhGroup", "SubscriptionId": "d17...6dd", "EventSubmissionTimestamp": "2018-05-25T15:43:36.109Z", "CallerIpAddress": "83.49.98.225", "EventDataId": "59bd108f-41ae-443a-8902-b654a72a8af7", "SourceSystem": "Azure"}

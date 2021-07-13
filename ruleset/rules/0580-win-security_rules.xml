@@ -1,10 +1,14 @@
 <!--
   -  Windows Event Channel ruleset for the Security channel
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
   -  ID range: 60100 - 60599
 -->
+
 
 <var name="MS_FREQ">8</var>
 

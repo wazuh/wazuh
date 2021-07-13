@@ -1,10 +1,11 @@
-<!--NEXTCLOUD-->
 <!--
 -  NextCloud ruleset
--  Created by banditopazzo.
--  Copyright (C) 2015-2020, Wazuh Inc.
+-  Author: banditopazzo.
+-  Updated by Wazuh, Inc.
+-  Copyright (C) 2015-2021, Wazuh Inc.
 -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
+
 <!--
 - It's needed to enable audit in Nextcloud if you want full log
 - It's needed to paste the following in /var/ossec/etc/ossec.conf for the decoder to work properly:
