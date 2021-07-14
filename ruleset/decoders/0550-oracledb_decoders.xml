@@ -53,7 +53,8 @@ Log example:
     <location>/tmp/oracle/alert_CDBTST931.log</location>
     <multiline_regex match="start">(?m)\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}</multiline_regex>
     <out_format>$(timestamp) $(hostname) oracledb_alerts: $(log)</out_format>
-  </localfile>-->
+  </localfile>
+-->
 <!--
 Log example:
   Tue Feb 23 11:53:46 2021
