@@ -20,6 +20,7 @@
     <rule id="89101" level="3">
         <if_sid>89100</if_sid>
         <description>OracleDB transaction</description>
+        <group>pci_dss_10.6.2,hipaa_164.312.b</group>
     </rule>
 
     <!--
@@ -28,5 +29,6 @@
     <rule id="89102" level="7">
       <decoded_as>oracledb_alerts</decoded_as>
       <description>Oracle DB alerts</description>
+      <group>pci_dss_10.6.1,hipaa_164.312.b</group>
   </rule>
 </group>
