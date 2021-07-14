@@ -1,0 +1,24 @@
+<!--
+  -  Sysmon Event ID 7 rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="sysmon_eid7_detections,">
+    <!-- Sample: {"win":{"eventdata":{"originalFileName":"System.Management.Automation.dll","image":"C:\\\\Windows\\\\tiny.exe","product":"Microsoft (R) Windows (R) Operating System","imageLoaded":"C:\\\\Windows\\\\assembly\\\\NativeImages_v4.0.30319_64\\\\System.Manaa57fc8cc#\\\\b9fb242f469332d0a2e43fbb5bed25bd\\\\System.Management.Automation.ni.dll","description":"System.Management.Automation","signed":"false","signatureStatus":"Unavailable","processGuid":"{86107A5D-D195-60DC-0B08-B60000000000}","processId":"8436","utcTime":"2021-06-30 20:19:04.450","hashes":"SHA1=6B7D60621FB17C0DE264109E1404AC9D1FD52AB3,MD5=67CFC833A98E43C452388F918FB7E4C1,SHA256=71DACD5ECFFE84A09F38C927F5C7561594391E3DD7DD9DF962BEC7F120F34186,IMPHASH=00000000000000000000000000000000","ruleName":"technique_id=T1059.001,technique_name=PowerShell","company":"Microsoft Corporation","fileVersion":"10.0.14393.693"},"system":{"eventID":"7","keywords":"0x8000000000000000","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Image loaded:\r\nRuleName: technique_id=T1059.001,technique_name=PowerShell\r\nUtcTime: 2021-06-30 20:19:04.450\r\nProcessGuid: {86107A5D-D195-60DC-0B08-B60000000000}\r\nProcessId: 8436\r\nImage: C:\\Windows\\tiny.exe\r\nImageLoaded: C:\\Windows\\assembly\\NativeImages_v4.0.30319_64\\System.Manaa57fc8cc#\\b9fb242f469332d0a2e43fbb5bed25bd\\System.Management.Automation.ni.dll\r\nFileVersion: 10.0.14393.693\r\nDescription: System.Management.Automation\r\nProduct: Microsoft (R) Windows (R) Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: System.Management.Automation.dll\r\nHashes: SHA1=6B7D60621FB17C0DE264109E1404AC9D1FD52AB3,MD5=67CFC833A98E43C452388F918FB7E4C1,SHA256=71DACD5ECFFE84A09F38C927F5C7561594391E3DD7DD9DF962BEC7F120F34186,IMPHASH=00000000000000000000000000000000\r\nSigned: false\r\nSignature: -\r\nSignatureStatus: Unavailable\"","version":"3","systemTime":"2021-06-30T20:19:05.025071300Z","eventRecordID":"829139","threadID":"3700","computer":"bankdc.ExchangeTest.com","task":"7","processID":"2508","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
+    <rule id="92031" level="12">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)System.Management.Automation.dll</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]\:\\Windows\\Microsoft.NET\\.+\\csc\\.exe$</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(devenv|node|SSMS|VSLauncher)\.exe$</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(sdiagnhost|SmartAudio3)\.exe$</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)(pwsh\.dll|powershell(_ise)?\.exe)$</field>
+        <description>Binary loaded PowerShell automation library - Possible unmanaged Powershell execution by suspicious process</description>
+        <mitre>
+            <id>T1059.001</id>
+        </mitre>
+    </rule>
+
+
+</group>

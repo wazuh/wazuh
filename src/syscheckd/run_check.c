@@ -350,28 +350,46 @@ void start_daemon()
 }
 // LCOV_EXCL_STOP
 
-
-// LCOV_EXCL_START
 // Starting Real-time thread
-#ifdef WIN32
+#if defined WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
-#else
-void * fim_run_realtime(__attribute__((unused)) void * args) {
-#endif
-
-#if defined INOTIFY_ENABLED || defined WIN32
-    static int _base_line = 0;
-    int nfds = -1;
-
-#ifdef WIN32
     directory_t *dir_it;
     OSListNode *node_it;
+    int watches;
 
     set_priority_windows_thread();
-#endif
+    // Directories in Windows configured with real-time add recursive watches
+    w_rwlock_wrlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        if (dir_it->options & REALTIME_ACTIVE) {
+            realtime_adddir(dir_it->path, dir_it);
+        }
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
-    while (1) {
-#ifdef WIN32
+    watches = get_realtime_watches();
+    if (watches != 0) {
+        mdebug2(FIM_NUM_WATCHES, watches);
+    }
+
+    while (FOREVER()) {
+
+#ifdef WIN_WHODATA
+        if (syscheck.realtime_change) {
+            set_whodata_mode_changes();
+        }
+#endif
+        if (get_realtime_watches() > 0) {
+            log_realtime_status(1);
+
+            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
+                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+            }
+        } else {
+            sleep(SYSCHECK_WAIT);
+        }
+
         // Directories in Windows configured with real-time add recursive watches
         w_rwlock_wrlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
@@ -381,27 +399,17 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             }
         }
         w_rwlock_unlock(&syscheck.directories_lock);
-#endif
+    }
+    return 0;
+}
 
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (_base_line == 0) {
-            _base_line = 1;
+#elif defined INOTIFY_ENABLED
+void *fim_run_realtime(__attribute__((unused)) void * args) {
+    int nfds = -1;
 
-            if (syscheck.realtime != NULL) {
-                if (syscheck.realtime->queue_overflow) {
-                    realtime_sanitize_watch_map();
-                    syscheck.realtime->queue_overflow = false;
-                }
-                mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
-            }
-        }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+    fim_realtime_print_watches();
 
-#ifdef WIN_WHODATA
-        if (syscheck.realtime_change) {
-            set_whodata_mode_changes();
-        }
-#endif
+    while (FOREVER()) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
             nfds = syscheck.realtime->fd;
@@ -410,7 +418,6 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 
         if (nfds >= 0) {
             log_realtime_status(1);
-#ifdef INOTIFY_ENABLED
             struct timeval selecttime;
             fd_set rfds;
             int run_now = 0;
@@ -421,12 +428,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             // zero-out the fd_set
             FD_ZERO (&rfds);
             FD_SET(nfds, &rfds);
-            run_now = select(nfds + 1,
-                            &rfds,
-                            NULL,
-                            NULL,
-                            &selecttime);
-
+            run_now = select(nfds + 1, &rfds, NULL, NULL, &selecttime);
 
             if (run_now < 0) {
                 merror(FIM_ERROR_SELECT);
@@ -436,17 +438,15 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
                 realtime_process();
             }
 
-#elif defined WIN32
-            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
-            }
-#endif
         } else {
             sleep(SYSCHECK_WAIT);
         }
     }
+    return NULL;
+}
 
 #else
+void * fim_run_realtime(__attribute__((unused)) void * args) {
     directory_t *dir_it;
     OSListNode *node_it;
     w_rwlock_rdlock(&syscheck.directories_lock);
@@ -460,11 +460,9 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     w_rwlock_unlock(&syscheck.directories_lock);
 
     pthread_exit(NULL);
-#endif
-
 }
+#endif
 // LCOV_EXCL_STOP
-
 
 #ifdef WIN32
 void set_priority_windows_thread() {
@@ -747,11 +745,7 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
     } else {
         fim_link_delete_range(configuration);
 
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime && syscheck.realtime->dirtb) {
-            fim_delete_realtime_watches(configuration);
-        }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        fim_realtime_delete_watches(configuration);
 
 #ifdef ENABLE_AUDIT
         if (configuration->options & WHODATA_ACTIVE) {
@@ -762,55 +756,6 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
         os_free(configuration->symbolic_links);
         w_mutex_unlock(&syscheck.fim_symlink_mutex);
     }
-}
-
-void fim_delete_realtime_watches(__attribute__((unused)) const directory_t *configuration) {
-#ifdef INOTIFY_ENABLED
-    OSHashNode *hash_node;
-    char *data;
-    W_Vector * watch_to_delete = W_Vector_init(1024);
-    unsigned int inode_it = 0;
-    int deletion_it = 0;
-    directory_t *dir_conf;
-    directory_t *watch_conf;
-
-    assert(watch_to_delete != NULL);
-    assert(configuration != NULL);
-
-    dir_conf = fim_configuration_directory(configuration->symbolic_links);
-
-    if (dir_conf == NULL) {
-        W_Vector_free(watch_to_delete);
-        return;
-    }
-
-    for (hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it); hash_node;
-         hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node)) {
-        data = hash_node->data;
-        if (data == NULL) {
-            continue;
-        }
-        watch_conf = fim_configuration_directory(data);
-
-        if (dir_conf == watch_conf) {
-            W_Vector_insert(watch_to_delete, hash_node->key);
-            deletion_it++;
-        }
-    }
-
-    deletion_it--;
-    while(deletion_it >= 0) {
-        const char * wd_str = W_Vector_get(watch_to_delete, deletion_it);
-        assert(wd_str != NULL);
-
-        inotify_rm_watch(syscheck.realtime->fd, atol(wd_str));
-        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd_str));
-        deletion_it--;
-    }
-
-    W_Vector_free(watch_to_delete);
-#endif
-    return;
 }
 
 STATIC void fim_link_delete_range(directory_t *configuration) {

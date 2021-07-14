@@ -179,8 +179,27 @@ int w_parse_bool(const char * string);
 long w_parse_time(const char * string);
 
 /**
+ * @brief Parse positive size string into bytes
+ *
+ * Format: ^[0-9]+(b|B|k|K|m|M|g|G)?
+ *
+ * b/B: bytes
+ * k/K: kilobytes
+ * m/M: megabytes
+ * g/G: gigabytes
+ *
+ * Any character after the first byte is ignored.
+ *
+ * @param string Input string.
+ * @pre string is not null.
+ * @return Size represented in bytes.
+ * @retval -1 Cannot parse string, or value is negative.
+ */
+ssize_t w_parse_size(const char * string);
+
+/**
  * @brief Convert seconds into the greater valid time unit (s|m|h|d|w).
- * The conversion will always round down the output. 
+ * The conversion will always round down the output.
  *
  * s: seconds
  * m: minutes
@@ -189,7 +208,7 @@ long w_parse_time(const char * string);
  * w: weeks
  *
  * @param seconds Positive amount of seconds.
- * @param long_format Format of the output. 
+ * @param long_format Format of the output.
  *                    TRUE: long format ("second(s)").
  *                    FALSE: short format ("s")
  * @return String with the time unit.

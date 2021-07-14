@@ -15,6 +15,7 @@
     node_name: master-node
     manager_host: wazuh-master
     connection_status: disconnected
+    date_add: 1625356800  # Sun, 04 Jul 2021 00:00:00 GMT
   labels:
     '#"_agent_ip"': 172.28.0.14
     '#"_manager_hostname"': wazuh-master
@@ -40,6 +41,7 @@
     node_name: master-node
     manager_host: wazuh-master
     connection_status: disconnected
+    date_add: 1625529600  # Tue, 06 Jul 2021 00:00:00 GMT
   labels:
     '#"_agent_ip"': 172.28.0.15
     '#"_manager_hostname"': wazuh-master

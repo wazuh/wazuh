@@ -359,7 +359,26 @@ int fim_add_inotify_watch(const char *dir, const directory_t *configuration);
  *
  * @param configuration Configuration associated with the file or directory
  */
-void fim_delete_realtime_watches(const directory_t *configuration);
+void fim_realtime_delete_watches(const directory_t *configuration);
+
+/**
+ * @brief Check whether the realtime event queue has overflown.
+ *
+ * @return 0 if the queue hasn't overflown, 1 otherwise.
+ */
+int fim_realtime_get_queue_overflow();
+
+/**
+ * @brief Set the value of the queue overflown flag.
+ *
+ * @param value The new value to set the queue overflow flag.
+ */
+void fim_realtime_set_queue_overflow(int value);
+
+/**
+ * @brief Log the number of realtime watches currently set.
+ */
+void fim_realtime_print_watches();
 
 /**
  * @brief Process events in the real time queue
@@ -480,10 +499,16 @@ void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
 
 /**
+ * @brief Create the necessary file to store the audit rules to be loaded by the immutable mode.
+ *
+*/
+void audit_create_rules_file();
+
+/**
  * @brief Set all directories that don't have audit rules and have whodata enabled to realtime.
  *
 */
-void audit_no_rules_to_realtime();
+void audit_rules_to_realtime();
 
 /**
  * @brief Set Auditd socket configuration
@@ -630,10 +655,11 @@ char *fim_registry_value_diff(const char *key_name,
  * @brief Function that generates the diff file of a file monitored when the option report_changes is activated
  *
  * @param filename Path of file monitored
+ * @param configuration Configuration associated with the given path.
  * @return String with the diff to add to the alert
  */
 
-char * fim_file_diff(const char *filename);
+char *fim_file_diff(const char *filename, const directory_t *configuration);
 
 /**
  * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
@@ -736,6 +762,14 @@ int w_update_sacl(const char *obj_path);
  */
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
+
+/**
+ * @brief Get the number of realtime watches opened by FIM.
+ *
+ * @return Number of realtime watches.
+ */
+unsigned int get_realtime_watches();
+
 #else
 void *fim_run_integrity(void *args);
 #endif

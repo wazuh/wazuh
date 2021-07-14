@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import copy
+from datetime import datetime
 from functools import lru_cache
 from typing import Union
 
@@ -22,6 +23,9 @@ RELATIONAL_REQUEST_SLICE = 256
 # Select used for each item's references
 SELECT_FIELDS_REFERENCES = ['url', 'description', 'source', 'external_id']
 
+# Extra fields from references
+EXTRA_FIELDS = {'url', 'source', 'external_id'}
+
 
 class WazuhDBQueryMitre(WazuhDBQuery):
 
@@ -38,12 +42,41 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                               fields=fields, default_sort_field=default_sort_field,
                               default_sort_order=default_sort_order, filters=filters, query=query, count=count,
                               get_data=True, min_select_fields=min_select_fields,
+                              date_fields={'created_time', 'modified_time'},
                               backend=WazuhDBBackend(query_format='mitre', request_slice=request_slice))
 
         self.relation_fields = set()  # This variable contains valid fields not included in the database (relations)
 
     def _filter_status(self, status_filter):
         pass
+
+    def _move_external_id_mitre_resource(self, mitre_resource: dict):
+        """Extract the dictionary with external id, source and url from references and move it to the external level of
+        the MITRE resource.
+
+        Parameters
+        ----------
+        mitre_resource : dict
+            MITRE resource we want to update the reference from.
+        """
+        # Take the reference with external_id checking it is not None
+        reference_external_id = next(
+            (row_no_id for row_no_id in mitre_resource['references'] if
+             'external_id' in row_no_id and row_no_id['external_id']), {})
+        if 'description' in reference_external_id:
+            reference_external_id.pop('description')
+
+        # Delete the reference from references and update the MITRE object
+        if reference_external_id:
+            mitre_resource['references'].remove(reference_external_id)
+        mitre_resource.update(reference_external_id)
+
+    def _format_data_into_dictionary(self):
+        """Standardization of dates to the ISO 8601 format."""
+        [t.update((k, datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime(common.decimals_date_format))
+                  for k, v in t.items() if k in self.date_fields) for t in self._data]
+
+        return {'items': self._data, 'totalItems': self.total_items}
 
 
 class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
@@ -158,6 +191,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
                                    request_slice=MITIGATIONS_REQUEST_SLICE)
 
         self.relation_fields = {'techniques', 'references'}
+        self.extra_fields = EXTRA_FIELDS
 
     def _filter_status(self, status_filter):
         pass
@@ -185,6 +219,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
             mitigation['references'] = [row_no_id for row, row_no_id in
                                         zip(references['items'], references_no_id['items']) if
                                         row['id'] == mitigation['id']]
+            self._move_external_id_mitre_resource(mitigation)
 
 
 class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
@@ -243,6 +278,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
                                    select=list(set(self.fields.values()).intersection(set(select))))
 
         self.relation_fields = {'techniques', 'references'}
+        self.extra_fields = EXTRA_FIELDS
 
     def _filter_status(self, status_filter):
         pass
@@ -269,6 +305,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
             tactic['references'] = [row_no_id for row, row_no_id in
                                     zip(references['items'], references_no_id['items']) if
                                     row['id'] == tactic['id']]
+            self._move_external_id_mitre_resource(tactic)
 
 
 class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
@@ -300,8 +337,8 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                                    select=list(set(self.fields.values()).intersection(set(select))),
                                    request_slice=TECHNIQUES_REQUEST_SLICE)
 
-        self.relation_fields = {'tactics', 'mitigations', 'software', 'groups',
-                                'references'}
+        self.relation_fields = {'tactics', 'mitigations', 'software', 'groups', 'references'}
+        self.extra_fields = EXTRA_FIELDS
 
     def _filter_status(self, status_filter):
         pass
@@ -345,6 +382,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             technique['references'] = [row_no_id for row, row_no_id in
                                        zip(references['items'], references_no_id['items']) if
                                        row['id'] == technique['id']]
+            self._move_external_id_mitre_resource(technique)
 
 
 class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
@@ -375,6 +413,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
                                    request_slice=GROUPS_REQUEST_SLICE)
 
         self.relation_fields = {'software', 'techniques', 'references'}
+        self.extra_fields = EXTRA_FIELDS
 
     def _filter_status(self, status_filter):
         pass
@@ -410,6 +449,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             group['references'] = [row_no_id for row, row_no_id in
                                    zip(references['items'], references_no_id['items']) if
                                    row['id'] == group['id']]
+            self._move_external_id_mitre_resource(group)
 
 
 class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
@@ -440,6 +480,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
                                    request_slice=SOFTWARE_REQUEST_SLICE)
 
         self.relation_fields = {'groups', 'techniques', 'references'}
+        self.extra_fields = EXTRA_FIELDS
 
     def _filter_status(self, status_filter):
         pass
@@ -477,6 +518,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
             software['references'] = [row_no_id for row, row_no_id in
                                       zip(references['items'], references_no_id['items']) if
                                       row['id'] == software['id']]
+            self._move_external_id_mitre_resource(software)
 
 
 @lru_cache(maxsize=None)
@@ -497,15 +539,17 @@ def get_mitre_items(mitre_class: callable):
     """
     info = {'min_select_fields': None, 'allowed_fields': None}
     db_query = mitre_class(limit=None)
-    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
+    info['allowed_fields'] = \
+        set(db_query.fields.keys()).union(set(db_query.relation_fields)).union(db_query.extra_fields)
     info['min_select_fields'] = set(db_query.min_select_fields)
     data = db_query.run()
 
     return info, data
 
 
-def get_results_with_select(mitre_class, filters, select, offset, limit, sort_by, sort_ascending, search_text,
-                            complementary_search, search_in_fields, q):
+def get_results_with_select(mitre_class: callable, filters: str, select: list, offset: int, limit: int, sort_by: dict,
+                            sort_ascending: bool, search_text: str, complementary_search: bool, search_in_fields: list,
+                            q: str) -> list:
     """Sanitize the select parameter and processes the list of MITRE resources.
 
     Parameters
@@ -517,20 +561,19 @@ def get_results_with_select(mitre_class, filters, select, offset, limit, sort_by
     select : list
         Select which fields to return (separated by comma).
     offset : int
-        First item to return
+        First item to return.
     limit : int
-        Maximum number of items to return
-
+        Maximum number of items to return.
     sort_by : dict
         Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
     sort_ascending : bool
-        Sort in ascending (true) or descending (false) order
+        Sort in ascending (true) or descending (false) order.
     search_text : str
-        Text to search
+        Text to search.
     complementary_search : bool
-        Find items without the text to search
+        Find items without the text to search.
     search_in_fields : list
-        Fields to search in
+        Fields to search in.
     q : str
         Query for filtering a list of results.
 

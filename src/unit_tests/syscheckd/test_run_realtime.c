@@ -37,14 +37,6 @@
 
 #ifdef TEST_WINAGENT
 // This struct should always reflect the one defined in run_realtime.c
-typedef struct _win32rtfim {
-    HANDLE h;
-    OVERLAPPED overlap;
-
-    char *dir;
-    TCHAR buffer[65536];
-    unsigned int watch_status;
-} win32rtfim;
 
 int realtime_win32read(win32rtfim *rtlocald);
 void free_win32rtfim_data(win32rtfim *data);
@@ -114,8 +106,18 @@ static int teardown_RTCallBack(void **state) {
 
     return 0;
 }
-#endif
-#endif
+#endif // WIN_WHODATA
+
+static int setup_realtime_adddir_realtime_start_error(void **state) {
+    *state = syscheck.realtime;
+    return 0;
+}
+
+static int teardown_realtime_adddir_realtime_start_error(void **state) {
+    return 0;
+}
+
+# else // TEST_WINAGENT
 
 static int setup_realtime_adddir_realtime_start_error(void **state) {
     *state = syscheck.realtime;
@@ -128,6 +130,7 @@ static int teardown_realtime_adddir_realtime_start_error(void **state) {
 
     return 0;
 }
+#endif
 
 static int setup_realtime_start(void **state) {
     OSHash *hash = calloc(1, sizeof(OSHash));
@@ -310,7 +313,6 @@ void test_realtime_start_success(void **state) {
 
     assert_int_equal(ret, 0);
 #ifdef TEST_WINAGENT
-    assert_int_equal(syscheck.realtime->fd, -1);
     assert_ptr_equal(syscheck.realtime->evt, 123456);
 #endif
 }
@@ -608,7 +610,10 @@ void test_realtime_process_len(void **state) {
     paths = os_AddStrArray("/test", paths);
 
     will_return(__wrap_rbtree_keys, paths);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_string(__wrap_fim_realtime_event, file, "/test");
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -645,7 +650,10 @@ void test_realtime_process_len_zero(void **state) {
     paths = os_AddStrArray("/test", paths);
 
     will_return(__wrap_rbtree_keys, paths);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_string(__wrap_fim_realtime_event, file, "/test");
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -680,7 +688,10 @@ void test_realtime_process_len_path_separator(void **state) {
     paths = os_AddStrArray("/test", paths);
 
     will_return(__wrap_rbtree_keys, paths);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_string(__wrap_fim_realtime_event, file, "/test");
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -703,6 +714,8 @@ void test_realtime_process_overflow(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_string(__wrap_send_log_msg, msg, "ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     will_return(__wrap_send_log_msg, 1);
 
@@ -710,7 +723,10 @@ void test_realtime_process_overflow(void **state) {
     paths = os_AddStrArray("/test", paths);
 
     will_return(__wrap_rbtree_keys, paths);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_string(__wrap_fim_realtime_event, file, "/test");
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     realtime_process();
 
@@ -752,7 +768,10 @@ void test_realtime_process_delete(void **state) {
     paths = os_AddStrArray("/test", paths);
 
     will_return(__wrap_rbtree_keys, paths);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_string(__wrap_fim_realtime_event, file, "/test");
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -814,7 +833,10 @@ void test_realtime_process_move_self(void **state) {
     paths = os_AddStrArray("/test", paths);
 
     will_return(__wrap_rbtree_keys, paths);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_string(__wrap_fim_realtime_event, file, "/test");
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     test_mode = 1;
     realtime_process();
@@ -906,8 +928,14 @@ void test_delete_subdirectories_watches_deletes(void **state) {
 
 
 void test_realtime_sanitize_watch_map_empty_hash(void **state) {
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_any(__wrap__mdebug2, formatted_msg);
 
@@ -916,6 +944,10 @@ void test_realtime_sanitize_watch_map_empty_hash(void **state) {
 
 void test_realtime_sanitize_watch_map_inotify_not_connected(void **state) {
     OSHashNode node;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, &node);
 
@@ -923,6 +955,9 @@ void test_realtime_sanitize_watch_map_inotify_not_connected(void **state) {
 
     expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Next, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_any(__wrap__mdebug2, formatted_msg);
 
@@ -1494,16 +1529,22 @@ void test_realtime_adddir_whodata_dir_success(void **state) {
 
 void test_realtime_adddir_max_limit_reached(void **state) {
     int ret;
+    char msg[OS_SIZE_256] = { '\0' };
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    syscheck.realtime->fd = 1024;
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Get_ex, NULL);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Get_Elem_ex, 257);
+
+    snprintf(msg, OS_SIZE_256, FIM_REALTIME_MAXNUM_WATCHES, "C:\\a\\path");
+    expect_string(__wrap__mdebug1, formatted_msg, msg);
 
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
@@ -1518,8 +1559,6 @@ void test_realtime_adddir_duplicate_entry(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-
-    syscheck.realtime->fd = 128;
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
@@ -1542,9 +1581,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_valid_handle(vo
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    syscheck.realtime->fd = 128;
-
-    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+        expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, &rtlocald);
 
@@ -1585,8 +1622,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     rtlocald->watch_status = FIM_RT_HANDLE_CLOSED;
     rtlocald->h = (HANDLE)1234;
 
-    syscheck.realtime->fd = 128;
-
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, rtlocald);
@@ -1615,7 +1650,6 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_invalid_handle(
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    syscheck.realtime->fd = 128;
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
@@ -1637,7 +1671,8 @@ void test_realtime_adddir_handle_error(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    syscheck.realtime->fd = 128;
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Get_Elem_ex, 128);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
@@ -1672,6 +1707,8 @@ void test_realtime_adddir_success(void **state) {
     will_return(wrap_CreateFile, (HANDLE)123456);
 
     will_return(wrap_ReadDirectoryChangesW, 1);
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, syscheck.realtime->dirtb);
+    will_return(__wrap_OSHash_Get_Elem_ex, 127);
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
@@ -1695,9 +1732,15 @@ void test_RTCallBack_error_on_callback(void **state) {
 void test_RTCallBack_empty_hash_table(void **state) {
     OVERLAPPED ov = {.hEvent = "C:\\a\\path"};
 
-    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
-    expect_any(__wrap_OSHash_Get, key);
-    will_return(__wrap_OSHash_Get, NULL);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_any(__wrap_OSHash_Get_ex, key);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     expect_string(__wrap__merror, formatted_msg, FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY);
 
@@ -1710,11 +1753,17 @@ void test_RTCallBack_no_bytes_returned(void **state) {
 
     rt->watch_status = 1;
 
-    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
-    expect_any(__wrap_OSHash_Get, key);
-    will_return(__wrap_OSHash_Get, rt);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_any(__wrap_OSHash_Get_ex, key);
+    will_return(__wrap_OSHash_Get_ex, rt);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     // Inside realtime_win32read
     will_return(wrap_ReadDirectoryChangesW, 1);
@@ -1727,8 +1776,8 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
     OVERLAPPED ov;
     PFILE_NOTIFY_INFORMATION pinfo;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     // Fill the win32rtfim struct with testing data
     pinfo = (PFILE_NOTIFY_INFORMATION) rt->buffer;
@@ -1744,9 +1793,9 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
 
     // Begin calls to mock functions
 
-    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
-    expect_string(__wrap_OSHash_Get, key, "C:\\a\\path");
-    will_return(__wrap_OSHash_Get, rt);
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Get_ex, rt);
 
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path");
     will_return(__wrap_fim_configuration_directory, 0);
@@ -1757,6 +1806,9 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
     // Inside realtime_win32read
     will_return(wrap_ReadDirectoryChangesW, 1);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
     RTCallBack(ERROR_SUCCESS, 1, &ov);
 }
 
@@ -1765,8 +1817,9 @@ void test_RTCallBack_acquired_changes(void **state) {
     OVERLAPPED ov;
     PFILE_NOTIFY_INFORMATION pinfo;
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     // Fill the win32rtfim struct with testing data
     pinfo = (PFILE_NOTIFY_INFORMATION) rt->buffer;
@@ -1782,9 +1835,9 @@ void test_RTCallBack_acquired_changes(void **state) {
 
     // Begin calls to mock functions
 
-    expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
-    expect_string(__wrap_OSHash_Get, key, "C:\\a\\path\\file.test");
-    will_return(__wrap_OSHash_Get, rt);
+    expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path\\file.test");
+    will_return(__wrap_OSHash_Get_ex, rt);
 
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path\\file.test");
     will_return(__wrap_fim_configuration_directory, 0);
@@ -1797,9 +1850,75 @@ void test_RTCallBack_acquired_changes(void **state) {
     // Inside realtime_win32read
     will_return(wrap_ReadDirectoryChangesW, 1);
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
     RTCallBack(ERROR_SUCCESS, 1, &ov);
 }
 #endif
+
+static void test_fim_realtime_get_queue_overflow(void **state) {
+    rtfim realtime = { .queue_overflow = false };
+    int retval;
+
+    syscheck.realtime = &realtime;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    retval = fim_realtime_get_queue_overflow();
+
+    assert_int_equal(retval, false);
+
+    realtime.queue_overflow = true;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    retval = fim_realtime_get_queue_overflow();
+
+    assert_int_equal(retval, true);
+
+    syscheck.realtime = NULL;
+}
+
+static void test_fim_realtime_set_queue_overflow(void **state) {
+    rtfim realtime = { .queue_overflow = false };
+
+    syscheck.realtime = &realtime;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    fim_realtime_set_queue_overflow(true);
+
+    assert_int_equal(realtime.queue_overflow, true);
+
+    syscheck.realtime = NULL;
+}
+
+static void test_fim_realtime_print_watches(void **state) {
+    rtfim realtime = { .queue_overflow = false };
+    char msg[OS_SIZE_256];
+
+    syscheck.realtime = &realtime;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_any(__wrap_OSHash_Get_Elem_ex, self);
+    will_return(__wrap_OSHash_Get_Elem_ex, 257);
+
+    snprintf(msg, OS_SIZE_256, FIM_NUM_WATCHES, 257);
+    expect_string(__wrap__mdebug2, formatted_msg, msg);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    fim_realtime_print_watches();
+
+    syscheck.realtime = NULL;
+
+}
+
 
 int main(void) {
 #ifndef WIN_WHODATA
@@ -1899,5 +2018,16 @@ int main(void) {
     };
 #endif
 
-    return cmocka_run_group_tests(tests, setup_group, teardown_group);
+    const struct CMUnitTest realtime_helper_tests[] = {
+        cmocka_unit_test(test_fim_realtime_get_queue_overflow),
+        cmocka_unit_test(test_fim_realtime_set_queue_overflow),
+        cmocka_unit_test(test_fim_realtime_print_watches),
+    };
+
+    int results = 0;
+
+    results += cmocka_run_group_tests(tests, setup_group, teardown_group);
+    results += cmocka_run_group_tests(realtime_helper_tests, NULL, NULL);
+
+    return results;
 }

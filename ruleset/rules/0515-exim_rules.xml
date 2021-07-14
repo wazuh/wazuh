@@ -54,4 +54,16 @@
       <match>dropped: too many syntax or protocol errors</match>
       <description>Exim syntax or protocol errors</description>
     </rule>
+
+    <rule id="87511" level="6">
+      <if_sid>87500</if_sid>
+      <match>input sent without waiting for greeting</match>
+      <description>SMTP protocol synchronization error (input sent without waiting for greeting)</description>
+    </rule>
+
+    <rule id="87512" level="6">
+      <decoded_as>windows-date-format</decoded_as>
+      <match>rejected RCPT</match>
+      <description>RCPT rejected. Error: $(error_message)</description>
+    </rule>
 </group>

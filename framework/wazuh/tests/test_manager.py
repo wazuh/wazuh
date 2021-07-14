@@ -3,6 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
+import operator
 import os
 import socket
 import sys
@@ -73,24 +74,23 @@ def test_get_status(mock_status):
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending, q', [
-    (None, None, 13, None, None, ''),
-    (None, None, 4, None, None, 'level=debug,level=error'),
-    ('wazuh-modulesd:database', None, 2, None, None, ''),
-    ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
-    ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
-    ('wazuh-modulesd:aws-s3', None, 5, None, None, ''),
-    ('wazuh-execd', None, 1, None, None, ''),
-    ('wazuh-csyslogd', None, 2, None, None, ''),
-    ('random', None, 0, ['timestamp'], True, ''),
-    (None, 'info', 7, ['timestamp'], False, ''),
-    (None, 'error', 2, ['level'], True, ''),
-    (None, 'debug', 2, ['level'], False, ''),
-    (None, None, 13, ['tag'], True, ''),
-    (None, 'random', 0, None, True, ''),
-    (None, 'warning', 2, None, False, '')
+@pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending', [
+    (None, None, 13, None, None),
+    ('wazuh-modulesd:database', None, 2, None, None),
+    ('wazuh-modulesd:syscollector', None, 2, None, None),
+    ('wazuh-modulesd:syscollector', None, 2, None, None),
+    ('wazuh-modulesd:aws-s3', None, 5, None, None),
+    ('wazuh-execd', None, 1, None, None),
+    ('wazuh-csyslogd', None, 2, None, None),
+    ('random', None, 0, ['timestamp'], True),
+    (None, 'info', 7, ['timestamp'], False),
+    (None, 'error', 2, ['level'], True),
+    (None, 'debug', 2, ['level'], False),
+    (None, None, 13, ['tag'], True),
+    (None, 'random', 0, None, True),
+    (None, 'warning', 2, None, False)
 ])
-def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
+def test_ossec_log(tag, level, total_items, sort_by, sort_ascending):
     """Test reading ossec.log file contents.
 
     Parameters
@@ -111,7 +111,7 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
         ossec_log_file = get_logs()
         tail_patch.return_value = ossec_log_file.splitlines()
 
-        result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=sort_ascending, q=q)
+        result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=sort_ascending)
 
         # Assert type, number of items and presence of trailing characters
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
@@ -120,10 +120,42 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
         if tag is not None and level != 'wazuh-modulesd:syscollector':
             assert all('\n' not in log['description'] for log in result.render()['data']['affected_items'])
         if sort_by:
-            reversed_result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending, q=q)
+            reversed_result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending)
             for i in range(total_items):
                 assert result.render()['data']['affected_items'][i][sort_by[0]] == \
                        reversed_result.render()['data']['affected_items'][total_items - 1 - i][sort_by[0]]
+
+
+@pytest.mark.parametrize('q, field, operation, values', [
+    ('level=debug,level=error', 'level', 'OR', 'debug, error'),
+    ('timestamp=2019/03/26 19:49:15', 'timestamp', '=', '2019/03/26T19:49:15Z'),
+    ('timestamp<2019/03/26 19:49:14', 'timestamp', '<', '2019/03/26T19:49:15Z'),
+])
+def test_ossec_log_q(q, field, operation, values):
+    """Check that the 'q' parameter is working correctly.
+
+    Parameters
+    ----------
+    q : str
+        Query to execute.
+    field : str
+        Field affected by the query.
+    operation : str
+        Operation type to be performed in the query.
+    values : str
+        Values used for the comparison.
+    """
+    with patch('wazuh.core.manager.tail') as tail_patch:
+        ossec_log_file = get_logs()
+        tail_patch.return_value = ossec_log_file.splitlines()
+
+        result = ossec_log(q=q)
+
+        if operation != 'OR':
+            operators = {'=': operator.eq, '!=': operator.ne, '<': operator.lt, '>': operator.gt}
+            assert all(operators[operation](log[field], values) for log in result.render()['data']['affected_items'])
+        else:
+            assert all(log[field] in values for log in result.render()['data']['affected_items'])
 
 
 def test_ossec_log_summary():
