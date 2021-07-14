@@ -5,6 +5,7 @@
 import os
 import sqlite3
 from datetime import datetime
+from json import dumps
 from unittest.mock import patch, ANY
 
 import pytest
@@ -51,10 +52,10 @@ def remove_db(data_path):
 test_data = InitRootcheck()
 
 
-def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
+def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[3:])
-    result = test_data.cur.execute(query).fetchall()
-    return list(map(remove_nones_to_dict, map(dict, result)))
+    result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
+    return ['ok', dumps(result)] if raw else result
 
 
 @patch("wazuh.core.rootcheck.WazuhDBBackend")
