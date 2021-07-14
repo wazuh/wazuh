@@ -952,7 +952,7 @@ class Agent:
         Information gathered from the database query
         """
         pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
-                                    filters=filters) if 'id' in filters else {'filters': filters}
+                                    filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       query=q, **pfilters)
         data = db_query.run()
