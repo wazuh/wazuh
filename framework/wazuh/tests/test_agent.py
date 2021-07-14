@@ -6,6 +6,7 @@ import os
 import shutil
 import sys
 from grp import getgrnam
+from json import dumps
 from pwd import getpwnam
 from unittest.mock import MagicMock, patch
 
@@ -46,10 +47,10 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 short_agent_list = ['000', '001', '002', '003', '004', '005']
 
 
-def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
+def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
-    result = test_data.cur.execute(query).fetchall()
-    return list(map(remove_nones_to_dict, map(dict, result)))
+    result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
+    return ['ok', dumps(result)] if raw else result
 
 
 @pytest.mark.parametrize('fields, expected_items', [
