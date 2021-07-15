@@ -36,11 +36,14 @@ def get_token_login_api():
     str
         API token
     """
-    response = requests.get(login_url, headers=login_headers, verify=False)
-    if response.status_code == 200:
-        return json.loads(response.content.decode())['data']['token']
-    else:
-        raise Exception(f"Error obtaining login token: {response.json()}")
+    # To avoid a race condition where the user inserted into the DB isn't available for the manager yet
+    for _ in range(5):
+        response = requests.get(login_url, headers=login_headers, verify=False)
+        if response.status_code == 200:
+            return json.loads(response.content.decode())['data']['token']
+        time.sleep(1)
+
+    raise Exception(f"Error obtaining login token: {response.json()}")
 
 
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
