@@ -473,6 +473,11 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         tmp_msg = buffer;
     }
 
+    if (recv_b <= 0) {
+        mwarn("Received message is empty");
+        return;
+    }
+
     /* Decrypt the message */
     if (r = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg), r != KS_VALID) {
         /* If duplicated, a warning was already generated */
