@@ -38,4 +38,15 @@
             <id>T1105</id>
         </mitre>
     </rule>
+
+    <!--Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\spoolsv.exe","processGuid":"{4dc16835-6534-60ec-92a4-010000000000}","processId":"1912","utcTime":"2021-07-12 15:58:13.001","targetFilename":"C:\\\\Windows\\\\System32\\\\spool\\\\drivers\\\\x64\\\\3\\\\New\\\\mimispoolbis.dll","ruleName":"technique_id=T1047,technique_name=File System Permissions Weakness","creationUtcTime":"2021-07-12 15:58:13.001"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: technique_id=T1047,technique_name=File System Permissions Weakness\r\nUtcTime: 2021-07-12 15:58:13.001\r\nProcessGuid: {4dc16835-6534-60ec-92a4-010000000000}\r\nProcessId: 1912\r\nImage: C:\\Windows\\System32\\spoolsv.exe\r\nTargetFilename: C:\\Windows\\System32\\spool\\drivers\\x64\\3\\New\\mimispoolbis.dll\r\nCreationUtcTime: 2021-07-12 15:58:13.001\"","version":"2","systemTime":"2021-07-12T15:58:13.0067714Z","eventRecordID":"267528","threadID":"3548","computer":"hrmanager.ExchangeTest.com","task":"11","processID":"2092","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
+    <rule id="92200" level="12">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.image" type="pcre2">\\spoolsv.exe$</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Windows\\\\System32\\\\spool\\\\drivers.+\.dll</field>
+        <description>DLL file created by printer spool service, possible malware binary drop from PrintNightmare exploit</description>
+        <mitre>
+            <id>T1574.010</id>
+        </mitre>
+    </rule>
 </group>
