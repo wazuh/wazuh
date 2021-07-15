@@ -122,7 +122,7 @@ fdb_t *fim_db_init(int storage) {
     }
 
     char *error;
-    sqlite3_exec(fim->db, "PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA journal_mode = TRUNCATE;", NULL, NULL, &error);
+    sqlite3_exec(fim->db, "PRAGMA synchronous = OFF; PRAGMA foreign_keys = ON;", NULL, NULL, &error);
 
     if (error) {
         merror("SQL error setting synchronous and journal mode: %s (%d)", error, sqlite3_extended_errcode(fim->db));
@@ -429,19 +429,12 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
             return;
         }
 
-        if (!sqlite3_get_autocommit(fim_sql->db)) {
-            // A transaction has been initiated by a BEGIN command and it's in progress
-            if (fim_db_exec_simple_wquery(fim_sql, "END;") == FIMDB_ERR) {
-                return;
-            }
-
-            // Updating timestamp only after a successful transaction end
+        // If the completion of the transaction fails, we do not update the timestamp
+        if (fim_db_exec_simple_wquery(fim_sql, "END;") != FIMDB_ERR) {
             mdebug1("Database transaction completed.");
             fim_sql->transaction.last_commit = now;
+            while (fim_db_exec_simple_wquery(fim_sql, "BEGIN;") == FIMDB_ERR);
         }
-
-        // A new transaction begins after a successful END or if there wasn't one in progress
-        while (fim_db_exec_simple_wquery(fim_sql, "BEGIN;") == FIMDB_ERR);
     }
 }
 
