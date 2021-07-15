@@ -5,7 +5,9 @@
   -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
+<!--
 Background on Cisco syslog format:
 
 1111: ROUTERHOSTNAME: 000012: 00:11:22: %SYS-5-CONFIG_I: text...

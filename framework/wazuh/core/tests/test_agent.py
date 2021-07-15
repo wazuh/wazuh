@@ -90,10 +90,10 @@ class InitAgent:
 test_data = InitAgent()
 
 
-def send_msg_to_wdb(msg, raw=False, *args, **kwargs):
+def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
-    result = test_data.cur.execute(query).fetchall()
-    return list(map(remove_nones_to_dict, map(dict, result)))
+    result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
+    return ['ok', dumps(result)] if raw else result
 
 
 def get_manager_version():
@@ -899,7 +899,7 @@ def test_agent_add_manual_content(socket_mock, delete_mock, check_delete_mock, l
 def test_get_manager_name(mock_connect, mock_send):
     get_manager_name()
     calls = [call('global sql select count(*) from agent where (id = 0)'),
-             call('global sql select name from agent where (id = 0) limit 1 offset 0', update_slice=True)]
+             call('global sql select name from agent where (id = 0) limit 1 offset 0', raw=True)]
 
     mock_send.assert_has_calls(calls)
 
@@ -1638,7 +1638,8 @@ def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmo
     rmtree_mock.side_effect = Exception("Boom!")
 
     if expected_exception == 1747:
-        check_exception(client_keys_text)
+        with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command', side_effect=WazuhInternalError):
+            check_exception(client_keys_text)
 
     if expected_exception == 1701:
         with patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command'):
