@@ -65,6 +65,7 @@ typedef struct _os_channel {
     char bookmark_filename[OS_MAXSTR];
     char *query;
     int reconnect_time;
+    EVT_HANDLE subscription;
 } os_channel;
 
 static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
@@ -505,12 +506,35 @@ cleanup:
     return;
 }
 
+/**
+ * @brief Destroy os_channel structure
+ *
+ * This function closes the subscription and frees the tructure, including bookmark_name.
+ * Nothing happens if channel is NULL.
+ *
+ * @param channel Pointer to an os_channel structure.
+ */
+void os_channel_destroy(os_channel * channel) {
+    if (channel != NULL) {
+        free(channel->bookmark_name);
+
+        if (channel->subscription != NULL) {
+            if (!EvtClose(channel->subscription)) {
+                merror("Could not close subscription to channel '%s': %lu", channel->evt_log, GetLastError());
+            }
+        }
+
+        free(channel);
+    }
+}
+
 DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
 {
     if (action == EvtSubscribeActionDeliver) {
         send_channel_event(evt, channel);
     } else {
         mwarn("The eventlog service is down. Unable to collect logs from '%s' channel.", channel->evt_log);
+
         while(1) {
             /* Try to restart EventChannel */
             if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query, channel->reconnect_time) == -1) {
@@ -518,6 +542,7 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
                 sleep(channel->reconnect_time);
             } else {
                 minfo("'%s' channel has been reconnected succesfully.", channel->evt_log);
+                os_channel_destroy(channel);
                 break;
             }
         }
@@ -534,17 +559,9 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
     os_channel *channel = NULL;
     DWORD flags = EvtSubscribeToFutureEvents;
     EVT_HANDLE bookmark = NULL;
-    EVT_HANDLE result = NULL;
     int status = 0;
 
-    if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
-        merror(
-            "Could not calloc() memory for channel to start reading (%s) which returned [(%d)-(%s)]",
-            evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
+    os_calloc(1, sizeof(os_channel), channel);
 
     channel->evt_log = evt_log;
     channel->reconnect_time = reconnect_time;
@@ -605,7 +622,7 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
         }
     }
 
-    result = EvtSubscribe(NULL,
+    channel->subscription = EvtSubscribe(NULL,
                           NULL,
                           wchannel,
                           wquery,
@@ -614,8 +631,8 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
                           (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
                           flags);
 
-    if (result == NULL && flags == EvtSubscribeStartAfterBookmark) {
-        result = EvtSubscribe(NULL,
+    if (channel->subscription == NULL && flags == EvtSubscribeStartAfterBookmark) {
+        channel->subscription = EvtSubscribe(NULL,
                               NULL,
                               wchannel,
                               wquery,
@@ -625,7 +642,7 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
                               EvtSubscribeToFutureEvents);
     }
 
-    if (result == NULL) {
+    if (channel->subscription == NULL) {
         unsigned long id = GetLastError();
         if (id != RPC_S_SERVER_UNAVAILABLE && id != RPC_S_UNKNOWN_IF) {
             merror(
@@ -648,14 +665,7 @@ cleanup:
     free(filtered_query);
 
     if (status == 0) {
-        if (channel) {
-            os_free(channel->bookmark_name);
-        }
-        free(channel);
-
-        if (result != NULL) {
-            EvtClose(result);
-        }
+        os_channel_destroy(channel);
     }
 
     if (bookmark != NULL) {
