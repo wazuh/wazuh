@@ -183,7 +183,7 @@ InstallSecurityConfigurationAssessmentFiles()
 
     CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     cd ./src
-    
+
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ] || [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_PARAM" ]; then
         echo "SCA policies are not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
     else
