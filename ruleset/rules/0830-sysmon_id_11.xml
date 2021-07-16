@@ -5,7 +5,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<group name="sysmon_eid1_detections,">
+<group name="sysmon_eid11_detections,">
     <!-- Sample: {"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","eventID":"11","version":"2","level":"4","task":"11","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-04-28T20:11:55.0310966Z","eventRecordID":"144500","processID":"2204","threadID":"3300","channel":"Microsoft-Windows-Sysmon/Operational","computer":"DESKTOP-2QKFOBA","severityValue":"INFORMATION","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-04-28 20:11:55.021\r\nProcessGuid: {4dc16835-c189-6089-a003-000000002e00}\r\nProcessId: 6876\r\nImage: C:\\Windows\\system32\\cscript.exe\r\nTargetFilename: C:\\Users\\AtomicRedTeamTest\\AppData\\Roaming\\TransbaseOdbcDriver\\starter.vbs\r\nCreationUtcTime: 2021-04-28 20:11:55.021\""},"eventdata":{"utcTime":"2021-04-28 20:11:55.021","processGuid":"{4dc16835-c189-6089-a003-000000002e00}","processId":"6876","image":"C:\\\\Windows\\\\system32\\\\cscript.exe","targetFilename":"C:\\\\Users\\\\AtomicRedTeamTest\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\starter.vbs","creationUtcTime":"2021-04-28 20:11:55.021"}}} -->
     <rule id="92000" level="4">
         <if_group>sysmon_event_11</if_group>
@@ -47,6 +47,26 @@
         <description>DLL file created by printer spool service, possible malware binary drop from PrintNightmare exploit</description>
         <mitre>
             <id>T1574.010</id>
+        </mitre>
+    </rule>
+
+    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\system32\\\\cmd.exe","processGuid":"{4dc16835-41b5-60ef-7a00-000000001100}","processId":"2860","utcTime":"2021-07-14 20:21:04.678","targetFilename":"C:\\\\Users\\\\Public\\\\Java-Update.vbs","creationUtcTime":"2021-07-14 20:21:04.678"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-07-14 20:21:04.678\r\nProcessGuid: {4dc16835-41b5-60ef-7a00-000000001100}\r\nProcessId: 2860\r\nImage: C:\\Windows\\system32\\cmd.exe\r\nTargetFilename: C:\\Users\\Public\\Java-Update.vbs\r\nCreationUtcTime: 2021-07-14 20:21:04.678\"","version":"2","systemTime":"2021-07-14T20:21:04.6849507Z","eventRecordID":"28558","threadID":"1272","computer":"cfo.ExchangeTest.com","task":"11","processID":"5364","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
+    <rule id="92080" level="12">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat)</field>
+        <description>Binary file dropped in Users\Public folder</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\System32\\\\OpenSSH\\\\scp.exe","processGuid":"{4dc16835-44ed-60ef-bdc3-4d0000000000}","processId":"3144","utcTime":"2021-07-14 20:11:27.810","targetFilename":"C:\\\\Users\\\\Public\\\\Java-Update.exe","creationUtcTime":"2021-07-14 20:03:07.766"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-07-14 20:11:27.810\r\nProcessGuid: {4dc16835-44ed-60ef-bdc3-4d0000000000}\r\nProcessId: 3144\r\nImage: C:\\Windows\\System32\\OpenSSH\\scp.exe\r\nTargetFilename: C:\\Users\\Public\\Java-Update.exe\r\nCreationUtcTime: 2021-07-14 20:03:07.766\"","version":"2","systemTime":"2021-07-14T20:11:27.8528377Z","eventRecordID":"28453","threadID":"1272","computer":"cfo.ExchangeTest.com","task":"11","processID":"5364","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
+    <rule id="92081" level="15">
+        <if_sid>92080</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)(scp|pscp|FZSFTP|sftp)\.exe</field>
+        <description>Binary file dropped in Users\Public folder by SSH enabled copy software</description>
+        <mitre>
+            <id>T1105</id>
         </mitre>
     </rule>
 </group>
