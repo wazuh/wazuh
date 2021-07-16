@@ -10,6 +10,7 @@ import re
 import tempfile
 import threading
 from base64 import b64encode
+from copy import deepcopy
 from datetime import date, datetime
 from functools import lru_cache
 from json import dumps, loads
@@ -929,18 +930,31 @@ class Agent:
                             filters=None, q=""):
         """Gets a list of available agents with basic attributes.
 
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines required field filters.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        Parameters
+        ----------
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : str
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        search : str
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
+        select : str
+            Select fields to return. Format: {"fields":["field1","field2"]}.
+        filters : dict
+            Defines required field filters.
+        q : str
+            Defines query to filter in DB.
+
+        Returns
+        -------
+        Information gathered from the database query
         """
+        pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
+                                    filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
+                                      query=q, **pfilters)
         data = db_query.run()
 
         return data
@@ -1250,7 +1264,7 @@ def expand_group(group_name):
             try:
                 with open(path.join(common.groups_path, file), 'r') as f:
                     file_content = f.readlines()
-                len(file_content) == 1 and group_name in file_content[0].split(',') and agents_ids.add(file)
+                len(file_content) == 1 and group_name in file_content[0].strip().split(',') and agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
                 pass
