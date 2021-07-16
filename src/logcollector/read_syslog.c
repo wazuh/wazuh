@@ -110,7 +110,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         /* Incorrect message size */
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
-            // truncate str before logging to ossec.log
+            // truncate str before logging to wazuh.log
 
             if (!__ms_reported) {
                 merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);

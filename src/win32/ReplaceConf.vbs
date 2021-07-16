@@ -84,7 +84,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     re.Pattern = "  <sca>" & vbCrLf & "(.*" & vbCrLf & ")*  </sca>"
     re.Global = False
     strNewText = re.Replace(strNewText, newline)
-  End If  
+  End If
 
   If objFSO.fileExists(home_dir & "localfile-logs.template") Then
 	  Set file = objFSO.OpenTextFile(home_dir & "localfile-logs.template", ForReading)

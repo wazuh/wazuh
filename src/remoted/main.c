@@ -32,7 +32,7 @@ static void help_remoted(char *home_path)
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chdir into (default: %s)", home_path);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out(" ");
     os_free(home_path);
@@ -128,6 +128,7 @@ int main(int argc, char **argv)
     }
 
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Return 0 if not configured */
     if (RemotedConfig(cfg, &logr) < 0) {
@@ -190,13 +191,6 @@ int main(int argc, char **argv)
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
-
-    /* chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
-    }
-    nowChroot();
-    os_free(home_path);
 
     /* Start the signal manipulation */
     StartSIG(ARGV0);

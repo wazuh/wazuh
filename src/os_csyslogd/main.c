@@ -29,7 +29,7 @@ static void help_csyslogd(char * home_path)
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chdir into (default: %s)", home_path);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -105,6 +105,7 @@ int main(int argc, char **argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
@@ -164,9 +165,6 @@ int main(int argc, char **argv)
     // Start com request thread
     w_create_thread(csyscom_main, NULL);
 
-    /* Basic start up completed */
-    mdebug1(PRIVSEP_MSG, home_path, user);
-
     /* Signal manipulation */
     StartSIG(ARGV0);
 
@@ -181,6 +179,5 @@ int main(int argc, char **argv)
     /* The real daemon now */
     OS_CSyslogD(syslog_config);
 
-    os_free(home_path);
     return (0);
 }

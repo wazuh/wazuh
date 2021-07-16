@@ -251,7 +251,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             }
 
             // Appending system labels
-            /* Get manager name before chroot */
+            /* Get manager name */
             if (gethostname(agent_data->manager_host, HOST_NAME_MAX) < 0) {
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
             }

@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#ifndef CLIENT
 #ifndef WIN32
 #include "wazuh_modules/wmodules.h"
 
@@ -679,5 +678,4 @@ void wm_clean_container(wm_azure_container_t * container) {
     free(container);
 }
 
-#endif
 #endif

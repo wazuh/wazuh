@@ -1,5 +1,5 @@
 ---
-name: Ruleset issue 
+name: Ruleset issue
 about: Report a bug or make a feature request.
 title: ''
 labels: ''
@@ -33,7 +33,7 @@ Contributions from the community are really appreciated. If this is the case, pl
 ### Log / Alert examples
 <!-- Add any known log, or log source to be managed -->
 
-### Log format reference 
+### Log format reference
 <!-- Add any URL or doc related to vendor or provider log format -->
 
 ## Tests
@@ -42,6 +42,6 @@ Contributions from the community are really appreciated. If this is the case, pl
 - [ ] Added .ini test file for covering related rules
 - [ ] Executed unit tests (runtests.py) for checking ruleset integrity
 - [ ] Verified mitre.db integrity
-- [ ] Verified compliance mapping 
-- [ ] Verified no errors/warnings related in ossec.log
+- [ ] Verified compliance mapping
+- [ ] Verified no errors/warnings related in wazuh.log
 - [ ] Kibana shows alerts

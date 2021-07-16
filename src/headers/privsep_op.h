@@ -103,6 +103,4 @@ int Privsep_SetUser(uid_t uid);
 
 int Privsep_SetGroup(gid_t gid);
 
-int Privsep_Chroot(const char *path) __attribute__((nonnull));
-
 #endif /* PRIV_H */

@@ -27,12 +27,12 @@
 /* For internal logs */
 #ifndef LOGFILE
 #ifndef WIN32
-#define LOGFILE   "logs/ossec.log"
-#define LOGJSONFILE "logs/ossec.json"
+#define LOGFILE   "logs/wazuh.log"
+#define LOGJSONFILE "logs/wazuh.json"
 #define _PRINTF_FORMAT printf
 #else
-#define LOGFILE "ossec.log"
-#define LOGJSONFILE "ossec.json"
+#define LOGFILE "wazuh.log"
+#define LOGJSONFILE "wazuh.json"
 #define _PRINTF_FORMAT __MINGW_PRINTF_FORMAT
 #endif
 #endif
@@ -81,16 +81,10 @@ cJSON *getLoggingConfig(void);
 char * win_strerror(unsigned long error);
 #endif
 
-/* Use these three functions to set when you
- * enter in debug, chroot or daemon mode
- */
 void nowDebug(void);
 int isDebug(void);
 
-void nowChroot(void);
 void nowDaemon(void);
-
-int isChroot(void);
 
 /* Debug analysisd */
 #ifdef DEBUGAD
