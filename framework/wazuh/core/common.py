@@ -237,6 +237,10 @@ def context_cached(key: str = '') -> Any:
     -------
     Any
         The result of the first call to the decorated function.
+
+    Notes
+    -----
+    The returned object will be a deep copy of the cached one.
     """
 
     def decorator(func) -> Any:

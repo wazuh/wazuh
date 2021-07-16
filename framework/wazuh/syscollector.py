@@ -37,9 +37,10 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
         sort_ascending=[sort['order'] == 'asc' for _ in sort['fields']] if sort is not None else ['True']
     )
 
+    system_agents = get_agents_info()
     for agent in agent_list:
         try:
-            if agent not in get_agents_info():
+            if agent not in system_agents:
                 raise WazuhResourceNotFound(1701)
             table, valid_select_fields = get_valid_fields(Type(element_type), agent_id=agent)
             db_query = WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
