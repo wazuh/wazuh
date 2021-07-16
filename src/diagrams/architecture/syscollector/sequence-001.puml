@@ -6,8 +6,6 @@ participant syscollector as sysco
 participant dbsync
 participant rsync
 participant normalizer
-participant sysinfo
-activate sysinfo
 
 wmodules -> sysco : instance()
 activate sysco
@@ -19,52 +17,57 @@ activate rsync
 sysco -> normalizer : create()
 activate normalizer
 sysco -> sysco : registerWithRsync()
+activate sysco
 sysco -> rsync : registerSyncID()
+deactivate sysco
 note right
 will register each enabled scan 
 end note
 
-group syncLoop()
-    alt scan_on_start
-        sysco -> sysco : scan() ...
-        sysco -> sysco : sync() ...
-    end
-    loop !stopping
-        sysco -> sysco : scan()
-            activate sysco
-            sysco -> sysco : scanHardware()
-                activate sysco #LightBlue
-                sysco -> sysinfo : hardware()
-                sysinfo --> sysco : hwData
-                sysco -> dbsync : syncTxnRow(hwData)
-                dbsync -> sysco : reportDiffFunction()
-                activate sysco
-                sysco ->x queue : sendDiffToManager()
-                sysco --> dbsync
-                deactivate sysco
-                sysco -> dbsync : getDeletedRows()
-                deactivate sysco
-            sysco -> sysco : syncHardware()
-            deactivate sysco
-
-            ' sysco -> sysco : scanOs()
-            ' sysco -> sysco : scanNetwork()
-            ' sysco -> sysco : scanPackages()
-            ' sysco -> sysco : scanPorts()
-            ' sysco -> sysco : scanProcesses()
-        group sync()
-            sysco -> sysco : syncHardware()
-            ' sysco -> sysco : syncOs()
-            ' sysco -> sysco : syncNetwork()
-            ' sysco -> sysco : syncPackages()
-            ' sysco -> sysco : syncPorts()
-            ' sysco -> sysco : syncProcesses()
-        end
-    sysco -> sysco : sleep(intervalValue)
-    end
+sysco -> sysco : syncLoop()
+activate sysco
+alt scan_on_start
+    sysco -> sysco : scan() ...
+    sysco -> sysco : sync() ...
 end
+loop !stopping
+activate sysco
+    sysco -> sysco : scan()
+    activate sysco
+        sysco -> dbsync : syncRows()
+        activate dbsync
+            dbsync -> sysco : notifyDiff()
+            activate sysco
+                sysco ->x queue : sendDiff()
+                sysco <--x queue
+                sysco --> dbsync
+            deactivate sysco
+            sysco <-- dbsync
+        deactivate dbsync
+    deactivate sysco
+    sysco -> sysco : sync()
+    activate sysco
+        sysco -> rsync : startSync()
+        activate rsync
+            rsync -> dbsync : selectRows()
+            dbsync --> rsync
+            rsync -> rsync : calcChecksum()
+            rsync -> sysco : notifySync()
+            activate sysco
+                sysco -> queue : sendSync()
+                sysco <-- queue
+                sysco --> rsync
+            deactivate sysco
+            rsync --> sysco
+        deactivate rsync
+    deactivate sysco
+    sysco -> sysco : sleep(intervalValue)
+end
+sysco -> rsync : destroy()
+sysco -> dbsync : destroy()
+deactivate sysco
 
-
+... ...
 recv -> sysco : push_message(string)
 alt !stopping
     sysco -> rsync : pushMessage(vector)
@@ -72,5 +75,25 @@ alt !stopping
         std::string is copied into a
         std::vector<uint8_t> to be passed to rsync.
     end note
+    activate rsync
+        rsync -> dbsync : selectRows()
+        dbsync --> rsync
+        rsync -> rsync : buildSyncMessage()
+        rsync -> sysco : notifySync()
+        activate sysco
+            sysco -> queue : sendSync()
+            sysco <-- queue
+            sysco --> rsync
+        deactivate sysco
+        rsync --> sysco
+    deactivate rsync
 end
+
+... ...
+wmodules -> sysco : destroy()
+note right
+set stoppping = true
+end note
+wmodules <-- sysco
+
 @enduml
