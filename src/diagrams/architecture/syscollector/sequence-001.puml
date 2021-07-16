@@ -7,8 +7,7 @@ participant dbsync
 participant rsync
 participant normalizer
 
-wmodules -> sysco : instance()
-activate sysco
+wmodules -> sysco ++ : instance()
 wmodules -> sysco : init()
 sysco -> dbsync : create()
 activate dbsync
@@ -52,6 +51,12 @@ activate sysco
             rsync -> dbsync : selectRows()
             dbsync --> rsync
             rsync -> rsync : calcChecksum()
+            note right
+            rsync will build the sync message with:
+            - first element
+            - last element
+            - the checksum of the checksum of each row
+            end note
             rsync -> sysco : notifySync()
             activate sysco
                 sysco -> queue : sendSync()
