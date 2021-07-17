@@ -1,0 +1,24 @@
+<!--
+  -  Maltrail decoder
+  -  Author: Michael Muenz, Julián Morales
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  - Will extract the srcip, srcport, dstip and dstport and also trail and category.
+  - Examples: Dec 23 14:55:34 OPNsense.localdomain CEF: 0|Maltrail|sensor|0.26.1|2020-12-23|long domain (suspicious)
+    |0|src=172.24.68.133 spt=55989 dst=8.8.8.8 dpt=53 trail=(q6pmisvlqpgxptq1s6psghvyoqali.uribl).rspamd.com ref=(heuristic)
+-->
+
+<decoder name="CEF">
+      <program_name>^CEF$</program_name>
+</decoder>
+
+<decoder name="CEF">
+      <parent>CEF</parent>
+      <regex>(\w+)\|(\w+)\|(\w+)\|(\.+)\|(\d+-\d+-\d+)\|(\.+)\|(\d+)\|src=(\d+.\d+.\d+.\d+) spt=(\.+) dst=(\d+.\d+.\d+.\d+) dpt=(\.+) trail=(\.+) ref=(\.+)</regex>
+      <order>code, application, type, version, date, category, severity, srcip, srcport, dstip, dstport, trail, ref</order>
+</decoder>

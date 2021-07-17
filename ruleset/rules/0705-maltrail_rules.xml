@@ -1,0 +1,44 @@
+<!--
+  -  Maltrail rules
+  -  ID range: 64520 - 64530
+  -  Created by Michael Muenz
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+</group>
+
+<group name="Maltrail,connection_attempt,">
+    <rule id="64520" level="0">
+        <decoded_as>CEF</decoded_as>
+        <description>Maltrail messages grouped.</description>
+    </rule>
+
+    <rule id="64521" level="3">
+        <if_sid>64520</if_sid>
+        <field name="severity">0</field>
+        <description>Low critical Maltrail event triggered</description>
+    </rule>
+
+    <rule id="64522" level="7">
+        <if_sid>64520</if_sid>
+        <field name="severity">1</field>
+        <description>Medium critical Maltrail event triggered</description>
+    </rule>
+
+    <rule id="64523" level="10">
+        <if_sid>64520</if_sid>
+        <field name="severity">2</field>
+        <description>High critical Maltrail event triggered</description>
+    </rule>
+
+    <rule id="64524" level="12" frequency="10" timeframe="120">
+        <if_matched_sid>64523</if_matched_sid>
+        <field name="severity">2</field>
+        <description>Too many critical Maltrail events triggered, possible infection detected.</description>
+        <mitre>
+            <id>T1584</id>
+        </mitre>
+    </rule>
+
+</group>
