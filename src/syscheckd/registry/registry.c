@@ -743,6 +743,7 @@ void fim_read_values(HKEY key_handle,
     value_data.id = new->registry_entry.key->id;
     new->registry_entry.value = &value_data;
 
+    max_value_length = (max_value_length == 0) ? 1  : max_value_length;
     os_calloc(max_value_length + 1, sizeof(TCHAR), value_buffer);
     os_calloc(max_value_data_length, sizeof(BYTE), data_buffer);
 
@@ -754,6 +755,12 @@ void fim_read_values(HKEY key_handle,
         if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
             ERROR_SUCCESS) {
             break;
+        }
+
+        /* Check if no value name is specified */
+        if (value_buffer[0] == '\0') {
+            value_buffer[0] = '@';
+            value_buffer[1] = '\0';
         }
 
         new->registry_entry.value->name = value_buffer;
