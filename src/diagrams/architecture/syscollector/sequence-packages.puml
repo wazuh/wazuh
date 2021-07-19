@@ -22,7 +22,7 @@ alt packages  enabled
         sysco -> normalizer : normalize(packagesData)
         sysco <- normalizer : normalizedPackagesData
         loop item in normalizedPackagesData
-            sysco -> sysco : checksum = getItemChecksum(item)
+            sysco -> sysco : item[checksum] = getItemChecksum(item)
             alt has hotfix?
                 sysco -> sysco : hotfixesList.push_back(item)
             else
@@ -126,6 +126,5 @@ sysco -> sysco ++: syncPackages()
     end
 sysco--
 sysco--
-
 
 @enduml
