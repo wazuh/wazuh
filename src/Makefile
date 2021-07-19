@@ -1227,9 +1227,6 @@ wrappers_wazuh_os_crypto_o := $(wrappers_wazuh_os_crypto_c:.c=.o)
 wrappers_wazuh_os_crypto_shared_c := $(wildcard unit_tests/wrappers/wazuh/os_crypto/shared/*.c)
 wrappers_wazuh_os_crypto_shared_o := $(wrappers_wazuh_os_crypto_shared_c:.c=.o)
 
-wrappers_wazuh_os_remoted_c := $(wildcard unit_tests/wrappers/wazuh/remoted/*.c)
-wrappers_wazuh_os_remoted_o := $(wrappers_wazuh_os_remoted_c:.c=.o)
-
 wrappers_wazuh_os_execd_c := $(wildcard unit_tests/wrappers/wazuh/os_execd/*.c)
 wrappers_wazuh_os_execd_o := $(wrappers_wazuh_os_execd_c:.c=.o)
 
@@ -1294,7 +1291,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_shared_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_remoted_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_execd_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
@@ -2288,7 +2284,6 @@ clean-unit-tests:
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}
 	rm -f ${wrappers_wazuh_os_crypto_shared_o}
-	rm -f ${wrappers_wazuh_os_remoted_o}
 	rm -f ${wrappers_wazuh_os_execd_o}
 	rm -f ${wrappers_wazuh_os_net_o}
 	rm -f ${wrappers_wazuh_os_regex_o}

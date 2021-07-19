@@ -16,7 +16,7 @@
 #include <shared.h>
 #include <os_net/os_net.h>
 
-#include "../../../../remoted/remoted.h"
+#include "remoted/remoted.h"
 #include "netbuffer_wrappers.h"
 
 
