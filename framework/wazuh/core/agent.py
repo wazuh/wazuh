@@ -78,7 +78,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.fields['id'] = 'id'
             self.query = self.query[:-1] + ' OR id LIKE :search_id)'
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() \
-                else self.search['value']
+                else re.sub(f"[{self.special_characters}]", '_', self.search['value'])
 
     def _format_data_into_dictionary(self):
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
