@@ -1,4 +1,4 @@
-@startuml processes
+@startuml hardware
 actor "send-queue" as queue
 participant syscollector as sysco
 participant sysinfo
@@ -11,15 +11,12 @@ activate sysco
 activate sysinfo
 == Scan ==
 sysco -> sysco++ : scan()
-sysco -> sysco++ : scanProcesses()
-alt processes enabled
-    sysco -> sysco++ : getProcessesData()
-        sysco -> sysinfo : processes()
-        sysco <-- sysinfo : processesData
-        loop for each process in processesData
-                sysco -> sysco : process["checksum"] = getItemChecksum(process)
-                sysco -> sysco : ret.push_back(process)
-        end
+sysco -> sysco++ : scanHardware()
+alt hardware enabled
+    sysco -> sysco++ : getHardwareData()
+        sysco -> sysinfo : hardware()
+        sysco <-- sysinfo : hardwareData
+        sysco -> sysco : hardwareData["checksum"] = getItemChecksum(hardwareData)
     sysco--
     sysco -> sysco++ : updateAndNotifyChanges()
         sysco -> dbsync : createTxn()
@@ -46,8 +43,8 @@ sysco--
 sysco--
 == Sync ==
 sysco -> sysco++ : sync()
-sysco -> sysco++ : syncProcesses()
-    alt processes enabled
+sysco -> sysco++ : syncHardware()
+    alt hardware enabled
         sysco -> dbsync : handle()
         sysco <-- dbsync : handle
         sysco -> rsync++ : startSync(handle)

@@ -1,0 +1,106 @@
+@startuml network
+actor "send-queue" as queue
+participant syscollector as sysco
+participant sysinfo
+participant dbsync
+participant rsync
+
+activate dbsync
+activate rsync
+activate sysco
+activate sysinfo
+== Scan ==
+sysco -> sysco++ : scan()
+sysco -> sysco++ : scanNetwork()
+alt networks enabled
+    sysco -> sysco++ : networkData = getNetworkData()
+        sysco -> sysinfo : networks()
+        sysco <-- sysinfo : networkData
+        sysco -> sysco : iface = networkData.find("iface")
+        alt iface not empty
+            loop for each item in iface
+                sysco -> sysco : ifaceTableData = item.at(...) 
+                note right
+                network data related to iface will be copied from item to ifaceTableData
+                end note
+                sysco -> sysco : ifaceTableDataList.push_back(ifaceTableData)
+                sysco -> sysco : protoTableData = item.at(...) 
+                note right
+                network data related to protocol will be copied from item to protoTableData
+                end note
+                alt item.find("IPV4")
+                    sysco -> sysco : addressTableData = item.at(...)
+                    sysco -> sysco : addressTableDataList.push_back(addressTableData)
+                end
+                alt item.find("IPV6")
+                    sysco -> sysco : addressTableData = item.at(...)
+                    sysco -> sysco : addressTableDataList.push_back(addressTableData)
+                end
+                note right
+                network data related to addresses will be copied from item to addressTableData
+                end note
+                sysco -> sysco : protoTableDataList.push_back(protoTableData)
+                sysco -> sysco : ret[NET_IFACE_TABLE] = ifaceTableDataList
+                sysco -> sysco : ret[NET_PROTOCOL_TABLE] = protoTableDataList
+                sysco -> sysco : ret[NET_ADDRESS_TABLE] = addressTableDataList
+                return ret
+            end
+        end
+    sysco--
+    sysco -> sysco++ : updateAndNotifyChanges()
+        note right
+        updateAndNotifyChanges will be called for:
+        1- ifaces.
+        2- protocols.
+        3- addresses.
+        end note
+        sysco -> dbsync : createTxn()
+        sysco <-- dbsync : txn
+        sysco -> dbsync++ : txn.syncTxnRow()
+            alt new
+                dbsync -> sysco : notify(Inserted)
+            else modified
+                dbsync -> sysco : notify(Modified)
+            end
+            sysco ->x queue : sendDiff()
+            dbsync <-- sysco
+            dbsync --> sysco
+        dbsync--
+        sysco -> dbsync++ : txn.getDeletedRows()
+            dbsync -> sysco : notify(Deleted)
+            sysco ->x queue : sendDiff()
+            dbsync <-- sysco
+            dbsync --> sysco
+        dbsync--
+    sysco--
+end
+sysco--
+sysco--
+== Sync ==
+sysco -> sysco++ : sync()
+sysco -> sysco++ : syncNetwork()
+    alt networks enabled
+        sysco -> dbsync : handle()
+        sysco <-- dbsync : handle
+        sysco -> rsync++ : startSync(handle)
+            note right
+            startSync will be called for:
+            1- ifaces.
+            2- protocols.
+            3- addresses.
+            end note
+            rsync -> dbsync : selectRows()
+            dbsync --> rsync : rows
+            rsync -> rsync : buildSyncMessage(rows)
+            rsync -> sysco : notifySync()
+            sysco -> queue : sendSync()
+            sysco <-- queue
+            sysco --> rsync
+            rsync --> sysco
+        rsync--
+    end
+sysco--
+sysco--
+
+@enduml
+

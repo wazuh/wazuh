@@ -1,4 +1,4 @@
-@startuml
+@startuml ports
 actor "send-queue" as queue
 participant syscollector as sysco
 participant sysinfo
@@ -22,20 +22,20 @@ alt ports enabled
                     sysco -> sysco : getItemId()
                     sysco -> sysco : isElementDuplicated()
                     alt not duplicated
-                        sysco -> sysco : ret.pus_back()
+                        sysco -> sysco : ret.push_back()
                     end
                 else port.state = Listening
                     sysco -> sysco : getItemId()
                     sysco -> sysco : isElementDuplicated()
                     alt not duplicated
-                        sysco -> sysco : ret.pus_back()
+                        sysco -> sysco : ret.push_back()
                     end
                 end
             else port.type = UDP
                 sysco -> sysco : getItemId()
                 sysco -> sysco : isElementDuplicated()
                 alt not duplicated
-                    sysco -> sysco : ret.pus_back()
+                    sysco -> sysco : ret.push_back()
                 end
             end
         end
@@ -84,3 +84,4 @@ sysco--
 sysco--
 
 @enduml
+
