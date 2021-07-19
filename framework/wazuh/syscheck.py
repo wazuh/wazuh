@@ -82,8 +82,10 @@ def clear(agent_list=None):
                                       some_msg='Syscheck database was not cleared on some agents',
                                       none_msg="No syscheck database was cleared")
     wdb_conn = WazuhDBConnection()
+
+    system_agents = get_agents_info()
     for agent in agent_list:
-        if agent not in get_agents_info():
+        if agent not in system_agents:
             result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
         else:
             try:

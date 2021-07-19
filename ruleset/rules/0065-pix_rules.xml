@@ -110,21 +110,21 @@
     <if_sid>4310</if_sid>
     <id>^1-106021|^1-106022</id>
     <description>PIX: Attack in progress detected.</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="4331" level="8">
     <if_sid>4311</if_sid>
     <id>^2-106012|^2-106017|^2-106020</id>
     <description>PIX: Attack in progress detected.</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="4332" level="8">
     <if_sid>4313</if_sid>
     <id>^4-4000</id>
     <description>PIX: Attack in progress detected.</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- Grouping of attack in progress messages. The three above

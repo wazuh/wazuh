@@ -1,0 +1,74 @@
+<!--
+  -  OracleDB 12C decoder
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  localfile implementation example:
+  <localfile>
+    <log_format>multi-line-regex</log_format>
+    <location>/tmp/oracle/*.aud</$
+    <multiline_regex match="all">(?m)\n\n</multiline_regex>
+    <out_format>$(timestamp) $(hostname) oracledb: $(log)</out_format>
+  </localfile>
+-->
+<!--
+Log example:
+  Fri Jul 09 11:11:00 2021 +05:32
+  LENGTH : '563'
+  ACTION :[412] 'select /*+  no_parallel(t) no_parallel_index(t) dbms_stats cursor_sharing_exact use_weak_name_resl dynamic_sampling(0) no_monitoring xmlindex_sel_idx_tbl no_substrb_pad  */ substrb(dump("INSTANCE_NUMBER",16,0,64),1,240) val, 
+                        rowidtochar(rowid) rwid from "SYS"."WRH$_SEG_STAT" t where rowid in (chartorowid('AAAAAAAAAAAAAAAAAA'),chartorowid('AAAAAAAAAAAAAAAAAA')) order by "INSTANCE_NUMBER"'
+  DATABASE USER:[3] 'SYS'
+  PRIVILEGE :[4] 'NONE'
+  CLIENT USER:[0] ''
+  CLIENT TERMINAL:[7] 'UNKNOWN'
+  STATUS:[1] '0'
+  DBID:[10] '3320902093'
+-->
+
+<decoder name="oracledb_log">
+    <program_name>^oracledb$</program_name>
+</decoder>
+
+<decoder name="oracledb_transaction_fields">
+    <parent>oracledb_log</parent>
+    <regex>(?Ums)^LENGTH : '(\d+)'\n</regex>
+    <regex>^ACTION :\[\d+] '(.+)'\n</regex>
+    <regex>^DATABASE USER:\[\d+] '(.+)'\n</regex>
+    <regex>^PRIVILEGE :\[\d+] '(.+)'\n</regex>
+    <regex>^CLIENT USER:\[\d+] '(.*)'\n</regex>
+    <regex>^CLIENT TERMINAL:\[\d+] '(.*)'\n</regex>
+    <regex>^STATUS:\[\d+] '(.*)'\n</regex>
+    <regex type="pcre2">^DBID:\[\d+] '(.*)'</regex>
+    <order>length, action, database_user, privilege_level, client_user, client_terminal, status, database_id</order>
+</decoder>
+
+
+<!--
+  localfile implementation example:
+  <localfile>
+    <log_format>multi-line-regex</log_format>
+    <location>/tmp/oracle/alert_CDBTST931.log</location>
+    <multiline_regex match="start">(?m)\w{3}\s\w{3}\s\d{2}\s\d{2}:\d{2}:\d{2}\s\d{4}</multiline_regex>
+    <out_format>$(timestamp) $(hostname) oracledb_alerts: $(log)</out_format>
+  </localfile>
+-->
+<!--
+Log example:
+  Tue Feb 23 11:53:46 2021
+  anyword: mtype: 61 process 70621 failed because of a resource problem in the OS. The OS has most likely run out of buffers (rval: 4)
+  Errors in file /tmp/oracle/traces/CDBTST111_m000_00001.trc  (incident=346445):
+  ORA-00603: ORACLE server session terminated by fatal error
+  ORA-27504: IPC error creating OSD context
+  ORA-27300: OS system dependent operation:sendmsg failed with status: 105
+  ORA-27301: OS failure message: No buffer space available
+  ORA-27302: failure occurred at: anyword
+  opidrv aborting process M000 ospid (70621) as a result of ORA-603
+  Process m000 died, see its trace file
+-->
+<decoder name="oracledb_alerts">
+    <program_name>^oracledb_alerts$</program_name>
+    <prematch type="pcre2">ORA\-</prematch>
+</decoder>
