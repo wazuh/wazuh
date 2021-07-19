@@ -25,6 +25,9 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
+#include "../wrappers/wazuh/os_crypto/shared/keys_wrappers.h"
+#include "../wrappers/wazuh/remoted/netbuffer_wrappers.h"
+#include "../wrappers/wazuh/remoted/netcounter_wrappers.h"
 
 
 extern keystore keys;
@@ -32,6 +35,8 @@ extern remoted logr;
 
 /* Forward declarations */
 void * close_fp_main(void * args);
+void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
+
 
 /* Setup/teardown */
 
@@ -63,6 +68,10 @@ void __wrap_key_unlock(){
     function_called();
 }
 
+void __wrap_key_lock_read(){
+    function_called();
+}
+
 /* Tests close_fp_main*/
 
 void test_close_fp_main_queue_empty(void **state)
@@ -76,6 +85,8 @@ void test_close_fp_main_queue_empty(void **state)
     expect_function_call(__wrap_key_lock_write);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 0");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Rids closer thread started.");
 
     // key_unlock
     expect_function_call(__wrap_key_unlock);
@@ -112,6 +123,7 @@ void test_close_fp_main_first_node_no_close_first(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Checking rids_node of agent 001.");
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Rids closer thread started.");
     // key_unlock
     expect_function_call(__wrap_key_unlock);
 
@@ -159,6 +171,8 @@ void test_close_fp_main_close_first(void **state)
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 0");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Rids closer thread started.");
 
     // key_unlock
     expect_function_call(__wrap_key_unlock);
@@ -217,6 +231,8 @@ void test_close_fp_main_close_first_queue_2(void **state)
     will_return(__wrap_time, now);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Checking rids_node of agent 002.");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Rids closer thread started.");
 
     // key_unlock
     expect_function_call(__wrap_key_unlock);
@@ -290,6 +306,8 @@ void test_close_fp_main_close_first_queue_2_close_2(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 0");
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Rids closer thread started.");
+
     // key_unlock
     expect_function_call(__wrap_key_unlock);
 
@@ -334,6 +352,8 @@ void test_close_fp_main_close_fp_null(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 0");
 
+    expect_string(__wrap__mdebug1, formatted_msg, "Rids closer thread started.");
+
     // key_unlock
     expect_function_call(__wrap_key_unlock);
 
@@ -341,6 +361,52 @@ void test_close_fp_main_close_fp_null(void **state)
     assert_int_equal(keys.opened_fp_queue->elements, 0);
     os_free(first_node_key->id);
     os_free(first_node_key);
+}
+
+void test_HandleSecureMessage_unvalid_message(void **state)
+{
+    char buffer[OS_MAXSTR + 1] = "!1234!";
+    int recv_b = 4;
+    struct sockaddr_in peer_info;
+    int sock_client = 1;
+    int wdb_sock;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "1234");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 1234);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, sock_client);
+    will_return(__wrap_OS_DeleteSocket, 1);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, sock_client);
+    will_return(__wrap_nb_close, 1);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    HandleSecureMessage(buffer, recv_b, &peer_info, sock_client, &wdb_sock);
+
 }
 
 int main(void)
@@ -352,7 +418,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2_close_2, setup_config, teardown_config),
-        cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config)
+        cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
+        // Tests HandleSecureMessage
+        cmocka_unit_test(test_HandleSecureMessage_unvalid_message),
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
