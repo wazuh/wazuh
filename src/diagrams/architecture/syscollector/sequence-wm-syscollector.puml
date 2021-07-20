@@ -1,0 +1,97 @@
+@startuml wm-syscollector
+actor "wmodules-thread" as wmodules
+actor "receiver-thread" as recv
+actor "send-queue" as queue
+participant "wm-syscollector" as wmsysco
+participant syscollector as sysco
+participant sym_load as sym
+
+== start ==
+wmodules -> wmsysco++ : wm_sys_main(data)
+wmsysco -> wmsysco : w_cond_init(&sys_stop_condition, NULL)
+wmsysco -> wmsysco : w_mutex_init(&sys_stop_mutex, NULL)
+alt not syscollector enabled
+    wmsysco -> wmodules : pthread_exit()
+else
+    alt not compiled for win32
+        wmsysco -> wmsysco : queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)
+        alt queue_fd < 0
+            wmsysco -> wmodules : pthread_exit()
+        end
+    end
+    wmsysco -> sym++ : so_get_module_handle("syscollector")
+    wmsysco <-- sym-- : syscollector_module
+    alt syscollector_module is valid
+        wmsysco -> sym++ : so_get_function_sym(syscollector_module, "syscollector_start")
+        wmsysco <-- sym-- : syscollector_start_ptr
+        wmsysco -> sym++ : so_get_function_sym(syscollector_module, "syscollector_stop")
+        wmsysco <-- sym-- : syscollector_stop_ptr
+        wmsysco -> sym++ : so_get_function_sym(syscollector_module, "syscollector_sync_message")
+        wmsysco <-- sym-- : syscollector_sync_message_ptr
+    else
+        wmsysco -> wmodules : pthread_exit()
+    end
+    alt syscollector_start_ptr is valid
+        wmsysco -> wmsysco : w_mutex_lock(&sys_stop_mutex)
+        wmsysco -> wmsysco : need_shutdown_wait = true
+        wmsysco -> wmsysco : w_mutex_unlock(&sys_stop_mutex)
+        wmsysco -> wmsysco : wm_sys_log_config(sys)
+        wmsysco -> sysco : syscollector_start_ptr(...)
+        note right
+        syscollector_start_ptr will call syscollector init.
+        end note
+    else
+        wmsysco -> wmodules : pthread_exit()
+    end
+    alt queue_fd > 0
+        wmsysco -> wmsysco : close(queue_fd)
+    end
+    wmsysco -> sym++ : so_free_library(syscollector_module)
+    wmsysco <-- sym--
+    wmsysco -> wmsysco : w_mutex_lock(&sys_stop_mutex)
+    wmsysco -> wmsysco : w_cond_signal(&sys_stop_condition)
+    wmsysco -> wmsysco : w_mutex_unlock(&sys_stop_mutex)
+    wmsysco --> wmodules : return 0
+end
+wmsysco--
+== destroy ==
+wmodules -> wmsysco++ : wm_sys_destroy(data)
+    wmsysco -> wmsysco : free(data)
+    wmsysco --> wmodules
+wmsysco--
+
+== stop ==
+wmodules -> wmsysco++ : wm_sys_stop()
+alt syscollector_stop_ptr valid
+    wmsysco -> sysco : syscollector_stop_ptr(...)
+    note right
+    syscollector_stop_ptr will call syscollector destroy.
+    end note
+end
+wmsysco -> wmsysco : w_mutex_lock(&sys_stop_mutex)
+alt need_shutdown_wait
+    wmsysco -> wmsysco : w_cond_wait(&sys_stop_condition, &sys_stop_mutex)
+end
+wmsysco -> wmsysco : w_mutex_unlock(&sys_stop_mutex)
+wmsysco -> wmsysco : w_cond_destroy(&sys_stop_condition)
+wmsysco -> wmsysco : w_mutex_destroy(&sys_stop_mutex)
+wmodules <-- wmsysco--
+
+
+== dump ==
+wmodules -> wmsysco++ : wm_sys_dump()
+note right
+This function returns a cJSON with syscollector configurations.
+end note
+wmodules <-- wmsysco--
+== sync ==
+wmodules -> wmsysco++ : wm_sync_message(data)
+    alt syscollector_sync_message_ptr valid
+        wmsysco -> sysco : syscollector_sync_message_ptr(data)
+        note right
+        syscollector_sync_message_ptr will call syscollector sync message.
+        end note
+    end
+wmodules <-- wmsysco--
+@enduml
+
