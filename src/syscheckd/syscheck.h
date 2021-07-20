@@ -339,10 +339,46 @@ int realtime_start(void);
  *
  * @param dir Path to file or directory
  * @param configuration Configuration associated with the file or directory
- * @param followsl If the path is configured with follow sym link option
  * @return 1 on success, -1 on realtime_start failure, -2 on set_winsacl failure, and 0 on other errors
  */
-int realtime_adddir(const char *dir, directory_t *configuration, int followsl);
+int realtime_adddir(const char *dir, directory_t *configuration);
+
+#ifdef INOTIFY_ENABLED
+/**
+ * @brief Add an inotify watch to monitoring directory
+ *
+ * @param dir Path to file or directory
+ * @param configuration Configuration associated with the file or directory
+ * @return 1 on success, -1 on failure
+ */
+int fim_add_inotify_watch(const char *dir, const directory_t *configuration);
+#endif
+
+/**
+ * @brief Remove an inotify watch
+ *
+ * @param configuration Configuration associated with the file or directory
+ */
+void fim_realtime_delete_watches(const directory_t *configuration);
+
+/**
+ * @brief Check whether the realtime event queue has overflown.
+ *
+ * @return 0 if the queue hasn't overflown, 1 otherwise.
+ */
+int fim_realtime_get_queue_overflow();
+
+/**
+ * @brief Set the value of the queue overflown flag.
+ *
+ * @param value The new value to set the queue overflow flag.
+ */
+void fim_realtime_set_queue_overflow(int value);
+
+/**
+ * @brief Log the number of realtime watches currently set.
+ */
+void fim_realtime_print_watches();
 
 /**
  * @brief Process events in the real time queue
@@ -445,9 +481,9 @@ void remove_audit_rule_syscheck(const char *path);
  * @brief Read an audit event from socket
  *
  * @param [out] audit_sock The audit socket to read the events from
- * @param [in] reading_mode READING_MODE or HEALTHCHECK_MODE
+ * @param [in] running atomic_int that holds the status of the running thread.
  */
-void audit_read_events(int *audit_sock, int reading_mode);
+void audit_read_events(int *audit_sock, atomic_int_t *running);
 
 /**
  * @brief Makes Audit thread to wait for audit healthcheck to be performed
@@ -463,10 +499,16 @@ void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
 
 /**
+ * @brief Create the necessary file to store the audit rules to be loaded by the immutable mode.
+ *
+*/
+void audit_create_rules_file();
+
+/**
  * @brief Set all directories that don't have audit rules and have whodata enabled to realtime.
  *
 */
-void audit_no_rules_to_realtime();
+void audit_rules_to_realtime();
 
 /**
  * @brief Set Auditd socket configuration
@@ -613,10 +655,11 @@ char *fim_registry_value_diff(const char *key_name,
  * @brief Function that generates the diff file of a file monitored when the option report_changes is activated
  *
  * @param filename Path of file monitored
+ * @param configuration Configuration associated with the given path.
  * @return String with the diff to add to the alert
  */
 
-char * fim_file_diff(const char *filename);
+char *fim_file_diff(const char *filename, const directory_t *configuration);
 
 /**
  * @brief Deletes the filename diff folder and modify diff_folder_size if disk_quota enabled
@@ -719,6 +762,14 @@ int w_update_sacl(const char *obj_path);
  */
 #ifdef WIN32
 DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args);
+
+/**
+ * @brief Get the number of realtime watches opened by FIM.
+ *
+ * @return Number of realtime watches.
+ */
+unsigned int get_realtime_watches();
+
 #else
 void *fim_run_integrity(void *args);
 #endif
@@ -931,4 +982,23 @@ void fim_delete_file_event(fdb_t *fim_sql,
                            void *_evt_data,
                            void *_unused_field_1,
                            void *_unused_field_2);
+
+/**
+ * @brief Create a delete event and removes the entry from the database.
+ *
+ * @param fim_sql  FIM database struct.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param evt_data Information associated to the triggered event.
+ * @param configuration Directory configuration to be deleted.
+ * @param _unused_field Unused field, required to use this function as a callback.
+ *
+ */
+void fim_generate_delete_event(fdb_t *fim_sql,
+                               fim_entry *entry,
+                               pthread_mutex_t *mutex,
+                               void *evt_data,
+                               void *configuration,
+                               void *_unused_field);
+
 #endif /* SYSCHECK_H */

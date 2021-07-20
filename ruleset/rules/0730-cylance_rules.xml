@@ -1,0 +1,83 @@
+<!--
+  -  Cylance rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+<group name="CylancePROTECT_2.0">
+    <rule id="65700" level="0">
+        <decoded_as>CylancePROTECT_2.0</decoded_as>
+        <description>Cylance events messages grouped.</description>
+    </rule>
+
+    <rule id="65701" level="6">
+        <if_sid>65700</if_sid>
+        <field name="CylancePROTECT.Event.Type">Threat</field>
+        <description>Cylance: $(CylancePROTECT.File.Name) at $(CylancePROTECT.File.Path) on $(CylancePROTECT.Device.Name) may be malicious | File Type: $(CylancePROTECT.File.Type) | Action Taken: $(CylancePROTECT.Status) | Threat Score: $(CylancePROTECT.Cylance.Score)</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="65702" level="6">
+        <if_sid>65700</if_sid>
+        <field name="CylancePROTECT.Event.Type">ExploitAttempt</field>
+        <description>Cylance: Exploit Attempt was discovered within the $(CylancePROTECT.Process.Name) process. | Violation Type: $(CylancePROTECT.Violation.Type) | User: $(CylancePROTECT.Username) | Device Name: $(CylancePROTECT.Device.Name)</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
+
+<!-- Memory Protection Not tested due to lack of logs -->
+    <rule id="65703" level="6">
+        <if_sid>65700</if_sid>
+        <field name="CylancePROTECT.Event.Type">Memory_Protection</field>
+        <description>Cylance: Memory Protection triggered due to Process: $(CylancePROTECT.Process.Name) | Violation Type: $(CylancePROTECT.Violation.Type) | Action: $(CylancePROTECT.Action)|  User: $(CylancePROTECT.Username) | Device Name: $(CylancePROTECT.Device.Name)</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="65704" level="6">
+        <if_sid>65700</if_sid>
+        <field name="CylancePROTECT.Event.Type">ScriptControl</field>
+        <description>Cylance: $(CylancePROTECT.File.Path) was $(CylancePROTECT.Event.Name) on $(CylancePROTECT.Device.Name). | Interpreter: $(CylancePROTECT.Interpreter) | User: $(CylancePROTECT.Username)</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="65705" level="3">
+        <if_sid>65700</if_sid>
+        <field name="CylancePROTECT.Event.Type">AuditLog</field>
+        <description>Cylance: $(CylancePROTECT.Event.Name) by $(CylancePROTECT.Username) from $(CylancePROTECT.Source.IP).</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="65706" level="3">
+        <if_sid>65700</if_sid>
+        <field name="CylancePROTECT.Event.Type">AppControl</field>
+        <description>Cylance: Event: $(CylancePROTECT.Event.Name) | Action: $(CylancePROTECT.Action.Type) | File Path: $(CylancePROTECT.File.Path) | Device Name: $(CylancePROTECT.Device.Name).</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="65707" level="3">
+        <if_sid>65700</if_sid>
+        <field name="CylancePROTECT.Event.Type">Device</field>
+        <description>Cylance: Event: $(CylancePROTECT.Event.Name) | Device Name: $(CylancePROTECT.Device.Name) | User: $(CylancePROTECT.Username) | OS: $(CylancePROTECT.OS)</description>
+        <group>gdpr_IV_35.7.d,</group>
+    </rule>
+<!-- Add Device Control Rule and test Memory Protection Rule when we have logs for these-->
+
+<!-- Email/Frequency alert rules below here -->
+
+    <rule id="65708" level="12" frequency="5" timeframe="120">
+        <if_matched_sid>65701</if_matched_sid>
+        <same_field>CylancePROTECT.Device.Name</same_field>
+        <description>Cylance: Multiple malware events have been detected on $(CylancePROTECT.Device.Name)</description>
+    </rule>
+
+    <rule id="65709" level="12" frequency="5" timeframe="120">
+        <if_matched_sid>65702</if_matched_sid>
+        <same_field>CylancePROTECT.Device.Name</same_field>
+        <description>Cylance: Multiple exploitation attempts have been detected on $(CylancePROTECT.Device.Name)</description>
+    </rule>
+
+    <rule id="65710" level="14" frequency="10" timeframe="60">
+        <if_matched_sid>65702</if_matched_sid>
+        <description>Cylance: Multiple exploitation attempts have been detected.</description>
+    </rule>
+
+</group>

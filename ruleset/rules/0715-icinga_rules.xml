@@ -1,0 +1,55 @@
+<!--
+  -  Icinga rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="icinga,">
+ <rule id="70100" level="0">
+    <decoded_as>icinga</decoded_as>
+    <description> icinga parent </description>
+ </rule>
+<rule id="70101" level="2">
+   <if_sid>70100</if_sid>
+   <field name="msg_type">WARNING</field>
+   <description>Warning generated</description>
+   <group>icingainfo</group>
+</rule>
+<rule id="70102" level="3">
+   <if_sid>70101 </if_sid>
+   <match>failed: No such file or directory</match>
+   <description> The script/file has not been found</description>
+   <group>icingainfo</group>
+</rule>
+<rule id="70103" level="1">
+   <if_sid>70100</if_sid>
+   <field name="msg_type">VERBOSE</field>
+   <description>Informative messages</description>
+   <group>icingainfo</group>
+</rule>
+<rule id="70104" level="1">
+   <if_sid>70100</if_sid>
+   <field name="msg_type">NOTICE</field>
+   <description>Notification messages</description>
+   <group>icingainfo</group>
+</rule>
+<rule id="70105" level="3">
+   <if_sid>70100</if_sid>
+   <field name="msg_type">ERROR</field>
+   <description> There was and error in the process</description>
+   <group>icingainfo</group>
+</rule>
+<rule id="70106" level="1">
+   <if_sid>70100</if_sid>
+   <field name="msg_type">INFORMATION</field>
+   <description>Informative messages</description>
+   <group>icingainfo</group>
+</rule>
+<rule id="70107" level="1">
+   <if_sid>70100</if_sid>
+   <field name="msg_type">debug</field>
+   <description>Debugging in proccess</description>
+   <group>icingainfo</group>
+</rule>
+</group>

@@ -7,6 +7,7 @@ import glob
 import hashlib
 import json
 import operator
+import os
 import re
 import stat
 import sys
@@ -14,6 +15,7 @@ import tempfile
 import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
+from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk
 from os.path import join, basename, relpath
@@ -22,12 +24,14 @@ from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import ElementTree
 
+from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
 from defusedxml.minidom import parseString
 
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
+from wazuh.core.common import pidfiles_path
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -35,6 +39,27 @@ from wazuh.core.wdb import WazuhDBConnection
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
+
+# Temporary cache
+t_cache = TTLCache(maxsize=4500, ttl=60)
+
+
+def check_pid(daemon):
+    """Check the existence of '.pid' files for a specified daemon.
+
+    Parameters
+    ----------
+    daemon : str
+        Daemon's name.
+    """
+    regex = rf'{daemon}-(.*).pid'
+    for pidfile in os.listdir(pidfiles_path):
+        if match := re.match(regex, pidfile):
+            try:
+                os.kill(int(match.group(1)), 0)
+            except OSError:
+                print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
+                os.remove(f'{pidfiles_path}/{pidfile}')
 
 
 def find_nth(string, substring, n):
@@ -718,7 +743,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     non_nested_dict = {f: data[f] for f in data.keys() if f.split(split_character)[0]
                        not in nested_dict.keys()}
 
-    # append both dictonaries
+    # append both dictionaries
     nested_dict.update(non_nested_dict)
 
     return nested_dict
@@ -903,6 +928,28 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     :return: list with processed query
     """
+    def check_date_format(element):
+        """Check if a given field is a date. If so, transform the date to the standard API format (ISO 8601).
+        If not, return the field.
+
+        Parameters
+        ----------
+        element : str
+            Item to check.
+
+        Returns
+        -------
+        In case of a date, return the element after its conversion. Otherwise it return the element.
+        """
+        date_patterns = ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
+
+        for pattern in date_patterns:
+            try:
+                return datetime.strptime(element, pattern)
+            except ValueError:
+                pass
+
+        return element
 
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
@@ -928,11 +975,14 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                     return True
             else:
                 # cast value2 to integer if value1 is integer
+                value2 = check_date_format(value2)
+                if type(value2) == datetime:
+                    val = check_date_format(val)
                 value2 = int(value2) if type(val) == int else value2
                 if operators[op](val, value2):
                     return True
-        else:
-            return False
+
+        return False
 
     def get_match_candidates(iterable, key_list: list, candidates: list):
         """Get the match candidates following a list of keys.
@@ -1319,7 +1369,7 @@ class WazuhDBQuery(object):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name in self.date_fields and not isinstance(q_filter['value'], (int, float)):
-            # Filter a date, but only if it is in string (YYYY-MM-DD hh:mm:ss) format.
+            # Filter a date, only if it is a string and it can be derived into a date.
             # If it matches the same format as DB (timestamp integer), filter directly by value (next if cond).
             self._filter_date(q_filter, field_name)
         elif 'rbac' in field_name:
@@ -1377,17 +1427,17 @@ class WazuhDBQuery(object):
         raise NotImplementedError
 
     def _filter_date(self, date_filter, filter_db_name):
-        # date_filter['value'] can be either a timeframe or a date in format %Y-%m-%d %H:%M:%S
+        # date_filter['value'] can be either a timeframe or a date in formats %Y-%m-%d, %Y-%m-%d %H:%M:%S or %Y-%m-%dT%H:%M:%SZ
         if date_filter['value'].isdigit() or re.match(r'\d+[dhms]', date_filter['value']):
             query_operator = '>' if date_filter['operator'] == '<' or date_filter['operator'] == '=' else '<'
             self.request[date_filter['field']] = get_timeframe_in_seconds(date_filter['value'])
-            self.query += "({0} IS NOT NULL AND {0} {1}" \
-                          " strftime('%s', 'now') - :{2}) ".format(self.fields[filter_db_name],
+            self.query += "{0} IS NOT NULL AND {0} {1}" \
+                          " strftime('%s', 'now') - :{2} ".format(self.fields[filter_db_name],
                                                                    query_operator,
                                                                    date_filter['field'])
-        elif re.match(r'\d{4}-\d{2}-\d{2}', date_filter['value']):
-            self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name],
-                                                                    date_filter['operator'], date_filter['field'])
+        elif re.match(r'\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(.\d{1,6})?Z?)?', date_filter['value']):
+            self.query += "{0} IS NOT NULL AND {0} {1} strftime('%s', :{2})".format(
+                self.fields[filter_db_name], date_filter['operator'], date_filter['field'])
             self.request[date_filter['field']] = date_filter['value']
         else:
             raise WazuhError(1412, date_filter['value'])
@@ -1760,3 +1810,33 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
         Relative path to `full_path` from `prefix`.
     """
     return relpath(full_path, prefix)
+
+
+def clear_temporary_caches():
+    """Clear all saved temporary caches."""
+    t_cache.clear()
+
+
+def temporary_cache():
+    """Apply cache depending on whether function has its `cache` parameter set to `True` or not.
+
+    Returns
+    -------
+    Requested function.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            apply_cache = kwargs.pop('cache', None)
+
+            @cached(cache=t_cache)
+            def f(*_args, **_kwargs):
+                return func(*_args, **_kwargs)
+
+            if apply_cache:
+                return f(*args, **kwargs)
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

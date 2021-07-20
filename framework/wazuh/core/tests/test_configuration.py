@@ -268,7 +268,8 @@ def test_get_internal_options_value():
         assert configuration.get_internal_options_value('ossec', 'python', 5, 1) == 1
 
 
-def test_upload_group_configuration():
+@patch('builtins.open')
+def test_upload_group_configuration(mock_open):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.upload_group_configuration('noexists', 'noexists')
 

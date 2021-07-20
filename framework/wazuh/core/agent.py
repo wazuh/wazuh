@@ -2,14 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import copy
 import fcntl
 import hashlib
 import ipaddress
+import mmap
 import re
 import tempfile
 import threading
 from base64 import b64encode
+from copy import deepcopy
 from datetime import date, datetime
 from functools import lru_cache
 from json import dumps, loads
@@ -19,16 +20,20 @@ from platform import platform
 from shutil import rmtree
 from time import time
 
+import api.configuration as aconf
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.cluster.utils import get_manager_status, get_cluster_items
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
+from wazuh.core.cluster.utils import get_manager_status
+from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, date_format
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
+
+detect_wrong_lines = re.compile(r'(.+ .+ .+ .+)')
+detect_valid_lines = re.compile(r'^(\d+) (.*) (.*) (.*)', re.MULTILINE)
 
 mutex = threading.Lock()
 lock_file = None
@@ -45,7 +50,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if filters is None:
             filters = {}
         if min_select_fields is None:
-            min_select_fields = {'lastKeepAlive', 'version', 'id'}
+            min_select_fields = {'id'}
         backend = WazuhDBBackend(query_format='global')
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field,
@@ -57,16 +62,13 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _filter_date(self, date_filter, filter_db_name):
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
-        self.query = self.query[:-1] + ' AND id != 0'
+        self.query += ' AND id != 0'
 
     def _sort_query(self, field):
-        if field == 'status':
-            # Order by status ASC is the same that order by last_keepalive DESC.
-            return '{} {}'.format('last_keepAlive', self.sort['order'])
-        elif field == 'os.version':
+        if field == 'os.version':
+            # Order by os major version and os minor version
             return "CAST(os_major AS INTEGER) {0}, CAST(os_minor AS INTEGER) {0}".format(self.sort['order'])
-        else:
-            return WazuhDBQuery._sort_query(self, field)
+        return WazuhDBQuery._sort_query(self, field)
 
     def _add_search_to_query(self):
         # since id are stored in database as integers, id searches must be turned into integers to work as expected.
@@ -84,7 +86,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
-        selected_fields |= {'id'}
+        selected_fields |= self.min_select_fields
         aux = list()
         for item in self._data:
             aux_dict = dict()
@@ -132,7 +134,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         else:
             rbac_value = None
 
-        if rbac_value:
+        if rbac_value is not None and (rbac_value or not self.rbac_negate):
             self.query_filters += [{'value': rbac_value,
                                     'field': 'rbac_id',
                                     'operator': operator,
@@ -260,7 +262,6 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     def __init__(self, filter_fields, *args, **kwargs):
-        self.real_fields = copy.deepcopy(filter_fields)
 
         WazuhDBQueryAgents.__init__(self, *args, **kwargs)
         WazuhDBQueryGroupBy.__init__(self, *args, table=self.table, fields=self.fields, filter_fields=filter_fields,
@@ -269,47 +270,30 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
     def _format_data_into_dictionary(self):
         # Add <field>: 'unknown' when filter field is not within the response.
-        if not self.real_fields or self.filter_fields == {'fields': set(self.real_fields)}:
-            for result in self._data:
-                for field in self.filter_fields['fields']:
-                    if field not in result.keys():
-                        result[field] = 'unknown'
-            return super()._format_data_into_dictionary()
-        else:
-            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
+        for result in self._data:
+            for field in self.filter_fields['fields']:
+                if field not in result.keys():
+                    result[field] = 'unknown'
 
-            # compute 'status' field, format id with zero padding and remove non-user-requested fields.
-            # Also remove, extra fields (internal key and registration IP)
-            selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
-            selected_fields |= {'id'}
-            self._data = [{key: format_fields(key, value)
-                           for key, value in item.items() if key in selected_fields} for item in self._data]
+        fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-            # Create tuples like ({values in self.real_fields}, count) in order to keep the 'count' field and discard
-            # the values not requested by the user.
-            tuples_list = [({k: result[k] if k in result.keys() else 'unknown' for k in self.real_fields},
-                            result['count']) for result in self._data]
+        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
+        # Also remove, extra fields (internal key and registration IP)
+        selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
 
-            # Sum the 'count' value of all the dictionaries that are equal
-            result_list = list()
-            added_dicts = list()
-            for i, i_tuple in enumerate(tuples_list):
-                if i not in added_dicts:
-                    for j, j_tuple in enumerate(tuples_list):
-                        if j_tuple[0] == i_tuple[0] and j > i:
-                            tuples_list[i] = (tuples_list[i][0], tuples_list[i][1] + tuples_list[j][1])
-                            added_dicts.append(j)
-                    result_list.append(tuples_list[i])
+        aux = list()
+        for item in self._data:
+            aux_dict = dict()
+            for key, value in item.items():
+                if key in selected_fields:
+                    aux_dict[key] = format_fields(key, value)
 
-            # Append 'count' value in each dict
-            self._data = []
-            for dikt in result_list:
-                dikt[0].update({'count': dikt[1]})
-                self._data.append(dikt[0])
+            aux.append(aux_dict)
 
-            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
+        self._data = aux
+        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
-            return WazuhDBQuery._format_data_into_dictionary(self)
+        return WazuhDBQuery._format_data_into_dictionary(self)
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
@@ -387,7 +371,8 @@ class Agent:
         return dictionary
 
     @staticmethod
-    def _acquire_client_keys_lock(timeout=get_cluster_items()['intervals']['communication']['timeout_api_exe']-1):
+    def _acquire_client_keys_lock(timeout=None):
+        timeout = aconf.api_conf['intervals']['request_timeout'] - 1 if not timeout else timeout
         if mutex.acquire(timeout=timeout):
             global lock_file
             lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')
@@ -480,28 +465,9 @@ class Agent:
 
         return ret_msg
 
-    def restart(self) -> str:
-        """Restart the agent.
-
-        Raises
-        ------
-        WazuhError(1707)
-            If the agent to be restarted is not active.
-
-        Returns
-        -------
-        str
-            Message generated by Wazuh.
-        """
-        # Check if agent is active
-        self.get_basic_information()
-        if self.status.lower() != 'active':
-            raise WazuhError(1707, extra_message='{0}'.format(self.status))
-
-        return send_restart_command(self.id, self.version)
 
     def remove(self, backup=False, purge=False, use_only_authd=False):
-        """Deletes the agent.
+        """Delete the agent.
 
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
@@ -509,7 +475,7 @@ class Agent:
         :return: Message.
         """
 
-        manager_status = get_manager_status()
+        manager_status = get_manager_status(cache=True)
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd and not is_authd_running:
@@ -847,13 +813,9 @@ class Agent:
             else:
                 agent_key = key
         else:
-            epoch_time = int(time())
-            str1 = "{0}{1}{2}".format(epoch_time, name, platform())
-            str2 = "{0}{1}".format(ip, agent_id)
-            hash1 = hashlib.md5(str1.encode())
-            hash1.update(urandom(64))
-            hash2 = hashlib.md5(str2.encode())
-            hash1.update(urandom(64))
+            hash1 = hashlib.md5("{0}{1}{2}".format(int(time()), name, platform()).encode())
+            hash1.update(urandom(128))
+            hash2 = hashlib.md5(f"{ip}{agent_id}".encode())
             agent_key = hash1.hexdigest() + hash2.hexdigest()
 
         force = int(force)
@@ -869,7 +831,6 @@ class Agent:
         if agent_id in get_agents_info():
             raise WazuhError(1708, agent_id)
 
-        client_keys_entries = []
         # Check if ip or name exist in client.keys
         last_id = 0
 
@@ -879,48 +840,43 @@ class Agent:
 
         try:
             with open(common.client_keys) as f_k:
-                for line in f_k.readlines():
-                    line = line.rstrip()
-                    if line:
-                        if not line.startswith('#') and not line.startswith(' '):
-                            try:
-                                entry_id, entry_name, entry_ip, entry_key = line.split(' ')
-                            except ValueError:
-                                # Bad entries will be ignored and not rewritten to the new file
-                                continue
-                        else:
-                            # Ignore void entries, but preserve them
-                            client_keys_entries.append(line)
-                            continue
+                with mmap.mmap(f_k.fileno(), length=0, access=mmap.ACCESS_READ) as file_client:
+                    content = file_client.read().decode()
+                    # Remove lines that do not follow the general scheme
+                    client_keys_entries = detect_wrong_lines.findall(content)
 
-                        # Update last_id with highest seen value
-                        if int(entry_id) > last_id:
-                            last_id = int(entry_id)
+                    # Update last_id with highest value
+                    if not agent_id:
+                        try:
+                            last_id = max(int(line[0]) for line in detect_valid_lines.findall(content))
+                        except ValueError:
+                            last_id = 0
 
-                        # Ignore void entries, but preserve them
-                        if entry_name.startswith('#') or entry_name.startswith('!'):
-                            client_keys_entries.append(line)
-                            continue
+                    # Detect entries with duplicate name or ip
+                    if (name in content and f'!{name}' not in content) or (ip != 'any' and ip in content):
+                        # Regular expression that will help us to search for the target line
+                        regex = rf'.* {name} .* .*|.* {name} {ip} .*' if name in content else rf'.* .* {ip} .*'
 
-                        # Detect entries with duplicate name or ip
-                        if name == entry_name or (ip != 'any' and ip == entry_ip):
-                            # If force is non-negative then we check to remove the agent using value of force as the max age
-                            # in seconds
-                            if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
-                                self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
-                                # We add a void entry
-                                client_keys_entries.append(
-                                    '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
-                            else:
-                                # If force is negative or the agent is not older than the max age we raise an error based
-                                # on the duplicate field.
-                                if name == entry_name:
-                                    raise WazuhError(1705, extra_message=name)
+                        for index, line in enumerate(client_keys_entries):
+                            agent_match = re.match(regex, line.rstrip())
+
+                            # Line found
+                            if agent_match:
+                                entry_id, entry_name, entry_ip, entry_key = agent_match[0].split(' ')
+
+                                # If force is non-negative then we check to remove the agent using value of force as
+                                # the max age in seconds
+                                if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
+                                    self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
+                                    # We add a void entry
+                                    client_keys_entries[index] = f'{entry_id} !{entry_name} {entry_ip} {entry_key}'
                                 else:
-                                    raise WazuhError(1706, extra_message=ip)
-                        else:
-                            # Preserve the entry if it is not a duplicate
-                            client_keys_entries.append(line)
+                                    # If force is negative or the agent is not older than the max age we raise
+                                    # an error based on the duplicate field.
+                                    if name == entry_name:
+                                        raise WazuhError(1705, extra_message=name)
+                                    else:
+                                        raise WazuhError(1706, extra_message=ip)
 
             # If id not specified then create a new id 1 greater than the last id created.
             if not agent_id:
@@ -974,18 +930,31 @@ class Agent:
                             filters=None, q=""):
         """Gets a list of available agents with basic attributes.
 
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines required field filters.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        Parameters
+        ----------
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : str
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        search : str
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
+        select : str
+            Select fields to return. Format: {"fields":["field1","field2"]}.
+        filters : dict
+            Defines required field filters.
+        q : str
+            Defines query to filter in DB.
+
+        Returns
+        -------
+        Information gathered from the database query
         """
+        pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
+                                    filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
+                                      query=q, **pfilters)
         data = db_query.run()
 
         return data
@@ -1001,12 +970,11 @@ class Agent:
         :param replace_list: List of Group names that can be replaced
         :return: Agent ID.
         """
+        agent = Agent(agent_id)
         if replace_list is None:
             replace_list = []
         if not force:
             # Check if agent exists, it is not 000 and the group exists
-            Agent(agent_id).get_basic_information()
-
             if agent_id == "000":
                 raise WazuhError(1703)
 
@@ -1017,12 +985,11 @@ class Agent:
         group_path = path.join(common.groups_path, agent_id)
         try:
             with open(group_path) as f:
-                multigroup_name = f.read().replace('\n', '')
+                multigroup_name = f.read().strip()
         except Exception as e:
             # Check if agent is never_connected.
-            failed = Agent(agent_id)
-            failed.load_info_from_db()
-            if failed.status == 'never_connected':
+            agent.load_info_from_db()
+            if agent.status == 'never_connected':
                 raise WazuhError(1753)
             raise WazuhInternalError(1005, extra_message=str(e))
         agent_groups = set(multigroup_name.split(','))
@@ -1034,13 +1001,13 @@ class Agent:
                 raise WazuhError(1752)
         else:
             # Check if the group already belongs to the agent
-            if group_id in multigroup_name.split(','):
+            if group_id in agent_groups:
                 raise WazuhError(1751)
 
-            multigroup_name = (multigroup_name + ',' if multigroup_name else '') + group_id
+            multigroup_name = f'{multigroup_name}{"," if multigroup_name else ""}{group_id}'
 
         # Check multigroup limit
-        if Agent.check_multigroup_limit(agent_id):
+        if len(agent_groups) > common.max_groups_per_multigroup:
             raise WazuhError(1737)
 
         # Update group file
@@ -1117,22 +1084,6 @@ class Agent:
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhInternalError(1005, extra_message=str(e))
-
-    @staticmethod
-    def check_multigroup_limit(agent_id):
-        """An agent can belong to <common.max_groups_per_multigroup> groups as maximum. This function checks
-        that limit is not yet reached.
-
-        :param agent_id: Agent ID to check
-        :return: True if the limit is reached, False otherwise
-        """
-        group_read = Agent.get_agents_group_file(agent_id)
-        if group_read:
-            return len(group_read.split(',')) >= common.max_groups_per_multigroup
-        else:
-            # In case that the agent is not connected and has no assigned group, the file is not created.
-            # So, the limit is not reached.
-            return False
 
     @staticmethod
     def unset_single_group_agent(agent_id, group_id, force=False):
@@ -1240,18 +1191,7 @@ def format_fields(field_name, value):
         return value
 
 
-def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
-    """Calculates state based on last keep alive
-    """
-    if not last_keep_alive or last_keep_alive == 'unknown':
-        return "never_connected"
-    else:
-        last_date = datetime.utcfromtimestamp(last_keep_alive)
-        difference = (today - last_date).total_seconds()
-        return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
-
-
-def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
+def send_restart_command(agent_id: str = '', agent_version: str = '', wq: WazuhQueue = None) -> str:
     """Send restart command to an agent.
 
     Parameters
@@ -1260,22 +1200,20 @@ def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
         ID specifying the agent where the restart command will be sent to
     agent_version : str
         Agent version to compare with the required version. The format is vX.Y.Z.
+    wq : WazuhQueue
+        WazuhQueue used for the active response messages.
 
     Returns
     -------
     str
         Message generated by Wazuh.
     """
-    wq = WazuhQueue(common.ARQUEUE)
-
     # If the Wazuh agent version is newer or equal to the AR legacy version,
     # the message sent will have JSON format
     if WazuhVersion(agent_version) >= WazuhVersion(common.AR_LEGACY_VERSION):
         ret_msg = wq.send_msg_to_agent(WazuhQueue.RESTART_AGENTS_JSON, agent_id)
     else:
         ret_msg = wq.send_msg_to_agent(WazuhQueue.RESTART_AGENTS, agent_id)
-
-    wq.close()
 
     return ret_msg
 
@@ -1326,7 +1264,7 @@ def expand_group(group_name):
             try:
                 with open(path.join(common.groups_path, file), 'r') as f:
                     file_content = f.readlines()
-                len(file_content) == 1 and group_name in file_content[0] and agents_ids.add(file)
+                len(file_content) == 1 and group_name in file_content[0].strip().split(',') and agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
                 pass
@@ -1449,5 +1387,8 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()
+    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format))
+                       for k, v in agent_info.items() if k in {'create_time', 'update_time'})
+     for agent_info in data['data']]
 
     return data

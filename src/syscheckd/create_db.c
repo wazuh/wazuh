@@ -35,7 +35,7 @@ static int _base_line = 0;
 
 static fim_state_db _db_state = FIM_STATE_DB_EMPTY;
 
-static const char *FIM_EVENT_TYPE[] = {
+static const char *FIM_EVENT_TYPE_ARRAY[] = {
     "added",
     "deleted",
     "modified"
@@ -47,6 +47,19 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
+/**
+ * @brief Update directories configuration with the wildcard list, at runtime
+ *
+ */
+void update_wildcards_config();
+
+/**
+ * @brief Process a path coming from a wildcard that has been deleted
+ *
+ * @param configuration Configuration associated with the file
+ */
+void fim_process_wildcard_removed(directory_t *configuration);
+
 static cJSON *
 _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data);
 
@@ -56,6 +69,40 @@ static cJSON *_fim_file_force_update(const fim_entry *saved,
                                      event_data_t *evt_data);
 #endif
 
+void fim_generate_delete_event(fdb_t *fim_sql,
+                               fim_entry *entry,
+                               pthread_mutex_t *mutex,
+                               void *_evt_data,
+                               void *configuration,
+                               __attribute__((unused)) void *_unused_field) {
+    cJSON *json_event = NULL;
+    const directory_t *original_configuration = (const directory_t *)configuration;
+    event_data_t *evt_data = (event_data_t *)_evt_data;
+
+    if (original_configuration->options & CHECK_SEECHANGES) {
+        fim_diff_process_delete_file(entry->file_entry.path);
+    }
+
+    // Remove path from the DB.
+    w_mutex_lock(mutex);
+    if (fim_db_remove_path(fim_sql, entry->file_entry.path) == FIMDB_ERR) {
+        w_mutex_unlock(mutex);
+        return;
+    }
+
+    if (evt_data->report_event) {
+        json_event = fim_json_event(entry, NULL, original_configuration, evt_data, NULL);
+    }
+    w_mutex_unlock(mutex);
+
+    if (json_event != NULL) {
+        mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
+        send_syscheck_msg(json_event);
+    }
+
+    cJSON_Delete(json_event);
+}
+
 void fim_delete_file_event(fdb_t *fim_sql,
                            fim_entry *entry,
                            pthread_mutex_t *mutex,
@@ -63,8 +110,7 @@ void fim_delete_file_event(fdb_t *fim_sql,
                            __attribute__((unused)) void *_unused_field_1,
                            __attribute__((unused)) void *_unused_field_2) {
     event_data_t *evt_data = (event_data_t *)_evt_data;
-    const directory_t *configuration = NULL;
-    cJSON *json_event = NULL;
+    directory_t *configuration = NULL;
 
     configuration = fim_configuration_directory(entry->file_entry.path);
 
@@ -92,28 +138,7 @@ void fim_delete_file_event(fdb_t *fim_sql,
         break;
     }
 
-    if (configuration->options & CHECK_SEECHANGES) {
-        fim_diff_process_delete_file(entry->file_entry.path);
-    }
-
-    // Remove path from the DB.
-    w_mutex_lock(mutex);
-    if (fim_db_remove_path(fim_sql, entry->file_entry.path) == FIMDB_ERR) {
-        w_mutex_unlock(mutex);
-        return;
-    }
-
-    if (evt_data->report_event) {
-        json_event = fim_json_event(entry, NULL, configuration, evt_data, NULL);
-    }
-    w_mutex_unlock(mutex);
-
-    if (json_event != NULL) {
-        mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
-        send_syscheck_msg(json_event);
-    }
-
-    cJSON_Delete(json_event);
+    fim_generate_delete_event(fim_sql, entry, mutex, evt_data, configuration, NULL);
 }
 
 
@@ -123,6 +148,7 @@ time_t fim_scan() {
     time_t end_of_scan;
     clock_t cputime_start;
     int nodes_count = 0;
+    OSListNode *node_it;
     directory_t *dir_it;
 
     cputime_start = clock();
@@ -138,22 +164,30 @@ time_t fim_scan() {
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
+    update_wildcards_config();
+
     w_mutex_lock(&syscheck.fim_entry_mutex);
     fim_db_set_all_unscanned(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    foreach_array(dir_it, syscheck.directories) {
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
         char *path = fim_get_real_path(dir_it);
 
         fim_checker(path, &evt_data, dir_it);
+
 #ifndef WIN32
-        if (dir_it->options & REALTIME_ACTIVE) {
-            realtime_adddir(path, dir_it, (dir_it->options & CHECK_FOLLOW) ? 1 : 0);
+        realtime_adddir(path, dir_it);
+#elif defined WIN_WHODATA
+        if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+            realtime_adddir(path, dir_it);
         }
 #endif
         os_free(path);
     }
+    w_rwlock_unlock(&syscheck.directories_lock);
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
@@ -172,7 +206,9 @@ time_t fim_scan() {
     if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
 
-        foreach_array(dir_it, syscheck.directories) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
+        OSList_foreach(node_it, syscheck.directories) {
+            dir_it = node_it->data;
             char *path;
             event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };
 
@@ -188,8 +224,17 @@ time_t fim_scan() {
 
             fim_checker(path, &evt_data, dir_it);
 
+            // Verify the directory is being monitored correctly
+#ifndef WIN32
+            realtime_adddir(path, dir_it);
+#elif defined WIN_WHODATA
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+                realtime_adddir(path, dir_it);
+            }
+#endif
             os_free(path);
         }
+        w_rwlock_unlock(&syscheck.directories_lock);
 
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 
@@ -215,15 +260,13 @@ time_t fim_scan() {
         _base_line = 1;
     }
     else {
-        // In the first scan, the fim inicialization is different between Linux and Windows.
+        // In the first scan, the fim initialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
-        if (syscheck.realtime != NULL) {
-            if (syscheck.realtime->queue_overflow) {
-                realtime_sanitize_watch_map();
-                syscheck.realtime->queue_overflow = false;
-            }
-            mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+        if (fim_realtime_get_queue_overflow()) {
+            fim_realtime_set_queue_overflow(false);
+            realtime_sanitize_watch_map();
         }
+        fim_realtime_print_watches();
     }
 
     minfo(FIM_FREQUENCY_ENDED);
@@ -325,8 +368,6 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             return;
         }
 
-        check_max_fps();
-
         fim_file(path, configuration, evt_data);
         break;
 
@@ -335,12 +376,13 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
             mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
             return;
         }
-#ifndef WIN32
-        if (configuration->options & REALTIME_ACTIVE) {
-            realtime_adddir(path, configuration, (configuration->options & CHECK_FOLLOW) ? 1 : 0);
+        fim_directory(path, evt_data, configuration);
+
+#ifdef INOTIFY_ENABLED
+        if (FIM_MODE(configuration->options) == FIM_REALTIME) {
+            fim_add_inotify_watch(path, configuration);
         }
 #endif
-        fim_directory(path, evt_data, configuration);
         break;
     }
 }
@@ -480,6 +522,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
                                        tree) == 0) {
         // We have somehow reached a point an infinite loop could happen, we will need to update the current file
         // forcefully which will generate a false positive alert
+        check_max_fps();
         configuration = fim_configuration_directory(path);
         if (configuration == NULL) {
             // This should not happen
@@ -489,6 +532,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
 
         *event = _fim_file_force_update(entry, configuration, &evt_data);
         free_entry(entry);
+
         return FIM_FILE_UPDATED;
     }
 
@@ -498,6 +542,8 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
 end:
     // Once here, either the used row was cleared and is available or this file is a hardlink to other file
     // either way the only thing left to do is to process the file
+    check_max_fps();
+
     configuration = fim_configuration_directory(path);
     if (configuration == NULL) {
         // This should not happen
@@ -506,8 +552,8 @@ end:
     }
 
     *event = _fim_file(path, configuration, &evt_data);
-
     free_entry(entry);
+
     return FIM_FILE_UPDATED;
 }
 
@@ -696,6 +742,7 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
         }
     }
 
+    check_max_fps();
     new.file_entry.path = (char *)path;
     new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
     if (new.file_entry.data == NULL) {
@@ -716,7 +763,7 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
     }
 
     if (configuration->options & CHECK_SEECHANGES) {
-        diff = fim_file_diff(path);
+        diff = fim_file_diff(path, configuration);
     }
 
     json_event = fim_json_event(&new, saved ? saved->file_entry.data : NULL, configuration, evt_data, diff);
@@ -764,7 +811,7 @@ static cJSON *_fim_file_force_update(const fim_entry *saved,
     evt_data->type = FIM_MODIFICATION; // Checking for changes
 
     if (configuration->options & CHECK_SEECHANGES) {
-        diff = fim_file_diff(new.file_entry.path);
+        diff = fim_file_diff(new.file_entry.path, configuration);
     }
 
     json_event = fim_json_event(&new, saved->file_entry.data, configuration, evt_data, diff);
@@ -820,10 +867,14 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
         fim_rt_delay();
 
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_checker(w_evt->path, &evt_data, NULL);
+        w_rwlock_unlock(&syscheck.directories_lock);
     } else {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
+        w_rwlock_unlock(&syscheck.directories_lock);
 #ifndef WIN32
         char **paths = NULL;
         const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
@@ -835,7 +886,9 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
         if(paths) {
             for(int i = 0; paths[i]; i++) {
+                w_rwlock_rdlock(&syscheck.directories_lock);
                 fim_process_missing_entry(paths[i], FIM_WHODATA, w_evt);
+                w_rwlock_unlock(&syscheck.directories_lock);
                 os_free(paths[i]);
             }
             os_free(paths);
@@ -844,6 +897,37 @@ void fim_whodata_event(whodata_evt * w_evt) {
     }
 }
 
+void fim_process_wildcard_removed(directory_t *configuration) {
+    fim_tmp_file *files = NULL;
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE };
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_entry *entry = fim_db_get_path(syscheck.database, configuration->path);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (entry != NULL) {
+        fim_generate_delete_event(syscheck.database, entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
+        free_entry(entry);
+        return;
+    }
+
+    // Since the file doesn't exist, research if it's directory and have files in DB.
+    char pattern[PATH_MAX] = {0};
+
+    // Create the sqlite LIKE pattern -> "pathname/%"
+    snprintf(pattern, PATH_MAX, "%s%c%%", configuration->path, PATH_SEP);
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_get_path_from_pattern(syscheck.database, pattern, &files, syscheck.database_store);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (files && files->elements) {
+        if (fim_db_remove_wildcard_entry(syscheck.database, files, &syscheck.fim_entry_mutex, syscheck.database_store,
+                                         &evt_data, configuration) != FIMDB_OK) {
+            merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+        }
+    }
+}
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     fim_entry *saved_data = NULL;
@@ -981,6 +1065,7 @@ directory_t *fim_configuration_directory(const char *path) {
     char full_entry[OS_SIZE_4096 + 1] = {'\0'};
     directory_t *dir_it = NULL;
     directory_t *dir = NULL;
+    OSListNode *node_it;
     int top = 0;
     int match = 0;
 
@@ -990,7 +1075,8 @@ directory_t *fim_configuration_directory(const char *path) {
 
     trail_path_separator(full_path, path, sizeof(full_path));
 
-    foreach_array(dir_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
         char *real_path = fim_get_real_path(dir_it);
 
         trail_path_separator(full_entry, real_path, sizeof(full_entry));
@@ -1224,7 +1310,9 @@ void check_deleted_files() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (file && file->elements) {
+        w_rwlock_rdlock(&syscheck.directories_lock);
         fim_db_delete_not_scanned(syscheck.database, file, &syscheck.fim_entry_mutex, syscheck.database_store);
+        w_rwlock_unlock(&syscheck.directories_lock);
     }
 }
 
@@ -1258,7 +1346,7 @@ cJSON *fim_json_event(const fim_entry *new_data,
     cJSON_AddNumberToObject(data, "version", 2.0);
 
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[evt_data->type]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
     cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
 
 #ifndef WIN32
@@ -1560,7 +1648,7 @@ void free_entry(fim_entry * entry) {
 }
 
 
-void fim_diff_folder_size(){
+void fim_diff_folder_size() {
     char *diff_local;
 
     os_malloc(strlen(DIFF_DIR) + strlen("/local") + 1, diff_local);
@@ -1572,6 +1660,100 @@ void fim_diff_folder_size(){
     }
 
     os_free(diff_local);
+}
+
+void update_wildcards_config() {
+    OSList *removed_entries = NULL;
+    OSListNode *node_it;
+    OSListNode *aux_it;
+    directory_t *dir_it;
+    directory_t *new_entry;
+    char **paths;
+
+    if (syscheck.wildcards == NULL || syscheck.directories == NULL) {
+        return;
+    }
+
+    mdebug2(FIM_WILDCARDS_UPDATE_START);
+    w_rwlock_wrlock(&syscheck.directories_lock);
+
+    OSList_foreach(node_it, syscheck.directories) {
+        dir_it = node_it->data;
+        dir_it->is_expanded = 0;
+    }
+
+    OSList_foreach(node_it, syscheck.wildcards) {
+        dir_it = node_it->data;
+        paths = expand_wildcards(dir_it->path);
+
+        if (paths == NULL) {
+            continue;
+        }
+
+        for (int i = 0; paths[i]; i++) {
+            new_entry = fim_copy_directory(dir_it);
+            os_free(new_entry->path);
+
+            new_entry->path = paths[i];
+#ifdef WIN32
+            str_lowercase(new_entry->path);
+#endif
+            new_entry->is_expanded = 1;
+
+            if (new_entry->diff_size_limit == -1) {
+                new_entry->diff_size_limit = syscheck.file_size_limit;
+            }
+
+            fim_insert_directory(syscheck.directories, new_entry);
+        }
+        os_free(paths);
+    }
+
+    removed_entries = OSList_Create();
+    if (removed_entries == NULL) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        w_rwlock_unlock(&syscheck.directories_lock);
+        return;
+    }
+    OSList_SetFreeDataPointer(removed_entries, (void (*)(void *))free_directory);
+
+    node_it = OSList_GetFirstNode(syscheck.directories);
+    while (node_it != NULL) {
+        dir_it = node_it->data;
+        if (dir_it->is_wildcard && dir_it->is_expanded == 0) {
+#if INOTIFY_ENABLED
+            if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+                fim_realtime_delete_watches(dir_it);
+            }
+#endif
+#if ENABLE_AUDIT
+            if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
+                remove_audit_rule_syscheck(dir_it->path);
+            }
+#endif
+            // Inserting like this will cause the new list to have the order reversed to the one in syscheck.directories
+            // This will cause the following loop to delete "inner" directories before "outer" ones
+            OSList_PushData(removed_entries, dir_it);
+
+            // Delete node
+            aux_it = OSList_GetNext(syscheck.directories, node_it);
+            OSList_DeleteThisNode(syscheck.directories, node_it);
+            node_it = aux_it;
+        } else {
+            node_it = OSList_GetNext(syscheck.directories, node_it);
+        }
+    }
+
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    OSList_foreach(node_it, removed_entries) {
+        dir_it = node_it->data;
+        fim_process_wildcard_removed(dir_it);
+        mdebug2(FIM_WILDCARDS_REMOVE_DIRECTORY, dir_it->path);
+    }
+    OSList_Destroy(removed_entries);
+
+    mdebug2(FIM_WILDCARDS_UPDATE_FINALIZE);
 }
 
 // LCOV_EXCL_START

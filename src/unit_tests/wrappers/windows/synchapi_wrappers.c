@@ -27,3 +27,10 @@ HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
     check_expected(lpName);
     return mock_type(HANDLE);
 }
+
+DWORD wrap_WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable) {
+    check_expected(hHandle);
+    check_expected(dwMilliseconds);
+    check_expected(bAlertable);
+    return mock_type(DWORD);
+}

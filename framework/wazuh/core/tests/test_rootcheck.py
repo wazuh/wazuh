@@ -5,11 +5,13 @@
 import os
 import sqlite3
 from datetime import datetime
+from json import dumps
 from unittest.mock import patch, ANY
 
 import pytest
 
 from api.util import remove_nones_to_dict
+from wazuh.core.common import date_format
 from wazuh.core.exception import WazuhException
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -52,8 +54,8 @@ test_data = InitRootcheck()
 
 def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[3:])
-    result = test_data.cur.execute(query).fetchall()
-    return list(map(remove_nones_to_dict, map(dict, result)))
+    result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
+    return ['ok', dumps(result)] if raw else result
 
 
 @patch("wazuh.core.rootcheck.WazuhDBBackend")
@@ -161,8 +163,8 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
     test._data = [{'log': 'Testing', 'date_first': 1603645251, 'status': 'solved', 'date_last': 1603648851,
          'cis': '2.3 Debian Linux', 'pci_dss': '4.1'}]
     result = test._format_data_into_dictionary()
-    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime("%Y-%m-%d %H:%M:%S") and\
-           result['items'][0]['date_last'] == datetime.utcfromtimestamp(1603648851).strftime("%Y-%m-%d %H:%M:%S")
+    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime(date_format) and\
+           result['items'][0]['date_last'] == datetime.utcfromtimestamp(1603648851).strftime(date_format)
 
 
 @patch('wazuh.core.agent.Agent.get_basic_information')
@@ -171,7 +173,7 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
 def test_last_scan(mock_connect, mock_send, mock_info):
     """Check if last_scan function returns expected datetime according to the database"""
     result = rootcheck.last_scan('001')
-    assert result == {'end': '2020-10-27 12:29:40', 'start': '2020-10-27 12:19:40'}
+    assert result == {'end': '2020-10-27T12:29:40Z', 'start': '2020-10-27T12:19:40Z'}
 
 
 remove_db(test_data_path)

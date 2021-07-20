@@ -19,6 +19,7 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -988,31 +989,37 @@ async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_fo
 async def restart_agents_by_group(request, group_id, pretty=False, wait_for_complete=False):
     """Restart all agents from a group.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :return: AllItemsResponseAgents
-    """
-    f_kwargs = {'group_list': [group_id], 'select': ['id']}
+    Parameters
+    ----------
+    request
+    group_id : str
+        Group name
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
 
+    Returns
+    -------
+    Response
+    """
+    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
     dapi = DistributedAPI(f=agent.get_agents_in_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          f_kwargs=f_kwargs,
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
-
     agents = raise_if_exc(await dapi.distribute_function())
-    agent_list = [a['id'] for a in agents.affected_items]
 
+    agent_list = [a['id'] for a in agents.affected_items]
     if not agent_list:
         data = AffectedItemsWazuhResult(none_msg='Restart command was not sent to any agent')
         return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
     f_kwargs = {'agent_list': agent_list}
-
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -1121,28 +1128,40 @@ async def get_agent_outdated(request, pretty=False, wait_for_complete=False, off
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_fields(request, pretty=False, wait_for_complete=False, fields=None, offset=0, limit=database_limit,
-                           select=None, sort=None, search=None, q=None):
+async def get_agent_fields(request, pretty: bool = False, wait_for_complete: bool = False, fields: str = None,
+                           offset: int = 0, limit: int = database_limit, sort: str = None, search: str = None,
+                           q: str = None) -> web.Response:
     """Get distinct fields in agents.
 
     Returns all the different combinations that agents have for the selected fields. It also indicates the total number
     of agents that have each combination.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param fields: List of fields affecting the operation.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :return: ListMetadata
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    fields : str
+        List of fields affecting the operation.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Looks for elements with the specified string.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+
+    Returns
+    -------
+    web.Response
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'fields': fields,
