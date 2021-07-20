@@ -9,7 +9,7 @@ import yaml
 
 import api.middlewares as middlewares
 from api import __path__ as api_path
-from api.authentication import change_secret
+from api.authentication import change_keyPair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.rbac.orm import RolesManager, TokenManager
@@ -102,7 +102,7 @@ def invalid_roles_tokens(roles: list = None):
 
 def revoke_tokens():
     """Revoke all tokens in current node."""
-    change_secret()
+    change_keyPair()
     with TokenManager() as tm:
         tm.delete_all_rules()
 
