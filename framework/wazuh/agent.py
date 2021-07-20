@@ -312,7 +312,9 @@ def get_agents_in_group(group_list, offset=0, limit=common.database_limit, sort=
     :param q: Defines query to filter in DB.
     :return: AffectedItemsWazuhResult.
     """
-    if group_list[0] not in get_groups():
+    system_groups = get_groups()
+    
+    if group_list[0] not in system_groups:
         raise WazuhResourceNotFound(1710)
 
     q = 'group=' + group_list[0] + (';' + q if q else '')
@@ -462,11 +464,12 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
                                       )
     if group_list:
 
+        system_groups= get_groups()
         # Add failed items
-        for invalid_group in set(group_list) - get_groups():
+        for invalid_group in set(group_list) - system_groups:
             result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-        rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
+        rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
 
         group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
         query_data = group_query.run()
@@ -593,17 +596,15 @@ def delete_groups(group_list=None):
                                       some_msg='Some groups were not deleted',
                                       none_msg='No group was deleted')
 
-    affected_agents = set()
     system_groups = get_groups()
     for group_id in group_list:
         try:
             # Check if group exists
             if group_id not in system_groups:
                 raise WazuhResourceNotFound(1710)
-            if group_id == 'default':
+            elif group_id == 'default':
                 raise WazuhError(1712)
-            agent_list = list(map(operator.itemgetter('id'),
-                                  WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']))
+            agent_list = [agent['id'] for agent in WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']]
             try:
                 affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
                 if affected_agents_result.total_failed_items != 0:
@@ -611,13 +612,12 @@ def delete_groups(group_list=None):
             except WazuhError:
                 raise WazuhError(4015)
             Agent.delete_single_group(group_id)
-            result.affected_items.append(group_id)
-            affected_agents.update(affected_agents_result.affected_items)
+            affected_agents_result.affected_items.sort(key=int)
+            result.affected_items.append({group_id: affected_agents_result.affected_items})
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
 
-    result['affected_agents'] = sorted(affected_agents, key=int)
-    result.affected_items.sort()
+    result.affected_items.sort(key=lambda x: next(iter(x)))
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -746,15 +746,18 @@ def remove_agents_from_group(agent_list=None, group_list=None):
                                       some_msg=f'Some agents were not removed from group {group_id}',
                                       none_msg=f'No agent was removed from group {group_id}'
                                       )
+
+    system_groups = get_groups()
+    system_agents = get_agents_info()
     # Check if group exists
-    if group_id not in get_groups():
+    if group_id not in system_groups:
         raise WazuhResourceNotFound(1710)
 
     for agent_id in agent_list:
         try:
             if agent_id == '000':
                 raise WazuhError(1703)
-            if agent_id not in get_agents_info():
+            elif agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(agent_id)

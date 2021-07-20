@@ -8,8 +8,8 @@ from wazuh.core.agent import Agent
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.utils import WazuhVersion
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
@@ -81,7 +81,8 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
     node_name = get_node().get('node') if cluster_enabled else None
 
     msg_queue = json.dumps(
-        create_wazuh_socket_message(origin={'name': node_name, 'module': 'api/framework'}, command=command,
+        create_wazuh_socket_message(origin={'name': node_name, 'module': common.origin_module.get()},
+                                    command=command,
                                     parameters={'extra_args': arguments if arguments else [],
                                                 'alert': alert if alert else {}}))
 

@@ -1,0 +1,249 @@
+<!--
+  -  Gitlab rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+
+
+
+<!--
+     Production_json
+
+{"method":"GET","path":"/gitlab/gitlab-ce/issues/1234","format":"html","controller":"Projects::IssuesController","action":"show","status":200,"duration":229.03,"view":174.07,"db":13.24,"time":"2017-08-08T20:15:54.821Z","params":[{"key":"param_key","value":"param_value"}],"remote_ip":"18.245.0.1","user_id":1,"username":"admin","gitaly_calls":76,"gitaly_duration":7.41,"queue_duration": 112.47}
+
+{"method":"PUSH","path":"/gitlab/gitlab-ce/issues/1234","format":"html","controller":"Projects::IssuesController","action":"show","status":400,"duration":229.03,"view":174.07,"db":13.24,"time":"2017-08-08T20:15:54.821Z","params":[{"key":"param_key","value":"param_value"}],"remote_ip":"18.245.0.1","user_id":1,"username":"admin","gitaly_calls":76,"gitaly_duration":7.41,"queue_duration": 112.47}
+
+{"method":"PUSH","path":"/gitlab/gitlab-ce/issues/1234","format":"html","controller":"Projects::IssuesController","action":"show","status":300,"duration":229.03,"view":174.07,"db":13.24,"time":"2017-08-08T20:15:54.821Z","params":[{"key":"param_key","value":"param_value"}],"remote_ip":"18.245.0.1","user_id":1,"username":"admin","gitaly_calls":76,"gitaly_duration":7.41,"queue_duration": 112.47}
+
+api_json
+
+{"time":"2018-10-29T12:49:42.123Z","severity":"INFO","duration":709.08,"db":14.59,"view":694.49,"status":200,"method":"GET","path":"/api/v4/projects","params":[{"key":"action","value":"git-upload-pack"},{"key":"changes","value":"_any"},{"key":"key_id","value":"secret"},{"key":"secret_token","value":"[FILTERED]"}],"host":"localhost","ip":"::1","ua":"Ruby","route":"/api/:version/projects","user_id":1,"username":"root","queue_duration":100.31,"gitaly_calls":30,"gitaly_duration":5.36}
+
+
+-->
+
+<group name="gitlab_v.12_production_json">
+    <rule id="65600" level="3">
+        <decoded_as>json</decoded_as>
+        <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
+        <match>"status":200</match>
+        <options>no_full_log</options>
+        <description>(Gitlab)$(method) request Completed Succesfully</description>
+    </rule>
+    <rule id="65602" level="5">
+        <decoded_as>json</decoded_as>
+        <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
+        <match>"status":400</match>
+        <options>no_full_log</options>
+        <description>(Gitlab)ERROR: couldn't complete $(method) request</description>
+    </rule>
+    <rule id="65603" level="5">
+        <decoded_as>json</decoded_as>
+        <regex>"method":"\w+","path":"/gitlab/gitlab-ce/\w+/\.+","format":"\w+","controller":"\.+","action":"\w+"</regex>
+        <match>"status":300</match>
+        <options>no_full_log</options>
+        <description>(Gitlab)REDIRECTION:The $(method) request has more than one possible response</description>
+    </rule>
+</group>
+<group name="gitlab_v.12_api_json">
+<rule id="65623" level="3">
+    <decoded_as>json</decoded_as>
+    <regex>"method":"\w+","path":"/api/\w+/\.+","params":\.+</regex>
+    <match>"status":200</match>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(method) request Completed Succesfully</description>
+</rule>
+<rule id="65624" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"method":"\w+","path":"/api/\w+/\.+","params":\.+</regex>
+    <match>"status":400</match>
+    <options>no_full_log</options>
+    <description>(Gitlab)ERROR: couldn't complete $(method) request</description>
+</rule>
+<rule id="65625" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"method":"\w+","path":"/api/\w+/\.+","params":\.+</regex>
+    <match>"status":300</match>
+    <options>no_full_log</options>
+    <description>(Gitlab)REDIRECTION:The $(method) request has more than one possible response</description>
+</rule>
+</group>
+
+<group name="gitlab_v.12_application_log">
+<rule id="65604" level="3">
+    <decoded_as>gitlab-12_application_log</decoded_as>
+    <field name="new_user">\.+</field>
+    <description>(Gitlab)User $(new_user) was created</description>
+</rule>
+<rule id="65606" level="3">
+    <decoded_as>gitlab-12_application_log</decoded_as>
+    <field name="project_autor">\.+</field>
+    <description>(Gitlab)$(project_autor) created a new project</description>
+</rule>
+<rule id="65607" level="3">
+    <decoded_as>gitlab-12_application_log</decoded_as>
+    <field name="removed_user">\.+</field>
+    <description>(Gitlab)User $(removed_user) was removed</description>
+</rule>
+<rule id="65608" level="3">
+    <decoded_as>gitlab-12_application_log</decoded_as>
+    <field name="project_removed">\.+</field>
+    <description>(Gitlab)Project $(project_removed) was removed</description>
+</rule>
+</group>
+
+        <!--
+
+        integrations_json
+
+         {"severity":"ERROR","time":"2018-09-06T14:56:20.439Z","service_class":"JiraService","project_id":8,"project_path":"h5bp/html5-boilerplate","message":"Error sending message","client_url":"http://jira.gitlap.com:8080","error":"execution expired"}
+
+        {"severity":"INFO","time":"2018-09-06T17:15:16.365Z","service_class":"JiraService","project_id":3,"project_path":"namespace2/project2","message":"Successfully posted","client_url":"http://jira.example.com"}
+
+        -->
+
+<group name="gitlab_v.12_integrations_json">
+<rule id="65609" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"service_class":"\w+","project_id":\d+,"project_path":"\.+"</regex>
+    <field name="severity">ERROR</field>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(message)</description>
+</rule>
+<rule id="65610" level="3">
+    <decoded_as>json</decoded_as>
+    <regex>"service_class":"\w+","project_id":\d+,"project_path":"\.+"</regex>
+    <field name="severity">INFO</field>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(message)</description>
+</rule>
+</group>
+
+        <!--
+
+        kubernetes_json
+
+        {"severity":"ERROR","time":"2018-11-23T15:14:54.652Z","exception":"Kubeclient::HttpError","error_code":401,"service":"Clusters::Applications::CheckInstallationProgressService","app_id":14,"project_ids":[1],"group_ids":[],"message":"Unauthorized"}
+
+        {"severity":"ERROR","time":"2018-11-23T15:42:11.647Z","exception":"Kubeclient::HttpError","error_code":null,"service":"Clusters::Applications::InstallService","app_id":2,"project_ids":[19],"group_ids":[],"message":"SSL_connect returned=1 errno=0 state=error: certificate verify failed (unable to get local issuer certificate)"}
+
+        -->
+
+<group name="gitlab_v.12_kubernetes_json">
+<rule id="65611" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"exception":"\.+","error_code":\w+,"service":"\.+","app_id":\d+,</regex>
+    <field name="severity">ERROR</field>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(severity):$(message).</description>
+</rule>
+<rule id="65612" level="3">
+    <decoded_as>json</decoded_as>
+    <regex>"exception":"\.+","error_code":\w+,"service":"\.+","app_id":\d+,</regex>
+    <field name="severity">INFO</field>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(severity):$(message).</description>
+</rule>
+</group>
+
+        <!--
+        githost_json
+
+        {"severity":"ERROR","time":"2019-07-19T22:16:12.528Z","correlation_id":"FeGxww5Hj64","message":"Command failed [1]: /usr/bin/git --git-dir=/Users/vsizov/gitlab-development-kit/gitlab/tmp/tests/gitlab-satellites/group184/gitlabhq/.git --work-tree=/Users/vsizov/gitlab-development-kit/gitlab/tmp/tests/gitlab-satellites/group184/gitlabhq merge --no-ff -mMerge branch 'feature_conflict' into 'feature' source/feature_conflict\n\nerror: failed to push some refs to '/Users/vsizov/gitlab-development-kit/repositories/gitlabhq/gitlab_git.git'"}
+
+        -->
+
+<group name="gitlab_v.12_githost_json">
+<rule id="65613" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"correlation_id":"\w+","message":"\.+"</regex>
+    <field name="severity">ERROR</field>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(severity):$(message).</description>
+</rule>
+</group>
+
+        <!--
+
+        audit_json
+
+        {"severity":"INFO","time":"2018-10-17T17:38:22.523Z","author_id":3,"entity_id":2,"entity_type":"Project","change":"visibility","from":"Private","to":"Public","author_name":"John Doe4","target_id":2,"target_type":"Project","target_details":"namespace2/project2"}
+
+        {"severity":"INFO","time":"2018-10-17T17:38:22.830Z","author_id":5,"entity_id":3,"entity_type":"Project","change":"name","from":"John Doe7 / project3","to":"John Doe7 / new name","author_name":"John Doe6","target_id":3,"target_type":"Project","target_details":"namespace3/project3"}
+
+        {"severity":"INFO","time":"2018-10-17T17:38:23.175Z","author_id":7,"entity_id":4,"entity_type":"Project","change":"path","from":"","to":"namespace4/newpath","author_name":"John Doe8","target_id":4,"target_type":"Project","target_details":"namespace4/newpath"}
+
+        -->
+
+<group name="gitlab_v.12_audit_json">
+<rule id="65614" level="3">
+    <decoded_as>json</decoded_as>
+    <regex>"author_id":\w*,"entity_id":\w*,"entity_type":"\w*","change":"\w+","from":"\.*","to":"\.*",</regex>
+    <field name="severity">INFO</field>
+    <options>no_full_log</options>
+    <description>(Gitlab)$(severity):changed $(change) from $(from) to $(to).</description>
+</rule>
+</group>
+
+<group name="gitlab_v.12_sidekiq_log">
+<rule id="65615" level="3">
+    <decoded_as>gitlab_sidekiq</decoded_as>
+    <description>group of gitlab_sidekiq</description>
+</rule>
+<rule id="65616" level="3">
+    <if_sid>65615</if_sid>
+    <field name="info">\.+</field>
+    <description>(Gitlab)INFO:$(info).</description>
+</rule>
+<rule id="65617" level="5">
+    <if_sid>65615</if_sid>
+    <field name="error">\.+</field>
+    <description>(Gitlab)ERROR:$(error).</description>
+</rule>
+</group>
+
+        <!--
+
+        sidekiq_json
+
+        {"severity":"INFO","time":"2018-04-03T22:57:22.071Z","queue":"cronjob:update_all_mirrors","args":[],"class":"UpdateAllMirrorsWorker","retry":false,"queue_namespace":"cronjob","jid":"06aeaa3b0aadacf9981f368e","created_at":"2018-04-03T22:57:21.930Z","enqueued_at":"2018-04-03T22:57:21.931Z","pid":10077,"message":"UpdateAllMirrorsWorker JID-06aeaa3b0aadacf9981f368e: done: 0.139 sec","job_status":"done","duration":0.139,"completed_at":"2018-04-03T22:57:22.071Z"}
+
+        -->
+
+<group name="gitlab_v.12_sidekiq_json">
+<rule id="65618" level="3">
+    <decoded_as>json</decoded_as>
+    <regex>"queue":"\.+","args":\.*,"class":"\w*","retry":\w+,"queue_namespace":"\w*","jid":"\w*",</regex>
+    <field name="severity">INFO</field>
+    <description>(Gitlab)$(severity):$(message).</description>
+</rule>
+<rule id="65619" level="5">
+    <decoded_as>json</decoded_as>
+    <regex>"queue":"\.+","args":\.*,"class":"\w*","retry":\w+,"queue_namespace":"\w*","jid":"\w*",</regex>
+    <field name="severity">ERROR</field>
+    <description>(Gitlab)$(severity):$(message).</description>
+</rule>
+</group>
+
+<group name="gitlab_v.12_shell_stderr_log">
+<rule id="65620" level="3">
+    <decoded_as>gitlab_shell_stderr</decoded_as>
+    <field name="severity">INFO</field>
+    <description>(Gitlab)$(severity):$(message).</description>
+</rule>
+<rule id="65621" level="5">
+    <decoded_as>gitlab_shell_stderr</decoded_as>
+    <field name="severity">WARN</field>
+    <description>(Gitlab)$(severity):$(message).</description>
+</rule>
+</group>
+
+<group name="gitlab_v.12_graphql_json">
+<rule id="65622" level="3">
+    <decoded_as>json</decoded_as>
+    <regex>"query_string":"\.+","variables":\.+,"complexity":\d*,"depth":\d*,"duration":\d*</regex>
+    <description>(Gitlab)graphql_query_string:$(query_string).</description>
+</rule>
+</group>

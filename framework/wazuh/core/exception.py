@@ -166,7 +166,7 @@ class WazuhException(Exception):
         1409: 'Invalid query operator.',
         1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
-        1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
+        1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
         1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',
                'remediation': 'Please, make sure you have read permissions over the file'
@@ -413,7 +413,6 @@ class WazuhException(Exception):
         3000: 'Cluster',
         3001: 'Error creating zip file',
         3002: {'message': 'Error creating PID file'},
-        3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'},
