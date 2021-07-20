@@ -256,6 +256,8 @@ class DistributedAPI:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
                 raise exception.WazuhInternalError(3021)
+            except MemoryError:
+                raise exception.WazuhInternalError(6005)
             except OperationalError:
                 raise exception.WazuhInternalError(2008)
 
@@ -269,7 +271,7 @@ class DistributedAPI:
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
             # Avoid exception info if it is an asyncio timeout
-            self.logger.error(f"{e.message}", exc_info=True if e.code != 3021 else False)
+            self.logger.error(f"{e.message}", exc_info=True if e.code not in [3021, 6005] else False)
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)

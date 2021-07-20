@@ -84,7 +84,7 @@ def start(foreground, root, config_file):
     if max_memory_usage >= MIN_VALUE_MAX_MEMORY_USAGE:
         limit_memory(max_memory_usage)
     else:
-        logger.error(str(APIError(1105)))
+        logger.error(str(APIError(2010)))
         sys.exit(1)
 
     # Set correct permissions on api.log file
