@@ -14,5 +14,5 @@
 #include "../eventinfo.h"
 
 #define add_json_field(obj, name, string, filter) if (string && strcmp(string, filter)) { if (!obj) obj = cJSON_CreateObject(); cJSON_AddStringToObject(obj, name, string); }
-char *Eventinfo_to_jsonstr(const Eventinfo *lf, bool force_full_log);
+char *Eventinfo_to_jsonstr(const Eventinfo *lf, bool force_full_log, OSList * list_msg);
 #endif /* TO_JSON_H */

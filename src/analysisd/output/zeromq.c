@@ -112,7 +112,7 @@ void zeromq_output_end()
 #if CZMQ_VERSION_MAJOR == 2
 void zeromq_output_event(const Eventinfo *lf)
 {
-    char *json_alert = Eventinfo_to_jsonstr(lf, false);
+    char *json_alert = Eventinfo_to_jsonstr(lf, false, NULL);
 
     zmsg_t *msg = zmsg_new();
     zmsg_addstr(msg, "ossec.alerts");
@@ -123,7 +123,7 @@ void zeromq_output_event(const Eventinfo *lf)
 #elif ZMQ_VERSION_MAJOR >= 3
 void zeromq_output_event(const Eventinfo *lf)
 {
-    char *json_alert = Eventinfo_to_jsonstr(lf, false);
+    char *json_alert = Eventinfo_to_jsonstr(lf, false, NULL);
 
     zmsg_t *msg = zmsg_new();
     zmsg_addstr(msg, "ossec.alerts");

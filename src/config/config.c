@@ -14,6 +14,7 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
+
 /* Read the main elements of the configuration */
 static int read_main_elements(const OS_XML *xml, int modules,
                               XML_NODE node,

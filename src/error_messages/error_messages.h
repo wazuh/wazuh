@@ -559,6 +559,7 @@
 #define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
 #define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
 #define LOGTEST_ERROR_REMOVE_SESSION                "(7318): Failure to remove session '%s'"
+#define XML_ERROR_EMPTY_OR_
 
 /* Modules messages */
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"

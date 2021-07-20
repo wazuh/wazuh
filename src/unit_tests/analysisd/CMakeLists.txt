@@ -99,7 +99,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,pthread_rwlock_init -Wl,--wrap,pthread_rwlock_rdlock \
                              -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
                              -Wl,--wrap,pthread_mutex_trylock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add \
-                             -Wl,--wrap,OSList_CleanOnlyNodes -Wl,--wrap,w_analysisd_accumulate_free")
+                             -Wl,--wrap,OSList_CleanOnlyNodes -Wl,--wrap,w_analysisd_accumulate_free \
+                             -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,OS_GetElementsbyNode -Wl,--wrap,OS_ClearNode \
+                             -Wl,--wrap,OS_ClearXML -Wl,--wrap,OS_ReadXML -Wl,--wrap,Read_Rules -Wl,--wrap,Read_Alerts")
 
 LIST(APPEND analysisd_names "test_logtest-config")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug2 -Wl,--wrap,get_nproc -Wl,--wrap,cJSON_CreateObject \
@@ -123,7 +125,8 @@ LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")
 
 LIST(APPEND analysisd_names "test_logmsg")
-LIST(APPEND analysisd_flags "-Wl,--wrap,isDebug -Wl,--wrap,OSList_AddData -Wl,--wrap,vsnprintf")
+LIST(APPEND analysisd_flags "-Wl,--wrap,isDebug -Wl,--wrap,OSList_AddData -Wl,--wrap,vsnprintf -Wl,--wrap,_mverror \
+                             -Wl,--wrap,_mverror -Wl,--wrap,_mvinfo -Wl,--wrap,_mvwarn")
 LIST(APPEND analysisd_names "test_decoder_rootcheck")
 LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
