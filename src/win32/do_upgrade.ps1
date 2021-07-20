@@ -125,3 +125,6 @@ Else
     $new_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
 }
+
+Remove-Item -Path ".\upgrade\*msi" -ErrorAction SilentlyContinue
+Remove-Item -Path ".\upgrade\*wpk" -ErrorAction SilentlyContinue
