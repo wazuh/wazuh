@@ -1224,9 +1224,6 @@ wrappers_wazuh_o := $(wrappers_wazuh_c:.c=.o)
 wrappers_wazuh_os_crypto_c := $(wildcard unit_tests/wrappers/wazuh/os_crypto/*.c)
 wrappers_wazuh_os_crypto_o := $(wrappers_wazuh_os_crypto_c:.c=.o)
 
-wrappers_wazuh_os_crypto_shared_c := $(wildcard unit_tests/wrappers/wazuh/os_crypto/shared/*.c)
-wrappers_wazuh_os_crypto_shared_o := $(wrappers_wazuh_os_crypto_shared_c:.c=.o)
-
 wrappers_wazuh_os_execd_c := $(wildcard unit_tests/wrappers/wazuh/os_execd/*.c)
 wrappers_wazuh_os_execd_o := $(wrappers_wazuh_os_execd_c:.c=.o)
 
@@ -1290,7 +1287,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_shared_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_execd_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
@@ -2066,9 +2062,6 @@ unit_tests/wrappers/wazuh/%.o: unit_tests/wrappers/wazuh/%.c
 unit_tests/wrappers/wazuh/os_crypto/%.o: unit_tests/wrappers/wazuh/os_crypto/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-unit_tests/wrappers/wazuh/os_crypto/shared/%.o: unit_tests/wrappers/wazuh/os_crypto/shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
 unit_tests/wrappers/wazuh/os_execd/%.o: unit_tests/wrappers/wazuh/os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
@@ -2280,7 +2273,6 @@ clean-unit-tests:
 	rm -f ${wrappers_posix_o}
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}
-	rm -f ${wrappers_wazuh_os_crypto_shared_o}
 	rm -f ${wrappers_wazuh_os_execd_o}
 	rm -f ${wrappers_wazuh_os_net_o}
 	rm -f ${wrappers_wazuh_os_regex_o}

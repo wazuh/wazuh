@@ -25,7 +25,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
-#include "../wrappers/wazuh/os_crypto/shared/keys_wrappers.h"
+#include "../wrappers/wazuh/os_crypto/keys_wrappers.h"
 #include "../wrappers/linux/netbuffer_wrappers.h"
 #include "../wrappers/linux/netcounter_wrappers.h"
 
