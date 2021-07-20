@@ -1192,3 +1192,22 @@ char** w_strtok(const char *string) {
 
     return output;
 }
+
+char* w_strcat_list(char ** list, char sep_char) {
+
+    char * concatenation = NULL;
+    char sep[] = {sep_char, '\0'};
+
+    if (list != NULL) {
+        char ** FIRST_ELEMENT = list;
+        while (*list != NULL) {
+            if (list != FIRST_ELEMENT) {
+                concatenation = w_strcat(concatenation, sep, 1);
+            }
+            concatenation = w_strcat(concatenation, *list, w_strlen(*list));
+            list++;
+        }
+    }
+
+    return concatenation;
+}

@@ -13,6 +13,12 @@
 
 #include <external/cJSON/cJSON.h>
 
+#ifdef WIN32
+#define WSTD_CALL __stdcall
+#else
+#define WSTD_CALL
+#endif
+
 cJSON_bool __wrap_cJSON_AddItemToArray(cJSON *array, cJSON *item);
 
 extern cJSON_bool __real_cJSON_AddItemToArray(cJSON *array, cJSON *item);
@@ -63,13 +69,13 @@ void __wrap_cJSON_Delete(cJSON *item);
 
 extern void __real_cJSON_Delete(cJSON *item);
 
-cJSON * __wrap_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
+cJSON * WSTD_CALL __wrap_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
 
 void expect_cJSON_GetObjectItem_call(cJSON *object);
 
 extern cJSON * __real_cJSON_GetObjectItem(const cJSON * const object, const char * const string);
 
-char* __wrap_cJSON_GetStringValue(cJSON * item);
+char* WSTD_CALL __wrap_cJSON_GetStringValue(cJSON * item);
 
 void expect_cJSON_GetStringValue_call(char *str);
 

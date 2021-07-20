@@ -163,6 +163,22 @@ list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_e
                                 -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
                                 -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize")
 
+list(APPEND shared_tests_names "test_sysinfo_utils")
+
+if(${TARGET} STREQUAL "winagent")
+    # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
+    # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
+    list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
+                                -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
+                                -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
+                                -Wl,--wrap,cJSON_GetObjectItem@8 -Wl,--wrap,cJSON_GetStringValue@4")
+else()
+    list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
+                                -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
+                                -Wl,--wrap,sysinfo_os -Wl,--wrap,sysinfo_processes -Wl,--wrap,sysinfo_free_result \
+                                -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetStringValue")
+endif()
+
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")

@@ -107,6 +107,7 @@
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
 #define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
 #define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
+#define ACCESS_ERROR    "(1250): Error trying to execute \"%s\": %s (%d)."
 
 #define MAILQ_ERROR     "(1221): No Mail queue at %s"
 #define IMSG_ERROR      "(1222): Invalid msg: %s"
@@ -138,6 +139,13 @@
 
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."
+#define LOGCOLLECTOR_MACOS_LOG_IREGEX_ERROR         "(1601): Invalid internal macOS log regex."
+#define LOGCOLLECTOR_MACOS_LOG_ERROR_AFTER_EXEC     "(1602): Execution error '%s'"
+#define LOGCOLLECTOR_MACOS_LOG_SHOW_INFO            "(1603): Monitoring macOS old logs with: %s."
+#define LOGCOLLECTOR_MACOS_LOG_STREAM_INFO          "(1604): Monitoring macOS logs with: %s."
+#define LOGCOLLECTOR_MACOS_LOG_SHOW_EXEC_ERROR      "(1605): Error while trying to execute `log show` as follows: %s."
+#define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s."
+#define LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED         "(1607): macOS 'log %s' process exited, pid: %d, exit value: %d."
 
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
@@ -217,6 +225,11 @@
 #define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
 #define FAIL_SHA1_GEN   "(1969): Failure to generate the SHA1 hash from file '%s'"
+#define DUP_MACOS       "(1970): Can't add more than one 'macos' block."
+#define FP_TO_FD_ERROR  "(1971): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: %s (%d)."
+#define GET_FLAGS_ERROR "(1972): The flags couldn't be obtained from the file descriptor: %s (%d)."
+#define SET_FLAGS_ERROR "(1973): The flags couldn't be set in the file descriptor: %s (%d)."
+#define WPOPENV_ERROR   "(1974): An error ocurred while calling wpopenv(): %s (%d)."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -615,6 +628,9 @@
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found."
 #define MOD_TASK_INVALID_ELEMENT_ERROR              "(8260): Invalid element in array."
 #define MOD_TASK_DB_ERROR                           "(8261): Database error."
+
+/* Sysinfo */
+#define SYSINFO_DYNAMIC_INIT_ERROR                  "(9000): Error loading sysinfo module."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
