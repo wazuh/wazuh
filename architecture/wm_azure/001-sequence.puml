@@ -3,7 +3,14 @@
 ' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 @startuml wm_azure
-    wm_azure -> wm_azure : wm_azure_setup(config)
+    main -> wmodules : wm_config()
+    wmodules -> config : ReadConfig()
+    config -> config : read_main_elements()
+    config -> config : Read_WModule()
+    config -> config : wm_azure_read()
+    config -> config : wm_azure_api_read()
+    wm_azure -> wm_azure_setup : wm_azure_setup(config)
+    wm_azure_setup -> wmodules : wm_state_io()
 loop
     wm_azure -> wm_azure : sched_scan_get_time_until_next_scan()
     wm_azure -> wm_azure : SendMSG(ROOTCHECK_MQ)
