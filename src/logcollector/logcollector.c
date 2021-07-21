@@ -744,12 +744,14 @@ void LogCollectorStart()
                             }
                             mdebug1(FILE_ERROR, current->file);
                             file_exists = 0;
+                            w_logcollector_state_delete_file(current->file);
                         } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
                             mdebug1(FILE_ERROR, current->file);
                             file_exists = 0;
+                            w_logcollector_state_delete_file(current->file);
                         }
 
                         CloseHandle(h1);
