@@ -168,7 +168,7 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
 
 def test_revoke_tokens(db_setup):
     """Checks that the return value of revoke_tokens is a WazuhResult."""
-    with patch('wazuh.core.security.change_secret', side_effect=None):
+    with patch('wazuh.core.security.change_keyPair', side_effect=None):
         security, WazuhResult, _ = db_setup
         mock_current_user = ContextVar('current_user', default='wazuh')
         with patch("wazuh.sca.common.current_user", new=mock_current_user):
