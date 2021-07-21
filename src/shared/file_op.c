@@ -3112,7 +3112,7 @@ int64_t w_ftell(FILE *x) {
 #ifndef WIN32
     int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x);
+    int64_t z = ftello64(x);
 #endif
 
     if (z < 0)  {
@@ -3128,7 +3128,7 @@ int w_fseek(FILE *x, int64_t pos, int mode) {
 #ifndef WIN32
     int64_t z = fseek(x, pos, mode);
 #else
-    int64_t z = _fseeki64(x, pos, mode);
+    int64_t z = fseeko64(x, pos, mode);
 #endif
     if (z < 0)  {
         mwarn("Fseek function failed due to [(%d)-(%s)]", errno, strerror(errno));
