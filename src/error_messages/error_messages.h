@@ -391,7 +391,7 @@
 #define VU_GET_PACKAGES_DEP_ERROR   "(5571): Couldn't get from the NVD the '%s' dependencies of the package with ID '%d'"
 #define VU_INSERT_PACKAGE_ERROR     "(5572): Couldn't insert the package '%s' into the vulnerability '%s'. Version (%s) '%s' '%s' (feed '%s')."
 #define VU_FILTER_VULN_ERROR        "(5573): Couldn't verify if the vulnerability '%s' of the package '%s' is already patched."
-#define VU_DISCARD_KERNEL_PKG       "(5574): Discarded Linux Kernel package '%s' (not running) for agent '%.3d'"
+#define VU_DISCARD_KERNEL_PKG       "(5574): Discarded Linux Kernel package '%s' ('%s') for agent '%.3d'"
 #define VU_OVAL_UNAVAILABLE_DATA    "(5575): Unavailable vulnerability data for the agent '%.3d' OS. Skipping it."
 #define VU_PKG_NO_VER               "(5576): Missing version for package '%s' of the inventory."
 #define VU_CVEDB_ERROR              "(5577): Could not connect to the CVE DB."
