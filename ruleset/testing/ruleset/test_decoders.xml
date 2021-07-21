@@ -19,3 +19,9 @@
   <regex>Test different_(\S+) '(\w+)' '(\w+)' logged from (\d+.\d+.\d+.\d+):(\d+) to (\d+.\d+.\d+.\d+):(\d+) pro:(\w+) act:(\w+) id:(\d+) url:(\w+) dat:(\w+) e_data:(\w+) sta:(\w+) systemname:(\w+)</regex>
   <order>test, srcuser, user, srcip, srcport, dstip, dstport, protocol, action, id, url, data, extra_data, status, system_name</order>
 </decoder>
+
+<decoder name="test_noalert">
+  <program_name>^test_noalert</program_name>
+  <regex>Test noalert=(\d)$</regex>
+  <order>noalert</order>
+</decoder>

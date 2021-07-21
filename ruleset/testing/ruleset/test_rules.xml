@@ -462,4 +462,20 @@
   <description>Different srcuser works</description>
 </rule>
 
+<!-- Trigger alerts which depend on noalert. -->
+<!-- Dec 19 17:20:08 User test_noalert[12345]:Test noalert=1 -->
+<!-- Dec 19 17:20:08 User test_noalert[12345]:Test noalert=0 -->
+
+<rule id="999273" level="3" noalert="1">
+  <decoded_as>test_noalert</decoded_as>
+  <field name="noalert">1</field>
+  <description>No-alerting enabled.</description>
+</rule>
+
+<rule id="999274" level="3" noalert="0">
+  <decoded_as>test_noalert</decoded_as>
+  <field name="noalert">0</field>
+  <description>No-alerting disabled.</description>
+</rule>
+
 </group>
