@@ -195,54 +195,54 @@ void WinExecdRun(char *exec_msg)
         return;
     }
 
-    /* Check if this command was already executed */
-    timeout_node = OSList_GetFirstNode(timeout_list);
-    added_before = 0;
+    /* Command parameters */
+    cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
+    cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
+    cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
+    cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
+    cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
+    cmd_parameters = cJSON_PrintUnformatted(json_root);
 
-    while (timeout_node) {
-        timeout_data *list_entry;
+    /* Execute command */
+    mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
 
-        list_entry = (timeout_data *)timeout_node->data;
-        if (strcmp(list_entry->command[0], cmd[0]) == 0) {
-            /* Means we executed this command before and we don't need to add it again */
-            added_before = 1;
-
-            /* Update the timeout */
-            mdebug1("Command already received, updating time of addition to now.");
-            list_entry->time_of_addition = curr_time;
-            break;
-        }
-
-        /* Continue with the next entry in timeout list */
-        timeout_node = OSList_GetNextNode(timeout_list);
+    wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+    if (wfd) {
+        fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
+        wpclose(wfd);
+    } else {
+        merror(EXEC_CMD_FAIL, strerror(errno), errno);
+        os_free(cmd_parameters);
+        cJSON_Delete(json_root);
+        return;
     }
 
-    /* If it wasn't added before, do it now */
-    if (!added_before) {
-        /* Command parameters */
-        cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
-        cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
-        cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
-        cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
-        cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
-        cmd_parameters = cJSON_PrintUnformatted(json_root);
+    /* We don't need to add to the list if the timeout_value == 0 */
+    if (timeout_value) {
+        added_before = 0;
 
-        /* Execute command */
-        mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
+        /* Check if this command was already executed */
+        timeout_node = OSList_GetFirstNode(timeout_list);
+        while (timeout_node) {
+            timeout_data *list_entry;
 
-        wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
-        if (wfd) {
-            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
-            wpclose(wfd);
-        } else {
-            merror(EXEC_CMD_FAIL, strerror(errno), errno);
-            os_free(cmd_parameters);
-            cJSON_Delete(json_root);
-            return;
+            list_entry = (timeout_data *)timeout_node->data;
+            if (strcmp(list_entry->command[0], cmd[0]) == 0) {
+                /* Means we executed this command before and we don't need to add it again */
+                added_before = 1;
+
+                /* Update the timeout */
+                mdebug1("Command already received, updating time of addition to now.");
+                list_entry->time_of_addition = curr_time;
+                break;
+            }
+
+            /* Continue with the next entry in timeout list */
+            timeout_node = OSList_GetNextNode(timeout_list);
         }
 
-        /* We don't need to add to the list if the timeout_value == 0 */
-        if (timeout_value) {
+        /* If it wasn't added before, do it now */
+        if (!added_before) {
             /* Timeout parameters */
             cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
 

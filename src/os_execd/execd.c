@@ -450,8 +450,72 @@ STATIC void ExecdStart(int q)
             continue;
         }
 
-        if (name[0] != '!') {
+        /* Command parameters */
+        cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
+        cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
+        cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
+        cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
+        cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
+        cmd_parameters = cJSON_PrintUnformatted(json_root);
+
+        /* Execute command */
+        mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
+
+        wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+        if (wfd) {
+            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
+            wpclose(wfd);
+        } else {
+            merror(EXEC_CMD_FAIL, strerror(errno), errno);
+            os_free(cmd_parameters);
+            cJSON_Delete(json_root);
+            continue;
+        }
+
+        /* We don't need to add to the list if the timeout_value == 0 */
+        if (timeout_value) {
             added_before = 0;
+
+            if (repeated_hash != NULL) {
+                char *ntimes = NULL;
+                char rkey[256];
+                rkey[255] = '\0';
+                snprintf(rkey, 255, "%s", cmd[0]);
+
+                if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
+                    int ntimes_int = 0;
+                    int i2 = 0;
+                    int new_timeout = 0;
+
+                    ntimes_int = atoi(ntimes);
+                    while (repeated_offenders_timeout[i2] != 0) {
+                        i2++;
+                    }
+                    if (ntimes_int >= i2) {
+                        new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
+                    } else {
+                        os_free(ntimes);       /* In hash_op.c, data belongs to caller */
+                        os_calloc(16, sizeof(char), ntimes);
+                        new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
+                        ntimes_int++;
+                        snprintf(ntimes, 16, "%d", ntimes_int);
+                        if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                            os_free(ntimes);
+                            merror("At ExecdStart: OSHash_Update() failed");
+                        }
+                    }
+                    mdebug1("Repeated offender. Setting timeout to '%ds'", new_timeout);
+                    timeout_value = new_timeout;
+                } else {
+                    /* Add to the repeated offenders list */
+                    char *tmp_zero;
+                    os_strdup("0", tmp_zero);
+                    if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) {
+                        os_free(tmp_zero);
+                        merror("At ExecdStart: OSHash_Add() failed");
+                    }
+                }
+            }
 
             /* Check if this command was already executed */
             timeout_node = OSList_GetFirstNode(timeout_list);
@@ -466,111 +530,16 @@ STATIC void ExecdStart(int q)
                     /* Update the timeout */
                     mdebug1("Command already received, updating time of addition to now.");
                     list_entry->time_of_addition = curr_time;
-
-                    if (repeated_offenders_timeout[0] != 0 && repeated_hash != NULL) {
-                        char *ntimes = NULL;
-                        char rkey[256];
-                        rkey[255] = '\0';
-                        snprintf(rkey, 255, "%s", cmd[0]);
-
-                        if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
-                            int ntimes_int = 0;
-                            int i2 = 0;
-                            int new_timeout = 0;
-
-                            ntimes_int = atoi(ntimes);
-                            while (repeated_offenders_timeout[i2] != 0) {
-                                i2++;
-                            }
-                            if (ntimes_int >= i2) {
-                                new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
-                            } else {
-                                free(ntimes);       /* In hash_op.c, data belongs to caller */
-                                os_calloc(16, sizeof(char), ntimes);
-                                new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
-                                ntimes_int++;
-                                snprintf(ntimes, 16, "%d", ntimes_int);
-                                if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
-                                    free(ntimes);
-                                    merror("At ExecdStart: OSHash_Update() failed");
-                                }
-                            }
-                            mdebug1("Repeated offender. Setting timeout to '%ds'", new_timeout);
-                            list_entry->time_to_block = new_timeout;
-                        }
-                    }
+                    list_entry->time_to_block = timeout_value;
                     break;
                 }
 
                 /* Continue with the next entry in timeout list*/
                 timeout_node = OSList_GetNextNode(timeout_list);
             }
-        }
 
-        /* If it wasn't added before, do it now */
-        if (!added_before) {
-            /* Command parameters */
-            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
-            cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
-            cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
-            cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
-            cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
-            cmd_parameters = cJSON_PrintUnformatted(json_root);
-
-            /* Execute command */
-            mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
-
-            wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
-            if (wfd) {
-                fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
-                wpclose(wfd);
-            } else {
-                merror(EXEC_CMD_FAIL, strerror(errno), errno);
-                os_free(cmd_parameters);
-                cJSON_Delete(json_root);
-                continue;
-            }
-
-            /* We don't need to add to the list if the timeout_value == 0 */
-            if (timeout_value) {
-                if (repeated_hash != NULL) {
-                    char *ntimes = NULL;
-                    char rkey[256];
-                    rkey[255] = '\0';
-                    snprintf(rkey, 255, "%s", cmd[0]);
-
-                    if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
-                        int ntimes_int = 0;
-                        int i2 = 0;
-                        int new_timeout = 0;
-
-                        ntimes_int = atoi(ntimes);
-                        while (repeated_offenders_timeout[i2] != 0) {
-                            i2++;
-                        }
-                        if (ntimes_int >= i2) {
-                            new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
-                        } else {
-                            free(ntimes);       /* In hash_op.c, data belongs to caller */
-                            os_calloc(16, sizeof(char), ntimes);
-                            new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
-                            ntimes_int++;
-                            snprintf(ntimes, 16, "%d", ntimes_int);
-                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
-                                free(ntimes);
-                                merror("At ExecdStart: OSHash_Update() failed");
-                            }
-                        }
-                        timeout_value = new_timeout;
-                    } else {
-                        /* Add to the repeat offenders list */
-                        char *tmp_zero;
-                        os_strdup("0", tmp_zero);
-                        if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) free(tmp_zero);
-                        tmp_zero = NULL;
-                    }
-                }
-
+            /* If it wasn't added before, do it now */
+            if (!added_before) {
                 /* Timeout parameters */
                 cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
 
@@ -595,9 +564,9 @@ STATIC void ExecdStart(int q)
                     FreeTimeoutEntry(timeout_entry);
                 }
             }
-
-            childcount++;
         }
+
+        childcount++;
 
         os_free(cmd_parameters);
         cJSON_Delete(json_root);
