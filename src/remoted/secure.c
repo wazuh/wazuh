@@ -478,7 +478,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         key_unlock();
         if (sock_client >= 0)
             _close_sock(&keys, sock_client);
-        
+
         return;
     }
 
