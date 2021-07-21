@@ -401,7 +401,7 @@ def _rootkit_files2json(filepath):
 
     # file_name ! Name ::Link to it
     regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^\s?(.+)\s!\s?(.+)\s?::\s?(.+)")
+    regex_check = re.compile(r"^(.+)!(.+)::(.+)")
 
     try:
         with open(filepath) as f:
@@ -431,8 +431,8 @@ def _rootkit_trojans2json(filepath):
 
     # file_name !string_to_search!Description
     regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^\s?(.+)\s!\s?(.+)\s?!\s?(.+)")
-    regex_binary_check = re.compile(r"^\s?(.+)\s!\s?(.+)\s?!")
+    regex_check = re.compile(r"^(.+)!(.+)!(.+)")
+    regex_binary_check = re.compile(r"^(.+)!(.+)!")
 
     try:
         with open(filepath) as f:

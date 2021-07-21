@@ -1272,9 +1272,8 @@ class PoliciesManager:
     This class is the manager of the Policies, this class provided
     all the methods needed for the policies administration.
     """
-    def __init__(self):
-        self.action_regex = r'^[a-zA-Z_\-]+:[a-zA-Z_\-]+$'
-        self.resource_regex = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
+    action_regex = r'^[a-zA-Z_\-]+:[a-zA-Z_\-]+$'
+    resource_regex = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
 
     def get_policy(self, name: str):
         """Get the information about one policy specified by name
@@ -1356,7 +1355,6 @@ class PoliciesManager:
                     # The keys actions and resources must be lists and the key effect must be str
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
-                        # Regular expression that prevents the creation of invalid policies
                         for action in policy['actions']:
                             if not re.match(self.action_regex, action):
                                 return SecurityError.INVALID
@@ -1489,7 +1487,6 @@ class PoliciesManager:
                         policy_to_update.name = name
                     if policy is not None and 'actions' in policy.keys() and \
                             'resources' in policy.keys() and 'effect' in policy.keys():
-                        # Regular expression that prevents the creation of invalid policies
                         for action in policy['actions']:
                             if not re.match(self.action_regex, action):
                                 return SecurityError.INVALID
