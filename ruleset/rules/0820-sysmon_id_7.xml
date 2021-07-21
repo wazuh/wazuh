@@ -30,4 +30,15 @@
             <id>T1210</id>
         </mitre>
     </rule>
+
+    <!-- Sample: {"win":{"eventdata":{"originalFileName":"vaultcli.dll","image":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Local\\\\Temp\\\\infosMin48.exe","product":"Microsoft® Windows® Operating System","signature":"Microsoft Windows","imageLoaded":"C:\\\\Windows\\\\System32\\\\vaultcli.dll","description":"Credential Vault Client Library","signed":"true","signatureStatus":"Valid","processGuid":"{4dc16835-24d1-60f7-4001-000000005000}","processId":"5700","utcTime":"2021-07-20 19:32:33.428","hashes":"SHA1=0EA18B2789A85C20803DA84831B53A6236728FFF,MD5=C1D3933110B46BED9F4977BC5FADF607,SHA256=523EB270522AB2EC59CBE57B097A95FAB097E309FCE05B6F74A237BCC2463278,IMPHASH=D74C340A21D3A0792E913BA12F081859","ruleName":"technique_id=T1555,technique_name=Credentials from Password Stores","company":"Microsoft Corporation","fileVersion":"10.0.19041.746 (WinBuild.160101.0800)"},"system":{"eventID":"7","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Image loaded:\r\nRuleName: technique_id=T1555,technique_name=Credentials from Password Stores\r\nUtcTime: 2021-07-20 19:32:33.428\r\nProcessGuid: {4dc16835-24d1-60f7-4001-000000005000}\r\nProcessId: 5700\r\nImage: C:\\Users\\AtomicRed\\AppData\\Local\\Temp\\infosMin48.exe\r\nImageLoaded: C:\\Windows\\System32\\vaultcli.dll\r\nFileVersion: 10.0.19041.746 (WinBuild.160101.0800)\r\nDescription: Credential Vault Client Library\r\nProduct: Microsoft® Windows® Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: vaultcli.dll\r\nHashes: SHA1=0EA18B2789A85C20803DA84831B53A6236728FFF,MD5=C1D3933110B46BED9F4977BC5FADF607,SHA256=523EB270522AB2EC59CBE57B097A95FAB097E309FCE05B6F74A237BCC2463278,IMPHASH=D74C340A21D3A0792E913BA12F081859\r\nSigned: true\r\nSignature: Microsoft Windows\r\nSignatureStatus: Valid\"","version":"3","systemTime":"2021-07-20T19:32:33.4755381Z","eventRecordID":"279054","threadID":"3248","computer":"hrmanager.ExchangeTest.com","task":"7","processID":"2392","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
+    <rule id="92150" level="10">
+        <if_group>sysmon_event7</if_group>
+        <field name="win.eventdata.imageLoaded" type="pcre2">(?i)vaultcli.dll</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)VaultCmd\.exe$</field>
+        <description>Suspicious process loaded VaultCli.dll module. Possible use to dump stored passwords.</description>
+        <mitre>
+            <id>T1555</id>
+        </mitre>
+    </rule>
 </group>
