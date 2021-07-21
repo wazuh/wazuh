@@ -59,10 +59,9 @@ class WazuhDBQueryMitre(WazuhDBQuery):
         mitre_resource : dict
             MITRE resource we want to update the reference from.
         """
-        # Take the reference with external_id checking it is not None
-        reference_external_id = next(
-            (row_no_id for row_no_id in mitre_resource['references'] if
-             'external_id' in row_no_id and row_no_id['external_id']), {})
+        # Take the reference with external_id checking it is not None and the source is mitre-attack
+        reference_external_id = next((row_no_id for row_no_id in mitre_resource['references'] if
+                                      row_no_id.get('external_id') and row_no_id.get('source') == 'mitre-attack'), {})
         if 'description' in reference_external_id:
             reference_external_id.pop('description')
 
