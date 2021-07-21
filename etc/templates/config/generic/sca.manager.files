@@ -9,6 +9,7 @@ applications/cis_sqlserver_2014.yml
 applications/cis_sqlserver_2016.yml
 applications/cis_sqlserver_2017.yml
 applications/cis_sqlserver_2019.yml
+applications/cis_postgre-sql-13.yml
 applications/web_vulnerabilities.yml
 centos/6/cis_centos6_linux.yml
 centos/7/cis_centos7_linux.yml
