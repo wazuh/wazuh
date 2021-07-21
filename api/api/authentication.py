@@ -91,6 +91,7 @@ _public_key_path = os.path.join(SECURITY_PATH, 'publicKey.pem')
 
 
 def generate_keyPair():
+    """Create key pair to be used to generate and decode JWT"""
     try:
         if not os.path.exists(_private_key_path):
             [privateKey, publicKey] = change_keyPair()
@@ -113,6 +114,7 @@ def generate_keyPair():
 
 
 def change_keyPair():
+    """Create new key pair to be used to generate and decode JWT"""
     keyObj = rsa.generate_private_key( public_exponent = 65537, key_size = 4096 )
     privateKey = keyObj.private_bytes(
         encoding = serialization.Encoding.PEM,
