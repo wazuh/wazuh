@@ -44,7 +44,8 @@ custom_api_configuration = {
     "access": {
         "max_login_attempts": 50,
         "block_time": 300,
-        "max_request_per_minute": 300
+        "max_request_per_minute": 300,
+        "max_memory_usage": 1073741824
     },
     "remote_commands": {
         "localfile": {
@@ -128,6 +129,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'access': {'max_login_attempts': 'invalid_type'}},
     {'access': {'block_time': 'invalid_type'}},
     {'access': {'max_request_per_minute': 'invalid_type'}},
+    {'access': {'max_memory_usage': 'invalid_type'}},
     {'access': {'invalid_subkey': 'invalid_type'}},
     {'remote_commands': {'localfile': {'enabled': 'invalid_type'}}},
     {'remote_commands': {'localfile': {'exceptions': [0, 1, 2]}}},

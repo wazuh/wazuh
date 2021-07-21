@@ -63,7 +63,8 @@ default_api_configuration = {
     "access": {
         "max_login_attempts": 50,
         "block_time": 300,
-        "max_request_per_minute": 300
+        "max_request_per_minute": 300,
+        "max_memory_usage": 1073741824
     },
     "remote_commands": {
         "localfile": {

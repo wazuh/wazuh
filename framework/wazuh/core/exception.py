@@ -547,12 +547,17 @@ class WazuhException(Exception):
         6000: {'message': 'Limit of login attempts reached. '
                           'The current IP has been blocked due to a high number of login attempts'},
         6001: {'message': 'Maximum number of requests per minute reached',
-               'remediation': f'This limit can be changed in api.yaml file. More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
+               'remediation': f'This limit can be changed in the api.yaml file. '
+                              f'More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/jwt_secret'},
         6004: {'message': 'The current user does not have authentication enabled through authorization context',
                'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#operation/api.controllers.security_controller.edit_run_as'},
+        6005: {'message': 'Error executing the distributed API function, the memory allocated by wazuh-apid has '
+                          'reached its limit.',
+               'remediation': f'This limit can be changed in the api.yaml file. '
+                              f'More information here: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#configuration-file'},
 
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},
