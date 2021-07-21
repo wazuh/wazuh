@@ -1,0 +1,42 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml wm_azure
+    main -> wmodules : wm_config()
+    wmodules -> config : ReadConfig()
+    config -> config : read_main_elements()
+    config -> config : Read_WModule()
+    config -> config : wm_azure_read()
+    config -> config : wm_azure_api_read()
+    wm_azure -> wm_azure_setup : wm_azure_setup(config)
+    wm_azure_setup -> wmodules : wm_state_io()
+loop
+    wm_azure -> wm_azure : sched_scan_get_time_until_next_scan()
+    wm_azure -> wm_azure : SendMSG(ROOTCHECK_MQ)
+    loop
+        alt type == LOG_ANALYTICS
+            wm_azure -> wm_azure_log_analytics : wm_azure_log_analytics()
+            loop
+                wm_azure_log_analytics -> wm_azure_log_analytics : WM_AZURE_SCRIPT_PATH + commands
+                wm_azure_log_analytics -> wm_azure_log_analytics : wm_exec(WM_AZURE_SCRIPT_PATH + commands)
+            end
+        end
+        alt type == GRAPHS
+            wm_azure -> wm_azure_graphs : wm_azure_graphs()
+            loop
+                wm_azure_graphs -> wm_azure_graphs : WM_AZURE_SCRIPT_PATH + commands
+                wm_azure_graphs -> wm_azure_graphs : wm_exec(WM_AZURE_SCRIPT_PATH + commands)
+            end
+        end
+    end
+    loop
+        wm_azure -> wm_azure_storage : wm_azure_storage()
+        loop
+            wm_azure_storage -> wm_azure_storage : WM_AZURE_SCRIPT_PATH + commands
+            wm_azure_storage -> wm_azure_storage : wm_exec(WM_AZURE_SCRIPT_PATH + commands)
+        end
+    end
+    wm_azure -> wm_azure : SendMSG(ROOTCHECK_MQ)
+end
+@enduml
