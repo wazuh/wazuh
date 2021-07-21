@@ -249,8 +249,7 @@ class WazuhIntegration:
                                             )
                 client = sts_session.client(service_name='logs' if service_name == 'cloudwatchlogs' else service_name)
             elif service_name == 'cloudwatchlogs':
-                client = boto3.client('logs', region_name=region,
-                                      aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+                client = boto_session.client(service_name='logs')
             else:
                 client = boto_session.client(service_name=service_name)
         except botocore.exceptions.ClientError as e:
