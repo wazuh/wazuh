@@ -10,8 +10,8 @@ import api.configuration as configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens
-from wazuh.core.security import load_spec, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
+from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens,\
+    load_spec, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS, sanitize_rbac_policy
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
@@ -496,15 +496,18 @@ def add_policy(name=None, policy=None):
     """
     result = AffectedItemsWazuhResult(none_msg='Policy was not created',
                                       all_msg='Policy was successfully created')
-    with PoliciesManager() as pm:
-        status = pm.add_policy(name=name, policy=policy)
-        if status == SecurityError.ALREADY_EXIST:
-            result.add_failed_item(id_=name, error=WazuhError(4009))
-        elif status == SecurityError.INVALID:
-            result.add_failed_item(id_=name, error=WazuhError(4006))
-        else:
-            result.affected_items.append(pm.get_policy(name=name))
-            result.total_affected_items += 1
+    if sanitize_rbac_policy(policy):
+        with PoliciesManager() as pm:
+            status = pm.add_policy(name=name, policy=policy)
+            if status == SecurityError.ALREADY_EXIST:
+                result.add_failed_item(id_=name, error=WazuhError(4009))
+            elif status == SecurityError.INVALID:
+                result.add_failed_item(id_=name, error=WazuhError(4006))
+            else:
+                result.affected_items.append(pm.get_policy(name=name))
+                result.total_affected_items += 1
+    else:
+        result.add_failed_item(id_=name, error=WazuhError(4006))
 
     return result
 
@@ -522,21 +525,24 @@ def update_policy(policy_id=None, name=None, policy=None):
         raise WazuhError(4001)
     result = AffectedItemsWazuhResult(none_msg='Policy was not updated',
                                       all_msg='Policy was successfully updated')
-    with PoliciesManager() as pm:
-        status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
-        if status == SecurityError.ALREADY_EXIST:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))
-        elif status == SecurityError.INVALID:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
-        elif status == SecurityError.POLICY_NOT_EXIST:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4007))
-        elif status == SecurityError.ADMIN_RESOURCES:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4008))
-        else:
-            updated = pm.get_policy_id(int(policy_id[0]))
-            result.affected_items.append(updated)
-            result.total_affected_items += 1
-            invalid_roles_tokens(roles=updated['roles'])
+    if sanitize_rbac_policy(policy):
+        with PoliciesManager() as pm:
+            status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy)
+            if status == SecurityError.ALREADY_EXIST:
+                result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4013))
+            elif status == SecurityError.INVALID:
+                result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
+            elif status == SecurityError.POLICY_NOT_EXIST:
+                result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4007))
+            elif status == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4008))
+            else:
+                updated = pm.get_policy_id(int(policy_id[0]))
+                result.affected_items.append(updated)
+                result.total_affected_items += 1
+                invalid_roles_tokens(roles=updated['roles'])
+    else:
+        result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4006))
 
     return result
 

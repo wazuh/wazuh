@@ -107,3 +107,25 @@ def revoke_tokens():
         tm.delete_all_rules()
 
     return {'result': 'True'}
+
+
+def sanitize_rbac_policy(policy):
+    try:
+        # Sanitize actions
+        policy['actions'] = [action for action in map(str.lower, policy['actions'])]
+
+        # Sanitize resources
+        for i, resource in enumerate(policy['resources']):
+            sanitized_resources = list()
+            for nested_resource in resource.split('&'):
+                split_resource = nested_resource.split(':')
+                sanitized_resources.append(':'.join([r.lower() for r in split_resource[:-1]] + split_resource[-1:]))
+
+            policy['resources'][i] = '&'.join(sanitized_resources)
+
+        # Sanitize effect
+        policy['effect'] = policy['effect'].lower()
+
+    except (IndexError, KeyError):
+        return False
+    return True
