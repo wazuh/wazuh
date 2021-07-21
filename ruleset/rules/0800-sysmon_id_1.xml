@@ -255,7 +255,7 @@
     <rule id="92110" level="0">
         <if_group>sysmon_event1</if_group>
         <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.EXE</field>
-        <field name="win.eventdata.commandLine" type="pcre2">(?i)Remove-Item|ri|rm|rmdir|del|erase|rd</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)(Remove-Item|ri|rm|rmdir|del|erase|rd)\b</field>
         <description>Powershell was used to delete files or directories</description>
         <mitre>
             <id>T107.004</id>
