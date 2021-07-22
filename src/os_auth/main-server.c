@@ -407,6 +407,13 @@ int main(int argc, char **argv)
         sigaction(SIGINT, &action, NULL);
     }
 
+    /* Create PID files */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        merror_exit(PID_ERROR);
+    }
+
+    atexit(cleanup);
+
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
@@ -520,13 +527,6 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
     }
-
-    /* Create PID files */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
-
-    atexit(cleanup);
 
     /* Join threads */
     pthread_join(thread_local_server, NULL);
