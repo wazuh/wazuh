@@ -6,14 +6,12 @@ import asyncio
 import copy
 import logging
 import os
-from cryptography.hazmat.primitives.asymmetric import rsa                                 
-from cryptography.hazmat.primitives import serialization
 
 from concurrent.futures import ThreadPoolExecutor
-from secrets import token_urlsafe
-from shutil import chown
 from time import time
-
+                               
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
@@ -86,15 +84,15 @@ def check_user(user, password, required_scopes=None):
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
 JWT_ALGORITHM = 'RS256'
-_private_key_path = os.path.join(SECURITY_PATH, 'privateKey.pem')
-_public_key_path = os.path.join(SECURITY_PATH, 'publicKey.pem')
+_private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
+_public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
 
-def generate_keyPair():
-    """Create key pair to be used to generate and decode JWT"""
+def generate_keypair():
+    """Generate key files to keep safe or load existing public and private keys."""
     try:
-        if not os.path.exists(_private_key_path):
-            [privateKey, publicKey] = change_keyPair()
+        if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
+            private_key, public_key = change_keypair()
             try:
                 os.chown(_private_key_path, wazuh_uid(), wazuh_gid())
                 os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
@@ -103,34 +101,34 @@ def generate_keyPair():
             os.chmod(_private_key_path, 0o640)
             os.chmod(_public_key_path, 0o640)
         else:
-            with open(_private_key_path, 'r') as keyFile:
-                privateKey = keyFile.read()
-            with open(_public_key_path, 'r') as keyFile:
-                publicKey = keyFile.read()
+            with open(_private_key_path, 'r') as key_file:
+                private_key = key_file.read()
+            with open(_public_key_path, 'r') as key_file:
+                public_key = key_file.read()
     except IOError:
         raise WazuhInternalError(6003)
 
-    return [privateKey, publicKey]
+    return private_key, public_key
 
 
-def change_keyPair():
-    """Create new key pair to be used to generate and decode JWT"""
-    keyObj = rsa.generate_private_key( public_exponent = 65537, key_size = 4096 )
-    privateKey = keyObj.private_bytes(
-        encoding = serialization.Encoding.PEM,
-        format = serialization.PrivateFormat.PKCS8,
-        encryption_algorithm = serialization.NoEncryption()
-    )
-    publicKey = keyObj.public_key().public_bytes(
-        encoding = serialization.Encoding.PEM,
-        format = serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    with open(_private_key_path, 'wb') as keyFile:
-        keyFile.write(privateKey)
-    with open(_public_key_path, 'wb') as keyFile:
-        keyFile.write(publicKey)
-    
-    return [privateKey, publicKey]
+def change_keypair():
+    """Generate key files to keep safe."""
+    key_obj = rsa.generate_private_key(public_exponent=65537, key_size=4096)
+    private_key = key_obj.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    ).decode('utf-8')
+    public_key = key_obj.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+    with open(_private_key_path, 'w') as key_file:
+        key_file.write(private_key)
+    with open(_public_key_path, 'w') as key_file:
+        key_file.write(public_key)
+
+    return private_key, public_key
 
 
 def get_security_conf():
@@ -175,7 +173,7 @@ def generate_token(user_id=None, data=None, run_as=False):
         "rbac_mode": result['rbac_mode']
     }
 
-    return jwt.encode(payload, generate_keyPair()[0], algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 
 
 @rbac_utils.token_cache(rbac_utils.tokens_cache)
@@ -234,7 +232,7 @@ def decode_token(token):
     """
     try:
         # Decode JWT token with local secret
-        payload = jwt.decode(token, generate_keyPair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
+        payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
