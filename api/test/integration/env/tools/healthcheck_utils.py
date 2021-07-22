@@ -1,7 +1,49 @@
+import json
 import os
 import re
 import socket
 import time
+from base64 import b64encode
+import urllib3
+import requests
+
+# Configuration
+protocol = 'https'
+host = 'localhost'
+port = '55000'
+user = 'testing'
+password = 'wazuh'
+
+# Variables
+base_url = f"{protocol}://{host}:{port}"
+login_url = f"{base_url}/security/user/authenticate"
+basic_auth = f"{user}:{password}".encode()
+headers = {'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+
+# Disable insecure https warnings (for self-signed SSL certificates)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+def get_response(url, headers):
+    """Get API result for GET request.
+
+    Parameters
+    ----------
+    url : str
+        URL of the API (+ endpoint and parameters if needed).
+    headers : dict
+        Headers required by the API.
+
+    Returns
+    -------
+    Dict
+        API response for the request.
+    """
+    request_result = requests.get(url, headers=headers, verify=False)
+
+    if request_result.status_code == 200:
+        return json.loads(request_result.content.decode())
+
 
 OSSEC_LOG_PATH = "/var/ossec/logs/ossec.log"
 
@@ -48,7 +90,7 @@ def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
     check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check2 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check2 = get_response(login_url, headers) is None
     return check0 or check1 or check2
 
 
