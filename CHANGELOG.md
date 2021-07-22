@@ -123,6 +123,7 @@ All notable changes to this project will be documented in this file.
   - Fixed an error in the manager that could not check its configuration after a change by the API when Active response is disabled. ([#8357](https://github.com/wazuh/wazuh/pull/8357))
   - Fixed a problem in the manager that left remote counter and agent group files when removing an agent. ([#8630](https://github.com/wazuh/wazuh/pull/8630))
   - Fixed an error in the agent on Windows that could corrupt the internal FIM databas due to disabling the disk sync. ([#8905](https://github.com/wazuh/wazuh/pull/8905))
+  - Fixed a crash in Logcollector on Windows when handling the position of the file. ([#9364](https://github.com/wazuh/wazuh/pull/9364))
 
 - **API:**
   - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
