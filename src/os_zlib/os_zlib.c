@@ -16,11 +16,12 @@ unsigned long int os_zlib_compress(const char *src, char *dst,
                                    unsigned long int src_size,
                                    unsigned long int dst_size)
 {
-    if (compress2((Bytef *)dst,
-                  &dst_size,
-                  (const Bytef *)src,
-                  src_size,
-                  Z_BEST_COMPRESSION) == Z_OK) {
+    if ((compressBound(src_size) <= dst_size) && \
+        (compress2((Bytef *)dst,
+                      &dst_size,
+                      (const Bytef *)src,
+                      src_size,
+                      Z_BEST_COMPRESSION) == Z_OK)) {
         dst[dst_size] = '\0';
         return (dst_size);
     }
