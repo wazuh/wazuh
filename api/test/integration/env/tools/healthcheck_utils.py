@@ -3,9 +3,6 @@ import os
 import re
 import socket
 import time
-from base64 import b64encode
-import urllib3
-import requests
 
 # Configuration
 protocol = 'https'
@@ -15,13 +12,14 @@ user = 'testing'
 password = 'wazuh'
 
 # Variables
-base_url = f"{protocol}://{host}:{port}"
-login_url = f"{base_url}/security/user/authenticate"
-basic_auth = f"{user}:{password}".encode()
-headers = {'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+base_url = "{}://{}:{}".format(protocol, host, port)
+login_url = "{}/security/user/authenticate".format(base_url)
 
-# Disable insecure https warnings (for self-signed SSL certificates)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def get_login_header(user, password):
+    from base64 import b64encode
+    basic_auth = f"{user}:{password}".encode()
+    return {'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 
 
 def get_response(url, headers):
@@ -39,7 +37,11 @@ def get_response(url, headers):
     Dict
         API response for the request.
     """
-    request_result = requests.get(url, headers=headers, verify=False)
+    import urllib3
+    # Disable insecure https warnings (for self-signed SSL certificates)
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    from requests import get
+    request_result = get(url, headers=headers, verify=False)
 
     if request_result.status_code == 200:
         return json.loads(request_result.content.decode())
@@ -90,14 +92,14 @@ def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
     check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check2 = get_response(login_url, headers) is None
+    check2 = get_response(login_url, get_login_header(user, password)) is None
     return check0 or check1 or check2
 
 
 def get_worker_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check1 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check1 = get_response(login_url, get_login_header(user, password)) is None
     return check0 or check1
 
 
