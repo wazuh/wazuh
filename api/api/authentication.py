@@ -101,9 +101,9 @@ def generate_keypair():
             os.chmod(_private_key_path, 0o640)
             os.chmod(_public_key_path, 0o640)
         else:
-            with open(_private_key_path, 'r') as key_file:
+            with open(_private_key_path, mode='r') as key_file:
                 private_key = key_file.read()
-            with open(_public_key_path, 'r') as key_file:
+            with open(_public_key_path, mode='r') as key_file:
                 public_key = key_file.read()
     except IOError:
         raise WazuhInternalError(6003)
@@ -123,9 +123,9 @@ def change_keypair():
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     ).decode('utf-8')
-    with open(_private_key_path, 'w') as key_file:
+    with open(_private_key_path, mode='w') as key_file:
         key_file.write(private_key)
-    with open(_public_key_path, 'w') as key_file:
+    with open(_public_key_path, mode='w') as key_file:
         key_file.write(public_key)
 
     return private_key, public_key

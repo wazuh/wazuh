@@ -80,11 +80,9 @@ def test_check_user(mock_raise_if_exc, mock_submit, mock_distribute_function, mo
 def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair):
     """Verify correct params when calling open method inside generate_keypair"""
     result = authentication.generate_keypair()
-    assert isinstance(result[0], str)
-    assert isinstance(result[1], str)
     assert result == ('-----BEGIN PRIVATE KEY-----',
                       '-----BEGIN PUBLIC KEY-----')
-    
+
     calls = [call(authentication._private_key_path, authentication.wazuh_uid(), authentication.wazuh_gid()),
              call(authentication._public_key_path, authentication.wazuh_uid(), authentication.wazuh_gid())]
     mock_chown.assert_has_calls(calls)
@@ -93,8 +91,10 @@ def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair
     mock_chmod.assert_has_calls(calls)
 
     with patch('os.path.exists', return_value=True):
-        calls = [call(authentication._private_key_path, mode='rb'), call(authentication._public_key_path, mode='rb')]
-        mock_open.has_calls(calls)
+        authentication.generate_keypair()
+        calls = [call(authentication._private_key_path, mode='r'),
+                 call(authentication._public_key_path, mode='r')]
+        mock_open.assert_has_calls(calls, any_order=True)
 
 
 def test_generate_keypair_ko():
@@ -111,8 +111,9 @@ def test_change_keypair(mock_open):
     result = authentication.change_keypair()
     assert isinstance(result[0], str)
     assert isinstance(result[1], str)
-    calls = [call(authentication._private_key_path, mode='wb'), call(authentication._public_key_path, mode='wb')]
-    mock_open.has_calls(calls)
+    calls = [call(authentication._private_key_path, mode='w'),
+             call(authentication._public_key_path, mode='w')]
+    mock_open.assert_has_calls(calls, any_order=True)
 
 
 def test_get_security_conf():
