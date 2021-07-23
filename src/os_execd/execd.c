@@ -77,7 +77,7 @@ STATIC void execd_shutdown(int sig)
         mdebug2("Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
         wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
         if (wfd) {
-            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file_in);
             wpclose(wfd);
         } else {
             merror(EXEC_CMD_FAIL, strerror(errno), errno);
@@ -346,7 +346,7 @@ STATIC void ExecdStart(int q)
 
                 wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
                 if (wfd) {
-                    fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+                    fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file_in);
                     wpclose(wfd);
                 } else {
                     merror(EXEC_CMD_FAIL, strerror(errno), errno);
@@ -463,7 +463,7 @@ STATIC void ExecdStart(int q)
 
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
         if (wfd) {
-            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
+            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file_in);
             wpclose(wfd);
         } else {
             merror(EXEC_CMD_FAIL, strerror(errno), errno);

@@ -22,7 +22,7 @@ int main (int argc, char **argv) {
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
     char *home_path = w_homedir(argv[0]);
-        
+
     /* Trim absolute path to get Wazuh's installation directory */
     home_path = w_strtok_r_str_delim("/active-response", &home_path);
 
@@ -95,7 +95,7 @@ int main (int argc, char **argv) {
         char *command_ex_1[3] = { IPFW, "show", NULL };
         if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
             char output_buf[BUFFERSIZE];
-            while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
+            while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
                 if ((strncmp(output_buf, TABLE_ID, 5) == 0) && (strstr(output_buf, table_name) != NULL)) {
                     add_table = false;
                     break;

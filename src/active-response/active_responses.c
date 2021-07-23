@@ -270,7 +270,7 @@ int lock (const char *lock_path, const char *lock_pid_path, const char *log_path
             char *command_ex_1[4] = {"pgrep", "-f", (char *)proc_name, NULL};
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
                 char output_buf[BUFFERSIZE];
-                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
+                while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
                     int pid = atoi(output_buf);
                     if (pid == current_pid) {
                         wfd_t *wfd2 = NULL;

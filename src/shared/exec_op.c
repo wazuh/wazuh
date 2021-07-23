@@ -14,7 +14,8 @@
 // Open a stream from a process without shell (execvp form)
 wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     wfd_t * wfd;
-    FILE * fp = NULL;
+    FILE * fp_in = NULL;
+    FILE * fp_out = NULL;
 
 #ifdef WIN32
     int fd;
@@ -140,32 +141,50 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 #else
 
     pid_t pid;
-    int pipe_fd[2] = { 0, 0 };
+    int pipe_in[2] = { -1, -1 };
+    int pipe_out[2] = { -1, -1 };
 
     if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
-        if (pipe(pipe_fd) < 0) {
+        if (pipe(pipe_out) < 0) {
             return NULL;
         }
 
-        if (fp = fdopen(pipe_fd[0], "r"), !fp) {
-            close(pipe_fd[0]);
-            close(pipe_fd[1]);
+        fp_out = fdopen(pipe_out[0], "r");
+
+        if (fp_out == NULL) {
+            close(pipe_out[0]);
+            close(pipe_out[1]);
             return NULL;
         }
-    } else if (flags & W_BIND_STDIN) {
-        if (pipe(pipe_fd) < 0) {
+    }
+
+    if (flags & W_BIND_STDIN) {
+        if (pipe(pipe_in) < 0) {
+            if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+                fclose(fp_out);
+                close(pipe_out[1]);
+            }
+
             return NULL;
         }
 
-        if (fp = fdopen(pipe_fd[1], "w"), !fp) {
-            close(pipe_fd[0]);
-            close(pipe_fd[1]);
+        fp_in = fdopen(pipe_in[1], "w");
+        if (fp_in == NULL) {
+            close(pipe_in[0]);
+            close(pipe_in[1]);
+
+            if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+                fclose(fp_out);
+                close(pipe_out[1]);
+            }
+
             return NULL;
         }
     }
 
     os_calloc(1, sizeof(wfd_t), wfd);
-    wfd->file = fp;
+    wfd->file_in = fp_in;
+    wfd->file_out = fp_out;
 
     switch (pid = fork(), pid) {
     case -1:
@@ -180,40 +199,38 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             _exit(127);
         }
 
-        int fd = open("/dev/null", O_RDWR, 0);
+        int fd_null = open("/dev/null", O_RDWR, 0);
 
-        if (fd < 0) {
+        if (fd_null < 0) {
             merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
         }
 
-        if (flags & (W_BIND_STDOUT | W_BIND_STDERR | W_BIND_STDIN)) {
-            if (flags & W_BIND_STDOUT) {
-                dup2(pipe_fd[1], STDOUT_FILENO);
-            } else {
-                dup2(fd, STDOUT_FILENO);
-            }
-
-            if (flags & W_BIND_STDERR) {
-                dup2(pipe_fd[1], STDERR_FILENO);
-            } else {
-                dup2(fd, STDERR_FILENO);
-            }
-
-            if (flags & W_BIND_STDIN) {
-                dup2(pipe_fd[0], STDIN_FILENO);
-            } else {
-                dup2(fd, STDIN_FILENO);
-            }
-
-            close(pipe_fd[0]);
-            close(pipe_fd[1]);
+        if (flags & W_BIND_STDOUT) {
+            dup2(pipe_out[1], STDOUT_FILENO);
         } else {
-            dup2(fd, STDOUT_FILENO);
-            dup2(fd, STDERR_FILENO);
-            dup2(fd, STDIN_FILENO);
+            dup2(fd_null, STDOUT_FILENO);
         }
 
-        close(fd);
+        if (flags & W_BIND_STDERR) {
+            dup2(pipe_out[1], STDERR_FILENO);
+        } else {
+            dup2(fd_null, STDERR_FILENO);
+        }
+
+        if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+            close(pipe_out[0]); // Used by parent process.
+            close(pipe_out[1]); // Already duplicated.
+        }
+
+        if (flags & W_BIND_STDIN) {
+            dup2(pipe_in[0], STDIN_FILENO);
+            close(pipe_in[0]);  // Already duplicated.
+            close(pipe_in[1]);  // Used by parent process.
+        } else {
+            dup2(fd_null, STDIN_FILENO);
+        }
+
+        close(fd_null);
         setsid();
         execvp(path, argv);
         _exit(127);
@@ -222,11 +239,11 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         // Parent code
 
         if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
-            close(pipe_fd[1]);
+            close(pipe_out[1]);
         }
 
         if (flags & W_BIND_STDIN) {
-            close(pipe_fd[0]);
+            close(pipe_in[0]);
         }
 
         wfd->pid = pid;
@@ -235,10 +252,14 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 
     // Error
 
-    if (flags & (W_BIND_STDOUT | W_BIND_STDERR | W_BIND_STDIN)) {
-        fclose(wfd->file);
-        close(pipe_fd[0]);
-        close(pipe_fd[1]);
+    if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+        fclose(fp_out);
+        close(pipe_out[1]);
+    }
+
+    if (flags & W_BIND_STDIN) {
+        fclose(fp_in);
+        close(pipe_in[0]);
     }
 
     free(wfd);
@@ -278,8 +299,12 @@ wfd_t * wpopenl(const char * path, int flags, ...) {
 int wpclose(wfd_t * wfd) {
     int wstatus;
 
-    if (wfd->file) {
-        fclose(wfd->file);
+    if (wfd->file_in) {
+        fclose(wfd->file_in);
+    }
+
+    if (wfd->file_out) {
+        fclose(wfd->file_out);
     }
 
 #ifdef WIN32
