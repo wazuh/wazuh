@@ -1575,7 +1575,7 @@ os_execd_o := $(os_execd_c:.c=.o)
 os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
 
-wazuh-execd: ${os_execd_o}
+wazuh-execd: ${os_execd_o} active-response/active_responses.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 

@@ -15,6 +15,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "../external/cJSON/cJSON.h"
 #include "execd.h"
+#include "active-response/active_responses.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -461,112 +462,149 @@ STATIC void ExecdStart(int q)
         /* Execute command */
         mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
 
-        wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+        wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN | W_BIND_STDOUT);
         if (wfd) {
-            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file_in);
-            wpclose(wfd);
-        } else {
-            merror(EXEC_CMD_FAIL, strerror(errno), errno);
-            os_free(cmd_parameters);
-            cJSON_Delete(json_root);
-            continue;
-        }
+            char buffer[OS_SIZE_4096];
+            char rkey[OS_SIZE_4096];
+            cJSON *keys_json = NULL;
 
-        /* We don't need to add to the list if the timeout_value == 0 */
-        if (timeout_value) {
+            /* Send alert to AR script */
+            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file_in);
+            fflush(wfd->file_in);
+
+            /* Receive alert keys from AR script to check timeout list */
+            if (fgets(buffer, OS_SIZE_4096, stdin) == NULL) {
+                mdebug1("Active response won't be added to timeout list. "
+                        "Message not received with alert keys from script '%s'", cmd[0]);
+                wpclose(wfd);
+                os_free(cmd_parameters);
+                cJSON_Delete(json_root);
+                continue;
+            }
+
+            /* Set rkey initially with the name of the AR */
+            memset(rkey, '\0', OS_SIZE_4096);
+            snprintf(rkey, OS_SIZE_4096 - 1, "%s", cmd[0]);
+
+            keys_json = get_json_from_input(buffer);
+            if (keys_json != NULL) {
+	            char *action = get_command(keys_json);
+                if ((action != NULL) && (strcmp("check_keys", action) == 0)) {
+                    char *keys = get_keys_from_json(keys_json);
+                    if (keys != NULL) {
+                        /* Append to rkey the alert keys that the AR script will use */
+                        strcat(rkey, keys);
+                        os_free(keys);
+                    }
+                }
+                cJSON_Delete(keys_json);
+            }
+
             added_before = 0;
 
-            if (repeated_hash != NULL) {
-                char *ntimes = NULL;
-                char rkey[256];
-                rkey[255] = '\0';
-                snprintf(rkey, 255, "%s", cmd[0]);
+            /* We don't need to add to the list if the timeout_value == 0 */
+            if (timeout_value) {
+                if (repeated_hash != NULL) {
+                    char *ntimes = NULL;
 
-                if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
-                    int ntimes_int = 0;
-                    int i2 = 0;
-                    int new_timeout = 0;
+                    if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
+                        int ntimes_int = 0;
+                        int i2 = 0;
+                        int new_timeout = 0;
 
-                    ntimes_int = atoi(ntimes);
-                    while (repeated_offenders_timeout[i2] != 0) {
-                        i2++;
-                    }
-                    if (ntimes_int >= i2) {
-                        new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
+                        ntimes_int = atoi(ntimes);
+                        while (repeated_offenders_timeout[i2] != 0) {
+                            i2++;
+                        }
+                        if (ntimes_int >= i2) {
+                            new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
+                        } else {
+                            os_free(ntimes);       /* In hash_op.c, data belongs to caller */
+                            os_calloc(16, sizeof(char), ntimes);
+                            new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
+                            ntimes_int++;
+                            snprintf(ntimes, 16, "%d", ntimes_int);
+                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                os_free(ntimes);
+                                merror("At ExecdStart: OSHash_Update() failed");
+                            }
+                        }
+                        mdebug1("Repeated offender. Setting timeout to '%ds'", new_timeout);
+                        timeout_value = new_timeout;
                     } else {
-                        os_free(ntimes);       /* In hash_op.c, data belongs to caller */
-                        os_calloc(16, sizeof(char), ntimes);
-                        new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
-                        ntimes_int++;
-                        snprintf(ntimes, 16, "%d", ntimes_int);
-                        if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
-                            os_free(ntimes);
-                            merror("At ExecdStart: OSHash_Update() failed");
+                        /* Add to the repeated offenders list */
+                        char *tmp_zero;
+                        os_strdup("0", tmp_zero);
+                        if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) {
+                            os_free(tmp_zero);
+                            merror("At ExecdStart: OSHash_Add() failed");
                         }
                     }
-                    mdebug1("Repeated offender. Setting timeout to '%ds'", new_timeout);
-                    timeout_value = new_timeout;
-                } else {
-                    /* Add to the repeated offenders list */
-                    char *tmp_zero;
-                    os_strdup("0", tmp_zero);
-                    if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) {
-                        os_free(tmp_zero);
-                        merror("At ExecdStart: OSHash_Add() failed");
+                }
+
+                /* Check if this command was already executed */
+                timeout_node = OSList_GetFirstNode(timeout_list);
+                while (timeout_node) {
+                    timeout_data *list_entry;
+
+                    list_entry = (timeout_data *)timeout_node->data;
+                    if (strcmp(list_entry->command[0], cmd[0]) == 0) {
+                        /* Means we executed this command before and we don't need to add it again */
+                        added_before = 1;
+
+                        /* Update the timeout */
+                        mdebug1("Command already received, updating time of addition to now.");
+                        list_entry->time_of_addition = curr_time;
+                        list_entry->time_to_block = timeout_value;
+                        break;
+                    }
+
+                    /* Continue with the next entry in timeout list*/
+                    timeout_node = OSList_GetNextNode(timeout_list);
+                }
+
+                /* If it wasn't added before, do it now */
+                if (!added_before) {
+                    /* Timeout parameters */
+                    cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
+
+                    /* Create the timeout entry */
+                    os_calloc(1, sizeof(timeout_data), timeout_entry);
+                    os_calloc(2, sizeof(char *), timeout_entry->command);
+                    os_strdup(cmd[0], timeout_entry->command[0]);
+                    timeout_entry->command[1] = NULL;
+                    timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
+                    timeout_entry->time_of_addition = curr_time;
+                    timeout_entry->time_to_block = timeout_value;
+
+                    /* Add command to the timeout list */
+                    mdebug1("Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
+                        timeout_entry->command[0],
+                        timeout_entry->parameters,
+                        timeout_entry->time_to_block
+                    );
+
+                    if (!OSList_AddData(timeout_list, timeout_entry)) {
+                        merror(LIST_ADD_ERROR);
+                        FreeTimeoutEntry(timeout_entry);
                     }
                 }
             }
 
-            /* Check if this command was already executed */
-            timeout_node = OSList_GetFirstNode(timeout_list);
-            while (timeout_node) {
-                timeout_data *list_entry;
-
-                list_entry = (timeout_data *)timeout_node->data;
-                if (strcmp(list_entry->command[0], cmd[0]) == 0) {
-                    /* Means we executed this command before and we don't need to add it again */
-                    added_before = 1;
-
-                    /* Update the timeout */
-                    mdebug1("Command already received, updating time of addition to now.");
-                    list_entry->time_of_addition = curr_time;
-                    list_entry->time_to_block = timeout_value;
-                    break;
-                }
-
-                /* Continue with the next entry in timeout list*/
-                timeout_node = OSList_GetNextNode(timeout_list);
-            }
-
-            /* If it wasn't added before, do it now */
+            /* If it wasn't added before, continue execution */
             if (!added_before) {
-                /* Timeout parameters */
-                cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
+                // TODO: Send continue message
 
-                /* Create the timeout entry */
-                os_calloc(1, sizeof(timeout_data), timeout_entry);
-                os_calloc(2, sizeof(char *), timeout_entry->command);
-                os_strdup(cmd[0], timeout_entry->command[0]);
-                timeout_entry->command[1] = NULL;
-                timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
-                timeout_entry->time_of_addition = curr_time;
-                timeout_entry->time_to_block = timeout_value;
+            } else {
+                // TODO: Send abort message
 
-                /* Add command to the timeout list */
-                mdebug1("Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
-                    timeout_entry->command[0],
-                    timeout_entry->parameters,
-                    timeout_entry->time_to_block
-                );
-
-                if (!OSList_AddData(timeout_list, timeout_entry)) {
-                    merror(LIST_ADD_ERROR);
-                    FreeTimeoutEntry(timeout_entry);
-                }
             }
-        }
 
-        childcount++;
+            wpclose(wfd);
+            childcount++;
+        } else {
+            merror(EXEC_CMD_FAIL, strerror(errno), errno);
+        }
 
         os_free(cmd_parameters);
         cJSON_Delete(json_root);

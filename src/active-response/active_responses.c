@@ -210,6 +210,41 @@ char* get_srcip_from_json (cJSON *input) {
     return NULL;
 }
 
+char* get_keys_from_json (cJSON *input) {
+    cJSON *parameters_json = NULL;
+    cJSON *keys_json = NULL;
+    char args[COMMANDSIZE];
+    char *keys = NULL;
+
+    // Detect parameters
+    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect keys
+    if (keys_json = cJSON_GetObjectItem(parameters_json, "keys"), !keys_json || (keys_json->type != cJSON_Array)) {
+        return NULL;
+    }
+
+    memset(args, '\0', COMMANDSIZE);
+    for (int i = 0; i < cJSON_GetArraySize(keys_json); i++) {
+        cJSON *subitem = cJSON_GetArrayItem(keys_json, i);
+        if (subitem && (subitem->type == cJSON_String)) {
+            if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE) {
+                break;
+            }
+            strcat(args, "-");
+            strcat(args, subitem->valuestring);
+        }
+    }
+
+    if (args[0] != '\0') {
+        os_strdup(args, keys);
+    }
+
+    return keys;
+}
+
 #ifndef WIN32
 
 int lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
