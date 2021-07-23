@@ -334,67 +334,70 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
 {
     try
     {
-        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-        for (const auto& package : packages)
+        const auto callback
         {
-            std::string value;
-            nlohmann::json packageJson;
-            Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
+            [&](const std::string& package)
+            {
+                std::string value;
+                nlohmann::json packageJson;
+                Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
 
-            std::string name;
-            std::string version;
-            std::string vendor;
-            std::string install_time;
-            std::string location;
-            std::string architecture;
+                std::string name;
+                std::string version;
+                std::string vendor;
+                std::string install_time;
+                std::string location;
+                std::string architecture;
 
-            if (packageReg.string("DisplayName", value))
-            {
-                name = value;
-            }
-            if (packageReg.string("DisplayVersion", value))
-            {
-                version = value;
-            }
-            if (packageReg.string("Publisher", value))
-            {
-                vendor = value;
-            }
-            if (packageReg.string("InstallDate", value))
-            {
-                install_time = value;
-            }
-            if (packageReg.string("InstallLocation", value))
-            {
-                location = value;
-            }
-            if (!name.empty())
-            {
-                if (access & KEY_WOW64_32KEY)
+                if (packageReg.string("DisplayName", value))
                 {
-                    architecture = "i686";
+                    name = value;
                 }
-                else if (access & KEY_WOW64_64KEY)
+                if (packageReg.string("DisplayVersion", value))
                 {
-                    architecture = "x86_64";
+                    version = value;
                 }
-                else
+                if (packageReg.string("Publisher", value))
                 {
-                    architecture = UNKNOWN_VALUE;
+                    vendor = value;
                 }
+                if (packageReg.string("InstallDate", value))
+                {
+                    install_time = value;
+                }
+                if (packageReg.string("InstallLocation", value))
+                {
+                    location = value;
+                }
+                if (!name.empty())
+                {
+                    if (access & KEY_WOW64_32KEY)
+                    {
+                        architecture = "i686";
+                    }
+                    else if (access & KEY_WOW64_64KEY)
+                    {
+                        architecture = "x86_64";
+                    }
+                    else
+                    {
+                        architecture = UNKNOWN_VALUE;
+                    }
 
-                packageJson["name"]         = name;
-                packageJson["version"]      = version;
-                packageJson["vendor"]       = vendor;
-                packageJson["install_time"] = install_time;
-                packageJson["location"]     = location;
-                packageJson["architecture"] = architecture;
-                packageJson["format"]       = "win";
+                    packageJson["name"]         = std::move(name);
+                    packageJson["version"]      = std::move(version);
+                    packageJson["vendor"]       = std::move(vendor);
+                    packageJson["install_time"] = std::move(install_time);
+                    packageJson["location"]     = std::move(location);
+                    packageJson["architecture"] = std::move(architecture);
+                    packageJson["format"]       = "win";
 
-                data.push_back(packageJson);
+                    data.push_back(std::move(packageJson));
+                }
             }
-        }
+        };
+        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        root.enumerate(callback);
     }
     catch(...)
     {
@@ -525,10 +528,10 @@ nlohmann::json SysInfo::getProcessesInfo() const
     nlohmann::json jsProcessesList{};
     fillProcessesData([&jsProcessesList](const auto& processEntry)
         {
-            const auto& processInfo { getProcessInfo(processEntry) };
+            auto processInfo ( getProcessInfo(processEntry) );
             if (!processInfo.empty())
             {
-                jsProcessesList.push_back(processInfo);
+                jsProcessesList.push_back(std::move(processInfo));
             }
         });
 

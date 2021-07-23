@@ -26,10 +26,11 @@ namespace PackageWindowsHelper
     static std::string extractHFValue(std::string input)
     {
         constexpr auto KB_FORMAT_REGEX_STR { "(KB+[0-9]{6,})"};
+        static std::regex rex{KB_FORMAT_REGEX_STR};
         std::string ret;
         input = Utils::toUpperCase(input);
         std::smatch match;
-        if (std::regex_search(input, match, std::regex(KB_FORMAT_REGEX_STR)))
+        if (std::regex_search(input, match, rex))
         {
             // KB format is correct
             ret = match[1];
@@ -43,28 +44,31 @@ namespace PackageWindowsHelper
         {
             std::set<std::string> hotfixes;
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-            const auto packages{root.enumerate()};
-            for (const auto& package : packages)
+            const auto callback
             {
-                if (Utils::startsWith(package, "Package_"))
+                [&key, &subKey, &hotfixes](const std::string& package)
                 {
-                    std::string value;
-                    Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
-                    if (packageReg.string("InstallLocation", value))
+                    if (Utils::startsWith(package, "Package_"))
                     {
-                        const auto hfValue { extractHFValue(value) };
-                        if (!hfValue.empty())
+                        std::string value;
+                        Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
+                        if (packageReg.string("InstallLocation", value))
                         {
-                            hotfixes.insert(hfValue);
+                            auto hfValue { extractHFValue(value) };
+                            if (!hfValue.empty())
+                            {
+                                hotfixes.insert(std::move(hfValue));
+                            }
                         }
                     }
                 }
-            }
-            for (const auto& hotfix : hotfixes)
+            };
+            root.enumerate(callback);
+            for (auto& hotfix : hotfixes)
             {
                 nlohmann::json hotfixValue;
-                hotfixValue["hotfix"] = hotfix;
-                data.push_back(hotfixValue);
+                hotfixValue["hotfix"] = std::move(hotfix);
+                data.push_back(std::move(hotfixValue));
             }
         }
         catch(...)
@@ -77,19 +81,32 @@ namespace PackageWindowsHelper
         try
         {
             std::set<std::string> hotfixes;
-            Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-            const auto packages{root.enumerate()};
-            for (const auto& package : packages)
+            const auto callback
             {
-                const auto hfValue { extractHFValue(package) };
-                if (!hfValue.empty())
+                [&key, &subKey, &hotfixes](const std::string& package)
                 {
-                    hotfixes.insert(hfValue);
+                    if (Utils::startsWith(package, "Package_"))
+                    {
+                        std::string value;
+                        Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
+                        if (packageReg.string("InstallLocation", value))
+                        {
+                            auto hfValue { extractHFValue(value) };
+                            if (!hfValue.empty())
+                            {
+                                hotfixes.insert(std::move(hfValue));
+                            }
+                        }
+                    }
                 }
-            }
-            for (const auto& hotfix : hotfixes)
+            };
+            Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+            root.enumerate(callback);
+            for (auto& hotfix : hotfixes)
             {
-                data.push_back({{"hotfix", hotfix}});
+                nlohmann::json hotfixValue;
+                hotfixValue["hotfix"] = std::move(hotfix);
+                data.push_back(std::move(hotfixValue));
             }
         }
         catch(...)
