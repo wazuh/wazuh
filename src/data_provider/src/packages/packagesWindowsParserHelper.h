@@ -85,18 +85,10 @@ namespace PackageWindowsHelper
             {
                 [&key, &subKey, &hotfixes](const std::string& package)
                 {
-                    if (Utils::startsWith(package, "Package_"))
+                    auto hfValue { extractHFValue(package) };
+                    if (!hfValue.empty())
                     {
-                        std::string value;
-                        Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
-                        if (packageReg.string("InstallLocation", value))
-                        {
-                            auto hfValue { extractHFValue(value) };
-                            if (!hfValue.empty())
-                            {
-                                hotfixes.insert(std::move(hfValue));
-                            }
-                        }
+                        hotfixes.insert(std::move(hfValue));
                     }
                 }
             };
