@@ -20,69 +20,96 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 #ifdef WIN32
     int fd;
     LPTSTR lpCommandLine = NULL;
-    HANDLE hPipe[2];
+    HANDLE hPipeIn[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
+    HANDLE hPipeOut[2] = { INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
     STARTUPINFO sinfo = { .cb = sizeof(STARTUPINFO), .dwFlags = STARTF_USESTDHANDLES };
     PROCESS_INFORMATION pinfo = { 0 };
 
     // Create pipes
 
     if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
-        if (!CreatePipe(&hPipe[0], &hPipe[1], NULL, 0)) {
+        if (!CreatePipe(&hPipeOut[0], &hPipeOut[1], NULL, 0)) {
             merror("CreatePipe(): %ld", GetLastError());
             return NULL;
         }
 
-        if (!SetHandleInformation(hPipe[1], HANDLE_FLAG_INHERIT, 1)) {
+        if (!SetHandleInformation(hPipeOut[1], HANDLE_FLAG_INHERIT, 1)) {
             merror("SetHandleInformation(): %ld", GetLastError());
-            CloseHandle(hPipe[0]);
-            CloseHandle(hPipe[1]);
+            CloseHandle(hPipeOut[0]);
+            CloseHandle(hPipeOut[1]);
             return NULL;
         }
 
-        if (fd = _open_osfhandle((int)hPipe[0], 0), fd < 0) {
+        if (fd = _open_osfhandle((int)hPipeOut[0], 0), fd < 0) {
             merror("_open_osfhandle(): %ld", GetLastError());
-            CloseHandle(hPipe[0]);
-            CloseHandle(hPipe[1]);
+            CloseHandle(hPipeOut[0]);
+            CloseHandle(hPipeOut[1]);
             return NULL;
         }
 
-        if (fp = _fdopen(fd, "r"), !fp) {
+        if (fp_out = _fdopen(fd, "r"), !fp_out) {
             merror("_fdopen(): %ld", GetLastError());
             _close(fd);
-            CloseHandle(hPipe[1]);
+            CloseHandle(hPipeOut[1]);
             return NULL;
         }
 
-        sinfo.hStdOutput = flags & W_BIND_STDOUT ? hPipe[1] : NULL;
-        sinfo.hStdError = flags & W_BIND_STDERR ? hPipe[1] : NULL;
-    } else if (flags & W_BIND_STDIN) {
-        if (!CreatePipe(&hPipe[0], &hPipe[1], NULL, 0)) {
+        sinfo.hStdOutput = flags & W_BIND_STDOUT ? hPipeOut[1] : NULL;
+        sinfo.hStdError = flags & W_BIND_STDERR ? hPipeOut[1] : NULL;
+    }
+
+    if (flags & W_BIND_STDIN) {
+        if (!CreatePipe(&hPipeIn[0], &hPipeIn[1], NULL, 0)) {
             merror("CreatePipe(): %ld", GetLastError());
+
+            if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+                fclose(fp_out);
+                CloseHandle(hPipeOut[1]);
+            }
+
             return NULL;
         }
 
-        if (!SetHandleInformation(hPipe[0], HANDLE_FLAG_INHERIT, 1)) {
+        if (!SetHandleInformation(hPipeIn[0], HANDLE_FLAG_INHERIT, 1)) {
             merror("SetHandleInformation(): %ld", GetLastError());
-            CloseHandle(hPipe[0]);
-            CloseHandle(hPipe[1]);
+            CloseHandle(hPipeIn[0]);
+            CloseHandle(hPipeIn[1]);
+
+            if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+                fclose(fp_out);
+                CloseHandle(hPipeOut[1]);
+            }
+
             return NULL;
         }
 
-        if (fd = _open_osfhandle((int)hPipe[1], 0), fd < 0) {
+        if (fd = _open_osfhandle((int)hPipeIn[1], 0), fd < 0) {
             merror("_open_osfhandle(): %ld", GetLastError());
-            CloseHandle(hPipe[0]);
-            CloseHandle(hPipe[1]);
+            CloseHandle(hPipeIn[0]);
+            CloseHandle(hPipeIn[1]);
+
+            if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+                fclose(fp_out);
+                CloseHandle(hPipeOut[1]);
+            }
+
             return NULL;
         }
 
-        if (fp = _fdopen(fd, "w"), !fp) {
+        if (fp_in = _fdopen(fd, "w"), !fp_in) {
             merror("_fdopen(): %ld", GetLastError());
             _close(fd);
-            CloseHandle(hPipe[0]);
+            CloseHandle(hPipeIn[0]);
+
+            if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+                fclose(fp_out);
+                CloseHandle(hPipeOut[1]);
+            }
+
             return NULL;
         }
 
-        sinfo.hStdInput = hPipe[0];
+        sinfo.hStdInput = hPipeIn[0];
     }
 
     // Format command string
@@ -107,16 +134,17 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     if (!CreateProcess(path, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
         mdebug1("CreateProcess(): %ld", GetLastError());
 
-        if (fp) {
-            fclose(fp);
-            if (flags & W_BIND_STDIN) {
-                CloseHandle(hPipe[0]);
-            } else {
-                CloseHandle(hPipe[1]);
-            }
+        if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+            fclose(fp_out);
+            CloseHandle(hPipeOut[1]);
         }
 
-        if(lpCommandLine) {
+        if (flags & W_BIND_STDIN) {
+            fclose(fp_in);
+            CloseHandle(hPipeIn[0]);
+        }
+
+        if (lpCommandLine) {
             free(lpCommandLine);
         }
 
@@ -126,13 +154,14 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     free(lpCommandLine);
     os_calloc(1, sizeof(wfd_t), wfd);
 
-    if (fp) {
-        if (flags & W_BIND_STDIN) {
-            CloseHandle(hPipe[0]);
-        } else {
-            CloseHandle(hPipe[1]);
-        }
-        wfd->file = fp;
+    if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+        CloseHandle(hPipeOut[1]);
+        wfd->file_out = fp_out;
+    }
+
+    if (flags & W_BIND_STDIN) {
+        CloseHandle(hPipeIn[0]);
+        wfd->file_in = fp_in;
     }
 
     wfd->pinfo = pinfo;

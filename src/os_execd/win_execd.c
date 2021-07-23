@@ -45,7 +45,7 @@ static void WinExecd_Shutdown()
 
         wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
         if (wfd) {
-            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file_in);
             wpclose(wfd);
         } else {
             merror(EXEC_CMD_FAIL, strerror(errno), errno);
@@ -128,7 +128,7 @@ void WinTimeoutRun()
 
             wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
             if (wfd) {
-                fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+                fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file_in);
                 wpclose(wfd);
             } else {
                 merror(EXEC_CMD_FAIL, strerror(errno), errno);
@@ -208,7 +208,7 @@ void WinExecdRun(char *exec_msg)
 
     wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
     if (wfd) {
-        fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
+        fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file_in);
         wpclose(wfd);
     } else {
         merror(EXEC_CMD_FAIL, strerror(errno), errno);
