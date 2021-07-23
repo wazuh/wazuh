@@ -33,6 +33,7 @@ cJSON* get_json_from_input (const char *input) {
     cJSON *parameters_json = NULL;
     cJSON *extra_args = NULL;
     cJSON *alert_json = NULL;
+    cJSON *program_json = NULL;
     const char *json_err;
 
     // Parsing input
@@ -77,7 +78,7 @@ cJSON* get_json_from_input (const char *input) {
     }
 
     // Detect program
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "program"), !alert_json || (alert_json->type != cJSON_String)) {
+    if (program_json = cJSON_GetObjectItem(parameters_json, "program"), !program_json || (program_json->type != cJSON_String)) {
         cJSON_Delete(input_json);
         return NULL;
     }

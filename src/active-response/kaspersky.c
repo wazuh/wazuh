@@ -30,7 +30,7 @@ int main (int argc, char **argv) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     os_free(home_path);
-    
+
     write_debug_file(argv[0], "Starting");
 
     memset(input, '\0', BUFFERSIZE);

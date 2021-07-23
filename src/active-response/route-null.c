@@ -28,7 +28,7 @@ int main (int argc, char **argv) {
     }
     os_free(home_path);
 #endif
-    
+
     write_debug_file(argv[0], "Starting");
 
     memset(input, '\0', BUFFERSIZE);

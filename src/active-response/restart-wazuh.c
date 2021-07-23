@@ -16,7 +16,7 @@ int main (int argc, char **argv) {
     cJSON *input_json = NULL;
 
 #ifndef WIN32
-    char *home_path = w_homedir(argv[0]);  
+    char *home_path = w_homedir(argv[0]);
 
     /* Trim absolute path to get Wazuh's installation directory */
     home_path = w_strtok_r_str_delim("/active-response", &home_path);
