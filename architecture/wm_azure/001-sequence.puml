@@ -4,11 +4,15 @@
 
 @startuml wm_azure
     main -> wmodules : wm_config()
-    wmodules -> config : ReadConfig()
-    config -> config : read_main_elements()
-    config -> config : Read_WModule()
-    config -> config : wm_azure_read()
-    config -> config : wm_azure_api_read()
+    wmodules -> config ++: ReadConfig()
+    config -> config ++: read_main_elements()
+    config -> config ++: Read_WModule()
+    config -> config ++: wm_azure_read()
+    config -> config ++: wm_azure_api_read()
+    config --
+    config --
+    config --
+    config --
     wm_azure -> wm_azure_setup : wm_azure_setup(config)
     wm_azure_setup -> wmodules : wm_state_io()
 loop
