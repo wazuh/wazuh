@@ -334,9 +334,9 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
 {
     try
     {
-        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-        for (const auto& package : packages)
+        const auto callback
+        {
+            [&](const std::string& package)
         {
             std::string value;
             nlohmann::json packageJson;
@@ -384,17 +384,20 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                     architecture = UNKNOWN_VALUE;
                 }
 
-                packageJson["name"]         = name;
-                packageJson["version"]      = version;
-                packageJson["vendor"]       = vendor;
-                packageJson["install_time"] = install_time;
-                packageJson["location"]     = location;
-                packageJson["architecture"] = architecture;
+                    packageJson["name"]         = std::move(name);
+                    packageJson["version"]      = std::move(version);
+                    packageJson["vendor"]       = std::move(vendor);
+                    packageJson["install_time"] = std::move(install_time);
+                    packageJson["location"]     = std::move(location);
+                    packageJson["architecture"] = std::move(architecture);
                 packageJson["format"]       = "win";
 
-                data.push_back(packageJson);
+                    data.push_back(std::move(packageJson));
             }
         }
+        };
+        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        root.enumerate(callback);
     }
     catch(...)
     {
