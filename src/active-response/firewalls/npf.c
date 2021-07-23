@@ -77,7 +77,7 @@ int main (int argc, char **argv) {
     if (wfd1 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd1) {
         char output_buf[BUFFERSIZE];
         int flag = false;
-        while (fgets(output_buf, BUFFERSIZE, wfd1->file)) {
+        while (fgets(output_buf, BUFFERSIZE, wfd1->file_out)) {
             const char *pos = strstr(output_buf, "filtering:");
             if (pos != NULL) {
                 char state[15];
@@ -124,7 +124,7 @@ int main (int argc, char **argv) {
     if (wfd2 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd2) {
         char output_buf[BUFFERSIZE];
         int flag = false;
-        while (fgets(output_buf, BUFFERSIZE, wfd2->file)) {
+        while (fgets(output_buf, BUFFERSIZE, wfd2->file_out)) {
             const char *pos = strstr(output_buf, "table <wazuh_blacklist>");
             if (pos != NULL) {
                 flag = true;

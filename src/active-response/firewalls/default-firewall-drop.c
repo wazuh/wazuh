@@ -223,14 +223,14 @@ int main (int argc, char **argv) {
         if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDIN), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         } else {
-            fprintf(wfd->file, "%s\n", arg1);
+            fprintf(wfd->file_in, "%s\n", arg1);
             wpclose(wfd);
         }
 
         if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDIN), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         } else {
-            fprintf(wfd->file, "%s\n", arg2);
+            fprintf(wfd->file_in, "%s\n", arg2);
             wpclose(wfd);
         }
 
@@ -304,7 +304,7 @@ int main (int argc, char **argv) {
             char *command_ex_1[5] = {lsfilt_path, "-v", "4", "-O", NULL};
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
                 char output_buf[BUFFERSIZE];
-                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
+                while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
                     if (strstr(output_buf, srcip) != NULL) {
                         // removing a specific rule
                         wfd_t *wfd2 = NULL;

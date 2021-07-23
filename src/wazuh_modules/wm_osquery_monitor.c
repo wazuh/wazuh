@@ -315,7 +315,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
         // Get stderr
 
-        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
             // Filter Bash colors: \e[*m
             text = buffer[0] == '\e' && buffer[1] == '[' && (end = strchr(buffer + 2, 'm'), end) ? end + 1 : buffer;
 
