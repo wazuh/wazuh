@@ -296,5 +296,38 @@
         </mitre>
     </rule>
 
+    <rule id="92180" level="0">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)netsh.EXE</field>
+        <description>Netsh command invoked</description>
+    </rule>
 
+    <rule id="92181" level="10">
+        <if_sid>92180</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)advfirewall|firewall</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)add\srule</field>
+        <description>Netsh used to add firewall rule</description>
+        <mitre>
+            <id>T1562.004</id>
+        </mitre>
+    </rule>
+
+    <rule id="92182" level="14">
+        <if_sid>92181</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">localport=5900</field>
+        <description>Netsh used to add firewall rule referencing port 5900, usually used for VNC</description>
+        <mitre>
+            <id>T1562.004</id>
+        </mitre>
+    </rule>
+
+    <rule id="92190" level="14">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)reg.EXE</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)IMPORT\s+[C-Z]:\\\\Users\\\\Public\\\\.+\.reg</field>
+        <description>Reg.exe modified registry using .reg file in suspicious location</description>
+        <mitre>
+            <id>T1112</id>
+        </mitre>
+    </rule>
 </group>

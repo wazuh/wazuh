@@ -53,7 +53,7 @@
     <!-- Sample: {"win":{"eventdata":{"image":"C:\\\\Windows\\\\system32\\\\cmd.exe","processGuid":"{4dc16835-41b5-60ef-7a00-000000001100}","processId":"2860","utcTime":"2021-07-14 20:21:04.678","targetFilename":"C:\\\\Users\\\\Public\\\\Java-Update.vbs","creationUtcTime":"2021-07-14 20:21:04.678"},"system":{"eventID":"11","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"File created:\r\nRuleName: -\r\nUtcTime: 2021-07-14 20:21:04.678\r\nProcessGuid: {4dc16835-41b5-60ef-7a00-000000001100}\r\nProcessId: 2860\r\nImage: C:\\Windows\\system32\\cmd.exe\r\nTargetFilename: C:\\Users\\Public\\Java-Update.vbs\r\nCreationUtcTime: 2021-07-14 20:21:04.678\"","version":"2","systemTime":"2021-07-14T20:21:04.6849507Z","eventRecordID":"28558","threadID":"1272","computer":"cfo.ExchangeTest.com","task":"11","processID":"5364","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}}-->
     <rule id="92080" level="12">
         <if_group>sysmon_event_11</if_group>
-        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat|js)</field>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.(exe|bin|dll|vbs|bat|js|msi)</field>
         <description>Binary file dropped in Users\Public folder</description>
         <mitre>
             <id>T1105</id>
@@ -65,6 +65,15 @@
         <if_sid>92080</if_sid>
         <field name="win.eventdata.image" type="pcre2">(?i)(scp|pscp|FZSFTP|sftp)\.exe</field>
         <description>Binary file dropped in Users\Public folder by SSH enabled copy software</description>
+        <mitre>
+            <id>T1105</id>
+        </mitre>
+    </rule>
+
+    <rule id="92082" level="6">
+        <if_group>sysmon_event_11</if_group>
+        <field name="win.eventdata.targetFilename" type="pcre2">(?i)[c-z]:\\\\Users\\\\Public\\\\.*\.reg</field>
+        <description>Suspicious registry modification file created in Users\Public folder</description>
         <mitre>
             <id>T1105</id>
         </mitre>

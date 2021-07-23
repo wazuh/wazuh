@@ -36,4 +36,13 @@
             <id>T1547.001</id>
         </mitre>
     </rule>
+
+    <rule id="92303" level="12">
+        <if_sid>92300</if_sid>
+        <field name="win.eventdata.details" type="pcre2">(?i)(VNC|tvnserver\.exe)</field>
+        <description>Registry entry to be executed on next logon points to a remote access tool</description>
+        <mitre>
+            <id>T1547.001</id>
+        </mitre>
+    </rule>
 </group>
