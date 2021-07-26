@@ -9,10 +9,9 @@ from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQu
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.syscheck import WazuhDBQuerySyscheck
+from wazuh.core.syscheck import WazuhDBQuerySyscheck, WazuhDBSyscheckClear
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -82,20 +81,15 @@ def clear(agent_list=None):
     result = AffectedItemsWazuhResult(all_msg='Syscheck database was cleared on returned agents',
                                       some_msg='Syscheck database was not cleared on some agents',
                                       none_msg="No syscheck database was cleared")
-    wdb_conn = WazuhDBConnection()
 
     system_agents = get_agents_info()
+    wdbq = WazuhDBSyscheckClear()
     for agent in agent_list:
         if agent not in system_agents:
             result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
         else:
             try:
-                wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
-                # Update key fields which contains keys to value 000
-                wdb_conn.execute("agent {} sql update metadata set value = '000' "
-                                 "where key like 'fim_db%'".format(agent), update=True)
-                wdb_conn.execute("agent {} sql update metadata set value = '000' "
-                                 "where key = 'syscheck-db-completed'".format(agent), update=True)
+                wdbq.remove_agent(agent)
                 result.affected_items.append(agent)
             except WazuhError as e:
                 result.add_failed_item(id_=agent, error=e)
