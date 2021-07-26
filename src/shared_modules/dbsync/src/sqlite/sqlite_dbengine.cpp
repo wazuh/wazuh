@@ -190,6 +190,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
 
             nlohmann::json bulkInsertJson;
             nlohmann::json bulkModifyJson;
+            const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
 
             for (const auto& entry : data)
             {
@@ -202,9 +203,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
 
                     if (!jsDataToUpdate.empty())
                     {
-                        const auto& transaction { m_sqliteFactory->createTransaction(m_sqliteConnection)};
                         updateSingleRow(table, jsDataToUpdate);
-                        transaction->commit();
 
                         if (callback && !jsResult.empty())
                         {
@@ -217,6 +216,8 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
                     bulkInsertJson.push_back(entry);
                 }
             }
+
+            transaction->commit();
 
             if (!bulkInsertJson.empty())
             {
