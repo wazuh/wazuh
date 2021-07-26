@@ -67,6 +67,7 @@ typedef struct _timeout_data {
     int time_to_block;
     char **command;
     char *parameters;
+    char *rkey;
 } timeout_data;
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);

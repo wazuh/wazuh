@@ -43,6 +43,20 @@ cJSON* get_json_from_input (const char *input);
 char* get_command (cJSON *input);
 
 /**
+ * Get alert from input
+ * @param input Input
+ * @return JSON alert or NULL on Invalid.
+ * */
+cJSON* get_alert_from_json (cJSON *input);
+
+/**
+ * Get srcip from input
+ * @param input Input
+ * @return char * with the srcip or NULL on fail
+ * */
+char* get_srcip_from_json (cJSON *input);
+
+/**
  * Get username from input
  * @param input Input
  * @return char * with the username or NULL on fail
@@ -57,25 +71,11 @@ char* get_username_from_json (cJSON *input);
 char* get_extra_args_from_json (cJSON *input);
 
 /**
- * Get srcip from input
- * @param input Input
- * @return char * with the srcip or NULL on fail
- * */
-char* get_srcip_from_json (cJSON *input);
-
-/**
  * Get keys from input
  * @param input Input
  * @return char * with the keys or NULL on fail
  * */
 char* get_keys_from_json (cJSON *input);
-
-/**
- * Get alert from input
- * @param input Input
- * @return JSON alert or NULL on Invalid.
- * */
-cJSON* get_alert_from_json (cJSON *input);
 
 #ifndef WIN32
 

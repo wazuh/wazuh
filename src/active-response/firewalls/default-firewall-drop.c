@@ -224,6 +224,7 @@ int main (int argc, char **argv) {
             write_debug_file(argv[0], "Unable to run ipf");
         } else {
             fprintf(wfd->file_in, "%s\n", arg1);
+            fflush(wfd->file_in);
             wpclose(wfd);
         }
 
@@ -231,6 +232,7 @@ int main (int argc, char **argv) {
             write_debug_file(argv[0], "Unable to run ipf");
         } else {
             fprintf(wfd->file_in, "%s\n", arg2);
+            fflush(wfd->file_in);
             wpclose(wfd);
         }
 

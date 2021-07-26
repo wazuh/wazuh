@@ -76,9 +76,12 @@ STATIC void execd_shutdown(int sig)
         list_entry = (timeout_data *)timeout_node->data;
 
         mdebug2("Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
+
         wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
         if (wfd) {
-            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file_in);
+            /* Send alert to AR script */
+            fprintf(wfd->file_in, "%s\n", list_entry->parameters);
+            fflush(wfd->file_in);
             wpclose(wfd);
         } else {
             merror(EXEC_CMD_FAIL, strerror(errno), errno);
@@ -260,6 +263,8 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
 
     os_free(timeout_entry->parameters);
 
+    os_free(timeout_entry->rkey);
+
     os_free(timeout_entry);
 }
 
@@ -347,7 +352,9 @@ STATIC void ExecdStart(int q)
 
                 wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
                 if (wfd) {
-                    fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file_in);
+                    /* Send alert to AR script */
+                    fprintf(wfd->file_in, "%s\n", list_entry->parameters);
+                    fflush(wfd->file_in);
                     wpclose(wfd);
                 } else {
                     merror(EXEC_CMD_FAIL, strerror(errno), errno);
@@ -469,11 +476,11 @@ STATIC void ExecdStart(int q)
             cJSON *keys_json = NULL;
 
             /* Send alert to AR script */
-            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file_in);
+            fprintf(wfd->file_in, "%s\n", cmd_parameters);
             fflush(wfd->file_in);
 
             /* Receive alert keys from AR script to check timeout list */
-            if (fgets(buffer, OS_SIZE_4096, stdin) == NULL) {
+            if (fgets(buffer, sizeof(buffer), wfd->file_out) == NULL) {
                 mdebug1("Active response won't be added to timeout list. "
                         "Message not received with alert keys from script '%s'", cmd[0]);
                 wpclose(wfd);
@@ -484,7 +491,7 @@ STATIC void ExecdStart(int q)
 
             /* Set rkey initially with the name of the AR */
             memset(rkey, '\0', OS_SIZE_4096);
-            snprintf(rkey, OS_SIZE_4096 - 1, "%s", cmd[0]);
+            snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd[0]));
 
             keys_json = get_json_from_input(buffer);
             if (keys_json != NULL) {
@@ -548,7 +555,7 @@ STATIC void ExecdStart(int q)
                     timeout_data *list_entry;
 
                     list_entry = (timeout_data *)timeout_node->data;
-                    if (strcmp(list_entry->command[0], cmd[0]) == 0) {
+                    if (strcmp(list_entry->rkey, rkey) == 0) {
                         /* Means we executed this command before and we don't need to add it again */
                         added_before = 1;
 
@@ -574,6 +581,7 @@ STATIC void ExecdStart(int q)
                     os_strdup(cmd[0], timeout_entry->command[0]);
                     timeout_entry->command[1] = NULL;
                     timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
+                    os_strdup(rkey, timeout_entry->rkey);
                     timeout_entry->time_of_addition = curr_time;
                     timeout_entry->time_to_block = timeout_value;
 

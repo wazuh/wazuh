@@ -31,9 +31,6 @@ cJSON* get_json_from_input (const char *input) {
     cJSON *version_json = NULL;
     cJSON *command_json = NULL;
     cJSON *parameters_json = NULL;
-    cJSON *extra_args = NULL;
-    cJSON *alert_json = NULL;
-    cJSON *program_json = NULL;
     const char *json_err;
 
     // Parsing input
@@ -65,24 +62,6 @@ cJSON* get_json_from_input (const char *input) {
         return NULL;
     }
 
-    // Detect extra_args
-    if (extra_args = cJSON_GetObjectItem(parameters_json, "extra_args"), !extra_args || (extra_args->type != cJSON_Array)) {
-        cJSON_Delete(input_json);
-        return NULL;
-    }
-
-    // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
-        cJSON_Delete(input_json);
-        return NULL;
-    }
-
-    // Detect program
-    if (program_json = cJSON_GetObjectItem(parameters_json, "program"), !program_json || (program_json->type != cJSON_String)) {
-        cJSON_Delete(input_json);
-        return NULL;
-    }
-
     return input_json;
 }
 
@@ -91,6 +70,53 @@ char* get_command (cJSON *input) {
     cJSON *command_json = cJSON_GetObjectItem(input, "command");
     if (command_json && (command_json->type == cJSON_String)) {
         return command_json->valuestring;
+    }
+
+    return NULL;
+}
+
+cJSON* get_alert_from_json (cJSON *input) {
+    cJSON *parameters_json = NULL;
+    cJSON *alert_json = NULL;
+
+    // Detect parameters
+    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect alert
+    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    return alert_json;
+}
+
+char* get_srcip_from_json (cJSON *input) {
+    cJSON *parameters_json = NULL;
+    cJSON *alert_json = NULL;
+    cJSON *data_json = NULL;
+    cJSON *srcip_json = NULL;
+
+    // Detect parameters
+    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect alert
+    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect data
+    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect srcip
+    srcip_json = cJSON_GetObjectItem(data_json, "srcip");
+    if (srcip_json && (srcip_json->type == cJSON_String)) {
+        return srcip_json->valuestring;
     }
 
     return NULL;
@@ -161,53 +187,6 @@ char* get_extra_args_from_json (cJSON *input) {
     }
 
     return extra_args;
-}
-
-cJSON* get_alert_from_json (cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-
-    // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
-        return NULL;
-    }
-
-    // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
-        return NULL;
-    }
-
-    return alert_json;
-}
-
-char* get_srcip_from_json (cJSON *input) {
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-    cJSON *data_json = NULL;
-    cJSON *srcip_json = NULL;
-
-    // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
-        return NULL;
-    }
-
-    // Detect alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
-        return NULL;
-    }
-
-    // Detect data
-    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
-        return NULL;
-    }
-
-    // Detect srcip
-    srcip_json = cJSON_GetObjectItem(data_json, "srcip");
-    if (srcip_json && (srcip_json->type == cJSON_String)) {
-        return srcip_json->valuestring;
-    }
-
-    return NULL;
 }
 
 char* get_keys_from_json (cJSON *input) {

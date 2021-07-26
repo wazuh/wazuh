@@ -39,10 +39,12 @@ static cJSON *format_output(cJSON *alert);
 int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
+    char system_command[LOGSIZE];
     char *site_url;
-    char *action;
+    char *output_str;
     cJSON *alert_json = NULL;
     cJSON *input_json = NULL;
+    cJSON *output_json = NULL;
     char *home_path = w_homedir(argv[0]);
 
     /* Trim absolute path to get Wazuh's installation directory */
@@ -70,19 +72,6 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    action = get_command(input_json);
-    if (!action) {
-        write_debug_file(argv[0], "Cannot read 'command' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file(argv[0], "Invalid value of 'command'");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
     // Get alert
     alert_json = get_alert_from_json(input_json);
     if (!alert_json) {
@@ -99,33 +88,27 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (strcmp("add", action) == 0) {
-        char *output_str;
-        cJSON *output_json = NULL;
-        char system_command[LOGSIZE];
+    output_json = format_output(alert_json);
+    output_str = cJSON_PrintUnformatted(output_json);
 
-        output_json = format_output(alert_json);
-        output_str = cJSON_PrintUnformatted(output_json);
+    memset(system_command, '\0', LOGSIZE);
+    snprintf(system_command, LOGSIZE -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+    if (system(system_command) != 0) {
+        write_debug_file(argv[0], "Unable to run curl");
 
+        // Try with wget
+        char *new_output_str = wstr_replace(output_str, "\"", "'");
         memset(system_command, '\0', LOGSIZE);
-        snprintf(system_command, LOGSIZE -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+        snprintf(system_command, LOGSIZE -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
         if (system(system_command) != 0) {
-            write_debug_file(argv[0], "Unable to run curl");
-
-            // Try with wget
-            char *new_output_str = wstr_replace(output_str, "\"", "'");
-            memset(system_command, '\0', LOGSIZE);
-            snprintf(system_command, LOGSIZE -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
-            if (system(system_command) != 0) {
-                write_debug_file(argv[0], "Unable to run wget");
-            }
-            os_free(new_output_str);
+            write_debug_file(argv[0], "Unable to run wget");
         }
-        os_free(output_str);
-        cJSON_Delete(output_json);
+        os_free(new_output_str);
     }
 
+    cJSON_Delete(output_json);
     cJSON_Delete(input_json);
+    os_free(output_str);
     os_free(site_url);
 
     write_debug_file(argv[0], "Ended");
