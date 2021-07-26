@@ -785,12 +785,22 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
     mdebug1("Writer thread ready.");
 
+    struct timespec global_t0, global_t1;
+    struct timespec t0, t1;
+
     while (running) {
+        int inserted_agents = 0;
+        int removed_agents = 0;
+
         w_mutex_lock(&mutex_keys);
 
         while (!write_pending && running) {
             w_cond_wait(&cond_pending, &mutex_keys);
         }
+
+        mdebug1("Dumping changes into disk.");
+
+        gettime(&global_t0);
 
         copy_keys = OS_DupKeys(&keys);
         copy_insert = queue_insert;
@@ -802,9 +812,14 @@ void* run_writer(__attribute__((unused)) void *arg) {
         write_pending = 0;
         w_mutex_unlock(&mutex_keys);
 
+        gettime(&t0);
+
         if (OS_WriteKeys(copy_keys) < 0) {
             merror("Couldn't write file client.keys");
         }
+
+        gettime(&t1);
+        mdebug2("[Writer] OS_WriteKeys(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
         OS_FreeKeys(copy_keys);
         free(copy_keys);
@@ -812,7 +827,15 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
+
+            mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
+
+            gettime(&t0);
             OS_AddAgentTimestamp(cur->id, cur->name, cur->ip, cur_time);
+            gettime(&t1);
+            mdebug2("[Writer] OS_AddAgentTimestamp(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
 
             if (cur->group) {
                 if (set_agent_group(cur->id,cur->group) == -1) {
@@ -822,34 +845,70 @@ void* run_writer(__attribute__((unused)) void *arg) {
                 set_agent_multigroup(cur->group);
             }
 
+            gettime(&t1);
+            mdebug2("[Writer] set_agent_group(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
             free(cur->id);
             free(cur->name);
             free(cur->ip);
             free(cur->group);
             free(cur);
+
+            inserted_agents++;
         }
 
         for (cur = copy_remove; cur; cur = next) {
             char full_name[FILE_SIZE + 1];
             next = cur->next;
             snprintf(full_name, sizeof(full_name), "%s-%s", cur->name, cur->ip);
-            delete_agentinfo(cur->id, full_name);
-            OS_RemoveCounter(cur->id);
-            OS_RemoveAgentTimestamp(cur->id);
-            OS_RemoveAgentGroup(cur->id);
 
+            mdebug1("[Writer] Performing delete([%s] %s).", cur->id, cur->name);
+
+            gettime(&t0);
+            delete_agentinfo(cur->id, full_name);
+            gettime(&t1);
+            mdebug2("[Writer] delete_agentinfo(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
+            OS_RemoveCounter(cur->id);
+            gettime(&t1);
+            mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
+            OS_RemoveAgentTimestamp(cur->id);
+            gettime(&t1);
+            mdebug2("[Writer] OS_RemoveAgentTimestamp(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
+            OS_RemoveAgentGroup(cur->id);
+            gettime(&t1);
+            mdebug2("[Writer] OS_RemoveAgentGroup(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            gettime(&t0);
             if (wdb_remove_agent(atoi(cur->id), &wdb_sock) != OS_SUCCESS) {
                 mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", cur->id);
             }
+            gettime(&t1);
+            mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            gettime(&t0);
             wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
+            gettime(&t1);
+            mdebug2("[Writer] wdbc_query_ex(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             free(cur->id);
             free(cur->name);
             free(cur->ip);
             free(cur);
+
+            removed_agents++;
         }
+
+        gettime(&global_t1);
+        mdebug2("[Writer] Inserted agents: %d", inserted_agents);
+        mdebug2("[Writer] Removed agents: %d", removed_agents);
+        mdebug2("[Writer] Loop: %d ms.", (int)(1000. * (double)time_diff(&global_t0, &global_t1)));
     }
 
     return NULL;
