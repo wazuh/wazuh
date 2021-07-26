@@ -305,12 +305,19 @@ void WinExecdRun(char *exec_msg)
 
         /* If it wasn't added before, continue execution */
         if (!added_before) {
-            // TODO: Send continue message
-
+            /* Continue command */
+            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(CONTINUE_ENTRY));
         } else {
-            // TODO: Send abort message
-
+            /* Abort command */
+            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ABORT_ENTRY));
         }
+
+        os_free(cmd_parameters);
+        cmd_parameters = cJSON_PrintUnformatted(json_root);
+
+        /* Send continue/abort message to AR script */
+        fprintf(wfd->file_in, "%s\n", cmd_parameters);
+        fflush(wfd->file_in);
 
         wpclose(wfd);
     } else {

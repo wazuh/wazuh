@@ -15,9 +15,11 @@
 #define ARGV0 "wazuh-execd"
 #endif
 
-/* Add/delete arguments for the commands */
+/* Arguments for the commands */
 #define ADD_ENTRY       "add"
 #define DELETE_ENTRY    "delete"
+#define CONTINUE_ENTRY  "continue"
+#define ABORT_ENTRY     "abort"
 
 /* Maximum number of active responses active */
 #define MAX_AR      64
