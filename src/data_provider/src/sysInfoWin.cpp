@@ -390,7 +390,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                     packageJson["install_time"] = std::move(install_time);
                     packageJson["location"]     = std::move(location);
                     packageJson["architecture"] = std::move(architecture);
-                packageJson["format"]       = "win";
+                    packageJson["format"]       = "win";
 
                     data.push_back(std::move(packageJson));
             }
