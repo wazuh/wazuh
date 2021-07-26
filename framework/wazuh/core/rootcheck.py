@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from datetime import datetime
-
 from wazuh.core.agent import Agent
 from wazuh.core.common import date_format
 from wazuh.core.exception import WazuhException
@@ -57,7 +56,8 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
                      "'Starting syscheck scan.', 'Ending syscheck scan.'"
 
         if filter_status['value'] == 'all':
-            self.query += partial.format("'outstanding'", '>') + " UNION " + partial.format("'solved'", '<=') + log_not_in
+            self.query += partial.format("'outstanding'", '>') + " UNION " + partial.format("'solved'",
+                                                                                            '<=') + log_not_in
         elif filter_status['value'] == 'outstanding':
             self.query += partial.format("'outstanding'", '>') + log_not_in
         elif filter_status['value'] == 'solved':
@@ -107,3 +107,11 @@ def last_scan(agent_id):
     start = datetime.utcfromtimestamp(time).strftime(date_format) if time is not None else None
 
     return {'start': start, 'end': None if start is None else None if end is None or end < start else end}
+
+
+class WazuhDBRootcheckClear():
+    def __init__(self):
+        self.wdb_conn = WazuhDBConnection()
+
+    def delete_agent(self, agent: str) -> None:
+        self.wdb_conn.execute(f"agent {agent} rootcheck delete", delete=True)
