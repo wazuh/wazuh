@@ -72,7 +72,7 @@ cJSON* get_json_from_input(const char *input);
  * @param input Input
  * @return char * with the command or NULL on fail
  * */
-char* get_command(cJSON *input);
+char* get_command_from_json(cJSON *input);
 
 /**
  * Get alert from input
@@ -108,14 +108,6 @@ char* get_extra_args_from_json(cJSON *input);
  * @return char * with the keys or NULL on fail
  * */
 char* get_keys_from_json(cJSON *input);
-
-/**
- * Build JSON message with keys to be sent to execd
- * @param ar_name Name of active response
- * @param keys Array of keys
- * @return char * with the JSON message in string format
- */
-char * build_json_keys_message(const char *ar_name, char **keys);
 
 #ifndef WIN32
 

@@ -11,51 +11,16 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char input[BUFFERSIZE];
     char args[COMMANDSIZE];
     char log_msg[LOGSIZE];
-    char *action;
-    char *user;
-    char *command_ex;
+    char *user = NULL;
+    char *command_ex = NULL;
+    int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
-    char *home_path = w_homedir(argv[0]);
 
-    /* Trim absolute path to get Wazuh's installation directory */
-    home_path = w_strtok_r_str_delim("/active-response", &home_path);
-
-    /* Change working directory */
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-    os_free(home_path);
-
-    write_debug_file(argv[0], "Starting");
-
-    memset(input, '\0', BUFFERSIZE);
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file(argv[0], "Cannot read input from stdin");
-        return OS_INVALID;
-    }
-
-    write_debug_file(argv[0], input);
-
-    input_json = get_json_from_input(input);
-    if (!input_json) {
-        write_debug_file(argv[0], "Invalid input format");
-        return OS_INVALID;
-    }
-
-    action = get_command(input_json);
-    if (!action) {
-        write_debug_file(argv[0], "Cannot read 'command' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file(argv[0], "Invalid value of 'command'");
-        cJSON_Delete(input_json);
+    action = setup_and_check_message(argv, &input_json);
+    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -65,6 +30,31 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], "Cannot read 'dstuser' from data");
         cJSON_Delete(input_json);
         return OS_INVALID;
+    }
+
+    if (action == ADD_COMMAND) {
+        char **keys = NULL;
+        int action2 = OS_INVALID;
+
+        os_calloc(2, sizeof(char *), keys);
+        os_strdup(user, keys[0]);
+        keys[1] = NULL;
+
+        action2 = send_keys_and_check_message(argv, keys);
+
+        os_free(keys);
+
+        // If necessary, abort execution
+        if (action2 != CONTINUE_COMMAND) {
+            cJSON_Delete(input_json);
+
+            if (action2 == ABORT_COMMAND) {
+                write_debug_file(argv[0], "Aborted");
+                return OS_SUCCESS;
+            } else {
+                return OS_INVALID;
+            }
+        }
     }
 
     if (!strcmp("root", user)) {
@@ -91,7 +81,7 @@ int main (int argc, char **argv) {
 
         os_strdup(PASSWD, command_ex);
         memset(args, '\0', COMMANDSIZE);
-        if (!strcmp("add", action)) {
+        if (action == ADD_COMMAND) {
             snprintf(args, COMMANDSIZE -1, "-l");
         } else {
             snprintf(args, COMMANDSIZE -1, "-u");
@@ -110,7 +100,7 @@ int main (int argc, char **argv) {
         os_strdup(CHUSER, command_ex);
         // Disabling an account
         memset(args, '\0', COMMANDSIZE);
-        if (!strcmp("add", action)) {
+        if (action == ADD_COMMAND) {
             snprintf(args, COMMANDSIZE -1, "account_locked=true");
         } else {
             snprintf(args, COMMANDSIZE -1, "account_locked=false");

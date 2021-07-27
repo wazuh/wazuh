@@ -9,6 +9,14 @@
 
 #include "active_responses.h"
 
+/**
+ * Build JSON message with keys to be sent to execd
+ * @param ar_name Name of active response
+ * @param keys Array of keys
+ * @return char * with the JSON message in string format
+ */
+static char* build_json_keys_message(const char *ar_name, char **keys);
+
 void write_debug_file(const char *ar_name, const char *msg) {
     char path[PATH_MAX];
     char *timestamp = w_get_timestamp(time(NULL));
@@ -60,7 +68,7 @@ int setup_and_check_message(char **argv, cJSON **message) {
         return OS_INVALID;
     }
 
-    action = get_command(input_json);
+    action = get_command_from_json(input_json);
     if (!action) {
         write_debug_file(argv[0], "Cannot read 'command' from json");
         cJSON_Delete(input_json);
@@ -77,7 +85,9 @@ int setup_and_check_message(char **argv, cJSON **message) {
         return OS_INVALID;
     }
 
-    *message = input_json;
+    if (message) {
+        *message = input_json;
+    }
 
     return ret;
 }
@@ -114,7 +124,7 @@ int send_keys_and_check_message(char **argv, char **keys) {
         return OS_INVALID;
     }
 
-    action = get_command(input_json);
+    action = get_command_from_json(input_json);
     if (!action) {
         write_debug_file(argv[0], "Cannot read 'command' from json");
         cJSON_Delete(input_json);
@@ -176,7 +186,7 @@ cJSON* get_json_from_input(const char *input) {
     return input_json;
 }
 
-char* get_command(cJSON *input) {
+char* get_command_from_json(cJSON *input) {
     // Detect command
     cJSON *command_json = cJSON_GetObjectItem(input, "command");
     if (command_json && (command_json->type == cJSON_String)) {
@@ -335,7 +345,7 @@ char* get_keys_from_json(cJSON *input) {
     return keys;
 }
 
-char * build_json_keys_message(const char *ar_name, char **keys) {
+static char* build_json_keys_message(const char *ar_name, char **keys) {
     cJSON *_object = NULL;
     cJSON *_array = NULL;
     char *msg = NULL;

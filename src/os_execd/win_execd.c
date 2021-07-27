@@ -237,7 +237,7 @@ void WinExecdRun(char *exec_msg)
 
         keys_json = get_json_from_input(buffer);
         if (keys_json != NULL) {
-            char *action = get_command(keys_json);
+            char *action = get_command_from_json(keys_json);
             if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0)) {
                 char *keys = get_keys_from_json(keys_json);
                 if (keys != NULL) {

@@ -32,43 +32,22 @@
  * }
  *
  * @param alert Alert to extract info
- * @return  json object
+ * @return JSON object
  * */
 static cJSON *format_output(cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
-    char input[BUFFERSIZE];
     char system_command[LOGSIZE];
     char *site_url;
     char *output_str;
+    int action = OS_INVALID;
     cJSON *alert_json = NULL;
     cJSON *input_json = NULL;
     cJSON *output_json = NULL;
-    char *home_path = w_homedir(argv[0]);
 
-    /* Trim absolute path to get Wazuh's installation directory */
-    home_path = w_strtok_r_str_delim("/active-response", &home_path);
-
-    /* Change working directory */
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-    os_free(home_path);
-
-    write_debug_file(argv[0], "Starting");
-
-    memset(input, '\0', BUFFERSIZE);
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file(argv[0], "Cannot read input from stdin");
-        return OS_INVALID;
-    }
-
-    write_debug_file(argv[0], input);
-
-    input_json = get_json_from_input(input);
-    if (!input_json) {
-        write_debug_file(argv[0], "Invalid input format");
+    action = setup_and_check_message(argv, &input_json);
+    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -106,12 +85,12 @@ int main (int argc, char **argv) {
         os_free(new_output_str);
     }
 
+    write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(output_json);
     cJSON_Delete(input_json);
     os_free(output_str);
     os_free(site_url);
-
-    write_debug_file(argv[0], "Ended");
 
     return OS_SUCCESS;
 }

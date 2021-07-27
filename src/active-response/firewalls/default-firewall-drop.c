@@ -16,9 +16,9 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char *srcip;
     char iptables[COMMANDSIZE];
     char log_msg[LOGSIZE];
+    char *srcip = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -32,20 +32,6 @@ int main (int argc, char **argv) {
     srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    int ip_version = get_ip_version(srcip);
-    memset(iptables, '\0', COMMANDSIZE);
-    if (ip_version == 4) {
-        strcpy(iptables, IP4TABLES);
-    } else if (ip_version == 6) {
-        strcpy(iptables, IP6TABLES);
-    } else {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE -1, "Unable to run active response (invalid IP: '%s').", srcip);
-        write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
@@ -73,6 +59,20 @@ int main (int argc, char **argv) {
                 return OS_INVALID;
             }
         }
+    }
+
+    int ip_version = get_ip_version(srcip);
+    memset(iptables, '\0', COMMANDSIZE);
+    if (ip_version == 4) {
+        strcpy(iptables, IP4TABLES);
+    } else if (ip_version == 6) {
+        strcpy(iptables, IP6TABLES);
+    } else {
+        memset(log_msg, '\0', LOGSIZE);
+        snprintf(log_msg, LOGSIZE -1, "Unable to run active response (invalid IP: '%s').", srcip);
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
     }
 
     if (uname(&uname_buffer) < 0) {
