@@ -30,17 +30,17 @@ While `monitor` module focus on `active` to `disconnected` status transition, ot
 
 ## Sequence diagram
 
-As secuence diagram shows, agent disconnection handling and alerting feature has four mayors activities:
+As sequence diagram shows, agent disconnection handling and alerting feature has four mayors activities:
 
-- Scheduler with seconds granularity that trigger the next activities.
+- Scheduler with seconds granularity that triggers the next activities.
 - Trigger agent disconnection mechanism against Wazuh DB using configured `agents_disconnection_time` criteria, 
-- In case `monitord.monitor_agents` is enabled, generate alert for those disconnected agents using configured `agents_disconnection_alert_time` criteria.
-- In case `monitord.monitor_agents` and `monitord.delete_old_agents` are enabled, delete all disconnected agents using configured `monitord.delete_old_agents`criteria.
+- In case of `monitord.monitor_agents` is enabled, generate alert for those disconnected agents using configured `agents_disconnection_alert_time` criteria.
+- In case of `monitord.monitor_agents` and `monitord.delete_old_agents` are enabled, delete all disconnected agents using configured `monitord.delete_old_agents`criteria.
 
 
 ## Findings
 
 - Original `monitord.monitor_agents` meaning it is not current one. Nowdays this could be deprecated by adding disabling semantics to other configuration variables. 
-- **Prevent pending agents from keepping their state indefinitely [#8975](https://github.com/wazuh/wazuh/issues/8975)]**.
+- **Prevent pending agents from keeping their state indefinitely [#8975](https://github.com/wazuh/wazuh/issues/8975)]**.
 - There's a fixed sleep of 10 seconds in the main loop of `monitor` in order to wait wazuh daemons settle. This should be replaced for a asynchronous mechanism.
 - Scheduler is affected/skewed by the operations sequentially executed in monitor main loop,

@@ -9,8 +9,12 @@ participant wazuhdb as wdb
 participant authd
 
 
+activate wdb
+activate authd
+
 monitord -> monitord++: Monitord()
 
+monitord -> monitord: monitor_queue_connect()
 monitord -> monitord: monitor_init_time_control()
 
 loop true
