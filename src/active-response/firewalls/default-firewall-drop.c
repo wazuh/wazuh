@@ -17,49 +17,14 @@
 int main (int argc, char **argv) {
     (void)argc;
     char *srcip;
-    char *action;
     char iptables[COMMANDSIZE];
-    char input[BUFFERSIZE];
     char log_msg[LOGSIZE];
-    char *home_path = w_homedir(argv[0]);
+    int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
-    /* Trim absolute path to get Wazuh's installation directory */
-    home_path = w_strtok_r_str_delim("/active-response", &home_path);
-
-    /* Change working directory */
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-    os_free(home_path);
-
-    write_debug_file(argv[0], "Starting");
-
-    memset(input, '\0', BUFFERSIZE);
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file(argv[0], "Cannot read input from stdin");
-        return OS_INVALID;
-    }
-
-    write_debug_file(argv[0], input);
-
-    input_json = get_json_from_input(input);
-    if (!input_json) {
-        write_debug_file(argv[0], "Invalid input format");
-        return OS_INVALID;
-    }
-
-    action = get_command(input_json);
-    if (!action) {
-        write_debug_file(argv[0], "Cannot read 'command' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file(argv[0], "Invalid value of 'command'");
-        cJSON_Delete(input_json);
+    action = setup_and_check_message(argv, &input_json);
+    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -83,6 +48,31 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
+    }
+
+    if (action == ADD_COMMAND) {
+        char **keys = NULL;
+        int action2 = OS_INVALID;
+
+        os_calloc(2, sizeof(char *), keys);
+        os_strdup(srcip, keys[0]);
+        keys[1] = NULL;
+
+        action2 = send_keys_and_check_message(argv, keys);
+
+        os_free(keys);
+
+        // If necessary, abort execution
+        if (action2 != CONTINUE_COMMAND) {
+            cJSON_Delete(input_json);
+
+            if (action2 == ABORT_COMMAND) {
+                write_debug_file(argv[0], "Aborted");
+                return OS_SUCCESS;
+            } else {
+                return OS_INVALID;
+            }
+        }
     }
 
     if (uname(&uname_buffer) < 0) {
@@ -113,7 +103,7 @@ int main (int argc, char **argv) {
 
         char arg[3];
         memset(arg, '\0', 3);
-        if (!strcmp("add", action)) {
+        if (action == ADD_COMMAND) {
             strcpy(arg, "-I");
         } else {
             strcpy(arg, "-D");
@@ -210,7 +200,7 @@ int main (int argc, char **argv) {
 
         snprintf(arg1, COMMANDSIZE -1, "block out quick from any to %s", srcip);
         snprintf(arg2, COMMANDSIZE -1, "block in quick from %s to any", srcip);
-        if (!strcmp("add", action)) {
+        if (action == ADD_COMMAND) {
             snprintf(ipfarg, COMMANDSIZE -1,"-f");
         } else {
             snprintf(ipfarg, COMMANDSIZE -1,"-rf");
@@ -278,7 +268,7 @@ int main (int argc, char **argv) {
             return OS_SUCCESS;
         }
 
-        if (!strcmp("add", action)) {
+        if (action == ADD_COMMAND) {
             wfd_t *wfd = NULL;
             char *command_ex_1[18] = {genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {

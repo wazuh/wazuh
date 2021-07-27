@@ -496,7 +496,7 @@ STATIC void ExecdStart(int q)
             keys_json = get_json_from_input(buffer);
             if (keys_json != NULL) {
 	            char *action = get_command(keys_json);
-                if ((action != NULL) && (strcmp("check_keys", action) == 0)) {
+                if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0)) {
                     char *keys = get_keys_from_json(keys_json);
                     if (keys != NULL) {
                         /* Append to rkey the alert keys that the AR script will use */

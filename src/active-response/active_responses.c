@@ -9,7 +9,7 @@
 
 #include "active_responses.h"
 
-void write_debug_file (const char *ar_name, const char *msg) {
+void write_debug_file(const char *ar_name, const char *msg) {
     char path[PATH_MAX];
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -25,7 +25,118 @@ void write_debug_file (const char *ar_name, const char *msg) {
     os_free(timestamp);
 }
 
-cJSON* get_json_from_input (const char *input) {
+int setup_and_check_message(char **argv, cJSON **message) {
+    int ret = OS_INVALID;
+    char *action;
+    char input[BUFFERSIZE];
+    cJSON *input_json = NULL;
+
+#ifndef WIN32
+    char *home_path = w_homedir(argv[0]);
+
+    /* Trim absolute path to get Wazuh's installation directory */
+    home_path = w_strtok_r_str_delim("/active-response", &home_path);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
+#endif
+
+    write_debug_file(argv[0], "Starting");
+
+    memset(input, '\0', BUFFERSIZE);
+    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
+        write_debug_file(argv[0], "Cannot read input from stdin");
+        return OS_INVALID;
+    }
+
+    write_debug_file(argv[0], input);
+
+    input_json = get_json_from_input(input);
+    if (!input_json) {
+        write_debug_file(argv[0], "Invalid input format");
+        return OS_INVALID;
+    }
+
+    action = get_command(input_json);
+    if (!action) {
+        write_debug_file(argv[0], "Cannot read 'command' from json");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    if (!strcmp("add", action)) {
+        ret = ADD_COMMAND;
+    } else if (!strcmp("delete", action)) {
+        ret = DELETE_COMMAND;
+    } else {
+        write_debug_file(argv[0], "Invalid value of 'command'");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    *message = input_json;
+
+    return ret;
+}
+
+int send_keys_and_check_message(char **argv, char **keys) {
+    int ret = OS_INVALID;
+    char *keys_msg;
+    char *action;
+    char input[BUFFERSIZE];
+    cJSON *input_json = NULL;
+
+    // Build and send message with keys
+    keys_msg = build_json_keys_message(basename_ex(argv[0]), keys);
+
+    write_debug_file(argv[0], keys_msg);
+
+    fprintf(stdout, "%s\n", keys_msg);
+    fflush(stdout);
+
+    os_free(keys_msg);
+
+    // Read the response of previous message
+    memset(input, '\0', BUFFERSIZE);
+    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
+        write_debug_file(argv[0], "Cannot read input from stdin");
+        return OS_INVALID;
+    }
+
+    write_debug_file(argv[0], input);
+
+    input_json = get_json_from_input(input);
+    if (!input_json) {
+        write_debug_file(argv[0], "Invalid input format");
+        return OS_INVALID;
+    }
+
+    action = get_command(input_json);
+    if (!action) {
+        write_debug_file(argv[0], "Cannot read 'command' from json");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    if (!strcmp("continue", action)) {
+        ret = CONTINUE_COMMAND;
+    } else if (!strcmp("abort", action)) {
+        ret = ABORT_COMMAND;
+    } else {
+        write_debug_file(argv[0], "Invalid value of 'command'");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    cJSON_Delete(input_json);
+
+    return ret;
+}
+
+cJSON* get_json_from_input(const char *input) {
     cJSON *input_json = NULL;
     cJSON *origin_json = NULL;
     cJSON *version_json = NULL;
@@ -65,7 +176,7 @@ cJSON* get_json_from_input (const char *input) {
     return input_json;
 }
 
-char* get_command (cJSON *input) {
+char* get_command(cJSON *input) {
     // Detect command
     cJSON *command_json = cJSON_GetObjectItem(input, "command");
     if (command_json && (command_json->type == cJSON_String)) {
@@ -75,7 +186,7 @@ char* get_command (cJSON *input) {
     return NULL;
 }
 
-cJSON* get_alert_from_json (cJSON *input) {
+cJSON* get_alert_from_json(cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
 
@@ -92,7 +203,7 @@ cJSON* get_alert_from_json (cJSON *input) {
     return alert_json;
 }
 
-char* get_srcip_from_json (cJSON *input) {
+char* get_srcip_from_json(cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
     cJSON *data_json = NULL;
@@ -122,7 +233,7 @@ char* get_srcip_from_json (cJSON *input) {
     return NULL;
 }
 
-char* get_username_from_json (cJSON *input) {
+char* get_username_from_json(cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
     cJSON *data_json = NULL;
@@ -152,7 +263,7 @@ char* get_username_from_json (cJSON *input) {
     return NULL;
 }
 
-char* get_extra_args_from_json (cJSON *input) {
+char* get_extra_args_from_json(cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *extra_args_json = NULL;
     char args[COMMANDSIZE];
@@ -189,7 +300,7 @@ char* get_extra_args_from_json (cJSON *input) {
     return extra_args;
 }
 
-char* get_keys_from_json (cJSON *input) {
+char* get_keys_from_json(cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *keys_json = NULL;
     char args[COMMANDSIZE];
@@ -224,9 +335,44 @@ char* get_keys_from_json (cJSON *input) {
     return keys;
 }
 
+char * build_json_keys_message(const char *ar_name, char **keys) {
+    cJSON *_object = NULL;
+    cJSON *_array = NULL;
+    char *msg = NULL;
+    int keys_size;
+
+    cJSON *message = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(message, "version", VERSION);
+
+    _object = cJSON_CreateObject();
+    cJSON_AddItemToObject(message, "origin", _object);
+
+    cJSON_AddStringToObject(_object, "name", ar_name ? ar_name : "");
+    cJSON_AddStringToObject(_object, "module", AR_MODULE_NAME);
+
+    cJSON_AddStringToObject(message, "command", CHECK_KEYS_ENTRY);
+
+    _object = cJSON_CreateObject();
+    cJSON_AddItemToObject(message, "parameters", _object);
+
+    _array = cJSON_CreateArray();
+    cJSON_AddItemToObject(_object, "keys", _array);
+
+    for (keys_size = 0; (keys != NULL) && (keys[keys_size] != NULL); keys_size++) {
+        cJSON_AddItemToArray(_array, cJSON_CreateString(keys[keys_size]));
+    }
+
+    msg = cJSON_PrintUnformatted(message);
+
+    cJSON_Delete(message);
+
+    return msg;
+}
+
 #ifndef WIN32
 
-int lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
+int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
     char log_msg[LOGSIZE];
     int i=0;
     int max_iteration = 50;
@@ -337,13 +483,13 @@ int lock (const char *lock_path, const char *lock_pid_path, const char *log_path
 
 }
 
-void unlock (const char *lock_path, const char *log_path) {
+void unlock(const char *lock_path, const char *log_path) {
     if (rmdir_ex(lock_path) < 0) {
         write_debug_file(log_path, "Unable to remove lock folder");
     }
 }
 
-int get_ip_version (char *ip) {
+int get_ip_version(char *ip) {
     struct addrinfo hint, *res = NULL;
     int ret;
 
