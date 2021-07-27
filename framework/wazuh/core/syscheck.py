@@ -38,15 +38,11 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
         return super()._format_data_into_dictionary()
 
 
-class WazuhDBSyscheckClear():
-    def __init__(self):
-        self.wdb_conn = WazuhDBConnection()
-
-    def remove_agent(self, agent: str) -> None:
-        self.wdb_conn.execute(f"agent {agent} sql delete from fim_entry", delete=True)
-        # Update key fields which contains keys to value 000
-        self.wdb_conn.execute(f"agent {agent} sql update metadata set value = '000' "
-                              "where key like 'fim_db%'", update=True)
-        self.wdb_conn.execute(f"agent {agent} sql update metadata set value = '000' "
-                              "where key = 'syscheck-db-completed'", update=True)
-    
+def syscheck_delete_agent(agent: str, wdb_conn: WazuhDBConnection) -> None:
+    wdb_conn.execute(f"agent {agent} sql delete from fim_entry", delete=True)
+    # Update key fields which contains keys to value 000
+    wdb_conn.execute(f"agent {agent} sql update metadata set value = '000' "
+                     "where key like 'fim_db%'", update=True)
+    wdb_conn.execute(f"agent {agent} sql update metadata set value = '000' "
+                     "where key = 'syscheck-db-completed'", update=True)
+   

@@ -109,9 +109,5 @@ def last_scan(agent_id):
     return {'start': start, 'end': None if start is None else None if end is None or end < start else end}
 
 
-class WazuhDBRootcheckClear():
-    def __init__(self):
-        self.wdb_conn = WazuhDBConnection()
-
-    def delete_agent(self, agent: str) -> None:
-        self.wdb_conn.execute(f"agent {agent} rootcheck delete", delete=True)
+def rootcheck_delete_agent(agent: str, wdb_conn: WazuhDBConnection) -> None:
+    wdb_conn.execute(f"agent {agent} rootcheck delete", delete=True)

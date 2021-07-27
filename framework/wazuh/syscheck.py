@@ -9,10 +9,11 @@ from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQu
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.syscheck import WazuhDBQuerySyscheck, WazuhDBSyscheckClear
+from wazuh.core.syscheck import WazuhDBQuerySyscheck, syscheck_delete_agent
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
+from wazuh.core.wdb import WazuhDBConnection
 
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
@@ -83,13 +84,13 @@ def clear(agent_list=None):
                                       none_msg="No syscheck database was cleared")
 
     system_agents = get_agents_info()
-    wdbq = WazuhDBSyscheckClear()
+    wdb_conn = WazuhDBConnection()
     for agent in agent_list:
         if agent not in system_agents:
             result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
         else:
             try:
-                wdbq.remove_agent(agent)
+                syscheck_delete_agent(agent, wdb_conn)
                 result.affected_items.append(agent)
             except WazuhError as e:
                 result.add_failed_item(id_=agent, error=e)
