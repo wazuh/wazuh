@@ -211,7 +211,7 @@ void WinExecdRun(char *exec_msg)
     /* Execute command */
     mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
 
-    wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+    wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN | W_BIND_STDOUT);
     if (wfd) {
         char buffer[OS_SIZE_4096];
         char rkey[OS_SIZE_4096];
