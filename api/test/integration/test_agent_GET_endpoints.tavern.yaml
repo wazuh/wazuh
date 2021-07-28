@@ -1822,17 +1822,19 @@ stages:
         <<: *error_spec
 
 ---
-test_name: GET /agents/{agent_id}/group/is_sync
+test_name: GET /agents/group/is_sync
 
 stages:
 
   - name: Try to get sync of agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '000'
     response:
       status_code: 200
       json:
@@ -1850,10 +1852,12 @@ stages:
   - name: Try to get sync of a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/is_sync"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '999'
     response:
       status_code: 200
       json:
@@ -1871,19 +1875,67 @@ stages:
   - name: Try get sync agent by name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/is_sync"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: 'bad_id'
     response:
       status_code: 400
       json:
         <<: *error_spec
 
-  - name: Get agent sync
+  - name: Get one agent sync
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: '001'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Get multiple agent sync
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001,003,009'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: '001'
+              synced: !anybool
+            - id: '003'
+              synced: !anybool
+            - id: '009'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+  - name: Get all agent sync
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1895,8 +1947,30 @@ stages:
           affected_items:
             - id: '001'
               synced: !anybool
+            - id: '002'
+              synced: !anybool
+            - id: '003'
+              synced: !anybool
+            - id: '004'
+              synced: !anybool
+            - id: '005'
+              synced: !anybool
+            - id: '006'
+              synced: !anybool
+            - id: '007'
+              synced: !anybool
+            - id: '008'
+              synced: !anybool
+            - id: '009'
+              synced: !anybool
+            - id: '010'
+              synced: !anybool
+            - id: '011'
+              synced: !anybool
+            - id: '012'
+              synced: !anybool
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 12
           total_failed_items: 0
 
 ---

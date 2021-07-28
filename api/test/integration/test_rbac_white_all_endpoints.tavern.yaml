@@ -170,16 +170,18 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/{agent_id}/group/is_sync
+test_name: GET /agents/group/is_sync
 
 stages:
   - name: Try to get agent sync
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '001'
     response:
       <<: *permission_denied
 
