@@ -1,0 +1,108 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml syscollector-funcionality
+actor "wazuh-manager" as manager
+participant "wazuh-modules" as wmodules
+participant syscollector as sysco
+participant sysinfo as info
+participant dbsync
+participant rsync
+
+wmodules++
+sysco++
+wmodules -> sysco : main()
+sysco -> dbsync++ : resetDataBase()
+sysco <- dbsync--
+== scan ==
+loop 
+sysco -> info++ : getData()
+note right
+Supported data:
+1- os info.
+2- hardware info.
+3- installed packages and hotfixes in windows.
+4- active processes.
+5- network info.
+6- ports info.
+end note
+sysco <- info-- : data
+sysco -> dbsync++ : syncRows(data)
+dbsync -> sysco++ : notifyDelta(delta)
+note right
+Differences in table entries can be:
+1- inserted.
+2- modified.
+end note
+sysco ->X manager : sendDelta(delta)
+note left
+Sending deltas are disabled.
+end note
+sysco -> dbsync
+sysco--
+sysco <- dbsync--
+sysco -> dbsync++ : getDeletedItems()
+dbsync -> sysco++ : deletedItems
+sysco ->X manager : sendDelta(deletedItems)
+dbsync <- sysco--
+sysco <- dbsync--
+
+sysco -> rsync++ : startSync()
+rsync -> dbsync++ : getDbData()
+note right
+Supported data:
+1- os info.
+2- hardware info.
+3- installed packages and hotfixes in windows.
+4- active processes.
+5- network info.
+6- ports info.
+end note
+rsync <- dbsync-- : dbData
+rsync -> rsync : syncData = buildSyncData(dbData)
+rsync -> sysco++ : notifySync(syncData)
+note right
+Sync data can be:
+1- integrity check global.
+2- integrity check clear.
+end note
+sysco -> manager : sendSyncData(syncData)
+rsync <- sysco--
+sysco <- rsync--
+end
+== sync ==
+manager -> sysco : syncMessage(syncData)
+note left
+Sync data can be:
+1- os sync.
+2- hardware sync.
+3- installed packages and hotfixes in windows sync.
+4- active processes sync.
+5- network sync.
+6- ports sync.
+end note
+sysco -> rsync++ : pushData(syncData)
+rsync -> dbsync++ : getDbData()
+note right
+Supported data:
+1- os info.
+2- hardware info.
+3- installed packages and hotfixes in windows.
+4- active processes.
+5- network info.
+6- ports info.
+end note
+rsync <- dbsync-- : dbData
+rsync -> rsync : syncResult = buildSyncResult(dbData)
+rsync -> sysco++ : notifySyncResult(syncResult)
+note right
+Sync results can be:
+1- integrity check left.
+2- integrity check right.
+3- state.
+end note
+sysco -> manager : sendSyncResult(syncResult)
+rsync <- sysco--
+sysco <- rsync--
+@enduml
