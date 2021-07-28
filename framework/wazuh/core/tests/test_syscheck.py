@@ -45,3 +45,18 @@ def test_wazuh_db_syscheck_format_data_into_dictionary(mock_backend):
            result['items'][0]['module'] == 'api' and \
            result['items'][0]['date'] == datetime.utcfromtimestamp(1627893702) and \
            result['items'][0]['mtime'] == datetime.utcfromtimestamp(1627893600)
+
+
+@pytest.mark.parametrize('agent', ['001', '002', '003'])
+@patch('wazuh.core.wdb.WazuhDBConnection')
+def test_syscheck_delete_agent(mock_db_conn, agent):
+    """Test if proper parameters are being sent to the wdb socket.
+    Parameters
+    ----------
+    agent : str
+        Agent whose information is being deleted from the db.
+    mock_db_conn : WazuhDBConnection
+        Object used to send the delete message to the wazuhdb socket.
+    """
+    syscheck.syscheck_delete_agent(agent, mock_db_conn)
+    mock_db_conn.execute.assert_any_call(f"agent {agent} sql delete from fim_entry", delete=True)
