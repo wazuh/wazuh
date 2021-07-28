@@ -342,18 +342,24 @@ async def delete_single_agent_multiple_groups(request, agent_id, groups_list=Non
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_sync_agent(request, agent_id, pretty=False, wait_for_complete=False):
-    """Get agent configuration sync status.
+async def get_sync_agent(request, agents_list: list = None, pretty: bool = False,
+                         wait_for_complete: bool = False) -> web.Response:
+    """Get agents configuration sync status.
 
-    Returns whether the agent configuration has been synchronized with the agent
-    or not. This can be useful to check after updating a group configuration.
+    Parameters
+    ----------
+    agents_list : list
+        List of agent's IDs. All possible values from 000 onwards.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    :param agent_id: Agent ID. All possible values from 000 onwards.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout responseç
-    :return: AgentSync
+    Returns
+    -------
+    Response
     """
-    f_kwargs = {'agent_list': [agent_id]}
+    f_kwargs = {'agent_list': agents_list}
 
     dapi = DistributedAPI(f=agent.get_agents_sync_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

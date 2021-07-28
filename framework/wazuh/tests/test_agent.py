@@ -1196,7 +1196,7 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
 ])
 @patch('wazuh.core.common.shared_path', new=test_shared_path)
 @patch('wazuh.core.common.multi_groups_path', new=test_multigroup_path)
-@patch('wazuh.agent.get_agents_info', return_value=full_agent_list)
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, agent_list):
@@ -1218,9 +1218,10 @@ def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, age
     (['000'], WazuhError(1703)),
     (['100'], WazuhResourceNotFound(1701))
 ])
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agents_sync_group_exceptions(socket_mock, send_mock, agent_list, expected_error):
+def test_agent_get_agents_sync_group_exceptions(socket_mock, send_mock, get_agents_mock, agent_list, expected_error):
     """Test `get_agents_sync_group` function from agent module returns the expected exceptions when using invalid
     parameters.
 

@@ -939,43 +939,69 @@ def get_agent_config(agent_list=None, component=None, config=None):
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def get_agents_sync_group(agent_list=None):
+def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Get agents configuration sync status.
 
-    :param agent_list: List of agents ID's.
-    :return AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Result with affected agents
     """
     result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
                                       some_msg='Sync info was not returned for some selected agents',
                                       none_msg='No sync info was returned',
                                       )
 
-    system_agents = get_agents_info()
-    for agent_id in agent_list:
+    if agent_list:
+        system_agents = get_agents_info()
+        agent_list = set(agent_list)
+        files_md5 = dict()
+
         try:
-            if agent_id == "000":
-                raise WazuhError(1703)
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            else:
-                # Check if agent exists and it is active
-                agent_info = Agent(agent_id).get_basic_information()
-                # Check if it has a multigroup
+            agent_list.remove('000')
+            result.add_failed_item('000', WazuhError(1703))
+        except KeyError:
+            pass
+
+        # Add not existing agents to failed_items
+        not_found_agents = agent_list - system_agents
+        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhResourceNotFound(1701)), not_found_agents))
+
+        # Get information of all agents and their groups
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
+        db_query = WazuhDBQueryAgents(limit=None, select=["id", "group", "mergedSum"], **rbac_filters)
+        data = db_query.run()
+
+        for agent_info in data['items']:
+            try:
                 if len(agent_info['group']) > 1:
                     multi_group = ','.join(agent_info['group'])
                     multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
                     group_merged_path = path.join(common.multi_groups_path, multi_group, "merged.mg")
                 else:
                     group_merged_path = path.join(common.shared_path, agent_info['group'][0], "merged.mg")
-                result.affected_items.append({'id': agent_id,
-                                              'synced': md5(group_merged_path) == agent_info['mergedSum']})
-        except (IOError, KeyError):
-            # The file couldn't be opened and therefore the group has not been synced
-            result.affected_items.append({'id': agent_id, 'synced': False})
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
 
-    result.total_affected_items = len(result.affected_items)
+                # Calculating MD5 is an expensive operation, so we store the result for each file.
+                try:
+                    merged_md5 = files_md5[group_merged_path]
+                except KeyError:
+                    merged_md5 = md5(group_merged_path)
+                    files_md5[group_merged_path] = merged_md5
+
+                result.affected_items.append({'id': agent_info['id'],
+                                              'synced': merged_md5 == agent_info['mergedSum']})
+            except (IOError, KeyError):
+                # The file couldn't be opened and therefore the group has not been synced
+                result.affected_items.append({'id': agent_info['id'], 'synced': False})
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_info['id'], error=e)
+
+        result.total_affected_items = len(result.affected_items)
 
     return result
 

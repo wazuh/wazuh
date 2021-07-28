@@ -1303,7 +1303,7 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
     non_permitted_resources = system_resources - set(permitted_resources)
 
     if len(permitted_resources) < len(non_permitted_resources):
-        filters['rbac_ids'] = permitted_resources
+        filters['rbac_ids'] = list(permitted_resources)
         negate = False
     else:
         filters['rbac_ids'] = list(non_permitted_resources)
