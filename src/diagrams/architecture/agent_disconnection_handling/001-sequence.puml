@@ -5,120 +5,57 @@
 @startuml agent-disconnection-handling
 
 participant monitord 
-participant wazuhdb as wdb
+participant wazuhdb
 participant authd
+participant analisysd
 
+monitord ++
+wazuhdb ++
+authd ++
+analisysd ++
 
-activate wdb
-activate authd
+loop every second
 
-monitord -> monitord++: Monitord()
-
-monitord -> monitord: monitor_queue_connect()
-monitord -> monitord: monitor_init_time_control()
-
-loop true
-    monitord -> monitord ++: monitor_step_time()
-        monitord -> monitord : disconnect_counter++
-        alt monitor_agents is enabled
-            monitord -> monitord : alert_counter++
-        end
-        alt delete_old_agents and monitor_agents are enabled
-            monitord -> monitord : delete_counter++
-        end
-    monitord--
-
-    opt manager compilation
-        monitord -> monitord ++: ret = check_disconnection_trigger()
-            alt disconnect_counter >= agents_disconnection_time
-                monitord -> monitord : disconnect_counter = 0
-                monitord --> monitord: true  
-            else
-                monitord --> monitord: false  
-            end
-        monitord--
-
-        alt ret is true
-            monitord -> monitord ++: monitor_agents_disconnection()
-                monitord -> wdb : wdb_disconnect_agents(KEEPALIVE_THRESHOLD=now - agents_disconnection_time, STATUS="synced")
-                monitord <- wdb : disconnected agents array
-                alt monitor_agents AND disconnected agents array is not empty
-                    loop for each agent in disconnected agents array
-                        monitord -> monitord : OSHash_Add(agents_to_alert_hash, agent) 
-                    end
-                end
-            monitord --
-        end
-        
-
-        monitord -> monitord ++: ret = check_alert_trigger()
-            alt monitor_agents is enabled AND alert_counter >= agents_disconnection_alert_time
-                monitord -> monitord : alert_counter = 0
-                monitord --> monitord: true  
-            else
-                monitord --> monitord: false  
-            end
-        monitord--
-
-        alt ret is true
-            monitord -> monitord ++: monitor_agents_alert()
-                loop for each agent in agents_to_alert_hash
-                    monitord -> wdb :  wdb_get_agent_info(agent)
-                    monitord <- wdb : agent_info
-                    alt agent_info is not empty
-                        alt agent_info has all required data with correct types
-                            alt agent_info.status is "active"
-                                monitord -> monitord : OSHash_Delete(agents_to_alert_hash, agent)
-                            else agent_info.lastkeepalive < now - (agents_disconnection_time + agents_disconnection_alert_time)
-                                monitord -> monitord : monitor_send_disconnection_msg()
-                                monitord -> monitord : OSHash_Delete(agents_to_alert_hash, agent)
-                            end
-                        end
-                    else
-                        monitord -> monitord :OSHash_Delete(agents_to_alert_hash, agent);
-                    end
-                end
-            monitord--
-        end
-
-        monitord -> monitord ++: ret = check_deletion_trigger()
-            alt monitor_agents is enabled AND delete_old_agents is enabled AND delete_counter >= agents_disconnection_alert_time
-                monitord -> monitord : delete_counter = 0
-                monitord --> monitord: true  
-            else
-                monitord --> monitord: false  
-            end
-        monitord--
-
-        alt ret is true
-            monitord -> monitord ++: monitor_agents_deletion()
-                monitord -> wdb :  wdb_get_agents_by_connection_status("disconnected")
-                monitord <- wdb : disconnected agent array
-                loop for each agent in disconnected agent array
-                    monitord -> wdb : wdb_get_agent_info(agent)
-                    monitord <- wdb : agent_info
-                    alt agent_info is not empty
-                        alt agent_info has all required data with correct types
-                            alt agent_info.lastkeepalive < now - (agents_disconnection_time + delete_old_agents * 60)
-                                monitord -> monitord ++ : delete_old_agent(agent)
-                                    monitord -> authd : auth_remove_agent(agent)
-                                    monitord <- authd : remove result
-                                monitord--
-                                alt remove result successful
-                                    monitord -> monitord : monitor_send_deletion_msg()
-                                end
-                            end
-                        end
-                    else
-                        monitord -> monitord :OSHash_Delete(agents_to_alert_hash, agent);
-                    end
-                end
-            monitord--
-        end
-        ... Check logs: rotation, reports, compression, signing ...
-        monitord -> monitord: sleep(1)
+    alt every ""agents_disconnection_time"" seconds
+        monitord -> wazuhdb : disconnect expired agents
+        note over monitord, wazuhdb
+            Expired mean that agent's last keepalive was older than
+            current time minus ""agents_disconnection_time""
+        end note
+        monitord <-- wazuhdb : disconnected agents list
+        monitord -> monitord : append disconnected agents list \n to //alert list//
     end
-end
 
+    opt #LightGrey Master Node
+
+        alt ""monitor_agents"" is true && \n every ""agents_disconnection_alert_time"" seconds
+            group for each [agent in //alert list//]
+                    monitord -> wazuhdb : get agent info
+                    monitord <-- wazuhdb : agent info
+                    alt disconnected && last_keepalive < (now - alert_time) 
+                        monitord -> analisysd : send agent disconnection alert
+                        monitord -> monitord : remove agent from //alert list//
+                    else active
+                        monitord -> monitord : remove agent from //alert list//
+                    end
+            end
+        end
+
+        alt ""monitor_agents"" is true && \n ""delete_old_agents"" > 0 && \n every ""delete_old_agents second""
+            monitord -> wazuhdb : get disconnected agents
+            monitord <-- wazuhdb : disconnected agents list
+            group for each [agent in disconnected agents list]
+                    monitord -> wazuhdb : get agent info
+                    monitord <-- wazuhdb : agent info
+                    alt disconnected && last_keepalive < (now - delete_time) 
+                        monitord -> authd : remove agent
+                    end
+            end
+        end
+    end
+
+    ... Check logs: rotation, reports, compression, signing ...
+
+end
 
 @enduml
