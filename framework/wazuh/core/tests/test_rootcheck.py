@@ -161,9 +161,9 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
                                            filters={'status': 'all', 'pci_dss': None, 'cis': None})
     test._add_select_to_query()
     test._data = [{'log': 'Testing', 'date_first': 1603645251, 'status': 'solved', 'date_last': 1603648851,
-         'cis': '2.3 Debian Linux', 'pci_dss': '4.1'}]
+                   'cis': '2.3 Debian Linux', 'pci_dss': '4.1'}]
     result = test._format_data_into_dictionary()
-    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime(date_format) and\
+    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime(date_format) and \
            result['items'][0]['date_last'] == datetime.utcfromtimestamp(1603648851).strftime(date_format)
 
 
@@ -177,3 +177,19 @@ def test_last_scan(mock_connect, mock_send, mock_info):
 
 
 remove_db(test_data_path)
+
+
+@pytest.mark.parametrize('agent', ['001', '002', '003'])
+@patch('wazuh.core.wdb.WazuhDBConnection')
+def test_rootcheck_delete_agent(mock_db_conn, agent):
+    """ Test if proper parameters are being sent to the wazuhdb socket
+
+    Parameters
+    ----------
+    agent : str
+        Agent whose information is being deleted from the db
+    mock_db_conn : WazuhDBConnection
+        Object used to send the delete message to the wazuhdb socket
+    """
+    rootcheck.rootcheck_delete_agent(agent, mock_db_conn)
+    mock_db_conn.execute.assert_called_with(f"agent {agent} rootcheck delete", delete=True)
