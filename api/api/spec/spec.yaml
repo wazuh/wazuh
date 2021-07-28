@@ -5853,7 +5853,7 @@ paths:
       tags:
         - Agents
       summary: "Get configuration sync status"
-      description: "Return whether the agent configuration has been synchronized across a list of agents. This can be
+      description: "Return whether group configurations have been synchronized across a list of agents. This can be
       useful to check after updating a group configuration"
       operationId: api.controllers.agent_controller.get_sync_agent
       x-rbac-actions:
