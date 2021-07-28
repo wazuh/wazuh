@@ -1,0 +1,42 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+@startuml wm_github
+    
+    box "Github Module" #LightBlue
+    participant main
+    participant wmodules
+    participant config
+    participant wmodules_github
+    participant thread
+    participant wm_github
+    participant mq_op
+    end box
+
+    activate main #Red
+    main -> wmodules : wm_config()
+    wmodules -> config : ReadConfig()
+    config -> config : read_main_elements()
+    config -> config : Read_Github()
+    config -> wmodules_github : wm_github_read()
+    config <-- wmodules_github
+    wmodules <-- config
+    main <-- wmodules
+
+    main -> thread ++ #Red : CreateThreadJoinable()
+    main <-- thread
+    thread -> wm_github : wm_github_main (config) 
+    wm_github -> mq_op : StartMQ()
+    wm_github <-- mq_op
+
+
+    database github_server
+    wm_github -> wm_github : wm_github_execute_scan (initial_scan TRUE)
+    rnote over wm_github, github_server: **Scan Block**
+    
+    loop while (TRUE)
+        wm_github -> wm_github : sleep (interval)
+        wm_github -> wm_github : wm_github_execute_scan (initial_scan FALSE)
+        rnote over wm_github, github_server: **Scan Block**
+    end
+@enduml

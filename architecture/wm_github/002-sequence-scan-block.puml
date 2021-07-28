@@ -1,0 +1,44 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+@startuml wm_github
+
+    box "Scan Block \n wm_github_execute_scan() Sequence Diagram" #LightBlue
+    participant wm_github
+    participant wmodules
+    participant url
+    end box
+
+    loop while (Organization != NULL)
+        wm_github -> wmodules : wm_state_io (WM_IO_READ)
+        wm_github <-- wmodules
+        loop #LightGrey while (!scan_finished)
+
+            wm_github -> url : wurl_http_request (GET_METHOD)
+            database github_server
+            url -> github_server : API get events
+            url <-- github_server
+            wm_github <-- url : wurl_http_request 
+            loop for (response_lenght)
+                wm_github -> wmodules : wm_sendmsg (Save Event)
+                wm_github <-- wmodules : wm_sendmsg
+            end
+
+            wm_github -> wmodules : wm_read_http_header_element (next_page)
+            wm_github <-- wmodules
+        end
+        wm_github -> url : wurl_free_response
+        wm_github <-- url
+
+        alt #LightGrey Scan Fail
+            wm_github -> wm_github : wm_github_scan_failure_action (fails, org_name, error_msg, queue_fd)
+            alt (Fails >= 3)
+                wm_github -> wmodules : wm_sendmsg (fail message)
+                wm_github <-- wmodules : wm_sendmsg
+            end
+        else Scan Success
+            wm_github -> wmodules : wm_state_io (WM_IO_WRITE)
+            wm_github <-- wmodules
+        end
+    end
+@enduml
