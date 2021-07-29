@@ -19,9 +19,10 @@
 #define PASSWD "/usr/bin/passwd"
 #define CHUSER "/usr/bin/chuser"
 
-#define BUFFERSIZE 4096
-#define LOGSIZE 8192
-#define COMMANDSIZE 2048
+#define LOGSIZE_20480 20480
+#define BUFFERSIZE_8192 8192
+#define PATHSIZE_6144 6144
+#define COMMANDSIZE_4096 4096
 
 #define VERSION 1
 #define AR_MODULE_NAME "active-response"

@@ -13,8 +13,8 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char output_buf[BUFFERSIZE];
-    char log_msg[LOGSIZE];
+    char output_buf[BUFFERSIZE_8192];
+    char log_msg[LOGSIZE_20480];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
 
@@ -67,15 +67,15 @@ int main (int argc, char **argv) {
 
     wfd_t *wfd = wpopenv(NPFCTL, exec_cmd1, W_BIND_STDOUT);
     if (!wfd) {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
+        memset(log_msg, '\0', LOGSIZE_20480);
+        snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     int flag = false;
-    while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
+    while (fgets(output_buf, BUFFERSIZE_8192, wfd->file_out)) {
         const char *pos = strstr(output_buf, "filtering:");
 
         if (pos != NULL) {
@@ -83,8 +83,8 @@ int main (int argc, char **argv) {
 
             if (pos && sscanf(pos, "%*s %9s", state) == 1) {
                 if (strcmp(state, "active") != 0) {
-                    memset(log_msg, '\0', LOGSIZE);
-                    snprintf(log_msg, LOGSIZE -1, "The filter property is inactive");
+                    memset(log_msg, '\0', LOGSIZE_20480);
+                    snprintf(log_msg, LOGSIZE_20480 -1, "The filter property is inactive");
                     write_debug_file(argv[0], log_msg);
                     cJSON_Delete(input_json);
                     wpclose(wfd);
@@ -93,8 +93,8 @@ int main (int argc, char **argv) {
                 flag = true;
                 break;
             } else {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "Key word not found");
+                memset(log_msg, '\0', LOGSIZE_20480);
+                snprintf(log_msg, LOGSIZE_20480 -1, "Key word not found");
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 wpclose(wfd);
@@ -105,8 +105,8 @@ int main (int argc, char **argv) {
     wpclose(wfd);
 
     if (flag == false) {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE -1, "Unable to find 'filtering'");
+        memset(log_msg, '\0', LOGSIZE_20480);
+        snprintf(log_msg, LOGSIZE_20480 -1, "Unable to find 'filtering'");
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -114,15 +114,15 @@ int main (int argc, char **argv) {
 
     wfd = wpopenv(NPFCTL, exec_cmd1, W_BIND_STDOUT);
     if (!wfd) {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
+        memset(log_msg, '\0', LOGSIZE_20480);
+        snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     flag = false;
-    while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
+    while (fgets(output_buf, BUFFERSIZE_8192, wfd->file_out)) {
         const char *pos = strstr(output_buf, "table <wazuh_blacklist>");
 
         if (pos != NULL) {
@@ -133,8 +133,8 @@ int main (int argc, char **argv) {
     wpclose(wfd);
 
     if (flag == false) {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE -1, "Unable to find 'table <wazuh_blacklist>'");
+        memset(log_msg, '\0', LOGSIZE_20480);
+        snprintf(log_msg, LOGSIZE_20480 -1, "Unable to find 'table <wazuh_blacklist>'");
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -153,8 +153,8 @@ int main (int argc, char **argv) {
     // Executing it
     wfd = wpopenv(NPFCTL, exec_cmd2, W_BIND_STDOUT);
     if (!wfd) {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
+        memset(log_msg, '\0', LOGSIZE_20480);
+        snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;

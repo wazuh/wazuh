@@ -16,8 +16,8 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char iptables[COMMANDSIZE];
-    char log_msg[LOGSIZE];
+    char iptables[COMMANDSIZE_4096];
+    char log_msg[LOGSIZE_20480];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -61,14 +61,14 @@ int main (int argc, char **argv) {
     }
 
     int ip_version = get_ip_version(srcip);
-    memset(iptables, '\0', COMMANDSIZE);
+    memset(iptables, '\0', COMMANDSIZE_4096);
     if (ip_version == 4) {
         strcpy(iptables, IP4TABLES);
     } else if (ip_version == 6) {
         strcpy(iptables, IP6TABLES);
     } else {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE -1, "Unable to run active response (invalid IP: '%s').", srcip);
+        memset(log_msg, '\0', LOGSIZE_20480);
+        snprintf(log_msg, LOGSIZE_20480 -1, "Unable to run active response (invalid IP: '%s').", srcip);
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -81,24 +81,24 @@ int main (int argc, char **argv) {
     }
 
     if (!strcmp("Linux", uname_buffer.sysname)) {
-        char lock_path[PATH_MAX];
-        char lock_pid_path[PATH_MAX];
+        char lock_path[PATHSIZE_6144];
+        char lock_pid_path[PATHSIZE_6144];
         wfd_t *wfd = NULL;
 
         // Checking if iptables is present
         if (access(iptables, F_OK) < 0) {
-            char iptables_path[PATH_MAX];
-            memset(iptables_path, '\0', PATH_MAX);
-            snprintf(iptables_path, PATH_MAX - 1, "/usr%s", iptables);
+            char iptables_path[PATHSIZE_6144];
+            memset(iptables_path, '\0', PATHSIZE_6144);
+            snprintf(iptables_path, PATHSIZE_6144 - 1, "/usr%s", iptables);
             if (access(iptables_path, F_OK) < 0) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
+                memset(log_msg, '\0', LOGSIZE_20480);
+                snprintf(log_msg, LOGSIZE_20480 -1, "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_SUCCESS;
             }
-            memset(iptables, '\0', COMMANDSIZE);
-            strncpy(iptables, iptables_path, COMMANDSIZE - 1);
+            memset(iptables, '\0', COMMANDSIZE_4096);
+            strncpy(iptables, iptables_path, COMMANDSIZE_4096 - 1);
         }
 
         char arg[3];
@@ -109,15 +109,15 @@ int main (int argc, char **argv) {
             strcpy(arg, "-D");
         }
 
-        memset(lock_path, '\0', PATH_MAX);
-        memset(lock_pid_path, '\0', PATH_MAX);
-        snprintf(lock_path, PATH_MAX - 1, "%s", LOCK_PATH);
-        snprintf(lock_pid_path, PATH_MAX - 1, "%s", LOCK_FILE);
+        memset(lock_path, '\0', PATHSIZE_6144);
+        memset(lock_pid_path, '\0', PATHSIZE_6144);
+        snprintf(lock_path, PATHSIZE_6144 - 1, "%s", LOCK_PATH);
+        snprintf(lock_pid_path, PATHSIZE_6144 - 1, "%s", LOCK_FILE);
 
         // Taking lock
         if (lock(lock_path, lock_pid_path, argv[0], basename(argv[0])) == OS_INVALID) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE -1, "Unable to take lock. End.");
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 -1, "Unable to take lock. End.");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
@@ -171,14 +171,14 @@ int main (int argc, char **argv) {
         unlock(lock_path, argv[0]);
 
     } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
-        char arg1[COMMANDSIZE];
-        char arg2[COMMANDSIZE];
-        char ipfarg[COMMANDSIZE];
+        char arg1[COMMANDSIZE_4096];
+        char arg2[COMMANDSIZE_4096];
+        char ipfarg[COMMANDSIZE_4096];
         wfd_t *wfd = NULL;
 
         // Checking if ipfilter is present
-        char ipfilter_path[PATH_MAX];
-        memset(ipfilter_path, '\0', PATH_MAX);
+        char ipfilter_path[PATHSIZE_6144];
+        memset(ipfilter_path, '\0', PATHSIZE_6144);
         if (!strcmp("SunOS", uname_buffer.sysname)) {
             strcpy(ipfilter_path, "/usr/sbin/ipf");
         } else {
@@ -186,8 +186,8 @@ int main (int argc, char **argv) {
         }
 
         if (access(ipfilter_path, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The ipfilter file '%s' is not accessible: %s (%d)", ipfilter_path, strerror(errno), errno);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The ipfilter file '%s' is not accessible: %s (%d)", ipfilter_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -195,23 +195,23 @@ int main (int argc, char **argv) {
 
         // Checking if echo is present
         if (access(ECHO, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The echo file '%s' is not accessible: %s (%d)", ECHO, strerror(errno), errno);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The echo file '%s' is not accessible: %s (%d)", ECHO, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
         }
 
-        memset(arg1, '\0', COMMANDSIZE);
-        memset(arg2, '\0', COMMANDSIZE);
-        memset(ipfarg, '\0', COMMANDSIZE);
+        memset(arg1, '\0', COMMANDSIZE_4096);
+        memset(arg2, '\0', COMMANDSIZE_4096);
+        memset(ipfarg, '\0', COMMANDSIZE_4096);
 
-        snprintf(arg1, COMMANDSIZE -1, "block out quick from any to %s", srcip);
-        snprintf(arg2, COMMANDSIZE -1, "block in quick from %s to any", srcip);
+        snprintf(arg1, COMMANDSIZE_4096 -1, "block out quick from any to %s", srcip);
+        snprintf(arg2, COMMANDSIZE_4096 -1, "block in quick from %s to any", srcip);
         if (action == ADD_COMMAND) {
-            snprintf(ipfarg, COMMANDSIZE -1,"-f");
+            snprintf(ipfarg, COMMANDSIZE_4096 -1,"-f");
         } else {
-            snprintf(ipfarg, COMMANDSIZE -1,"-rf");
+            snprintf(ipfarg, COMMANDSIZE_4096 -1,"-rf");
         }
 
         char *exec_cmd1[4] = { ipfilter_path, ipfarg, "-", NULL };
@@ -244,8 +244,8 @@ int main (int argc, char **argv) {
 
         // Checking if genfilt is present
         if (access(genfilt_path, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The genfilt file '%s' is not accessible: %s (%d)", genfilt_path, strerror(errno), errno);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The genfilt file '%s' is not accessible: %s (%d)", genfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -253,8 +253,8 @@ int main (int argc, char **argv) {
 
         // Checking if lsfilt is present
         if (access(lsfilt_path, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The lsfilt file '%s' is not accessible: %s (%d)", lsfilt_path, strerror(errno), errno);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The lsfilt file '%s' is not accessible: %s (%d)", lsfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -262,8 +262,8 @@ int main (int argc, char **argv) {
 
         // Checking if mkfilt is present
         if (access(mkfilt_path, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The mkfilt file '%s' is not accessible: %s (%d)", mkfilt_path, strerror(errno), errno);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The mkfilt file '%s' is not accessible: %s (%d)", mkfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -271,8 +271,8 @@ int main (int argc, char **argv) {
 
         // Checking if rmfilt is present
         if (access(rmfilt_path, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The rmfilt file '%s' is not accessible: %s (%d)", rmfilt_path, strerror(errno), errno);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The rmfilt file '%s' is not accessible: %s (%d)", rmfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -297,8 +297,8 @@ int main (int argc, char **argv) {
             if (!wfd) {
                 write_debug_file(argv[0], "Unable to run lsfilt");
             } else {
-                char output_buf[BUFFERSIZE];
-                while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
+                char output_buf[BUFFERSIZE_8192];
+                while (fgets(output_buf, BUFFERSIZE_8192, wfd->file_out)) {
                     if (strstr(output_buf, srcip) != NULL) {
                         // Removing a specific rule
                         char *rule_str = strtok(output_buf, "|");

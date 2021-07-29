@@ -485,7 +485,7 @@ STATIC void ExecdStart(int q)
 
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN | W_BIND_STDOUT);
         if (wfd) {
-            char buffer[OS_SIZE_4096];
+            char response[OS_SIZE_8192];
             char rkey[OS_SIZE_4096];
             cJSON *keys_json = NULL;
 
@@ -494,7 +494,7 @@ STATIC void ExecdStart(int q)
             fflush(wfd->file_in);
 
             /* Receive alert keys from AR script to check timeout list */
-            if (fgets(buffer, sizeof(buffer), wfd->file_out) == NULL) {
+            if (fgets(response, sizeof(response), wfd->file_out) == NULL) {
                 mdebug1("Active response won't be added to timeout list. "
                         "Message not received with alert keys from script '%s'", cmd[0]);
                 wpclose(wfd);
@@ -507,7 +507,7 @@ STATIC void ExecdStart(int q)
             memset(rkey, '\0', OS_SIZE_4096);
             snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd[0]));
 
-            keys_json = get_json_from_input(buffer);
+            keys_json = get_json_from_input(response);
             if (keys_json != NULL) {
 	            const char *action = get_command_from_json(keys_json);
                 if ((action != NULL) && (strcmp(CHECK_KEYS_ENTRY, action) == 0)) {

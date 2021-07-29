@@ -15,7 +15,7 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char log_msg[LOGSIZE];
+    char log_msg[LOGSIZE_20480];
     char *extra_args = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
@@ -38,8 +38,8 @@ int main (int argc, char **argv) {
         char *exec_cmd[4] = {"python", PATH_TO_KASPERSKY, extra_args, NULL};
         wfd_t *wfd = wpopenv(exec_cmd[0], exec_cmd, W_BIND_STDOUT);
         if (!wfd) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error executing 'python' : %s", strerror(errno));
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing 'python' : %s", strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(extra_args);
@@ -51,8 +51,8 @@ int main (int argc, char **argv) {
         char *exec_cmd[4] = {"python3", PATH_TO_KASPERSKY, extra_args, NULL};
         wfd_t *wfd = wpopenv(exec_cmd[0], exec_cmd, W_BIND_STDOUT);
         if (!wfd) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error executing 'python3' : %s", strerror(errno));
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing 'python3' : %s", strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             os_free(extra_args);
@@ -61,8 +61,8 @@ int main (int argc, char **argv) {
         wpclose(wfd);
 
     } else {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE - 1, "Python binary not found");
+        memset(log_msg, '\0', LOGSIZE_20480);
+        snprintf(log_msg, LOGSIZE_20480 - 1, "Python binary not found");
         write_debug_file(argv[0], log_msg);
     }
 

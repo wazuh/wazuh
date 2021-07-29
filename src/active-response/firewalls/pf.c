@@ -18,7 +18,7 @@ static int checking_if_its_configured(const char *path, const char *table);
 
 int main (int argc, char **argv) {
     (void)argc;
-    char log_msg[LOGSIZE];
+    char log_msg[LOGSIZE_20480];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -72,8 +72,8 @@ int main (int argc, char **argv) {
 
         // Checking if pfctl is present
         if (access(PFCTL, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The pfctl file '%s' is not accessible", PFCTL);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The pfctl file '%s' is not accessible", PFCTL);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -97,15 +97,15 @@ int main (int argc, char **argv) {
                     memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
                 }
             } else {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Table '%s' does not exist", PFCTL_TABLE);
+                memset(log_msg, '\0', LOGSIZE_20480);
+                snprintf(log_msg, LOGSIZE_20480 - 1, "Table '%s' does not exist", PFCTL_TABLE);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_SUCCESS;
             }
         } else {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The pf rules file '%s' does not exist", PFCTL_RULES);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The pf rules file '%s' does not exist", PFCTL_RULES);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -115,8 +115,8 @@ int main (int argc, char **argv) {
         if (exec_cmd1[0] && strcmp(exec_cmd1[0], PFCTL) == 0) {
             wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
             if (!wfd) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                memset(log_msg, '\0', LOGSIZE_20480);
+                snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_INVALID;
@@ -127,8 +127,8 @@ int main (int argc, char **argv) {
         if (exec_cmd2[0] && strcmp(exec_cmd2[0], PFCTL) == 0) {
             wfd = wpopenv(PFCTL, exec_cmd2, W_BIND_STDOUT);
             if (!wfd) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
+                memset(log_msg, '\0', LOGSIZE_20480);
+                snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_INVALID;
@@ -148,14 +148,14 @@ int main (int argc, char **argv) {
 }
 
 static int checking_if_its_configured(const char *path, const char *table) {
-    char command[COMMANDSIZE];
-    char output_buf[BUFFERSIZE];
+    char command[COMMANDSIZE_4096];
+    char output_buf[BUFFERSIZE_8192];
 
-    snprintf(command, COMMANDSIZE -1, "cat %s | %s %s", path, GREP, table);
+    snprintf(command, COMMANDSIZE_4096 -1, "cat %s | %s %s", path, GREP, table);
     FILE *fp = popen(command, "r");
 
     if (fp) {
-        while (fgets(output_buf, BUFFERSIZE, fp) != NULL) {
+        while (fgets(output_buf, BUFFERSIZE_8192, fp) != NULL) {
             pclose(fp);
             return OS_SUCCESS;
         }

@@ -38,7 +38,7 @@ static cJSON *format_output(const cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
-    char system_command[LOGSIZE];
+    char system_command[LOGSIZE_20480];
     char *site_url;
     char *output_str;
     int action = OS_INVALID;
@@ -69,15 +69,15 @@ int main (int argc, char **argv) {
     output_json = format_output(alert_json);
     output_str = cJSON_PrintUnformatted(output_json);
 
-    memset(system_command, '\0', LOGSIZE);
-    snprintf(system_command, LOGSIZE -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+    memset(system_command, '\0', LOGSIZE_20480);
+    snprintf(system_command, LOGSIZE_20480 -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
     if (system(system_command) != 0) {
         write_debug_file(argv[0], "Unable to run curl");
 
         // Try with wget
         char *new_output_str = wstr_replace(output_str, "\"", "'");
-        memset(system_command, '\0', LOGSIZE);
-        snprintf(system_command, LOGSIZE -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
+        memset(system_command, '\0', LOGSIZE_20480);
+        snprintf(system_command, LOGSIZE_20480 -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
         if (system(system_command) != 0) {
             write_debug_file(argv[0], "Unable to run wget");
         }
@@ -109,7 +109,7 @@ static cJSON *format_output(const cJSON *alert) {
     cJSON *item_agentless =NULL;
     cJSON *item_location =NULL;
     cJSON *item_rule =NULL;
-    char temp_line[LOGSIZE];
+    char temp_line[LOGSIZE_20480];
     int level = -1;
 
     root_out = cJSON_CreateObject();
@@ -131,8 +131,8 @@ static cJSON *format_output(const cJSON *alert) {
         // Detect Agent name
         agent_name_json = cJSON_GetObjectItem(agent_json, "name");
 
-        memset(temp_line, '\0', LOGSIZE);
-        snprintf(temp_line, LOGSIZE -1, "(%s) - %s",
+        memset(temp_line, '\0', LOGSIZE_20480);
+        snprintf(temp_line, LOGSIZE_20480 -1, "(%s) - %s",
                                         agent_id_json != NULL ? agent_id_json->valuestring : "N/A",
                                         agent_name_json != NULL ? agent_name_json->valuestring : "N/A"
                                         );
@@ -186,8 +186,8 @@ static cJSON *format_output(const cJSON *alert) {
         // Detect Rule Description
         rule_description_json = cJSON_GetObjectItem(rule_json, "description");
 
-        memset(temp_line, '\0', LOGSIZE);
-        snprintf(temp_line, LOGSIZE -1, "%s (level %s)",
+        memset(temp_line, '\0', LOGSIZE_20480);
+        snprintf(temp_line, LOGSIZE_20480 -1, "%s (level %s)",
                                         rule_id_json != NULL ? rule_id_json->valuestring : "N/A",
                                         str_level
                                         );

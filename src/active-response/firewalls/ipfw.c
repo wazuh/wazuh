@@ -15,7 +15,7 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char log_msg[LOGSIZE];
+    char log_msg[LOGSIZE_20480];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -70,30 +70,30 @@ int main (int argc, char **argv) {
 
         // Checking if ipfw is present
         if (access(IPFW, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The ipfw file '%s' is not accessible: %s (%d)", IPFW, strerror(errno), errno);
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 - 1, "The ipfw file '%s' is not accessible: %s (%d)", IPFW, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
         }
 
-        char table_name[COMMANDSIZE];
-        memset(table_name, '\0', COMMANDSIZE);
-        snprintf(table_name, COMMANDSIZE - 1, "table(%s)", TABLE_ID);
+        char table_name[COMMANDSIZE_4096];
+        memset(table_name, '\0', COMMANDSIZE_4096);
+        snprintf(table_name, COMMANDSIZE_4096 - 1, "table(%s)", TABLE_ID);
 
         char *exec_cmd1[3] = { IPFW, "show", NULL };
 
         wfd = wpopenv(IPFW, exec_cmd1, W_BIND_STDOUT);
         if (!wfd) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 -1, "Error executing '%s': %s", IPFW, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
         }
 
-        char output_buf[BUFFERSIZE];
-        while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
+        char output_buf[BUFFERSIZE_8192];
+        while (fgets(output_buf, BUFFERSIZE_8192, wfd->file_out)) {
             if ((strncmp(output_buf, TABLE_ID, 5) == 0) && (strstr(output_buf, table_name) != NULL)) {
                 add_table = false;
                 break;
@@ -107,8 +107,8 @@ int main (int argc, char **argv) {
 
             wfd = wpopenv(IPFW, exec_cmd2, W_BIND_STDERR);
             if (!wfd) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
+                memset(log_msg, '\0', LOGSIZE_20480);
+                snprintf(log_msg, LOGSIZE_20480 -1, "Error executing '%s': %s", IPFW, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_INVALID;
@@ -117,8 +117,8 @@ int main (int argc, char **argv) {
 
             wfd = wpopenv(IPFW, exec_cmd3, W_BIND_STDERR);
             if (!wfd) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
+                memset(log_msg, '\0', LOGSIZE_20480);
+                snprintf(log_msg, LOGSIZE_20480 -1, "Error executing '%s': %s", IPFW, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_INVALID;
@@ -134,8 +134,8 @@ int main (int argc, char **argv) {
         // Executing it
         wfd = wpopenv(IPFW, exec_cmd4, W_BIND_STDERR);
         if (!wfd) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
+            memset(log_msg, '\0', LOGSIZE_20480);
+            snprintf(log_msg, LOGSIZE_20480 -1, "Error executing '%s': %s", IPFW, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
