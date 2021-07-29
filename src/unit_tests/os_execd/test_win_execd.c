@@ -25,6 +25,7 @@
 #include "../wrappers/wazuh/os_execd/exec_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/windows/libc/stdio_wrappers.h"
 
 extern int test_mode;
 extern OSList *timeout_list;
@@ -128,8 +129,8 @@ static void test_WinExecdRun_ok(void **state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fprintf, __stream, wfd->file_in);
-    expect_string(__wrap_fprintf, formatted_msg, "{"
+    expect_value(wrap_fprintf, __stream, wfd->file_in);
+    expect_string(wrap_fprintf, formatted_msg, "{"
                                                     "\"version\":\"1\","
                                                     "\"origin\":{"
                                                         "\"name\":\"node01\","
@@ -157,10 +158,10 @@ static void test_WinExecdRun_ok(void **state) {
                                                         "\"program\":\"restart-wazuh\""
                                                     "}"
                                                 "}\n");
-    will_return(__wrap_fprintf, 0);
+    will_return(wrap_fprintf, 0);
 
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, "{"
+    expect_value(wrap_fgets, __stream, wfd->file_out);
+    will_return(wrap_fgets, "{"
                                   "\"version\":1,"
                                   "\"origin\":{"
                                       "\"name\":\"restart-wazuh\","
@@ -172,8 +173,8 @@ static void test_WinExecdRun_ok(void **state) {
                                   "}"
                               "}\n");
 
-    expect_value(__wrap_fprintf, __stream, wfd->file_in);
-    expect_string(__wrap_fprintf, formatted_msg, "{"
+    expect_value(wrap_fprintf, __stream, wfd->file_in);
+    expect_string(wrap_fprintf, formatted_msg, "{"
                                                     "\"version\":\"1\","
                                                     "\"origin\":{"
                                                         "\"name\":\"node01\","
@@ -201,7 +202,7 @@ static void test_WinExecdRun_ok(void **state) {
                                                         "\"program\":\"restart-wazuh\""
                                                     "}"
                                                 "}\n");
-    will_return(__wrap_fprintf, 0);
+    will_return(wrap_fprintf, 0);
 
     will_return(__wrap_wpclose, 0);
 
@@ -276,8 +277,8 @@ static void test_WinExecdRun_timeout(void **state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fprintf, __stream, wfd->file_in);
-    expect_string(__wrap_fprintf, formatted_msg, "{"
+    expect_value(wrap_fprintf, __stream, wfd->file_in);
+    expect_string(wrap_fprintf, formatted_msg, "{"
                                                     "\"version\":\"1\","
                                                     "\"origin\":{"
                                                         "\"name\":\"node01\","
@@ -305,10 +306,10 @@ static void test_WinExecdRun_timeout(void **state) {
                                                         "\"program\":\"restart-wazuh\""
                                                     "}"
                                                 "}\n");
-    will_return(__wrap_fprintf, 0);
+    will_return(wrap_fprintf, 0);
 
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, "{"
+    expect_value(wrap_fgets, __stream, wfd->file_out);
+    will_return(wrap_fgets, "{"
                                   "\"version\":1,"
                                   "\"origin\":{"
                                       "\"name\":\"restart-wazuh\","
@@ -320,8 +321,8 @@ static void test_WinExecdRun_timeout(void **state) {
                                   "}"
                               "}\n");
 
-    expect_value(__wrap_fprintf, __stream, wfd->file_in);
-    expect_string(__wrap_fprintf, formatted_msg, "{"
+    expect_value(wrap_fprintf, __stream, wfd->file_in);
+    expect_string(wrap_fprintf, formatted_msg, "{"
                                                     "\"version\":\"1\","
                                                     "\"origin\":{"
                                                         "\"name\":\"node01\","
@@ -349,7 +350,7 @@ static void test_WinExecdRun_timeout(void **state) {
                                                         "\"program\":\"restart-wazuh\""
                                                     "}"
                                                 "}\n");
-    will_return(__wrap_fprintf, 0);
+    will_return(wrap_fprintf, 0);
 
     will_return(__wrap_wpclose, 0);
 
@@ -491,45 +492,6 @@ static void test_ExecdStart_fgets_err(void **state) {
                     "}";
     int timeout = 0;
 
-    will_return(__wrap_time, now);
-
-    will_return(__wrap_select, 1);
-
-    expect_value(__wrap_OS_RecvUnix, socket, queue);
-    expect_value(__wrap_OS_RecvUnix, sizet, OS_MAXSTR);
-    will_return(__wrap_OS_RecvUnix, message);
-    will_return(__wrap_OS_RecvUnix, strlen(message));
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh0\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
-                                                                            "}"
-                                                                        "}"
-                                                                    "}'");
-
-    will_return(__wrap_time, now);
-
     expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
     will_return(__wrap_GetCommandbyName, timeout);
     will_return(__wrap_GetCommandbyName, "restart-wazuh");
@@ -565,8 +527,8 @@ static void test_ExecdStart_fgets_err(void **state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fprintf, __stream, wfd->file_in);
-    expect_string(__wrap_fprintf, formatted_msg, "{"
+    expect_value(wrap_fprintf, __stream, wfd->file_in);
+    expect_string(wrap_fprintf, formatted_msg, "{"
                                                     "\"version\":\"1\","
                                                     "\"origin\":{"
                                                         "\"name\":\"node01\","
@@ -594,10 +556,10 @@ static void test_ExecdStart_fgets_err(void **state) {
                                                         "\"program\":\"restart-wazuh\""
                                                     "}"
                                                 "}\n");
-    will_return(__wrap_fprintf, 0);
+    will_return(wrap_fprintf, 0);
 
-    expect_value(__wrap_fgets, __stream, wfd->file_out);
-    will_return(__wrap_fgets, NULL);
+    expect_value(wrap_fgets, __stream, wfd->file_out);
+    will_return(wrap_fgets, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Active response won't be added to timeout list. Message not received with alert keys from script 'restart-wazuh'");
 

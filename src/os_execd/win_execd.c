@@ -17,6 +17,10 @@
 #include "execd.h"
 #include "active-response/active_responses.h"
 
+#ifdef WAZUH_UNIT_TESTING
+    #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
+
 #ifdef ARGV0
 #undef ARGV0
 #endif
