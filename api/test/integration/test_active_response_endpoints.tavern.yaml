@@ -78,10 +78,6 @@ stages:
                 code: 1707
               id:
                 - '010'
-            # Separated errors as the message is not the same (different status)
-            - error:
-                code: 1707
-              id:
                 - '012'
           total_affected_items: 4
           total_failed_items: 2
@@ -231,10 +227,6 @@ stages:
               id:
                 - '009'
                 - '010'
-            # Separated errors as the message is not the same (different status)
-            - error:
-                code: 1707
-              id:
                 - '011'
                 - '012'
             - error:

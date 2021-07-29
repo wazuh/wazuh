@@ -537,9 +537,6 @@ stages:
                 code: 1707
               id:
                 - '010'
-            - error:
-                code: 1707
-              id:
                 - '012'
           total_affected_items: 5
           total_failed_items: 2
@@ -1030,9 +1027,6 @@ stages:
               id:
                 - '009'
                 - '010'
-            - error:
-                code: 1707
-              id:
                 - '011'
                 - '012'
           total_affected_items: 9

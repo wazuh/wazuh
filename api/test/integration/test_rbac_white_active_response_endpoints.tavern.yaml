@@ -157,10 +157,6 @@ stages:
                 code: 1707
               id:
                 - '009'
-            # Separated errors as the message is not the same (different status)
-            - error:
-                code: 1707
-              id:
                 - '011'
             - error:
                 code: 1750
