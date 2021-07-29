@@ -45,4 +45,3 @@ def syscheck_delete_agent(agent: str, wdb_conn: WazuhDBConnection) -> None:
                      "where key like 'fim_db%'", update=True)
     wdb_conn.execute(f"agent {agent} sql update metadata set value = '000' "
                      "where key = 'syscheck-db-completed'", update=True)
-   
