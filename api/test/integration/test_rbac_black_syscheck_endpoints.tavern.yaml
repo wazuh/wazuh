@@ -89,12 +89,12 @@ stages:
           affected_items: !anything
           failed_items:
             - error:
-                code: 1601
+                code: 1707
               id:
                 - '009'
                 - '010'
             - error:
-                code: 1601
+                code: 1707
               id:
                 - '011'
                 - '012'

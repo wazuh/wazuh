@@ -199,18 +199,11 @@ class WazuhException(Exception):
                               f'https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html'
                               ' to obtain more information on upgrading wazuh'
                },
-        1601: {'message': 'Impossible to run FIM scan, agent is not active',
-               'remediation': 'Please, ensure selected agent is active and connected to the manager. Visit '
-                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
-                              f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
-                              'to obtain more information on registering and connecting agents'
-               },
+
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Command not specified',
-        1651: {'message': 'Cannot send Active Response message to non-active agent, agent status is',
-               'remediation': f'Check non-active agents connection and try again. Please, visit the official '
-                              f'documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html)'},
+
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent ID not specified',
         1655: 'Active response - Command not available',
@@ -234,8 +227,11 @@ class WazuhException(Exception):
         1706: {'message': 'There is an agent with the same IP or the IP is invalid',
                'remediation': 'Please choose another IP'
                },
-        1707: {'message': 'Impossible to restart non-active agent',
-               'remediation': 'Please, make sure agent is active before attempting to restart'
+        1707: {'message': 'Cannot send request, agent is not active',
+               'remediation': 'Please, check non-active agents connection and try again. Visit '
+               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html and '
+               f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html'
+               ' to obtain more information on registering and connecting agents'
                },
         1708: {'message': 'There is an agent with the same ID',
                'remediation': 'Please choose another ID'

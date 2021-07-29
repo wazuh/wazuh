@@ -111,7 +111,7 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
 
     Raises
     ------
-    WazuhError(1651)
+    WazuhError(1707)
         If the agent with ID agent_id is not active.
     """
     # Agent basic information
@@ -119,7 +119,7 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
 
     # Check if agent is active
     if agent_info['status'].lower() != 'active':
-        raise WazuhError(1651, extra_message='{0}'.format(agent_info['status']))
+        raise WazuhError(1707)
 
     # Once we know the agent is active, store version
     agent_version = agent_info['version']

@@ -71,7 +71,7 @@ stages:
             - '005'
           failed_items:
             - error:
-                code: 1651
+                code: 1707
               id:
                 - '010'
             - error:
@@ -152,12 +152,12 @@ stages:
           affected_items: !anything
           failed_items:
             - error:
-                code: 1651
+                code: 1707
               id:
                 - '010'
             # Separated errors as the message is not the same (different status)
             - error:
-                code: 1651
+                code: 1707
               id:
                 - '012'
           total_affected_items: 4
