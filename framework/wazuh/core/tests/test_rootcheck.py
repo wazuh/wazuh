@@ -182,7 +182,7 @@ remove_db(test_data_path)
 @pytest.mark.parametrize('agent', ['001', '002', '003'])
 @patch('wazuh.core.wdb.WazuhDBConnection')
 def test_rootcheck_delete_agent(mock_db_conn, agent):
-    """ Test if proper parameters are being sent to the wazuhdb socket
+    """Test if proper parameters are being sent to the wazuhdb socket.
 
     Parameters
     ----------
