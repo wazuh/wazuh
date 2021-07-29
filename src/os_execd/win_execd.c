@@ -102,6 +102,18 @@ int WinExecd_Start()
     return (1);
 }
 
+/* Free the timeout list
+ */
+void FreeTimeoutList() {
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while (timeout_node) {
+        FreeTimeoutEntry((timeout_data *)timeout_node->data);
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+    }
+    os_free(timeout_list);
+}
+
 // Create a thread to run windows AR simultaneous
 DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {

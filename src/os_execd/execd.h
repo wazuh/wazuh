@@ -73,5 +73,6 @@ typedef struct _timeout_data {
 } timeout_data;
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
+void FreeTimeoutList();
 
 #endif /* EXECD_H */

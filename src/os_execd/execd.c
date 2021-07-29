@@ -270,6 +270,18 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
 
 #ifndef WIN32
 
+/* Free the timeout list
+ */
+void FreeTimeoutList() {
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while (timeout_node) {
+        FreeTimeoutEntry((timeout_data *)timeout_node->data);
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+    }
+    os_free(timeout_list);
+}
+
 /* Main function on the execd. Does all the data receiving, etc. */
 STATIC void ExecdStart(int q)
 {
@@ -291,11 +303,13 @@ STATIC void ExecdStart(int q)
         cmd_api[i] = NULL;
     }
 
+#ifndef WAZUH_UNIT_TESTING
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
         merror_exit(LIST_ERROR);
     }
+#endif
 
     if (repeated_offenders_timeout[0] != 0) {
         repeated_hash = OSHash_Create();
@@ -629,16 +643,6 @@ STATIC void ExecdStart(int q)
         break;
     #endif
     }
-
-#ifdef WAZUH_UNIT_TESTING
-    timeout_node = OSList_GetFirstNode(timeout_list);
-    while (timeout_node) {
-        FreeTimeoutEntry((timeout_data *)timeout_node->data);
-        OSList_DeleteCurrentlyNode(timeout_list);
-        timeout_node = OSList_GetCurrentlyNode(timeout_list);
-    }
-    os_free(timeout_list);
-#endif
 }
 
 #endif /* !WIN32 */
