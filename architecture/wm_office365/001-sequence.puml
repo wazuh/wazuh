@@ -1,0 +1,41 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml wm_office365
+box "Office365 Module" #LightBlue
+participant main
+participant wmodules
+participant config
+participant wmodules_office365
+participant thread
+participant wm_office365
+participant mq_op
+end box
+
+activate main #Red
+main -> wmodules : wm_config()
+wmodules -> config : ReadConfig()
+config -> config : read_main_elements()
+config -> config : Read_Office365()
+config -> wmodules_office365 : wm_office365_read()
+config <-- wmodules_office365
+wmodules <-- config
+main <-- wmodules
+
+main -> thread ++ #Red : CreateThreadJoinable()
+main <-- thread
+thread -> wm_office365 : wm_office365_main (config) 
+wm_office365 -> mq_op : StartMQ()
+wm_office365 <-- mq_op
+
+
+database office365_API
+wm_office365 -> wm_office365 : wm_office365_execute_scan (initial_scan TRUE)
+rnote over wm_office365, office365_API: **Scan Block**
+loop
+    wm_office365 -> time : sleep(office365_config->interval)
+    wm_office365 -> wm_office365 : wm_office365_execute_scan (initial_scan FALSE)
+    rnote over wm_office365, office365_API: **Scan Block**
+end
+@enduml wm_office365

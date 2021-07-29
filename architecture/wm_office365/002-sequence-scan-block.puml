@@ -1,0 +1,79 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml wm_office365
+box "Scan Block \n wm_office365_execute_scan() Sequence Diagram" #LightBlue
+participant wm_office365
+participant wmodules
+participant url
+end box
+
+activate wm_office365
+loop for every tenant
+    alt not initial_scan or not config only_future_events
+        wm_office365 -> wm_office365 ++ #red : wm_office365_get_access_token()
+        wm_office365 -> url ++ #red : wurl_http_request()
+        database office365_API
+        url --> office365_API ++ #red : HTTP_REQUEST
+        office365_API --> url -- #red : response
+        url --> wm_office365 -- #red : response
+        deactivate wm_office365
+    end
+
+    loop for every subscription
+        wm_office365 -> wmodules ++ #red : wm_state_io()
+        wm_office365 <- wmodules -- #red
+
+        alt no previous timestamp
+            wm_office365 -> wmodules ++ #red: wm_state_io(tenant_state_name, WM_IO_WRITE, tenant_state_struc)
+            wm_office365 <- wmodules -- #red
+            rnote over wm_office365, wm_office365: **continue**
+        end
+
+        wm_office365 -> wm_office365 ++ #red: wm_office365_manage_subscription()
+        wm_office365 -> url ++ #red: wurl_http_request()
+        url --> office365_API ++ #red : HTTP_REQUEST
+        office365_API --> url -- #red : response
+        url --> wm_office365 -- #red : subscription_response
+        deactivate wm_office365
+
+        loop scan_time 
+            rnote over wm_office365, wm_office365: The scan interval can be a maximum of 24 hours \nbut the user can configure a longer interval.\nSuccessive scans are performed
+            loop !scan_finished
+                wm_office365 -> wm_office365 ++ #red: wm_office365_get_content_blobs()
+                wm_office365 -> url ++ #red: wurl_http_request()
+                url --> office365_API ++ #red : HTTP_REQUEST
+                office365_API --> url -- #red : response
+                url --> wm_office365 -- #red : blobs_response
+                wm_office365 -> wmodules ++ #red : wm_read_http_header_element()
+                wm_office365 <- wmodules -- #red
+                deactivate wm_office365
+                alt if blobs list
+                    loop for every blob
+                        wm_office365 -> wm_office365 ++ #red : wm_office365_get_logs_from_blob()
+                        wm_office365 -> url ++ #red : wurl_http_request()
+                        url --> office365_API ++ #red : HTTP_REQUEST
+                        office365_API --> url -- #red : response
+                        url --> wm_office365 -- #red : logs_response
+                        deactivate wm_office365
+                        loop for every log
+                            wm_office365 -> wmodules ++ #red : wm_sendmsg(event)
+                            wm_office365 <- wmodules -- #red
+                        end
+                    end
+                end
+            end
+
+            alt if scan fails
+                wm_office365 -> wm_office365 ++ #red: wm_office365_scan_failure_action()
+                deactivate wm_office365
+            else
+                wm_office365 -> wmodules ++ #red : wm_state_io(tenant_state_name, WM_IO_WRITE, tenant_state_struc)
+                wm_office365 <- wmodules -- #red
+                deactivate wm_office365
+            end
+        end
+    end
+end
+@enduml wm_office365
