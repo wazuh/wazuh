@@ -187,9 +187,9 @@ def test_rootcheck_delete_agent(mock_db_conn, agent):
     Parameters
     ----------
     agent : str
-        Agent whose information is being deleted from the db
+        Agent whose information is being deleted from the db.
     mock_db_conn : WazuhDBConnection
-        Object used to send the delete message to the wazuhdb socket
+        Object used to send the delete message to the wazuhdb socket.
     """
     rootcheck.rootcheck_delete_agent(agent, mock_db_conn)
     mock_db_conn.execute.assert_called_with(f"agent {agent} rootcheck delete", delete=True)
