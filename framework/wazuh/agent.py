@@ -939,13 +939,17 @@ def get_agent_config(agent_list=None, component=None, config=None):
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+def get_agents_sync_group(agent_list: list = None, offset=0, limit=common.database_limit) -> AffectedItemsWazuhResult:
     """Get agents configuration sync status.
 
     Parameters
     ----------
     agent_list : list
         List of agents ID's.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
 
     Returns
     -------
@@ -974,7 +978,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         # Get information of all agents and their groups
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
-        db_query = WazuhDBQueryAgents(limit=None, select=["id", "group", "mergedSum"], **rbac_filters)
+        db_query = WazuhDBQueryAgents(limit=limit, offset=offset, select=["id", "group", "mergedSum"], **rbac_filters)
         data = db_query.run()
 
         for agent_info in data['items']:
@@ -1001,7 +1005,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
             except WazuhException as e:
                 result.add_failed_item(id_=agent_info['id'], error=e)
 
-        result.total_affected_items = len(result.affected_items)
+        result.total_affected_items = data['totalItems']
 
     return result
 

@@ -1191,15 +1191,19 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
         assert error == WazuhError(1740)
 
 
-@pytest.mark.parametrize('agent_list', [
-    full_agent_list[1:]
+@pytest.mark.parametrize('agent_list, params, expected_res', [
+    (full_agent_list[1:], {}, full_agent_list[1:]),
+    (full_agent_list[1:], {'limit': 3}, full_agent_list[1:4]),
+    (full_agent_list[1:], {'offset': 5}, full_agent_list[6:]),
+    (full_agent_list[1:], {'offset': 30}, []),
+    (full_agent_list[1:], {'limit': 1, 'offset': 5}, full_agent_list[6:7]),
 ])
 @patch('wazuh.core.common.shared_path', new=test_shared_path)
 @patch('wazuh.core.common.multi_groups_path', new=test_multigroup_path)
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, agent_list):
+def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, agent_list, params, expected_res):
     """Test `get_agents_sync_group` function from agent module.
 
     Parameters
@@ -1207,11 +1211,13 @@ def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, age
     agent_list : List of str
         List of agent ID's.
     """
-    result = get_agents_sync_group(agent_list=agent_list)
+    result = get_agents_sync_group(agent_list=agent_list, **params)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     # Check affected items
     assert result.total_affected_items == len(agent_list)
-    assert len([item for item in result.affected_items if 'synced' in item]) == len(agent_list)
+    assert len([item for item in result.affected_items if 'synced' in item]) == len(expected_res)
+    for index, item in enumerate(result.affected_items):
+        assert item['id'] == expected_res[index]
 
 
 @pytest.mark.parametrize('agent_list, expected_error', [

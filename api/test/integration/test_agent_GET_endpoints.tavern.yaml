@@ -1973,6 +1973,56 @@ stages:
           total_affected_items: 12
           total_failed_items: 0
 
+  - name: Get agent sync (limit=2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: '001'
+              synced: !anybool
+            - id: '002'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 12
+          total_failed_items: 0
+
+  - name: Get agent sync (limit=3, offset=5)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/is_sync"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 3
+        offset: 5
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: '006'
+              synced: !anybool
+            - id: '007'
+              synced: !anybool
+            - id: '008'
+              synced: !anybool
+          failed_items: [ ]
+          total_affected_items: 12
+          total_failed_items: 0
+
+
 ---
 test_name: GET /agents/{agent_id}/key
 
