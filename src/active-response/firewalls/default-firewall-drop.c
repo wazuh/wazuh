@@ -18,7 +18,6 @@ int main (int argc, char **argv) {
     (void)argc;
     char iptables[COMMANDSIZE];
     char log_msg[LOGSIZE];
-    char *srcip = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -29,7 +28,7 @@ int main (int argc, char **argv) {
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);
@@ -84,6 +83,7 @@ int main (int argc, char **argv) {
     if (!strcmp("Linux", uname_buffer.sysname)) {
         char lock_path[PATH_MAX];
         char lock_pid_path[PATH_MAX];
+        wfd_t *wfd = NULL;
 
         // Checking if iptables is present
         if (access(iptables, F_OK) < 0) {
@@ -109,9 +109,6 @@ int main (int argc, char **argv) {
             strcpy(arg, "-D");
         }
 
-        char *command_ex_1[8] = {iptables, arg, "INPUT", "-s", srcip, "-j", "DROP", NULL};
-        char *command_ex_2[8] = {iptables, arg, "FORWARD", "-s", srcip, "-j", "DROP", NULL};
-
         memset(lock_path, '\0', PATH_MAX);
         memset(lock_pid_path, '\0', PATH_MAX);
         snprintf(lock_path, PATH_MAX - 1, "%s", LOCK_PATH);
@@ -129,8 +126,13 @@ int main (int argc, char **argv) {
         int count = 0;
         bool flag = true;
         while (flag) {
-            wfd_t *wfd = NULL;
-            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
+            char *exec_cmd1[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+            const char *arg1[8] = { iptables, arg, "INPUT", "-s", srcip, "-j", "DROP", NULL };
+            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+            wfd = wpopenv(iptables, exec_cmd1, W_BIND_STDERR);
+            if (!wfd) {
                 count++;
                 write_debug_file(argv[0], "Unable to run iptables");
                 sleep(count);
@@ -147,8 +149,13 @@ int main (int argc, char **argv) {
         count = 0;
         flag = true;
         while (flag) {
-            wfd_t *wfd = NULL;
-            if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
+            char *exec_cmd2[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+            const char *arg2[8] = { iptables, arg, "FORWARD", "-s", srcip, "-j", "DROP", NULL };
+            memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
+
+            wfd = wpopenv(iptables, exec_cmd2, W_BIND_STDERR);
+            if (!wfd) {
                 count++;
                 write_debug_file(argv[0], "Unable to run iptables");
                 sleep(count);
@@ -167,6 +174,7 @@ int main (int argc, char **argv) {
         char arg1[COMMANDSIZE];
         char arg2[COMMANDSIZE];
         char ipfarg[COMMANDSIZE];
+        wfd_t *wfd = NULL;
 
         // Checking if ipfilter is present
         char ipfilter_path[PATH_MAX];
@@ -206,11 +214,11 @@ int main (int argc, char **argv) {
             snprintf(ipfarg, COMMANDSIZE -1,"-rf");
         }
 
-        char *command_ex_1[4] = {ipfilter_path, ipfarg, "-", NULL};
-        char *command_ex_2[4] = {ipfilter_path, ipfarg, "-", NULL};
+        char *exec_cmd1[4] = { ipfilter_path, ipfarg, "-", NULL };
+        char *exec_cmd2[4] = { ipfilter_path, ipfarg, "-", NULL };
 
-        wfd_t *wfd = NULL;
-        if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDIN), !wfd) {
+        wfd = wpopenv(ipfilter_path, exec_cmd1, W_BIND_STDIN);
+        if (!wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         } else {
             fprintf(wfd->file_in, "%s\n", arg1);
@@ -218,7 +226,8 @@ int main (int argc, char **argv) {
             wpclose(wfd);
         }
 
-        if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDIN), !wfd) {
+        wfd = wpopenv(ipfilter_path, exec_cmd2, W_BIND_STDIN);
+        if (!wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         } else {
             fprintf(wfd->file_in, "%s\n", arg2);
@@ -231,6 +240,7 @@ int main (int argc, char **argv) {
         char lsfilt_path[20] = "/usr/sbin/lsfilt";
         char mkfilt_path[20] = "/usr/sbin/mkfilt";
         char rmfilt_path[20] = "/usr/sbin/rmfilt";
+        wfd_t *wfd = NULL;
 
         // Checking if genfilt is present
         if (access(genfilt_path, F_OK) < 0) {
@@ -269,63 +279,60 @@ int main (int argc, char **argv) {
         }
 
         if (action == ADD_COMMAND) {
-            wfd_t *wfd = NULL;
-            char *command_ex_1[18] = {genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
-            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
+            char *exec_cmd1[18] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+            const char *arg1[18] = { genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL };
+            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+            wfd = wpopenv(genfilt_path, exec_cmd1, W_BIND_STDERR);
+            if (!wfd) {
                 write_debug_file(argv[0], "Unable to run genfilt");
             } else {
                 wpclose(wfd);
             }
-
-            // Deactivate and activate the filter rules.
-            char *command_ex_2[5] = {mkfilt_path, "-v", "4", "-d", NULL};
-            if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run mkfilt");
-            } else {
-                wpclose(wfd);
-            }
-
-            char *command_ex_3[5] = {mkfilt_path, "-v", "4", "-u", NULL};
-            if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run mkfilt");
-            } else {
-                wpclose(wfd);
-            }
         } else {
-            wfd_t *wfd = NULL;
-            char *command_ex_1[5] = {lsfilt_path, "-v", "4", "-O", NULL};
-            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
+            char *exec_cmd1[5] = { lsfilt_path, "-v", "4", "-O", NULL };
+
+            wfd = wpopenv(lsfilt_path, exec_cmd1, W_BIND_STDOUT);
+            if (!wfd) {
+                write_debug_file(argv[0], "Unable to run lsfilt");
+            } else {
                 char output_buf[BUFFERSIZE];
                 while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
                     if (strstr(output_buf, srcip) != NULL) {
-                        // removing a specific rule
-                        wfd_t *wfd2 = NULL;
+                        // Removing a specific rule
                         char *rule_str = strtok(output_buf, "|");
-                        char *command_ex_2[6] = {rmfilt_path, "-v", "4", "-n", rule_str, NULL};
-                        if (wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), wfd2) {
+                        char *exec_cmd2[6] = { rmfilt_path, "-v", "4", "-n", rule_str, NULL };
+
+                        wfd_t *wfd2 = wpopenv(rmfilt_path, exec_cmd2, W_BIND_STDERR);
+                        if (!wfd2) {
+                            write_debug_file(argv[0], "Unable to run rmfilt");
+                        } else {
                             wpclose(wfd2);
                         }
                     }
                 }
                 wpclose(wfd);
-            } else {
-                write_debug_file(argv[0], "Unable to run lsfilt");
             }
+        }
 
-            // Deactivate and activate the filter rules.
-            char *command_ex_3[5] = {mkfilt_path, "-v", "4", "-d", NULL};
-            if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run mkfilt");
-            } else {
-                wpclose(wfd);
-            }
+        // Deactivate and activate the filter rules
+        char *exec_cmd3[5] = { mkfilt_path, "-v", "4", "-d", NULL };
 
-            char *command_ex_4[5] = {mkfilt_path, "-v", "4", "-u", NULL};
-            if (wfd = wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run mkfilt");
-            } else {
-                wpclose(wfd);
-            }
+        wfd = wpopenv(mkfilt_path, exec_cmd3, W_BIND_STDERR);
+        if (!wfd) {
+            write_debug_file(argv[0], "Unable to run mkfilt");
+        } else {
+            wpclose(wfd);
+        }
+
+        char *exec_cmd4[5] = { mkfilt_path, "-v", "4", "-u", NULL };
+
+        wfd = wpopenv(mkfilt_path, exec_cmd4, W_BIND_STDERR);
+        if (!wfd) {
+            write_debug_file(argv[0], "Unable to run mkfilt");
+        } else {
+            wpclose(wfd);
         }
 
     } else {

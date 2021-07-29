@@ -14,7 +14,6 @@
 int main (int argc, char **argv) {
     (void)argc;
     char log_msg[LOGSIZE];
-    char *srcip = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
 
@@ -24,7 +23,7 @@ int main (int argc, char **argv) {
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);

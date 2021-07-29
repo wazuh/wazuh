@@ -13,7 +13,6 @@ int main (int argc, char **argv) {
     (void)argc;
     char args[COMMANDSIZE];
     char log_msg[LOGSIZE];
-    char *user = NULL;
     char *command_ex = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
@@ -25,7 +24,7 @@ int main (int argc, char **argv) {
     }
 
     // Detect username
-    user = get_username_from_json(input_json);
+    const char *user = get_username_from_json(input_json);
     if (!user) {
         write_debug_file(argv[0], "Cannot read 'dstuser' from data");
         cJSON_Delete(input_json);
@@ -113,9 +112,13 @@ int main (int argc, char **argv) {
     }
 
     // Execute the command
-    char *exec_cmd[4] = { command_ex, args, user, NULL };
-    wfd_t *wfd = NULL;
-    if (wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR), !wfd) {
+    char *exec_cmd1[4] = { NULL, NULL, NULL, NULL };
+
+    const char *arg1[4] = { command_ex, args, user, NULL };
+    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+    wfd_t *wfd = wpopenv(command_ex, exec_cmd1, W_BIND_STDERR);
+    if (!wfd) {
         memset(log_msg, '\0', LOGSIZE);
         snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", command_ex, strerror(errno));
         write_debug_file(argv[0], log_msg);

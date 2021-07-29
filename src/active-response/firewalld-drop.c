@@ -19,7 +19,6 @@ int main (int argc, char **argv) {
     char log_msg[LOGSIZE];
     char lock_path[PATH_MAX];
     char lock_pid_path[PATH_MAX];
-    char *srcip = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -30,7 +29,7 @@ int main (int argc, char **argv) {
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);

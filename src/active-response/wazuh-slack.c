@@ -34,7 +34,7 @@
  * @param alert Alert to extract info
  * @return JSON object
  * */
-static cJSON *format_output(cJSON *alert);
+static cJSON *format_output(const cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -42,7 +42,6 @@ int main (int argc, char **argv) {
     char *site_url;
     char *output_str;
     int action = OS_INVALID;
-    cJSON *alert_json = NULL;
     cJSON *input_json = NULL;
     cJSON *output_json = NULL;
 
@@ -52,7 +51,7 @@ int main (int argc, char **argv) {
     }
 
     // Get alert
-    alert_json = get_alert_from_json(input_json);
+    const cJSON *alert_json = get_alert_from_json(input_json);
     if (!alert_json) {
         write_debug_file(argv[0], "Cannot read 'alert' from data");
         cJSON_Delete(input_json);
@@ -95,7 +94,7 @@ int main (int argc, char **argv) {
     return OS_SUCCESS;
 }
 
-static cJSON *format_output(cJSON *alert) {
+static cJSON *format_output(const cJSON *alert) {
     cJSON *rule_json = NULL;
     cJSON *agent_json = NULL;
     cJSON *agentless_json = NULL;

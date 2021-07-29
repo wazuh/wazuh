@@ -13,8 +13,8 @@
 
 int main (int argc, char **argv) {
     (void)argc;
+    char output_buf[BUFFERSIZE];
     char log_msg[LOGSIZE];
-    char *srcip = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
 
@@ -24,7 +24,7 @@ int main (int argc, char **argv) {
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);
@@ -56,82 +56,64 @@ int main (int argc, char **argv) {
         }
     }
 
+    // Checking if npfctl is present
     if (access(NPFCTL, F_OK) < 0) {
         write_debug_file(argv[0], "The NPFCTL is not accessible");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    wfd_t *wfd1 = NULL;
-    char *cmd[3] = {NPFCTL, "show", NULL};
-    if (wfd1 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd1) {
-        char output_buf[BUFFERSIZE];
-        int flag = false;
-        while (fgets(output_buf, BUFFERSIZE, wfd1->file_out)) {
-            const char *pos = strstr(output_buf, "filtering:");
-            if (pos != NULL) {
-                char state[15];
-                if (pos && sscanf(pos, "%*s %9s", state) == 1) {
-                    if (strcmp(state, "active") != 0) {
-                        memset(log_msg, '\0', LOGSIZE);
-                        snprintf(log_msg, LOGSIZE -1, "The filter property is inactive");
-                        write_debug_file(argv[0], log_msg);
-                        cJSON_Delete(input_json);
-                        wpclose(wfd1);
-                        return OS_INVALID;
-                    }
-                    flag = true;
-                    break;
-                } else {
+    char *exec_cmd1[3] = { NPFCTL, "show", NULL };
+
+    wfd_t *wfd = wpopenv(NPFCTL, exec_cmd1, W_BIND_STDOUT);
+    if (!wfd) {
+        memset(log_msg, '\0', LOGSIZE);
+        snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    int flag = false;
+    while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
+        const char *pos = strstr(output_buf, "filtering:");
+
+        if (pos != NULL) {
+            char state[15];
+
+            if (pos && sscanf(pos, "%*s %9s", state) == 1) {
+                if (strcmp(state, "active") != 0) {
                     memset(log_msg, '\0', LOGSIZE);
-                    snprintf(log_msg, LOGSIZE -1, "Key word not found");
+                    snprintf(log_msg, LOGSIZE -1, "The filter property is inactive");
                     write_debug_file(argv[0], log_msg);
                     cJSON_Delete(input_json);
-                    wpclose(wfd1);
+                    wpclose(wfd);
                     return OS_INVALID;
                 }
-            }
-        }
-        wpclose(wfd1);
-
-        if (flag == false) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE -1, "Unable to find 'filtering'");
-            write_debug_file(argv[0], log_msg);
-            cJSON_Delete(input_json);
-            return OS_INVALID;
-        }
-
-    } else {
-        memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
-        write_debug_file(argv[0], log_msg);
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    wfd_t *wfd2 = NULL;
-    if (wfd2 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd2) {
-        char output_buf[BUFFERSIZE];
-        int flag = false;
-        while (fgets(output_buf, BUFFERSIZE, wfd2->file_out)) {
-            const char *pos = strstr(output_buf, "table <wazuh_blacklist>");
-            if (pos != NULL) {
                 flag = true;
                 break;
+            } else {
+                memset(log_msg, '\0', LOGSIZE);
+                snprintf(log_msg, LOGSIZE -1, "Key word not found");
+                write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
+                wpclose(wfd);
+                return OS_INVALID;
             }
         }
-        wpclose(wfd2);
+    }
+    wpclose(wfd);
 
-        if (flag == false) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE -1, "Unable to find 'table <wazuh_blacklist>'");
-            write_debug_file(argv[0], log_msg);
-            cJSON_Delete(input_json);
-            return OS_INVALID;
-        }
+    if (flag == false) {
+        memset(log_msg, '\0', LOGSIZE);
+        snprintf(log_msg, LOGSIZE -1, "Unable to find 'filtering'");
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
 
-    } else {
+    wfd = wpopenv(NPFCTL, exec_cmd1, W_BIND_STDOUT);
+    if (!wfd) {
         memset(log_msg, '\0', LOGSIZE);
         snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
         write_debug_file(argv[0], log_msg);
@@ -139,25 +121,45 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    char *exec_cmd[6] = {NULL, NULL, NULL, NULL, NULL, NULL};
+    flag = false;
+    while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
+        const char *pos = strstr(output_buf, "table <wazuh_blacklist>");
+
+        if (pos != NULL) {
+            flag = true;
+            break;
+        }
+    }
+    wpclose(wfd);
+
+    if (flag == false) {
+        memset(log_msg, '\0', LOGSIZE);
+        snprintf(log_msg, LOGSIZE -1, "Unable to find 'table <wazuh_blacklist>'");
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    char *exec_cmd2[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
+
     if (action == ADD_COMMAND) {
-        char *arg[6] = {NPFCTL, "table", "wazuh_blacklist", "add", srcip, NULL};
-        memcpy(exec_cmd, arg, sizeof(exec_cmd));
+        const char *arg3[6] = { NPFCTL, "table", "wazuh_blacklist", "add", srcip, NULL };
+        memcpy(exec_cmd2, arg3, sizeof(exec_cmd2));
     } else {
-        char *arg[6] = {NPFCTL, "table", "wazuh_blacklist", "del", srcip, NULL};
-        memcpy(exec_cmd, arg, sizeof(exec_cmd));
+        const char *arg3[6] = { NPFCTL, "table", "wazuh_blacklist", "del", srcip, NULL };
+        memcpy(exec_cmd2, arg3, sizeof(exec_cmd2));
     }
 
     // Executing it
-    wfd_t *wfd3 = wpopenv(NPFCTL, exec_cmd, W_BIND_STDOUT);
-    if (!wfd3) {
+    wfd = wpopenv(NPFCTL, exec_cmd2, W_BIND_STDOUT);
+    if (!wfd) {
         memset(log_msg, '\0', LOGSIZE);
         snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
-    wpclose(wfd3);
+    wpclose(wfd);
 
     write_debug_file(argv[0], "Ended");
 

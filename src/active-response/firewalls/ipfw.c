@@ -16,7 +16,6 @@
 int main (int argc, char **argv) {
     (void)argc;
     char log_msg[LOGSIZE];
-    char *srcip = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -27,7 +26,7 @@ int main (int argc, char **argv) {
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);
@@ -82,41 +81,59 @@ int main (int argc, char **argv) {
         memset(table_name, '\0', COMMANDSIZE);
         snprintf(table_name, COMMANDSIZE - 1, "table(%s)", TABLE_ID);
 
-        char *command_ex_1[3] = { IPFW, "show", NULL };
-        if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
-            char output_buf[BUFFERSIZE];
-            while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
-                if ((strncmp(output_buf, TABLE_ID, 5) == 0) && (strstr(output_buf, table_name) != NULL)) {
-                    add_table = false;
-                    break;
-                }
-            }
-            wpclose(wfd);
-        } else {
-            write_debug_file(argv[0], "Unable to run ipfw");
+        char *exec_cmd1[3] = { IPFW, "show", NULL };
+
+        wfd = wpopenv(IPFW, exec_cmd1, W_BIND_STDOUT);
+        if (!wfd) {
+            memset(log_msg, '\0', LOGSIZE);
+            snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            return OS_INVALID;
         }
+
+        char output_buf[BUFFERSIZE];
+        while (fgets(output_buf, BUFFERSIZE, wfd->file_out)) {
+            if ((strncmp(output_buf, TABLE_ID, 5) == 0) && (strstr(output_buf, table_name) != NULL)) {
+                add_table = false;
+                break;
+            }
+        }
+        wpclose(wfd);
 
         if (add_table) {
-            char *command_ex_2[11] = { IPFW, "-q", TABLE_ID, "add", "deny", "ip", "from", table_name, "to", "any", NULL };
-            char *command_ex_3[11] = { IPFW, "-q", TABLE_ID, "add", "deny", "ip", "from", "any", "to", table_name, NULL };
+            char *exec_cmd2[11] = { IPFW, "-q", TABLE_ID, "add", "deny", "ip", "from", table_name, "to", "any", NULL };
+            char *exec_cmd3[11] = { IPFW, "-q", TABLE_ID, "add", "deny", "ip", "from", "any", "to", table_name, NULL };
 
-            wfd_t *wfd = NULL;
-            if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run ipfw");
-            } else {
-                wpclose(wfd);
+            wfd = wpopenv(IPFW, exec_cmd2, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', LOGSIZE);
+                snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
+                write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
+                return OS_INVALID;
             }
+            wpclose(wfd);
 
-            if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run ipfw");
-            } else {
-                wpclose(wfd);
+            wfd = wpopenv(IPFW, exec_cmd3, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', LOGSIZE);
+                snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
+                write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
+                return OS_INVALID;
             }
+            wpclose(wfd);
         }
 
-        // Execute the command
-        char *command_ex_4[7] = { IPFW, "-q", "table", TABLE_ID, (action == ADD_COMMAND) ? "add" : "delete", srcip, NULL };
-        if (wfd = wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR), !wfd) {
+        char *exec_cmd4[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+        const char *arg4[7] = { IPFW, "-q", "table", TABLE_ID, (action == ADD_COMMAND) ? "add" : "delete", srcip, NULL };
+        memcpy(exec_cmd4, arg4, sizeof(exec_cmd4));
+
+        // Executing it
+        wfd = wpopenv(IPFW, exec_cmd4, W_BIND_STDERR);
+        if (!wfd) {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
             write_debug_file(argv[0], log_msg);

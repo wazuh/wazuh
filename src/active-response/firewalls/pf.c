@@ -19,7 +19,6 @@ static int checking_if_its_configured(const char *path, const char *table);
 int main (int argc, char **argv) {
     (void)argc;
     char log_msg[LOGSIZE];
-    char *srcip = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -30,7 +29,7 @@ int main (int argc, char **argv) {
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);
@@ -69,6 +68,7 @@ int main (int argc, char **argv) {
     }
 
     if (!strcmp("OpenBSD", uname_buffer.sysname) || !strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("Darwin", uname_buffer.sysname)) {
+        wfd_t *wfd = NULL;
 
         // Checking if pfctl is present
         if (access(PFCTL, F_OK) < 0) {
@@ -79,21 +79,21 @@ int main (int argc, char **argv) {
             return OS_SUCCESS;
         }
 
-        char *exec_cmd1[7] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-        char *exec_cmd2[4] = {NULL, NULL, NULL, NULL};
+        char *exec_cmd1[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+        char *exec_cmd2[4] = { NULL, NULL, NULL, NULL };
 
         // Checking if we have pf config file
         if (access(PFCTL_RULES, F_OK) == 0) {
             // Checking if wazuh table is configured in pf.conf
             if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) == 0) {
                 if (action == ADD_COMMAND) {
-                    char *arg1[7] = {PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL};
+                    const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL };
                     memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
 
-                    char *arg2[4] = {PFCTL, "-k", srcip, NULL};
+                    const char *arg2[4] = { PFCTL, "-k", srcip, NULL };
                     memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
                 } else {
-                    char *arg1[7] = {PFCTL, "-t", PFCTL_TABLE, "-T", "delete", srcip, NULL};
+                    const char *arg1[7] = { PFCTL, "-t", PFCTL_TABLE, "-T", "delete", srcip, NULL };
                     memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
                 }
             } else {
@@ -103,7 +103,6 @@ int main (int argc, char **argv) {
                 cJSON_Delete(input_json);
                 return OS_SUCCESS;
             }
-
         } else {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The pf rules file '%s' does not exist", PFCTL_RULES);
@@ -114,7 +113,7 @@ int main (int argc, char **argv) {
 
         // Executing it
         if (exec_cmd1[0] && strcmp(exec_cmd1[0], PFCTL) == 0) {
-            wfd_t *wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
+            wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
             if (!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
@@ -126,7 +125,7 @@ int main (int argc, char **argv) {
         }
 
         if (exec_cmd2[0] && strcmp(exec_cmd2[0], PFCTL) == 0) {
-            wfd_t *wfd = wpopenv(PFCTL, exec_cmd2, W_BIND_STDOUT);
+            wfd = wpopenv(PFCTL, exec_cmd2, W_BIND_STDOUT);
             if (!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
@@ -151,8 +150,10 @@ int main (int argc, char **argv) {
 static int checking_if_its_configured(const char *path, const char *table) {
     char command[COMMANDSIZE];
     char output_buf[BUFFERSIZE];
+
     snprintf(command, COMMANDSIZE -1, "cat %s | %s %s", path, GREP, table);
     FILE *fp = popen(command, "r");
+
     if (fp) {
         while (fgets(output_buf, BUFFERSIZE, fp) != NULL) {
             pclose(fp);

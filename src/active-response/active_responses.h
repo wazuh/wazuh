@@ -62,6 +62,7 @@ int send_keys_and_check_message(char **argv, char **keys);
 
 /**
  * Get the json structure from input
+ * Caller must call cJSON_Delete() to release the object
  * @param input Input to validate
  * @return JSON input or NULL on Invalid
  * */
@@ -72,42 +73,42 @@ cJSON* get_json_from_input(const char *input);
  * @param input Input
  * @return char * with the command or NULL on fail
  * */
-char* get_command_from_json(cJSON *input);
+const char* get_command_from_json(const cJSON *input);
 
 /**
  * Get alert from input
  * @param input Input
  * @return JSON alert or NULL on Invalid.
  * */
-cJSON* get_alert_from_json(cJSON *input);
+const cJSON* get_alert_from_json(const cJSON *input);
 
 /**
  * Get srcip from input
  * @param input Input
  * @return char * with the srcip or NULL on fail
  * */
-char* get_srcip_from_json(cJSON *input);
+const char* get_srcip_from_json(const cJSON *input);
 
 /**
  * Get username from input
  * @param input Input
  * @return char * with the username or NULL on fail
  * */
-char* get_username_from_json(cJSON *input);
+const char* get_username_from_json(const cJSON *input);
 
 /**
  * Get extra_args from input
  * @param input Input
  * @return char * with the extra_args or NULL on fail
  * */
-char* get_extra_args_from_json(cJSON *input);
+char* get_extra_args_from_json(const cJSON *input);
 
 /**
  * Get keys from input
  * @param input Input
  * @return char * with the keys or NULL on fail
  * */
-char* get_keys_from_json(cJSON *input);
+char* get_keys_from_json(const cJSON *input);
 
 #ifndef WIN32
 
@@ -135,6 +136,6 @@ void unlock(const char *lock_path, const char *log_path);
  * @retval 6 If ip is ipv6
  * @retval OS_INVALID on Invalid IP or error
  * */
-int get_ip_version(char *ip);
+int get_ip_version(const char *ip);
 
 #endif
