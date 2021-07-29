@@ -22,6 +22,7 @@
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
+#   15 - Invalid VPC endpoint URL
 
 import argparse
 import signal
@@ -230,7 +231,7 @@ class WazuhIntegration:
             conn_args['profile_name'] = profile
 
         # set region name
-        if region and service_name == 'inspector':
+        if region and service_name in ('inspector', 'cloudwatchlogs'):
             conn_args['region_name'] = region
         else:
             # it is necessary to set region_name for GovCloud regions
@@ -866,6 +867,10 @@ class AWSBucket(WazuhIntegration):
         except botocore.exceptions.ClientError:
             print("ERROR: Invalid credentials to access S3 Bucket")
             exit(3)
+        except botocore.exceptions.EndpointConnectionError as e:
+            print(f"ERROR: {str(e)}")
+            exit(15)
+
 
 
 class AWSLogsBucket(AWSBucket):
@@ -2925,6 +2930,8 @@ class AWSCloudWatchLogs(AWSService):
 
             if result_list == list():
                 debug('No log streams were found for log group "{}"'.format(log_group), 1)
+        except botocore.exceptions.EndpointConnectionError as e:
+            print(f'ERROR: {str(e)}')
         except Exception:
             debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(log_group), 0)
 
