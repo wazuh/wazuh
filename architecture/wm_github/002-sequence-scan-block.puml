@@ -12,6 +12,13 @@
     loop while (Organization != NULL)
         wm_github -> wmodules : wm_state_io (WM_IO_READ)
         wm_github <-- wmodules
+
+        alt no previous timestamp
+            wm_github -> wmodules : wm_state_io(WM_IO_WRITE)
+            wm_github <-- wmodules
+            rnote over wm_github: **continue**
+        end
+
         loop #LightGrey while (!scan_finished)
 
             wm_github -> url : wurl_http_request (GET_METHOD)
@@ -32,7 +39,7 @@
 
         alt #LightGrey Scan Fail
             wm_github -> wm_github : wm_github_scan_failure_action (fails, org_name, error_msg, queue_fd)
-            alt (Fails >= 3)
+            alt (Fails == 3)
                 wm_github -> wmodules : wm_sendmsg (fail message)
                 wm_github <-- wmodules : wm_sendmsg
             end
