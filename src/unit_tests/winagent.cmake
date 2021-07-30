@@ -49,7 +49,7 @@ list(REMOVE_ITEM client_agent_lib ${SRC_FOLDER}/client-agent/main.o)
 list(APPEND obj_files ${client_agent_lib})
 
 # Add execd objects
-file(GLOB os_execd_lib ${SRC_FOLDER}/os_execd/*.o)
+file(GLOB os_execd_lib ${SRC_FOLDER}/os_execd/*.o ${SRC_FOLDER}/active-response/*.o)
 list(APPEND obj_files ${os_execd_lib})
 
 # Add win32 objects

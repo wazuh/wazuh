@@ -15,9 +15,11 @@
 #define ARGV0 "wazuh-execd"
 #endif
 
-/* Add/delete arguments for the commands */
+/* Arguments for the commands */
 #define ADD_ENTRY       "add"
 #define DELETE_ENTRY    "delete"
+#define CONTINUE_ENTRY  "continue"
+#define ABORT_ENTRY     "abort"
 
 /* Maximum number of active responses active */
 #define MAX_AR      64
@@ -67,8 +69,10 @@ typedef struct _timeout_data {
     int time_to_block;
     char **command;
     char *parameters;
+    char *rkey;
 } timeout_data;
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
+void FreeTimeoutList();
 
 #endif /* EXECD_H */

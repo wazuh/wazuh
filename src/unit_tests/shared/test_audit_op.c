@@ -239,16 +239,16 @@ static void test_audit_clean_path(void **state) {
 
 static void test_audit_restart(void **state) {
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fgets, __stream, wfd->file);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, "test");
 
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    expect_value(__wrap_fgets, __stream, wfd->file);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, NULL);
 
     will_return(__wrap_wpclose, 0);
@@ -270,16 +270,16 @@ static void test_audit_restart_open_error(void **state) {
 
 static void test_audit_restart_close_exec_error(void **state) {
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fgets, __stream, wfd->file);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, "test");
 
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    expect_value(__wrap_fgets, __stream, wfd->file);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, NULL);
 
     will_return(__wrap_wpclose, 0x7f00);
@@ -293,16 +293,16 @@ static void test_audit_restart_close_exec_error(void **state) {
 
 static void test_audit_restart_close_error(void **state) {
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fgets, __stream, wfd->file);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, "test");
 
     expect_string(__wrap__mdebug1, formatted_msg, "auditd: test");
 
-    expect_value(__wrap_fgets, __stream, wfd->file);
+    expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, NULL);
 
     will_return(__wrap_wpclose, 0xff00);
