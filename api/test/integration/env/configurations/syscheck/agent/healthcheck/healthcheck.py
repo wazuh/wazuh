@@ -14,7 +14,8 @@ wazuh_log_file = '/var/ossec/logs/wazuh.log' if not agent_old else '/var/ossec/l
 
 def get_health():
     output = os.system(
-        f"grep -q 'INFO: (6009): File integrity monitoring scan ended.' {wazuh_log_file}")
+        f"grep -q 'wazuh-modulesd:syscheck: INFO: (6009): File integrity monitoring scan ended.' {wazuh_log_file}")
+
 
     if output == 0:
         return 0
