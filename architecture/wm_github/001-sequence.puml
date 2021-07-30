@@ -7,36 +7,28 @@
     participant main
     participant wmodules
     participant config
-    participant wmodules_github
     participant thread
     participant wm_github
-    participant mq_op
     end box
 
     activate main #Red
-    main -> wmodules : wm_config()
-    wmodules -> config : ReadConfig()
-    config -> config : read_main_elements()
-    config -> config : Read_Github()
-    config -> wmodules_github : wm_github_read()
-    config <-- wmodules_github
+    main -> wmodules : Setup module
+    wmodules -> config : Read configuration
+    config -> config : Store Github configuration
     wmodules <-- config
     main <-- wmodules
 
-    main -> thread ++ #Red : CreateThreadJoinable()
+    main -> thread ++ #Red : Launch Github thread
     main <-- thread
-    thread -> wm_github : wm_github_main (config) 
-    wm_github -> mq_op : StartMQ()
-    wm_github <-- mq_op
-
+    thread -> wm_github : Github module initialization
 
     database github_server
-    wm_github -> wm_github : wm_github_execute_scan (initial_scan TRUE)
+    wm_github -> wm_github : Execute first scan
     rnote over wm_github, github_server: **Scan Block**
     
-    loop while (TRUE)
-        wm_github -> wm_github : sleep (interval)
-        wm_github -> wm_github : wm_github_execute_scan (initial_scan FALSE)
+    loop
+        wm_github -> wm_github : Sleep
+        wm_github -> wm_github : Execute scan
         rnote over wm_github, github_server: **Scan Block**
     end
 @enduml
