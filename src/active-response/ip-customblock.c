@@ -13,7 +13,7 @@
 
 int main (int argc, char **argv) {
     (void)argc;
-    char log_msg[LOGSIZE_20480];
+    char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
 
@@ -55,15 +55,15 @@ int main (int argc, char **argv) {
         }
     }
 
-    char srcip_path[PATHSIZE_6144];
+    char srcip_path[COMMANDSIZE_4096];
     strcpy(srcip_path, IPBLOCK);
-    strncat(srcip_path, srcip, (PATHSIZE_6144 - strlen(IPBLOCK)) - 1);
+    strncat(srcip_path, srcip, (COMMANDSIZE_4096 - strlen(IPBLOCK)) - 1);
 
     if (action == ADD_COMMAND) {
         // Create directory
         if (mkdir_ex(IPBLOCK)) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
@@ -71,8 +71,8 @@ int main (int argc, char **argv) {
 
         FILE *fp = fopen(srcip_path, "a");
         if(fp == NULL) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 - 1, "Error creating %s file", srcip_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error creating %s file", srcip_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
@@ -81,8 +81,8 @@ int main (int argc, char **argv) {
 
     } else {
         if(remove(srcip_path) != 0) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 - 1, "Error deleting %s file", srcip_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "Error deleting %s file", srcip_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;

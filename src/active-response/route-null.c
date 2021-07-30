@@ -131,8 +131,8 @@ int main (int argc, char **argv) {
 
         FILE *fp = fopen(tmp_file, "r");
         if(fp != NULL) {
-            char output_buf[BUFFERSIZE_8192];
-            while (fgets(output_buf, BUFFERSIZE_8192, fp)) {
+            char output_buf[OS_MAXSTR];
+            while (fgets(output_buf, OS_MAXSTR, fp)) {
                 char *ptr = strchr(output_buf, ':');
                 if (ptr != NULL) {
                     os_free(gateway);

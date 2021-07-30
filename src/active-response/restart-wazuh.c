@@ -19,13 +19,13 @@ int main (int argc, char **argv) {
     }
 
 #ifndef WIN32
-    char log_msg[LOGSIZE_20480];
+    char log_msg[OS_MAXSTR];
     char *exec_cmd[3] = { "bin/wazuh-control", "restart", NULL };
 
     wfd_t *wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR);
     if (!wfd) {
-        memset(log_msg, '\0', LOGSIZE_20480);
-        snprintf(log_msg, LOGSIZE_20480 -1, "Error executing '%s': %s", *exec_cmd, strerror(errno));
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", *exec_cmd, strerror(errno));
         write_debug_file(argv[0], log_msg);
         return OS_INVALID;
     }

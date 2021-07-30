@@ -32,7 +32,7 @@ void write_debug_file(const char *ar_name, const char *msg) {
 
 int setup_and_check_message(char **argv, cJSON **message) {
     int ret = OS_INVALID;
-    char input[BUFFERSIZE_8192];
+    char input[OS_MAXSTR];
     cJSON *input_json = NULL;
 
 #ifndef WIN32
@@ -50,8 +50,8 @@ int setup_and_check_message(char **argv, cJSON **message) {
 
     write_debug_file(argv[0], "Starting");
 
-    memset(input, '\0', BUFFERSIZE_8192);
-    if (fgets(input, BUFFERSIZE_8192, stdin) == NULL) {
+    memset(input, '\0', OS_MAXSTR);
+    if (fgets(input, OS_MAXSTR, stdin) == NULL) {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
@@ -91,7 +91,7 @@ int setup_and_check_message(char **argv, cJSON **message) {
 int send_keys_and_check_message(char **argv, char **keys) {
     int ret = OS_INVALID;
     char *keys_msg;
-    char input[BUFFERSIZE_8192];
+    char input[OS_MAXSTR];
     cJSON *input_json = NULL;
 
     // Build and send message with keys
@@ -105,8 +105,8 @@ int send_keys_and_check_message(char **argv, char **keys) {
     os_free(keys_msg);
 
     // Read the response of previous message
-    memset(input, '\0', BUFFERSIZE_8192);
-    if (fgets(input, BUFFERSIZE_8192, stdin) == NULL) {
+    memset(input, '\0', OS_MAXSTR);
+    if (fgets(input, OS_MAXSTR, stdin) == NULL) {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
@@ -379,7 +379,7 @@ static char* build_json_keys_message(const char *ar_name, char **keys) {
 #ifndef WIN32
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
-    char log_msg[LOGSIZE_20480];
+    char log_msg[OS_MAXSTR];
     int i=0;
     int max_iteration = 50;
     int saved_pid = -1;
@@ -439,8 +439,8 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
             if (!wfd) {
                 write_debug_file(log_path, "Unable to run pgrep");
             } else {
-                char output_buf[BUFFERSIZE_8192];
-                while (fgets(output_buf, BUFFERSIZE_8192, wfd->file_out)) {
+                char output_buf[OS_MAXSTR];
+                while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
                     int pid = atoi(output_buf);
                     if (pid == current_pid) {
                         char pid_str[10];
@@ -453,8 +453,8 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                             write_debug_file(log_path, "Unable to run kill");
                         } else {
                             wpclose(wfd2);
-                            memset(log_msg, '\0', LOGSIZE_20480);
-                            snprintf(log_msg, LOGSIZE_20480 -1, "Killed process %d holding lock.", pid);
+                            memset(log_msg, '\0', OS_MAXSTR);
+                            snprintf(log_msg, OS_MAXSTR -1, "Killed process %d holding lock.", pid);
                             write_debug_file(log_path, log_msg);
                             kill = true;
                             unlock(lock_path, log_path);
@@ -468,8 +468,8 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
             }
 
             if (!kill) {
-                memset(log_msg, '\0', LOGSIZE_20480);
-                snprintf(log_msg, LOGSIZE_20480 -1, "Unable to kill process %d holding lock.", current_pid);
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to kill process %d holding lock.", current_pid);
                 write_debug_file(log_path, log_msg);
 
                 // Unlocking

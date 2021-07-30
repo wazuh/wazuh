@@ -17,11 +17,11 @@
 int main (int argc, char **argv) {
     (void)argc;
     char hosts_deny_rule[COMMANDSIZE_4096];
-    char hosts_deny_path[PATHSIZE_6144];
-    char log_msg[LOGSIZE_20480];
-    char lock_path[PATHSIZE_6144];
-    char lock_pid_path[PATHSIZE_6144];
-    char output_buf[BUFFERSIZE_8192];
+    char hosts_deny_path[COMMANDSIZE_4096];
+    char log_msg[OS_MAXSTR];
+    char lock_path[COMMANDSIZE_4096];
+    char lock_pid_path[COMMANDSIZE_4096];
+    char output_buf[OS_MAXSTR - 25];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -66,8 +66,8 @@ int main (int argc, char **argv) {
     }
 
     if (!strstr(srcip, ".") && !strstr(srcip, ":")) {
-        memset(log_msg, '\0', LOGSIZE_20480);
-        snprintf(log_msg, LOGSIZE_20480 -1, "Unable to run active response (invalid IP: '%s')", srcip);
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Unable to run active response (invalid IP: '%s')", srcip);
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -80,7 +80,7 @@ int main (int argc, char **argv) {
     }
 
     memset(hosts_deny_rule, '\0', COMMANDSIZE_4096);
-    memset(hosts_deny_path, '\0', PATHSIZE_6144);
+    memset(hosts_deny_path, '\0', COMMANDSIZE_4096);
     if (!strcmp("FreeBSD", uname_buffer.sysname)) {
         snprintf(hosts_deny_rule, COMMANDSIZE_4096 -1, "ALL : %s : deny", srcip);
         strcpy(hosts_deny_path, FREEBSD_HOSTS_DENY_PATH);
@@ -89,16 +89,16 @@ int main (int argc, char **argv) {
         strcpy(hosts_deny_path, DEFAULT_HOSTS_DENY_PATH);
     }
 
-    memset(lock_path, '\0', PATHSIZE_6144);
-    memset(lock_pid_path, '\0', PATHSIZE_6144);
-    snprintf(lock_path, PATHSIZE_6144 - 1, "%s", LOCK_PATH);
-    snprintf(lock_pid_path, PATHSIZE_6144 - 1, "%s", LOCK_FILE);
+    memset(lock_path, '\0', COMMANDSIZE_4096);
+    memset(lock_pid_path, '\0', COMMANDSIZE_4096);
+    snprintf(lock_path, COMMANDSIZE_4096 - 1, "%s", LOCK_PATH);
+    snprintf(lock_pid_path, COMMANDSIZE_4096 - 1, "%s", LOCK_FILE);
 
     if (action == ADD_COMMAND) {
         // Taking lock
         if (lock(lock_path, lock_pid_path, argv[0], basename(argv[0])) == OS_INVALID) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Unable to take lock. End.");
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Unable to take lock. End.");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
@@ -106,8 +106,8 @@ int main (int argc, char **argv) {
 
         host_deny_fp = fopen(hosts_deny_path, "r");
         if (!host_deny_fp) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Could not open file '%s'", hosts_deny_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", hosts_deny_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             unlock(lock_path, argv[0]);
@@ -115,11 +115,11 @@ int main (int argc, char **argv) {
         }
 
         // Looking for duplication
-        memset(output_buf, '\0', BUFFERSIZE_8192);
-        while (fgets(output_buf, BUFFERSIZE_8192, host_deny_fp)) {
+        memset(output_buf, '\0', OS_MAXSTR - 25);
+        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
             if (strstr(output_buf, srcip) != NULL) {
-                memset(log_msg, '\0', LOGSIZE_20480);
-                snprintf(log_msg, LOGSIZE_20480 -1, "IP %s already exists on '%s'", srcip, hosts_deny_path);
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "IP %s already exists on '%s'", srcip, hosts_deny_path);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 fclose(host_deny_fp);
@@ -132,8 +132,8 @@ int main (int argc, char **argv) {
         // Open again to append rule
         host_deny_fp = fopen(hosts_deny_path, "a");
         if (!host_deny_fp) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Could not open file '%s'", hosts_deny_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", hosts_deny_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             unlock(lock_path, argv[0]);
@@ -141,8 +141,8 @@ int main (int argc, char **argv) {
         }
 
         if (fprintf(host_deny_fp, "%s\n", hosts_deny_rule) <= 0) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Unable to write rule '%s' on '%s'", hosts_deny_rule, hosts_deny_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Unable to write rule '%s' on '%s'", hosts_deny_rule, hosts_deny_path);
             write_debug_file(argv[0], log_msg);
         }
         fclose(host_deny_fp);
@@ -151,15 +151,15 @@ int main (int argc, char **argv) {
 
     } else {
         FILE *temp_host_deny_fp = NULL;
-        char temp_hosts_deny_path[PATHSIZE_6144];
+        char temp_hosts_deny_path[COMMANDSIZE_4096];
 
-        memset(temp_hosts_deny_path, '\0', PATHSIZE_6144);
-        snprintf(temp_hosts_deny_path, PATHSIZE_6144 - 1, "%s", "active-response/bin/temp-hosts-deny");
+        memset(temp_hosts_deny_path, '\0', COMMANDSIZE_4096);
+        snprintf(temp_hosts_deny_path, COMMANDSIZE_4096 - 1, "%s", "active-response/bin/temp-hosts-deny");
 
         // Taking lock
         if (lock(lock_path, lock_pid_path, argv[0], basename(argv[0])) == OS_INVALID) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Unable to take lock. End.");
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Unable to take lock. End.");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
@@ -169,8 +169,8 @@ int main (int argc, char **argv) {
 
         host_deny_fp = fopen(hosts_deny_path, "r");
         if (!host_deny_fp) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Could not open file '%s'", hosts_deny_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", hosts_deny_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             unlock(lock_path, argv[0]);
@@ -180,8 +180,8 @@ int main (int argc, char **argv) {
         // Create the temporary file
         temp_host_deny_fp = fopen(temp_hosts_deny_path, "w");
         if (!temp_host_deny_fp) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Could not open file '%s'", temp_hosts_deny_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", temp_hosts_deny_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             fclose(host_deny_fp);
@@ -189,26 +189,26 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
 
-        memset(output_buf, '\0', BUFFERSIZE_8192);
-        while (fgets(output_buf, BUFFERSIZE_8192, host_deny_fp)) {
+        memset(output_buf, '\0', OS_MAXSTR - 25);
+        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
             if (strstr(output_buf, srcip) == NULL) {
                 if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf)) {
-                    memset(log_msg, '\0', LOGSIZE_20480);
-                    snprintf(log_msg, LOGSIZE_20480 -1, "Unable to write line '%s'", output_buf);
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "Unable to write line '%s'", output_buf);
                     write_debug_file(argv[0], log_msg);
                     write_fail = true;
                     break;
                 }
             }
-            memset(output_buf, '\0', BUFFERSIZE_8192);
+            memset(output_buf, '\0', OS_MAXSTR - 25);
         }
 
         fclose(host_deny_fp);
         fclose(temp_host_deny_fp);
 
         if (write_fail || rename(temp_hosts_deny_path, hosts_deny_path) != 0) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 -1, "Unable to write file '%s'", hosts_deny_path);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Unable to write file '%s'", hosts_deny_path);
             write_debug_file(argv[0], log_msg);
         }
 

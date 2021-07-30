@@ -12,7 +12,7 @@
 int main (int argc, char **argv) {
     (void)argc;
     char args[COMMANDSIZE_4096];
-    char log_msg[LOGSIZE_20480];
+    char log_msg[OS_MAXSTR];
     char *command_ex = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
@@ -71,8 +71,8 @@ int main (int argc, char **argv) {
     if (!strcmp("Linux", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname)) {
         // Checking if passwd is present
         if (access(PASSWD, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 - 1, "The passwd file '%s' is not accessible: %s (%d)", PASSWD, strerror(errno), errno);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "The passwd file '%s' is not accessible: %s (%d)", PASSWD, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -89,8 +89,8 @@ int main (int argc, char **argv) {
     } else if (!strcmp("AIX", uname_buffer.sysname)) {
         // Checking if chuser is present
         if (access(CHUSER, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE_20480);
-            snprintf(log_msg, LOGSIZE_20480 - 1, "The chuser file '%s' is not accessible: %s (%d)", CHUSER, strerror(errno), errno);
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "The chuser file '%s' is not accessible: %s (%d)", CHUSER, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
@@ -119,8 +119,8 @@ int main (int argc, char **argv) {
 
     wfd_t *wfd = wpopenv(command_ex, exec_cmd1, W_BIND_STDERR);
     if (!wfd) {
-        memset(log_msg, '\0', LOGSIZE_20480);
-        snprintf(log_msg, LOGSIZE_20480 -1, "Error executing '%s': %s", command_ex, strerror(errno));
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", command_ex, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         os_free(command_ex);

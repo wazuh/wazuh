@@ -19,9 +19,6 @@
 #define PASSWD "/usr/bin/passwd"
 #define CHUSER "/usr/bin/chuser"
 
-#define LOGSIZE_20480 20480
-#define BUFFERSIZE_8192 8192
-#define PATHSIZE_6144 6144
 #define COMMANDSIZE_4096 4096
 
 #define VERSION 1
