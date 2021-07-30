@@ -11,62 +11,54 @@ end box
 
 activate wm_office365
 loop for every tenant
-    alt not initial_scan or not config only_future_events
-        wm_office365 -> wm_office365 ++ #red : wm_office365_get_access_token()
-        wm_office365 -> url ++ #red : wurl_http_request()
+    alt not initial scan or not config only future events
+        wm_office365 -> wm_office365 ++ #red : Get Access Token
+        wm_office365 -> url ++ #red : Execute token request
         database office365_API
         url --> office365_API ++ #red : HTTP_REQUEST
         office365_API --> url -- #red : response
-        url --> wm_office365 : response
-        wm_office365 -> url : wurl_free_response
-        wm_office365 <-- url -- #red
+        url --> wm_office365 -- #red: token_response
         deactivate wm_office365
     end
 
     loop for every subscription
-        wm_office365 -> wmodules ++ #red : wm_state_io(READ)
+        wm_office365 -> wmodules ++ #red : Read bookmark
         wm_office365 <- wmodules -- #red
 
         alt no previous timestamp
-            wm_office365 -> wmodules ++ #red: wm_state_io(WRITE)
+            wm_office365 -> wmodules ++ #red: Write bookmark
             wm_office365 <- wmodules -- #red
             rnote over wm_office365, wm_office365: **continue**
         end
 
-        wm_office365 -> wm_office365 ++ #red: wm_office365_manage_subscription()
-        wm_office365 -> url ++ #red: wurl_http_request()
+        wm_office365 -> wm_office365 ++ #red: Start subscription
+        wm_office365 -> url ++ #red: Execute subscription request
         url --> office365_API ++ #red : HTTP_REQUEST
         office365_API --> url -- #red : response
-        url --> wm_office365 : subscription_response
-        wm_office365 -> url : wurl_free_response
-        wm_office365 <-- url -- #red
+        url --> wm_office365 -- #red: subscription_response
         deactivate wm_office365
 
         loop scan_time 
             rnote over wm_office365, wm_office365: The scan interval can be a maximum of 24 hours \nbut the user can configure a longer interval.\nSuccessive scans are performed
             loop !scan_finished
-                wm_office365 -> wm_office365 ++ #red: wm_office365_get_content_blobs()
-                wm_office365 -> url ++ #red: wurl_http_request()
+                wm_office365 -> wm_office365 ++ #red: Get content blobs
+                wm_office365 -> url ++ #red: Execute content blobs request
                 url --> office365_API ++ #red : HTTP_REQUEST
                 office365_API --> url -- #red : response
-                url --> wm_office365 : blobs_response
-                wm_office365 -> wmodules ++ #red : wm_read_http_header_element()
+                url --> wm_office365 -- #red : blobs_response
+                wm_office365 -> wmodules ++ #red : Read header from blob response
                 wm_office365 <- wmodules -- #red
-                wm_office365 -> url : wurl_free_response
-                wm_office365 <-- url -- #red
                 deactivate wm_office365
                 alt if blobs list
                     loop for every blob
-                        wm_office365 -> wm_office365 ++ #red : wm_office365_get_logs_from_blob()
-                        wm_office365 -> url ++ #red : wurl_http_request()
+                        wm_office365 -> wm_office365 ++ #red : Get logs from blob
+                        wm_office365 -> url ++ #red : Execute logs request
                         url --> office365_API ++ #red : HTTP_REQUEST
                         office365_API --> url -- #red : response
-                        url --> wm_office365 : logs_response
-                        wm_office365 -> url : wurl_free_response
-                        wm_office365 <-- url -- #red
+                        url --> wm_office365 -- #red: logs_response
                         deactivate wm_office365
                         loop for every log
-                            wm_office365 -> wmodules ++ #red : wm_sendmsg(event)
+                            wm_office365 -> wmodules ++ #red : Send log to be processed
                             wm_office365 <- wmodules -- #red
                         end
                     end
@@ -74,14 +66,14 @@ loop for every tenant
             end
 
             alt if scan fails
-                wm_office365 -> wm_office365 ++ #red: wm_office365_scan_failure_action()
+                wm_office365 -> wm_office365 ++ #red: Take action when scan fails
                 deactivate wm_office365
-                alt if tenant_fail == 3
-                    wm_office365 -> wmodules : wm_sendmsg (fail message)
-                    wm_office365 <-- wmodules : wm_sendmsg
+                alt if tenant scan fails three times
+                    wm_office365 -> wmodules ++ #red: Send event with scan error log
+                    wm_office365 <-- wmodules -- #red:
                 end
             else
-                wm_office365 -> wmodules ++ #red : wm_state_io(WRITE)
+                wm_office365 -> wmodules ++ #red : Write bookmark
                 wm_office365 <- wmodules -- #red
                 deactivate wm_office365
             end
