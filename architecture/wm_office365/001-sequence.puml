@@ -34,7 +34,7 @@ database office365_API
 wm_office365 -> wm_office365 : wm_office365_execute_scan (initial_scan TRUE)
 rnote over wm_office365, office365_API: **Scan Block**
 loop
-    wm_office365 -> time : sleep(office365_config->interval)
+    wm_office365 -> wm_office365 : sleep(office365_config->interval)
     wm_office365 -> wm_office365 : wm_office365_execute_scan (initial_scan FALSE)
     rnote over wm_office365, office365_API: **Scan Block**
 end
