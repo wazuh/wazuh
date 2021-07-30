@@ -14,7 +14,7 @@ wmodules++
 sysco++
 wmodules -> sysco : main()
 sysco -> dbsync++ : resetDataBase()
-sysco <- dbsync--
+sysco <-- dbsync--
 == scan ==
 loop 
 sysco -> info++ : getData()
@@ -27,7 +27,7 @@ Supported data:
 5- network info.
 6- ports info.
 end note
-sysco <- info-- : data
+sysco <-- info-- : data
 sysco -> dbsync++ : syncRows(data)
 dbsync -> sysco++ : notifyDelta(delta)
 note right
@@ -39,14 +39,14 @@ sysco ->X manager : sendDelta(delta)
 note left
 Sending deltas are disabled.
 end note
-sysco -> dbsync
+sysco --> dbsync
 sysco--
-sysco <- dbsync--
+sysco <-- dbsync--
 sysco -> dbsync++ : getDeletedItems()
-dbsync -> sysco++ : deletedItems
+dbsync -> sysco++ : notifyDelta(deletedItems)
 sysco ->X manager : sendDelta(deletedItems)
-dbsync <- sysco--
-sysco <- dbsync--
+dbsync <-- sysco--
+sysco <-- dbsync--
 
 sysco -> rsync++ : startSync()
 rsync -> dbsync++ : getDbData()
@@ -59,7 +59,7 @@ Supported data:
 5- network info.
 6- ports info.
 end note
-rsync <- dbsync-- : dbData
+rsync <-- dbsync-- : dbData
 rsync -> rsync : syncData = buildSyncData(dbData)
 rsync -> sysco++ : notifySync(syncData)
 note right
@@ -68,8 +68,8 @@ Sync data can be:
 2- integrity check clear.
 end note
 sysco -> manager : sendSyncData(syncData)
-rsync <- sysco--
-sysco <- rsync--
+rsync <-- sysco--
+sysco <-- rsync--
 end
 == sync ==
 manager -> sysco : syncMessage(syncData)
@@ -93,7 +93,7 @@ Supported data:
 5- network info.
 6- ports info.
 end note
-rsync <- dbsync-- : dbData
+rsync <-- dbsync-- : dbData
 rsync -> rsync : syncResult = buildSyncResult(dbData)
 rsync -> sysco++ : notifySyncResult(syncResult)
 note right
@@ -103,6 +103,6 @@ Sync results can be:
 3- state.
 end note
 sysco -> manager : sendSyncResult(syncResult)
-rsync <- sysco--
-sysco <- rsync--
+rsync <-- sysco--
+sysco <-- rsync--
 @enduml
