@@ -1094,7 +1094,7 @@ static void DumpLogstats()
 
 
     /* Creat the logfile name */
-    snprintf(logfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
+    snprintf(logfile, OS_FLSIZE, "%s/%d/%s/wazuh-%s-%02d.log",
              STATSAVED,
              prev_year,
              prev_month,
