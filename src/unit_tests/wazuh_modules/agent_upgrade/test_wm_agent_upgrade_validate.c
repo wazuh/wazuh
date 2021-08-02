@@ -198,7 +198,7 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_darwin(void **state)
 void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state)
 {
     (void) state;
-    char *platform = "solaris";
+    char *platform = "sunos";
     char *os_major = "11";
     char *os_minor = "4";
     char *arch = "x64";
