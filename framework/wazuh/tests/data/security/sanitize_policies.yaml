@@ -5,7 +5,6 @@ policies:
       resources:
         - "agent:id:001"
       effect: "allow"
-    result: True
 
   - policy:
       actions:
@@ -13,7 +12,6 @@ policies:
       resources:
         - "AgENt:ID:001"
       effect: "DeNy"
-    result: True
 
   - policy:
       actions:
@@ -21,23 +19,8 @@ policies:
       resources:
         - "GRoup:ID:CAPS_name"
       effect: "aLLoW"
-    result: True
 
   - policy:
       resources:
         - "agent:id:001"
       effect: "allow"
-    result: False
-
-  - policy:
-      actions:
-        - "agent:read"
-      effect: "allow"
-    result: False
-
-  - policy:
-      actions:
-        - "agent:read"
-      resources:
-        - "agent:id:001"
-    result: False

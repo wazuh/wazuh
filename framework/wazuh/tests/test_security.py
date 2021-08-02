@@ -346,10 +346,9 @@ def test_migrate_default_policies(new_default_resources):
 def test_sanitize_rbac_policy(db_setup, policy_case):
     _, _, core_security = db_setup
     policy = policy_case['policy']
-    result = core_security.sanitize_rbac_policy(policy)
-    assert result == policy_case['result']
-    if result:
-        for element in ('actions', 'resources', 'effect'):
+    core_security.sanitize_rbac_policy(policy)
+    for element in ('actions', 'resources', 'effect'):
+        if element in policy:
             if element != 'resources':
                 assert all(p.islower() for p in policy[element])
             else:

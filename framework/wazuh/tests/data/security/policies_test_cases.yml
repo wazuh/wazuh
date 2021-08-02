@@ -242,20 +242,6 @@ update_policy:
           - 950
   - params:
       policy_id:
-        - 105
-      name: invalid_policy
-      policy:
-        actions:
-          - agent:delete
-        resources:
-          - agent
-    result:
-      affected_items: []
-      failed_items:
-        "4006":
-          - 105
-  - params:
-      policy_id:
         - 103
       name: normalPolicy
       policy:

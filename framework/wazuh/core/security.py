@@ -110,11 +110,12 @@ def revoke_tokens():
 
 
 def sanitize_rbac_policy(policy):
-    try:
-        # Sanitize actions
+    # Sanitize actions
+    if 'actions' in policy:
         policy['actions'] = [action for action in map(str.lower, policy['actions'])]
 
-        # Sanitize resources
+    # Sanitize resources
+    if 'resources' in policy:
         for i, resource in enumerate(policy['resources']):
             sanitized_resources = list()
             for nested_resource in resource.split('&'):
@@ -123,9 +124,6 @@ def sanitize_rbac_policy(policy):
 
             policy['resources'][i] = '&'.join(sanitized_resources)
 
-        # Sanitize effect
+    # Sanitize effect
+    if 'effect' in policy:
         policy['effect'] = policy['effect'].lower()
-
-    except (IndexError, KeyError):
-        return False
-    return True
