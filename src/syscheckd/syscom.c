@@ -136,7 +136,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                mterror_exit(FIM_CRITICAL_ERROR_SELECT, "syscom_main()", strerror(errno));
+                mterror_exit(SYSCHECK_LOGTAG, FIM_CRITICAL_ERROR_SELECT, "syscom_main()", strerror(errno));
             }
 
             continue;
