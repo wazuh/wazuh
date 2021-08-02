@@ -231,6 +231,42 @@ stages:
               roles: !anything
           total_affected_items: 1
 
+  # PUT /security/policies/{policy_id}
+  - name: Modify a policy in the system (case insensitive)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/104"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        policy:
+          actions:
+            - "aGenT:dELEte"
+          resources:
+            - "aGeNt:ID:001"
+            - "AGENT:iD:002"
+            - "agEnT:Id:003"
+          effect: "dEnY"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: 104
+              name: testModifiedPolicy2
+              policy:
+                actions:
+                  - agent:delete
+                effect: deny
+                resources:
+                  - agent:id:001
+                  - agent:id:002
+                  - agent:id:003
+              roles: !anything
+          total_affected_items: 1
+
   # PUT /security/policies/{non-existent policy_id}
   - name: Modify a non-existent policy in the system
     request:
