@@ -364,6 +364,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if req_id in self.server.pending_api_requests:
             self.server.pending_api_requests[req_id]['Response'] = self.in_str[string_id].payload.decode()
             self.server.pending_api_requests[req_id]['Event'].set()
+            # Remove the string after using it
+            self.in_str.pop(string_id, None)
             return b'ok', b'Forwarded response'
         elif req_id in self.server.local_server.clients:
             asyncio.create_task(self.forward_dapi_response(data))
