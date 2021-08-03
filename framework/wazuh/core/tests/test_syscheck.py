@@ -15,7 +15,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 @pytest.mark.parametrize('agent', ['002', '080'])
 @patch("wazuh.core.syscheck.WazuhDBBackend")
 @patch("wazuh.core.syscheck.WazuhDBQuery.__init__")
-def test_WazuhDBQuerySyscheck_init(mock_wdbquery, mock_backend, agent):
+def test_wazuh_db_query_syscheck_init(mock_wdbquery, mock_backend, agent):
     """Test if WazuhDBQuery and WazuhDBBackend are called with the expected parameters.
 
     Parameters
@@ -30,7 +30,7 @@ def test_WazuhDBQuerySyscheck_init(mock_wdbquery, mock_backend, agent):
 
 
 @patch("wazuh.core.syscheck.WazuhDBBackend")
-def test_WazuhDBSyscheck_format_data_into_dictionary(mock_backend):
+def test_wazuh_db_syscheck_format_data_into_dictionary(mock_backend):
     """Test if _format_data_into_dictionary() returns the expected element."""
     test = syscheck.WazuhDBQuerySyscheck('002', offset=0, limit=1000, sort=None, search='test',
                                          select=['end', 'start', 'module', 'date', 'mtime'],
