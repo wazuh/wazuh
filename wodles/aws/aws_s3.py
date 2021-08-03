@@ -224,7 +224,7 @@ class WazuhIntegration:
             conn_args['profile_name'] = profile
 
         # set region name
-        if region and service_name == 'inspector':
+        if region and service_name in ('inspector', 'cloudwatchlogs'):
             conn_args['region_name'] = region
         else:
             # it is necessary to set region_name for GovCloud regions
@@ -232,7 +232,7 @@ class WazuhIntegration:
                 else None
 
         boto_session = boto3.Session(**conn_args)
-
+        service_name = "logs" if service_name == "cloudwatchlogs" else service_name
         # If using a role, create session using that
         try:
             if iam_role_arn:
@@ -245,10 +245,7 @@ class WazuhIntegration:
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
                                             region_name=conn_args.get('region_name')
                                             )
-                client = sts_session.client(service_name='logs' if service_name == 'cloudwatchlogs' else service_name)
-            elif service_name == 'cloudwatchlogs':
-                client = boto3.client('logs', region_name=region,
-                                      aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+                client = sts_session.client(service_name=service_name)
             else:
                 client = boto_session.client(service_name=service_name)
         except botocore.exceptions.ClientError as e:
