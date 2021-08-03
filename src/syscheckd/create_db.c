@@ -1720,6 +1720,7 @@ void update_wildcards_config() {
     removed_entries = OSList_Create();
     if (removed_entries == NULL) {
         mterror(SYSCHECK_LOGTAG, MEM_ERROR, errno, strerror(errno));
+        w_rwlock_unlock(&syscheck.directories_lock);
         return;
     }
     OSList_SetFreeDataPointer(removed_entries, (void (*)(void *))free_directory);
