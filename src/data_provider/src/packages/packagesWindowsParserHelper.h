@@ -55,7 +55,7 @@ namespace PackageWindowsHelper
                         {
                             hotfixes.insert(std::move(hfValue));
                         }
-                        else if(package.find("RollupFix") != std::string::npos)
+                        else if (package.find("RollupFix") != std::string::npos)
                         {
                             std::string value;
                             Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
