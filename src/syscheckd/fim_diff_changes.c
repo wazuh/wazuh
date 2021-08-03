@@ -855,7 +855,7 @@ char* filter(const char *string) {
         clen = strcspn(ptr + 1, "\"\\$`");
         out = realloc(out, len + clen + 3);
         if(!out){
-            mterror_exit(MEM_ERROR, errno, strerror(errno)); // LCOV_EXCL_LINE
+            mterror_exit(SYSCHECK_LOGTAG, MEM_ERROR, errno, strerror(errno)); // LCOV_EXCL_LINE
         }
         out[len] = '\\';
         out[len + 1] = *ptr;
