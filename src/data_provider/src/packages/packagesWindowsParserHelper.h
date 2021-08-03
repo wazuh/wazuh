@@ -50,14 +50,22 @@ namespace PackageWindowsHelper
                 {
                     if (Utils::startsWith(package, "Package_"))
                     {
-                        std::string value;
-                        Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
-                        if (packageReg.string("InstallLocation", value))
+                        auto hfValue { extractHFValue(package) };
+                        if (!hfValue.empty())
                         {
-                            auto hfValue { extractHFValue(value) };
-                            if (!hfValue.empty())
+                            hotfixes.insert(std::move(hfValue));
+                        }
+                        else if (package.find("RollupFix") != std::string::npos)
+                        {
+                            std::string value;
+                            Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
+                            if (packageReg.string("InstallLocation", value))
                             {
-                                hotfixes.insert(std::move(hfValue));
+                                auto rollUpValue { extractHFValue(value) };
+                                if (!rollUpValue.empty())
+                                {
+                                    hotfixes.insert(std::move(rollUpValue));
+                                }
                             }
                         }
                     }
