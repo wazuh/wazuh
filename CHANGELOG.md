@@ -77,6 +77,11 @@ All notable changes to this project will be documented in this file.
 
 - **External dependencies:**
   - Upgrade boto3, botocore, requests, s3transfer and urllib3 Python dependencies to latest stable versions. ([#8886](https://github.com/wazuh/wazuh/pull/8886))
+  - Update Python to latest stable version (3.9.6). ([#9389](https://github.com/wazuh/wazuh/pull/9389))
+  - Upgrade GCP dependencies and pip to latest stable version.
+  - Upgrade python-jose to 3.1.0.
+  - Add tabulate dependency.
+
 
 ### Fixed
 
@@ -124,6 +129,7 @@ All notable changes to this project will be documented in this file.
   - Fixed a problem in the manager that left remote counter and agent group files when removing an agent. ([#8630](https://github.com/wazuh/wazuh/pull/8630))
   - Fixed an error in the agent on Windows that could corrupt the internal FIM databas due to disabling the disk sync. ([#8905](https://github.com/wazuh/wazuh/pull/8905))
   - Fixed a crash in Logcollector on Windows when handling the position of the file. ([#9364](https://github.com/wazuh/wazuh/pull/9364))
+  - Fixed a buffer underflow hazard in Remoted when handling input messages. ([#9285](https://github.com/wazuh/wazuh/pull/9285))
 
 - **API:**
   - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
