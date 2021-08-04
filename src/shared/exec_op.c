@@ -131,7 +131,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         mdebug2("path = '%s', command = '%s'", path, lpCommandLine);
     }
 
-    if (!CreateProcess(path, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
+    if (!CreateProcess(NULL, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
         mdebug1("CreateProcess(): %ld", GetLastError());
 
         if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
