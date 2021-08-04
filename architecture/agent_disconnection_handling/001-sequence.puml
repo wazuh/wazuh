@@ -19,7 +19,7 @@ loop every second
     alt every ""agents_disconnection_time"" seconds
         monitord -> wazuhdb : disconnect expired agents
         note over monitord, wazuhdb
-            Expired mean that agent's last keepalive was older than
+            Expired means that agent's last keepalive was older than
             current time minus ""agents_disconnection_time""
         end note
         monitord <-- wazuhdb : disconnected agents list
