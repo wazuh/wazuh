@@ -41,3 +41,59 @@ Jan 22 18:34:00 filterlog: 65,,,0,vmx1,match,pass,out,4,0x0,,63,21011,0,none,1,i
   <regex offset="after_regex">datalength=(\S*)|(\d*)</regex>
   <order>length</order>
 </decoder>
+
+<!--
+###########################
+
+- pfSense version   : 2.5.2
+- Logging Format    : RFC5424
+
+###########################
+
+Extracted Fields:
+
+TCP: TOS,ECN,TTL,ID,Offset,Flags,Protocol ID,Protocol text ,Length,Source IP,Destination IP,Source Port,Destination Port,Data Length,TCP Flags,Sequence Number,ACK,Window,URG,Options
+
+UDP: TOS,ECN,TTL,ID,Offset,Flags,Protocol ID,Protocol text ,Length,Source IP,Destination IP,Source Port,Destination Port,Data Length
+
+###########################
+
+Sample Logs: 
+    
+    -TCP:
+        1 2021-08-04T06:59:07.691848+04:00 BBFW01.posoiden.local filterlog 48906 - - 98,,,1627710987,vmx1,match,pass,in,4,0x2,0,128,848,0,DF,6,tcp,52,10.10.10.100,13.235.226.255,1029,443,0,SEC,3291118522,,8192,,mss;nop;wscale;nop;nop;sackOK
+
+    -UDP:
+        1 2021-08-03T06:30:54.540152+04:00 BBFW01.posoiden.local filterlog 48906 - - 120,,,1626889852,ovpns2,match,pass,in,4,0x0,,128,48899,0,none,17,udp,68,10.10.100.100,10.10.10.1,59128,53,48
+
+###########################
+-->
+
+<decoder name="pfsense-firewall">
+    <prematch>^\d\s\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d</prematch>
+</decoder>
+
+<decoder name="pfsense-extract">
+   <parent>pfsense-firewall</parent>
+   <regex>(\d\d\d\d-\d\d-\d\d)T(\S*)\s(BBFW01.posoiden.local)\s(\w+)</regex>
+   <order>Date, Time, Hostname, LogType</order>
+</decoder>
+
+<!--
+    UDP Log decoder
+-->
+<decoder name="pfsense-extract">
+   <parent>pfsense-firewall</parent>
+   <regex>\S*,,,(\d+),(\S*),(\w+),(\w+),(\w+),(4),(\w+),,(\d+),(\d+),(\d+),(\w+),(17),(udp),(\d+),(\d+.\d+.\d+.\d+),(\d+.\d+.\d+.\d+),(\d+),(\d+),(\d+)</regex>
+    <order>tracker, interface, reason, action, direction, ip-version, tos, ttl, id, offset, flags, protocol-id, protocol-text, length, srcip, dstip, srcport, dstport, data-length</order>
+</decoder>
+
+<!--
+    TCP Log decoder
+-->
+
+<decoder name="pfsense-extract">
+   <parent>pfsense-firewall</parent>
+   <regex>\S*,,,(\d+),(\S*),(\w+),(\w+),(\w+),(4),(\w+),(\d+),(\d+),(\d+),(\d+),(\w+),(6),(tcp),(\d+),(\d+.\d+.\d+.\d+),(\d+.\d+.\d+.\d+),(\d+),(\d+),(\d+),(\w+),(\d+),(\S*),(\S*),(\S*),(\S*)</regex>
+   <order>tracker, interface, reason, action, direction, ip-version, tos, ttl, id, offset, flags, protocol-id, protocol-text, length, srcip, dstip, srcport, dstport, data-length, tcp-flags, seq-number, ack, window, urg, options</order>
+</decoder>
