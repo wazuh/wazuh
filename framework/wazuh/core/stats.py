@@ -8,8 +8,7 @@ import os
 from datetime import datetime
 from io import StringIO
 
-import wazuh.core.agent as agent_core
-from wazuh.core import common
+from wazuh.core import common, agent
 from wazuh.core.exception import (WazuhError, WazuhException,
                                   WazuhInternalError, WazuhResourceNotFound)
 from wazuh.core.wazuh_socket import WazuhSocket
@@ -42,7 +41,7 @@ def hourly_():
 
 def weekly_():
     # 0..6 => Sunday..Saturday
-    day_results = []
+    weekly_results = []
     for i in range(7):
         hours = []
         interactions = 0
@@ -62,9 +61,9 @@ def weekly_():
                 if i < 24:
                     hours.append(0)
 
-        day_results.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
+        weekly_results.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
 
-    return day_results
+    return weekly_results
 
 
 def totals_(date):
@@ -96,7 +95,7 @@ def totals_(date):
                 if len(data) in (0, 1):
                     continue
                 else:
-                    return (True), affected
+                    return True, affected
 
             hour = int(data[0])
             total_alerts = int(data[1])
@@ -114,12 +113,12 @@ def totals_(date):
                  })
             alerts = []
 
-    return (False), affected
+    return False, affected
 
 
 def get_daemons_stats_(filename):
     try:
-        with open(filename, 'r') as f:
+        with open(filename, mode='r') as f:
             input_file = str("[root]\n" + f.read())
         fp = StringIO(input_file)
         config = configparser.RawConfigParser()
@@ -139,12 +138,12 @@ def get_daemons_stats_(filename):
 def get_agents_component_stats_json_(agent_list, component):
     failed = []
     affected = []
-    system_agents = agent_core.get_agents_info()
+    system_agents = agent.get_agents_info()
     for agent_id in agent_list:
         try:
             if agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
-            affected.append(agent_core.Agent(agent_id).get_stats(component=component))
+            affected.append(agent.Agent(agent_id).get_stats(component=component))
         except WazuhException as e:
             failed.append((agent_id, e))
 
