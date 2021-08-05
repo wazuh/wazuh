@@ -5,9 +5,6 @@
 WAZUH_HOME=${1}
 WAZUH_VERSION=${2}
 
-# Generating Backup
-BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
-
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ${WAZUH_HOME}/logs/upgrade.log
 chmod +x ${WAZUH_HOME}/var/upgrade/install.sh
@@ -40,6 +37,7 @@ else
         CONTROL="$WAZUH_HOME/bin/ossec-control"
     fi
 
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Trying to start the agent on its current state..." >> ${WAZUH_HOME}/logs/upgrade.log
     $CONTROL start >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
     echo -ne "2" > ${WAZUH_HOME}/var/upgrade/upgrade_result
 

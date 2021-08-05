@@ -81,6 +81,7 @@ write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgr
 If ($status -eq $null)
 {
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    write-output "$(Get-Date -format u) - Upgrade failed. Agent installation may be broken." >> .\upgrade\upgrade.log
 }
 Else
 {
