@@ -1,0 +1,61 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml agent-disconnection-handling
+
+participant monitord 
+participant wazuhdb
+participant authd
+participant analisysd
+
+monitord ++
+wazuhdb ++
+authd ++
+analisysd ++
+
+loop every second
+
+    alt every ""agents_disconnection_time"" seconds
+        monitord -> wazuhdb : disconnect expired agents
+        note over monitord, wazuhdb
+            Expired means that agent's last keepalive was older than
+            current time minus ""agents_disconnection_time""
+        end note
+        monitord <-- wazuhdb : disconnected agents list
+        monitord -> monitord : append disconnected agents list \n to //alert list//
+    end
+
+    opt #LightGrey Master Node
+
+        alt ""monitor_agents"" is true && \n every ""agents_disconnection_alert_time"" seconds
+            group for each [agent in //alert list//]
+                    monitord -> wazuhdb : get agent info
+                    monitord <-- wazuhdb : agent info
+                    alt disconnected && last_keepalive < (now - alert_time) 
+                        monitord -> analisysd : send agent disconnection alert
+                        monitord -> monitord : remove agent from //alert list//
+                    else active
+                        monitord -> monitord : remove agent from //alert list//
+                    end
+            end
+        end
+
+        alt ""monitor_agents"" is true && \n ""delete_old_agents"" > 0 && \n every ""delete_old_agents second""
+            monitord -> wazuhdb : get disconnected agents
+            monitord <-- wazuhdb : disconnected agents list
+            group for each [agent in disconnected agents list]
+                    monitord -> wazuhdb : get agent info
+                    monitord <-- wazuhdb : agent info
+                    alt disconnected && last_keepalive < (now - delete_time) 
+                        monitord -> authd : remove agent
+                    end
+            end
+        end
+    end
+
+    ... Check logs: rotation, reports, compression, signing ...
+
+end
+
+@enduml
