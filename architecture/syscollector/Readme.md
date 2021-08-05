@@ -6,8 +6,10 @@ This program is free software; you can redistribute it and/or modify it under th
 
 # Wazuh module: Syscollector architecture
 ## Index
-1. [Purpose](#purpose)
-2. [Sequence diagrams](#sequence-diagrams)
+- [Wazuh module: Syscollector architecture](#wazuh-module-syscollector-architecture)
+  - [Index](#index)
+  - [Purpose](#purpose)
+  - [Sequence diagrams](#sequence-diagrams)
 
 
 ## Purpose
@@ -24,9 +26,4 @@ The System Inventory feature interacts with different modules to split responsab
 The different sequence diagrams ilustrate the flow of the different modules interacting on the syscollector general use.the configuration.
 - 001-sequence-wm-syscollector: It explains the wazuh module syscollector initialization, construction, use, destruction and stop from the wazuh modules daemon perspective.
 - 002-sequence-syscollector: It explains the syscollector internal interactions with modules like dbsync, rsync and normalizer. This diagram shows how is the flow for data synchronization, checksum calculation, scan starting, etc.
-- 03-sequence-hardware: It explains the syscollector and data provider internal interactions focusing on hardware data.
-- 04-sequence-network: It explains the syscollector and data provider internal interactions focusing on network data.
-- 05-sequence-os: It explains the syscollector and data provider internal interactions focusing on Operating System data.
-- 06-sequence-packages: It explains the syscollector and data provider internal interactions focusing on packages data.
-- 07-sequence-ports: It explains the syscollector and data provider internal interactions focusing on ports data.
-- 08-sequence-processes: It explains the syscollector and data provider internal interactions focusing on processes data.
+
