@@ -561,6 +561,12 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     /* Initialize some variables */
     memset(ip, '\0', IPSIZE + 1);
 
+    if (!config.worker_node) {
+        OS_PassEmptyKeyfile();
+        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
+        OS_ReadTimestamps(&keys);
+    }
+
     mdebug1("Dispatch thread ready.");
 
     while (running) {
@@ -776,7 +782,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
-    time_t cur_time;
     char wdbquery[OS_SIZE_128];
     char wdboutput[128];
     int wdb_sock = -1;
@@ -821,21 +826,22 @@ void* run_writer(__attribute__((unused)) void *arg) {
         gettime(&t1);
         mdebug2("[Writer] OS_WriteKeys(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
+        gettime(&t0);
+
+        if (OS_WriteTimestamps(copy_keys) < 0) {
+            merror("Couldn't write file agents-timestamp.");
+        }
+
+        gettime(&t1);
+        mdebug2("[Writer] OS_WriteTimestamps(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
         OS_FreeKeys(copy_keys);
         free(copy_keys);
-        cur_time = time(0);
 
         for (cur = copy_insert; cur; cur = next) {
             next = cur->next;
 
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
-
-            gettime(&t0);
-            OS_AddAgentTimestamp(cur->id, cur->name, cur->ip, cur_time);
-            gettime(&t1);
-            mdebug2("[Writer] OS_AddAgentTimestamp(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
-            gettime(&t0);
 
             if (cur->group) {
                 if (set_agent_group(cur->id,cur->group) == -1) {
@@ -873,11 +879,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveCounter(cur->id);
             gettime(&t1);
             mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
-            gettime(&t0);
-            OS_RemoveAgentTimestamp(cur->id);
-            gettime(&t1);
-            mdebug2("[Writer] OS_RemoveAgentTimestamp(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
             OS_RemoveAgentGroup(cur->id);
