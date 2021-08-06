@@ -4,7 +4,7 @@
 
 import sys
 from datetime import date
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,8 +13,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         import wazuh.stats as stats
-        from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.exception import WazuhInternalError
+        from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.tests.util import RBAC_bypasser
 
         del sys.modules['wazuh.rbac.orm']
@@ -23,7 +23,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 @patch('wazuh.core.results.AffectedItemsWazuhResult.add_failed_item')
 def test_totals(mock_add_failed_item):
-    """Verify totals() function works returns and correct data"""
+    """Verify totals() function works and returns correct data"""
     with patch('wazuh.stats.totals_', return_value=(False, {})):
         response = stats.totals(date(2019, 8, 13))
         assert response.total_affected_items == len(response.affected_items)
@@ -35,14 +35,14 @@ def test_totals(mock_add_failed_item):
 
 
 def test_hourly():
-    """Makes sure that data returned by hourly() fit with the expected."""
+    """Makes sure hourly() fit with the expected."""
     response = stats.hourly()
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
 
 
 def test_weekly():
-    """Makes sure that data returned by weekly() fit with the expected."""
+    """Makes sure weekly() fit with the expected."""
     response = stats.weekly()
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
@@ -50,7 +50,7 @@ def test_weekly():
 
 @patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
 def test_get_daemons_stats(mock_daemons_stats_):
-    """Tests get_daemons_stats function works"""
+    """Makes sure get_daemons_stats() fit with the expected."""
     response = stats.get_daemons_stats('filename')
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
@@ -62,7 +62,7 @@ def test_get_daemons_stats(mock_daemons_stats_):
 @patch('wazuh.core.agent.Agent.get_stats')
 @patch('wazuh.core.agent.get_agents_info', return_value=['001'])
 def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, component):
-    """Test `get_agents_component_stats_json` function from agent module."""
+    """Makes sure get_agents_component_stats_json() fit with the expected."""
     response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     assert response.total_affected_items == len(response.affected_items)

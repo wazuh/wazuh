@@ -17,12 +17,18 @@ node_id = get_node().get('node') if cluster_enabled else None
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def totals(date):
-    """
-    Returns the totals file.
-    :param date: date object with the date value of the stats
-    :return: Array of dictionaries. Each dictionary represents an hour.
-    """
+    """Retrieve statistical information for the current or specified date
 
+    Parameters
+    ----------
+    date : date
+        date object with the date value of the stats
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        array of dictionaries. Each dictionary represents an hour
+    """
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each node was successfully read',
                                       some_msg='Could not read statistical information for some nodes',
                                       none_msg='Could not read statistical information for any node'
@@ -39,9 +45,12 @@ def totals(date):
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def hourly():
-    """
-    Returns the hourly averages.
-    :return: Dictionary: averages and interactions.
+    """Compute hourly averages
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        dictionary with averages and interactions
     """
     result = AffectedItemsWazuhResult(all_msg='Statistical information per hour for each node was successfully read',
                                       some_msg='Could not read statistical information per hour for some nodes',
@@ -56,9 +65,12 @@ def hourly():
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def weekly():
-    """
-    Returns the weekly averages.
-    :return: A dictionary for each week day.
+    """Compute weekly averages
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        dictionary for each week day
     """
     result = AffectedItemsWazuhResult(all_msg='Statistical information per week for each node was successfully read',
                                       some_msg='Could not read statistical information per week for some nodes',
@@ -73,10 +85,17 @@ def weekly():
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_daemons_stats(filename):
-    """Returns the stats of an input file.
+    """Get daemons stats from an input file
 
-    :param filename: Full path of the file to get information.
-    :return: A dictionary with the stats of the input file.
+    Parameters
+    ----------
+    filename : str
+        full path of the file to get information
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        dictionary with the stats of the input file
     """
     result = AffectedItemsWazuhResult(
         all_msg='Statistical information for each node was successfully read',
@@ -91,19 +110,19 @@ def get_daemons_stats(filename):
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_component_stats_json(agent_list=None, component=None):
-    """Get statistics of an agent's component.
+    """Get statistics of an agent's component
 
     Parameters
     ----------
-    agent_list : list
-        List of agents ID's.
-    component : string
-        Name of the component to get stats from.
+    agent_list : list, optional
+        list of agents ID's, by default None
+    component : str, optional
+        name of the component to get stats from, by default None
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
-        Component stats.
+    AffectedItemsWazuhResult
+        Component stats
     """
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each agent was successfully read',
                                       some_msg='Could not read statistical information for some agents',

@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from io import StringIO
 
-from wazuh.core import common, agent
+from wazuh.core import agent, common
 from wazuh.core.exception import (WazuhError, WazuhException,
                                   WazuhInternalError, WazuhResourceNotFound)
 from wazuh.core.wazuh_socket import WazuhSocket
@@ -18,19 +18,23 @@ MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "
 
 
 def hourly_():
+    """Compute hourly averages
+
+    Returns
+    -------
+    array
+        averages and iterations
+    """
     averages = []
     interactions = 0
-    # What's the 24 for?
     for i in range(25):
         try:
             hfile = open(common.stats_path + '/hourly-average/' + str(i))
             data = hfile.read()
-
             if i == 24:
                 interactions = int(data)
             else:
                 averages.append(int(data))
-
             hfile.close()
         except IOError:
             if i < 24:
@@ -40,33 +44,53 @@ def hourly_():
 
 
 def weekly_():
-    # 0..6 => Sunday..Saturday
+    """Compute weekly averages
+
+    Returns
+    -------
+    array
+        hours and interactions for each week day
+    """
     weekly_results = []
     for i in range(7):
         hours = []
         interactions = 0
-
         for j in range(25):
             try:
                 wfile = open(common.stats_path + '/weekly-average/' + str(i) + '/' + str(j))
                 data = wfile.read()
-
                 if j == 24:
                     interactions = int(data)
                 else:
                     hours.append(int(data))
-
                 wfile.close()
             except IOError:
                 if i < 24:
                     hours.append(0)
-
         weekly_results.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
 
     return weekly_results
 
 
 def totals_(date):
+    """Statistical information for the current or specified date
+
+    Parameters
+    ----------
+    date : date
+        date object with the date value of the stats
+
+    Returns
+    -------
+    tuple
+        failed: boolean that represents if data parsing failed
+        affected: array of dictionaries. Each dictionary represents an hour
+
+    Raises
+    ------
+    WazuhError
+        raised on IOError
+    """
     try:
         stat_filename = os.path.join(
             common.stats_path, "totals", str(date.year), MONTHS[date.month - 1],
@@ -74,35 +98,28 @@ def totals_(date):
         stats = open(stat_filename, 'r')
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)
-
     alerts = []
     affected = []
-
     for line in stats:
         data = line.split('-')
-
         if len(data) == 4:
             sigid = int(data[1])
             level = int(data[2])
             times = int(data[3])
-
             alert = {'sigid': sigid, 'level': level, 'times': times}
             alerts.append(alert)
         else:
             data = line.split('--')
-
             if len(data) != 5:
                 if len(data) in (0, 1):
                     continue
                 else:
                     return True, affected
-
             hour = int(data[0])
             total_alerts = int(data[1])
             events = int(data[2])
             syscheck = int(data[3])
             firewall = int(data[4])
-
             affected.append(
                 {'hour': hour,
                  'alerts': alerts,
@@ -117,6 +134,23 @@ def totals_(date):
 
 
 def get_daemons_stats_(filename):
+    """Get daemons stats from an input file
+
+    Parameters
+    ----------
+    filename : str
+        full path of the file to get information
+
+    Returns
+    -------
+    array
+        stats of the input file
+
+    Raises
+    ------
+    WazuhError
+        raised if file does not exist
+    """
     try:
         with open(filename, mode='r') as f:
             input_file = str("[root]\n" + f.read())
@@ -136,6 +170,26 @@ def get_daemons_stats_(filename):
 
 
 def get_agents_component_stats_json_(agent_list, component):
+    """Get statistics of an agent's component
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        list of agents ID's, by default None
+    component : str, optional
+        name of the component to get stats from, by default None
+
+    Returns
+    -------
+    tuple
+        failed: array of failed agent's information and related wazuh error
+        affected: array of agent's statistics
+
+    Raises
+    ------
+    WazuhResourceNotFound
+        raised if agent does not exist.
+    """
     failed = []
     affected = []
     system_agents = agent.get_agents_info()
