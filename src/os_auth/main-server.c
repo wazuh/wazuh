@@ -809,6 +809,7 @@ void* run_writer(__attribute__((unused)) void *arg) {
             next = cur->next;
 
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
+            mdebug2("[Writer] OS_AddAgentTimestamp(): %d µs.", 0);
 
             if(cur->group){
                 if(set_agent_group(cur->id,cur->group) == -1){
@@ -846,6 +847,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveCounter(cur->id);
             gettime(&t1);
             mdebug2("[Writer] OS_RemoveCounter(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+
+            mdebug2("[Writer] OS_RemoveAgentTimestamp(): %d µs.", 0);
 
             gettime(&t0);
             OS_RemoveAgentGroup(cur->id);
