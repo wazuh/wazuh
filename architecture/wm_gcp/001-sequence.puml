@@ -1,0 +1,36 @@
+@startuml
+title Google Cloud Module
+
+participant Config_file
+actor Google_cloud_module
+participant Google_cloud_script
+participant Google_cloud_api
+participant AgentD
+
+Google_cloud_module->Config_file: Get_parameters
+Config_file --> Google_cloud_module: return parameters
+
+Google_cloud_module -> Google_cloud_script: send_parameters
+note left 
+paramenters:
+project_id
+subscription_id
+credentials_file
+max_messages
+log_level
+end note
+
+Google_cloud_script -> Google_cloud_api: Request_events
+Google_cloud_api --> Google_cloud_script: return events
+
+loop each event
+    Google_cloud_script -> Google_cloud_script: format_event
+    Google_cloud_script -> AgentD: send_event
+
+    alt Number_of_events_receive < Maximum_number_of_events
+        Google_cloud_script -> Google_cloud_api: Request_events
+        Google_cloud_api --> Google_cloud_script: return events
+    end
+end
+
+@enduml
