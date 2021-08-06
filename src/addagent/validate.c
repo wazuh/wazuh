@@ -63,7 +63,7 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
         key = buffer;
     }
 
-    return OS_AddKey(keys, id, name, ip ? ip : "any", key);
+    return OS_AddKey(keys, id, name, ip ? ip : "any", key, time(NULL));
 }
 
 #ifndef CLIENT
