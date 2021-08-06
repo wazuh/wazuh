@@ -3,11 +3,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-from wazuh.core.stats import hourly_, weekly_, totals_, get_daemons_stats_, get_agents_component_stats_json_
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhInternalError
 from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.stats import (get_agents_component_stats_json_,
+                              get_daemons_stats_, hourly_, totals_, weekly_)
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']

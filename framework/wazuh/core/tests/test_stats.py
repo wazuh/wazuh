@@ -34,7 +34,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 def test_totals_(date_, data_list):
     """Verify totals_() function works as expected"""
     with patch('wazuh.core.stats.open', return_value=data_list):
-        failed, affected = stats.totals_(date_)
+        affected = stats.totals_(date_)[1]
         if affected:
             for line in data_list:
                 data = line.split('-')
@@ -88,8 +88,8 @@ def test_hourly_():
 def test_get_daemons_stats_(mock_items, mock_read, mock_open):
     """Verify get_daemons_stats_() function works as expected"""
     result = stats.get_daemons_stats_('filename')
-    assert result[0] == {'hour': 5.0}
     mock_open.assert_called_once_with('filename', mode='r')
+    assert result[0] == {'hour': 5.0}
 
 
 @patch('wazuh.core.stats.configparser.RawConfigParser.read_file')
@@ -112,7 +112,7 @@ def test_get_daemons_stats_ko(mock_readfp):
 @patch('wazuh.core.agent.get_agents_info', return_value=['001'])
 def test_get_agents_component_stats_json_(mock_agents_info, mock_getstats, component):
     """Verify get_agents_component_stats_() function works as expected"""
-    failed, affected = stats.get_agents_component_stats_json_(agent_list=['001'], component=component)
+    stats.get_agents_component_stats_json_(agent_list=['001'], component=component)
     mock_getstats.assert_called_once_with(component=component)
 
 
@@ -120,7 +120,7 @@ def test_get_agents_component_stats_json_(mock_agents_info, mock_getstats, compo
 @patch('wazuh.core.agent.get_agents_info', return_value=['001'])
 def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
     """Tests get_agents_component_stats_() function exceptions works"""
-    failed, affected = stats.get_agents_component_stats_json_(agent_list=['003', '005'], component='logcollector')
+    failed = stats.get_agents_component_stats_json_(agent_list=['002', '005'], component='logcollector')[0]
     for item in failed:
         assert 1701 == item[1]._code
 

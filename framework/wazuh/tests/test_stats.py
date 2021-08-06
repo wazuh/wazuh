@@ -29,7 +29,7 @@ def test_totals(mock_add_failed_item):
         assert response.total_affected_items == len(response.affected_items)
         assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     with patch('wazuh.stats.totals_', return_value=(True, {})):
-        response = stats.totals(date(2019, 8, 13))
+        stats.totals(date(2019, 8, 13))
         mock_add_failed_item.assert_called_with(id_=stats.node_id if stats.cluster_enabled else 'manager',
                                                 error=WazuhInternalError(1309))
 
@@ -66,3 +66,14 @@ def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, compon
     response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
+
+
+@patch('wazuh.stats.get_agents_component_stats_json_', return_value=[
+    [('001', 1701)],
+    ''
+    ])
+@patch('wazuh.core.results.AffectedItemsWazuhResult.add_failed_item')
+def test_get_agents_components_stats_json_ko(mock_add_failed_item, mock_get_agents_component_stats_json_):
+    """Makes sure get_agents_component_stats_json() fit with the expected."""
+    stats.get_agents_component_stats_json(agent_list=['001'], component='')
+    mock_add_failed_item.assert_called_with(id_='001', error=1701)
