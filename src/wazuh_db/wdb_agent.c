@@ -1427,7 +1427,7 @@ time_t get_agent_date_added(int agent_id) {
             }
             t.tm_year -= 1900;
             t.tm_mon -= 1;
-            t.tm_isdst = 0;
+            t.tm_isdst = -1;
             t_of_sec = mktime(&t);
 
             free(date);
