@@ -63,7 +63,7 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
         key = buffer;
     }
 
-    return OS_AddKey(keys, id, name, ip ? ip : "any", key);
+    return OS_AddKey(keys, id, name, ip ? ip : "any", key, time(NULL));
 }
 
 #ifndef CLIENT
@@ -519,7 +519,7 @@ double OS_AgentAntiquity_ID(const char *id) {
 
 /**
  * @brief Returns the number of seconds since last agent connection
- * 
+ *
  * @param name The name of the agent
  * @param ip The IP address of the agent (unused). Kept only for compatibility
  * @retval On success, it returns the difference between the current time and the last keepalive

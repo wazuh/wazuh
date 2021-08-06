@@ -40,6 +40,7 @@ typedef struct _keyentry {
 
     os_ip *ip;
     int sock;
+    time_t time_added;
     pthread_mutex_t mutex;
     struct sockaddr_in peer_info;
     FILE *fp;
@@ -115,7 +116,7 @@ void OS_RemoveCounter(const char *id) __attribute((nonnull));
 void OS_PassEmptyKeyfile();
 
 /* Add new key */
-int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key) __attribute((nonnull));
+int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key, time_t time_added) __attribute((nonnull));
 
 /* Delete a key */
 int OS_DeleteKey(keystore *keys, const char *id, int purge);
@@ -143,6 +144,25 @@ int OS_IsAllowedName(const keystore *keys, const char *name) __attribute((nonnul
 /* Check if the id is valid and dynamic */
 int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __attribute((nonnull(1)));
 
+/**
+ * @brief Parse the agent timestamps file into the keystore structure
+ *
+ * @param keys Pointer to a keystore structure.
+ * @return Status of the operation.
+ * @retval 0 On success.
+ * @retval -1 On failure.
+ */
+int OS_ReadTimestamps(keystore * keys);
+
+/**
+ * @brief  Write the agent timestamp data into the timestamps file
+ *
+ * @param keys Pointer to a keystore structure.
+ * @return Status of the operation.
+ * @retval 0 On success.
+ * @retval -1 On failure.
+ */
+int OS_WriteTimestamps(keystore * keys);
 
 /** Function prototypes -- send/recv messages **/
 
