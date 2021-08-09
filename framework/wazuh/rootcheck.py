@@ -41,11 +41,11 @@ def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
     [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
     # Add non eligible agents to failed_items
-    non_eligible_agents = WazuhDBQueryAgents(limit=None, select=["id", "status"], query=f'status!=active',
+    non_eligible_agents = WazuhDBQueryAgents(limit=None, select=["id", "status"], query='status!=active',
                                              **rbac_filters).run()['items']
     [result.add_failed_item(
         id_=agent['id'],
-        error=WazuhError(1601, extra_message=f'Status - {agent["status"]}')) for agent in non_eligible_agents]
+        error=WazuhError(1707)) for agent in non_eligible_agents]
 
     wq = WazuhQueue(common.ARQUEUE)
     eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
