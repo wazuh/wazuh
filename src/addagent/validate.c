@@ -23,7 +23,6 @@
     #define fchmod(x,y) 0
     #define mkdir(x,y) 0
     #define link(x,y) 0
-    #define difftime(x,y) 0
     #define mkstemp(x) 0
     #define chown(x,y,z) 0
     #define Privsep_GetUser(x) -1
@@ -499,38 +498,14 @@ char *IPExist(const char *u_ip)
 
 #ifndef CLIENT
 
-double OS_AgentAntiquity_ID(const char *id) {
-    char *name = getFullnameById(id);
-    char *ip;
-    double ret = -1;
-
-    if (!name) {
-        return -1;
-    }
-
-    if ((ip = strchr(name, '-'))) {
-        *(ip++) = 0;
-        ret = OS_AgentAntiquity(name, ip);
-    }
-
-    free(name);
-    return ret;
+// Get the number of seconds since the agent registration by agent ID
+long OS_AgentAntiquity_ID(const char *id) {
+    return (long)(time(NULL) - get_agent_date_added(atoi(id)));
 }
 
-/**
- * @brief Returns the number of seconds since last agent connection
- *
- * @param name The name of the agent
- * @param ip The IP address of the agent (unused). Kept only for compatibility
- * @retval On success, it returns the difference between the current time and the last keepalive
- * @retval -1 On error: invalid DB query syntax or result
- */
-double OS_AgentAntiquity(const char *name, const char *ip){
-    time_t output = 0;
-
-    output = wdb_get_agent_keepalive(name, ip, NULL);
-
-    return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
+// Get the number of seconds since the agent registration
+long OS_AgentAntiquity(const keyentry * key) {
+    return key->time_added == 0 ? 0 : (long)(time(NULL) - key->time_added);
 }
 
  /* !CLIENT */

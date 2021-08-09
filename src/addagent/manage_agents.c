@@ -220,7 +220,7 @@ int add_agent(int json_output)
             _ip = NULL;
             c_ip.ip = NULL;
         } else if (!authd_running && (id_exist = IPExist(ip))) {
-            double antiquity = OS_AgentAntiquity_ID(id_exist);
+            long antiquity = OS_AgentAntiquity_ID(id_exist);
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
                 OS_RemoveAgent(id_exist);

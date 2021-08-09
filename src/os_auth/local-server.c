@@ -298,7 +298,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     char *id_exist;
     cJSON *response = NULL;
     int ierror;
-    double antiquity;
+    long antiquity;
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
@@ -314,7 +314,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     // Check for duplicated ID
 
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
+        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated ID '%s' (%s). Removing old agent.", id, id_exist);
             add_remove(keys.keyentries[index]);
@@ -329,7 +329,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
 
     if (strcmp(ip, "any")) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
+            if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]), antiquity >= force || antiquity < 0)) {
                 id_exist = keys.keyentries[index]->id;
                 minfo("Duplicated IP '%s' (%s). Removing old agent.", ip, id_exist);
                 add_remove(keys.keyentries[index]);
@@ -351,7 +351,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     /* Check for duplicated names */
 
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
+        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]), antiquity >= force || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated name '%s' (%s). Removing old agent.", name, id_exist);
             add_remove(keys.keyentries[index]);

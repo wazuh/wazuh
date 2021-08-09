@@ -177,7 +177,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
     /* Validate the group(s) name(s) */
     int index = 0;
     char *id_exist = NULL;
-    double antiquity = 0;
+    long antiquity = 0;
     if (groups){
         if (OS_SUCCESS != w_auth_validate_groups(groups, response)){
             return OS_INVALID;
@@ -187,7 +187,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
     /* Check for duplicated IP */
     if (strcmp(ip, "any") != 0 ) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+            if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]), antiquity >= config.force_time || antiquity < 0)) {
                 id_exist = keys.keyentries[index]->id;
                 minfo("Duplicated IP '%s' (%s). Removing old agent.", ip, id_exist);
 
@@ -212,7 +212,7 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
     /* Check for duplicated names */
 
     if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-        if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
+        if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]), antiquity >= config.force_time || antiquity < 0)) {
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated name '%s' (%s). Removing old agent.", agentname, id_exist);
 

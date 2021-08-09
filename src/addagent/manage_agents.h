@@ -43,8 +43,24 @@ char *IPExist(const char *u_ip);
 char *getFullnameById(const char *id);
 int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key);
 int OS_RemoveAgent(const char *id);
-double OS_AgentAntiquity(const char *name, const char *ip);
-double OS_AgentAntiquity_ID(const char *id);
+
+/**
+ * @brief Get the number of seconds since the agent registration
+ *
+ * @param key Pointer to the agent's data.
+ * @return Difference between the current time and the agent registration time,
+ *  or the current time when the agent registration date is not available.
+ */
+long OS_AgentAntiquity(const keyentry * key);
+
+/**
+ * @brief Get the number of seconds since the agent registration by agent ID
+ *
+ * @param key Pointer to the agent's data.
+ * @return Difference between the current time and the agent registration time,
+ *  or the current time when the agent registration date is not available.
+ */
+long OS_AgentAntiquity_ID(const char *id);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
