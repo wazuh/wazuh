@@ -34,6 +34,3 @@ The provided sequence diagram shows the basic flow of Wazuh's **SCA** module. Th
     3. Error handling.
     4. Checks are tested/executed.
 7. Lastly, scanned policies are sent for database purge on manager side, and then the loops starts again.
-
-## Findings
-See https://github.com/wazuh/wazuh/issues/9281#issuecomment-887336323
