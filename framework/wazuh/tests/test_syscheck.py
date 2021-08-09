@@ -109,7 +109,8 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agen
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', return_value=None)
-def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+@patch('wazuh.core.wdb.WazuhDBConnection.close')
+def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
     """Test function `clear` from syscheck module.
 
     Parameters
@@ -131,6 +132,7 @@ def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_re
         else:
             assert result.failed_items == expected_result['failed_items']
         assert result.total_failed_items == expected_result['total_failed_items']
+        wdb_close_mock.assert_called()
 
 
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
@@ -138,7 +140,8 @@ def test_syscheck_clear(wdb_execute_mock, wdb_init_mock, agent_list, expected_re
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
-def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+@patch('wazuh.core.wdb.WazuhDBConnection.close')
+def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
     """Test function `clear` from syscheck module.
 
     It will force an exception.
