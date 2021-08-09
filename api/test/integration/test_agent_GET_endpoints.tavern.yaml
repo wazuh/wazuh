@@ -201,6 +201,22 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Search (Check injection)
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        search: "wazuh-agent6' or 'wazuh'='wazuh"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
   - name: Try to show agents using a search with no return
     request:
       verify: False
