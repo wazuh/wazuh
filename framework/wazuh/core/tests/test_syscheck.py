@@ -51,6 +51,7 @@ def test_wazuh_db_syscheck_format_data_into_dictionary(mock_backend):
 @patch('wazuh.core.wdb.WazuhDBConnection')
 def test_syscheck_delete_agent(mock_db_conn, agent):
     """Test if proper parameters are being sent to the wdb socket.
+
     Parameters
     ----------
     agent : str
