@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from time import time
                                
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
@@ -83,7 +83,7 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_ALGORITHM = 'RS256'
+JWT_ALGORITHM = 'ES512'
 _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
@@ -113,7 +113,7 @@ def generate_keypair():
 
 def change_keypair():
     """Generate key files to keep safe."""
-    key_obj = rsa.generate_private_key(public_exponent=65537, key_size=4096)
+    key_obj = ec.generate_private_key(ec.SECP521R1())
     private_key = key_obj.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,

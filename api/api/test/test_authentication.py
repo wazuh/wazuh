@@ -145,7 +145,7 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
     mock_raise_if_exc.assert_called_once()
     mock_generate_keypair.assert_called_once()
     mock_encode.assert_called_once_with(original_payload, '-----BEGIN PRIVATE KEY-----',
-                                        algorithm='RS256')
+                                        algorithm='ES512')
 
 
 @patch('api.authentication.TokenManager')
@@ -180,7 +180,7 @@ def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, 
     mock_dapi.assert_has_calls(calls)
     mock_generate_keypair.assert_called_once()
     mock_decode.assert_called_once_with('test_token', '-----BEGIN PUBLIC KEY-----',
-                                        algorithms=['RS256'],
+                                        algorithms=['ES512'],
                                         audience='Wazuh API REST')
     assert mock_distribute_function.call_count == 2
     assert mock_raise_if_exc.call_count == 2
