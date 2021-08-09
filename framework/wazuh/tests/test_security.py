@@ -27,7 +27,7 @@ default_orm_engine = create_engine("sqlite:///:memory:")
 os.chdir(test_data_path)
 
 for file in glob.glob('*.yml'):
-    with open(os.path.join(test_data_path + file)) as f:
+    with open(os.path.join(test_data_path, file)) as f:
         tests_cases = safe_load(f)
 
     for function_, test_cases in tests_cases.items():
@@ -36,6 +36,9 @@ for file in glob.glob('*.yml'):
                 security_cases.append((function_, test_case['params'], test_case['result']))
             else:
                 rbac_cases.append((function_, test_case['params'], test_case['result']))
+
+with open(os.path.join(test_data_path, 'sanitize_policies.yaml')) as f:
+    sanitize_policies = safe_load(f)
 
 
 def create_memory_db(sql_file, session):
@@ -337,3 +340,16 @@ def test_migrate_default_policies(new_default_resources):
 
     assert role1_policies.index(user_policy_id) == new_role1_policies.index(user_policy_id)
     assert role2_policies.index(user_policy_id) == new_role2_policies.index(user_policy_id)
+
+
+@pytest.mark.parametrize('policy_case', sanitize_policies['policies'])
+def test_sanitize_rbac_policy(db_setup, policy_case):
+    _, _, core_security = db_setup
+    policy = policy_case['policy']
+    core_security.sanitize_rbac_policy(policy)
+    for element in ('actions', 'resources', 'effect'):
+        if element in policy:
+            if element != 'resources':
+                assert all(p.islower() for p in policy[element])
+            else:
+                assert all(':'.join(p.split(':')[:-1]) for p in policy[element])
