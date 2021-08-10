@@ -673,6 +673,23 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {
 
     const int key_id = OS_IsAllowedID(keys, agent_id);
-    
+
     return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);
+}
+
+int w_auth_hash_key(keyentry *key_entry, os_sha1 output) {
+  if (!key_entry || !output) {
+    mdebug2("Unable to hash agent's key due to empty parameters.");
+    return OS_INVALID;
+  }
+
+  char *key = key_entry->key;
+
+  if (key) {
+    return OS_SHA1_Str(key, strlen(key), output);
+  }
+  else {
+    mdebug2("Unable to hash agent's key due to empty value.");
+    return OS_INVALID;
+  }
 }
