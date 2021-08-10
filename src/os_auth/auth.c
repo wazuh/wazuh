@@ -56,7 +56,13 @@ void add_remove(const keyentry *entry) {
 }
 
 
-w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, char *ip, char **agentname, char **groups){
+w_err_t w_auth_parse_data(const char* buf,
+                          char *response,
+                          const char *authpass,
+                          char *ip,
+                          char **agentname,
+                          char **groups,
+                          char **key_hash){
 
     bool parseok = FALSE;
     /* Checking for shared password authentication. */
@@ -115,10 +121,8 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
     }
 
     /* Check for valid centralized group */
-
     char centralized_group_token[2] = "G:";
-
-    if(strncmp(++buf,centralized_group_token,2)==0)
+    if(strncmp(++buf, centralized_group_token, 2)==0)
     {
         char tmp_groups[OS_SIZE_65536+1] = {0};
         sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
@@ -143,14 +147,12 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
     }
 
     /* Check for IP when client uses -i option */
-
     char client_source_ip[IPSIZE + 1] = {0};
     char client_source_ip_token[3] = "IP:";
-
-    if(strncmp(++buf,client_source_ip_token,3)==0) {
+    if(strncmp(++buf, client_source_ip_token, 3)==0) {
         char format[15];
         sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
-        sscanf(buf, format ,client_source_ip);
+        sscanf(buf, format, client_source_ip);
 
         /* If IP: != 'src' overwrite the provided ip */
         if(strncmp(client_source_ip,"src",3) != 0)
@@ -164,20 +166,62 @@ w_err_t w_auth_parse_data(const char* buf, char *response,const char *authpass, 
         }
 
     }
-    else if(!config.flags.use_source_ip) {
-        // use_source-ip = 0 and no -I argument in agent
-        snprintf(ip, IPSIZE, "any");
+    else{
+        buf--;
+        if(!config.flags.use_source_ip) {
+            // use_source-ip = 0 and no -I argument in agent
+            snprintf(ip, IPSIZE, "any");
+        }
     }
-    // else -> agent IP is already on ip
+
+    /* Check for key hash when the agent already has one*/
+    char key_hash_token[2] = "K:";
+    if(strncmp(++buf, key_hash_token, 2)==0)
+    {
+        os_calloc(1, sizeof(os_sha1), *key_hash);
+        char format[15] = {0};
+        sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1));
+        sscanf(buf, format, *key_hash);
+    }
 
     return OS_SUCCESS;
 }
 
-w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups){
-    /* Validate the group(s) name(s) */
-    int index = 0;
-    char *id_exist = NULL;
+w_err_t w_auth_replace_agent(keyentry *key,
+                             const char *key_hash){
+    /* Check if the agent antiquity complies with the configuration to be removed*/
     double antiquity = 0;
+    if (!config.flags.force_insert ||
+       (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < config.force_time)) {
+        minfo("Agent '%s' doesn´t complies with the antiquity to be removed.", key->id);
+        return OS_INVALID;
+    }
+
+    /* Check if the agent key is the same than the existent in the manager */
+    if (key_hash) {
+        os_sha1 manager_key_hash;
+        w_auth_hash_key(key, manager_key_hash);
+        if (!strcmp(manager_key_hash, key_hash)) {
+            minfo("Key identified with hash '%s' already exists on the manager.", key_hash);
+            return OS_INVALID;
+        }
+    }
+
+    /* Replace the agent */
+    minfo("Removing old agent '%s'.", key->id);
+    add_remove(key);
+    OS_DeleteKey(&keys, key->id, 0);
+    return OS_SUCCESS;
+}
+
+w_err_t w_auth_validate_data(char *response,
+                             const char *ip,
+                             const char *agentname,
+                             const char *groups,
+                             const char *key_hash){
+    int index = 0;
+
+    /* Validate the group(s) name(s) */
     if (groups){
         if (OS_SUCCESS != w_auth_validate_groups(groups, response)){
             return OS_INVALID;
@@ -185,41 +229,25 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
     }
 
     /* Check for duplicated IP */
-    if (strcmp(ip, "any") != 0 ) {
-        if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
-                id_exist = keys.keyentries[index]->id;
-                minfo("Duplicated IP '%s' (%s). Removing old agent.", ip, id_exist);
-
-                add_remove(keys.keyentries[index]);
-                OS_DeleteKey(&keys, id_exist, 0);
-            } else {
-                merror("Duplicated IP %s", ip);
-                snprintf(response, 2048, "ERROR: Duplicated IP: %s", ip);
-                return OS_INVALID;
-            }
+    if (strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
+        minfo("Duplicated IP '%s' (%s).", ip, keys.keyentries[index]->id);
+        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash)) {
+            snprintf(response, 2048, "ERROR: Duplicated IP: %s", ip);
+            return OS_INVALID;
         }
     }
 
     /* Check whether the agent name is the same as the manager */
-
     if (!strcmp(agentname, shost)) {
         merror("Invalid agent name %s (same as manager)", agentname);
         snprintf(response, 2048, "ERROR: Invalid agent name: %s", agentname);
         return OS_INVALID;
     }
 
-    /* Check for duplicated names */
-
+    /* Check for duplicated name */
     if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-        if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
-            id_exist = keys.keyentries[index]->id;
-            minfo("Duplicated name '%s' (%s). Removing old agent.", agentname, id_exist);
-
-            add_remove(keys.keyentries[index]);
-            OS_DeleteKey(&keys, id_exist, 0);
-        } else {
-            merror("Invalid agent name %s (duplicated)", agentname);
+        minfo("Duplicated name '%s' (%s).", agentname, keys.keyentries[index]->id);
+        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash)) {
             snprintf(response, 2048, "ERROR: Duplicated agent name: %s", agentname);
             return OS_INVALID;
         }
