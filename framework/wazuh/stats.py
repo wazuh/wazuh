@@ -21,7 +21,7 @@ def totals(date):
 
     Parameters
     ----------
-    date : date
+    date: date
         Date object with the date value of the stats.
 
     Returns
@@ -89,7 +89,7 @@ def get_daemons_stats(filename):
 
     Parameters
     ----------
-    filename : str
+    filename: str
         Full path of the file to get information.
 
     Returns
@@ -114,9 +114,9 @@ def get_agents_component_stats_json(agent_list=None, component=None):
 
     Parameters
     ----------
-    agent_list : list, optional
+    agent_list: list, optional
         List of agents ID's, by default None.
-    component : str, optional
+    component: str, optional
         Name of the component to get stats from, by default None.
 
     Returns
