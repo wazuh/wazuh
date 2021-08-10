@@ -37,7 +37,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
-#include "os_crypto/sha1/sha1_op.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "etc/sslmanager.key"
@@ -140,14 +139,6 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
  * @param key Pointer where new Agent key will be allocated
  * */
 w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
-
-/**
- * @brief Receives a keyentry structure and returns the SHA1 value of the agent's key.
- * Return OS_SUCCESS or OS_INVALID on error.
- * @param key_entry The agent's key structure
- * @param output The variable where the hashed key will be stored
- **/
-int w_auth_hash_key(keyentry *key_entry, os_sha1 output);
 
 extern char shost[512];
 extern keystore keys;
