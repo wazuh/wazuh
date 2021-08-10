@@ -13,8 +13,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_OS_AgentAntiquity() {
-    return -1;
+long __wrap_OS_AgentAntiquity() {
+    return 0;
 }
 
 void __wrap_OS_RemoveAgentGroup(__attribute__((unused)) const char *id) {
