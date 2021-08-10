@@ -15,11 +15,10 @@ The **CIS-CAT** Wazuh module integrates CIS benchmark assessments into Wazuh age
 ## Sequence Diagram
 The provided sequence diagram shows the basic flow of Wazuh's **CIS-CAT** module. The main steps are:
 
-1. The **SCIS-CAT** module is executed according to the configuration provided in `ossec.conf`. The module then sleeps, based on the specified timestamp.
-2. Once the sleep time is over, the **CIS-CAT** script is executed.
+1. The **CIS-CAT** module is executed according to the configuration provided in `ossec.conf`.
+2. The **CIS-CAT** module runs the scan every defined interval.
 3. The script scans the system and reports the results trough different files (**txt** and **xml**).
-4. The **txt** file is parsed. The relevant information from this file is saved in memory (mostly `scan_info`). 
-5. The **xml** file is parsed. The relevant information from this file is saved in memory (`rule_info`).
+4. The **txt** file is parsed. The relevant information from this file is stored in memory (mostly `scan_info`). 
+5. The **xml** file is parsed. The relevant information from this file is stored in memory (`rule_info`).
 6. Once we have all the information (both generic and specific), we convert the data to a **JSON** structure to send the stored information to the manager.
-7. The memory that has already been sent is freed.
-8. The loop continues with its next iteration, starting again with the sleep.
+7. Once the data is sent, the generated reports are removed and the used memory is freed for the next scan.

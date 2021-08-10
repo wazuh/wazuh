@@ -40,7 +40,6 @@ loop Forever
             activate Manager
             deactivate Manager
         end
-        ciscat_run -> ciscat_run: free()
         ciscat_run -> wm_ciscat: Eval->next
         deactivate ciscat_run
     end
