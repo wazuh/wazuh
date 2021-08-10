@@ -37,6 +37,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+#include "os_crypto/sha1/sha1_op.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "etc/sslmanager.key"
@@ -72,8 +73,8 @@ int verify_callback(int ok, X509_STORE_CTX *store);
 
 /**
  * @brief Wraps SSL_read function to read block largers than a record (16K)
- * 
- * Calls SSL_read and if the return value is exactly the size of a record 
+ *
+ * Calls SSL_read and if the return value is exactly the size of a record
  * calls again with an offset in the buffer until reading is done or until
  * reaching a reading timeout
  * @param ssl ssl connection
@@ -108,7 +109,7 @@ void authd_sigblock();
 w_err_t w_auth_validate_groups(const char *groups, char *response);
 
 /**
- * @brief Parse a raw buffer from agent request into enrollment data. 
+ * @brief Parse a raw buffer from agent request into enrollment data.
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied
  * @param authpass Authentication password expected on the buffer, NULL if there isn't password
@@ -135,11 +136,18 @@ w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentn
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
  * @param groups New enrollment groups
- * @param id Pointer where new Agent ID will be allocated 
- * @param key Pointer where new Agent key will be allocated 
+ * @param id Pointer where new Agent ID will be allocated
+ * @param key Pointer where new Agent key will be allocated
  * */
 w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
 
+/**
+ * @brief Receives a keyentry structure and returns the SHA1 value of the agent's key.
+ * Return OS_SUCCESS or OS_INVALID on error.
+ * @param key_entry The agent's key structure
+ * @param output The variable where the hashed key will be stored
+ **/
+int w_auth_hash_key(keyentry *key_entry, os_sha1 output);
 
 extern char shost[512];
 extern keystore keys;
