@@ -802,6 +802,30 @@ void LogCollectorStart()
 
                     current->fp = NULL;
                     current->ign = 999;
+
+                    if (j >= 0) {
+#ifndef WIN32
+                        struct stat stat_fd;
+                        if (stat(current->file, &stat_fd) == -1 && ENOENT == errno) {
+#else
+                        if (!PathFileExists(current->file)) {
+#endif
+                            os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            os_free(old_file_status);
+                            w_logcollector_state_delete_file(current->file);
+
+                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
+                                merror(REM_ERROR, current->file);
+                            } else {
+                                mdebug1(CURRENT_FILES, current_files, maximum_files);
+                                i--;
+                            }
+                        } else {
+#ifndef WIN32
+                            merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+#endif
+                        }
+                    }
                     continue;
                 }
 
