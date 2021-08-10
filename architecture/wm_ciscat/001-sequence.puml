@@ -4,16 +4,19 @@
 
 @startuml cis-cat_diagram
 activate wm_ciscat
+
 wm_ciscat -> Config: Setup()
 activate Config
 wm_ciscat <-- Config: Parameters
 deactivate Config
+
 loop Forever
     alt time_sleep
         wm_ciscat -> wm_ciscat: Sleep()
         activate wm_ciscat
         deactivate wm_ciscat
     end
+
     loop Eval
         wm_ciscat -> ciscat_run: Run()
         activate ciscat_run
@@ -42,5 +45,6 @@ loop Forever
         deactivate ciscat_run
     end
 end
+
 deactivate wm_ciscat
 @enduml
