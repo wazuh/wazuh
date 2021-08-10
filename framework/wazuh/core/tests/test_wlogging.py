@@ -97,7 +97,7 @@ def test_wazuh_logger_setup_logger(mock_fh, mock_add_handler, mock_add_level_nam
 @patch.object(wlogging.WazuhLogger, 'logger_name', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'custom_formatter', create=True, new_callable=PropertyMock)
 def test_wazuh_logger__init__(mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
-                           mock_logger, mock_tag, mock_log_path):
+                              mock_logger, mock_tag, mock_log_path):
     """Test if WazuhLogger __init__ method initialize all attributes properly.
 
     Parameters
@@ -127,9 +127,24 @@ def test_wazuh_logger__init__(mock_formatter, mock_logger_name, mock_debug_level
         x.assert_called()
 
 
+@pytest.mark.parametrize('attribute, expected_exception', [
+    ('level', None),
+    ('foreground_mode', None),
+    ('doesnt_exists', AttributeError)
+])
 @patch('wazuh.core.wlogging.CustomFileRotatingHandler')
-def test_wazuh_logger_getattr(mock_fh):
-    """Test if WazuhLogger __getattr__ method works properly."""
+def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception):
+    """Test if WazuhLogger __getattr__ method works properly.
+
+    Parameters
+    ----------
+    mock_fh: MagicMock
+        Mock of CustomFileRotatingHandler function.
+    attribute: str
+        Attribute to search for with __getattr__.
+    expected_exception: Union[None, Exception]
+        Exception expected to be raised.
+    """
     tmp_dir = tempfile.TemporaryDirectory
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
@@ -137,10 +152,8 @@ def test_wazuh_logger_getattr(mock_fh):
                                         debug_level=[0, 'test'], logger_name='test')
     w_logger.setup_logger()
 
-    # Attribute of self.logger
-    w_logger.__getattr__('level')
-    # Attribute of self
-    w_logger.__getattr__('foreground_mode')
-    # Attribute that doesn't exists
-    with pytest.raises(AttributeError):
-        w_logger.__getattr__('doesnt_exists')
+    if expected_exception is None:
+        w_logger.__getattr__(attribute)
+    else:
+        with pytest.raises(expected_exception):
+            w_logger.__getattr__('doesnt_exists')
