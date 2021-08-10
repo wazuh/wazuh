@@ -9,8 +9,7 @@ from datetime import datetime
 from io import StringIO
 
 from wazuh.core import agent, common
-from wazuh.core.exception import (WazuhError, WazuhException,
-                                  WazuhInternalError, WazuhResourceNotFound)
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.wazuh_socket import WazuhSocket
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -18,18 +17,18 @@ MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "
 
 
 def hourly_():
-    """Compute hourly averages
+    """Compute hourly averages.
 
     Returns
     -------
     array
-        averages and iterations
+        Averages and iterations.
     """
     averages = []
     interactions = 0
     for i in range(25):
         try:
-            hfile = open(common.stats_path + '/hourly-average/' + str(i))
+            hfile = open(f'{common.stats_path}/hourly-average/{str(i)}')
             data = hfile.read()
             if i == 24:
                 interactions = int(data)
@@ -44,12 +43,12 @@ def hourly_():
 
 
 def weekly_():
-    """Compute weekly averages
+    """Compute weekly averages.
 
     Returns
     -------
     array
-        hours and interactions for each week day
+        Hours and interactions for each week day.
     """
     weekly_results = []
     for i in range(7):
@@ -57,7 +56,7 @@ def weekly_():
         interactions = 0
         for j in range(25):
             try:
-                wfile = open(common.stats_path + '/weekly-average/' + str(i) + '/' + str(j))
+                wfile = open(f'{common.stats_path}/weekly-average/{str(i)}/{str(j)}')
                 data = wfile.read()
                 if j == 24:
                     interactions = int(data)
@@ -73,23 +72,23 @@ def weekly_():
 
 
 def totals_(date):
-    """Statistical information for the current or specified date
+    """Statistical information for the current or specified date.
 
     Parameters
     ----------
     date : date
-        date object with the date value of the stats
+        Date object with the date value of the stats.
 
     Returns
     -------
     tuple
-        failed: boolean that represents if data parsing failed
-        affected: array of dictionaries. Each dictionary represents an hour
+        Failed: boolean that represents if data parsing failed. Its value is always `False`.
+        Affected: array of dictionaries. Each dictionary represents an hour.
 
     Raises
     ------
     WazuhError
-        raised on IOError
+        Raised on `IOError`.
     """
     try:
         stat_filename = os.path.join(
@@ -134,22 +133,22 @@ def totals_(date):
 
 
 def get_daemons_stats_(filename):
-    """Get daemons stats from an input file
+    """Get daemons stats from an input file.
 
     Parameters
     ----------
     filename : str
-        full path of the file to get information
+        Full path of the file to get information.
 
     Returns
     -------
     array
-        stats of the input file
+        Stats of the input file.
 
     Raises
     ------
     WazuhError
-        raised if file does not exist
+        Raised if file does not exist.
     """
     try:
         with open(filename, mode='r') as f:
@@ -170,25 +169,25 @@ def get_daemons_stats_(filename):
 
 
 def get_agents_component_stats_json_(agent_list, component):
-    """Get statistics of an agent's component
+    """Get statistics of an agent's component.
 
     Parameters
     ----------
     agent_list : list, optional
-        list of agents ID's, by default None
+        List of agents ID's, by default None.
     component : str, optional
-        name of the component to get stats from, by default None
+        Name of the component to get stats from, by default None.
 
     Returns
     -------
     tuple
-        failed: array of failed agent's information and related wazuh error
-        affected: array of agent's statistics
+        Failed: array of failed agent's information and related wazuh error.
+        Affected: array of agent's statistics.
 
     Raises
     ------
     WazuhResourceNotFound
-        raised if agent does not exist.
+        Raised if agent does not exist.
     """
     failed = []
     affected = []

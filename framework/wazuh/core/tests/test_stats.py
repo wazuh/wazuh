@@ -14,8 +14,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.core import common, stats
-        from wazuh.core.exception import (WazuhError, WazuhException,
-                                          WazuhInternalError)
+        from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
         from wazuh.tests.util import RBAC_bypasser
 
         del sys.modules['wazuh.rbac.orm']
@@ -82,6 +81,15 @@ def test_hourly_():
         assert hour in result[0]['averages'], 'Data do not match'
 
 
+@patch('wazuh.core.common.stats_path', new='')
+def test_hourly_ko():
+    """Test hourly_() function exceptions works"""
+    result = stats.hourly_()
+    for average in result[0]['averages']:
+        assert average == 0, 'Data do not match'
+    assert result[0]['interactions'] == 0
+
+
 @patch('wazuh.core.stats.open')
 @patch('wazuh.core.stats.configparser.RawConfigParser.read_file')
 @patch('wazuh.core.stats.configparser.RawConfigParser.items', return_value={'hour': "'5'"})
@@ -94,7 +102,7 @@ def test_get_daemons_stats_(mock_items, mock_read, mock_open):
 
 @patch('wazuh.core.stats.configparser.RawConfigParser.read_file')
 def test_get_daemons_stats_ko(mock_readfp):
-    """Tests get_daemons_stats_() function exceptions works"""
+    """Test get_daemons_stats_() function exceptions works"""
     with patch('wazuh.core.stats.open', side_effect=IOError):
         with pytest.raises(WazuhException, match=".* 1308 .*"):
             stats.get_daemons_stats_('filename')
@@ -119,7 +127,7 @@ def test_get_agents_component_stats_json_(mock_agents_info, mock_getstats, compo
 @patch('wazuh.core.agent.Agent.get_stats')
 @patch('wazuh.core.agent.get_agents_info', return_value=['001'])
 def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
-    """Tests get_agents_component_stats_() function exceptions works"""
+    """Test get_agents_component_stats_() function exceptions works"""
     failed = stats.get_agents_component_stats_json_(agent_list=['002', '005'], component='logcollector')[0]
     for item in failed:
         assert 1701 == item[1]._code
