@@ -11,6 +11,8 @@
 #include "os_auth/auth.h"
 #include "os_net/os_net.h"
 #include "shared.h"
+#include "headers/sec.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
     /* Remove static qualifier when unit testing */
@@ -38,6 +40,7 @@ static int w_enrollment_process_response(SSL *ssl);
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
 static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
+static void w_enrollment_concat_key(char *buff, keyentry* key);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
 static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
@@ -48,6 +51,9 @@ static const int ENTRY_ID = 0;
 static const int ENTRY_NAME = 1;
 static const int ENTRY_IP = 2;
 static const int ENTRY_KEY = 3;
+
+/* Global variable */
+keystore keys;
 
 w_enrollment_target *w_enrollment_target_init() {
     w_enrollment_target *target_cfg;
@@ -284,6 +290,10 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         return -1;
     }
 
+    if (keys.keysize > 0){
+        w_enrollment_concat_key(buf, keys.keyentries[0]);
+    }
+
     /* Append new line character */
     strcat(buf,"\n");
     int ret = SSL_write(cfg->ssl, buf, strlen(buf));
@@ -475,6 +485,25 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
     else {
         mdebug1("Registering agent to unverified manager");
     }
+}
+
+/**
+ * @brief Concats the current key of the agent, if exist, as  part of the enrollment message
+ *
+ * @param buff buffer where the KEY section will be concatenated
+ * @param key key will be added
+ */
+static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
+    assert(buff != NULL);
+    assert(key_entry != NULL);
+
+    os_sha1 output;
+    char* opt_buf = NULL;
+    os_calloc(OS_SIZE_65536, sizeof(char), opt_buf);
+    w_auth_hash_key(key_entry, output);
+    snprintf(opt_buf, OS_SIZE_65536, " K:'%s'", output);
+    strncat(buff,opt_buf,OS_SIZE_65536);
+    free(opt_buf);
 }
 
 /**
