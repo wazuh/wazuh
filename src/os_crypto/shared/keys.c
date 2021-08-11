@@ -763,7 +763,8 @@ int OS_WriteTimestamps(keystore * keys) {
 
     return r;
 }
-int w_auth_hash_key(keyentry *key_entry, os_sha1 output) {
+
+int w_get_key_hash(keyentry *key_entry, os_sha1 output) {
   if (!key_entry || !output) {
     mdebug2("Unable to hash agent's key due to empty parameters.");
     return OS_INVALID;
