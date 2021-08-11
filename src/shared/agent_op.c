@@ -30,14 +30,29 @@ static struct {
 static cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 
 //Parse an agent removal response
-static int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
+static int w_parse_agent_remove_response(const char* buffer,
+                                         char *err_response,
+                                         const int json_format,
+                                         const int exit_on_error);
 #endif
 
 //Parse an agent addition response
-static int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
+static int w_parse_agent_add_response(const char* buffer,
+                                      char *err_response,
+                                      char* id,
+                                      char* key,
+                                      const int json_format,
+                                      const int exit_on_error);
 
 //Alloc and create an agent addition command payload
-static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id);
+static cJSON* w_create_agent_add_payload(const char *name,
+                                         const char *ip,
+                                         const char *groups,
+                                         const char *key_hash,
+                                         const char *key,
+                                         const char *id,
+                                         const int force);
+
 
 /* Check if syscheck is to be executed/restarted
  * Returns 1 on success or 0 on failure (shouldn't be executed now)
@@ -568,7 +583,13 @@ int auth_close(int sock) {
     return (sock >= 0) ? close(sock) : 0;
 }
 
-static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char * groups, const char *key, const int force, const char *id) {
+static cJSON* w_create_agent_add_payload(const char *name,
+                                         const char *ip,
+                                         const char *groups,
+                                         const char *key_hash,
+                                         const char *key,
+                                         const char *id,
+                                         const int force) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -579,6 +600,10 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
 
     if(groups) {
         cJSON_AddStringToObject(arguments, "groups", groups);
+    }
+
+    if(key_hash) {
+        cJSON_AddStringToObject(arguments, "key_hash", key_hash);
     }
 
     if(key) {
@@ -807,13 +832,21 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
 }
 
 //Send a clustered agent add request.
-int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id) {
+int w_request_agent_add_clustered(char *err_response,
+                                  const char *name,
+                                  const char *ip,
+                                  const char *groups,
+                                  const char *key_hash,
+                                  char **id,
+                                  char **key,
+                                  const int force,
+                                  const char *agent_id) {
     int result;
     char response[OS_MAXSTR + 1];
     char new_id[FILE_SIZE+1] = { '\0' };
     char new_key[KEYSIZE+1] = { '\0' };
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, *key, force, agent_id);
+    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force);
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
@@ -862,7 +895,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error){
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, key, force, agent_id);
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 

@@ -85,11 +85,30 @@ int auth_connect();
 int auth_close(int sock);
 
 // Send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char * groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error);
+//TODO: DOxyGen
+int w_request_agent_add_local(int sock,
+                              char *id,
+                              const char *name,
+                              const char *ip,
+                              const char * groups,
+                              const char *key,
+                              const int force,
+                              const int json_format,
+                              const char *agent_id,
+                              int exit_on_error);
 
 #ifndef WIN32
 // Send a clustered agent add request.
-int w_request_agent_add_clustered(char *err_response, const char *name, const char *ip, const char * groups, char **id, char **key, const int force, const char *agent_id);
+//TODO: DOxyGen
+int w_request_agent_add_clustered(char *err_response,
+                                  const char *name,
+                                  const char *ip,
+                                  const char *groups,
+                                  const char *key_hash,
+                                  char **id,
+                                  char **key,
+                                  const int force,
+                                  const char *agent_id);
 
 // Send a clustered agent remove request.
 int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);
