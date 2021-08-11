@@ -678,18 +678,18 @@ int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_i
 }
 
 int w_get_key_hash(keyentry *key_entry, os_sha1 output) {
-  if (!key_entry || !output) {
-    mdebug2("Unable to hash agent's key due to empty parameters.");
-    return OS_INVALID;
-  }
+    if (!key_entry || !output) {
+        mdebug2("Unable to hash agent's key due to empty parameters.");
+        return OS_INVALID;
+    }
 
-  char *key = key_entry->key;
+    char *key = key_entry->key;
 
-  if (key) {
-    return OS_SHA1_Str(key, strlen(key), output);
-  }
-  else {
-    mdebug2("Unable to hash agent's key due to empty value.");
-    return OS_INVALID;
-  }
+    if (key) {
+        return OS_SHA1_Str(key, strlen(key), output);
+    }
+    else {
+        mdebug2("Unable to hash agent's key due to empty value.");
+        return OS_INVALID;
+    }
 }
