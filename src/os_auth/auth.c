@@ -193,7 +193,7 @@ w_err_t w_auth_replace_agent(keyentry *key,
     double antiquity = 0;
     if (!config.flags.force_insert ||
        (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < config.force_time)) {
-        minfo("Agent '%s' doesn´t complies with the antiquity to be removed.", key->id);
+        minfo("Agent '%s' doesn´t comply with the antiquity to be removed.", key->id);
         return OS_INVALID;
     }
 
@@ -202,7 +202,7 @@ w_err_t w_auth_replace_agent(keyentry *key,
         os_sha1 manager_key_hash;
         w_auth_hash_key(key, manager_key_hash);
         if (!strcmp(manager_key_hash, key_hash)) {
-            minfo("Key identified with hash '%s' already exists on the manager.", key_hash);
+            minfo("Agent '%s' key already exists on the manager.", key->id);
             return OS_INVALID;
         }
     }
