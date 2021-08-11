@@ -178,7 +178,7 @@ int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_i
  * @param output The variable where the hashed key will be stored
  * @retval Returns OS_SUCCESS on success or OS_INVALID on error.
  **/
-int w_auth_hash_key(keyentry *key_entry, os_sha1 output);
+int w_get_key_hash(keyentry *key_entry, os_sha1 output);
 
 /* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
