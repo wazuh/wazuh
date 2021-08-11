@@ -48,7 +48,7 @@ int ClientConf(const char *cfgfile)
     w_enrollment_target *target_cfg = w_enrollment_target_init();
 
     // Initialize enrollment_cfg
-    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg);
+    agt->enrollment_cfg = w_enrollment_init(target_cfg, cert_cfg, &keys);
     agt->enrollment_cfg->allow_localhost = 0; // Localhost not allowed in auto-enrollment
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||

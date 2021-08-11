@@ -274,7 +274,8 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg);
+    /* NULL until the agent-auth fix is implemented */
+    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, NULL);
     int ret = w_enrollment_request_key(cfg, server_address);
 
     w_enrollment_target_destroy(target_cfg);
