@@ -37,6 +37,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "etc/sslmanager.key"
@@ -72,8 +74,8 @@ int verify_callback(int ok, X509_STORE_CTX *store);
 
 /**
  * @brief Wraps SSL_read function to read block largers than a record (16K)
- * 
- * Calls SSL_read and if the return value is exactly the size of a record 
+ *
+ * Calls SSL_read and if the return value is exactly the size of a record
  * calls again with an offset in the buffer until reading is done or until
  * reaching a reading timeout
  * @param ssl ssl connection
@@ -108,37 +110,62 @@ void authd_sigblock();
 w_err_t w_auth_validate_groups(const char *groups, char *response);
 
 /**
- * @brief Parse a raw buffer from agent request into enrollment data. 
+ * @brief Parse a raw buffer from agent request into enrollment data.
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied
  * @param authpass Authentication password expected on the buffer, NULL if there isn't password
  * @param ip IP direction of the request. Can be override with IP parsed from buffer
  * @param agentname Pointer where parsed agent name will be allocated
  * @param groups Pointer where parsed groups will be allocated
+ * @param key_hash Pointer where parsed key hash will be allocated
  * */
-w_err_t w_auth_parse_data(const char* buf, char *response, const char *authpass, char *ip, char **agentname, char **groups);
+w_err_t w_auth_parse_data(const char* buf,
+                          char *response,
+                          const char *authpass,
+                          char *ip,
+                          char **agentname,
+                          char **groups,
+                          char **key_hash);
 
 /**
- * @brief Validates if new enrollment is possible with provided data
+ * @brief Validates if new enrollment is possible with provided data.
  * With force configuration disabled, if enrollment data is already registered, validation will fail.
  * With force configuration enabled, duplicated entry will be removed.
  * @param response 2048 length buffer where the error response will be copied
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
  * @param groups New enrollment groups
+ * @param hash_key Hash of the key on the agent
  * */
-w_err_t w_auth_validate_data (char *response, const char *ip, const char *agentname, const char *groups);
+w_err_t w_auth_validate_data(char *response,
+                             const char *ip,
+                             const char *agentname,
+                             const char *groups,
+                             const char *hash_key);
 
 /**
- * @brief Adds new agent with provided enrollment data
+ * @brief Validates if the old agent can be replaced and removes it.
+ * @param key Key structure of the agent to be removed
+ * @param hash_key Hash of the key on the agent
+ * */
+w_err_t w_auth_replace_agent(keyentry *key,
+                             const char *key_hash);
+
+/**
+ * @brief Adds new agent with provided enrollment data.
  * @param response 2048 length buffer where the error response will be copied
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
  * @param groups New enrollment groups
- * @param id Pointer where new Agent ID will be allocated 
- * @param key Pointer where new Agent key will be allocated 
+ * @param id Pointer where new Agent ID will be allocated
+ * @param key Pointer where new Agent key will be allocated
  * */
-w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key);
+w_err_t w_auth_add_agent(char *response,
+                         const char *ip,
+                         const char *agentname,
+                         const char *groups,
+                         char **id,
+                         char **key);
 
 
 extern char shost[512];

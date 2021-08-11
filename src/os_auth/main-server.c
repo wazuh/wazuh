@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "check_cert.h"
-#include "os_crypto/md5/md5_op.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
@@ -621,9 +620,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         bool enrollment_ok = FALSE;
         char *agentname = NULL;
         char *centralized_group = NULL;
+        char* key_hash = NULL;
         char* new_id = NULL;
         char* new_key = NULL;
-        if (OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group)) {
+
+        if (OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group, &key_hash)) {
             if (config.worker_node) {
                 minfo("Dispatching request to master node");
                 if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, &new_id, &new_key, config.flags.force_insert?config.force_time:-1, NULL)) {
@@ -632,7 +633,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
             else {
                 w_mutex_lock(&mutex_keys);
-                if (OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group)) {
+                if (OS_SUCCESS == w_auth_validate_data(response, ip, agentname, centralized_group, key_hash)) {
                     if (OS_SUCCESS == w_auth_add_agent(response, ip, agentname, centralized_group, &new_id, &new_key)) {
                         enrollment_ok = TRUE;
                     }
@@ -690,6 +691,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         os_free(buf);
         os_free(agentname);
         os_free(centralized_group);
+        os_free(key_hash);
         os_free(new_id);
         os_free(new_key);
     }
