@@ -486,10 +486,10 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
 }
 
 /**
- * @brief Concats the current key of the agent, if exist, as  part of the enrollment message
+ * @brief Concatenates the current key of the agent, if exists, as  part of the enrollment message
  *
  * @param buff buffer where the KEY section will be concatenated
- * @param key key will be added
+ * @param key_entry The key that will be concatenated
  */
 static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
     assert(buff != NULL);
@@ -497,10 +497,10 @@ static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
 
     os_sha1 output;
     char* opt_buf = NULL;
-    os_calloc(OS_SIZE_65536, sizeof(char), opt_buf);
+    os_calloc(OS_SIZE_512, sizeof(char), opt_buf);
     w_get_key_hash(key_entry, output);
-    snprintf(opt_buf, OS_SIZE_65536, " K:'%s'", output);
-    strncat(buff,opt_buf,OS_SIZE_65536);
+    snprintf(opt_buf, OS_SIZE_512, " K:'%s'", output);
+    strncat(buff,opt_buf,OS_SIZE_512);
     free(opt_buf);
 }
 
