@@ -8,6 +8,7 @@
  * Foundation.
  */
 
+#include <string.h>
 #define SECURITY_WIN32
 #include <windef.h>
 #include <sspi.h>
@@ -26,6 +27,9 @@
 #include "addagent/manage_agents.h"
 
 #define IO_BUFFER_SIZE  0x10000
+
+/*Global keys structure*/
+keystore keys = KEYSTORE_INITIALIZER;
 
 void report_help()
 {
@@ -473,11 +477,23 @@ int main(int argc, char **argv)
     printf("INFO: Using agent name as: %s\n", agentname);
 
     // Send request
+    char *secure_msg;
+    os_calloc(OS_SIZE_65536, sizeof(char), secure_msg);
+    if (authpass) {
+        snprintf(secure_msg, OS_SIZE_65536, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
+    }
+    else {
+        snprintf(secure_msg, OS_SIZE_65536, "OSSEC A:'%s'\n", agentname);
+    }
 
-    if (authpass)
-        SendSecureMessage(socket, &context, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
-    else
-        SendSecureMessage(socket, &context, "OSSEC A:'%s'\n", agentname);
+    // Reading agent's key (if any) to send its hash to the manager
+    OS_ReadKeys(&keys, 0, 0);
+    if (keys.keysize > 0) {
+        w_enrollment_concat_key(secure_msg, keys.keyentries[0]);
+    }
+
+    SendSecureMessage(socket, &context, secure_msg);
+    os_free(secure_msg);
 
     printf("INFO: Sent request to manager. Waiting for reply.\n");
 

@@ -23,12 +23,16 @@
  *
  */
 
+#include "sec.h"
 #include "shared.h"
 #include <openssl/ssl.h>
 #include "auth.h"
 
 #undef ARGV0
 #define ARGV0 "agent-auth"
+
+/*Global keys structure*/
+keystore keys = KEYSTORE_INITIALIZER;
 
 static void help_agent_auth(char * home_path) __attribute__((noreturn));
 
