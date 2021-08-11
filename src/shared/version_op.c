@@ -414,27 +414,30 @@ os_info *get_unix_version()
             if (tag) {
                 if (strcmp (tag,"NAME") == 0) {
                     if (!name) {
-                        name = strtok_r(NULL, "\n", &save_ptr);
-                        if (name && name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
-                            *end = '\0';
+                        if (name = strtok_r(NULL, "\n", &save_ptr)) {
+                            if (name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
+                                *end = '\0';
+                            }
+                            info->os_name = strdup(name);
                         }
-                        info->os_name = strdup(name);
                     }
                 } else if (strcmp (tag,"VERSION") == 0) {
                     if (!version) {
-                        version = strtok_r(NULL, "\n", &save_ptr);
-                        if (version && version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
-                            *end = '\0';
+                        if (version = strtok_r(NULL, "\n", &save_ptr)) {
+                            if (version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
+                                *end = '\0';
+                            }
+                            info->os_version = strdup(version);
                         }
-                        info->os_version = strdup(version);
                     }
                 } else if (strcmp (tag,"ID") == 0) {
                     if (!id) {
-                        id = strtok_r(NULL, " \n", &save_ptr);
-                        if (id && id[0] == '\"' && (end = strchr(++id, '\"'), end)) {
-                            *end = '\0';
+                        if (id = strtok_r(NULL, " \n", &save_ptr)) {
+                            if (id[0] == '\"' && (end = strchr(++id, '\"'), end)) {
+                                *end = '\0';
+                            }
+                            info->os_platform = strdup(id);
                         }
-                        info->os_platform = strdup(id);
                     }
                 }
             }
