@@ -52,9 +52,6 @@ static const int ENTRY_NAME = 1;
 static const int ENTRY_IP = 2;
 static const int ENTRY_KEY = 3;
 
-/* Global variable */
-keystore keys;
-
 w_enrollment_target *w_enrollment_target_init() {
     w_enrollment_target *target_cfg;
     os_malloc(sizeof(w_enrollment_target), target_cfg);
@@ -98,7 +95,7 @@ void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
     os_free(cert_cfg);
 }
 
-w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert) {
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert, keystore *keys) {
     assert(target != NULL);
     assert(cert != NULL);
     w_enrollment_ctx *cfg;
@@ -109,6 +106,7 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     cfg->ssl = NULL;
     cfg->allow_localhost = 1;
     cfg->delay_after_enrollment = 20;
+    cfg->keys = keys;
     return cfg;
 }
 
@@ -290,8 +288,8 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         return -1;
     }
 
-    if (keys.keysize > 0){
-        w_enrollment_concat_key(buf, keys.keyentries[0]);
+    if (cfg->keys->keysize > 0){
+        w_enrollment_concat_key(buf, cfg->keys->keyentries[0]);
     }
 
     /* Append new line character */
@@ -500,7 +498,7 @@ static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
     os_sha1 output;
     char* opt_buf = NULL;
     os_calloc(OS_SIZE_65536, sizeof(char), opt_buf);
-    w_auth_hash_key(key_entry, output);
+    w_get_key_hash(key_entry, output);
     snprintf(opt_buf, OS_SIZE_65536, " K:'%s'", output);
     strncat(buff,opt_buf,OS_SIZE_65536);
     free(opt_buf);

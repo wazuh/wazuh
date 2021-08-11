@@ -23,6 +23,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/ossl_typ.h>
+#include "sec.h"
 
 #define ENROLLMENT_WRONG_CONFIGURATION -1
 #define ENROLLMENT_CONNECTION_FAILURE -2
@@ -65,6 +66,7 @@ typedef struct _enrollment_cert_cfg {
 typedef struct _enrollment_ctx {
     w_enrollment_target *target_cfg;        /**> for details @see _enrollment_target_cfg */
     w_enrollment_cert *cert_cfg;            /**> for details @see _enrollment_cert_cfg */
+    keystore *keys;                         /**> keys structure */
     SSL *ssl;                               /**> will hold the connection instance with the manager */
     unsigned int enabled:1;                 /**> enabled / disables auto enrollment */
     unsigned int allow_localhost:1;         /**> 1 by default if this flag is in 0 using agent_name "localhost" will not be allowed */
@@ -97,7 +99,7 @@ void w_enrollment_cert_destroy(w_enrollment_cert *cert);
  * Initializes parameters of an w_enrollment_ctx structure based
  * on a target and certificate configurations
  * */
-w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert);
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert, keystore *keys);
 
 /**
  * Frees parameers of an w_enrollment_ctx structure
