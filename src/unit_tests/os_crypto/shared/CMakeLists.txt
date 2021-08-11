@@ -7,6 +7,11 @@ list(APPEND os_crypto_shared_tests_flags "-Wl,--wrap,merror_exit -Wl,--wrap,link
                             -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap=key_lock_write -Wl,--wrap=key_unlock -Wl,--wrap=time \
                             -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
+# Generate keys tests
+list(APPEND os_crypto_shared_tests_names "test_keys")
+list(APPEND os_crypto_shared_tests_flags "-Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Create \
+                                -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete")
+
 # Compiling tests
 list(LENGTH os_crypto_shared_tests_names count)
 math(EXPR count "${count} - 1")
