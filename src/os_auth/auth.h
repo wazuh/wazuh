@@ -120,12 +120,12 @@ w_err_t w_auth_validate_groups(const char *groups, char *response);
  * @param key_hash Pointer where parsed key hash will be allocated
  * */
 w_err_t w_auth_parse_data(const char* buf,
-                          char *response,
-                          const char *authpass,
-                          char *ip,
-                          char **agentname,
-                          char **groups,
-                          char **key_hash);
+                                                  char *response,
+                                                  const char *authpass,
+                                                  char *ip,
+                                                  char **agentname,
+                                                  char **groups,
+                                                  char **key_hash);
 
 /**
  * @brief Validates if new enrollment is possible with provided data.
@@ -138,10 +138,10 @@ w_err_t w_auth_parse_data(const char* buf,
  * @param hash_key Hash of the key on the agent
  * */
 w_err_t w_auth_validate_data(char *response,
-                             const char *ip,
-                             const char *agentname,
-                             const char *groups,
-                             const char *hash_key);
+                                                      const char *ip,
+                                                      const char *agentname,
+                                                      const char *groups,
+                                                      const char *hash_key);
 
 /**
  * @brief Validates if the old agent can be replaced and removes it.
@@ -163,11 +163,11 @@ w_err_t w_auth_replace_agent(keyentry *key,
  * @param key Pointer where new Agent key will be allocated
  * */
 w_err_t w_auth_add_agent(char *response,
-                         const char *ip,
-                         const char *agentname,
-                         const char *groups,
-                         char **id,
-                         char **key);
+                                                 const char *ip,
+                                                 const char *agentname,
+                                                 const char *groups,
+                                                 char **id,
+                                                 char **key);
 
 
 extern char shost[512];
