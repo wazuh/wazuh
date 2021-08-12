@@ -9,6 +9,7 @@ from typing import Dict, List
 from defusedxml import ElementTree as ET
 from jsonschema import draft4_format_checker
 
+from api.constants import MIN_VALUE_MAX_MEMORY_USAGE
 from wazuh.core import common
 
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
@@ -129,7 +130,7 @@ api_config_schema = {
                 "max_login_attempts": {"type": "integer"},
                 "block_time": {"type": "integer"},
                 "max_request_per_minute": {"type": "integer"},
-                "max_memory_usage": {"type": "integer"},
+                "max_memory_usage": {"type": "integer", "minimum": MIN_VALUE_MAX_MEMORY_USAGE},
             },
         },
         "remote_commands": {
