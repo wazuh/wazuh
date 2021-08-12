@@ -23,10 +23,10 @@
  *
  */
 
-#include "sec.h"
 #include "shared.h"
 #include <openssl/ssl.h>
 #include "auth.h"
+#include "enrollment_op.h"
 
 #undef ARGV0
 #define ARGV0 "agent-auth"
