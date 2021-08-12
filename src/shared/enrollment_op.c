@@ -11,6 +11,8 @@
 #include "os_auth/auth.h"
 #include "os_net/os_net.h"
 #include "shared.h"
+#include "headers/sec.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
     /* Remove static qualifier when unit testing */
@@ -38,6 +40,7 @@ static int w_enrollment_process_response(SSL *ssl);
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
 static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
+static void w_enrollment_concat_key(char *buff, keyentry* key);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
 static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
@@ -92,7 +95,7 @@ void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
     os_free(cert_cfg);
 }
 
-w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert) {
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert, keystore *keys) {
     assert(target != NULL);
     assert(cert != NULL);
     w_enrollment_ctx *cfg;
@@ -103,6 +106,7 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     cfg->ssl = NULL;
     cfg->allow_localhost = 1;
     cfg->delay_after_enrollment = 20;
+    cfg->keys = keys;
     return cfg;
 }
 
@@ -282,6 +286,10 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         if(lhostname != cfg->target_cfg->agent_name)
             os_free(lhostname);
         return -1;
+    }
+
+    if (cfg->keys->keysize > 0){
+        w_enrollment_concat_key(buf, cfg->keys->keyentries[0]);
     }
 
     /* Append new line character */
@@ -475,6 +483,25 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
     else {
         mdebug1("Registering agent to unverified manager");
     }
+}
+
+/**
+ * @brief Concatenates the current key of the agent, if exists, as  part of the enrollment message
+ *
+ * @param buff buffer where the KEY section will be concatenated
+ * @param key_entry The key that will be concatenated
+ */
+static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
+    assert(buff != NULL);
+    assert(key_entry != NULL);
+
+    os_sha1 output;
+    char* opt_buf = NULL;
+    os_calloc(OS_SIZE_512, sizeof(char), opt_buf);
+    w_get_key_hash(key_entry, output);
+    snprintf(opt_buf, OS_SIZE_512, " K:'%s'", output);
+    strncat(buff,opt_buf,OS_SIZE_512);
+    free(opt_buf);
 }
 
 /**
