@@ -28,9 +28,6 @@
 
 #define IO_BUFFER_SIZE  0x10000
 
-/*Global keys structure*/
-keystore keys = KEYSTORE_INITIALIZER;
-
 void report_help()
 {
     printf("\n%s %s: Connects to the manager to extract the agent key.\n", __ossec_name, ARGV0);
@@ -478,15 +475,16 @@ int main(int argc, char **argv)
 
     // Send request
     char *secure_msg;
-    os_calloc(OS_SIZE_65536, sizeof(char), secure_msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), secure_msg);
     if (authpass) {
-        snprintf(secure_msg, OS_SIZE_65536, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
+        snprintf(secure_msg, OS_SIZE_6144, "OSSEC PASS: %s OSSEC A:'%s'\n", authpass, agentname);
     }
     else {
-        snprintf(secure_msg, OS_SIZE_65536, "OSSEC A:'%s'\n", agentname);
+        snprintf(secure_msg, OS_SIZE_6144, "OSSEC A:'%s'\n", agentname);
     }
 
     // Reading agent's key (if any) to send its hash to the manager
+    keystore keys = KEYSTORE_INITIALIZER;
     OS_ReadKeys(&keys, 0, 0);
     if (keys.keysize > 0) {
         w_enrollment_concat_key(secure_msg, keys.keyentries[0]);
