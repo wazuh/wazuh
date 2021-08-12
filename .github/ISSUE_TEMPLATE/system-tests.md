@@ -58,7 +58,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] @santiago-bassett 
-- [ ] @davidjiglesias 
-- [ ] @AdriiiPRodri  
-- [ ] @vicferpoy 
+- [ ] 

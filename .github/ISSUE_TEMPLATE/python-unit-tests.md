@@ -40,6 +40,17 @@ Any expected fail or skipped test must have an issue justifying the reason. All 
 
 An extended report of the test results must be attached as a zip or txt. This report can be used by the auditors to dig deeper into any possible failures and details.
 
+As for the coverage results, they must be added split by modules. Test files must not be included in the coverage report.
+
+All test coverage results must have one of the following statuses: 
+|                 |        |
+|-----------------|--------|
+| :green_square:  | >= 75% |
+| :yellow_square: | >= 50% |
+| :orange_square: | >= 25% |
+| :red_square:    | < 25%  |
+
+
 ## Conclusions
 
 <!--
@@ -51,6 +62,11 @@ All tests have been executed and the results can be found [here]().
 |                |             |                     |                |
 
 All tests have passed and the fails have been reported or justified. I therefore conclude that this issue is finished and OK for this release candidate.
+
+|                                        |              |            |
+|----------------------------------------|--------------|------------|
+|                                        | **Coverage** | **Status** |
+| **Overall python unit tests coverage** |              |            |
 -->
 
 ## Auditors validation
@@ -58,7 +74,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] @santiago-bassett 
-- [ ] @davidjiglesias 
-- [ ] @AdriiiPRodri  
-- [ ] @vicferpoy 
+- [ ] 
