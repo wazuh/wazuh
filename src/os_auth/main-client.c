@@ -23,6 +23,7 @@
  *
  */
 
+#include "sec.h"
 #include "shared.h"
 #include <openssl/ssl.h>
 #include "auth.h"
@@ -285,6 +286,7 @@ int main(int argc, char **argv)
     w_enrollment_target_destroy(target_cfg);
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
+    OS_FreeKeys(&agent_keys);
 
     exit((ret == 0) ? 0 : 1);
 }
