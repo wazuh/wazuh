@@ -5,10 +5,9 @@
 import sys
 from datetime import datetime
 from time import time
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-
 from wazuh.core import common
 
 with patch('wazuh.common.wazuh_uid'):
@@ -20,8 +19,8 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        import wazuh.core.cluster.utils
         import wazuh.core.cluster.cluster
+        import wazuh.core.cluster.utils
         from wazuh import WazuhException
 
 # Valid configurations
