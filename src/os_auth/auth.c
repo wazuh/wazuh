@@ -201,7 +201,7 @@ w_err_t w_auth_replace_agent(keyentry *key,
     /* Check if the agent key is the same than the existent in the manager */
     if (key_hash) {
         os_sha1 manager_key_hash;
-        w_auth_hash_key(key, manager_key_hash);
+        w_get_key_hash(key, manager_key_hash);
         if (!strcmp(manager_key_hash, key_hash)) {
             minfo("Agent '%s' key already exists on the manager.", key->id);
             return OS_INVALID;
