@@ -85,7 +85,7 @@ int auth_connect();
 int auth_close(int sock);
 
 /**
- * @brief Send a local agent add request.
+ * @brief Send a local agent "add" request.
  * @param sock Socket where the request connection will be done.
  * @param id ID of the newly generated key.
  * @param name Name of the agent to request the new key.
@@ -93,7 +93,7 @@ int auth_close(int sock);
  * @param groups Groups list of the agent to request the new key.
  * @param key KEY of the newly generated key.
  * @param force Force option to be used during the registration. -1 means disabled. 0 or a positive value means enabled.
- * @param json_format Flag to identify if the response should be printed in json format.
+ * @param json_format Flag to identify if the response should be printed in JSON format.
  * @param agent_id ID of the agent when requesting a new key for a specific ID.
  * @param exit_on_error Flag to identify if the application should exit on any error.
  * @return 0 on success or a negative code on error.
@@ -112,7 +112,7 @@ int w_request_agent_add_local(int sock,
 #ifndef WIN32
 
 /**
- * @brief Send a clustered agent add request.
+ * @brief Send a clustered agent "add" request.
  * @param err_response A buffer where the error message will be stored in case of failure. If NULL, the message is ignored.
  * @param name Name of the agent to request the new key.
  * @param ip IP of the agent to request the new key.

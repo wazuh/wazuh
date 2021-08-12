@@ -190,10 +190,16 @@ w_err_t w_auth_parse_data(const char* buf,
 w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,
                              authd_force_options_t *force_options){
-    /* Check if the agent antiquity complies with the configuration to be removed*/
+
+    /* Check if the agent replacement is allowed */
+    if (!force_options->enabled) {
+        minfo("Agent '%s' won´t be removed because the force option is disabled.", key->id);
+        return OS_INVALID;
+    }
+
+    /* Check if the agent antiquity complies with the configuration to be removed */
     double antiquity = 0;
-    if (!force_options->enabled ||
-       (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < force_options->connection_time)) {
+    if (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < force_options->connection_time) {
         minfo("Agent '%s' doesn´t comply with the antiquity to be removed.", key->id);
         return OS_INVALID;
     }

@@ -147,6 +147,7 @@ w_err_t w_auth_validate_data(char *response,
  * @brief Validates if the old agent can be replaced and removes it.
  * @param key Key structure of the agent to be removed
  * @param hash_key Hash of the key on the agent
+ * @param force_options Force configuration structure to define how the agent replacement must be handled.
  * */
 w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,

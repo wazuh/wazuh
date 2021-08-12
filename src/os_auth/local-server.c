@@ -61,7 +61,7 @@ static char* local_dispatch(const char *input);
 static cJSON* local_add(const char *id,
                         const char *name,
                         const char *ip,
-                        char *groups,
+                        const char *groups,
                         const char *key,
                         const char *key_hash,
                         authd_force_options_t *force_options);
@@ -321,7 +321,7 @@ fail:
 cJSON* local_add(const char *id,
                  const char *name,
                  const char *ip,
-                 char *groups,
+                 const char *groups,
                  const char *key,
                  const char *key_hash,
                  authd_force_options_t *force_options) {
