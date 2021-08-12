@@ -23,7 +23,6 @@
  *
  */
 
-#include "sec.h"
 #include "shared.h"
 #include <openssl/ssl.h>
 #include "auth.h"
@@ -275,11 +274,11 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    keystore keys = KEYSTORE_INITIALIZER;
-    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, keys);
-
     // Reading agent's key (if any) to send its hash to the manager
-    OS_ReadKeys(&keys, 0, 0);
+    keystore agent_keys = KEYSTORE_INITIALIZER;
+    OS_ReadKeys(&agent_keys, 0, 0);
+
+    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, &agent_keys);
     int ret = w_enrollment_request_key(cfg, server_address);
 
     w_enrollment_target_destroy(target_cfg);

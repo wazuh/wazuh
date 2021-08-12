@@ -484,10 +484,10 @@ int main(int argc, char **argv)
     }
 
     // Reading agent's key (if any) to send its hash to the manager
-    keystore keys = KEYSTORE_INITIALIZER;
-    OS_ReadKeys(&keys, 0, 0);
-    if (keys.keysize > 0) {
-        w_enrollment_concat_key(secure_msg, keys.keyentries[0]);
+    keystore agent_keys = KEYSTORE_INITIALIZER;
+    OS_ReadKeys(&agent_keys, 0, 0);
+    if (agent_keys.keysize > 0) {
+        w_enrollment_concat_key(secure_msg, agent_keys.keyentries[0]);
     }
 
     SendSecureMessage(socket, &context, secure_msg);
