@@ -7,10 +7,9 @@ import logging
 import os
 import shutil
 import zipfile
-from datetime import datetime, timedelta
-from functools import reduce
-from operator import eq, add
-from os import listdir, path, stat, remove
+from datetime import datetime
+from operator import eq
+from os import listdir, path, stat, remove, walk
 from random import random
 from shutil import rmtree
 from subprocess import check_output
@@ -153,6 +152,75 @@ def check_cluster_status():
 # Files
 #
 
+def walk_dir_ar(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
+    """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
+
+    Parameters
+    ----------
+    dirname : str
+        Directory within which to look for files.
+    recursive : bool
+        Whether to recursively look for files inside found directories.
+    files : list
+        List of files to obtain information from.
+    excluded_files : list
+        List of files to ignore.
+    excluded_extensions : list
+        List of extensions to ignore.
+    get_cluster_item_key : str
+        Key inside cluster.json['files'] to which each file belongs. This is useful to know what actions to take
+        after sending a file from one node to another, depending on the directory the file belongs to.
+    get_md5 : bool
+        Whether to calculate and save the MD5 hash of the found file.
+
+    Returns
+    -------
+    walk_files : dict
+        Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
+    """
+    walk_files = {}
+
+    # Get the information collected in the previous integration process.
+    previous_status = common.cluster_integrity_mtime.get()
+
+    full_dirname = path.join(common.wazuh_path, dirname)
+    # Get list of all files and directories inside 'dirname'.
+    try:
+        for root_, _, files_ in walk(full_dirname, topdown=True):
+            if recursive or root_ == full_dirname:
+                for file_ in files_:
+                    if file_ in excluded_files or any([file_.endswith(ext) for ext in excluded_extensions]):
+                        continue
+                    try:
+                        if file_ in files or files == ['all']:
+                            relative_path = path.relpath(root_, common.wazuh_path)
+                            relative_file_path = path.join(relative_path, file_)
+                            abs_file_path = path.join(root_, file_)
+                            file_mod_time = path.getmtime(abs_file_path)
+                            try:
+                                if file_mod_time == previous_status[relative_file_path]:
+                                    walk_files[relative_file_path] = previous_status[relative_file_path]
+                                    continue
+                            except KeyError:
+                                pass
+                            file_metadata = {"mod_time": file_mod_time, 'cluster_item_key': get_cluster_item_key}
+                            if '.merged' in file_:
+                                file_metadata['merged'] = True
+                                file_metadata['merge_type'] = 'agent-groups'
+                                file_metadata['merge_name'] = abs_file_path
+                            else:
+                                file_metadata['merged'] = False
+                            if get_md5:
+                                file_metadata['md5'] = md5(abs_file_path)
+                            walk_files[relative_file_path] = file_metadata
+                    except Exception as e:
+                        logger.debug(f"Could not get checksum of file {file_}: {e}")
+            else:
+                break
+    except OSError as err:
+        raise WazuhError(3015, f'{err}')
+    return walk_files
+
 
 def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
@@ -251,22 +319,39 @@ def get_files_status(get_md5=True):
     final_items : dict
         Paths (keys) and metadata (values) of all the files requested in cluster.json['files'].
     """
+
     cluster_items = get_cluster_items()
 
     final_items = {}
+    final_items_AR = {} # ' TEST
     for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
 
         try:
+            start_rec = datetime.now()
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                          cluster_items['files']['excluded_extensions'], file_path, get_md5))
+            end_rec = datetime.now()
+            # ' TEST
+            final_items_AR.update(
+                walk_dir_ar(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                            cluster_items['files']['excluded_extensions'], file_path, get_md5))
+            end_ar = datetime.now()
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
-
+    # ' TESTING:
+    # ' Recordar 'chown -r wazuh:wazuh /home'
+    with open('/home/cluster_output_original.txt', mode='w') as fx:
+        fx.write(f'{json.dumps(final_items, sort_keys=True)}')
+    with open('/home/cluster_output_AR.txt', mode='w') as fx:
+        fx.write(f'{json.dumps(final_items_AR, sort_keys=True)}')
     # Save the information collected in the current integration process.
     common.cluster_integrity_mtime.set(final_items)
+
+    with open('/home/results.txt', mode='w') as wrx:
+        wrx.write(f'Recursive: {(end_rec-start_rec).total_seconds()*1000}\nAR: {(end_ar-end_rec).total_seconds()*1000}\n')
 
     return final_items
 
