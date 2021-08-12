@@ -104,12 +104,12 @@ static int teardown_group(void **state) {
 }
 
 int setup_validate_force_insert_0(void **state) {
-    config.flags.force_insert = 0;
+    config.force_options.enabled = 0;
     return 0;
 }
 
 int setup_validate_force_insert_1(void **state) {
-    config.flags.force_insert = 1;
+    config.force_options.enabled = 1;
     return 0;
 }
 
