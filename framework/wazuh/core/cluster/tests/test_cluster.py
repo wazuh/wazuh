@@ -124,7 +124,7 @@ def test_checking_configuration(read_config):
 agent_groups = b"default,windows-servers"
 
 
-@patch('os.listdir', return_value=['005', '006'])
+@patch('wazuh.core.cluster.cluster.listdir', return_value=['005', '006'])
 @patch('wazuh.core.cluster.cluster.stat')
 def test_merge_info(stat_mock, listdir_mock):
     """
@@ -151,7 +151,7 @@ def test_merge_info(stat_mock, listdir_mock):
 @patch('wazuh.core.cluster.cluster.stat')
 def test_unmerge_info(stat_mock, agent_info, exception):
     stat_mock.return_value.st_size = len(agent_info)
-    with patch('builtins.open', mock_open(read_data=agent_info)) as m:
+    with patch('builtins.open', mock_open(read_data=agent_info)):
         agent_groups = list(
             wazuh.core.cluster.cluster.unmerge_info('agent-groups', '/random/path', 'agent-groups-shared.merged'))
         assert len(agent_groups) == (1 if exception is None else 0)
@@ -165,6 +165,10 @@ def test_update_cluster_control_with_failed():
         'shared': {'/test_file1': 'test'},
         'extra': {'/test_file2': 'test'}
     }
-    wazuh.core.cluster.cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'], ko_files)
+    wazuh.core.cluster.cluster.update_cluster_control_with_failed(['/test_file0', '/test_file1', 'test_file2'],
+                                                                  ko_files)
 
-    assert ko_files == {'missing': {'/test_file3': 'ok'}, 'shared': {}, 'extra': {'/test_file2': 'test', '/test_file1': 'test'}}
+    assert ko_files == {'missing': {'/test_file3': 'ok'},
+                        'shared': {},
+                        'extra': {'/test_file2': 'test', '/test_file1': 'test'}
+                        }
