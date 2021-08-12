@@ -33,7 +33,7 @@ class WazuhDBQueryTask(WazuhDBQuery):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table=table, sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='ASC',
                               filters=filters, query=query, count=count, get_data=get_data,
-                              date_fields={'create_time', 'last_update_time'},
+                              date_fields={'CREATE_TIME', 'LAST_UPDATE_TIME'},
                               min_select_fields=min_select_fields, backend=WazuhDBBackend(query_format='task'))
 
     def _final_query(self):
