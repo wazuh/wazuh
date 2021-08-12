@@ -493,6 +493,7 @@ int main(int argc, char **argv)
 
     SendSecureMessage(socket, &context, secure_msg);
     os_free(secure_msg);
+    OS_FreeKeys(&agent_keys);
 
     printf("INFO: Sent request to manager. Waiting for reply.\n");
 
