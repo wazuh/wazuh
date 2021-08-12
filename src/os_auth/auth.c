@@ -57,12 +57,12 @@ void add_remove(const keyentry *entry) {
 
 
 w_err_t w_auth_parse_data(const char* buf,
-                          char *response,
-                          const char *authpass,
-                          char *ip,
-                          char **agentname,
-                          char **groups,
-                          char **key_hash){
+                                                  char *response,
+                                                  const char *authpass,
+                                                  char *ip,
+                                                  char **agentname,
+                                                  char **groups,
+                                                  char **key_hash){
 
     bool parseok = FALSE;
     /* Checking for shared password authentication. */
@@ -222,10 +222,10 @@ w_err_t w_auth_replace_agent(keyentry *key,
 }
 
 w_err_t w_auth_validate_data(char *response,
-                             const char *ip,
-                             const char *agentname,
-                             const char *groups,
-                             const char *key_hash){
+                                                      const char *ip,
+                                                      const char *agentname,
+                                                      const char *groups,
+                                                      const char *key_hash){
     int index = 0;
 
     /* Validate the group(s) name(s) */
