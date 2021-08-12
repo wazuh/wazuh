@@ -4,21 +4,20 @@
 import itertools
 import json
 import logging
-import os
 import shutil
 import zipfile
 from datetime import datetime
 from operator import eq
-from os import listdir, path, stat, remove, walk
+from os import listdir, path, remove, stat, walk
 from random import random
 from shutil import rmtree
 from subprocess import check_output
 from time import time
 
-from wazuh import WazuhException, WazuhError
+from wazuh import WazuhError, WazuhException
 from wazuh.core import common
-from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_cluster_items, read_config
+from wazuh.core.InputValidator import InputValidator
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
@@ -78,7 +77,7 @@ def check_cluster_config(config):
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-                format(config['nodes'][0]))
+            format(config['nodes'][0]))
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
@@ -152,7 +151,7 @@ def check_cluster_status():
 # Files
 #
 
-def walk_dir_ar(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
+def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
 
     Parameters
@@ -184,7 +183,7 @@ def walk_dir_ar(dirname, recursive, files, excluded_files, excluded_extensions, 
     previous_status = common.cluster_integrity_mtime.get()
 
     full_dirname = path.join(common.wazuh_path, dirname)
-    # Get list of all files and directories inside 'dirname'.
+    # Get list of all files and directories inside 'full_dirname'.
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
             if recursive or root_ == full_dirname:
@@ -192,9 +191,8 @@ def walk_dir_ar(dirname, recursive, files, excluded_files, excluded_extensions, 
                     if file_ in excluded_files or any([file_.endswith(ext) for ext in excluded_extensions]):
                         continue
                     try:
-                        if file_ in files or files == ['all']:
-                            relative_path = path.relpath(root_, common.wazuh_path)
-                            relative_file_path = path.join(relative_path, file_)
+                        if files == ['all'] or file_ in files:
+                            relative_file_path = path.join(path.relpath(root_, common.wazuh_path), file_)
                             abs_file_path = path.join(root_, file_)
                             file_mod_time = path.getmtime(abs_file_path)
                             try:
@@ -222,90 +220,6 @@ def walk_dir_ar(dirname, recursive, files, excluded_files, excluded_extensions, 
     return walk_files
 
 
-def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5=True):
-    """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
-
-    Parameters
-    ----------
-    dirname : str
-        Directory within which to look for files.
-    recursive : bool
-        Whether to recursively look for files inside found directories.
-    files : list
-        List of files to obtain information from.
-    excluded_files : list
-        List of files to ignore.
-    excluded_extensions : list
-        List of extensions to ignore.
-    get_cluster_item_key : str
-        Key inside cluster.json['files'] to which each file belongs. This is useful to know what actions to take
-        after sending a file from one node to another, depending on the directory the file belongs to.
-    get_md5 : bool
-        Whether to calculate and save the MD5 hash of the found file.
-
-    Returns
-    -------
-    walk_files : dict
-        Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
-    """
-    walk_files = {}
-
-    # Get list of all files and directories inside 'dirname'.
-    try:
-        entries = listdir(os.path.join(common.wazuh_path, dirname))
-    except OSError as e:
-        raise WazuhError(3015, str(e))
-
-    # Get the information collected in the previous integration process.
-    previous_status = common.cluster_integrity_mtime.get()
-
-    for entry in entries:
-        # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
-        if entry in excluded_files or any([entry.endswith(v) for v in excluded_extensions]):
-            continue
-
-        try:
-            # Relative path to listed file.
-            full_path = path.join(dirname, entry)
-
-            # If 'all' files have been requested or entry is in the specified files list.
-            current_path = os.path.join(common.wazuh_path, full_path)
-            if entry in files or files == ["all"] and not path.isdir(current_path):
-                file_mod_time = os.path.getmtime(current_path)
-
-                try:
-                    if file_mod_time == previous_status[full_path]['mod_time']:
-                        # The current file has not changed its mtime since the last integrity process
-                        walk_files[full_path] = previous_status[full_path]
-                        continue
-                except KeyError:
-                    pass
-
-                # Create dict with metadata of 'full_path' file.
-                entry_metadata = {"mod_time": file_mod_time, 'cluster_item_key': get_cluster_item_key}
-                if '.merged' in entry:
-                    entry_metadata['merged'] = True
-                    entry_metadata['merge_type'] = 'agent-groups'
-                    entry_metadata['merge_name'] = os.path.join(dirname, entry)
-                else:
-                    entry_metadata['merged'] = False
-
-                if get_md5:
-                    entry_metadata['md5'] = md5(os.path.join(common.wazuh_path, full_path))
-
-                # Use the relative file path as a key to save its metadata dictionary.
-                walk_files[full_path] = entry_metadata
-
-            if recursive and path.isdir(os.path.join(common.wazuh_path, full_path)):
-                walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions,
-                                           get_cluster_item_key, get_md5))
-
-        except Exception as e:
-            logger.debug(f"Could not get checksum of file {entry}: {e}")
-
-    return walk_files
-
-
 def get_files_status(get_md5=True):
     """Get all files and metadata inside the directories listed in cluster.json['files'].
 
@@ -323,35 +237,17 @@ def get_files_status(get_md5=True):
     cluster_items = get_cluster_items()
 
     final_items = {}
-    final_items_AR = {} # ' TEST
     for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
-
         try:
-            start_rec = datetime.now()
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                          cluster_items['files']['excluded_extensions'], file_path, get_md5))
-            end_rec = datetime.now()
-            # ' TEST
-            final_items_AR.update(
-                walk_dir_ar(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                            cluster_items['files']['excluded_extensions'], file_path, get_md5))
-            end_ar = datetime.now()
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
-    # ' TESTING:
-    # ' Recordar 'chown -r wazuh:wazuh /home'
-    with open('/home/cluster_output_original.txt', mode='w') as fx:
-        fx.write(f'{json.dumps(final_items, sort_keys=True)}')
-    with open('/home/cluster_output_AR.txt', mode='w') as fx:
-        fx.write(f'{json.dumps(final_items_AR, sort_keys=True)}')
     # Save the information collected in the current integration process.
     common.cluster_integrity_mtime.set(final_items)
-
-    with open('/home/results.txt', mode='w') as wrx:
-        wrx.write(f'Recursive: {(end_rec-start_rec).total_seconds()*1000}\nAR: {(end_ar-end_rec).total_seconds()*1000}\n')
 
     return final_items
 
@@ -399,15 +295,15 @@ def compress_files(name, list_path, cluster_control_json=None):
         Path where the zip file has been saved.
     """
     failed_files = list()
-    zip_file_path = os.path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
-    if not os.path.exists(os.path.dirname(zip_file_path)):
-        mkdir_with_mode(os.path.dirname(zip_file_path))
+    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
+    if not path.exists(path.dirname(zip_file_path)):
+        mkdir_with_mode(path.dirname(zip_file_path))
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
         # write files
         if list_path:
             for f in list_path:
                 try:
-                    zf.write(filename=os.path.join(common.wazuh_path, f), arcname=f)
+                    zf.write(filename=path.join(common.wazuh_path, f), arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:
@@ -448,11 +344,11 @@ async def decompress_files(zip_path, ko_files_name="files_metadata.json"):
         with zipfile.ZipFile(zip_path) as zipf:
             zipf.extractall(path=zip_dir)
 
-        if os.path.exists(os.path.join(zip_dir, ko_files_name)):
-            with open(os.path.join(zip_dir, ko_files_name)) as ko:
+        if path.exists(path.join(zip_dir, ko_files_name)):
+            with open(path.join(zip_dir, ko_files_name)) as ko:
                 ko_files = json.loads(ko.read())
     except Exception as e:
-        if os.path.exists(zip_dir):
+        if path.exists(zip_dir):
             shutil.rmtree(zip_dir)
         raise e
     finally:
@@ -582,7 +478,7 @@ def clean_up(node_name=""):
                 continue
 
     try:
-        rm_path = os.path.join(common.wazuh_path, 'queue', 'cluster', node_name)
+        rm_path = path.join(common.wazuh_path, 'queue', 'cluster', node_name)
         logger.debug(f"Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
         logger.debug(f"Removed '{rm_path}'.")
@@ -617,18 +513,17 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
     output_file : str
         Path to the created merged file.
     """
-    min_mtime = 0
-    merge_path = os.path.join(common.wazuh_path, 'queue', merge_type)
-    output_file = os.path.join('queue', 'cluster', node_name, merge_type + file_type + '.merged')
+    merge_path = path.join(common.wazuh_path, 'queue', merge_type)
+    output_file = path.join('queue', 'cluster', node_name, merge_type + file_type + '.merged')
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 
-    with open(os.path.join(common.wazuh_path, output_file), 'wb') as o_f:
-        for filename in os.listdir(merge_path):
+    with open(path.join(common.wazuh_path, output_file), 'wb') as o_f:
+        for filename in listdir(merge_path):
             if files != "all" and filename not in files:
                 continue
 
-            full_path = os.path.join(merge_path, filename)
+            full_path = path.join(merge_path, filename)
             stat_data = stat(full_path)
 
             files_to_send += 1
@@ -672,8 +567,8 @@ def unmerge_info(merge_type, path_file, filename):
     st_mtime : str
         Modification time of the splitted file.
     """
-    src_path = path.abspath(os.path.join(path_file, filename))
-    dst_path = os.path.join("queue", merge_type)
+    src_path = path.abspath(path.join(path_file, filename))
+    dst_path = path.join("queue", merge_type)
 
     bytes_read = 0
     total_bytes = stat(src_path).st_size
@@ -693,4 +588,4 @@ def unmerge_info(merge_type, path_file, filename):
             data = src_f.read(st_size)
             bytes_read += st_size
 
-            yield os.path.join(dst_path, name), data, st_mtime
+            yield path.join(dst_path, name), data, st_mtime
