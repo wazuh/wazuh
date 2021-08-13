@@ -188,11 +188,18 @@ w_err_t w_auth_parse_data(const char* buf,
 }
 
 w_err_t w_auth_replace_agent(keyentry *key,
-                             const char *key_hash){
-    /* Check if the agent antiquity complies with the configuration to be removed*/
+                             const char *key_hash,
+                             authd_force_options_t *force_options){
+
+    /* Check if the agent replacement is allowed */
+    if (!force_options->enabled) {
+        minfo("Agent '%s' won´t be removed because the force option is disabled.", key->id);
+        return OS_INVALID;
+    }
+
+    /* Check if the agent antiquity complies with the configuration to be removed */
     double antiquity = 0;
-    if (!config.flags.force_insert ||
-       (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < config.force_time)) {
+    if (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < force_options->connection_time) {
         minfo("Agent '%s' doesn´t comply with the antiquity to be removed.", key->id);
         return OS_INVALID;
     }
@@ -200,7 +207,7 @@ w_err_t w_auth_replace_agent(keyentry *key,
     /* Check if the agent key is the same than the existent in the manager */
     if (key_hash) {
         os_sha1 manager_key_hash;
-        w_auth_hash_key(key, manager_key_hash);
+        w_get_key_hash(key, manager_key_hash);
         if (!strcmp(manager_key_hash, key_hash)) {
             minfo("Agent '%s' key already exists on the manager.", key->id);
             return OS_INVALID;
@@ -231,7 +238,7 @@ w_err_t w_auth_validate_data(char *response,
     /* Check for duplicated IP */
     if (strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
         minfo("Duplicated IP '%s' (%s).", ip, keys.keyentries[index]->id);
-        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash)) {
+        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options)) {
             snprintf(response, 2048, "ERROR: Duplicated IP: %s", ip);
             return OS_INVALID;
         }
@@ -247,7 +254,7 @@ w_err_t w_auth_validate_data(char *response,
     /* Check for duplicated name */
     if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
         minfo("Duplicated name '%s' (%s).", agentname, keys.keyentries[index]->id);
-        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash)) {
+        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options)) {
             snprintf(response, 2048, "ERROR: Duplicated agent name: %s", agentname);
             return OS_INVALID;
         }

@@ -684,7 +684,6 @@ int w_get_key_hash(keyentry *key_entry, os_sha1 output) {
     }
 
     char *key = key_entry->key;
-
     if (key) {
         return OS_SHA1_Str(key, strlen(key), output);
     }
