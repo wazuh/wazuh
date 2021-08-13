@@ -26,6 +26,7 @@
 #include "shared.h"
 #include <openssl/ssl.h>
 #include "auth.h"
+#include "enrollment_op.h"
 
 #undef ARGV0
 #define ARGV0 "agent-auth"
@@ -274,13 +275,18 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    /* NULL until the agent-auth fix is implemented */
-    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, NULL);
+    // Reading agent's key (if any) to send its hash to the manager
+    keystore agent_keys = KEYSTORE_INITIALIZER;
+    OS_PassEmptyKeyfile();
+    OS_ReadKeys(&agent_keys, 0, 0);
+
+    w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, &agent_keys);
     int ret = w_enrollment_request_key(cfg, server_address);
 
     w_enrollment_target_destroy(target_cfg);
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
+    OS_FreeKeys(&agent_keys);
 
     exit((ret == 0) ? 0 : 1);
 }
