@@ -102,9 +102,9 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     os_malloc(sizeof(w_enrollment_ctx), cfg);
     cfg->target_cfg = target;
     cfg->cert_cfg = cert;
-    cfg->enabled = 1;
+    cfg->enabled = true;
     cfg->ssl = NULL;
-    cfg->allow_localhost = 1;
+    cfg->allow_localhost = true;
     cfg->delay_after_enrollment = 20;
     cfg->keys = keys;
     return cfg;
@@ -139,7 +139,7 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address)
  * be obtained by obtaining hostname
  *
  * @param cfg configuration structure
- * @param allow_localhost 1 will allow localhost as name, 0 will throw an merror_exit
+ * @param allow_localhost true will allow localhost as name, false will throw an merror_exit
  * @return agent_name on succes
  *         NULL on errors
  * */
