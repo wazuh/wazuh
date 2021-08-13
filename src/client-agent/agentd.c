@@ -55,7 +55,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
     /* Read private keys  */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0);
+    OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
     // Resolve hostnames
     rc = 0;

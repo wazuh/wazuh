@@ -287,7 +287,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
     }
 
     os_strdup(keys.keyentries[index]->id, *id);
-    os_strdup(keys.keyentries[index]->key, *key);
+    os_strdup(keys.keyentries[index]->raw_key, *key);
 
     return OS_SUCCESS;
 }

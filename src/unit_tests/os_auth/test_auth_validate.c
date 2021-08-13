@@ -37,7 +37,7 @@
 #define EXISTENT_GROUP2 "ExistentGroup2"
 #define UNKNOWN_GROUP   "UnknownGroup"
 
-void keys_init(keystore *keys, int rehash_keys, int save_removed) {
+void keys_init(keystore *keys, key_mode_t key_mode, int save_removed) {
     /* Initialize hashes */
     keys->keyhash_id = OSHash_Create();
     keys->keyhash_ip = OSHash_Create();
@@ -51,7 +51,7 @@ void keys_init(keystore *keys, int rehash_keys, int save_removed) {
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
     keys->id_counter = 0;
-    keys->flags.rehash_keys = rehash_keys;
+    keys->flags.key_mode = key_mode;
     keys->flags.save_removed = save_removed;
 
     /* Add additional entry for sender == keysize */

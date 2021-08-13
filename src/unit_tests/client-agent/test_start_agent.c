@@ -115,7 +115,7 @@ void keys_init(keystore *keys) {
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
     keys->id_counter = 0;
-    keys->flags.rehash_keys = 0;
+    keys->flags.key_mode = W_RAW_KEY;
     keys->flags.save_removed = 0;
 
     /* Add additional entry for sender == keysize */
