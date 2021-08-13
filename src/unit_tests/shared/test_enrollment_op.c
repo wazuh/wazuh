@@ -955,7 +955,7 @@ void test_w_enrollment_request_key(void **state) {
 
 void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
     w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = 1; // Allow localhost
+    cfg->allow_localhost = true; // Allow localhost
 #ifdef WIN32
     will_return(wrap_gethostname, "localhost");
     will_return(wrap_gethostname, 0);
@@ -970,7 +970,7 @@ void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
 
 void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
     w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = 0; // Do not allow localhost
+    cfg->allow_localhost = false; // Do not allow localhost
 #ifdef WIN32
     will_return(wrap_gethostname, "localhost");
     will_return(wrap_gethostname, 0);
