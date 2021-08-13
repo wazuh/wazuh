@@ -23,7 +23,6 @@
 pthread_mutex_t download_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char* invalid_platforms[] = {
-    "darwin",
     "sunos",
     "aix",
     "hp-ux",
@@ -165,6 +164,11 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
                  repository_url);
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_windows.wpk",
                  task->wpk_version);
+    } else if (!strcmp(agent_info->platform, "darwin")) {
+        snprintf(path_url, OS_SIZE_2048, "%smacos/%s/",
+                 repository_url, agent_info->architecture);
+        snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
+                 task->wpk_version, agent_info->architecture);
     } else {
         if (wm_agent_upgrade_compare_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY) >= 0) {
             snprintf(path_url, OS_SIZE_2048, "%slinux/%s/",
