@@ -93,8 +93,29 @@ int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output)
     return (0);
 }
 
-// Get the hexadecimal result of a SHA-1 digest
+int OS_SHA1_strings(os_sha1 output, ...) {
+    unsigned char md[SHA_DIGEST_LENGTH];
+    size_t n;
+    SHA_CTX c;
+    SHA1_Init(&c);
 
+    va_list parameters;
+    char* parameter = NULL;
+    va_start(parameters, output);
+    while(parameter = va_arg(parameters, char*), parameter) {
+        SHA1_Update(&c, parameter, strlen(parameter));
+    }
+    SHA1_Final(&(md[0]), &c);
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", md[n]);
+        output += 2;
+    }
+
+    return (0);
+}
+
+// Get the hexadecimal result of a SHA-1 digest
 void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output) {
     size_t n;
 
