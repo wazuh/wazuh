@@ -22,13 +22,13 @@
 #endif
 
 typedef struct wfd_t {
-    FILE * file;
+    FILE * file_in;
+    FILE * file_out;
 #ifdef WIN32
     PROCESS_INFORMATION pinfo;
 #else
     pid_t pid;
 #endif
-    unsigned int append_pool:1;
 } wfd_t;
 
 // Open a stream from a process without shell (execvp form)

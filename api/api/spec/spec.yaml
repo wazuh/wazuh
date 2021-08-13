@@ -7438,8 +7438,8 @@ paths:
                       - error:
                           code: 1707
                           message: "Cannot send request, agent is not active"
-                          remediation: "Please, check non-active agents connection and try again. 
-                           Visit https://documentation.wazuh.com/current/user-manual/registering/index.html 
+                          remediation: "Please, check non-active agents connection and try again.
+                           Visit https://documentation.wazuh.com/current/user-manual/registering/index.html
                            and https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
