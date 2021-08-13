@@ -5,7 +5,7 @@
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
 
-if ["uname" = "Linux"] ; then
+if [ "$(uname)" = "Linux" ] ; then
     chmod +x ./var/upgrade/install.sh
     ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
 else
