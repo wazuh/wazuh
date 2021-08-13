@@ -288,6 +288,11 @@ static char *CheckSum(char *msg, size_t length)
 
 int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
 {
+    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
+        return -1;
+    }
+
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
     char *f_msg;
@@ -315,14 +320,14 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     /* Decrypt message */
     switch(keys->keyentries[id]->crypto_method){
         case W_METH_BLOWFISH:
-            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
+            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 return KS_ENCKEY;
             }
             break;
         case W_METH_AES:
-            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->key,
+            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                 buffer_size-4, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 return KS_ENCKEY;
@@ -524,6 +529,11 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
  */
 size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id)
 {
+    if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in ENCRYPTION or DUAL mode");
+        return -1;
+    }
+
     size_t bfsize;
     size_t length;
     unsigned long int cmp_size;
@@ -646,7 +656,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
      */
     /* Encrypt everything */
     crypto_length = doEncryptByMethod(_tmpmsg + (7 - bfsize), msg_encrypted + length,
-        keys->keyentries[id]->key,
+        keys->keyentries[id]->encryption_key,
         (long) cmp_size,
         OS_ENCRYPT,crypto_method);
 

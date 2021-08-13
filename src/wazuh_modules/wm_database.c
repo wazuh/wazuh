@@ -264,7 +264,7 @@ void wm_sync_agents() {
 
     mtdebug1(WM_DATABASE_LOGTAG, "Synchronizing agents.");
     OS_PassEmptyKeyfile();
-    OS_ReadKeys(&keys, 0, 0);
+    OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
     os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
 
@@ -286,7 +286,7 @@ void wm_sync_agents() {
         }
 
         if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
-                             entry->ip->ip : cidr, entry->key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
+                             entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
             // The agent already exists, update group only.
             wm_sync_agent_group(id, entry->id);
         }

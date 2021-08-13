@@ -106,7 +106,11 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
-    if (keys->flags.rehash_keys) {
+    if (keys->flags.key_mode == W_RAW_KEY || keys->flags.key_mode == W_DUAL_KEY) {
+        os_strdup(key, keys->keyentries[keys->keysize]->raw_key);
+    }
+
+    if (keys->flags.key_mode == W_ENCRYPTION_KEY || keys->flags.key_mode == W_DUAL_KEY) {
         /** Generate final symmetric key **/
 
         /* MD5 from name, id and key */
@@ -128,12 +132,11 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         snprintf(_finalstr, sizeof(_finalstr), "%s%s", filesum2, filesum1);
 
         /* Final key is 48 * 4 = 192bits */
-        os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);
+        os_strdup(_finalstr, keys->keyentries[keys->keysize]->encryption_key);
 
         /* Clean final string from memory */
         memset_secure(_finalstr, '\0', sizeof(_finalstr));
-    } else
-        os_strdup(key, keys->keyentries[keys->keysize]->key);
+    }
 
     /* Ready for next */
     return keys->keysize++;
@@ -166,7 +169,7 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
+void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
 {
     FILE *fp;
 
@@ -212,7 +215,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
     keys->id_counter = 0;
-    keys->flags.rehash_keys = rehash_keys;
+    keys->flags.key_mode = key_mode;
     keys->flags.save_removed = save_removed;
 
     /* Zero the buffers */
@@ -339,8 +342,12 @@ void OS_FreeKey(keyentry *key) {
         free(key->id);
     }
 
-    if (key->key) {
-        free(key->key);
+    if (key->raw_key) {
+        free(key->raw_key);
+    }
+
+    if (key->encryption_key) {
+        free(key->encryption_key);
     }
 
     if (key->name) {
@@ -428,7 +435,7 @@ void OS_UpdateKeys(keystore *keys)
     /* Read keys */
     mdebug2("OS_ReadKeys");
     minfo(ENC_READ);
-    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
+    OS_ReadKeys(keys, keys->flags.key_mode, keys->flags.save_removed);
 
     mdebug2("OS_StartCounter");
     OS_StartCounter(keys);
@@ -515,8 +522,12 @@ void OS_PassEmptyKeyfile() {
 
 /* Delete a key */
 int OS_DeleteKey(keystore *keys, const char *id, int purge) {
-    int i = OS_IsAllowedID(keys, id);
+    if (keys->flags.key_mode != W_RAW_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in RAW or DUAL mode");
+        return -1;
+    }
 
+    int i = OS_IsAllowedID(keys, id);
 
     if (i < 0)
         return -1;
@@ -526,7 +537,7 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     if (keys->flags.save_removed && !purge) {
         char buffer[OS_BUFFER_SIZE + 1];
         keyentry *entry = keys->keyentries[i];
-        snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->key);
+        snprintf(buffer, OS_BUFFER_SIZE, "%s !%s %s %s", entry->id, entry->name, entry->ip->ip, entry->raw_key);
         save_removed_key(keys, buffer);
     }
 
@@ -553,6 +564,11 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
 
 /* Write keystore on client keys file */
 int OS_WriteKeys(const keystore *keys) {
+    if (keys->flags.key_mode != W_RAW_KEY && keys->flags.key_mode != W_DUAL_KEY) {
+        merror("Wrong key store usage, it should have been initialized in RAW or DUAL mode");
+        return -1;
+    }
+
     unsigned int i;
     File file;
     char cidr[20];
@@ -560,9 +576,9 @@ int OS_WriteKeys(const keystore *keys) {
     if (TempFile(&file, KEYS_FILE, 0) < 0)
         return -1;
 
-    for (i = 0; i < keys->keysize; i++) {
+   for (i = 0; i < keys->keysize; i++) {
         keyentry *entry = keys->keyentries[i];
-        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key);
+        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->raw_key);
     }
 
     /* Write saved removed keys */
@@ -624,8 +640,11 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     if (key->id)
         copy->id = strdup(key->id);
 
-    if (key->key)
-        copy->key = strdup(key->key);
+    if (key->raw_key)
+        copy->raw_key = strdup(key->raw_key);
+
+    if (key->encryption_key)
+        copy->encryption_key = strdup(key->encryption_key);
 
     if (key->name)
         copy->name = strdup(key->name);
@@ -678,17 +697,16 @@ int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_i
 }
 
 int w_get_key_hash(keyentry *key_entry, os_sha1 output) {
-    if (!key_entry || !output) {
+    if (!key_entry || !key_entry->raw_key || !output) {
         mdebug2("Unable to hash agent's key due to empty parameters.");
         return OS_INVALID;
     }
 
-    char *key = key_entry->key;
-    if (key) {
-        return OS_SHA1_Str(key, strlen(key), output);
-    }
-    else {
+    if (!key_entry->id || !key_entry->name || !key_entry->raw_key) {
         mdebug2("Unable to hash agent's key due to empty value.");
         return OS_INVALID;
     }
+
+    OS_SHA1_strings(output, key_entry->id, key_entry->name, key_entry->raw_key, NULL);
+    return OS_SUCCESS;
 }

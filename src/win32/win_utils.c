@@ -140,7 +140,7 @@ int local_start()
     }
     /* Read keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0);
+    OS_ReadKeys(&keys, W_RAW_KEY, 0);
 
     /* If there is no file to monitor, create a clean entry
      * for the mark messages.
