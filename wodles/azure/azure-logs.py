@@ -1,4 +1,4 @@
-#!/var/ossec/python/bin/python3
+#!/usr/bin/env python3
 
  ###
  # Integration of Wazuh agent with Microsoft Azure
@@ -359,7 +359,7 @@ def start_graph():
 	logging.info("Azure Graph starting.")
 	current_path = dirname(abspath(__file__))
 	path = "{}/last_dates.json".format(current_path)
-	graph_url_base = 'https://graph.windows.net'
+	graph_url_base = 'https://graph.microsoft.com'
 
 	try:
 		# Getting authentication token
@@ -393,9 +393,9 @@ def start_graph():
 
 			logging.info("Graph: The search starts from the date: {} for query: '{}' ".format(date_time, graph_format_query))
 			if 'signinEventsV2' in graph_format_query:
-				graph_url = "{}/{}/{}&$filter=createdDateTime+ge+{}".format(graph_url_base, args.graph_tenant_domain, graph_format_query, date_time)
+				graph_url = "{}/v1.0/{}?&$filter=createdDateTime+ge+{}".format(graph_url_base, graph_format_query, date_time)
 			else:
-				graph_url = "{}/{}/{}&$filter=activityDate+ge+{}".format(graph_url_base, args.graph_tenant_domain, graph_format_query, date_time)
+				graph_url = "{}/v1.0/{}?&$filter=activityDateTime+ge+{}".format(graph_url_base, graph_format_query, date_time)
 			graph_pagination(graph_url, "Graph", graph_headers, graph_md5, all_dates, True)
 		except Exception as e:
 			logging.error("Error: The request for the query could not be made: '{}'.".format(e))
@@ -427,7 +427,7 @@ def graph_pagination(url, api, graph_headers, md5, all_dates, first_date):
 				if first_date == True:
 					first_date = False
 					try:
-						all_dates['graph'][md5] = value["activityDate"]
+						all_dates['graph'][md5] = value["activityDateTime"]
 						with open(os.path.join(path), 'w') as jsonFile:
 							json.dump(all_dates, jsonFile)
 					except Exception as e:
@@ -655,18 +655,20 @@ def get_token(ID, KEY, resource, domain):
 		body = {
 			'client_id': ID,
 			'client_secret': KEY,
-			'resource': resource,
+			'scope': resource + "/.default",
 			'grant_type': 'client_credentials'
 		}
 	else:
-		body ={
+		body = {
 			'client_id': ID,
 			'client_secret': KEY,
+			'scope': "https://graph.microsoft.com/.default",
 			'grant_type': 'client_credentials'
 		}
-	auth_url = '{}/{}/oauth2/token?api-version=1.0'.format(loggin_url, domain)
+	auth_url = '{}/{}/oauth2/v2.0/token'.format(loggin_url, domain)
 	token_response = requests.post(auth_url, data=body)
 	access_token = token_response.json().get('access_token')
+
 	if access_token is None:
 		logging.error("Error: Couldn't get access token.")
 	else:
