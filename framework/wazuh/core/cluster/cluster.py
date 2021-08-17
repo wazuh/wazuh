@@ -186,21 +186,26 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     # Get list of all files and directories inside 'full_dirname'.
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
+            # Check if recursive flag is set or root is actually the initial lookup directory.
             if recursive or root_ == full_dirname:
                 for file_ in files_:
+                    # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
                     if file_ in excluded_files or any([file_.endswith(ext) for ext in excluded_extensions]):
                         continue
                     try:
+                        #  If 'all' files have been requested or entry is in the specified files list.
                         if files == ['all'] or file_ in files:
                             relative_file_path = path.join(path.relpath(root_, common.wazuh_path), file_)
                             abs_file_path = path.join(root_, file_)
                             file_mod_time = path.getmtime(abs_file_path)
                             try:
-                                if file_mod_time == previous_status[relative_file_path]:
+                                if file_mod_time == previous_status[relative_file_path]['mod_time']:
+                                    # The current file has not changed its mtime since the last integrity process.
                                     walk_files[relative_file_path] = previous_status[relative_file_path]
                                     continue
                             except KeyError:
                                 pass
+                            # Create dict with metadata for the current file.
                             file_metadata = {"mod_time": file_mod_time, 'cluster_item_key': get_cluster_item_key}
                             if '.merged' in file_:
                                 file_metadata['merged'] = True
@@ -210,6 +215,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                                 file_metadata['merged'] = False
                             if get_md5:
                                 file_metadata['md5'] = md5(abs_file_path)
+                            # Use the relative file path as a key to save its metadata dictionary.
                             walk_files[relative_file_path] = file_metadata
                     except Exception as e:
                         logger.debug(f"Could not get checksum of file {file_}: {e}")
