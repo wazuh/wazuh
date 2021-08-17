@@ -15,6 +15,9 @@ class InitWDBSocketMock:
         self.sql_schema_file = sql_schema_file
         self.__conn = self.init_db()
 
+    def close(self):
+        pass
+
     def init_db(self):
         sys_db = sqlite3.connect(':memory:')
         cur = sys_db.cursor()
