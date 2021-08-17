@@ -665,7 +665,7 @@ void test_wm_agent_upgrade_validate_wpk_version_macos_https_ok(void **state)
 
     os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/macos/x64/versions");
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/macos/x64/pkg/versions");
     will_return(__wrap_wurl_http_get, versions);
 
     int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
@@ -692,7 +692,7 @@ void test_wm_agent_upgrade_validate_wpk_version_macos_http_ok(void **state)
 
     os_strdup("v3.13.1 4a313b1312c23a213f2e3209fe0909dd\nv4.0.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap_wurl_http_get, url, "http://packages.wazuh.com/wpk/macos/x64/versions");
+    expect_string(__wrap_wurl_http_get, url, "http://packages.wazuh.com/wpk/macos/x64/pkg/versions");
     will_return(__wrap_wurl_http_get, versions);
 
     int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);

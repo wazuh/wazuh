@@ -165,7 +165,7 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_windows.wpk",
                  task->wpk_version);
     } else if (!strcmp(agent_info->platform, "darwin")) {
-        snprintf(path_url, OS_SIZE_2048, "%smacos/%s/",
+        snprintf(path_url, OS_SIZE_2048, "%smacos/%s/pkg/",
                  repository_url, agent_info->architecture);
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
                  task->wpk_version, agent_info->architecture);
