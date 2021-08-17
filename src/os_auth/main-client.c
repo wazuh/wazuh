@@ -278,7 +278,7 @@ int main(int argc, char **argv)
     // Reading agent's key (if any) to send its hash to the manager
     keystore agent_keys = KEYSTORE_INITIALIZER;
     OS_PassEmptyKeyfile();
-    OS_ReadKeys(&agent_keys, 0, 0);
+    OS_ReadKeys(&agent_keys, W_RAW_KEY, 0);
 
     w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, &agent_keys);
     int ret = w_enrollment_request_key(cfg, server_address);
