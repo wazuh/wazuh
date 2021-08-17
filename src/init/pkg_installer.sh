@@ -35,9 +35,9 @@ if [ "$status" = "connected" -a $RESULT -eq 0  ]; then
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed..." >> ./logs/upgrade.log
 
-    CONTROL="$WAZUH_HOME/bin/wazuh-control"
+    CONTROL="./bin/wazuh-control"
     if [ ! -f $CONTROL ]; then
-        CONTROL="$WAZUH_HOME/bin/ossec-control"
+        CONTROL="./bin/ossec-control"
     fi
 
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Trying to start the agent on its current state..." >> ./logs/upgrade.log
