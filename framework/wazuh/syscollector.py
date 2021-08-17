@@ -43,11 +43,12 @@ def get_item_agent(agent_list, offset=0, limit=common.database_limit, select=Non
             if agent not in system_agents:
                 raise WazuhResourceNotFound(1701)
             table, valid_select_fields = get_valid_fields(Type(element_type), agent_id=agent)
-            db_query = WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
-                                                search=search,
-                                                sort=sort, filters=filters, fields=valid_select_fields, table=table,
-                                                array=array, nested=nested, query=q)
-            data = db_query.run()
+            with WazuhDBQuerySyscollector(agent_id=agent, offset=offset, limit=limit, select=select,
+                                          search=search,
+                                          sort=sort, filters=filters, fields=valid_select_fields, table=table,
+                                          array=array, nested=nested, query=q) as db_query:
+                data = db_query.run()
+
             for item in data['items']:
                 item['agent_id'] = agent
                 result.affected_items.append(item)

@@ -43,8 +43,9 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
     [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
     # Add non eligible agents to failed_items
-    non_eligible_agents = WazuhDBQueryAgents(limit=None, select=["id", "status"], query='status!=active',
-                                             **rbac_filters).run()['items']
+    with WazuhDBQueryAgents(limit=None, select=["id", "status"], query='status!=active', **rbac_filters) as db_query:
+        non_eligible_agents = db_query.run()['items']
+
     [result.add_failed_item(
         id_=agent['id'],
         error=WazuhError(1707)) for agent in non_eligible_agents]
@@ -155,10 +156,12 @@ def last_scan(agent_list):
 
         result.affected_items.append(data)
     else:
-        fim_scan_info = WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
-                                             search=None, limit=common.database_limit, select={'end', 'start'},
-                                             fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
-                                             table='scan_info', default_sort_field='start_scan').run()['items'][0]
+        with WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
+                                  search=None, limit=common.database_limit, select={'end', 'start'},
+                                  fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
+                                  table='scan_info', default_sort_field='start_scan') as db_query:
+            fim_scan_info = db_query.run()['items'][0]
+
         end = None if not fim_scan_info['end'] else fim_scan_info['end']
         start = None if not fim_scan_info['start'] else fim_scan_info['start']
         # If start is None or the scan is running, end will be None.
@@ -219,12 +222,11 @@ def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, sea
         q = f'(md5={filters["hash"]},sha1={filters["hash"]},sha256={filters["hash"]})' + ('' if not q else ';' + q)
         del filters['hash']
 
-    db_query = WazuhDBQuerySyscheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                    filters=filters, nested=nested, query=q, select=select, table='fim_entry',
-                                    distinct=distinct, fields=summary_parameters if summary else parameters,
-                                    min_select_fields={'file'})
-
-    db_query = db_query.run()
+    with WazuhDBQuerySyscheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
+                              filters=filters, nested=nested, query=q, select=select, table='fim_entry',
+                              distinct=distinct, fields=summary_parameters if summary else parameters,
+                              min_select_fields={'file'}) as db_query:
+        db_query = db_query.run()
 
     result.affected_items = db_query['items']
     result.total_affected_items = db_query['totalItems']

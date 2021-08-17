@@ -41,8 +41,9 @@ def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
     [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
     # Add non eligible agents to failed_items
-    non_eligible_agents = WazuhDBQueryAgents(limit=None, select=["id", "status"], query='status!=active',
-                                             **rbac_filters).run()['items']
+    with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=f'status!=active', **rbac_filters) as db_query:
+        non_eligible_agents = db_query.run()['items']
+
     [result.add_failed_item(
         id_=agent['id'],
         error=WazuhError(1707)) for agent in non_eligible_agents]
@@ -163,10 +164,11 @@ def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, 
                                       none_msg='No rootcheck information was returned'
                                       )
 
-    db_query = WazuhDBQueryRootcheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, count=True, get_data=True, query=q, filters=filters,
-                                     distinct=distinct)
-    data = db_query.run()
+    with WazuhDBQueryRootcheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
+                               select=select, count=True, get_data=True, query=q, filters=filters,
+                               distinct=distinct) as db_query:
+        data = db_query.run()
+
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
 
