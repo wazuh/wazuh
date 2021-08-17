@@ -671,7 +671,7 @@ void test_wm_agent_upgrade_validate_wpk_version_macos_https_ok(void **state)
     int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/macos/x64/");
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/macos/x64/pkg/");
     assert_string_equal(task->wpk_file, "wazuh_agent_v4.0.0_macos_x64.wpk");
     assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
 }
@@ -698,7 +698,7 @@ void test_wm_agent_upgrade_validate_wpk_version_macos_http_ok(void **state)
     int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-    assert_string_equal(task->wpk_repository, "http://packages.wazuh.com/wpk/macos/x64/");
+    assert_string_equal(task->wpk_repository, "http://packages.wazuh.com/wpk/macos/x64/pkg/");
     assert_string_equal(task->wpk_file, "wazuh_agent_v3.13.1_macos_x64.wpk");
     assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
 }
