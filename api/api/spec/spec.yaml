@@ -7437,8 +7437,11 @@ paths:
                     failed_items:
                       - error:
                           code: 1707
-                          message: "Impossible to restart non-active agent: never_connected"
-                          remediation: "Please, make sure agent is active before attempting to restart"
+                          message: "Cannot send request, agent is not active"
+                          remediation: "Please, check non-active agents connection and try again.
+                           Visit https://documentation.wazuh.com/current/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html
+                           to obtain more information on registering and connecting agents"
                         id:
                           - '009'
                           - '010'
@@ -11799,7 +11802,7 @@ paths:
                       relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0015-ossec_rules.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0016-wazuh_rules.xml
                       relative_dirname: ruleset/rules

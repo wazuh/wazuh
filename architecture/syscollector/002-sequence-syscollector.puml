@@ -1,0 +1,74 @@
+' Copyright (C) 2015-2021, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml syscollector
+
+database "<agent-id>.db" as agent.db
+actor "wazuh-manager" as manager
+participant syscollector as sysco
+participant sysinfo as info
+participant rsync
+participant dbsync
+database local.db as ldb
+
+activate sysco
+
+sysco -> dbsync ++: reset DB
+dbsync -> ldb --
+
+loop every ""interval"" seconds
+
+    group for each [scan enabled]
+        sysco -> info ++: scan
+        note left
+            Supported scans:
+            1- os info.
+            2- hardware info.
+            3- installed packages info.
+            4- active processes info.
+            5- network info.
+            6- ports info.
+            7- hotfixes info (windows).
+        end note
+        sysco <-- info --: info
+        sysco -> dbsync++ : update DB with new info
+        dbsync -> ldb
+        dbsync--
+        alt delta synchronization
+            note over manager, sysco
+                Sending deltas are currenty disabled.
+            end note
+            sysco -> dbsync++: get delta changes
+            dbsync -> ldb
+            dbsync --> sysco --: delta changes
+            sysco ->> manager : send delta data
+            manager -> agent.db: update DB
+
+        else rsync synchronization
+
+            sysco -> rsync++ : get sync data
+            rsync -> dbsync++ : get DB data
+            dbsync -> ldb
+            rsync <-- dbsync-- : DB data
+            rsync -> rsync : build sync data
+            rsync --> sysco --: sync data
+            sysco ->> manager : send sync data
+            manager -> agent.db: update DB
+        end
+    end
+end
+
+... Manager request to sync databases ...
+
+manager ->> sysco : let's sync our DBs
+sysco -> rsync++ : get sync data
+rsync -> dbsync++ : get DB data
+dbsync -> ldb
+rsync <-- dbsync-- : DB data
+rsync -> rsync : build sync data
+rsync --> sysco --: sync data
+sysco --> manager : send sync data
+manager -> agent.db: update DB
+
+@enduml

@@ -47,7 +47,7 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
                                              **rbac_filters).run()['items']
     [result.add_failed_item(
         id_=agent['id'],
-        error=WazuhError(1601, extra_message=f'Status - {agent["status"]}')) for agent in non_eligible_agents]
+        error=WazuhError(1707)) for agent in non_eligible_agents]
 
     wq = WazuhQueue(common.ARQUEUE)
     eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
@@ -82,8 +82,10 @@ def clear(agent_list=None):
                                       some_msg='Syscheck database was not cleared on some agents',
                                       none_msg="No syscheck database was cleared")
     wdb_conn = WazuhDBConnection()
+
+    system_agents = get_agents_info()
     for agent in agent_list:
-        if agent not in get_agents_info():
+        if agent not in system_agents:
             result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
         else:
             try:

@@ -312,6 +312,41 @@ stages:
               roles: []
           total_affected_items: 1
 
+# POST /security/policies
+  - name: Add a policy to the system (case insensitive)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test_case_insensitive"
+        policy:
+          actions:
+            - "aGenT:rEaD"
+          resources:
+            - "aGenT:ID:555"
+            - "GroUp:iD:Group_Name"
+          effect: "aLLoW"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              name: test_case_insensitive
+              policy:
+                actions:
+                  - agent:read
+                effect: allow
+                resources:
+                  - agent:id:555
+                  - group:id:Group_Name
+              roles: []
+          total_affected_items: 1
+
   # POST /security/policies
   - name: Add a policy to the system
     request:

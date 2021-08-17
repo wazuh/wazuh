@@ -352,17 +352,14 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     finder = find_key_value_limiter(value_name);
 
     if (finder == NULL) {
-        mdebug1("Separator ':' was not found in %s", full_path);
-        free(full_path);
-        return NULL;
+        value_name = NULL;
+    } else {
+        *finder = '\0';
+        value_name = filter_special_chars(finder + 1);
     }
-
-    *finder = '\0';
 
     w_mutex_lock(&fim_sql->mutex);
 
-    value_name = filter_special_chars(finder + 1);
-    key_path = filter_special_chars(full_path);
     os_calloc(1, sizeof(fim_entry), entry);
     entry->type = FIM_TYPE_REGISTRY;
     entry->registry_entry.key = _fim_db_get_registry_key(fim_sql, key_path, arch);
@@ -376,11 +373,10 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
         return NULL;
     }
 
-    if (value_name == NULL || *value_name == '\0') {
+    if (value_name == NULL) {
         w_mutex_unlock(&fim_sql->mutex);
         free(key_path);
         free(full_path);
-        os_free(value_name);
         return entry;
     }
 

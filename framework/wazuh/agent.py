@@ -218,7 +218,7 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         # Add non active agents to failed_items
         non_active_agents = [agent for agent in agents_with_data if agent['status'] != 'active']
-        [result.add_failed_item(id_=agent['id'], error=WazuhError(1707, extra_message=f'{agent["status"]}'))
+        [result.add_failed_item(id_=agent['id'], error=WazuhError(1707))
          for agent in non_active_agents]
 
         eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents] if non_active_agents \
@@ -464,11 +464,12 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
                                       )
     if group_list:
 
+        system_groups = get_groups()
         # Add failed items
-        for invalid_group in set(group_list) - get_groups():
+        for invalid_group in set(group_list) - system_groups:
             result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-        rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
+        rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
 
         group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
         query_data = group_query.run()
@@ -603,7 +604,8 @@ def delete_groups(group_list=None):
                 raise WazuhResourceNotFound(1710)
             elif group_id == 'default':
                 raise WazuhError(1712)
-            agent_list = [agent['id'] for agent in WazuhDBQueryMultigroups(group_id=group_id, limit=None).run()['items']]
+            agent_list = [agent['id'] for agent in WazuhDBQueryMultigroups(group_id=group_id,
+                                                                           limit=None).run()['items']]
             try:
                 affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
                 if affected_agents_result.total_failed_items != 0:

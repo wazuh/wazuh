@@ -6,11 +6,12 @@ import asyncio
 import copy
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
-from secrets import token_urlsafe
-from shutil import chown
-from time import time
 
+from concurrent.futures import ThreadPoolExecutor
+from time import time
+                               
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
@@ -82,36 +83,52 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_ALGORITHM = 'HS256'
-_secret_file_path = os.path.join(SECURITY_PATH, 'jwt_secret')
+JWT_ALGORITHM = 'ES512'
+_private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
+_public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
 
-def generate_secret():
-    """Generate secret file to keep safe or load existing secret."""
+def generate_keypair():
+    """Generate key files to keep safe or load existing public and private keys."""
     try:
-        if not os.path.exists(_secret_file_path):
-            jwt_secret = token_urlsafe(512)
-            with open(_secret_file_path, mode='x') as secret_file:
-                secret_file.write(jwt_secret)
+        if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
+            private_key, public_key = change_keypair()
             try:
-                chown(_secret_file_path, wazuh_uid(), wazuh_gid())
+                os.chown(_private_key_path, wazuh_uid(), wazuh_gid())
+                os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
             except PermissionError:
                 pass
-            os.chmod(_secret_file_path, 0o640)
+            os.chmod(_private_key_path, 0o640)
+            os.chmod(_public_key_path, 0o640)
         else:
-            with open(_secret_file_path, mode='r') as secret_file:
-                jwt_secret = secret_file.readline()
+            with open(_private_key_path, mode='r') as key_file:
+                private_key = key_file.read()
+            with open(_public_key_path, mode='r') as key_file:
+                public_key = key_file.read()
     except IOError:
         raise WazuhInternalError(6003)
 
-    return jwt_secret
+    return private_key, public_key
 
 
-def change_secret():
-    """Generate new JWT secret."""
-    new_secret = token_urlsafe(512)
-    with open(_secret_file_path, mode='w') as jwt_secret:
-        jwt_secret.write(new_secret)
+def change_keypair():
+    """Generate key files to keep safe."""
+    key_obj = ec.generate_private_key(ec.SECP521R1())
+    private_key = key_obj.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    ).decode('utf-8')
+    public_key = key_obj.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+    with open(_private_key_path, mode='w') as key_file:
+        key_file.write(private_key)
+    with open(_public_key_path, mode='w') as key_file:
+        key_file.write(public_key)
+
+    return private_key, public_key
 
 
 def get_security_conf():
@@ -156,7 +173,7 @@ def generate_token(user_id=None, data=None, run_as=False):
         "rbac_mode": result['rbac_mode']
     }
 
-    return jwt.encode(payload, generate_secret(), algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 
 
 @rbac_utils.token_cache(rbac_utils.tokens_cache)
@@ -215,7 +232,7 @@ def decode_token(token):
     """
     try:
         # Decode JWT token with local secret
-        payload = jwt.decode(token, generate_secret(), algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
+        payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
