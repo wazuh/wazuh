@@ -9,7 +9,6 @@ if [ "X$(uname)" = "XLinux" ] ; then
     chmod +x ./var/upgrade/install.sh
     ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
 else
-    chmod +x ./var/upgrade/wazuh-agent*
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 fi
 
