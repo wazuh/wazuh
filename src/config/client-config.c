@@ -366,9 +366,9 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
             return (OS_INVALID);
         } else if (!strcmp(node[j]->element, xml_enabled)) {
             if (!strcmp(node[j]->content, "yes"))
-                logr->enrollment_cfg->enabled = 1;
+                logr->enrollment_cfg->enabled = true;
             else if (!strcmp(node[j]->content, "no")) {
-                logr->enrollment_cfg->enabled = 0;
+                logr->enrollment_cfg->enabled = false;
             } else {
                 merror("Invalid content for tag '%s'.", node[j]->element);
                 w_enrollment_target_destroy(target_cfg);

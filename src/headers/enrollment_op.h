@@ -64,13 +64,13 @@ typedef struct _enrollment_cert_cfg {
  * @brief Strcture that handles all the enrollment configuration
  * */
 typedef struct _enrollment_ctx {
-    w_enrollment_target *target_cfg;        /**> for details @see _enrollment_target_cfg */
-    w_enrollment_cert *cert_cfg;            /**> for details @see _enrollment_cert_cfg */
-    keystore *keys;                         /**> keys structure */
-    SSL *ssl;                               /**> will hold the connection instance with the manager */
-    unsigned int enabled:1;                 /**> enabled / disables auto enrollment */
-    unsigned int allow_localhost:1;         /**> 1 by default if this flag is in 0 using agent_name "localhost" will not be allowed */
-    unsigned int delay_after_enrollment:30; /**> 20 by default, number of seconds to wait for enrollment */
+    w_enrollment_target *target_cfg;    /**> for details @see _enrollment_target_cfg */
+    w_enrollment_cert *cert_cfg;        /**> for details @see _enrollment_cert_cfg */
+    keystore *keys;                     /**> keys structure */
+    SSL *ssl;                           /**> will hold the connection instance with the manager */
+    bool enabled;                       /**> enables / disables auto enrollment */
+    bool allow_localhost;               /**> true by default. If this flag is false, using agent_name "localhost" will not be allowed */
+    time_t delay_after_enrollment;      /**> 20 by default, number of seconds to wait for enrollment */
 } w_enrollment_ctx;
 
 /**
