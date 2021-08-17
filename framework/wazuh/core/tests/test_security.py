@@ -20,8 +20,12 @@ def test_load_spec(mock_safe_load, db_setup):
         This function creates the rbac.db file.
     """
     security, _, _ = db_setup
+    # To execute the function first it's necessary to clear the cache.
+    security.load_spec.cache_clear()
     security.load_spec()
     mock_safe_load.assert_called()
+    # Clearing the cache again since this call used mocked resources.
+    security.load_spec.cache_clear()
 
 
 def test_revoke_tokens(db_setup):
