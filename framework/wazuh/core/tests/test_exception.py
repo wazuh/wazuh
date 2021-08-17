@@ -4,7 +4,6 @@
 
 from wazuh.core.exception import WazuhException, WazuhError
 
-
 def test_wazuh_exception__or__():
     """Check that WazuhException's | operator performs the join of dapi errors properly."""
     excp1 = WazuhException(1308)

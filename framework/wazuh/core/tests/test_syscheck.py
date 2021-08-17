@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.core.common import date_format
 from unittest.mock import patch, ANY
 from datetime import datetime
 import pytest
