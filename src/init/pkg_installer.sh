@@ -57,17 +57,13 @@ fi
 # Init backup
 INIT_PATH=""
 CHK_CONFIG=0
-# REHL <= 6
-if [ -r "/etc/redhat-release" ]; then
-    if [ -f "/etc/rc.d/init.d/${SERVICE}" ]; then
-        CHK_CONFIG=1
-        INIT_PATH="/etc/rc.d/init.d/${SERVICE}"
-        mkdir -p "${TMP_DIR_BACKUP}/etc/rc.d/init.d/"
-    fi
-fi
 
-# Others
-if [ -f "/etc/init.d/${SERVICE}" ]; then
+# REHL <= 6 / Amazon linux
+if [ -f "/etc/rc.d/init.d/${SERVICE}" ]; then
+    CHK_CONFIG=1
+    INIT_PATH="/etc/rc.d/init.d/${SERVICE}"
+    mkdir -p "${TMP_DIR_BACKUP}/etc/rc.d/init.d/"
+elif [ -f "/etc/init.d/${SERVICE}" ]; then
     CHK_CONFIG=1
     INIT_PATH="/etc/init.d/${SERVICE}"
     mkdir -p "${TMP_DIR_BACKUP}/etc/init.d/"
@@ -97,8 +93,7 @@ chmod +x ${WAZUH_HOME}/var/upgrade/install.sh
 ${WAZUH_HOME}/var/upgrade/install.sh >>${WAZUH_HOME}/logs/upgrade.log 2>&1
 
 # Check installation result
-RESULT=1
-# RESULT=$?
+RESULT=$?
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >>${WAZUH_HOME}/logs/upgrade.log
 
