@@ -29,7 +29,6 @@
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
-extern bool agent_ping_to_server(int server_id);
 extern void send_agent_stopped_message();
 extern int _s_verify_counter;
 
@@ -373,134 +372,6 @@ static void test_send_msg_on_startup(void **state) {
     return;
 }
 
-// Agent ping: cannot connect
-static void test_agent_ping_to_server_no_connect(void **state) {
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, -1);
-
-    assert_false(agent_ping_to_server(0));
-}
-
-// Agent ping: TCP send failure
-static void test_agent_ping_to_server_tcp_send_fail(void **state) {
-    will_return(__wrap_getDefine_Int, 5);
-
-    expect_value(__wrap_OS_ConnectTCP, _port, 1514);
-    expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.2");
-    expect_any(__wrap_OS_ConnectTCP, ipv6);
-    will_return(__wrap_OS_ConnectTCP, 22);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 22);
-    expect_value(__wrap_OS_SendSecureTCP, size, 5);
-    expect_string(__wrap_OS_SendSecureTCP, msg, "#ping");
-    will_return(__wrap_OS_SendSecureTCP, -1);
-
-    assert_false(agent_ping_to_server(1));
-}
-
-// Agent ping: UDP send failure
-static void test_agent_ping_to_server_udp_send_fail(void **state) {
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, 24);
-
-    expect_value(__wrap_OS_SendUDPbySize, sock, 24);
-    expect_value(__wrap_OS_SendUDPbySize, size, 5);
-    expect_string(__wrap_OS_SendUDPbySize, msg, "#ping");
-    will_return(__wrap_OS_SendUDPbySize, -1);
-
-    assert_false(agent_ping_to_server(0));
-}
-
-// Agent ping: TCP receive failure
-static void test_agent_ping_to_server_tcp_receive_fail(void **state) {
-    will_return(__wrap_getDefine_Int, 5);
-
-    expect_value(__wrap_OS_ConnectTCP, _port, 1514);
-    expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.2");
-    expect_any(__wrap_OS_ConnectTCP, ipv6);
-    will_return(__wrap_OS_ConnectTCP, 22);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 22);
-    expect_value(__wrap_OS_SendSecureTCP, size, 5);
-    expect_string(__wrap_OS_SendSecureTCP, msg, "#ping");
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    will_return(__wrap_wnet_select, 1);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 22);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, "");
-    will_return(__wrap_OS_RecvSecureTCP, -1);
-
-    expect_any(__wrap__mdebug1, formatted_msg);
-
-    assert_false(agent_ping_to_server(1));
-}
-
-// Agent ping: UDP receive invalid string
-static void test_agent_ping_to_server_udp_receive_invalid(void **state) {
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, 24);
-
-    expect_value(__wrap_OS_SendUDPbySize, sock, 24);
-    expect_value(__wrap_OS_SendUDPbySize, size, 5);
-    expect_string(__wrap_OS_SendUDPbySize, msg, "#ping");
-    will_return(__wrap_OS_SendUDPbySize, 0);
-
-    will_return(__wrap_wnet_select, 1);
-#ifndef TEST_WINAGENT
-    will_return(__wrap_recv, "#fail");
-#else
-    will_return(wrap_recv, "#fail");
-#endif
-
-    assert_false(agent_ping_to_server(0));
-}
-
-// Agent ping: valid ping-pong on TCP
-static void test_agent_ping_to_server_tcp_ok(void **state) {
-    will_return(__wrap_getDefine_Int, 5);
-
-    expect_value(__wrap_OS_ConnectTCP, _port, 1514);
-    expect_string(__wrap_OS_ConnectTCP, _ip, "127.0.0.2");
-    expect_any(__wrap_OS_ConnectTCP, ipv6);
-    will_return(__wrap_OS_ConnectTCP, 22);
-
-    expect_value(__wrap_OS_SendSecureTCP, sock, 22);
-    expect_value(__wrap_OS_SendSecureTCP, size, 5);
-    expect_string(__wrap_OS_SendSecureTCP, msg, "#ping");
-    will_return(__wrap_OS_SendSecureTCP, 0);
-
-    will_return(__wrap_wnet_select, 1);
-
-    expect_value(__wrap_OS_RecvSecureTCP, sock, 22);
-    expect_value(__wrap_OS_RecvSecureTCP, size, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureTCP, "#pong");
-    will_return(__wrap_OS_RecvSecureTCP, 5);
-
-    assert_true(agent_ping_to_server(1));
-}
-
-// Agent ping: valid ping-pong on UDP
-static void test_agent_ping_to_server_udp_ok(void **state) {
-    will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, 24);
-
-    expect_value(__wrap_OS_SendUDPbySize, sock, 24);
-    expect_value(__wrap_OS_SendUDPbySize, size, 5);
-    expect_string(__wrap_OS_SendUDPbySize, msg, "#ping");
-    will_return(__wrap_OS_SendUDPbySize, 0);
-
-    will_return(__wrap_wnet_select, 1);
-#ifndef TEST_WINAGENT
-    will_return(__wrap_recv, "#pong");
-#else
-    will_return(wrap_recv, "#pong");
-#endif
-
-    assert_true(agent_ping_to_server(0));
-}
-
 /* send_agent_stopped_message */
 static void test_send_agent_stopped_message(void **state) {
 
@@ -515,14 +386,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_no_connect, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_send_fail, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_send_fail, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_receive_fail, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_receive_invalid, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_ok, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_ok, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
