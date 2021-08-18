@@ -229,7 +229,6 @@ ID: 81600 - 80799
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     <mitre>
       <techniqueID>T1498.001</techniqueID>
-      <tacticID></tacticID>
     </mitre>
     </rule>
 

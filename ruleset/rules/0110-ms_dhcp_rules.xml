@@ -93,9 +93,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^10</id>
     <description>MS-DHCP: A new IP address was leased to a client.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6305" level="0">
@@ -103,9 +100,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^11</id>
     <description>MS-DHCP: A lease was renewed by a client.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6306" level="0">
@@ -113,9 +107,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^12</id>
     <description>MS-DHCP: A lease was released by a client.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6307" level="0">
@@ -123,9 +114,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^13</id>
     <description>MS-DHCP: An IP address was found to be in use on the network.</description>
     <group>dhcp_lease_action,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6308" level="12">
@@ -151,9 +139,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^16</id>
     <description>MS-DHCP: A lease was deleted.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6311" level="0">
@@ -161,9 +146,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^17</id>
     <description>MS-DHCP: A lease was expired and DNS records for an expired leases have not been deleted.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6322" level="0">
@@ -171,9 +153,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^18</id>
     <description>MS-DHCP: A lease was expired and DNS records were deleted.</description>
     <group>dhcp_lease_action,dhcp_dns_maintenance,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6312" level="0">
@@ -181,9 +160,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^20</id>
     <description>MS-DHCP: A BOOTP address was leased to a client.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6313" level="0">
@@ -191,9 +167,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^21</id>
     <description>MS-DHCP: A dynamic BOOTP address was leased to a client.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
 
@@ -209,9 +182,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^23</id>
     <description>MS-DHCP: A BOOTP IP address was deleted after checking to see it was not in use.</description>
     <group>dhcp_lease_action,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6316" level="3">
@@ -230,9 +200,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^25</id>
     <description>MS-DHCP: IP address cleanup statistics.</description>
     <group>dhcp_maintenance,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6318" level="0">
@@ -240,9 +207,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^30</id>
     <description>MS-DHCP: DNS update request to the named DNS server.</description>
     <group>dhcp_dns_maintenance,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6319" level="7">
@@ -257,9 +221,6 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^32</id>
     <description>MS-DHCP: DNS update successful.</description>
     <group>dhcp_dns_maintenance,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6323" level="12">
@@ -333,9 +294,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11000</id>
     <description>MS-DHCP: Solicit.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6352" level="0">
@@ -343,9 +301,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11001|^11002</id>
     <description>MS-DHCP: Advertise.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6354" level="0">
@@ -353,9 +308,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11003</id>
     <description>MS-DHCP: Confirm.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6355" level="0">
@@ -363,9 +315,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11004</id>
     <description>MS-DHCP: Renew.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6356" level="0">
@@ -373,9 +322,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11005</id>
     <description>MS-DHCP: Rebind.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
 
@@ -391,9 +337,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11007</id>
     <description>MS-DHCP: Release.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6359" level="0">
@@ -401,9 +344,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11008</id>
     <description>MS-DHCP: Information Request.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6360" level="12">
@@ -477,9 +417,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11016</id>
     <description>MS-DHCP: Client deleted.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6368" level="0">
@@ -487,9 +424,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11017</id>
     <description>MS-DHCP: DNS record not deleted.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6369" level="0">
@@ -497,9 +431,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11018</id>
     <description>MS-DHCP: Expired.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6370" level="0">
@@ -507,9 +438,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11019</id>
     <description>MS-DHCP: Expired and Deleted count.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6371" level="2">
@@ -518,9 +446,6 @@ Server 2008 IPv6 Event ID  Meaning
     <description>MS-DHCP: Database cleanup begin.</description>
     <group>dhcp_ipv6,</group>
 
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6372" level="2">
@@ -528,9 +453,6 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11021</id>
     <description>MS-DHCP: Database cleanup end.</description>
     <group>dhcp_ipv6,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="6373" level="12">

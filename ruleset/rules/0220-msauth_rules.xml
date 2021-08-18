@@ -225,9 +225,6 @@
     <if_sid>18105</if_sid>
     <id>^680$</id>
     <description>Windows login attempt (ignored). Duplicated.</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="18125" level="5">
@@ -1155,9 +1152,6 @@
     <user>^LOCAL SERVICE|^NETWORK SERVICE|^ANONYMOUS LOGON</user>
     <description>Windows Logon Success (ignored).</description>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
 
@@ -1234,9 +1228,6 @@
     <match>Logon Type:   8</match>
     <description>MS Exchange User Logoff.</description>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
 

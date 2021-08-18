@@ -18,9 +18,6 @@
     <id>^2|^3</id>
     <compiled_rule>is_simple_http_request</compiled_rule>
     <description>Ignored URLs (simple queries).</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="31101" level="5">
@@ -183,9 +180,6 @@
     <if_sid>31101</if_sid>
     <id>^499</id>
     <description>Ignored 499's on nginx.</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
 

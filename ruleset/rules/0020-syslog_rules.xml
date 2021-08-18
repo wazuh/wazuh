@@ -909,18 +909,12 @@
     <if_sid>5100</if_sid>
     <id>mptscsih</id>
     <description>Grouping for the mptscrih rules.</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="2936" level="0" noalert="1">
     <if_sid>5100</if_sid>
     <id>mptbase</id>
     <description>Grouping for the mptbase rules.</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="2937" level="12">

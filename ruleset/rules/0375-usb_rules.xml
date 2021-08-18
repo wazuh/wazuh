@@ -11,9 +11,6 @@
         <decoded_as>kernel</decoded_as>
         <id>usb</id>
         <description>USB messages grouped.</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
     </rule>
 
     <!--

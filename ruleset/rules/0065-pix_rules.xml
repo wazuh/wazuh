@@ -42,18 +42,12 @@
     <if_sid>4300</if_sid>
     <id>^5-|^6-</id>
     <description>PIX notification/informational message.</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="4315" level="0">
     <if_sid>4300</if_sid>
     <id>^7-</id>
     <description>PIX debug message.</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
   </rule>
 
   <rule id="4321" level="9">

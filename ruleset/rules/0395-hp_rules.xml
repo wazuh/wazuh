@@ -75,9 +75,6 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <id>5</id>
         <description>HP 5500 EI - Notification event</description>
         <group>hp-notification,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
     </rule>
 
     <rule id="81707" level="0">
@@ -85,9 +82,6 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <id>6</id>
         <description>HP 5500 EI - Informational event</description>
         <group>hp-informational,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
     </rule>
 
     <rule id="81708" level="0">
@@ -95,9 +89,6 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <id>7</id>
         <description>HP 5500 EI - Debug event</description>
         <group>hp-debug,</group>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
     </rule>
 
     <!-- Warning events

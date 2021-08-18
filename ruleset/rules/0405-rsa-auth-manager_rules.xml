@@ -18,9 +18,6 @@
         <if_sid>81900</if_sid>
         <id>AUTHN_LOGIN_EVENT</id>
         <description>RSA Authentication Manager: Loging event</description>
-    <mitre>
-      <techniqueID></techniqueID>
-    </mitre>
     </rule>
 
     <rule id="81902" level="4">

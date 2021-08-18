@@ -244,7 +244,6 @@ ID: 87900 - 87999
         <options>no_full_log</options>
     <mitre>
       <techniqueID>T1057</techniqueID>
-      <tacticID></tacticID>
     </mitre>
     </rule>
 
