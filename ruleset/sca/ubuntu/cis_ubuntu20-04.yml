@@ -119,7 +119,7 @@ checks:
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/udf.conf and add the following line: install udf /bin/true Run the following command to unload the udf module: # rmmod udf"
     compliance:
-      - cis: ["1.1.1.6"]
+      - cis: ["1.1.1.7"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
@@ -401,51 +401,6 @@ checks:
     rules:
       - 'c:mount -> r:\s/home\s && r:nodev'
 
-  - id: 19024 
-    title: "Ensure nodev option set on /dev/shm partition"
-    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,nodev /dev/shm"
-    compliance:
-      - cis: ["1.1.15"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:nodev'
-
-  - id: 19025 
-    title: "Ensure nosuid option set on /dev/shm partition"
-    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
-    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,nosuid /dev/shm"
-    compliance:
-      - cis: ["1.1.16"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
-
-  - id: 19026 
-    title: "Ensure noexec option set on /dev/shm partition"
-    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
-    rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec /dev/shm"
-    compliance:
-      - cis: ["1.1.17"]
-      - cis_csc: ["2.6", "8"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:noexec'
-
   - id: 19027 
     title: "Disable Automounting"
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
@@ -485,7 +440,7 @@ checks:
     rationale: "sudo supports a plugin architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plugins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "Install sudo using the following command. # apt install sudo OR # apt install sudo-ldap"
     compliance:
-      - cis: ["1.3.1"]
+      - cis: ["5.2.1"]
       - cis_csc: ["4.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -503,7 +458,7 @@ checks:
     rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing."
     remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty"
     compliance:
-      - cis: ["1.3.2"]
+      - cis: ["5.2.2"]
       - cis_csc: ["4.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -519,7 +474,7 @@ checks:
     rationale: "A sudo log file simplifies auditing of sudo commands"
     remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line:   Defaults logfile=\"<PATH TO CUSTOM LOG FILE>\"   Example    Defaults logfile=\"/var/log/sudo.log\""
     compliance:
-      - cis: ["1.3.3"]
+      - cis: ["5.2.3"]
       - cis_csc: ["6.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -536,7 +491,7 @@ checks:
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
     remediation: "Install AIDE: # apt install aide aide-common. Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: # aideinit .  Notes: The prelinking feature can interfere with AIDE because it alters binaries to speed up their start up times. Run prelink -ua to restore the binaries to their prelinked state, thus avoiding false positives from AIDE."
     compliance:
-      - cis: ["1.4.1"]
+      - cis: ["1.3.1"]
       - cis_csc: ["14.9"]
       - pci_dss: ["11.5"]
       - tsc: ["PI1.4","PI1.5","CC6.8","CC7.2","CC7.3","CC7.4"]
@@ -550,7 +505,7 @@ checks:
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
     remediation: "Run the following commands: # cp ./config/aidecheck.service /etc/systemd/system/aidecheck.service  # cp ./config/aidecheck.timer /etc/systemd/system/aidecheck.timer   # chmod 0644 /etc/systemd/system/aidecheck.*  # systemctl reenable aidecheck.timer  # systemctl restart aidecheck.timer  # systemctl daemon-reload    OR  If cron will be used to schedule and run aide check, run the following command:    # crontab -u root -e    Add the following line to the crontab:    0 5 * * * /usr/bin/aide.wrapper --config /etc/aide/aide.conf --check"
     compliance:
-      - cis: ["1.4.2"]
+      - cis: ["1.3.2"]
       - cis_csc: ["14.9"]
       - pci_dss: ["11.5"]
       - tsc: ["PI1.4","PI1.5","CC6.8","CC7.2","CC7.3","CC7.4"]
@@ -571,7 +526,7 @@ checks:
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
     remediation: "Create an encrypted password with grub-mkpasswd-pbkdf2 : # grub-mkpasswd-pbkdf2     Enter password: <password>      Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF     set superusers=\"<username>\"   password_pbkdf2 <username> <encrypted-password>      EOF     The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS=  Example: CLASS=\"--class gnu-linux --class gnu --class os --unrestricted\" Run the following command to update the grub2 configuration: # update-grub"
     compliance:
-      - cis: ["1.5.1"]
+      - cis: ["1.4.2"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -587,7 +542,7 @@ checks:
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
     remediation: "Run the following commands to set permissions on your grub configuration: chown root:root /boot/grub/grub.cfg, chmod og-rwx /boot/grub/grub.cfg"
     compliance:
-      - cis: ["1.5.2"]
+      - cis: ["1.4.3"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -602,7 +557,7 @@ checks:
     rationale: "Requiring authentication in single user mode prevents an unauthorized user from rebooting the system into single user to gain root privileges without credentials."
     remediation: "Run the following command and follow the prompts to set a password for the root user: # passwd root"
     compliance:
-      - cis: ["1.5.3"]
+      - cis: ["1.4.4"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -619,7 +574,7 @@ checks:
     rationale: "Enabling any feature that can protect against buffer overflow attacks enhances the security of the system."
     remediation: "On 32 bit systems install a kernel with PAE support, no installation is required on 64 bit systems: If necessary configure your bootloader to load the new kernel and reboot the system. You may need to enable NX or XD support in your bios."
     compliance:
-      - cis: ["1.6.1"]
+      - cis: ["1.5.1"]
       - cis_csc: ["8.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -634,7 +589,7 @@ checks:
     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
     compliance:
-      - cis: ["1.6.2"]
+      - cis: ["1.5.2"]
       - cis_csc: ["8.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -650,7 +605,7 @@ checks:
     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
     remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink"
     compliance:
-      - cis: ["1.6.3"]
+      - cis: ["1.5.3"]
       - cis_csc: ["14.9"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -665,7 +620,7 @@ checks:
     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
     remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0"
     compliance:
-      - cis: ["1.6.4"]
+      - cis: ["1.5.4"]
       - cis_csc: ["13"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -676,9 +631,9 @@ checks:
       - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> !r:^# && r:=\s*\t*0$'
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
 
-# 1.7 Mandatory Access Control
+# 1.6 Mandatory Access Control
 
-# 1.7.1 Configure AppArmor
+# 1.6.1 Configure AppArmor
 
   - id: 19041 
     title: "Ensure AppArmor is installed"
@@ -686,7 +641,7 @@ checks:
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
     remediation: "Install Apparmor. # apt install apparmor"
     compliance:
-      - cis: ["1.7.1.1"]
+      - cis: ["1.6.1.1"]
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -701,7 +656,7 @@ checks:
     rationale: "AppArmor must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
     remediation: "Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line   GRUB_CMDLINE_LINUX=\"apparmor=1 security=apparmor\"      Run the following command to update the grub2 configuration # update-grub    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
     compliance:
-      - cis: ["1.7.1.2"]
+      - cis: ["1.6.1.2"]
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -717,7 +672,7 @@ checks:
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated.."
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/*   OR   Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
-      - cis: ["1.7.1.3"]
+      - cis: ["1.6.1.3"]
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -733,7 +688,7 @@ checks:
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated.."
     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
-      - cis: ["1.7.1.4"]
+      - cis: ["1.6.1.4"]
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -744,9 +699,7 @@ checks:
       - 'c:apparmor_status -> r:^0\s*profiles are in complain mode'
       - 'c:apparmor_status -> r:^0\s*processes are unconfined'
 
-# 1.8 Warning Banners
-
-# 1.8.1 Command Line Warning Banners
+# 1.7 Command Line Warning Banners
 
   - id: 19045 
     title: "Ensure message of the day is configured properly"
@@ -754,7 +707,7 @@ checks:
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
-      - cis: ["1.8.1.1"]
+      - cis: ["1.7.1"]
       - cis_csc: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
@@ -769,7 +722,7 @@ checks:
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
     compliance:
-      - cis: ["1.8.1.2"]
+      - cis: ["1.7.2"]
       - cis_csc: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
@@ -783,7 +736,7 @@ checks:
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net"
     compliance:
-      - cis: ["1.8.1.3"]
+      - cis: ["1.7.3"]
       - cis_csc: ["5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
@@ -797,7 +750,7 @@ checks:
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd"
     compliance:
-      - cis: ["1.8.1.4"]
+      - cis: ["1.7.4"]
       - cis_csc: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
@@ -815,7 +768,7 @@ checks:
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue: # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue"
     compliance:
-      - cis: ["1.8.1.5"]
+      - cis: ["1.7.5"]
       - cis_csc: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
@@ -833,7 +786,7 @@ checks:
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue.net: # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net"
     compliance:
-      - cis: ["1.8.1.6"]
+      - cis: ["1.7.6"]
       - cis_csc: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
@@ -2403,7 +2356,7 @@ checks:
       - 'd:/etc/audit'
       - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$'
       - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
-
+  
 # 4.2 Configure Logging
 # 4.2,1 Configure rsyslog
 
