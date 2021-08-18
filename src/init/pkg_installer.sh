@@ -40,17 +40,15 @@ fi
 # Check if systemd is used
 SYSTEMD_SERVICE_UNIT_PATH=""
 # RHEL 8 >= services must must be installed in /usr/lib/systemd/system/
-if [ -f /usr/lib/systemd/system/${SERVICE}.service ]; then
+if [ -f /usr/lib/systemd/system/${SERVICE}.service ] && [ ! -h /usr/lib/systemd/system ]; then
     SYSTEMD_SERVICE_UNIT_PATH=/usr/lib/systemd/system/${SERVICE}.service
     mkdir -p "${TMP_DIR_BACKUP}/usr/lib/systemd/system/"
+    cp -a "${SYSTEMD_SERVICE_UNIT_PATH}" "${TMP_DIR_BACKUP}${SYSTEMD_SERVICE_UNIT_PATH}"
+fi
 # Others
-elif [ -f /etc/systemd/system/${SERVICE}.service ]; then
+if [ -f /etc/systemd/system/${SERVICE}.service ] && [ ! -h /etc/systemd/system ]; then
     SYSTEMD_SERVICE_UNIT_PATH=/etc/systemd/system/${SERVICE}.service
     mkdir -p "${TMP_DIR_BACKUP}/etc/systemd/system/"
-fi
-
-# Backup the unit file
-if [ -n "${SYSTEMD_SERVICE_UNIT_PATH}" ]; then
     cp -a "${SYSTEMD_SERVICE_UNIT_PATH}" "${TMP_DIR_BACKUP}${SYSTEMD_SERVICE_UNIT_PATH}"
 fi
 
@@ -59,18 +57,17 @@ INIT_PATH=""
 CHK_CONFIG=0
 
 # REHL <= 6 / Amazon linux
-if [ -f "/etc/rc.d/init.d/${SERVICE}" ]; then
+if [ -f "/etc/rc.d/init.d/${SERVICE}" ] && [ ! -h /etc/rc.d/init.d ]; then
     CHK_CONFIG=1
     INIT_PATH="/etc/rc.d/init.d/${SERVICE}"
     mkdir -p "${TMP_DIR_BACKUP}/etc/rc.d/init.d/"
-elif [ -f "/etc/init.d/${SERVICE}" ]; then
+    cp -a "${INIT_PATH}" "${TMP_DIR_BACKUP}${INIT_PATH}"
+fi
+
+if [ -f "/etc/init.d/${SERVICE}" ] && [ ! -h /etc/init.d ]; then
     CHK_CONFIG=1
     INIT_PATH="/etc/init.d/${SERVICE}"
     mkdir -p "${TMP_DIR_BACKUP}/etc/init.d/"
-fi
-
-# Backup the unit file
-if [ -n "${INIT_PATH}" ]; then
     cp -a "${INIT_PATH}" "${TMP_DIR_BACKUP}${INIT_PATH}"
 fi
 
@@ -93,7 +90,8 @@ chmod +x ${WAZUH_HOME}/var/upgrade/install.sh
 ${WAZUH_HOME}/var/upgrade/install.sh >>${WAZUH_HOME}/logs/upgrade.log 2>&1
 
 # Check installation result
-RESULT=$?
+# RESULT=$?
+RESULT=1
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >>${WAZUH_HOME}/logs/upgrade.log
 
