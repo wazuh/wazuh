@@ -207,7 +207,7 @@ checks:
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s'
-      - 'f:/etc/fstab -> r:\s/dev/shm\s'
+      - 'f:/etc/fstab -> r:\s*/dev/shm\s*'
 
       
   - id: 19012 
@@ -940,7 +940,7 @@ checks:
     rules:
       - 'c:dpkg -s ntp -> r:install ok installed'
       - 'c:dpkg -s chrony -> r:install ok installed'
-      - 'c:systemctl is-enabled systemd-timescynd -> enabled'
+      - 'c:systemctl is-enabled systemd-timesyncd -> enabled'
 
   - id: 19056 
     title: "Ensure systemd-timesyncd is configured"
@@ -1429,7 +1429,7 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
+      - 'not c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.forwarding /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
 
 #############################################################
@@ -1453,8 +1453,8 @@ checks:
       - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.accept_source_route -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_source_route -> r:=\s*\t*0$'
+      - 'not c:sysctl net.ipv6.conf.all.accept_source_route -> r:=\s*\t*1$'
+      - 'not c:sysctl net.ipv6.conf.default.accept_source_route -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0$'
 
@@ -1475,8 +1475,8 @@ checks:
       - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:=\s*\t*0$'
+      - 'not c:sysctl net.ipv6.conf.all.accept_redirects -> r:=\s*\t*1$'
+      - 'not c:sysctl net.ipv6.conf.default.accept_redirects -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
 
@@ -1600,8 +1600,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:=\s*\t*0$'
+      - 'not c:sysctl net.ipv6.conf.all.accept_ra -> r:=\s*\t*1$'
+      - 'not c:sysctl net.ipv6.conf.default.accept_ra -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0$'
 
@@ -1713,7 +1713,7 @@ checks:
       - tsc: ["CC8.1"]
     reference:
       - "http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html"
-    condition: all
+    condition: any
     rules:
       - 'c:dpkg -s ufw -> r:Status: install ok installed'
       - 'c:dpkg -s nftables -> r:Status: install ok installed'
@@ -1787,7 +1787,7 @@ checks:
     rules:
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(incoming)|reject\W+(incoming)'
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(outgoing)|reject\W+(outgoing)'
-      - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)'
+      - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)|disabled\W+(routed)'
 
 
 ######################################################################
@@ -2303,7 +2303,7 @@ checks:
       - 'd:/etc/audit'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=mounts'
 
   - id: 19130 
     title: "Ensure file deletion events by users are collected"
@@ -2322,7 +2322,7 @@ checks:
       - 'd:/etc/audit'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
-      - 'c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
+      - 'c:auditctl -l -> r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=delete'
 
   - id: 19131 
     title: "Ensure changes to system administration scope (sudoers) is collected"
@@ -2361,8 +2361,8 @@ checks:
     rules:
       - 'd:/etc/audit'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w \.+ && r:-p wa && r:-k actions'
-      - 'c:auditctl -l -> r:^-w \.+ && r:-p wa && r:-k actions'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w \.+ && r:-S execve && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k actions'
+      - 'c:auditctl -l -> r:^-w \.+ && r:always,exit|exit,always && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=actions'
 
   - id: 19133 
     title: "Ensure kernel module loading and unloading is collected"
@@ -2579,7 +2579,7 @@ checks:
     condition: all
     rules:
       - 'c:systemctl is-enabled cron -> enabled'
-      - 'c:systemctl status cron -> Active: active (running)'
+      - 'c:systemctl status cron -> r:Active: active (running)'
 
 
 
