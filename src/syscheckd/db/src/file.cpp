@@ -131,9 +131,11 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 // LCOV_EXCL_START
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
     event_data_t evt_data;
-    evt_data.report_event = 0;
+    evt_data.report_event = TRUE;
     evt_data.mode = FIM_SCHEDULED;
-    evt_data.type = FIM_ADD;
+    evt_data.type = FIM_DELETE;
+    evt_data.w_evt = NULL;
+
     memset(&evt_data.statbuf, 0, sizeof(struct stat));
 
     return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
