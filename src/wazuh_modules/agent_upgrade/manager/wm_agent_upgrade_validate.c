@@ -115,6 +115,8 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_comm
 }
 
 int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) {
+
+    char repository[OS_BUFFER_SIZE] = "";
     const char *http_tag = "http://";
     const char *https_tag = "https://";
     char *repository_url = NULL;
@@ -123,15 +125,11 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
     char *versions_url = NULL;
     char *versions = NULL;
     int return_code = WM_UPGRADE_SUCCESS;
+    int ver = 0;
 
     if (!task->wpk_version) {
         return WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
     }
-
-    os_calloc(OS_SIZE_1024, sizeof(char), repository_url);
-    os_calloc(OS_SIZE_2048, sizeof(char), path_url);
-    os_calloc(OS_SIZE_2048, sizeof(char), file_url);
-    os_calloc(OS_SIZE_4096, sizeof(char), versions_url);
 
     if (!task->wpk_repository) {
         if (wpk_repository_config) {
@@ -139,9 +137,18 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
         } else if (wm_agent_upgrade_compare_versions(task->wpk_version, "v4.0.0") < 0) {
             os_strdup(WM_UPGRADE_WPK_REPO_URL_3_X, task->wpk_repository);
         } else {
-            os_strdup(WM_UPGRADE_WPK_REPO_URL_4_X, task->wpk_repository);
+            if (sscanf(task->wpk_version, "v%d.", &ver) != 1) {
+                return WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
+            }
+            snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, ver);
+            os_strdup(repository, task->wpk_repository);
         }
     }
+
+    os_calloc(OS_SIZE_1024, sizeof(char), repository_url);
+    os_calloc(OS_SIZE_2048, sizeof(char), path_url);
+    os_calloc(OS_SIZE_2048, sizeof(char), file_url);
+    os_calloc(OS_SIZE_4096, sizeof(char), versions_url);
 
     // Set protocol
     if (!strstr(task->wpk_repository, http_tag) && !strstr(task->wpk_repository, https_tag)) {
