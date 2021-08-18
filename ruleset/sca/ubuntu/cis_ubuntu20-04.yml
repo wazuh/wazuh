@@ -128,23 +128,6 @@ checks:
       - 'c:/sbin/modprobe -n -v udf -> r:^install /bin/true'
       - 'not c:lsmod -> r:udf'
 
-  - id: 19006 
-    title: "Ensure mounting of FAT filesystems is disabled"
-    description: "The FAT filesystem format is primarily used on older windows systems and portable USB drives or flash modules. It comes in three types FAT12 , FAT16 , and FAT32 all of which are supported by the vfat kernel module."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/vfat.conf: install vfat /bin/true. Run the following command to unload the vfat module: rmmod vfat"
-    compliance:
-      - cis: ["1.1.1.7"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.5"]
-      - tsc: ["CC6.3"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - 'c:/sbin/modprobe -n -v vfat -> r:^install /bin/true'
-      - 'not c:lsmod -> r:vfat'
-
 # 1.1.x Filesystem Configuration
   - id: 19007 
     title: "Ensure /tmp is configured"
