@@ -20,6 +20,7 @@
 
 extern int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
+extern void w_enrollment_concat_key(char *buff, keyentry* key_entry);
 extern void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 extern int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address);
 extern int w_enrollment_send_message(w_enrollment_ctx *cfg);
@@ -347,6 +348,31 @@ void test_w_enrollment_concat_group(void **state) {
     w_enrollment_concat_group(buf, group);
     assert_string_equal(buf, " G:'EXAMPLE_GROUP'");
 }
+/**********************************************/
+/************* w_enrollment_concat_key ****************/
+void test_w_enrollment_concat_key_empty_buff(void **state) {
+    expect_assert_failure(w_enrollment_concat_key(NULL, (keyentry *)1));
+}
+
+void test_w_enrollment_concat_key_empty_key_structure(void **state) {
+    char *buf = *state;
+    expect_assert_failure(w_enrollment_concat_key(buf, NULL));
+}
+
+void test_w_enrollment_concat_key(void **state) {
+    char *buf = *state;
+    keyentry *keys = NULL;
+    os_calloc(1, sizeof(keyentry), keys);
+    keys->id = "001";
+    keys->name = "debian10";
+    keys->raw_key = "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96";
+
+    w_enrollment_concat_key(buf, keys);
+    assert_string_equal(buf, " K:'e0735a4a2c9bf633bac9b58f194cc8649537b394'");
+
+    os_free(keys);
+}
+
 /**********************************************/
 /********** w_enrollment_verify_ca_certificate *************/
 void test_w_enrollment_verify_ca_certificate_null_connection(void **state) {
@@ -1062,6 +1088,10 @@ int main()
         cmocka_unit_test(test_w_enrollment_concat_group_empty_buff),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_group_empty_group, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_group, test_setup_concats, test_teardown_concats),
+        // w_enrollment_concat_key
+        cmocka_unit_test(test_w_enrollment_concat_key_empty_buff),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_concat_key_empty_key_structure, test_setup_concats, test_teardown_concats),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_concat_key, test_setup_concats, test_teardown_concats),
         //  w_enrollment_verify_ca_certificate
         cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_null_connection, test_setup_ssl_context, test_teardown_ssl_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_verify_ca_certificate_no_certificate, test_setup_ssl_context, test_teardown_ssl_context),
