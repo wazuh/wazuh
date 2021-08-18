@@ -63,10 +63,11 @@
     <if_matched_sid>31315</if_matched_sid>
     <same_source_ip />
     <description>Nginx: Multiple web authentication failures.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
   </rule>
 
   <rule id="31317" level="0">
@@ -108,10 +109,11 @@
     <if_sid>31331</if_sid>
     <match>with code 403</match>
     <description>ModSecurity rejected a query</description>
-    <mitre>
-      <id>T1083</id>
-    </mitre>
     <group>modsecurity,gpg13_10.1,</group>
+    <mitre>
+      <techniqueID>T1083</techniqueID>
+      <tacticID>TA0007</tacticID>
+    </mitre>
   </rule>
 
   <rule id="31334" level="3">
@@ -125,10 +127,11 @@
     <if_sid>31334</if_sid>
     <match>block=1</match>
     <description>NAXSI rejected a query</description>
-    <mitre>
-      <id>T1083</id>
-    </mitre>
     <group>naxsi,gpg13_10.1,</group>
+    <mitre>
+      <techniqueID>T1083</techniqueID>
+      <tacticID>TA0007</tacticID>
+    </mitre>
   </rule>
 
 </group>

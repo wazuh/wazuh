@@ -33,6 +33,10 @@
     <match>entered failed state</match>
     <description>Systemd: Service has entered a failed state, and likely has not started.</description>
     <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <mitre>
+      <techniqueID>T1489</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
   </rule>
 
   <rule id="40704" level="5">
@@ -40,6 +44,10 @@
     <match>status=1/FAILURE</match>
     <description>Systemd: Service exited due to a failure.</description>
     <group>gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <mitre>
+      <techniqueID>T1489</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
   </rule>
 
   <rule id="40705" level="5">

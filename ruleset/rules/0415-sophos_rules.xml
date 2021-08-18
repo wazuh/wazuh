@@ -71,6 +71,10 @@
     <if_sid>64270</if_sid>
     <field name="msg">SCANNER_DIED_KILLED</field>
     <description>SCANNER_DIED_KILLED alert</description>
+    <mitre>
+      <techniqueID>T1562.001</techniqueID>
+      <tacticID>TA0005</tacticID>
+    </mitre>
   </rule>
 
   <rule id="64274" level="0">

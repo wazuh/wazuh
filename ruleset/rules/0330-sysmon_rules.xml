@@ -128,10 +128,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">svchost.exe</field>
         <description>Sysmon - Suspicious Process - svchost.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184667" level="0">
@@ -145,10 +146,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">lsm.exe</field>
         <description>Sysmon - Suspicious Process - lsm.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184677" level="0">
@@ -161,10 +163,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.parentImage">lsm.exe</field>
         <description>Sysmon - Suspicious Process - lsm.exe is a Parent Image</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
 
@@ -172,10 +175,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">csrss.exe</field>
         <description>Sysmon - Suspicious Process - csrss.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184687" level="0">
@@ -189,10 +193,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">lsass.exe</field>
         <description>Sysmon - Suspicious Process - lsass</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184697" level="0">
@@ -205,10 +210,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.parentImage">lsass.exe</field>
         <description>Sysmon - Suspicious Process - lsass.exe is a Parent Image</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
 
@@ -216,10 +222,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">winlogon.exe</field>
         <description>Sysmon - Suspicious Process - winlogon.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184707" level="0">
@@ -233,10 +240,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">wininit.exe</field>
         <description>Sysmon - Suspicious Process - wininit</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184717" level="0">
@@ -250,10 +258,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">smss.exe</field>
         <description>Sysmon - Suspicious Process - smss.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184727" level="0">
@@ -267,10 +276,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">taskhost.exe</field>
         <description>Sysmon - Suspicious Process - taskhost.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184737" level="0">
@@ -284,10 +294,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">/services.exe</field>
         <description>Sysmon - Suspicious Process - services.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184747" level="0">
@@ -301,10 +312,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">dllhost.exe</field>
         <description>Sysmon - Suspicious Process - dllhost.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184767" level="0">
@@ -318,10 +330,11 @@
         <if_group>sysmon_event1</if_group>
         <field name="sysmon.image">\\explorer.exe</field>
         <description>Sysmon - Suspicious Process - explorer.exe</description>
-        <mitre>
-          <id>T1055</id>
-        </mitre>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1055</techniqueID>
+      <tacticID>TA0004</tacticID>
+    </mitre>
     </rule>
 
     <rule id="184777" level="0">

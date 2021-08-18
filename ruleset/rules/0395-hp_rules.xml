@@ -75,6 +75,9 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <id>5</id>
         <description>HP 5500 EI - Notification event</description>
         <group>hp-notification,</group>
+    <mitre>
+      <techniqueID></techniqueID>
+    </mitre>
     </rule>
 
     <rule id="81707" level="0">
@@ -82,6 +85,9 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <id>6</id>
         <description>HP 5500 EI - Informational event</description>
         <group>hp-informational,</group>
+    <mitre>
+      <techniqueID></techniqueID>
+    </mitre>
     </rule>
 
     <rule id="81708" level="0">
@@ -89,6 +95,9 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
         <id>7</id>
         <description>HP 5500 EI - Debug event</description>
         <group>hp-debug,</group>
+    <mitre>
+      <techniqueID></techniqueID>
+    </mitre>
     </rule>
 
     <!-- Warning events
@@ -105,10 +114,11 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
       <if_matched_sid>81709</if_matched_sid>
       <same_source_ip />
       <description>HP 5500 EI: Multiple authentication failures.</description>
-      <mitre>
-        <id>T1110</id>
-      </mitre>
       <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
     </rule>
 
 </group>

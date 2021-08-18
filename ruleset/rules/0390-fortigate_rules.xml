@@ -51,6 +51,10 @@ ID: 81600 - 80799
         <same_source_ip />
         <description>Fortigate: Multiple Firewall drop events from same source.</description>
         <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,</group>
+    <mitre>
+      <techniqueID>T1498.001</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
     </rule>
 
 
@@ -69,10 +73,11 @@ ID: 81600 - 80799
         <if_matched_sid>81606</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple failed login events from same source.</description>
-        <mitre>
-          <id>T1110</id>
-        </mitre>
         <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
     </rule>
 
 
@@ -90,10 +95,11 @@ ID: 81600 - 80799
         <if_matched_sid>81608</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple changed configuration events from same source.</description>
-        <mitre>
-          <id>T1089</id>
-        </mitre>
         <group>gdpr_IV_35.7.d,</group>
+    <mitre>
+      <techniqueID>T1562.004</techniqueID>
+      <tacticID>TA0005</tacticID>
+    </mitre>
     </rule>
 
     <!--
@@ -104,16 +110,21 @@ ID: 81600 - 80799
         <match>http_decoder: HTTP.Unknown.Tunnelling</match>
         <description>Fortigate: Default tunneling setting. Could be IPS.</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <techniqueID>T1572</techniqueID>
+      <tacticID>TA0011</tacticID>
+    </mitre>
     </rule>
 
     <rule id="81611" level="7" frequency="18" timeframe="45" ignore="240">
         <if_matched_sid>81610</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple default tunneling setting events from same source.</description>
-        <mitre>
-          <id>T1562.004</id>
-        </mitre>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <techniqueID>T1572</techniqueID>
+      <tacticID>TA0011</tacticID>
+    </mitre>
     </rule>
 
     <!--
@@ -131,6 +142,10 @@ ID: 81600 - 80799
         <same_source_ip />
         <description>Fortigate: Multiple Firewall edit events from same source.</description>
         <group>pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <techniqueID>T1562.001</techniqueID>
+      <tacticID>TA0005</tacticID>
+    </mitre>
     </rule>
 
 
@@ -148,11 +163,14 @@ ID: 81600 - 80799
         <if_matched_sid>81614</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple Firewall SSL VPN failed login events from same source.</description>
-        <mitre>
-          <id>T1110</id>
-          <id>T1133</id>
-        </mitre>
         <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1133</techniqueID>
+    </mitre>
     </rule>
 
     <!--
@@ -188,6 +206,10 @@ ID: 81600 - 80799
         <same_source_ip />
         <description>Fortigate: Multiple Firewall logout events from same source.</description>
         <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <techniqueID>T1498.001</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
     </rule>
 
     <!--
@@ -205,6 +227,10 @@ ID: 81600 - 80799
         <same_source_ip />
         <description>Fortigate: Multiple high traffic events from same source.</description>
         <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <techniqueID>T1498.001</techniqueID>
+      <tacticID></tacticID>
+    </mitre>
     </rule>
 
     <!--
@@ -233,20 +259,22 @@ ID: 81600 - 80799
         <match>level=information|level="information"</match>
         <action>tunnel-up</action>
         <description>Fortigate: VPN User connected.</description>
-        <mitre>
-          <id>T1078</id>
-        </mitre>
         <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <techniqueID>T1078</techniqueID>
+      <tacticID>TA0001</tacticID>
+    </mitre>
     </rule>
 
     <rule id="81623" level="4" frequency="18" timeframe="45" ignore="240">
         <if_matched_sid>81622</if_matched_sid>
         <same_source_ip />
         <description>Fortigate: Multiple vpn user connected from same source.</description>
-        <mitre>
-          <id>T1078</id>
-        </mitre>
         <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+    <mitre>
+      <techniqueID>T1078</techniqueID>
+      <tacticID>TA0001</tacticID>
+    </mitre>
     </rule>
 
     <!--
@@ -299,6 +327,10 @@ ID: 81600 - 80799
         <action>detected</action>
         <description>Fortigate Attack Detected</description>
         <group>attack,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+    <mitre>
+      <techniqueID>T1499.001</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
     </rule>
 
     <!--

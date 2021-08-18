@@ -32,22 +32,30 @@
     <if_matched_sid>3801</if_matched_sid>
     <same_source_ip />
     <description>ms-exchange: Multiple e-mail attempts to an invalid account.</description>
-    <mitre>
-      <id>T1114</id>
-      <id>T1499</id>
-    </mitre>
     <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1114</techniqueID>
+      <tacticID>TA0009</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1499</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
   </rule>
 
   <rule id="3852" level="9" frequency="14" timeframe="120" ignore="240">
     <if_matched_sid>3802</if_matched_sid>
     <same_source_ip />
     <description>ms-exchange: Multiple e-mail 500 error code (spam).</description>
-    <mitre>
-      <id>T1114</id>
-      <id>T1499</id>
-    </mitre>
     <group>multiple_spam,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1114</techniqueID>
+      <tacticID>TA0009</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1499</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
   </rule>
 
 </group>

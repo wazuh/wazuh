@@ -28,9 +28,10 @@
         <if_sid>64220</if_sid>
         <field name="fw_action">Reject</field>
         <description>Reject: Prohibit a packet from passing. Send an ICMP destination-unreachable back to the source host.</description>
-        <mitre>
-            <id>T1095</id>
-        </mitre>
+    <mitre>
+      <techniqueID>T1095</techniqueID>
+      <tacticID>TA0011</tacticID>
+    </mitre>
     </rule>
 
     <rule id="64224" level="2">
@@ -97,6 +98,10 @@
         <if_sid>64220</if_sid>
         <field name="fw_action">Block</field>
         <description>Block: Connection blocked by Interspect.</description>
+    <mitre>
+      <techniqueID>T1190</techniqueID>
+      <tacticID>TA0001</tacticID>
+    </mitre>
     </rule>	
 	
 	<rule id="64235" level="3">
@@ -121,9 +126,10 @@
         <if_sid>64220</if_sid>
         <match>Replace Malicious code</match>
         <description>Replace Malicious code: Malicious code in the connection was replaced.</description>
-        <mitre>
-            <id>T1001</id>
-        </mitre>
+    <mitre>
+      <techniqueID>T1001</techniqueID>
+      <tacticID>TA0011</tacticID>
+    </mitre>
     </rule>	
 		
 	<rule id="64239" level="3">

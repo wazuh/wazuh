@@ -18,10 +18,11 @@
     <if_sid>5600</if_sid>
     <match>refused connect from </match>
     <description>telnetd: Connection refused by TCP Wrappers.</description>
-    <mitre>
-      <id>T1095</id>
-    </mitre>
     <group>gdpr_IV_35.7.d,</group>
+    <mitre>
+      <techniqueID>T1095</techniqueID>
+      <tacticID>TA0011</tacticID>
+    </mitre>
   </rule>
 
   <rule id="5602" level="3">
@@ -50,10 +51,11 @@
     <same_source_ip />
     <description>telnetd: Multiple connection attempts from same source </description>
     <description>(possible scan).</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
   </rule>
 
 </group>

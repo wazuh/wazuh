@@ -49,6 +49,10 @@
         <regex>\.+stop</regex>
         <description>Puppet Master stopped</description>
         <group>gpg13_4.14,</group>
+    <mitre>
+      <techniqueID>T1489</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
     </rule>
 
     <!--
@@ -179,6 +183,10 @@
         <regex>\.+stop</regex>
         <description>Puppet Agent stopped</description>
         <group>gpg13_4.14,</group>
+    <mitre>
+      <techniqueID>T1489</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
     </rule>
 
     <!--

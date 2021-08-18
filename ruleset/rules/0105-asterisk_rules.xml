@@ -59,31 +59,34 @@
     <if_matched_sid>6211</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Multiple failed logins (user enumeration in process).</description>
-    <mitre>
-      <id>T1133</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1133</techniqueID>
+    </mitre>
   </rule>
 
   <rule id="6251" level="10" frequency="8" timeframe="300">
     <if_matched_sid>6210</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Multiple failed logins.</description>
-    <mitre>
-      <id>T1110</id>
-      <id>T1133</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1133</techniqueID>
+    </mitre>
   </rule>
 
   <rule id="6252" level="10" frequency="8" timeframe="300">
     <if_matched_sid>6212</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Extension enumeration.</description>
-    <mitre>
-      <id>T1133</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1133</techniqueID>
+    </mitre>
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
@@ -100,10 +103,10 @@
     <if_matched_sid>6253</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Extension IAX Enumeration.</description>
-    <mitre>
-      <id>T1133</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1133</techniqueID>
+    </mitre>
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
@@ -127,11 +130,14 @@
     <if_matched_sid>6256</if_matched_sid>
     <same_source_ip />
     <description>Asterisk: Multiple failed logins.</description>
-    <mitre>
-      <id>T1110</id>
-      <id>T1133</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1133</techniqueID>
+    </mitre>
   </rule>
 
 </group>

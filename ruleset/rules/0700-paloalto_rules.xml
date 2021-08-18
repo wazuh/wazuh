@@ -35,20 +35,25 @@
     <if_sid>64500</if_sid>
     <field name="severity">high</field>
     <description>Palo Alto SYSTEM: $(severity) severity log on $(device_name): $(description)</description>
-    <mitre>
-      <id>T1089</id>
-    </mitre>
     <group>pci_dss_1.4,pci_dss_10.6.1,10.8,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.7,tsc_CC7.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b</group>
+    <mitre>
+      <techniqueID>T1562.004</techniqueID>
+      <tacticID>TA0005</tacticID>
+    </mitre>
   </rule>
   <rule id="64506" level="14">
     <if_sid>64500</if_sid>
     <field name="severity">critical</field>
     <description>Palo Alto SYSTEM: $(severity) severity log on $(device_name): $(description)</description>
-    <mitre>
-      <id>T1089</id>
-      <id>T1499</id>
-    </mitre>
     <group>pci_dss_1.4,pci_dss_10.6.1,10.8,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.7,tsc_CC7.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b</group>
+    <mitre>
+      <techniqueID>T1499.001</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1562.004</techniqueID>
+      <tacticID>TA0005</tacticID>
+    </mitre>
   </rule>
 
   <rule id="64507" level="0">
@@ -70,26 +75,30 @@
   <rule id="64510" level="6">
     <if_sid>64507</if_sid>
     <field name="content_type">drop</field>
-    <mitre>
-      <id>T1190</id>
-    </mitre>
-    <mitre>
-      <id>T1072</id>
-    </mitre>
     <description>Palo Alto TRAFFIC: session dropped  on $(device_name) from $(src_ip) to $(dst_ip). Reason: $(session_end_reason). Action: $(action).</description>
     <group>pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.7,tsc_CC7.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b</group>
+    <mitre>
+      <techniqueID>T1072</techniqueID>
+      <tacticID>TA0008</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1190</techniqueID>
+      <tacticID>TA0001</tacticID>
+    </mitre>
   </rule>
   <rule id="64511" level="6">
     <if_sid>64507</if_sid>
     <field name="content_type">deny</field>
-    <mitre>
-      <id>T1190</id>
-    </mitre>
-    <mitre>
-      <id>T1072</id>
-    </mitre>
     <description>Palo Alto TRAFFIC: session dropped  on $(device_name) from $(src_ip) to $(dst_ip). Reason: $(session_end_reason). Action: $(action).</description>
     <group>pci_dss_1.4,pci_dss_10.6.1,pci_dss_11.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC6.7,tsc_CC7.4,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b</group>
+    <mitre>
+      <techniqueID>T1072</techniqueID>
+      <tacticID>TA0008</tacticID>
+    </mitre>
+    <mitre>
+      <techniqueID>T1190</techniqueID>
+      <tacticID>TA0001</tacticID>
+    </mitre>
   </rule>
 </group>
 

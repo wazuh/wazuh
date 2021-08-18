@@ -32,6 +32,10 @@
         <match>Redis is now ready to exit, bye bye</match>
         <description>Redis: shutdown</description>
         <group></group>
+    <mitre>
+      <techniqueID>T1529</techniqueID>
+      <tacticID>TA0040</tacticID>
+    </mitre>
     </rule>
 
     <!--

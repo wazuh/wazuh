@@ -43,6 +43,12 @@
     <id>^1:1852:|^1:368:|^1:384:|^1:366:|^1:402:|^1:408:|^1:1365:|</id>
     <id>^1:480:|^1:399:|^1:2925:</id>
     <description>Ignored snort ids.</description>
+    <mitre>
+      <techniqueID></techniqueID>
+    </mitre>
+    <mitre>
+      <techniqueID></techniqueID>
+    </mitre>
   </rule>
 
   <!-- Ignored Dragon ids -->
@@ -57,6 +63,9 @@
        -->
     <id>^EOL$|^SOF$|^HEARTBEAT$|^DYNAMIC-TCP$|^DYNAMIC-UDP$</id>
     <description>Ignored snort ids.</description>
+    <mitre>
+      <techniqueID></techniqueID>
+    </mitre>
   </rule>
 
   <rule id="20152" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">

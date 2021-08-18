@@ -31,10 +31,11 @@
     <if_sid>86802</if_sid>
     <regex>Maximum authentication retries for user (\w+) exceeded</regex>
     <description>VShell user used the maximum number of password attempts.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
   </rule>
 
   <rule id="86804" level="10">
@@ -42,6 +43,10 @@
     <regex>Connection from (\d+.\d+.\d+.\d+) rejected by Deny Hosts file</regex>
     <description>Host is trying to connect to VShell server but exists in the deny file.</description>
     <group>gdpr_IV_35.7.d,</group>
+    <mitre>
+      <techniqueID>T1133</techniqueID>
+      <tacticID>TA0001</tacticID>
+    </mitre>
   </rule>
 
   <rule id="86805" level="3">
@@ -55,18 +60,20 @@
     <if_matched_sid>86804</if_matched_sid>
     <same_source_ip />
     <description>VShell multiple connection attempts within 2 minute by a host in the deny file, potential DOS or brute force attempt.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
   </rule>
 
   <rule id="86807" level="12" frequency="7" timeframe="60">
     <if_matched_sid>86802</if_matched_sid>
     <description>VShell host has exceeded the number of failed login attempts and has been added to the Hosts Deny file.</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <techniqueID>T1110</techniqueID>
+      <tacticID>TA0006</tacticID>
+    </mitre>
   </rule>
 </group>
