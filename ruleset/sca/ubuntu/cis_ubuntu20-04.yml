@@ -822,7 +822,7 @@ checks:
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
     remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and add: [org/gnome/login-screen], banner-message-enable=true, banner-message-text='Authorized uses only. All activity may be monitored and reported.'"
     compliance:
-      - cis: ["1.10"]
+      - cis: ["1.8.2"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -837,46 +837,8 @@ checks:
 # 2 Services
 ############################################################
 
-# 2.1 inetd Services
-
-  - id: 19053 
-    title: "Ensure xinetd is not installed"
-    description: "The eXtended InterNET Daemon (xinetd) is an open source super daemon that replaced the original inetd daemon. The xinetddaemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
-    rationale: "If there are no xinetd services required, it is recommended that the package be removed."
-    remediation: "Run the following command to remove xinetd: # apt purge xinetd"
-    compliance:
-      - cis: ["2.1.1"]
-      - cis_csc: ["9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
-    rules:
-      - 'c:dpkg -s xinetd -> r:install ok installed'
-
-  - id: 19054 
-    title: "Ensure openbsd-inetd is not installed"
-    description: "The inetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
-    rationale: "If there are no inetd services required, it is recommended that the daemon be removed."
-    remediation: "Run the following command to uninstall openbsd-inetd: apt-get remove openbsd-inetd"
-    compliance:
-      - cis: ["2.1.2"]
-      - cis_csc: ["9.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: none
-    rules:
-      - 'c:dpkg -s openbsd-inetd -> r:install ok installed'
-
-# 2.2 Special Purpose Services
-# 2.2.1 Time Synchronization
+# 2.1 Special Purpose Services
+# 2.1.1 Time Synchronization
 
   - id: 19055 
     title: "Ensure time synchronization is in use"
@@ -884,7 +846,7 @@ checks:
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
     remediation: "On systems where host based time synchronization is not available, configure systemd-timesyncd. If \"full featured\" and/or encrypted time synchronization is required, install chrony or NTP. To install chrony: # apt install chrony To install ntp: # apt install ntp On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization."
     compliance:
-      - cis: ["2.2.1.1"]
+      - cis: ["2.1.1.1"]
       - cis_csc: ["6.1"]
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
@@ -901,7 +863,7 @@ checks:
     rationale: "Proper configuration is vital to ensuring time synchronization is working properly. This recommendation only applies if timesyncd is in use on the system."
     remediation: "Run the following command to enable systemd-timesyncd   # systemctl enable systemd-timesyncd.service  ||  Edit the file /etc/systemd/timesyncd.conf and add/modify the following lines in accordance with local site policy:    (1) NTP=0.ubuntu.pool.ntp.org 1.ubuntu.pool.ntp.org 2.ubuntu.pool.ntp.org        (2) FallbackNTP=ntp.ubuntu.com 3.ubuntu.pool.ntp.org        (3) RootDistanceMaxSec=1    || Run the following commands to start systemd-timesyncd.service   # systemctl start systemd-timesyncd.service   # timedatectl set-ntp true  || Notes: Servers listed and RootDistanceMax should be In Accordance With Local Policy some versions of systemd have been compiled without systemd-timesycnd. On these distributions, chrony or NTP should be used instead of systemd-timesycnd. Not all options are available on all versions of systemd-timesyncd"
     compliance:
-      - cis: ["2.2.1.2"]
+      - cis: ["2.1.1.2"]
       - cis_csc: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -916,7 +878,7 @@ checks:
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly. This recommendation only applies if chrony is in use on the system."
     remediation: "Add or edit server or pool lines to /etc/chrony/chrony.conf as appropriate: server <remote-server> Configure chrony to run as the chrony user by configuring the appropriate startup script for your distribution. Startup scripts are typically stored in /etc/init.d or /etc/systemd ."
     compliance:
-      - cis: ["2.2.1.3"]
+      - cis: ["2.1.1.3"]
       - cis_csc: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -931,7 +893,7 @@ checks:
     rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
     remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server> Configure ntp to run as the ntp user by adding or editing the /etc/init.d/ntp file: RUNASUSER=ntp"
     compliance:
-      - cis: ["2.2.1.4"]
+      - cis: ["2.1.1.4"]
       - cis_csc: ["6.1"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -952,7 +914,7 @@ checks:
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     remediation: "Remove the X Windows System packages: apt purge xserver-xorg*"
     compliance:
-      - cis: ["2.2.2"]
+      - cis: ["2.1.2"]
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -967,7 +929,7 @@ checks:
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attach surface."
     remediation: "Run the following command to remove avahi-daemon: # systemctl --now disable avahi-daemon # systemctl stop avahi-daemon.socket  # apt purge avahi-daemon"
     compliance:
-      - cis: ["2.2.3"]
+      - cis: ["2.1.3"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -982,7 +944,7 @@ checks:
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface."
     remediation: "Run the following command to remove cups: # apt purge cups"
     compliance:
-      - cis: ["2.2.4"]
+      - cis: ["2.1.4"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1001,7 +963,7 @@ checks:
     references:
       - https://www.isc.org/dhcp/
     compliance:
-      - cis: ["2.2.5"]
+      - cis: ["2.1.5"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1016,7 +978,7 @@ checks:
     rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be disabled to reduce the potential attack surface."
     remediation: "Run the following command to remove slapd: # apt purge slapd"
     compliance:
-      - cis: ["2.2.6"]
+      - cis: ["2.1.6"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1033,7 +995,7 @@ checks:
     rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
     remediation: "Run the following commands to remove nfs: # apt purge nfs-kernel-server"
     compliance:
-      - cis: ["2.2.7"]
+      - cis: ["2.1.7"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1049,7 +1011,7 @@ checks:
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be deleted to reduce the potential attack surface."
     remediation: "Run the following command to disable dns server: # apt purge bind9"
     compliance:
-      - cis: ["2.2.8"]
+      - cis: ["2.1.8"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1064,7 +1026,7 @@ checks:
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove vsftpd: # apt purge vsftpd"
     compliance:
-      - cis: ["2.2.9"]
+      - cis: ["2.1.9"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1079,7 +1041,7 @@ checks:
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove apache2: # apt purge apache2"
     compliance:
-      - cis: ["2.2.10"]
+      - cis: ["2.1.10"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1094,7 +1056,7 @@ checks:
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run one of the following commands to remove dovecot-imapd and dovecot-pop3d :# apt purge dovecot-imapd dovecot-pop3d"
     compliance:
-      - cis: ["2.2.11"]
+      - cis: ["2.1.11"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1109,7 +1071,7 @@ checks:
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove smbd: # apt purge samba"
     compliance:
-      - cis: ["2.2.12"]
+      - cis: ["2.1.12"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1124,7 +1086,7 @@ checks:
     rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove squid: # apt purge squid"
     compliance:
-      - cis: ["2.2.13"]
+      - cis: ["2.1.13"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1139,7 +1101,7 @@ checks:
     rationale: "The SNMP server can communicate using SNMP v1, which transmits data in the clear and does not require authentication to execute commands. Unless absolutely necessary, it is recommended that the SNMP service not be used. If SNMP is required the server should be configured to disallow SNMP v1."
     remediation: "Run the following command to remove snmpd: # apt purge snmpd"
     compliance:
-      - cis: ["2.2.14"]
+      - cis: ["2.1.14"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1154,7 +1116,7 @@ checks:
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems."
     remediation: "Edit /etc/postfix/main.cf and add thefollowing line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below:   inet_interfaces = loopback-only   Restart postfix:    # systemctl restart postfix"
     compliance:
-      - cis: ["2.2.15"]
+      - cis: ["2.1.15"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1","AC.4","SC.7"]
@@ -1169,7 +1131,7 @@ checks:
     rationale: "The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
     remediation: "Run the following command to remove rsync: # apt purge rsync"
     compliance:
-      - cis: ["2.2.16"]
+      - cis: ["2.1.16"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1183,7 +1145,7 @@ checks:
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
     remediation: "Run the following command to remove nis: # apt purge nis"
     compliance:
-      - cis: ["2.2.17"]
+      - cis: ["2.1.17"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
@@ -1195,13 +1157,15 @@ checks:
     rules:
       - 'c:dpkg -s nis -> r:install ok installed'
 
+# 2.2 Service Clients
+
   - id: 19075 
     title: "Ensure NIS Client is not installed"
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
     remediation: "Uninstall nis : apt purge nis"
     compliance:
-      - cis: ["2.3.1"]
+      - cis: ["2.2.1"]
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -1219,7 +1183,7 @@ checks:
     rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
     remediation: "Uninstall rsh : apt remove rsh-client"
     compliance:
-      - cis: ["2.3.2"]
+      - cis: ["2.2.2"]
       - cis_csc: ["4.5"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -1237,7 +1201,7 @@ checks:
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
     remediation: "Uninstall talk : apt remove talk"
     compliance:
-      - cis: ["2.3.3"]
+      - cis: ["2.2.3"]
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -1255,7 +1219,7 @@ checks:
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
     remediation: "Uninstall telnet : # apt purge telnet"
     compliance:
-      - cis: ["2.3.4"]
+      - cis: ["2.2.4"]
       - cis_csc: ["4.5"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -1273,7 +1237,7 @@ checks:
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
     remediation: "Uninstall ldap-utils : # apt purge ldap-utils"
     compliance:
-      - cis: ["2.3.5"]
+      - cis: ["2.2.5"]
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -1291,7 +1255,7 @@ checks:
     rationale: "If RPC is not required, it is recommended that this services be removed to reduce the remote attack surface."
     remediation: "Run the following command to remove rpcbind: # apt purge rpcbind"
     compliance:
-      - cis: ["2.3.6"]
+      - cis: ["2.2.6"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -1707,7 +1671,7 @@ checks:
       - 'c:ufw status -> Status: active'
 
   - id: 19101 
-    title: "Ensure loopback traffic is configured"
+    title: "Ensure ufw loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6)."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo  # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1"
@@ -1887,7 +1851,7 @@ checks:
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP; # iptables -P OUTPUT DROP; # iptables -P FORWARD DROP"
     compliance:
-      - cis: ["3.5.3.2.1"]
+      - cis: ["3.5.3.2.3"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC6.6"]
@@ -1904,7 +1868,7 @@ checks:
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP"
     compliance:
-      - cis: ["3.5.3.2.2"]
+      - cis: ["3.5.3.2.1"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC6.6"]
@@ -1924,7 +1888,7 @@ checks:
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP. Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     compliance:
-      - cis: ["3.5.4.2.1"]
+      - cis: ["3.5.3.3.3"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
@@ -1940,7 +1904,7 @@ checks:
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP"
     compliance:
-      - cis: ["3.5.4.2.2"]
+      - cis: ["3.5.3.3.1"]
       - cis_csc: ["9.4"]
       - pci_dss: ["1.2.1"]
       - tsc: ["CC8.1"]
@@ -2674,7 +2638,7 @@ checks:
       - 'c:stat /etc/at.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 ######################################################
-# 5.2 SSH Server Configuration
+# 5.3 SSH Server Configuration
 ######################################################
 
   - id: 19153 
@@ -2683,7 +2647,7 @@ checks:
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non- privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config"
     compliance:
-      - cis: ["5.2.1"]
+      - cis: ["5.3.1"]
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -2698,7 +2662,7 @@ checks:
     rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated"
     remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0600 {} \\;"
     compliance:
-      - cis: ["5.2.2"]
+      - cis: ["5.3.2"]
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -2715,7 +2679,7 @@ checks:
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
     remediation: "Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod 0644 {} \\; #find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;"
     compliance:
-      - cis: ["5.2.3"]
+      - cis: ["5.3.3"]
       - cis_csc: ["14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -2734,7 +2698,7 @@ checks:
     references:
       - https://www.ssh.com/ssh/sshd_config/
     compliance:
-      - cis: ["5.2.4"]
+      - cis: ["5.3.5"]
       - cis_csc: ["6.2", "6.3"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2750,7 +2714,7 @@ checks:
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
     remediation: "Edit the /etc/ssh/sshd_configfile to set the parameter as follows: X11Forwarding no"
     compliance:
-      - cis: ["5.2.5"]
+      - cis: ["5.3.6"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
@@ -2768,7 +2732,7 @@ checks:
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
     compliance:
-      - cis: ["5.2.6"]
+      - cis: ["5.3.7"]
       - cis_csc: ["16.13"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -2783,7 +2747,7 @@ checks:
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
     compliance:
-      - cis: ["5.2.7"]
+      - cis: ["5.3.8"]
       - cis_csc: ["9.2"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2800,7 +2764,7 @@ checks:
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
     compliance:
-      - cis: ["5.2.9"]
+      - cis: ["5.3.9"]
       - cis_csc: ["16.3"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2816,7 +2780,7 @@ checks:
     rationale: "Disallowing root logins over SSH requires server admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
     compliance:
-      - cis: ["5.2.9"]
+      - cis: ["5.3.10"]
       - cis_csc: ["4.3"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2832,7 +2796,7 @@ checks:
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
     compliance:
-      - cis: ["5.2.10"]
+      - cis: ["5.3.11"]
       - cis_csc: ["16.3"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2848,7 +2812,7 @@ checks:
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)"
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
     compliance:
-      - cis: ["5.2.11"]
+      - cis: ["5.3.12"]
       - cis_csc: ["14.6"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2864,7 +2828,7 @@ checks:
     rationale: "Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a \"Sweet32\" attack The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the \"Bar Mitzvah\" issue The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors The mm_newkeys_from_blob function in monitor_wrap.c, when an AES-GCM cipher is used, does not properly initialize memory for a MAC context data structure, which allows remote authenticated users to bypass intended ForceCommand and login-shell restrictions via packet data that provides a crafted callback address" 
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
     compliance:
-      - cis: ["5.2.12"]
+      - cis: ["5.3.13"]
       - cis_csc: ["14.4"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2889,7 +2853,7 @@ checks:
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information" 
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
     compliance:
-      - cis: ["5.2.13"]
+      - cis: ["5.3.14"]
       - cis_csc: ["14.4","16.5"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2907,7 +2871,7 @@ checks:
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks" 
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256"
     compliance:
-      - cis: ["5.2.14"]
+      - cis: ["5.3.15"]
       - cis_csc: ["14.4"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -2923,7 +2887,7 @@ checks:
     rationale: "Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening. While the recommended setting is 300 seconds (5 minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0. In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages will be sent."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy: ClientAliveInterval 300    ClientAliveCountMax 0"
     compliance:
-      - cis: ["5.2.15"]
+      - cis: ["5.3.16"]
       - cis_csc: ["16.11"]
       - pci_dss: ["12.3.8"]
     condition: all
@@ -2937,7 +2901,7 @@ checks:
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60"
     compliance:
-      - cis: ["5.2.16"]
+      - cis: ["5.3.17"]
       - cis_csc: ["5.1"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
@@ -2951,7 +2915,7 @@ checks:
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist>    AllowGroups <grouplist>    DenyUsers <userlist>    DenyGroups <grouplist>"
     compliance:
-      - cis: ["5.2.17"]
+      - cis: ["5.3.4"]
       - cis_csc: ["4.3"]
       - pci_dss: ["8.1"]
       - tsc: ["CC6.1"]
@@ -2965,7 +2929,7 @@ checks:
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Banner /etc/issue.net"
     compliance:
-      - cis: ["5.2.18"]
+      - cis: ["5.3.18"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -2980,7 +2944,7 @@ checks:
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes"
     compliance:
-      - cis: ["5.2.19"]
+      - cis: ["5.3.19"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -2995,7 +2959,7 @@ checks:
     rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: AllowTcpForwarding no"
     compliance:
-      - cis: ["5.2.20"]
+      - cis: ["5.3.20"]
       - cis_csc: ["9.2"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -3014,7 +2978,7 @@ checks:
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: maxstartups 10:30:60"
     compliance:
-      - cis: ["5.2.21"]
+      - cis: ["5.3.21"]
       - cis_csc: ["5.1"]
     condition: all
     rules:
@@ -3026,7 +2990,7 @@ checks:
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10"
     compliance:
-      - cis: ["5.2.21"]
+      - cis: ["5.3.21"]
       - cis_csc: ["5.1"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -3036,16 +3000,16 @@ checks:
       - 'c:sshd -T -> n:^MaxSessions\s+(\d+) compare <= 10'
 
 ######################################################
-# 5.3 Configure PAM
+# 5.4 Configure PAM
 ######################################################
-# 5.3.1 Ensure password creation requirements are configured (Scored)
+# 5.4.1 Ensure password creation requirements are configured (Scored)
   - id: 19175 
     title: "Ensure password creation requirements are configured"
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options: - retry=3 (Allow 3 tries before sending back a failure). The following options are set in the /etc/security/pwquality.conf file: - minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 (The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies.)"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
     remediation: "1) Run the following command to install the pam_pwquality module: apt install libpam-pwquality 2) Edit the /etc/pam.d/common-password file to include the appropriate options for pam_pwquality.so and to conform to site policy: password requisite pam_pwquality.so retry=3 3) Edit /etc/security/pwquality.conf to add or update the following settings to conform to site policy: minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Notes: Additional module options may be set, recommendation requirements only cover including try_first_pass and minlen set to 14 or more. Settings in /etc/security/pwquality.conf must use spaces around the = symbol."
     compliance:
-      - cis: ["5.3.1"]
+      - cis: ["5.4.1"]
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2.3"]
       - tsc: ["CC6.1"]
@@ -3054,14 +3018,14 @@ checks:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
       - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
 
-# 5.3.2 Ensure lockout for failed password attempts is configured (Scored)
+# 5.4.2 Ensure lockout for failed password attempts is configured (Scored)
   - id: 19176 
     title: "Ensure lockout for failed password attempts is configured"
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. Set the lockout number to the policy in effect at your site."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: "Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900. Edit the /etc/pam.d/common-account file and add the account lines below: account    requisite    pam_deny.so      account    required    pam_tally2.so. Note: If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_tally2.so module, the user can be unlocked by issuing the command /sbin/pam_tally2 -u <username> --reset. This command sets the failed count to 0, effectively unlocking the user. Notes:BUG In pam_tally2.so To work around this issue the addition of pam_tally2.so in the accounts section of the /etc/pam.d/common-account file has been added to the audit and remediation sections. pam_tally2 line must be added for the counter to reset to 0 when using sudo.     Use of the \"audit\" keyword may log credentials in the case of user error during authentication. This risk should be evaluated in the context of the site policies of your organization."
     compliance:
-      - cis: ["5.3.2"]
+      - cis: ["5.4.2"]
       - cis_csc: ["16.7"]
       - pci_dss: ["8.2.5"]
       - tsc: ["CC6.1"]
@@ -3071,14 +3035,14 @@ checks:
       - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*requisite\s*\t*pam_deny.so'
       - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_tally2.so'
 
-# 5.3.3 Ensure password reuse is limited (Scored)
+# 5.4.3 Ensure password reuse is limited (Scored)
   - id: 19177 
     title: "Ensure password reuse is limited"
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note that these change only apply to accounts configured on the local system."
     remediation: "Edit the /etc/pam.d/common-password file to include the remember option and conform to site policy as shown: password required pam_pwhistory.so remember=5. Notes: Additional module options may be set, recommendation only covers those listed here."
     compliance:
-      - cis: ["5.3.3"]
+      - cis: ["5.4.3"]
       - cis_csc: ["16"]
       - pci_dss: ["8.2.5"]
       - tsc: ["CC6.1"]
@@ -3087,14 +3051,14 @@ checks:
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && !r:remember'
 
-# 5.3.4 Ensure password hashing algorithm is SHA-512 (Scored)
+# 5.4.4 Ensure password hashing algorithm is SHA-512 (Scored)
   - id: 19178 
     title: "Ensure password hashing algorithm is SHA-512"
     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
     rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note that these change only apply to accounts configured on the local system."
     remediation: "Edit the /etc/pam.d/common-password file to include the sha512 option for pam_unix.so as shown: password [success=1 default=ignore] pam_unix.so sha512"
     compliance:
-      - cis: ["5.3.4"]
+      - cis: ["5.4.4"]
       - cis_csc: ["16.14"]
       - pci_dss: ["3.6.1","8.2.1"]
       - tsc: ["CC6.1","CC6.7"]
@@ -3103,19 +3067,19 @@ checks:
       - 'f:/etc/pam.d/common-password -> r:^password\.+pam_unix.so && !r:sha512'
 
 ####################################################
-# 5.4 User Accounts and Environment
+# 5.5 User Accounts and Environment
 ####################################################
 ####################################################
-# 5.4.1 Set Shadow Password Suite Parameters
+# 5.5.1 Set Shadow Password Suite Parameters
 ####################################################
-# 5.4.1.1 Ensure password expiration is 365 days or less (Scored)
+# 5.5.1.1 Ensure password expiration is 365 days or less (Scored)
   - id: 19179 
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs: PASS_MAX_DAYS 90. Modify user parameters for all users with a password set to match: # chage --maxdays 90 <user>. Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password."
     compliance:
-      - cis: ["5.4.1.1"]
+      - cis: ["5.5.1.2"]
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2.4"]
       - tsc: ["CC6.1"]
@@ -3124,14 +3088,14 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
       - 'not f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare < 0'
 
-# 5.4.1.2 Ensure minimum days between password changes is configured
+# 5.5.1.2 Ensure minimum days between password changes is configured
   - id: 19180 
     title: "Ensure minimum days between password changes is 7 or more"
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
     remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs: PASS_MIN_DAYS 7. Modify user parameters for all users with a password set to match: # chage --mindays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
     compliance:
-      - cis: ["5.4.1.2"]
+      - cis: ["5.5.1.1"]
       - cis_csc: ["4.4", "16"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
@@ -3139,14 +3103,14 @@ checks:
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
 
-# 5.4.1.3 Ensure password expiration warning days is 7 or more (Scored)
+# 5.5.1.3 Ensure password expiration warning days is 7 or more (Scored)
   - id: 19181 
     title: "Ensure password expiration warning days is 7 or more"
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7. Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 6th field should be 7 or more for all users with a password."
     compliance:
-      - cis: ["5.4.1.3"]
+      - cis: ["5.5.1.3"]
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
@@ -3154,14 +3118,14 @@ checks:
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
 
-# 5.4.1.4 Ensure inactive password lock is 30 days or less (Scored)
+# 5.5.1.4 Ensure inactive password lock is 30 days or less (Scored)
   - id: 19182 
     title: "Ensure inactive password lock is 30 days or less"
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30. Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>. Notes: You can also check this setting in /etc/shadow directly. The 7th field should be 30 or less for all users with a password. A value of -1 would disable this setting."
     compliance:
-      - cis: ["5.4.1.4"]
+      - cis: ["5.5.1.4"]
       - cis_csc: ["4.4", "16"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
@@ -3170,14 +3134,14 @@ checks:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
       - 'not c:useradd -D -> n:^INACTIVE=(\d+) compare < 0'
 
-# 5.4.3 Ensure default group for the root account is GID 0 (Scored)
+# 5.5.3 Ensure default group for the root account is GID 0 (Scored)
   - id: 19183 
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root-owned files from accidentally becoming accessible to non-privileged users."
     remediation: "Run the following command to set the root user default group to GID 0: # usermod -g 0 root"
     compliance:
-      - cis: ["5.4.3"]
+      - cis: ["5.5.3"]
       - cis_csc: ["14.6"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
@@ -3185,14 +3149,14 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
 
-# 5.4.4 Ensure default user umask is 027 or more restrictive (Scored)
+# 5.5.4 Ensure default user umask is 027 or more restrictive (Scored)
   - id: 19184 
     title: "Ensure default user umask is 027 or more restrictive"
     description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files ( .profile , .bashrc , etc.) in their home directories."
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
     remediation: "Edit the /etc/bash.bashrc , /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: umask 027"
     compliance:
-      - cis: ["5.4.4"]
+      - cis: ["5.5.4"]
       - cis_csc: ["14.6"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
@@ -3207,14 +3171,14 @@ checks:
 
 
 
-# 5.4.5 Ensure default user shell timeout is 900 seconds or less (Scored)
+# 5.5.5 Ensure default user shell timeout is 900 seconds or less (Scored)
   - id: 19185 
     title: "Ensure default user shell timeout is 900 seconds or less"
     description: "The default TMOUT determines the shell timeout for users. The TMOUT value is measured in seconds."
     rationale: "Having no timeout value associated with a shell could allow an unauthorized user access to another user's shell session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening."
     remediation: "Edit the /etc/bash.bashrc , /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: readonly TMOUT=900 ; export TMOUT . Note that setting the value to readonly prevents unwanted modification during runtime."
     compliance:
-      - cis: ["5.4.5"]
+      - cis: ["5.5.5"]
       - cis_csc: ["16.11"]
       - pci_dss: ["12.3.8"]
     condition: all
@@ -3226,14 +3190,14 @@ checks:
       - 'f:/etc/bash.bashrc -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
       - 'f:/etc/profile -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
 
-# 5.6 Ensure access to the su command is restricted (Scored)
+# 5.7 Ensure access to the su command is restricted (Scored)
   - id: 19186 
     title: "Ensure access to the su command is restricted"
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in the sudo group to execute su."
     rationale: "Restricting the use of su, and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo, whereas su can only record that a user executed the su program."
     remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup"
     compliance:
-      - cis: ["5.6"]
+      - cis: ["5.7"]
       - cis_csc: ["5.1"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
@@ -3268,14 +3232,14 @@ checks:
     rules:
       - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.3 Ensure permissions on /etc/gshadow- are configured (Scored)
+# 6.1.9 Ensure permissions on /etc/gshadow- are configured (Scored)
   - id: 19188 
     title: "Ensure permissions on /etc/gshadow- are configured"
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the one of the following chown commands as appropriate and the chmod to set permissions on /etc/gshadow- : # chown root:root /etc/gshadow- # chown root:shadow /etc/gshadow- # chmod o-rwx,g-wx /etc/gshadow-"
     compliance:
-      - cis: ["6.1.3"]
+      - cis: ["6.1.9"]
       - cis_csc: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -3284,14 +3248,14 @@ checks:
     rules:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.4 Ensure permissions on /etc/shadow are configured (Scored)
+# 6.1.6 Ensure permissions on /etc/shadow are configured (Scored)
   - id: 19189 
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
     remediation: "Run the one following commands to set permissions on /etc/shadow : # chown root:shadow /etc/shadow # chmod o-rwx,g-wx /etc/shadow"
     compliance:
-      - cis: ["6.1.4"]
+      - cis: ["6.1.6"]
       - cis_csc: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -3300,14 +3264,14 @@ checks:
     rules:
       - 'c:stat /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-# 6.1.5 Ensure permissions on /etc/group are configured (Scored)
+# 6.1.4 Ensure permissions on /etc/group are configured (Scored)
   - id: 19190 
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
     remediation: "Run the following command to set permissions on /etc/group: # chown root:root /etc/group # chmod 644 /etc/group"
     compliance:
-      - cis: ["6.1.5"]
+      - cis: ["6.1.4"]
       - cis_csc: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -3316,14 +3280,14 @@ checks:
     rules:
       - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.6 Ensure permissions on /etc/passwd- are configured (Scored)
+# 6.1.3 Ensure permissions on /etc/passwd- are configured (Scored)
   - id: 19191 
     title: "Ensure permissions on /etc/passwd- are configured"
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following command to set permissions on /etc/passwd-: # chown root:root /etc/passwd- # chmod u-x,go-rwx /etc/passwd-"
     compliance:
-      - cis: ["6.1.6"]
+      - cis: ["6.1.3"]
       - cis_csc: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -3348,14 +3312,14 @@ checks:
     rules:
       - 'c:stat /etc/shadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.8 Ensure permissions on /etc/group- are configured (Scored)
+# 6.1.5 Ensure permissions on /etc/group- are configured (Scored)
   - id: 19193 
     title: "Ensure permissions on /etc/group- are configured"
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following command to set permissions on /etc/group-: # chown root:root /etc/group- # chmod u-x,go-rwx /etc/group-"
     compliance:
-      - cis: ["6.1.8"]
+      - cis: ["6.1.5"]
       - cis_csc: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -3364,14 +3328,14 @@ checks:
     rules:
       - 'c:stat /etc/group- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.9 Ensure permissions on /etc/gshadow are configured (Scored)
+# 6.1.8 Ensure permissions on /etc/gshadow are configured (Scored)
   - id: 19194 
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group"
     remediation: "Run the following commands to set permissions on /etc/gshadow : # chown root:shadow /etc/gshadow # chmod o-rwx,g-rw /etc/gshadow"
     compliance:
-      - cis: ["6.1.9"]
+      - cis: ["6.1.8"]
       - cis_csc: ["16.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
@@ -3390,7 +3354,7 @@ checks:
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
     remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <em><username></em>. Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
     compliance:
-      - cis: ["6.2.1"]
+      - cis: ["6.2.2"]
       - cis_csc: ["4.4"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
@@ -3404,7 +3368,7 @@ checks:
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
-      - cis: ["6.2.2"]
+      - cis: ["6.2.11"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
