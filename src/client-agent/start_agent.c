@@ -305,7 +305,7 @@ int try_enroll_to_server(const char * server_rip) {
     int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip);
     if (enroll_result == 0) {
         /* Wait for key update on agent side */
-        minfo("Waiting %d seconds before server connection", agt->enrollment_cfg->delay_after_enrollment);
+        minfo("Waiting %ld seconds before server connection", agt->enrollment_cfg->delay_after_enrollment);
         sleep(agt->enrollment_cfg->delay_after_enrollment);
         /* Successfull enroll, read keys */
         OS_UpdateKeys(&keys);
