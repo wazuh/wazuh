@@ -97,6 +97,49 @@ void test_OS_IsAllowedID_entry_OK(void **state)
 
 }
 
+// Test w_get_key_hash
+void test_w_get_key_hash_empty_parameters(void **state){
+    keyentry *keys = NULL;
+    os_sha1 output = {0};
+    int ret;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to hash agent's key due to empty parameters.");
+    ret = w_get_key_hash(keys, output);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_w_get_key_hash_empty_value(void **state){
+    keyentry *keys = NULL;
+    os_sha1 output = {0};
+    int ret;
+    os_calloc(1, sizeof (keyentry), keys);
+    keys->id = "001";
+    keys->name = "debian10";
+    keys->raw_key = NULL;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to hash agent's key due to empty value.");
+    ret = w_get_key_hash(keys, output);
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(keys);
+}
+
+void test_w_get_key_hash_success(void **state){
+    keyentry *keys = NULL;
+    os_sha1 output = {0};
+    int ret;
+    os_calloc(1, sizeof (keyentry), keys);
+    keys->id = "001";
+    keys->name = "debian10";
+    keys->raw_key = "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96";
+
+    ret = w_get_key_hash(keys, output);
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(keys);
+}
+
 // Test w_get_agent_net_protocol_from_keystore
 void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
 {
@@ -120,7 +163,6 @@ void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
     assert_int_equal(ret, -1);
 
     os_free(keys);
-
 }
 
 void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
@@ -154,7 +196,6 @@ void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
     os_free(keys);
 
     os_free(data);
-
 }
 
 int main(void)
@@ -167,6 +208,10 @@ int main(void)
         // Tests w_get_agent_net_protocol_from_keystore
         cmocka_unit_test(test_w_get_agent_net_protocol_from_keystore_key_NULL),
         cmocka_unit_test(test_w_get_agent_net_protocol_from_keystore_OK),
+        // Test w_get_key_hash
+        cmocka_unit_test(test_w_get_key_hash_empty_parameters),
+        cmocka_unit_test(test_w_get_key_hash_empty_value),
+        cmocka_unit_test(test_w_get_key_hash_success)
 
     };
 

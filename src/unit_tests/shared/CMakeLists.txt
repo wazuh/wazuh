@@ -148,7 +148,7 @@ endif()
 
 list(APPEND shared_tests_names "test_keys")
 list(APPEND shared_tests_flags "-Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Create \
-                                -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete")
+                                -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,_mdebug2")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)
