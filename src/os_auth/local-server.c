@@ -392,7 +392,7 @@ cJSON* local_add(const char *id,
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->raw_key);
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
@@ -444,7 +444,7 @@ cJSON* local_get(const char *id) {
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     }
     else {
-        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->key);
+        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key);
     }
 
     w_mutex_unlock(&mutex_keys);

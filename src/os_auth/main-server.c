@@ -487,7 +487,7 @@ int main(int argc, char **argv)
     /* Load client keys in master node */
     if (!config.worker_node) {
         OS_PassEmptyKeyfile();
-        OS_ReadKeys(&keys, 0, !config.flags.clear_removed);
+        OS_ReadKeys(&keys, W_RAW_KEY, !config.flags.clear_removed);
     }
 
     /* Start working threads */

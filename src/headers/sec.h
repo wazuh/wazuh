@@ -20,8 +20,12 @@ typedef enum _crypt_method{
     W_METH_BLOWFISH,W_METH_AES
 } crypt_method;
 
+typedef enum _key_mode{
+    W_RAW_KEY, W_ENCRYPTION_KEY, W_DUAL_KEY
+}key_mode_t;
+
 typedef struct keystore_flags_t {
-    unsigned int rehash_keys:1;     // Flag: rehash keys on adding
+    unsigned int key_mode:2;        // Type of key to be initialized
     unsigned int save_removed:1;    // Save removed keys into list
 } keystore_flags_t;
 
@@ -34,7 +38,8 @@ typedef struct _keyentry {
     time_t updating_time;
 
     char *id;
-    char *key;
+    char *raw_key;
+    char *encryption_key;
     char *name;
 
     ino_t inode;
@@ -94,7 +99,7 @@ typedef enum key_states {
 int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed) __attribute((nonnull));
+void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed) __attribute((nonnull));
 
 void OS_FreeKey(keyentry *key);
 
