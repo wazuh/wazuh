@@ -105,6 +105,7 @@ int OS_SHA1_strings(os_sha1 output, ...) {
     while(parameter = va_arg(parameters, char*), parameter) {
         SHA1_Update(&c, parameter, strlen(parameter));
     }
+    va_end(parameters);
     SHA1_Final(&(md[0]), &c);
 
     for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
