@@ -64,11 +64,7 @@ static void wm_sys_send_dbsync_message(const void* data) {
             } else {
                 mtinfo(WM_SYS_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
                 if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
-#ifdef CLIENT
                     mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
-#else
-                    mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
-#endif
                 }
             }
         }
