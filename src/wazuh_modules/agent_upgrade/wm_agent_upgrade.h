@@ -15,7 +15,7 @@
 #define WM_AGENT_UPGRADE_LOGTAG ARGV0 ":" AGENT_UPGRADE_WM_NAME
 
 #define WM_UPGRADE_WPK_REPO_URL_3_X "packages.wazuh.com/wpk/"
-#define WM_UPGRADE_WPK_REPO_URL_4_X "packages.wazuh.com/4.x/wpk/"
+#define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/%d.x/wpk/"
 #define WM_UPGRADE_CHUNK_SIZE 512
 #define WM_UPGRADE_MAX_THREADS 8
 #define WM_UPGRADE_WAIT_START 300

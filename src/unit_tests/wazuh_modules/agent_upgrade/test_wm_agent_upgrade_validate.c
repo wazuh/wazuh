@@ -422,6 +422,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_http_ok(void **state)
     assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
 }
 
+
 void test_wm_agent_upgrade_validate_wpk_version_windows_invalid_version(void **state)
 {
     wm_agent_info *agent = state[0];
@@ -526,6 +527,25 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_http_ok(void **state)
     assert_string_equal(task->wpk_repository, "http://packages.wazuh.com/wpk/linux/x64/");
     assert_string_equal(task->wpk_file, "wazuh_agent_v3.13.1_linux_x64.wpk");
     assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_str_version(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("ubuntu", agent->platform);
+    os_strdup("18", agent->major_version);
+    os_strdup("04", agent->minor_version);
+    os_strdup("x64", agent->architecture);
+
+    task->use_http = true;
+    os_strdup("4.1.5", task->wpk_version);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST);
 }
 
 void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_version(void **state)
@@ -1259,6 +1279,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_windows_invalid_repo, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_https_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_http_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_invalid_str_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_invalid_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_invalid_repo, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_ubuntu_old_version, setup_validate_wpk_version, teardown_validate_wpk_version),
