@@ -329,6 +329,50 @@ void test_OS_WriteTimestamps_file_write(void **state)
     assert_int_equal(r, 0);
 }
 
+// Test w_get_key_hash
+
+void test_w_get_key_hash_empty_parameters(void **state){
+    keyentry *keys = NULL;
+    os_sha1 output = {0};
+    int ret;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to hash agent's key due to empty parameters.");
+    ret = w_get_key_hash(keys, output);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_w_get_key_hash_empty_value(void **state){
+    keyentry *keys = NULL;
+    os_sha1 output = {0};
+    int ret;
+    os_calloc(1, sizeof (keyentry), keys);
+    keys->id = "001";
+    keys->name = "debian10";
+    keys->raw_key = NULL;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to hash agent's key due to empty value.");
+    ret = w_get_key_hash(keys, output);
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(keys);
+}
+
+void test_w_get_key_hash_success(void **state){
+    keyentry *keys = NULL;
+    os_sha1 output = {0};
+    int ret;
+    os_calloc(1, sizeof (keyentry), keys);
+    keys->id = "001";
+    keys->name = "debian10";
+    keys->raw_key = "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96";
+
+    ret = w_get_key_hash(keys, output);
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(keys);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -347,7 +391,10 @@ int main(void)
         // Test OS_WriteTimestamps
         cmocka_unit_test_setup_teardown(test_OS_WriteTimestamps_file_error, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_OS_WriteTimestamps_file_write, setup_config, teardown_config),
-
+        // Test w_get_key_hash
+        cmocka_unit_test(test_w_get_key_hash_empty_parameters),
+        cmocka_unit_test(test_w_get_key_hash_empty_value),
+        cmocka_unit_test(test_w_get_key_hash_success)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
