@@ -53,7 +53,21 @@ static void wm_sys_send_diff_message(/*const void* data*/) {
 static void wm_sys_send_dbsync_message(const void* data) {
     if(!os_iswait()) {
         const int eps = 1000000/syscollector_sync_max_eps;
-        wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
+        if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
+#ifdef CLIENT
+            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+#else
+            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+#endif
+            if ((queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+                mterror(WM_SYS_LOGTAG, "Unable to connect to '%s'", DEFAULTQUEUE);
+            } else {
+                mtinfo(WM_SYS_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
+                if (wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ) < 0) {
+                    mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+                }
+            }
+        }
     }
 }
 
