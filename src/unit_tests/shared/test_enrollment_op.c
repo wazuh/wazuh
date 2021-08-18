@@ -133,8 +133,10 @@ int test_setup_context(void **state) {
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
     // Keys initialization
-    keystore keys = KEYSTORE_INITIALIZER;
-    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert, &keys);
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(keystore), keys);
+    keys->keysize = 0;
+    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert, keys);
     *state = cfg;
     return 0;
 }
@@ -150,6 +152,7 @@ int test_teardown_context(void **state) {
     os_free(cfg->cert_cfg->ca_cert);
     os_free(cfg->cert_cfg->ciphers);
     os_free(cfg->cert_cfg);
+    os_free(cfg->keys);
     if(cfg->ssl) {
         SSL_free(cfg->ssl);
     }
@@ -173,8 +176,10 @@ int test_setup_context_2(void **state) {
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
     // Keys initialization
-    keystore keys = KEYSTORE_INITIALIZER;
-    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert, &keys);
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(keystore), keys);
+    keys->keysize = 0;
+    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert, keys);
     *state = cfg;
     return 0;
 }
@@ -194,8 +199,10 @@ int test_setup_context_3(void **state) {
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
     // Keys initialization
-    keystore keys = KEYSTORE_INITIALIZER;
-    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert, &keys);
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(keystore), keys);
+    keys->keysize = 0;
+    w_enrollment_ctx *cfg = w_enrollment_init(local_target, local_cert, keys);
     *state = cfg;
     return 0;
 }
@@ -236,6 +243,7 @@ int test_teardown_w_enrolment_request_key(void **state){
     os_free(cfg->cert_cfg->ca_cert);
     os_free(cfg->cert_cfg->ciphers);
     os_free(cfg->cert_cfg);
+    os_free(cfg->keys);
     w_enrollment_destroy(cfg);
     test_mode = 0;
     return 0;
