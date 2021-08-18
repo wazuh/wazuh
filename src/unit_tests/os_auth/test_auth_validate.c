@@ -112,7 +112,7 @@ int setup_validate_force_insert_1(void **state) {
     config.force_options.enabled = 1;
     return 0;
 }
-#if 0
+
 /* tests */
 static void test_w_auth_validate_data(void **state) {
     char response[2048] = {0};
@@ -120,27 +120,29 @@ static void test_w_auth_validate_data(void **state) {
 
     /* New agent / IP*/
     response[0] = '\0';
-    err = w_auth_validate_data(response,NEW_IP1, NEW_AGENT1, NULL, NULL);
+    err = w_auth_validate_data(response, NEW_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
     /* any IP*/
     response[0] = '\0';
-    err = w_auth_validate_data(response,ANY_IP, NEW_AGENT1, NULL, NULL);
+    err = w_auth_validate_data(response, ANY_IP, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
     /* Existent IP */
     response[0] = '\0';
-    expect_string(__wrap__merror, formatted_msg, "Duplicated IP "EXISTENT_IP1);
-    err = w_auth_validate_data(response,EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won´t be removed because the force option is disabled.");
+    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicated IP: "EXISTENT_IP1"");
 
     /* Existent Agent Name */
     response[0] = '\0';
-    expect_string(__wrap__merror, formatted_msg, "Invalid agent name "EXISTENT_AGENT1" (duplicated)");
-    err = w_auth_validate_data(response,NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won´t be removed because the force option is disabled.");
+    err = w_auth_validate_data(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Duplicated agent name: "EXISTENT_AGENT1"");
 
@@ -174,14 +176,16 @@ static void test_w_auth_validate_data_force_insert(void **state) {
 
     /* Duplicated IP*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001). Removing old agent.");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
      /* Duplicated Name*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002). Removing old agent.");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002).");
+    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '002'.");
     err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
@@ -216,7 +220,6 @@ static void test_w_auth_validate_data_register_limit(void **state) {
         OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, NULL);
     }
 }
-#endif
 
 static void test_w_auth_validate_groups(void **state) {
     w_err_t err;
@@ -260,9 +263,9 @@ int main(void) {
 
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_auth_validate_groups),
-        //cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
-        //cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
-        //cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_force_insert_0),
+        cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
+        cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_force_insert_0),
 
     };
 
