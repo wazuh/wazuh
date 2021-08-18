@@ -1855,6 +1855,46 @@ void test_packages_save_success_null_items(void **state) {
     os_free(query);
 }
 
+void test_packages_save_success_empty_items(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char* query = NULL;
+    os_strdup("save 0|1|2|3||5|6|7||9|10|11||13|14|15", query);
+
+    expect_string(__wrap_wdb_package_save, scan_id, "0");
+    expect_string(__wrap_wdb_package_save, scan_time, "1");
+    expect_string(__wrap_wdb_package_save, format, "2");
+    expect_string(__wrap_wdb_package_save, name, "3");
+    expect_string(__wrap_wdb_package_save, priority, "");
+    expect_string(__wrap_wdb_package_save, section, "5");
+    expect_value(__wrap_wdb_package_save, size, 6);
+    expect_string(__wrap_wdb_package_save, vendor, "7");
+    expect_string(__wrap_wdb_package_save, install_time, "");
+    expect_string(__wrap_wdb_package_save, version, "9");
+    expect_string(__wrap_wdb_package_save, architecture, "10");
+    expect_string(__wrap_wdb_package_save, multiarch, "11");
+    expect_string(__wrap_wdb_package_save, source, "");
+    expect_string(__wrap_wdb_package_save, description, "13");
+    expect_string(__wrap_wdb_package_save, location, "14");
+    expect_string(__wrap_wdb_package_save, checksum, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE);
+    expect_string(__wrap_wdb_package_save, item_id, "15");
+    expect_value(__wrap_wdb_package_save, replace, FALSE);
+    will_return(__wrap_wdb_package_save, OS_SUCCESS);
+
+    will_return(__wrap_time, 0);
+    expect_value(__wrap_wdbi_update_attempt, component, WDB_SYSCOLLECTOR_PACKAGES);
+    expect_value(__wrap_wdbi_update_attempt, timestamp, 0);
+    expect_value(__wrap_wdbi_update_attempt, legacy, TRUE);
+    expect_string(__wrap_wdbi_update_attempt, last_agent_checksum, "");
+
+    ret = wdb_parse_packages(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
 void test_packages_save_missing_items(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -2441,6 +2481,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_packages_get_sock_err_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_success_null_items, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_packages_save_success_empty_items, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_missing_items, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_save_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_del_success, test_setup, test_teardown),
