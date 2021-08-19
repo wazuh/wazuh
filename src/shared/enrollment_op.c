@@ -403,6 +403,7 @@ static int w_enrollment_store_key_entry(const char* keys) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
+        os_free(file.name);
         return -1;
     }
 
@@ -410,10 +411,10 @@ static int w_enrollment_store_key_entry(const char* keys) {
     fclose(file.fp);
 
     if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
-        free(file.name);
+        os_free(file.name);
         return -1;
     }
-    free(file.name);
+    os_free(file.name);
 
 #endif /* !WIN32 */
 

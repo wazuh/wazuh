@@ -1127,7 +1127,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_null_key, setup_file_ops, teardown_file_ops),
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_cannot_open, setup_file_ops, teardown_file_ops),
 #ifndef WIN32
-        //cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_chmod_fail, setup_file_ops, teardown_file_ops),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_chmod_fail, setup_file_ops, teardown_file_ops),
 #endif
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_success, setup_file_ops, teardown_file_ops),
         // w_enrollment_process_agent_key
