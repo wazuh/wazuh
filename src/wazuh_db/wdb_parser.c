@@ -3607,19 +3607,23 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         /* The format of the data is scan_id|scan_time|format|name|priority|section|size|vendor|install_time|version|architecture|multiarch|source|description|location|item_id*/
         #define SAVE_PACKAGE_FIELDS_AMOUNT 16
         char* fields[SAVE_PACKAGE_FIELDS_AMOUNT] = {NULL};
-        char* last = tail;
+        char* last = NULL;
 
         for (int i = 0; i < SAVE_PACKAGE_FIELDS_AMOUNT; i++) {
-            if (!(next = strtok_r(NULL, "|", &tail))) {
-                mdebug1("Invalid package info query syntax.");
-                mdebug2("Package info query: %s", last);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", last);
-                return result;
+            last = tail;
+            if (i < SAVE_PACKAGE_FIELDS_AMOUNT-1) {
+                if (next = strchr(tail, '|'), !next) {
+                    mdebug1("Invalid package info query syntax.");
+                    mdebug2("Package info query: %s", last);
+                    snprintf(output, OS_MAXSTR + 1, "err Invalid package info query syntax, near '%.32s'", last);
+                    return result;
+                }
+                *next++ = '\0';
+                tail = next;
             }
-            last = next;
-            if (strcmp(next, "NULL"))
+            if (strcmp(last, "NULL"))
             {
-                fields[i] = next;
+                fields[i] = last;
             }
         }
 
