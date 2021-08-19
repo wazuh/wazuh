@@ -85,17 +85,25 @@ def clear(agent_list=None):
 
     system_agents = get_agents_info()
     wdb_conn = None
-    for agent in agent_list:
-        if agent not in system_agents:
-            result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
+    for agent_id in agent_list:
+        if agent_id not in system_agents:
+            result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
         else:
-            try:
-                if wdb_conn is None:
-                    wdb_conn = WazuhDBConnection()
-                syscheck_delete_agent(agent, wdb_conn)
-                result.affected_items.append(agent)
-            except WazuhError as e:
-                result.add_failed_item(id_=agent, error=e)
+            agent = Agent(agent_id)
+            agent.load_info_from_db()
+            if agent.version is not None:
+                if WazuhVersion(agent.version) < WazuhVersion('v3.12.0'):
+                    try:
+                        if wdb_conn is None:
+                            wdb_conn = WazuhDBConnection()
+                        syscheck_delete_agent(agent_id, wdb_conn)
+                        result.affected_items.append(agent_id)
+                    except WazuhError as e:
+                        result.add_failed_item(id_=agent_id, error=e)
+                else:
+                    result.add_failed_item(id_=agent_id, error=WazuhError(1760))
+            else:
+                result.add_failed_item(id_=agent_id, error=WazuhError(1015))
 
     if wdb_conn is not None:
         wdb_conn.close()
