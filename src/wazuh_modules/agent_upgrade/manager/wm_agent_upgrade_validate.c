@@ -137,7 +137,8 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
         } else if (wm_agent_upgrade_compare_versions(task->wpk_version, "v4.0.0") < 0) {
             os_strdup(WM_UPGRADE_WPK_REPO_URL_3_X, task->wpk_repository);
         } else {
-            if (sscanf(task->wpk_version, "v%d.", &ver) != 1) {
+            if (sscanf(task->wpk_version, "v%d.%*d.%*d", &ver) != 1 &&
+                    sscanf(task->wpk_version, "%d.%*d.%*d", &ver) != 1) {
                 return WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST;
             }
             snprintf(repository, OS_BUFFER_SIZE-1, WM_UPGRADE_WPK_REPO_URL, ver);
