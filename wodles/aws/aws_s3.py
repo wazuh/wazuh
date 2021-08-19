@@ -2545,7 +2545,7 @@ class AWSCloudWatchLogs(AWSService):
             for event in response['events']:
                 debug('+++ Sending events to Analysd...', 1)
                 debug('The message is "{}"'.format(event['message']), 2)
-                self.send_msg(event['message'], dump_json=False)
+                self.send_msg(self.format_message(event['message']))
 
                 if min_start_time is None:
                     min_start_time = event['timestamp']
@@ -2731,6 +2731,21 @@ class AWSCloudWatchLogs(AWSService):
                                                                     aws_region=self.region,
                                                                     aws_log_group=log_group,
                                                                     aws_log_stream=log_stream))
+
+    def format_message(self, msg):
+        """Add the message to a dict with additional fields.
+
+        Parameters
+        ----------
+        msg : str
+            Original message to be wrapped.
+
+        Returns
+        -------
+        dict
+            Dictionary with the message and additional fields.
+        """
+        return {'integration': 'aws', 'source': 'cloudwatch', 'aws': msg}
 
     def close_database(self):
         """Commit the changes to the DB and close the connection."""
