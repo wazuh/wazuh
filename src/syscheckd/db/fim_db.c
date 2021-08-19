@@ -358,6 +358,8 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
         value_name = filter_special_chars(finder + 1);
     }
 
+    key_path = filter_special_chars(full_path);
+
     w_mutex_lock(&fim_sql->mutex);
 
     os_calloc(1, sizeof(fim_entry), entry);

@@ -61,11 +61,11 @@ def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = c
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, select=fields, offset=offset, limit=limit, sort=sort,
-                                             search=search, query=q, min_select_fields=set(), count=True,
-                                             get_data=True, **rbac_filters)
+        with WazuhDBQueryGroupByAgents(filter_fields=fields, select=fields, offset=offset, limit=limit, sort=sort,
+                                       search=search, query=q, min_select_fields=set(), count=True,
+                                       get_data=True, **rbac_filters) as db_query:
+            data = db_query.run()
 
-        data = db_query.run()
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
 
@@ -90,8 +90,8 @@ def get_agents_summary_status(agent_list=None):
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         # We don't consider agent 000 in order to get the summary
-        db_query = WazuhDBQueryAgents(limit=None, select=['status'], query="id!=000", **rbac_filters)
-        data = db_query.run()
+        with WazuhDBQueryAgents(limit=None, select=['status'], query="id!=000", **rbac_filters) as db_query:
+            data = db_query.run()
 
         for agent in data['items']:
             summary[agent['status']] += 1
@@ -120,9 +120,10 @@ def get_agents_summary_os(agent_list=None):
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         # We don't consider agent 000 in order to get the summary
-        db_query = WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
-                                      distinct=True, query="id!=000", **rbac_filters)
-        query_data = db_query.run()
+        with WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
+                                distinct=True, query="id!=000", **rbac_filters) as db_query:
+            query_data = db_query.run()
+
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
         result.total_affected_items = len(result.affected_items)
@@ -209,8 +210,8 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     if agent_list:
         system_agents = get_agents_info()
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
-        agents_with_data = WazuhDBQueryAgents(limit=None, select=["id", "status", "version"],
-                                              **rbac_filters).run()['items']
+        with WazuhDBQueryAgents(limit=None, select=["id", "status", "version"], **rbac_filters) as query_data:
+            agents_with_data = query_data.run()['items']
 
         # Add non existent agents to failed_items
         not_found_agents = agent_list - system_agents
@@ -288,9 +289,10 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
 
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list, filters=filters)
 
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query=q, **rbac_filters)
-        data = db_query.run()
+        with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                query=q, **rbac_filters) as db_query:
+            data = db_query.run()
+
         result.affected_items.extend(data['items'])
         result.total_affected_items = data['totalItems']
 
@@ -313,7 +315,7 @@ def get_agents_in_group(group_list, offset=0, limit=common.database_limit, sort=
     :return: AffectedItemsWazuhResult.
     """
     system_groups = get_groups()
-    
+
     if group_list[0] not in system_groups:
         raise WazuhResourceNotFound(1710)
 
@@ -381,8 +383,9 @@ def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=Fal
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
                                         filters=filters)
 
-        db_query = WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters)
-        data = db_query.run()
+        with WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters) as db_query:
+            data = db_query.run()
+
         can_purge_agents = set(map(operator.itemgetter('id'), data['items']))
         agent_list = set(agent_list)
 
@@ -399,12 +402,12 @@ def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=Fal
         # Add non eligible agents to failed_items
         non_eligible_agents = agent_list - not_found_agents - can_purge_agents
         list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhError(
-                        1731,
-                        extra_message="some of the requirements are not met -> {}".format(
-                            ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
-                            (f', q: {q}' if q else '')
-                        )
-                    )), non_eligible_agents))
+            1731,
+            extra_message="some of the requirements are not met -> {}".format(
+                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                (f', q: {q}' if q else '')
+            )
+        )), non_eligible_agents))
 
         for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
             try:
@@ -471,8 +474,8 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
 
         rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
 
-        group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
-        query_data = group_query.run()
+        with WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters) as group_query:
+            query_data = group_query.run()
 
         for group in query_data['items']:
             full_entry = path.join(common.shared_path, group['name'])
@@ -604,8 +607,9 @@ def delete_groups(group_list=None):
                 raise WazuhResourceNotFound(1710)
             elif group_id == 'default':
                 raise WazuhError(1712)
-            agent_list = [agent['id'] for agent in WazuhDBQueryMultigroups(group_id=group_id,
-                                                                           limit=None).run()['items']]
+            with WazuhDBQueryMultigroups(group_id=group_id, limit=None) as db_query:
+                agent_list = [agent['id'] for agent in db_query.run()['items']]
+
             try:
                 affected_agents_result = remove_agents_from_group(agent_list=agent_list, group_list=[group_id])
                 if affected_agents_result.total_failed_items != 0:
@@ -797,9 +801,11 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
         select = ['version', 'id', 'name'] if select is None else select
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query=f"version!={manager.version}" + (';' + q if q else ''), **rbac_filters)
-        data = db_query.run()
+        with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+                                query=f"version!={manager.version}" + (';' + q if q else ''),
+                                **rbac_filters) as db_query:
+            data = db_query.run()
+
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
 
