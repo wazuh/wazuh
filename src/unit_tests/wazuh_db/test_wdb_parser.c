@@ -1859,9 +1859,9 @@ void test_packages_save_success_empty_items(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     char* query = NULL;
-    os_strdup("save 0|1|2|3||5|6|7||9|10|11||13|14|15", query);
+    os_strdup("save |1|2|3||5|6|7||9|10|11||13|14|", query);
 
-    expect_string(__wrap_wdb_package_save, scan_id, "0");
+    expect_string(__wrap_wdb_package_save, scan_id, "");
     expect_string(__wrap_wdb_package_save, scan_time, "1");
     expect_string(__wrap_wdb_package_save, format, "2");
     expect_string(__wrap_wdb_package_save, name, "3");
@@ -1877,7 +1877,7 @@ void test_packages_save_success_empty_items(void **state) {
     expect_string(__wrap_wdb_package_save, description, "13");
     expect_string(__wrap_wdb_package_save, location, "14");
     expect_string(__wrap_wdb_package_save, checksum, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE);
-    expect_string(__wrap_wdb_package_save, item_id, "15");
+    expect_string(__wrap_wdb_package_save, item_id, "");
     expect_value(__wrap_wdb_package_save, replace, FALSE);
     will_return(__wrap_wdb_package_save, OS_SUCCESS);
 
