@@ -36,7 +36,7 @@ def test_revoke_tokens(db_setup):
     db_setup: callable
         This function creates the rbac.db file.
     """
-    with patch('wazuh.core.security.change_secret', side_effect=None):
+    with patch('wazuh.core.security.change_keypair', side_effect=None):
         security, WazuhResult, _ = db_setup
         mock_current_user = ContextVar('current_user', default='wazuh')
         with patch("wazuh.sca.common.current_user", new=mock_current_user):
