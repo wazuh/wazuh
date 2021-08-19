@@ -13,8 +13,9 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_OS_AgentAntiquity() {
-    return -1;
+double __wrap_OS_AgentAntiquity(__attribute__((unused)) const char *name,
+                             __attribute__((unused)) const char *ip) {
+    return mock();
 }
 
 void __wrap_OS_RemoveAgentGroup(__attribute__((unused)) const char *id) {

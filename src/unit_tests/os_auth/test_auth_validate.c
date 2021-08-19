@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "os_err.h"
 #include "shared.h"
 #include "../../os_auth/auth.h"
 #include "../../headers/sec.h"
@@ -36,6 +37,7 @@
 #define EXISTENT_GROUP1 "ExistentGroup1"
 #define EXISTENT_GROUP2 "ExistentGroup2"
 #define UNKNOWN_GROUP   "UnknownGroup"
+#define AGENT1_ID       "001"
 
 void keys_init(keystore *keys, key_mode_t key_mode, int save_removed) {
     /* Initialize hashes */
@@ -99,6 +101,17 @@ static int setup_group(void **state) {
 
 static int teardown_group(void **state) {
     OS_FreeKeys(&keys);
+
+    struct keynode *cur = NULL;
+    struct keynode *next = NULL;
+
+    for (cur = queue_remove; cur; cur = next) {
+        next = cur->next;
+        free(cur->id);
+        free(cur->name);
+        free(cur->ip);
+        free(cur);
+    }
 
     return 0;
 }
@@ -178,6 +191,7 @@ static void test_w_auth_validate_data_force_insert(void **state) {
     response[0] = '\0';
     expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001).");
     expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
+    will_return(__wrap_OS_AgentAntiquity, 0);
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
@@ -186,6 +200,7 @@ static void test_w_auth_validate_data_force_insert(void **state) {
     response[0] = '\0';
     expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002).");
     expect_string(__wrap__minfo, formatted_msg, "Removing old agent '002'.");
+    will_return(__wrap_OS_AgentAntiquity, 0);
     err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
@@ -259,6 +274,75 @@ static void test_w_auth_validate_groups(void **state) {
     assert_string_equal(response, "ERROR: Invalid group: "UNKNOWN_GROUP"");
 }
 
+static void test_w_auth_replace_agent_force_disabled(void **state) {
+    w_err_t err;
+    keyentry key;
+    key.id = AGENT1_ID;
+    os_calloc(1, sizeof(os_ip), key.ip);
+    key.ip->ip = NEW_IP1;
+    key.name = NEW_AGENT1;
+
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won´t be removed because the force option is disabled.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    os_free(key.ip);
+}
+
+static void test_w_auth_replace_agent_not_comply_antiquity(void **state) {
+    w_err_t err;
+    keyentry key;
+    key.id = AGENT1_ID;
+    os_calloc(1, sizeof(os_ip), key.ip);
+    key.ip->ip = NEW_IP1;
+    key.name = NEW_AGENT1;
+
+    // Mocking antiquity
+    will_return(__wrap_OS_AgentAntiquity, 10);
+    config.force_options.connection_time = 100;
+
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' doesn´t comply with the antiquity to be removed.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    os_free(key.ip);
+    config.force_options.connection_time = 0;
+}
+
+static void test_w_auth_replace_agent_existent_key_hash(void **state) {
+    w_err_t err;
+    keyentry key;
+    key.id = AGENT1_ID;
+    os_calloc(1, sizeof(os_ip), key.ip);
+    key.ip->ip = NEW_IP1;
+    key.name = NEW_AGENT1;
+    key.raw_key = "1234";
+    char *key_hash = "15153d246b71789195b48778875af94f9378ecf9";
+
+    will_return(__wrap_OS_AgentAntiquity, 0);
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' key already exists on the manager.");
+    err = w_auth_replace_agent(&key, key_hash, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    os_free(key.ip);
+}
+
+static void test_w_auth_replace_agent_success(void **state) {
+    w_err_t err;
+    keyentry key;
+    key.id = AGENT1_ID;
+    os_calloc(1, sizeof(os_ip), key.ip);
+    key.ip->ip = NEW_IP1;
+    key.name = NEW_AGENT1;
+
+    will_return(__wrap_OS_AgentAntiquity, 0);
+    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_SUCCESS);
+    os_free(key.ip);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -266,7 +350,10 @@ int main(void) {
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_force_insert_0),
-
+        cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_insert_0),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_comply_antiquity, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_insert_1),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
