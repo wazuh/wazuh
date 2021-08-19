@@ -90,8 +90,7 @@ chmod +x ${WAZUH_HOME}/var/upgrade/install.sh
 ${WAZUH_HOME}/var/upgrade/install.sh >>${WAZUH_HOME}/logs/upgrade.log 2>&1
 
 # Check installation result
-# RESULT=$?
-RESULT=1
+RESULT=$?
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >>${WAZUH_HOME}/logs/upgrade.log
 
@@ -101,7 +100,7 @@ COUNTER=30
 while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
     . ${WAZUH_HOME}/var/run/wazuh-agentd.state >>${WAZUH_HOME}/logs/upgrade.log 2>&1
     sleep 1
-    COUNTER=$((COUNTER - 1))
+    COUNTER=$[COUNTER - 1]
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >>${WAZUH_HOME}/logs/upgrade.log
 done
 
@@ -129,9 +128,12 @@ else
     # Cleaning for old versions
     [ -d "${WAZUH_HOME}/ruleset" ] && rm -rf ${WAZUH_HOME}/ruleset
 
-    # Clean 4.2 SUSE Tumbleweed
+    # Clean systemd unit service
     if [ -f /etc/systemd/system/${SERVICE}.service ]; then
         rm -f /etc/systemd/system/${SERVICE}.service
+    fi
+    if [ -f /usr/lib/systemd/system/${SERVICE}.service ]; then
+        rm -f /usr/lib/systemd/system/${SERVICE}.service
     fi
 
     # Restore backup
