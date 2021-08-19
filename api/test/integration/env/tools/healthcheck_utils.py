@@ -61,3 +61,7 @@ def get_worker_health():
 
 def get_manager_health_base():
     return get_master_health() if socket.gethostname() == 'wazuh-master' else get_worker_health()
+
+
+def is_old_agent():
+    return os.path.exists('/var/ossec/etc/ossec-init.conf')

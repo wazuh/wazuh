@@ -1899,9 +1899,6 @@ stages:
 ---
 test_name: GET /agents/{agent_id}/stats/{component}
 
-marks:
-  - xfail  # https://github.com/wazuh/wazuh/issues/9665
-
 stages:
 
   - name: Get logcollector stats from agent 000 (manager)
