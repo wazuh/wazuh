@@ -581,6 +581,16 @@ stages:
        fields: os.platform
    response:
      status_code: 200
+     json:
+      error: 0
+      data:
+        affected_items:
+          - count: 6
+            os:
+              platform: !anystr
+        failed_items: []
+        total_affected_items: !anyint
+        total_failed_items: 0
 
 ---
 test_name: GET /agents/summary/status
