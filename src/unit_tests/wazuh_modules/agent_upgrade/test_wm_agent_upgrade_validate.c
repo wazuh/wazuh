@@ -541,7 +541,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_str_version(void *
     os_strdup("x64", agent->architecture);
 
     task->use_http = true;
-    os_strdup("4.1.5", task->wpk_version);
+    os_strdup("v.4.1", task->wpk_version);
 
     int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
 
