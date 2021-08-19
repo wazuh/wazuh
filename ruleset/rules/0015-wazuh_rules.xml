@@ -326,6 +326,15 @@
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
+  <rule id="521" level="11">
+    <if_sid>510</if_sid>
+    <match>Possible kernel level rootkit</match>
+    <description>Possible kernel level rootkit</description>
+    <mitre>
+      <id>T1014</id>
+    </mitre>
+    <group>rootcheck,</group>
+  </rule>
 
   <!-- Process monitoring rules -->
   <rule id="530" level="0">
@@ -388,7 +397,7 @@
     <mitre>
       <id>T1492</id>
     </mitre>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>syscheck,syscheck_entry_modified,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="553" level="7">
@@ -399,14 +408,14 @@
       <id>T1107</id>
       <id>T1485</id>
     </mitre>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>syscheck,syscheck_entry_deleted,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="554" level="5">
     <category>wazuh</category>
     <decoded_as>syscheck_new_entry</decoded_as>
     <description>File added to the system.</description>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>syscheck,syscheck_entry_added,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="555" level="7">
@@ -469,10 +478,9 @@
 
   <rule id="594" level="5">
     <category>wazuh</category>
-    <if_sid>550</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Integrity Checksum Changed</description>
+    <decoded_as>syscheck_registry_key_modified</decoded_as>
+    <group>syscheck,syscheck_entry_modified,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Key Integrity Checksum Changed</description>
     <mitre>
       <id>T1492</id>
     </mitre>
@@ -480,10 +488,9 @@
 
   <rule id="597" level="5">
     <category>wazuh</category>
-    <if_sid>553</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Entry Deleted.</description>
+    <decoded_as>syscheck_registry_key_deleted</decoded_as>
+    <group>syscheck,syscheck_entry_deleted,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Key Entry Deleted.</description>
     <mitre>
       <id>T1107</id>
       <id>T1485</id>
@@ -492,10 +499,9 @@
 
   <rule id="598" level="5">
     <category>wazuh</category>
-    <if_sid>554</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Entry Added to the System</description>
+    <decoded_as>syscheck_registry_key_added</decoded_as>
+    <group>syscheck,syscheck_entry_added,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Key Entry Added to the System</description>
   </rule>
 
   <!-- active response rules
