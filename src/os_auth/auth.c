@@ -165,6 +165,9 @@ w_err_t w_auth_parse_data(const char* buf,
             snprintf(ip, IPSIZE, "%s", client_source_ip);
         }
 
+        /* Forward the string pointer to allow the proper key parsing IP:'........'
+           3 for IP:, 2 for '' */
+        buf+= 3 + strlen(client_source_ip) + 2;
     }
     else{
         buf--;
