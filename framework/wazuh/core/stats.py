@@ -28,16 +28,17 @@ def hourly_():
     interactions = 0
     for i in range(25):
         try:
-            hfile = open(f'{common.stats_path}/hourly-average/{str(i)}')
-            data = hfile.read()
-            if i == 24:
-                interactions = int(data)
-            else:
-                averages.append(int(data))
-            hfile.close()
+            with open(f'{common.stats_path}/hourly-average/{str(i)}', mode='r') as hfile:
+                data = hfile.read()
+                if i == 24:
+                    interactions = int(data)
+                else:
+                    averages.append(int(data))
         except IOError:
             if i < 24:
                 averages.append(0)
+            else:
+                interactions = 0
 
     return [{'averages': averages, 'interactions': interactions}]
 
@@ -56,28 +57,29 @@ def weekly_():
         interactions = 0
         for j in range(25):
             try:
-                wfile = open(f'{common.stats_path}/weekly-average/{str(i)}/{str(j)}')
-                data = wfile.read()
-                if j == 24:
-                    interactions = int(data)
-                else:
-                    hours.append(int(data))
-                wfile.close()
+                with open(f'{common.stats_path}/weekly-average/{str(i)}/{str(j)}', mode='r') as wfile:
+                    data = wfile.read()
+                    if j == 24:
+                        interactions = int(data)
+                    else:
+                        hours.append(int(data))
             except IOError:
-                if i < 24:
+                if j < 24:
                     hours.append(0)
+                else:
+                    interactions = 0
         weekly_results.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
 
     return weekly_results
 
 
-def totals_(date):
-    """Statistical information for the current or specified date.
+def totals_(date=datetime.now()):
+    """Compute statistical information for the current or specified date.
 
     Parameters
     ----------
     date: date
-        Date object with the date value of the stats.
+        Date object with the date value of the stats, by default current date.
 
     Returns
     -------
@@ -94,19 +96,17 @@ def totals_(date):
         stat_filename = os.path.join(
             common.stats_path, "totals", str(date.year), MONTHS[date.month - 1],
             f"ossec-totals-{date.strftime('%d')}.log")
-        stats = open(stat_filename, 'r')
+        with open(stat_filename, mode='r') as statsf:
+            stats = statsf.readlines()
     except IOError:
         raise WazuhError(1308, extra_message=stat_filename)
+
     alerts = []
     affected = []
     for line in stats:
         data = line.split('-')
         if len(data) == 4:
-            sigid = int(data[1])
-            level = int(data[2])
-            times = int(data[3])
-            alert = {'sigid': sigid, 'level': level, 'times': times}
-            alerts.append(alert)
+            alerts.append({'sigid': int(data[1]), 'level': int(data[2]), 'times': int(data[3])})
         else:
             data = line.split('--')
             if len(data) != 5:
@@ -114,19 +114,8 @@ def totals_(date):
                     continue
                 else:
                     return True, affected
-            hour = int(data[0])
-            total_alerts = int(data[1])
-            events = int(data[2])
-            syscheck = int(data[3])
-            firewall = int(data[4])
-            affected.append(
-                {'hour': hour,
-                 'alerts': alerts,
-                 'totalAlerts': total_alerts,
-                 'events': events,
-                 'syscheck': syscheck,
-                 'firewall': firewall
-                 })
+            affected.append({'hour': int(data[0]), 'alerts': alerts, 'totalAlerts': int(data[1]),
+                             'events': int(data[2]), 'syscheck': int(data[3]), 'firewall': int(data[4])})
             alerts = []
 
     return False, affected
@@ -151,15 +140,28 @@ def get_daemons_stats_(filename):
         Raised if file does not exist.
     """
     try:
+        # => Original
+        #with open(filename, mode='r') as f:
+        #    input_file = str("[root]\n" + f.read())
+        #fp = StringIO(input_file)
+        #config = configparser.RawConfigParser()
+        #config.read_file(fp)
+        #items = dict(config.items("root"))
+        #try:
+        #    for key, value in items.items():
+        #        items[key] = float(value[1:-1])
+        #except Exception as e:
+        #    return WazuhInternalError(1104, extra_message=str(e))
+        # ----
+        # => Refactor
+        items = {}
         with open(filename, mode='r') as f:
-            input_file = str("[root]\n" + f.read())
-        fp = StringIO(input_file)
-        config = configparser.RawConfigParser()
-        config.read_file(fp)
-        items = dict(config.items("root"))
+            daemons_data = f.readlines()
         try:
-            for key, value in items.items():
-                items[key] = float(value[1:-1])
+            for line in daemons_data:
+                if(len(line) != 1 and '#' not in line):
+                    data = line[:-1].split('=')
+                    items[data[0]] = float(data[1][1:-1])
         except Exception as e:
             return WazuhInternalError(1104, extra_message=str(e))
     except IOError:
