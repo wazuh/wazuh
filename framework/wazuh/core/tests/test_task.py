@@ -58,12 +58,12 @@ def test_wazuh_db_query_task__final_query():
         wdbq_task = WazuhDBQueryTask()
         assert wdbq_task._final_query() == f'test WHERE task_id IN (test) LIMIT :limit OFFSET :offset'
 
-@pytest.mark.xfail
+
 def test_wazuh_db_query_task__format_data_into_dictionary():
     """Check that WazuhDBQueryTask's method _format_data_into_dictionary works properly."""
     data = [
-        {'TASK_ID': 1, 'AGENT_ID': '002', 'NODE': 'worker1', 'MODULE': 'upgrade_module', 'COMMAND': 'upgrade',
-         'CREATE_TIME': 1606466932, 'LAST_UPDATE_TIME': 1606466953, 'STATUS': 'Legacy', 'ERROR_MESSAGE': None}
+        {'task_id': 1, 'agent_id': '002', 'node': 'worker1', 'module': 'upgrade_module', 'command': 'upgrade',
+         'create_time': 1606466932, 'last_update_time': 1606466953, 'status': 'Legacy', 'error_message': None}
     ]
 
     with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
@@ -73,15 +73,15 @@ def test_wazuh_db_query_task__format_data_into_dictionary():
     wdbq_task._data = data
     result = wdbq_task._format_data_into_dictionary()
 
-    assert result['items'][0]['TASK_ID'] == 1
-    assert result['items'][0]['AGENT_ID'] == '002'
-    assert result['items'][0]['NODE'] == 'worker1'
-    assert result['items'][0]['MODULE'] == 'upgrade_module'
-    assert result['items'][0]['COMMAND'] == 'upgrade'
-    assert result['items'][0]['CREATE_TIME'] == '2020-11-27T08:48:52Z'
-    assert result['items'][0]['LAST_UPDATE_TIME'] == '2020-11-27T08:49:13Z'
-    assert result['items'][0]['STATUS'] == 'Legacy'
-    assert result['items'][0]['ERROR_MESSAGE'] == None
+    assert result['items'][0]['task_id'] == 1
+    assert result['items'][0]['agent_id'] == '002'
+    assert result['items'][0]['node'] == 'worker1'
+    assert result['items'][0]['module'] == 'upgrade_module'
+    assert result['items'][0]['command'] == 'upgrade'
+    assert result['items'][0]['create_time'] == '2020-11-27T08:48:52Z'
+    assert result['items'][0]['last_update_time'] == '2020-11-27T08:49:13Z'
+    assert result['items'][0]['status'] == 'Legacy'
+    assert result['items'][0]['error_message'] == None
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
