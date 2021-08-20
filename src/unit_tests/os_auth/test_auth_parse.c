@@ -58,7 +58,6 @@ typedef struct _enrollment_response {
     char* response;
 } enrollment_response;
 
-
 //parser arguments
 typedef struct _parse_evaluator {
     char* buffer;
@@ -69,7 +68,7 @@ typedef struct _parse_evaluator {
     mocked_log expected_log;
 } parse_evaluator;
 
-parse_evaluator parse_values_default_cfg []={
+parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent1'", "192.0.0.1", NULL,                                                      {"192.0.0.1", "agent1", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent2' G:'Group1'", "192.0.0.1", NULL,                                           {"192.0.0.1", "agent2", "Group1", NULL},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", "Group(s) is: Group1"} },
     { "OSSEC A:'agent3' G:'Group1,Group2'", "192.0.0.1", NULL,                                    {"192.0.0.1", "agent3", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
@@ -90,7 +89,7 @@ parse_evaluator parse_values_default_cfg []={
     {0}
 };
 
-parse_evaluator parse_values_without_use_src_ip_cfg []={
+parse_evaluator parse_values_without_use_src_ip_cfg [] = {
     {"OSSEC A:'agent1'", "192.0.0.1", NULL,                             {"any", "agent1", NULL, NULL},                    {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
     {"OSSEC A:'agent2' IP:'192.0.0.2'", "192.0.0.1", NULL,              {"192.0.0.2", "agent2", NULL, NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", NULL} },
 

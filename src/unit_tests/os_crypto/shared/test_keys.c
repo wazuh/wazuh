@@ -368,6 +368,8 @@ void test_w_get_key_hash_success(void **state){
     keys->raw_key = "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96";
 
     ret = w_get_key_hash(keys, output);
+
+    assert_string_equal(output, "e0735a4a2c9bf633bac9b58f194cc8649537b394");
     assert_int_equal(ret, OS_SUCCESS);
 
     os_free(keys);

@@ -90,7 +90,6 @@ typedef struct _enrollment_response {
     char* response;
 } enrollment_response;
 
-
 extern struct keynode *queue_insert;
 extern struct keynode *queue_remove;
 extern struct keynode * volatile *insert_tail;
@@ -325,7 +324,6 @@ static void test_w_auth_replace_agent_success(void **state) {
 }
 
 int main(void) {
-
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_auth_validate_groups),
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
