@@ -2015,16 +2015,23 @@ class AWSWAFBucket(AWSCustomBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a WAF log file."""
+        def json_event_generator(data):
+            while data:
+                json_data, json_index = decoder.raw_decode(data)
+                data = data[json_index:]
+                yield json_data
+
         content = []
+        decoder = json.JSONDecoder()
         with self.decompress_file(log_key=log_key) as f:
             for line in f.readlines():
                 try:
-                    event = json.loads(line.rstrip())
+                    for event in json_event_generator(line.rstrip()):
+                        event['source'] = 'waf'
+                        content.append(event)
                 except json.JSONDecodeError:
                     print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
                     sys.exit(9)
-                event['source'] = 'waf'
-                content.append(event)
 
         return json.loads(json.dumps(content))
 
