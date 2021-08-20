@@ -342,6 +342,7 @@ void test_w_enrollment_concat_src_ip_default(void **state) {
 void test_w_enrollment_concat_src_ip_empty_buff(void **state) {
     expect_assert_failure(w_enrollment_concat_src_ip(NULL, NULL, 0));
 }
+
 /**********************************************/
 /************* w_enrollment_concat_group ****************/
 void test_w_enrollment_concat_group_empty_buff(void **state) {
@@ -359,6 +360,7 @@ void test_w_enrollment_concat_group(void **state) {
     w_enrollment_concat_group(buf, group);
     assert_string_equal(buf, " G:'EXAMPLE_GROUP'");
 }
+
 /**********************************************/
 /************* w_enrollment_concat_key ****************/
 void test_w_enrollment_concat_key_empty_buff(void **state) {
@@ -419,9 +421,9 @@ void test_verificy_ca_certificate_valid_certificate(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "Manager has been verified successfully");
     w_enrollment_verify_ca_certificate(ssl, "GOOD_CERTIFICATE", "hostname");
 }
+
 /**********************************************/
 /********** w_enrollment_connect *******/
-
 void test_w_enrollment_connect_empty_address(void **state) {
     w_enrollment_ctx *cfg = *state;
     expect_assert_failure(w_enrollment_connect(cfg, NULL));

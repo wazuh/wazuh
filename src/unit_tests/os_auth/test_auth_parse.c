@@ -49,6 +49,7 @@ typedef struct _enrollment_param {
     char* ip;
     char* name;
     char* groups;
+    char* key;
 } enrollment_param;
 
 //Error responses
@@ -69,25 +70,29 @@ typedef struct _parse_evaluator {
 } parse_evaluator;
 
 parse_evaluator parse_values_default_cfg []={
-    { "OSSEC A:'agent1'", "192.0.0.1", NULL,                            {"192.0.0.1", "agent1", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent2' G:'Group1'", "192.0.0.1", NULL,                 {"192.0.0.1", "agent2", "Group1"},          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", "Group(s) is: Group1"} },
-    { "OSSEC A:'agent3' G:'Group1,Group2'", "192.0.0.1", NULL,          {"192.0.0.1", "agent3", "Group1,Group2"},   {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent4' G:'Group1,Group2,Group1'", "192.0.0.1", NULL,   {"192.0.0.1", "agent4", "Group1,Group2"},   {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC PASS: pass123 OSSEC A:'agent5'", "192.0.0.1", "pass123",   {"192.0.0.1", "agent5", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent6' IP:'192.0.0.2'", "192.0.0.1", NULL,             {"192.0.0.2", "agent6", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent6) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent1'", "192.0.0.1", NULL,                                                      {"192.0.0.1", "agent1", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent2' G:'Group1'", "192.0.0.1", NULL,                                           {"192.0.0.1", "agent2", "Group1", NULL},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", "Group(s) is: Group1"} },
+    { "OSSEC A:'agent3' G:'Group1,Group2'", "192.0.0.1", NULL,                                    {"192.0.0.1", "agent3", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent4' G:'Group1,Group2,Group1'", "192.0.0.1", NULL,                             {"192.0.0.1", "agent4", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC PASS: pass123 OSSEC A:'agent5'", "192.0.0.1", "pass123",                             {"192.0.0.1", "agent5", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent6' IP:'192.0.0.2'", "192.0.0.1", NULL,                                       {"192.0.0.2", "agent6", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent6) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent7' K:'1234'", "192.0.0.1", NULL,                                             {"192.0.0.1", "agent7", NULL, "1234"},                        {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent7) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent8' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,                            {"192.0.0.3", "agent8", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent8) from: 192.0.0.1", NULL} },
+    { "OSSEC PASS: pass123 OSSEC A:'agent9' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", "pass123",   {"192.0.0.3", "agent9", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent9) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent10' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,         {"192.0.0.3", "agent10", "Group1,Group2", "ABC123"},          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent10) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
 
-    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
-    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
-    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
+    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
+    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
 
     {0}
 };
 
 parse_evaluator parse_values_without_use_src_ip_cfg []={
-    {"OSSEC A:'agent1'", "192.0.0.1", NULL,                             {"any", "agent1", NULL},                    {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
-    {"OSSEC A:'agent2' IP:'192.0.0.2'", "192.0.0.1", NULL,              {"192.0.0.2", "agent2", NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", NULL} },
+    {"OSSEC A:'agent1'", "192.0.0.1", NULL,                             {"any", "agent1", NULL, NULL},                    {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
+    {"OSSEC A:'agent2' IP:'192.0.0.2'", "192.0.0.1", NULL,              {"192.0.0.2", "agent2", NULL, NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", NULL} },
 
     {0}
 };
@@ -140,6 +145,12 @@ static void test_w_auth_parse_data(void **state) {
             }
             else{
                 assert_null(parse_values[i].expected_params.groups);
+            }
+            if(key_hash){
+                assert_string_equal(key_hash, parse_values[i].expected_params.key);
+            }
+            else{
+                assert_null(parse_values[i].expected_params.key);
             }
         }
         else {
