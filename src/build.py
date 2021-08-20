@@ -23,10 +23,7 @@ class CommandLineParser:
         :param arg: Argument being selected in the command line.
         :return True is 'arg' is a correct one, False otherwise.
         """
-        if arg in module_list:
-            # Available modules so far
-            return True
-        return False
+        return arg in module_list
 
     def processArgs(self):
         """
