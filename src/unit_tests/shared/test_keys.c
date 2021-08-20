@@ -23,18 +23,8 @@
 int OS_IsAllowedID(keystore *keys, const char *id);
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
 
-/* setup/teardown */
-
-
-
-/* wraps */
-
-
-/* tests */
-
 // Test OS_IsAllowedID
-void test_OS_IsAllowedID_id_NULL(void **state)
-{
+void test_OS_IsAllowedID_id_NULL(void **state) {
     keystore *keys = NULL;
 
     const char * id = NULL;
@@ -42,11 +32,9 @@ void test_OS_IsAllowedID_id_NULL(void **state)
     int ret = OS_IsAllowedID(keys, id);
 
     assert_int_equal(ret, -1);
-
 }
 
-void test_OS_IsAllowedID_entry_NULL(void **state)
-{
+void test_OS_IsAllowedID_entry_NULL(void **state) {
     test_mode = 1;
 
     keystore *keys = NULL;
@@ -66,11 +54,9 @@ void test_OS_IsAllowedID_entry_NULL(void **state)
     assert_int_equal(ret, -1);
 
     os_free(keys);
-
 }
 
-void test_OS_IsAllowedID_entry_OK(void **state)
-{
+void test_OS_IsAllowedID_entry_OK(void **state) {
     test_mode = 1;
 
     keystore *keys = NULL;
@@ -94,11 +80,10 @@ void test_OS_IsAllowedID_entry_OK(void **state)
     os_free(keys);
 
     os_free(data);
-
 }
 
 // Test w_get_key_hash
-void test_w_get_key_hash_empty_parameters(void **state){
+void test_w_get_key_hash_empty_parameters(void **state) {
     keyentry *keys = NULL;
     os_sha1 output = {0};
     int ret;
@@ -109,7 +94,7 @@ void test_w_get_key_hash_empty_parameters(void **state){
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_get_key_hash_empty_value(void **state){
+void test_w_get_key_hash_empty_value(void **state) {
     keyentry *keys = NULL;
     os_sha1 output = {0};
     int ret;
@@ -125,7 +110,7 @@ void test_w_get_key_hash_empty_value(void **state){
     os_free(keys);
 }
 
-void test_w_get_key_hash_success(void **state){
+void test_w_get_key_hash_success(void **state) {
     keyentry *keys = NULL;
     os_sha1 output = {0};
     int ret;
@@ -135,14 +120,15 @@ void test_w_get_key_hash_success(void **state){
     keys->raw_key = "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96";
 
     ret = w_get_key_hash(keys, output);
+
+    assert_string_equal(output, "e0735a4a2c9bf633bac9b58f194cc8649537b394");
     assert_int_equal(ret, OS_SUCCESS);
 
     os_free(keys);
 }
 
 // Test w_get_agent_net_protocol_from_keystore
-void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
-{
+void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state) {
     test_mode = 1;
 
     //test_OS_IsAllowedID_entry_NULL
@@ -165,8 +151,7 @@ void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
     os_free(keys);
 }
 
-void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
-{
+void test_w_get_agent_net_protocol_from_keystore_OK(void **state) {
     test_mode = 1;
 
     //test_OS_IsAllowedID_entry_OK
@@ -198,8 +183,7 @@ void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
     os_free(data);
 }
 
-int main(void)
-{
+int main(void){
     const struct CMUnitTest tests[] = {
         // Tests OS_IsAllowedID
         cmocka_unit_test(test_OS_IsAllowedID_id_NULL),
@@ -212,7 +196,6 @@ int main(void)
         cmocka_unit_test(test_w_get_key_hash_empty_parameters),
         cmocka_unit_test(test_w_get_key_hash_empty_value),
         cmocka_unit_test(test_w_get_key_hash_success)
-
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

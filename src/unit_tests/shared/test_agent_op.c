@@ -55,11 +55,13 @@ static void test_create_agent_add_payload(void **state) {
     assert_non_null(item);
     assert_string_equal(item->valuestring, groups);
 
-
     item = cJSON_GetObjectItem(arguments, "key");
     assert_non_null(item);
     assert_string_equal(item->valuestring, key);
 
+    item = cJSON_GetObjectItem(arguments, "key_hash");
+    assert_non_null(item);
+    assert_string_equal(item->valuestring, key_hash);
 
     item = cJSON_GetObjectItem(arguments, "id");
     assert_non_null(item);

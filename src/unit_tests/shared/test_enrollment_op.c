@@ -18,6 +18,11 @@
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
 
+#define NEW_AGENT1      "Agent1"
+#define AGENT1_ID       "001"
+#define NEW_IP1         "192.0.0.0"
+#define RAW_KEY         "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96"
+
 extern int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
 extern void w_enrollment_concat_key(char *buff, keyentry* key_entry);
@@ -93,6 +98,22 @@ int __wrap_fprintf ( FILE * stream, const char * format, ... ) {
 }
 #endif
 
+void keyentry_init (keyentry *key, char *name, char *id, char *ip, char *raw_key) {
+    os_calloc(1, sizeof(os_ip), key->ip);
+    key->ip->ip = ip ? strdup(ip) : NULL;
+    key->name = name ? strdup(name) : NULL;
+    key->id = id ? strdup(id) : NULL;
+    key->raw_key = raw_key ? strdup(raw_key) : NULL;
+}
+
+void free_keyentry (keyentry *key) {
+    os_free(key->ip->ip);
+    os_free(key->ip);
+    os_free(key->name);
+    os_free(key->id);
+    os_free(key->raw_key);
+}
+
 // Setup / Teardown global
 int setup_file_ops(void **state) {
     test_mode = 1;
@@ -112,6 +133,7 @@ int test_setup_concats(void **state) {
     *state = buf;
     return 0;
 }
+
 //Teardown
 int test_teardown_concats(void **state) {
     free(*state);
@@ -235,7 +257,7 @@ int test_setup_w_enrollment_request_key(void **state) {
 }
 
 //Teardown
-int test_teardown_w_enrollment_request_key(void **state){
+int test_teardown_w_enrollment_request_key(void **state) {
     w_enrollment_ctx *cfg = *state;
     os_free(cfg->target_cfg->manager_name);
     os_free(cfg->target_cfg);
@@ -364,7 +386,13 @@ void test_w_enrollment_concat_group(void **state) {
 /**********************************************/
 /************* w_enrollment_concat_key ****************/
 void test_w_enrollment_concat_key_empty_buff(void **state) {
-    expect_assert_failure(w_enrollment_concat_key(NULL, (keyentry *)1));
+    keyentry keys;
+
+    keyentry_init(&keys, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+
+    expect_assert_failure(w_enrollment_concat_key(NULL, &keys));
+
+    free_keyentry(&keys);
 }
 
 void test_w_enrollment_concat_key_empty_key_structure(void **state) {
@@ -374,16 +402,15 @@ void test_w_enrollment_concat_key_empty_key_structure(void **state) {
 
 void test_w_enrollment_concat_key(void **state) {
     char *buf = *state;
-    keyentry *keys = NULL;
-    os_calloc(1, sizeof(keyentry), keys);
-    keys->id = "001";
-    keys->name = "debian10";
-    keys->raw_key = "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96";
+    keyentry keys;
 
-    w_enrollment_concat_key(buf, keys);
-    assert_string_equal(buf, " K:'e0735a4a2c9bf633bac9b58f194cc8649537b394'");
+    keyentry_init(&keys, NEW_AGENT1, AGENT1_ID, NEW_IP1, RAW_KEY);
 
-    os_free(keys);
+    w_enrollment_concat_key(buf, &keys);
+
+    assert_string_equal(buf, " K:'0965e68d9935a35530910bf32d35052995efe7bd'");
+
+    free_keyentry(&keys);
 }
 
 /**********************************************/
@@ -569,7 +596,6 @@ void test_w_enrollment_connect_success(void **state) {
 
 /**********************************************/
 /********** w_enrollment_send_message *******/
-
 void test_w_enrollment_send_message_empty_config(void **state) {
     expect_assert_failure(w_enrollment_send_message(NULL));
 }
@@ -632,7 +658,6 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "If Agent verification is enabled, agent key and certificates are required!");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_enrollment_send_message_success(void **state) {
@@ -648,6 +673,7 @@ void test_w_enrollment_send_message_success(void **state) {
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, 0);
 }
+
 /**********************************************/
 /********** w_enrollment_send_message *******/
 void test_w_enrollment_store_key_entry_null_key(void **state) {
@@ -728,6 +754,7 @@ void test_w_enrollment_store_key_entry_success(void **state) {
     int ret = w_enrollment_store_key_entry(key_string);
     assert_int_equal(ret, 0);
 }
+
 /**********************************************/
 /********** w_enrollment_send_message *******/
 void test_w_enrollment_process_agent_key_empty_buff(void **state) {
@@ -788,6 +815,7 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     int ret = w_enrollment_process_agent_key(key);
     assert_int_equal(ret,0);
 }
+
 /**********************************************/
 /******* w_enrollment_process_response ********/
 void test_w_enrollment_process_response_ssl_null(void **state) {
@@ -890,6 +918,7 @@ void test_w_enrollment_process_response_success(void **state) {
     int ret = w_enrollment_process_response(ssl);
     assert_int_equal(ret, 0);
 }
+
 /**********************************************/
 /******* w_enrollment_request_key ********/
 void test_w_enrollment_request_key_null_cfg(void **state) {
@@ -1000,9 +1029,9 @@ void test_w_enrollment_request_key(void **state) {
     int ret = w_enrollment_request_key(cfg, NULL);
     assert_int_equal(ret, 0);
 }
+
 /**********************************************/
 /******* w_enrollment_extract_agent_name ********/
-
 void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
     w_enrollment_ctx *cfg = *state;
     cfg->allow_localhost = true; // Allow localhost
@@ -1087,10 +1116,8 @@ void test_w_enrollment_load_pass_file_with_content(void **state) {
 }
 
 /**********************************************/
-int main()
-{
-    const struct CMUnitTest tests[] =
-    {
+int main() {
+    const struct CMUnitTest tests[] = {
         // w_enrollment_concat_src_ip
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_invalid_ip, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_valid_ip, test_setup_concats, test_teardown_concats),
@@ -1156,5 +1183,4 @@ int main()
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
-
 }
