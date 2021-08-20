@@ -61,6 +61,22 @@ void keys_init(keystore *keys, key_mode_t key_mode, int save_removed) {
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 }
 
+void keyentry_init (keyentry *key, char *name, char *id, char *ip, char *raw_key) {
+    os_calloc(1, sizeof(os_ip), key->ip);
+    key->ip->ip = ip ? strdup(ip) : NULL;
+    key->name = name ? strdup(name) : NULL;
+    key->id = id ? strdup(id) : NULL;
+    key->raw_key = raw_key ? strdup(raw_key) : NULL;
+}
+
+void free_keyentry (keyentry *key) {
+    os_free(key->ip->ip);
+    os_free(key->ip);
+    os_free(key->name);
+    os_free(key->id);
+    os_free(key->raw_key);
+}
+
 //Params used on enrollment
 typedef struct _enrollment_param {
     char* ip;
@@ -107,10 +123,10 @@ static int teardown_group(void **state) {
 
     for (cur = queue_remove; cur; cur = next) {
         next = cur->next;
-        free(cur->id);
-        free(cur->name);
-        free(cur->ip);
-        free(cur);
+        os_free(cur->id);
+        os_free(cur->name);
+        os_free(cur->ip);
+        os_free(cur);
     }
 
     return 0;
@@ -213,29 +229,6 @@ static void test_w_auth_validate_data_force_insert(void **state) {
     assert_true(index < 0);
 }
 
-static void test_w_auth_validate_data_register_limit(void **state) {
-    char response[2048] = {0};
-    char agent_name[2048] = "agent_x";
-    char error_message[2048];
-    w_err_t err;
-
-    //Filling most of keys element with a fixed key to reduce computing time
-    char fixed_key[KEYSIZE] = "1234";
-    for(unsigned i=0; i<100000; i++) {
-        OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, fixed_key);
-    }
-
-    //Adding last keys as usual
-    for(unsigned i=0; i<10; i++) {
-        snprintf(agent_name, 2048, "__agent_%d", i);
-        response[0] = '\0';
-        err = w_auth_validate_data(response,ANY_IP, agent_name, NULL, NULL);
-        assert_int_equal(err, OS_SUCCESS);
-        assert_string_equal(response, "");
-        OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, NULL);
-    }
-}
-
 static void test_w_auth_validate_groups(void **state) {
     w_err_t err;
     char response[2048] = {0};
@@ -277,25 +270,19 @@ static void test_w_auth_validate_groups(void **state) {
 static void test_w_auth_replace_agent_force_disabled(void **state) {
     w_err_t err;
     keyentry key;
-    key.id = AGENT1_ID;
-    os_calloc(1, sizeof(os_ip), key.ip);
-    key.ip->ip = NEW_IP1;
-    key.name = NEW_AGENT1;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
 
     expect_string(__wrap__minfo, formatted_msg, "Agent '001' won´t be removed because the force option is disabled.");
     err = w_auth_replace_agent(&key, NULL, &config.force_options);
 
     assert_int_equal(err, OS_INVALID);
-    os_free(key.ip);
+    free_keyentry(&key);
 }
 
 static void test_w_auth_replace_agent_not_comply_antiquity(void **state) {
     w_err_t err;
     keyentry key;
-    key.id = AGENT1_ID;
-    os_calloc(1, sizeof(os_ip), key.ip);
-    key.ip->ip = NEW_IP1;
-    key.name = NEW_AGENT1;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
 
     // Mocking antiquity
     will_return(__wrap_OS_AgentAntiquity, 10);
@@ -305,18 +292,15 @@ static void test_w_auth_replace_agent_not_comply_antiquity(void **state) {
     err = w_auth_replace_agent(&key, NULL, &config.force_options);
 
     assert_int_equal(err, OS_INVALID);
-    os_free(key.ip);
+    free_keyentry(&key);
     config.force_options.connection_time = 0;
 }
 
 static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     w_err_t err;
     keyentry key;
-    key.id = AGENT1_ID;
-    os_calloc(1, sizeof(os_ip), key.ip);
-    key.ip->ip = NEW_IP1;
-    key.name = NEW_AGENT1;
-    key.raw_key = "1234";
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, "1234");
+    // This is the SHA1 hash of the string: IdNameKey
     char *key_hash = "15153d246b71789195b48778875af94f9378ecf9";
 
     will_return(__wrap_OS_AgentAntiquity, 0);
@@ -324,23 +308,20 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     err = w_auth_replace_agent(&key, key_hash, &config.force_options);
 
     assert_int_equal(err, OS_INVALID);
-    os_free(key.ip);
+    free_keyentry(&key);
 }
 
 static void test_w_auth_replace_agent_success(void **state) {
     w_err_t err;
     keyentry key;
-    key.id = AGENT1_ID;
-    os_calloc(1, sizeof(os_ip), key.ip);
-    key.ip->ip = NEW_IP1;
-    key.name = NEW_AGENT1;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
 
     will_return(__wrap_OS_AgentAntiquity, 0);
     expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
     err = w_auth_replace_agent(&key, NULL, &config.force_options);
 
     assert_int_equal(err, OS_SUCCESS);
-    os_free(key.ip);
+    free_keyentry(&key);
 }
 
 int main(void) {
@@ -349,7 +330,6 @@ int main(void) {
         cmocka_unit_test(test_w_auth_validate_groups),
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_comply_antiquity, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_insert_1),
