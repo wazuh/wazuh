@@ -26,6 +26,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.syscheck import AffectedItemsWazuhResult
         from wazuh import WazuhError, WazuhInternalError
         from wazuh.core import common
+        from wazuh.core.agent import Agent
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -103,6 +104,7 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agen
         assert result.total_failed_items == expected_result['total_failed_items']
 
 
+@pytest.mark.parametrize('agent_version', ('v3.11.9',))
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
     (['001', '002'], test_result[0], ['001', '002']),
     (['003', '001', '008'], test_result[1], ['003', '008'])
@@ -110,7 +112,8 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agen
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.close')
-def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list,
+                        agent_version):
     """Test function `clear` from syscheck module.
 
     Parameters
@@ -122,7 +125,12 @@ def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_l
     agent_info_list : list
         List of agent IDs that `syscheck.get_agents_info` will return when mocked.
     """
-    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list), \
+            patch('wazuh.syscheck.Agent') as mock_agent:
+        mock_agent_instance = MagicMock()
+        mock_agent.return_value = mock_agent_instance
+        mock_agent_instance.version = agent_version
+
         result = clear(agent_list=agent_list)
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.affected_items == expected_result['affected_items']
@@ -135,13 +143,20 @@ def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_l
         wdb_close_mock.assert_called()
 
 
+@pytest.mark.parametrize('agent_version, expected_version_errcode', [
+    ('v3.12.0', 1760),
+    ('Wazuh v4.2.0', 1760),
+    (None, 1015),
+    ('v3.11.0', None)
+])
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
     (['001'], test_result[3], ['001']),
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection.__init__', return_value=None)
 @patch('wazuh.core.wdb.WazuhDBConnection.execute', side_effect=WazuhError(1000))
 @patch('wazuh.core.wdb.WazuhDBConnection.close')
-def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, agent_list, expected_result, agent_info_list):
+def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, agent_list, expected_result,
+                                  agent_info_list, agent_version, expected_version_errcode):
     """Test function `clear` from syscheck module.
 
     It will force an exception.
@@ -155,8 +170,18 @@ def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, a
     agent_info_list : list
         List of agent IDs that `syscheck.get_agents_info` will return when mocked.
     """
-    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list):
+    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list), \
+            patch('wazuh.syscheck.Agent') as mock_agent:
+        mock_agent_instance = MagicMock()
+        mock_agent.return_value = mock_agent_instance
+        mock_agent_instance.version = agent_version
+
         result = clear(agent_list=agent_list)
+        # If it's not None it means that the error will be version related.
+        if expected_version_errcode is not None:
+            w_error = list(result.failed_items)[0]
+            assert expected_version_errcode == w_error.code
+
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.affected_items == expected_result['affected_items']
         assert result.total_affected_items == expected_result['total_affected_items']
