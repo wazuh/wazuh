@@ -545,6 +545,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             if (retval >= 0) {
                 *output = tinfo.output ? tinfo.output : strdup("");
+                minfo("wm_exec(%s): returning data: %zu bytes", command, strlen(*output));
             } else {
                 free(tinfo.output);
             }
