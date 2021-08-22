@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include <malloc.h>
 
 static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
@@ -25,10 +26,10 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
-    
+
     /* Set the name */
     OS_SetName(ARGV0);
-    
+
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
     if (chdir(home_path) == -1) {
@@ -37,6 +38,7 @@ int main(int argc, char **argv)
 
     wmodule *cur_module;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
+    mallopt(M_ARENA_MAX, 1);
 
     // Get command line options
 

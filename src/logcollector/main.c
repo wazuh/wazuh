@@ -23,6 +23,7 @@
 
 #include "os_regex/os_regex.h"
 #include "logcollector.h"
+#include <malloc.h>
 
 /* Prototypes */
 static void help_logcollector(char * home_path) __attribute__((noreturn));
@@ -51,6 +52,8 @@ int main(int argc, char **argv)
     int c;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
+
+    mallopt(M_ARENA_MAX, 1);
 
     /* Set the name */
     OS_SetName(ARGV0);

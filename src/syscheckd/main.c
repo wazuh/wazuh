@@ -14,6 +14,7 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
+#include <malloc.h>
 
 #ifndef WIN32
 
@@ -48,6 +49,7 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+    mallopt(M_ARENA_MAX, 1);
 
     char * home_path = w_homedir(argv[0]);
 

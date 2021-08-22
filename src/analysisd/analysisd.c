@@ -41,6 +41,7 @@
 #include "state.h"
 #include "syscheck_op.h"
 #include "lists_make.h"
+#include <malloc.h>
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -286,6 +287,7 @@ int main_analysisd(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+    mallopt(M_ARENA_MAX, 1);
 
     // Define current working directory
     char * home_path = w_homedir(argv[0]);

@@ -12,6 +12,7 @@
 #include "remoted.h"
 #include "shared_download.h"
 #include <unistd.h>
+#include <malloc.h>
 
 /* Prototypes */
 static void help_remoted(char *home_path) __attribute__((noreturn));
@@ -50,6 +51,7 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+    mallopt(M_ARENA_MAX, 1);
 
     // Define current working directory
     char * home_path = w_homedir(argv[0]);

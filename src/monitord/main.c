@@ -12,6 +12,7 @@
 #include "config/config.h"
 #include "monitord.h"
 #include "os_net/os_net.h"
+#include <malloc.h>
 
 /* Prototypes */
 static void help_monitord(char * home_path) __attribute__((noreturn));
@@ -58,6 +59,7 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+    mallopt(M_ARENA_MAX, 1);
 
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
