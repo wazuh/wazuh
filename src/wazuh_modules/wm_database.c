@@ -195,6 +195,10 @@ void wm_sync_manager() {
     agent_info_data *manager_data = NULL;
     char *os_uname = NULL;
 
+    #if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)
+    #define HOST_NAME_MAX 64
+    #endif
+
     os_calloc(1, sizeof(agent_info_data), manager_data);
     os_calloc(1, sizeof(os_data), manager_data->osd);
     os_calloc(HOST_NAME_MAX, sizeof(char), manager_data->manager_host);
