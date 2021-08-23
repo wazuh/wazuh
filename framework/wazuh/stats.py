@@ -3,11 +3,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhInternalError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.stats import get_agents_component_stats_json_, get_daemons_stats_, hourly_, totals_, weekly_
+from wazuh.core.stats import get_daemons_stats_, hourly_, totals_, weekly_
+from wazuh.core.exception import WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -127,11 +128,14 @@ def get_agents_component_stats_json(agent_list=None, component=None):
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each agent was successfully read',
                                       some_msg='Could not read statistical information for some agents',
                                       none_msg='Could not read statistical information for any agent')
-    failed, affected = get_agents_component_stats_json_(agent_list, component)
-    if failed:
-        for element in failed:
-            result.add_failed_item(id_=element[0], error=element[1])
-    result.affected_items = affected
+    system_agents = get_agents_info()
+    for agent_id in agent_list:
+        try:
+            if agent_id not in system_agents:
+                raise WazuhResourceNotFound(1701)
+            result.affected_items.append(Agent(agent_id).get_stats(component=component))
+        except WazuhException as e:
+            result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result

@@ -2,14 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import configparser
 import json
 import os
 from datetime import datetime
-from io import StringIO
 
-from wazuh.core import agent, common
-from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core import common
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wazuh_socket import WazuhSocket
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -28,7 +26,7 @@ def hourly_():
     interactions = 0
     for i in range(25):
         try:
-            with open(f'{common.stats_path}/hourly-average/{str(i)}', mode='r') as hfile:
+            with open(f'{common.stats_path}/hourly-average/{i}', mode='r') as hfile:
                 data = hfile.read()
                 if i == 24:
                     interactions = int(data)
@@ -57,7 +55,7 @@ def weekly_():
         interactions = 0
         for j in range(25):
             try:
-                with open(f'{common.stats_path}/weekly-average/{str(i)}/{str(j)}', mode='r') as wfile:
+                with open(f'{common.stats_path}/weekly-average/{i}/{j}', mode='r') as wfile:
                     data = wfile.read()
                     if j == 24:
                         interactions = int(data)
@@ -140,20 +138,6 @@ def get_daemons_stats_(filename):
         Raised if file does not exist.
     """
     try:
-        # => Original
-        #with open(filename, mode='r') as f:
-        #    input_file = str("[root]\n" + f.read())
-        #fp = StringIO(input_file)
-        #config = configparser.RawConfigParser()
-        #config.read_file(fp)
-        #items = dict(config.items("root"))
-        #try:
-        #    for key, value in items.items():
-        #        items[key] = float(value[1:-1])
-        #except Exception as e:
-        #    return WazuhInternalError(1104, extra_message=str(e))
-        # ----
-        # => Refactor
         items = {}
         with open(filename, mode='r') as f:
             daemons_data = f.readlines()
@@ -168,41 +152,6 @@ def get_daemons_stats_(filename):
         raise WazuhError(1308, extra_message=filename)
 
     return [items]
-
-
-def get_agents_component_stats_json_(agent_list, component):
-    """Get statistics of an agent's component.
-
-    Parameters
-    ----------
-    agent_list: list, optional
-        List of agents ID's, by default None.
-    component: str, optional
-        Name of the component to get stats from, by default None.
-
-    Returns
-    -------
-    tuple
-        Failed: array of failed agent's information and related wazuh error.
-        Affected: array of agent's statistics.
-
-    Raises
-    ------
-    WazuhResourceNotFound
-        Raised if agent does not exist.
-    """
-    failed = []
-    affected = []
-    system_agents = agent.get_agents_info()
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            affected.append(agent.Agent(agent_id).get_stats(component=component))
-        except WazuhException as e:
-            failed.append((agent_id, e))
-
-    return failed, affected
 
 
 def get_daemons_stats_from_socket(agent_id, daemon):
