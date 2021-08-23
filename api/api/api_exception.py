@@ -35,8 +35,8 @@ class APIException(Exception):
                   'It can be changed in the API configuration',
             2009: 'Semicolon (;) is a reserved character and must '
                   'be percent-encoded (%3B) to use it.',
-            2010: f'Error loading max_memory_usage. Minimum value '
-                  f'must be {MIN_VALUE_MAX_MEMORY_USAGE}'
+            2010: f'Error loading max_memory_usage. Value must be 0 (limitless) or greater than '
+                  f'{MIN_VALUE_MAX_MEMORY_USAGE}'
         }
 
     def __str__(self):

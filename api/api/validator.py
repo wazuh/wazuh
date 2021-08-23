@@ -130,7 +130,7 @@ api_config_schema = {
                 "max_login_attempts": {"type": "integer"},
                 "block_time": {"type": "integer"},
                 "max_request_per_minute": {"type": "integer"},
-                "max_memory_usage": {"type": "integer", "minimum": MIN_VALUE_MAX_MEMORY_USAGE},
+                "max_memory_usage": {"type": "integer"},
             },
         },
         "remote_commands": {

@@ -83,7 +83,7 @@ def start(foreground, root, config_file):
     max_memory_usage = int(api_conf['access']['max_memory_usage'])
     if max_memory_usage >= MIN_VALUE_MAX_MEMORY_USAGE:
         limit_memory(max_memory_usage)
-    else:
+    elif max_memory_usage != 0:
         logger.error(str(APIError(2010)))
         sys.exit(1)
 
