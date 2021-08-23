@@ -1,9 +1,9 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import json
 import os
+import re
 from datetime import datetime
 
 from wazuh.core import common
@@ -140,12 +140,11 @@ def get_daemons_stats_(filename):
     try:
         items = {}
         with open(filename, mode='r') as f:
-            daemons_data = f.readlines()
+            daemons_data = f.read()
         try:
-            for line in daemons_data:
-                if(len(line) != 1 and '#' not in line):
-                    data = line[:-1].split('=')
-                    items[data[0]] = float(data[1][1:-1])
+            kv_regex = re.compile(r'(^\w*)=(.*)', re.MULTILINE)
+            for key, value in kv_regex.findall(daemons_data):
+                items[key] = float(value[1:-1])
         except Exception as e:
             return WazuhInternalError(1104, extra_message=str(e))
     except IOError:
