@@ -5,7 +5,7 @@
 import os
 import sys
 from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -23,21 +23,15 @@ with patch('wazuh.core.common.wazuh_uid'):
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'stats')
 
 
-@pytest.mark.parametrize('date_, data_list', [
-    (date(2019, 8, 13), ['15-571-3-2', '15--107--1483--1257--0']),
-    (date(2019, 8, 13), ['15-571-3-2']),
-    (date(2019, 8, 13), ['15--107--1483--1257--0']),
-    (date(2019, 8, 13), ['15'])
-])
-@patch('wazuh.core.stats.common.stats_path', new=test_data_path)
-def test_totals_(date_, data_list):
+@pytest.mark.parametrize('date_', [date(2005, 5, 5)])
+def test_totals_(date_):
     """Verify totals_() function works as expected"""
-    with patch('wazuh.core.stats.open', return_value=data_list):
+    data_ = '1-2-3-4\n22-34-5-3\n15--107--1483--1257--0'
+    with patch("builtins.open", mock_open(read_data=data_)):
         affected = stats.totals_(date_)[1]
         if affected:
-            for line in data_list:
+            for line in data_:
                 data = line.split('-')
-                print(data)
                 if len(data) == 4:
                     assert int(data[1]) == affected[0]['alerts'][0]['sigid']
                     assert int(data[2]) == affected[0]['alerts'][0]['level'], 'Data do not match'
@@ -58,7 +52,7 @@ def test_totals_ko_():
         with pytest.raises(WazuhException, match=".* 1308 .*"):
             stats.totals_(date(1996, 8, 13))
 
-    with patch('wazuh.core.stats.open', return_value=['15-571-3-2', '15--107--1483']):
+    with patch("builtins.open", mock_open(read_data='15-571-3-2\n15--107--1483')):
         result = stats.totals_(date(1996, 8, 13))
         assert result[0]
 
@@ -72,6 +66,17 @@ def test_weekly_():
         assert day in [d for r in result for d in r.keys()], 'Data do not match'
 
 
+@patch('wazuh.core.common.stats_path', new='')
+def test_weekly_data():
+    """Verify weekly_() function works as expected"""
+    result = stats.weekly_()
+    days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    for day in days:
+        for i in range(24):
+            assert 0 == result[days.index(day)][day]['hours'][i]
+        assert 0 == result[days.index(day)][day]['interactions']
+
+
 @patch('wazuh.core.common.stats_path', new=test_data_path)
 def test_hourly_():
     """Verify hourly_() function works as expected"""
@@ -82,7 +87,7 @@ def test_hourly_():
 
 
 @patch('wazuh.core.common.stats_path', new='')
-def test_hourly_ko():
+def test_hourly_data():
     """Test hourly_() function exceptions works"""
     result = stats.hourly_()
     for average in result[0]['averages']:
@@ -90,47 +95,23 @@ def test_hourly_ko():
     assert result[0]['interactions'] == 0
 
 
-@patch('wazuh.core.stats.open')
-@patch('wazuh.core.stats.configparser.RawConfigParser.read_file')
-@patch('wazuh.core.stats.configparser.RawConfigParser.items', return_value={'hour': "'5'"})
-def test_get_daemons_stats_(mock_items, mock_read, mock_open):
+def test_get_daemons_stats_():
     """Verify get_daemons_stats_() function works as expected"""
-    result = stats.get_daemons_stats_('filename')
-    mock_open.assert_called_once_with('filename', mode='r')
-    assert result[0] == {'hour': 5.0}
+    with patch("builtins.open", mock_open(read_data='# Queue size\nqueue_size=\'0\'')):
+        result = stats.get_daemons_stats_('')
+        assert result[0] == {'queue_size': 0}
 
 
-@patch('wazuh.core.stats.configparser.RawConfigParser.read_file')
-def test_get_daemons_stats_ko(mock_readfp):
+def test_get_daemons_stats_ko():
     """Test get_daemons_stats_() function exceptions works"""
     with patch('wazuh.core.stats.open', side_effect=IOError):
         with pytest.raises(WazuhException, match=".* 1308 .*"):
             stats.get_daemons_stats_('filename')
+
     with patch('wazuh.core.stats.open'):
-        with patch('wazuh.core.stats.configparser.RawConfigParser.items', return_value={'hour': 5}):
-            response = stats.get_daemons_stats_('filename')
-            assert isinstance(response, WazuhException), 'The result is not WazuhResult type'
-            assert response.code == 1104, 'Response code is not the same'
-
-
-@pytest.mark.parametrize('component', [
-    'logcollector', 'test'
-])
-@patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.core.agent.get_agents_info', return_value=['001'])
-def test_get_agents_component_stats_json_(mock_agents_info, mock_getstats, component):
-    """Verify get_agents_component_stats_() function works as expected"""
-    stats.get_agents_component_stats_json_(agent_list=['001'], component=component)
-    mock_getstats.assert_called_once_with(component=component)
-
-
-@patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.core.agent.get_agents_info', return_value=['001'])
-def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
-    """Test get_agents_component_stats_() function exceptions works"""
-    failed = stats.get_agents_component_stats_json_(agent_list=['002', '005'], component='logcollector')[0]
-    for item in failed:
-        assert 1701 == item[1]._code
+        response = stats.get_daemons_stats_('filename')
+        assert isinstance(response, WazuhException), 'The result is not WazuhResult type'
+        assert response.code == 1104, 'Response code is not the same'
 
 
 @pytest.mark.parametrize("agent_id, daemon, response", [

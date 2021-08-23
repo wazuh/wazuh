@@ -60,20 +60,23 @@ def test_get_daemons_stats(mock_daemons_stats_):
     'logcollector', 'test'
 ])
 @patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.core.agent.get_agents_info', return_value=['001'])
+@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
 def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, component):
-    """Makes sure get_agents_component_stats_json() fit with the expected."""
+    """Test `get_agents_component_stats_json` function from agent module.
+    Parameters
+    ----------
+    daemon : string
+        Name of the daemon to get stats from.
+    """
     response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
+    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
+    mock_getstats.assert_called_once_with(component=component)
 
 
-@patch('wazuh.stats.get_agents_component_stats_json_', return_value=[
-    [('001', 1701)],
-    ''
-    ])
-@patch('wazuh.core.results.AffectedItemsWazuhResult.add_failed_item')
-def test_get_agents_components_stats_json_ko(mock_add_failed_item, mock_get_agents_component_stats_json_):
-    """Makes sure get_agents_component_stats_json() fit with the expected."""
-    stats.get_agents_component_stats_json(agent_list=['001'], component='')
-    mock_add_failed_item.assert_called_with(id_='001', error=1701)
+@patch('wazuh.core.agent.Agent.get_stats')
+@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
+def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
+    """Test `get_agents_component_stats_json` function from agent module."""
+    response = stats.get_agents_component_stats_json(agent_list=['003'], component='logcollector')
+    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
+    assert response.render()['data']['failed_items'][0]['error']['code'] == 1701, 'Expected error code was not returned'
