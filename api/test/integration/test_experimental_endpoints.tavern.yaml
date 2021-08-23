@@ -77,25 +77,26 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
-            - '000'
-            - '001'
-            - '002'
-            - '003'
-            - '004'
-            - '005'
-            - '006'
-            - '007'
-            - '008'
-            - '009'
-            - '010'
-            - '011'
-            - '012'
-          failed_items: []
-          total_affected_items: 13
-          total_failed_items: 0
+              - '009'
+              - '010'
+          failed_items:
+            - error:
+                code: 1760
+              id:
+                - '000'
+                - '001'
+                - '002'
+                - '003'
+                - '004'
+                - '005'
+                - '006'
+                - '007'
+                - '008'
+          total_affected_items: 2
+          total_failed_items: 11
 
   - name: Request
     request:
@@ -109,16 +110,19 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
-          affected_items:
-            - '001'
-            - '003'
-            - '005'
-            - '007'
-          failed_items: []
-          total_affected_items: 4
-          total_failed_items: 0
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1760
+              id:
+                - '001'
+                - '003'
+                - '005'
+                - '007'
+          total_affected_items: 0
+          total_failed_items: 4
 
 ---
 test_name: GET /experimental/ciscat/results
