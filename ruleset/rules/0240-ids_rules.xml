@@ -87,7 +87,7 @@
     <ignore>srcip, id</ignore>
     <description>Multiple IDS events from same source ip </description>
     <description>(ignoring now this srcip and id).</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="20162" level="11" frequency="5" timeframe="3800">
@@ -96,6 +96,6 @@
     <ignore>id</ignore>
     <description>Multiple IDS alerts for same id </description>
     <description>(ignoring now this id).</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 </group>

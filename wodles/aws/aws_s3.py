@@ -22,6 +22,7 @@
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
+#   15 - Invalid VPC endpoint URL
 
 import argparse
 import signal
@@ -79,7 +80,8 @@ class WazuhIntegration:
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
-                 service_name=None, region=None, bucket=None, discard_field=None, discard_regex=None):
+                 service_name=None, region=None, bucket=None, discard_field=None,
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None):
         # SQL queries
         self.sql_find_table_names = """
                             SELECT
@@ -152,7 +154,9 @@ class WazuhIntegration:
                                       iam_role_arn=iam_role_arn,
                                       service_name=service_name,
                                       bucket=bucket,
-                                      region=region
+                                      region=region,
+                                      sts_endpoint=sts_endpoint,
+                                      service_endpoint=service_endpoint
                                       )
 
         # db_name is an instance variable of subclass
@@ -215,7 +219,8 @@ class WazuhIntegration:
             elif 'trail_progress' in table:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
-    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None):
+    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None,
+                   sts_endpoint=None, service_endpoint=None):
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
@@ -226,7 +231,7 @@ class WazuhIntegration:
             conn_args['profile_name'] = profile
 
         # set region name
-        if region and service_name == 'inspector':
+        if region and service_name in ('inspector', 'cloudwatchlogs'):
             conn_args['region_name'] = region
         else:
             # it is necessary to set region_name for GovCloud regions
@@ -234,11 +239,11 @@ class WazuhIntegration:
                 else None
 
         boto_session = boto3.Session(**conn_args)
-
+        service_name = "logs" if service_name == "cloudwatchlogs" else service_name
         # If using a role, create session using that
         try:
             if iam_role_arn:
-                sts_client = boto_session.client('sts')
+                sts_client = boto_session.client('sts', endpoint_url=sts_endpoint)
                 sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
                                                              RoleSessionName='WazuhLogParsing'
                                                              )
@@ -247,12 +252,9 @@ class WazuhIntegration:
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
                                             region_name=conn_args.get('region_name')
                                             )
-                client = sts_session.client(service_name='logs' if service_name == 'cloudwatchlogs' else service_name)
-            elif service_name == 'cloudwatchlogs':
-                client = boto3.client('logs', region_name=region,
-                                      aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+                client = sts_session.client(service_name=service_name, endpoint_url=service_endpoint)
             else:
-                client = boto_session.client(service_name=service_name)
+                client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint)
         except botocore.exceptions.ClientError as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
@@ -347,7 +349,7 @@ class AWSBucket(WazuhIntegration):
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  prefix, suffix, delete_file, aws_organization_id, region,
-                 discard_field, discard_regex):
+                 discard_field, discard_regex, sts_endpoint, service_endpoint):
         """
         AWS Bucket constructor.
 
@@ -471,7 +473,9 @@ class AWSBucket(WazuhIntegration):
                                   service_name='s3',
                                   region=region,
                                   discard_field=discard_field,
-                                  discard_regex=discard_regex
+                                  discard_regex=discard_regex,
+                                  sts_endpoint=sts_endpoint,
+                                  service_endpoint=service_endpoint
                                   )
         self.retain_db_records = 500
         self.reparse = reparse
@@ -863,6 +867,10 @@ class AWSBucket(WazuhIntegration):
         except botocore.exceptions.ClientError:
             print("ERROR: Invalid credentials to access S3 Bucket")
             exit(3)
+        except botocore.exceptions.EndpointConnectionError as e:
+            print(f"ERROR: {str(e)}")
+            exit(15)
+
 
 
 class AWSLogsBucket(AWSBucket):
@@ -2323,7 +2331,7 @@ class AWSService(WazuhIntegration):
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name, only_logs_after, region, aws_log_groups=None, remove_log_streams=None,
-                 discard_field=None, discard_regex=None):
+                 discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None):
         # DB name
         self.db_name = 'aws_services'
         # table name
@@ -2332,7 +2340,7 @@ class AWSService(WazuhIntegration):
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                   aws_profile=aws_profile, iam_role_arn=iam_role_arn,
                                   service_name=service_name, region=region, discard_field=discard_field,
-                                  discard_regex=discard_regex)
+                                  discard_regex=discard_regex, sts_endpoint=sts_endpoint, service_endpoint=service_endpoint)
 
         # get sts client (necessary for getting account ID)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
@@ -2428,7 +2436,8 @@ class AWSInspector(AWSService):
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups=None,
-                 remove_log_streams=None, discard_field=None, discard_regex=None):
+                 remove_log_streams=None, discard_field=None, discard_regex=None,
+                 sts_endpoint=None, service_endpoint=None):
 
         self.service_name = 'inspector'
         self.inspector_region = region
@@ -2437,7 +2446,7 @@ class AWSInspector(AWSService):
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
                             remove_log_streams=remove_log_streams, discard_field=discard_field,
-                            discard_regex=discard_regex)
+                            discard_regex=discard_regex, sts_endpoint=sts_endpoint, service_endpoint=service_endpoint)
 
         # max DB records for region
         self.retain_db_records = 5
@@ -2549,7 +2558,7 @@ class AWSCloudWatchLogs(AWSService):
 
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups,
-                 remove_log_streams, discard_field=None, discard_regex=None):
+                 remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None):
 
         self.sql_cloudwatch_create_table = """
                                 CREATE TABLE
@@ -2921,6 +2930,8 @@ class AWSCloudWatchLogs(AWSService):
 
             if result_list == list():
                 debug('No log streams were found for log group "{}"'.format(log_group), 1)
+        except botocore.exceptions.EndpointConnectionError as e:
+            print(f'ERROR: {str(e)}')
         except Exception:
             debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(log_group), 0)
 
@@ -3070,6 +3081,10 @@ def get_script_arguments():
                              'an event should be skipped.', )
     parser.add_argument('-dr', '--discard-regex', type=str, dest='discard_regex', default=None,
                         help='REGEX value to be applied to determine whether an event should be skipped.', )
+    parser.add_argument('-st', '--sts_endpoint', type=str, dest='sts_endpoint', default=None,
+                        help='URL for the VPC endpoint to use to obtain the STS token.')
+    parser.add_argument('-se', '--service_endpoint', type=str, dest='service_endpoint', default=None,
+                        help='URL for the VPC endpoint to use to obtain the logs.')
 
     return parser.parse_args()
 
@@ -3127,7 +3142,9 @@ def main(argv):
                                  aws_organization_id=options.aws_organization_id,
                                  region=options.regions[0] if options.regions else None,
                                  discard_field=options.discard_field,
-                                 discard_regex=options.discard_regex
+                                 discard_regex=options.discard_regex,
+                                 sts_endpoint=options.sts_endpoint,
+                                 service_endpoint=options.service_endpoint
                                  )
             # check if bucket is empty or credentials are wrong
             bucket.check_bucket()
@@ -3158,7 +3175,9 @@ def main(argv):
                                        aws_log_groups=options.aws_log_groups,
                                        remove_log_streams=options.deleteLogStreams,
                                        discard_field=options.discard_field,
-                                       discard_regex=options.discard_regex
+                                       discard_regex=options.discard_regex,
+                                       sts_endpoint=options.sts_endpoint,
+                                       service_endpoint=options.service_endpoint
                                        )
                 service.get_alerts()
 

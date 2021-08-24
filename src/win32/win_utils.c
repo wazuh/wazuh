@@ -344,8 +344,9 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         if (send_msg(tmpstr, -1) >= 0) {
             retval = 0;
         }
-    } else if (buffer_append(tmpstr) == 0) {
-            retval = 0;
+    } else {
+        buffer_append(tmpstr);
+        retval = 0;
     }
 
     if (!ReleaseMutex(hMutex)) {

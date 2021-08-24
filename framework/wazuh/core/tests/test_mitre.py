@@ -65,6 +65,7 @@ def test_get_mitre_items(mock_wdb, mitre_wdb_query_class):
     db_query_to_compare = mitre_wdb_query_class()
 
     assert isinstance(info['allowed_fields'], set) and info['allowed_fields'] == set(
-        db_query_to_compare.fields.keys()).union(db_query_to_compare.relation_fields)
+        db_query_to_compare.fields.keys()).union(
+        db_query_to_compare.relation_fields).union(db_query_to_compare.extra_fields)
     assert isinstance(info['min_select_fields'], set) and info[
         'min_select_fields'] == db_query_to_compare.min_select_fields
