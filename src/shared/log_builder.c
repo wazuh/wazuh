@@ -250,7 +250,7 @@ int log_builder_update_host_ip(log_builder_t * builder) {
         mdebug1("Cannot update host IP.");
     }
 
-#elif defined __linux__ || defined __MACH__ || defined sun
+#elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
     const char * REQUEST = "host_ip";
     int sock = control_check_connection();
 

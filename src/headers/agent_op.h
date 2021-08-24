@@ -106,7 +106,7 @@ cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 char * get_agent_id_from_name(const char *agent_name);
 
 /* Check control module availability */
-#if defined (__linux__) || defined (__MACH__) || defined (sun)
+#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
 int control_check_connection();
 #endif
 
