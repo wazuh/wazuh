@@ -135,7 +135,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                     auto sa { reinterpret_cast<sockaddr *>(msg + 1) };
                     auto sdl { reinterpret_cast<sockaddr_dl *>(m_interfaceAddress->ifa_addr) };
 
-                    if (msg &&
+                    if (sdl &&
                         (msg->rtm_addrs & RTA_GATEWAY) == RTA_GATEWAY &&
                         msg->rtm_index == sdl->sdl_index)
                     {
@@ -171,7 +171,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     uint32_t mtu() const override
     {
-        return m_interfaceAddress ? reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu : 0;
+        return m_interfaceAddress->ifa_data ? reinterpret_cast<if_data *>(m_interfaceAddress->ifa_data)->ifi_mtu : 0;
     }
 
     LinkStats stats() const override
