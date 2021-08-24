@@ -5,8 +5,7 @@
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
 
-chmod +x ./var/upgrade/install.sh
-./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
+installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 
 # Check installation result
 RESULT=$?
