@@ -161,6 +161,20 @@ stages:
             reverse: True
       status_code: 200
 
+  - name: Sort mitigations by external_id
+    request:
+      verify: False
+      <<: *general_mitigations_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
+            reverse: True
+      status_code: 200
+
   - name: Show mitigations using valid select
     request:
       verify: False
@@ -303,7 +317,7 @@ stages:
       verify: False
       <<: *general_mitigations_request
       params:
-        q: "created_time<2020-10-19 14:57:59;created_time>2020-10-19 14:57:57"
+        q: "created_time=2020-10-19T14:57:58.771000Z"
     response:
       status_code: 200
       json:
@@ -311,7 +325,25 @@ stages:
         data:
           affected_items:
             - <<: *mitigations_response
-              created_time: "2020-10-19 14:57:58.771000"
+              created_time: "2020-10-19T14:57:58.771000Z"
+          failed_items: [ ]
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Filter mitigations using q parameter (complex query)
+    request:
+      verify: False
+      <<: *general_mitigations_request
+      params:
+        q: "created_time<2020-10-19T14:57:59;created_time>2020-10-18"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *mitigations_response
+              created_time: "2020-10-19T14:57:58.771000Z"
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -737,6 +769,20 @@ stages:
             reverse: True
       status_code: 200
 
+  - name: Sort tactics by external_id
+    request:
+      verify: False
+      <<: *general_tactics_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
+            reverse: True
+      status_code: 200
+
   - name: Try to show tactics using valid select
     request:
       verify: False
@@ -887,7 +933,7 @@ stages:
         data:
           affected_items:
             - <<: *tactics_response
-              created_time: "2019-03-14 18:44:44.639000"
+              created_time: "2019-03-14T18:44:44.639000Z"
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -1031,6 +1077,20 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "mitigations"
+            reverse: True
+      status_code: 200
+
+  - name: Sort techniques by external_id
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
             reverse: True
       status_code: 200
 
@@ -1184,7 +1244,7 @@ stages:
         data:
           affected_items:
             - <<: *techniques_response
-              created_time: "2020-02-11 18:42:07.281000"
+              created_time: "2020-02-11T18:42:07.281000Z"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1319,6 +1379,20 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "software"
+            reverse: True
+      status_code: 200
+
+  - name: Sort groups by external_id
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
             reverse: True
       status_code: 200
 
@@ -1472,7 +1546,7 @@ stages:
         data:
           affected_items:
             - <<: *groups_response
-              created_time: "2019-01-29 21:27:24.793000"
+              created_time: "2019-01-29T21:27:24.793000Z"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1607,6 +1681,20 @@ stages:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "groups"
+            reverse: True
+      status_code: 200
+
+  - name: Sort softwares by external_id
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        sort: -external_id
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "external_id"
             reverse: True
       status_code: 200
 
@@ -1760,7 +1848,7 @@ stages:
         data:
           affected_items:
             - <<: *software_response
-              created_time: "2017-05-31 21:32:40.801000"
+              created_time: "2017-05-31T21:32:40.801000Z"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0

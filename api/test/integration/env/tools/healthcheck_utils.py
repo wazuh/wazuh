@@ -1,19 +1,53 @@
+import json
 import os
 import re
 import socket
 import time
-from datetime import datetime
+
+# Configuration
+protocol = 'https'
+host = 'localhost'
+port = '55000'
+user = 'testing'
+password = 'wazuh'
+
+# Variables
+base_url = "{}://{}:{}".format(protocol, host, port)
+login_url = "{}/security/user/authenticate".format(base_url)
 
 
-def get_timestamp(log):
-    # Get timestamp from log.
-    # Log example:
-    # 2021/02/15 12:37:04 wazuh-agentd: INFO: Agent is restarting due to shared configuration changes.
-    timestamp = re.search(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d', log).group(0)
+def get_login_header(user, password):
+    from base64 import b64encode
+    basic_auth = f"{user}:{password}".encode()
+    return {'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 
-    t = datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
 
-    return t
+def get_response(url, headers):
+    """Get API result for GET request.
+
+    Parameters
+    ----------
+    url : str
+        URL of the API (+ endpoint and parameters if needed).
+    headers : dict
+        Headers required by the API.
+
+    Returns
+    -------
+    Dict
+        API response for the request.
+    """
+    import urllib3
+    # Disable insecure https warnings (for self-signed SSL certificates)
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    from requests import get
+    request_result = get(url, headers=headers, verify=False)
+
+    if request_result.status_code == 200:
+        return json.loads(request_result.content.decode())
+
+
+OSSEC_LOG_PATH = "/var/ossec/logs/ossec.log"
 
 
 def get_agent_health_base():
@@ -23,30 +57,26 @@ def get_agent_health_base():
     # depending on the agent version.
 
     shared_conf_restart = os.system(
-        "grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
-        "/var/ossec/logs/ossec.log")
-    agent_connection = os.system(
-        "grep -q 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/ossec.log")
+        f"grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' {OSSEC_LOG_PATH}")
+    agent_connection = os.system(f"grep -q 'agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}")
 
     if shared_conf_restart == 0 and agent_connection == 0:
         # No -q option as we need the output
-        output_agent_restart = os.popen(
-            "grep 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
-            "/var/ossec/logs/ossec.log").read().split("\n")
-        output_agent_connection = os.popen(
-            "grep 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/ossec.log").read().split("\n")
+        output = os.popen(
+            f"grep -a 'agentd: INFO: Agent is restarting due to shared configuration changes."
+            f"\|agentd: INFO: (4102): Connected to the server' {OSSEC_LOG_PATH}").read().split("\n")[:-1]
 
-        t1 = get_timestamp(output_agent_restart[-2])
-        t2 = get_timestamp(output_agent_connection[-2])
-
-        if t2 > t1:
-            # Wait to avoid the worst case:
-            # +10 seconds for the agent to report the worker
-            # +10 seconds for the worker to report master
-            # After this time, the agent appears as active in the master node
-            time.sleep(20)
-            return 0
-
+        agent_restarted = False
+        for log in output:
+            if not agent_restarted and re.match(r'.*Agent is restarting due to shared configuration changes.*', log):
+                agent_restarted = True
+            if agent_restarted and re.match(r'.*Connected to the server.*', log):
+                # Wait to avoid the worst case:
+                # +10 seconds for the agent to report the worker
+                # +10 seconds for the worker to report master
+                # After this time, the agent appears as active in the master node
+                time.sleep(20)
+                return 0
     return 1
 
 
@@ -62,14 +92,14 @@ def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
     check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check2 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check2 = get_response(login_url, get_login_header(user, password)) is None
     return check0 or check1 or check2
 
 
 def get_worker_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check1 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check1 = get_response(login_url, get_login_header(user, password)) is None
     return check0 or check1
 
 

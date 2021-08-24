@@ -442,18 +442,18 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
         return NULL;
     }
 
+    res = curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
+
 #ifndef WIN32
     char const *cert = find_cert_list();
 
     // Enable SSL check if url is HTTPS
     if (!strncmp(url, "https", 5)) {
         if (NULL != cert) {
-            curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+            res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
         }
     }
 #endif
-
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
 
     headers_list = curl_slist_append(headers_list, "User-Agent: curl/7.58.0");
 
@@ -488,15 +488,24 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     req_header.max_response_size = max_size;
     req_header.max_size_error = false;
 
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers_list);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
-    curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
+    res += curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    res += curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
+    res += curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers_list);
+    res += curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
+    res += curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
+    res += curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
 
     if (payload) {
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
+        res += curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
+    }
+
+    if (res != CURLE_OK) {
+        mdebug1("Parameter setup error at CURL");
+        curl_slist_free_all(headers_list);
+        curl_easy_cleanup(curl);
+        os_free(req.memory);
+        os_free(req_header.memory);
+        return NULL;
     }
 
     res = curl_easy_perform(curl);

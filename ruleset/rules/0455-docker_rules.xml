@@ -68,7 +68,7 @@
         <if_sid>86003</if_sid>
         <match>unauthorized</match>
         <description>Docker: Error - unauthorized action</description>
-        <group>docker-error,gdpr_IV_35.7.d,</group>
+        <group>docker-error,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -84,7 +84,7 @@
         <if_sid>86003</if_sid>
         <match>denied: User</match>
         <description>Docker: Error - denied action</description>
-        <group>docker-error,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>docker-error,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
 </group>

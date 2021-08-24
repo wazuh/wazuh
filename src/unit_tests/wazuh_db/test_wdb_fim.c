@@ -607,7 +607,7 @@ static void test_wdb_fim_insert_entry2_registry_key_succesful(void **state) {
     expect_sqlite3_bind_int64_call(3, 10, 0);
     expect_sqlite3_bind_text_call(18, "[x32]", 1);
     expect_sqlite3_bind_text_call(19, NULL, 1);
-    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key:", 1);
+    expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key", 1);
 
     expect_sqlite3_step_call(SQLITE_DONE);
 

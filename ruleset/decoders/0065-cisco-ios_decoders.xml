@@ -5,7 +5,9 @@
   -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
+<!--
 Background on Cisco syslog format:
 
 1111: ROUTERHOSTNAME: 000012: 00:11:22: %SYS-5-CONFIG_I: text...
@@ -267,4 +269,23 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <parent>cisco-ios</parent>
   <regex>%(\w+)-(\d)-(\w+):</regex>
   <order>cisco.facility, cisco.severity, cisco.mnemonic</order>
+</decoder>
+
+<!-- Cisco IOS
+  - Extracts the ID of cisco ios messages IF NOT IDS/ACL log.
+
+- Modified according CISCO documentation: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/guide/SysMsgLogging.html
+- Log line: Jul 29 20:08:37 UTC: %FTD-session-6-305012: Teardown dynamic TCP translation from INTF-INSIDE-1:10.40.1.239/60914 to INTF-INET-SWKO:209.137.221.2/60914 duration 0:00:00
+  -->
+
+<decoder name="cisco-ios-default">
+  <parent>cisco-ios</parent>
+  <regex>%(\w+)-session-(\d)-(\w+): </regex>
+  <order>cisco.facility,cisco.severity,cisco.mnemonic</order>
+</decoder>
+
+<decoder name="cisco-ios-default">
+  <parent>cisco-ios</parent>
+  <regex>%\w+-session-\d-\w+: (\.*) duration (\d+:\d+:\d+)</regex>
+  <order>message,duration</order>
 </decoder>
