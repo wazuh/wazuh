@@ -505,7 +505,7 @@ void * w_socket_launcher(void * args) {
 
         // Pick stderr
 
-        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
 
             // Remove newline
 

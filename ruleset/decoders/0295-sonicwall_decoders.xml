@@ -39,14 +39,32 @@
 
 <decoder name="sonicwall-fields">
   <parent>sonicwall</parent>
-  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+):(\d+):\S* dst=(\d+.\d+.\d+.\d+):(\d+):\S*</regex>
-  <order>srcip, srcport ,dstip, dstport, protocol</order>
+  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+):(\d+):\S*</regex>
+  <order>srcip, srcport</order>
 </decoder>
 
 <decoder name="sonicwall-fields">
   <parent>sonicwall</parent>
-  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+)\S* dst=(\d+.\d+.\d+.\d+)\S*</regex>
-  <order>srcip, dstip, protocol</order>
+  <regex offset="after_regex">dst=(\d+.\d+.\d+.\d+):(\d+):\S*</regex>
+  <order>dstip, dstport</order>
+</decoder>
+
+<decoder name="sonicwall-fields">
+  <parent>sonicwall</parent>
+  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+)::|src=(\d+.\d+.\d+.\d+)\s</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="sonicwall-fields">
+  <parent>sonicwall</parent>
+  <regex offset="after_regex">dst=(\d+.\d+.\d+.\d+)::|dst=(\d+.\d+.\d+.\d+)\s</regex>
+  <order>dstip</order>
+</decoder>
+
+<decoder name="sonicwall-fields">
+  <parent>sonicwall</parent>
+  <regex offset="after_regex">proto=(\S+)</regex>
+  <order>protocol</order>
 </decoder>
 
 

@@ -227,7 +227,7 @@ static int check_diff_file(const char *host, const char *script)
         return 0;
     }
 
-    while (zread = fread(buffer, 1, sizeof(buffer), wfd->file), zread) {
+    while (zread = fread(buffer, 1, sizeof(buffer), wfd->file_out), zread) {
         if (fwrite(buffer, 1, zread, fp) != zread) {
             merror("Unable to write diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
             break;
@@ -370,7 +370,7 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         free_strarray(argv);
 
         if (wfd) {
-            while (fgets(buf, OS_SIZE_2048, wfd->file) != NULL) {
+            while (fgets(buf, OS_SIZE_2048, wfd->file_out) != NULL) {
                 /* Remove newlines and carriage returns */
                 tmp_str = strchr(buf, '\r');
                 if (tmp_str) {

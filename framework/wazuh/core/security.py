@@ -9,7 +9,7 @@ import yaml
 
 import api.middlewares as middlewares
 from api import __path__ as api_path
-from api.authentication import change_secret
+from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.rbac.orm import RolesManager, TokenManager
@@ -102,8 +102,28 @@ def invalid_roles_tokens(roles: list = None):
 
 def revoke_tokens():
     """Revoke all tokens in current node."""
-    change_secret()
+    change_keypair()
     with TokenManager() as tm:
         tm.delete_all_rules()
 
     return {'result': 'True'}
+
+
+def sanitize_rbac_policy(policy):
+    # Sanitize actions
+    if 'actions' in policy:
+        policy['actions'] = [action for action in map(str.lower, policy['actions'])]
+
+    # Sanitize resources
+    if 'resources' in policy:
+        for i, resource in enumerate(policy['resources']):
+            sanitized_resources = list()
+            for nested_resource in resource.split('&'):
+                split_resource = nested_resource.split(':')
+                sanitized_resources.append(':'.join([r.lower() for r in split_resource[:-1]] + split_resource[-1:]))
+
+            policy['resources'][i] = '&'.join(sanitized_resources)
+
+    # Sanitize effect
+    if 'effect' in policy:
+        policy['effect'] = policy['effect'].lower()

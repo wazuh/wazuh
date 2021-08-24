@@ -32,59 +32,26 @@
  * }
  *
  * @param alert Alert to extract info
- * @return  json object
+ * @return JSON object
  * */
-static cJSON *format_output(cJSON *alert);
+static cJSON *format_output(const cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
-    char input[BUFFERSIZE];
+    char system_command[OS_MAXSTR];
     char *site_url;
-    char *action;
-    cJSON *alert_json = NULL;
+    char *output_str;
+    int action = OS_INVALID;
     cJSON *input_json = NULL;
-    char *home_path = w_homedir(argv[0]);
+    cJSON *output_json = NULL;
 
-    /* Trim absolute path to get Wazuh's installation directory */
-    home_path = w_strtok_r_str_delim("/active-response", &home_path);
-
-    /* Change working directory */
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-    os_free(home_path);
-
-    write_debug_file(argv[0], "Starting");
-
-    memset(input, '\0', BUFFERSIZE);
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file(argv[0], "Cannot read input from stdin");
-        return OS_INVALID;
-    }
-
-    write_debug_file(argv[0], input);
-
-    input_json = get_json_from_input(input);
-    if (!input_json) {
-        write_debug_file(argv[0], "Invalid input format");
-        return OS_INVALID;
-    }
-
-    action = get_command(input_json);
-    if (!action) {
-        write_debug_file(argv[0], "Cannot read 'command' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file(argv[0], "Invalid value of 'command'");
-        cJSON_Delete(input_json);
+    action = setup_and_check_message(argv, &input_json);
+    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
     }
 
     // Get alert
-    alert_json = get_alert_from_json(input_json);
+    const cJSON *alert_json = get_alert_from_json(input_json);
     if (!alert_json) {
         write_debug_file(argv[0], "Cannot read 'alert' from data");
         cJSON_Delete(input_json);
@@ -99,41 +66,35 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (strcmp("add", action) == 0) {
-        char *output_str;
-        cJSON *output_json = NULL;
-        char system_command[LOGSIZE];
+    output_json = format_output(alert_json);
+    output_str = cJSON_PrintUnformatted(output_json);
 
-        output_json = format_output(alert_json);
-        output_str = cJSON_PrintUnformatted(output_json);
+    memset(system_command, '\0', OS_MAXSTR);
+    snprintf(system_command, OS_MAXSTR -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+    if (system(system_command) != 0) {
+        write_debug_file(argv[0], "Unable to run curl");
 
-        memset(system_command, '\0', LOGSIZE);
-        snprintf(system_command, LOGSIZE -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+        // Try with wget
+        char *new_output_str = wstr_replace(output_str, "\"", "'");
+        memset(system_command, '\0', OS_MAXSTR);
+        snprintf(system_command, OS_MAXSTR -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
         if (system(system_command) != 0) {
-            write_debug_file(argv[0], "Unable to run curl");
-
-            // Try with wget
-            char *new_output_str = wstr_replace(output_str, "\"", "'");
-            memset(system_command, '\0', LOGSIZE);
-            snprintf(system_command, LOGSIZE -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
-            if (system(system_command) != 0) {
-                write_debug_file(argv[0], "Unable to run wget");
-            }
-            os_free(new_output_str);
+            write_debug_file(argv[0], "Unable to run wget");
         }
-        os_free(output_str);
-        cJSON_Delete(output_json);
+        os_free(new_output_str);
     }
 
-    cJSON_Delete(input_json);
-    os_free(site_url);
-
     write_debug_file(argv[0], "Ended");
+
+    cJSON_Delete(output_json);
+    cJSON_Delete(input_json);
+    os_free(output_str);
+    os_free(site_url);
 
     return OS_SUCCESS;
 }
 
-static cJSON *format_output(cJSON *alert) {
+static cJSON *format_output(const cJSON *alert) {
     cJSON *rule_json = NULL;
     cJSON *agent_json = NULL;
     cJSON *agentless_json = NULL;
@@ -148,7 +109,7 @@ static cJSON *format_output(cJSON *alert) {
     cJSON *item_agentless =NULL;
     cJSON *item_location =NULL;
     cJSON *item_rule =NULL;
-    char temp_line[LOGSIZE];
+    char temp_line[OS_MAXSTR];
     int level = -1;
 
     root_out = cJSON_CreateObject();
@@ -170,8 +131,8 @@ static cJSON *format_output(cJSON *alert) {
         // Detect Agent name
         agent_name_json = cJSON_GetObjectItem(agent_json, "name");
 
-        memset(temp_line, '\0', LOGSIZE);
-        snprintf(temp_line, LOGSIZE -1, "(%s) - %s",
+        memset(temp_line, '\0', OS_MAXSTR);
+        snprintf(temp_line, OS_MAXSTR -1, "(%s) - %s",
                                         agent_id_json != NULL ? agent_id_json->valuestring : "N/A",
                                         agent_name_json != NULL ? agent_name_json->valuestring : "N/A"
                                         );
@@ -225,8 +186,8 @@ static cJSON *format_output(cJSON *alert) {
         // Detect Rule Description
         rule_description_json = cJSON_GetObjectItem(rule_json, "description");
 
-        memset(temp_line, '\0', LOGSIZE);
-        snprintf(temp_line, LOGSIZE -1, "%s (level %s)",
+        memset(temp_line, '\0', OS_MAXSTR);
+        snprintf(temp_line, OS_MAXSTR -1, "%s (level %s)",
                                         rule_id_json != NULL ? rule_id_json->valuestring : "N/A",
                                         str_level
                                         );

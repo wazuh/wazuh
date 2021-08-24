@@ -68,11 +68,12 @@ test_result = [
      ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_data_path, 'client.keys'))
+@patch('wazuh.syscheck.WazuhDBQueryAgents.__exit__')
 @patch('wazuh.syscheck.WazuhDBQueryAgents.__init__', return_value=None)
 @patch('wazuh.syscheck.WazuhQueue._connect')
 @patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
 @patch('wazuh.syscheck.WazuhQueue.close')
-def test_syscheck_run(close_mock, send_mock, connect_mock, agent_mock,
+def test_syscheck_run(close_mock, send_mock, connect_mock, agent_init_mock, agent_exit_mock,
                       agent_list, failed_items, status_list, expected_result):
     """Test function `run` from syscheck module.
 

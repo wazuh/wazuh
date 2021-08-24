@@ -46,9 +46,9 @@ def get_task_status(filters: dict = None, select: list = None, search: dict = No
                                       some_msg='Some status were not returned',
                                       none_msg='No status was returned')
 
-    db_query = WazuhDBQueryTask(filters=filters, offset=offset, limit=limit, query=q, sort=sort, search=search,
-                                select=select)
-    data = db_query.run()
+    with WazuhDBQueryTask(filters=filters, offset=offset, limit=limit, query=q, sort=sort, search=search,
+                          select=select) as db_query:
+        data = db_query.run()
 
     # Fill with zeros the agent_id
     for element in data['items']:

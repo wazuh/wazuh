@@ -1,3 +1,10 @@
+<!--
+  -  MacOS sshd rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
 <group name="mac-os-sshd,">
 
 <rule id="64250" level="0">

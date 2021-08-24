@@ -27,7 +27,6 @@ class WazuhDBConnection:
         """
         self.socket_path = common.wdb_socket_path
         self.request_slice = request_slice
-        self.slice_changed = False
         self.max_size = max_size
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
@@ -81,7 +80,7 @@ class WazuhDBConnection:
             if not check:
                 raise WazuhError(2004, error_text)
 
-    def _send(self, msg, raw=False, update_slice=False):
+    def _send(self, msg, raw=False):
         """
         Send a message to the wdb socket
         """
@@ -98,15 +97,7 @@ class WazuhDBConnection:
 
         # Max size socket buffer is 64KB
         if data_size >= MAX_SOCKET_BUFFER_SIZE:
-            # self.slice_changed is used so 'request_slice' is not updated multiple times due to
-            # recursion in send_request_to_wdb()
-            if update_slice and self.request_slice > 1 and not self.slice_changed:
-                self.request_slice //= 2
-                self.slice_changed = True
             raise WazuhInternalError(2009)
-        elif update_slice and (data_size*2) < MAX_SOCKET_BUFFER_SIZE and not self.slice_changed:
-            self.request_slice *= 2
-            self.slice_changed = True
 
         if data[0] == "err":
             raise WazuhError(2003, data[1])
@@ -230,7 +221,12 @@ class WazuhDBConnection:
         def send_request_to_wdb(query_lower, step, off, response):
             try:
                 request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset', 'offset {}'.format(off))
-                response.extend(self._send(request, update_slice=True))
+                request_response = self._send(request, raw=True)[1]
+                response.extend(json.loads(request_response, object_hook=WazuhDBConnection.json_decoder))
+                if len(request_response)*2 < MAX_SOCKET_BUFFER_SIZE:
+                    return step*2
+                else:
+                    return step
             except WazuhInternalError:
                 # if the step is already 1, it can't be divided
                 if step == 1:
@@ -238,7 +234,7 @@ class WazuhDBConnection:
 
                 send_request_to_wdb(query_lower, step // 2, off, response)
                 # Add step // 2 remaining when the step is odd to avoid losing information
-                send_request_to_wdb(query_lower, step // 2 + step % 2, step // 2 + off, response)
+                return send_request_to_wdb(query_lower, step // 2 + step % 2, step // 2 + off, response)
 
         query_lower = self.__query_lower(query)
 
@@ -305,9 +301,8 @@ class WazuhDBConnection:
                 while off < limit + offset:
                     step = limit if self.request_slice > limit > 0 else self.request_slice
                     # Min() used to avoid fetching more items than the maximum specified in `limit`.
-                    send_request_to_wdb(query_lower, min(limit + offset - off, step), off, response)
+                    self.request_slice = send_request_to_wdb(query_lower, min(limit + offset - off, step), off, response)
                     off += step
-                    self.slice_changed = False
             except ValueError as e:
                 raise WazuhError(2006, str(e))
             except (WazuhError, WazuhInternalError) as e:
