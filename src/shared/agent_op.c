@@ -971,7 +971,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 }
 
 /* Connect to the control socket if available */
-#if defined (__linux__) || defined (__MACH__) || defined(sun)
+#if defined (__linux__) || defined (__MACH__) || defined(sun) || defined(FreeBSD) || defined(OpenBSD)
 int control_check_connection() {
     int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
 

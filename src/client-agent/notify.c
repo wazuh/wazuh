@@ -43,7 +43,7 @@ char *getsharedfiles()
 char *get_agent_ip()
 {
     static char agent_ip[IPSIZE + 1] = { '\0' };
-#if defined (__linux__) || defined (__MACH__) || defined (sun)
+#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
     static time_t last_update = 0;
     time_t now = time(NULL);
     int sock;
