@@ -181,6 +181,8 @@ ifneq ($(uname_R),5.10)
 		AR_LDFLAGS+=-z relax=secadj
 else
 		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
+		OSSEC_LDFLAGS+=-static-libstdc++
+		OSSEC_LDFLAGS+=-static-libgcc
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
