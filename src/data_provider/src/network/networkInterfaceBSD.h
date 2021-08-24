@@ -24,9 +24,9 @@ class FactoryBSDNetwork
 template <unsigned short osNetworkType>
 class BSDNetworkImpl final : public IOSNetwork
 {
-    const std::shared_ptr<INetworkInterfaceWrapper>& m_interfaceAddress;
+    const std::shared_ptr<INetworkInterfaceWrapper> m_interfaceAddress;
 public:
-    explicit BSDNetworkImpl(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress) 
+    explicit BSDNetworkImpl(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceAddress)
     : m_interfaceAddress(interfaceAddress)
     { }
     void buildNetworkData(nlohmann::json& /*network*/) override
