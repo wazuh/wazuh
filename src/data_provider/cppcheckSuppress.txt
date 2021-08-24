@@ -1,2 +1,3 @@
 *:*src/sysInfoLinux.cpp:257
 *:*src/packages/pkgWrapper.h:105
+*:*src/packages/packagesWindowsParserHelper.h:53

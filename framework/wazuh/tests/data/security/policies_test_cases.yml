@@ -113,6 +113,26 @@ add_policy:
           roles: []
       failed_items: {}
   - params:
+      name: new_policy_case_insensitive
+      policy:
+        actions:
+          - GrOUp:rEaD
+        effect: aLLoW
+        resources:
+          - gRouP:ID:Random_Group_Name&aGenT:iD:003
+    result:
+      affected_items:
+        - id: 110
+          name: new_policy_case_insensitive
+          policy:
+            actions:
+              - group:read
+            effect: allow
+            resources:
+              - group:id:Random_Group_Name&agent:id:003
+          roles: []
+      failed_items: {}
+  - params:
       name: ossecPolicy
       policy:
         actions:
@@ -138,6 +158,18 @@ add_policy:
       failed_items:
         "4009":
           - wazuhPolicy
+  - params:
+      name: ossecPolicy
+      policy:
+        actions:
+          - agent:delete
+        resources:
+          - agent
+    result:
+      affected_items: []
+      failed_items:
+        "4006":
+          - ossecPolicy
 update_policy:
   - params:
       policy_id:
@@ -167,6 +199,29 @@ update_policy:
             effect: allow
             resources:
               - agent:id:097
+          roles:
+            - 105
+      failed_items: {}
+  - params:
+      policy_id:
+        - 105
+      name: ossecPolicy2
+      policy:
+        actions:
+          - GrOUp:rEaD
+        effect: aLLoW
+        resources:
+          - gRouP:ID:Random_Group_Name&aGenT:iD:003
+    result:
+      affected_items:
+        - id: 105
+          name: ossecPolicy2
+          policy:
+            actions:
+              - group:read
+            effect: allow
+            resources:
+              - group:id:Random_Group_Name&agent:id:003
           roles:
             - 105
       failed_items: {}

@@ -14,61 +14,99 @@
 #else
 #define LOG_FILE "active-response\\active-responses.log"
 #endif
+
 #define ECHO "/bin/echo"
 #define PASSWD "/usr/bin/passwd"
 #define CHUSER "/usr/bin/chuser"
-#define BUFFERSIZE 4096
-#define LOGSIZE 8192
-#define COMMANDSIZE 2048
+
+#define COMMANDSIZE_4096 4096
+
+#define VERSION 1
+#define AR_MODULE_NAME "active-response"
+#define CHECK_KEYS_ENTRY "check_keys"
+
+/**
+ * Enumeration of the available commands
+ * */
+typedef enum _ar_command_list {
+    ADD_COMMAND = 0,
+    DELETE_COMMAND,
+    CONTINUE_COMMAND,
+    ABORT_COMMAND
+} ar_command_list;
 
 /**
  * Write the incomming message in active-responses log file.
- * @param ar_name Name of active response.
- * @param msg Incomming message to write.
+ * @param ar_name Name of active response
+ * @param msg Incomming message to write
  * */
-void write_debug_file (const char *ar_name, const char *msg);
+void write_debug_file(const char *ar_name, const char *msg);
+
+/**
+ * @brief Set wazuh home directory and check message from stdin
+ * @param argv Arguments of the script
+ * @param message JSON message from stdin
+ * @return Command from message
+ */
+int setup_and_check_message(char **argv, cJSON **message);
+
+/**
+ * @brief Send message with keys and check message from stdin
+ * @param argv Arguments of the script
+ * @param keys Keys to be sent
+ * @return Command from message
+ */
+int send_keys_and_check_message(char **argv, char **keys);
 
 /**
  * Get the json structure from input
+ * Caller must call cJSON_Delete() to release the object
  * @param input Input to validate
- * @return JSON input or NULL on Invalid.
+ * @return JSON input or NULL on Invalid
  * */
-cJSON* get_json_from_input (const char *input);
+cJSON* get_json_from_input(const char *input);
 
 /**
  * Get command from input
  * @param input Input
  * @return char * with the command or NULL on fail
  * */
-char* get_command (cJSON *input);
-
-/**
- * Get username from input
- * @param input Input
- * @return char * with the username or NULL on fail
- * */
-char* get_username_from_json (cJSON *input);
-
-/**
- * Get extra_args from input
- * @param input Input
- * @return char * with the extra_args or NULL on fail
- * */
-char* get_extra_args_from_json (cJSON *input);
-
-/**
- * Get srcip from input
- * @param input Input
- * @return char * with the srcip or NULL on fail
- * */
-char* get_srcip_from_json (cJSON *input);
+const char* get_command_from_json(const cJSON *input);
 
 /**
  * Get alert from input
  * @param input Input
  * @return JSON alert or NULL on Invalid.
  * */
-cJSON* get_alert_from_json (cJSON *input);
+const cJSON* get_alert_from_json(const cJSON *input);
+
+/**
+ * Get srcip from input
+ * @param input Input
+ * @return char * with the srcip or NULL on fail
+ * */
+const char* get_srcip_from_json(const cJSON *input);
+
+/**
+ * Get username from input
+ * @param input Input
+ * @return char * with the username or NULL on fail
+ * */
+const char* get_username_from_json(const cJSON *input);
+
+/**
+ * Get extra_args from input
+ * @param input Input
+ * @return char * with the extra_args or NULL on fail
+ * */
+char* get_extra_args_from_json(const cJSON *input);
+
+/**
+ * Get keys from input
+ * @param input Input
+ * @return char * with the keys or NULL on fail
+ * */
+char* get_keys_from_json(const cJSON *input);
 
 #ifndef WIN32
 
@@ -80,14 +118,14 @@ cJSON* get_alert_from_json (cJSON *input);
  * @param proc_name Name of the proces to lock/unlock
  * @return OS_SUCCESS or OS_INVALID
  * */
-int lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name);
+int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name);
 
 /**
  * Remove lock
  * @param lock_path Path of the folder to lock
  * @param log_path Messages log file
  * */
-void unlock (const char *lock_path, const char *log_path);
+void unlock(const char *lock_path, const char *log_path);
 
 /**
  * Check ip version from a string
@@ -96,6 +134,6 @@ void unlock (const char *lock_path, const char *log_path);
  * @retval 6 If ip is ipv6
  * @retval OS_INVALID on Invalid IP or error
  * */
-int get_ip_version (char *ip);
+int get_ip_version(const char *ip);
 
 #endif

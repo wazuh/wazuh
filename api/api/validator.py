@@ -12,7 +12,7 @@ from jsonschema import draft4_format_checker
 from wazuh.core import common
 
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
-_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=~]+$')
+_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\[\]\'\"|=~#]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.%]+(,[\w\-\.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -358,3 +358,5 @@ def format_group_names(value):
 @draft4_format_checker.checks("group_names_or_all")
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)
+
+
