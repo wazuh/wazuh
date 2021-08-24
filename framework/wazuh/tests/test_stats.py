@@ -13,7 +13,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         import wazuh.stats as stats
-        from wazuh.core.exception import WazuhInternalError
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.tests.util import RBAC_bypasser
 
@@ -21,17 +20,12 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
 
-@patch('wazuh.core.results.AffectedItemsWazuhResult.add_failed_item')
-def test_totals(mock_add_failed_item):
+def test_totals():
     """Verify totals() function works and returns correct data"""
-    with patch('wazuh.stats.totals_', return_value=(False, {})):
+    with patch('wazuh.stats.totals_', return_value=({})):
         response = stats.totals(date(2019, 8, 13))
         assert response.total_affected_items == len(response.affected_items)
         assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    with patch('wazuh.stats.totals_', return_value=(True, {})):
-        stats.totals(date(2019, 8, 13))
-        mock_add_failed_item.assert_called_with(id_=stats.node_id if stats.cluster_enabled else 'manager',
-                                                error=WazuhInternalError(1309))
 
 
 def test_hourly():
@@ -62,12 +56,7 @@ def test_get_daemons_stats(mock_daemons_stats_):
 @patch('wazuh.core.agent.Agent.get_stats')
 @patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
 def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, component):
-    """Test `get_agents_component_stats_json` function from agent module.
-    Parameters
-    ----------
-    daemon : string
-        Name of the daemon to get stats from.
-    """
+    """Test `get_agents_component_stats_json` function from agent module."""
     response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     mock_getstats.assert_called_once_with(component=component)

@@ -77,13 +77,12 @@ def totals_(date=datetime.now()):
     Parameters
     ----------
     date: date
-        Date object with the date value of the stats, by default current date.
+        Date object with the date value of the stats, current date by default.
 
     Returns
     -------
-    tuple
-        Failed: boolean that represents if data parsing failed. Its value is always `False`.
-        Affected: array of dictionaries. Each dictionary represents an hour.
+    array
+        array of dictionaries. Each dictionary represents an hour.
 
     Raises
     ------
@@ -111,12 +110,12 @@ def totals_(date=datetime.now()):
                 if len(data) in (0, 1):
                     continue
                 else:
-                    return True, affected
+                    raise WazuhInternalError(1309)
             affected.append({'hour': int(data[0]), 'alerts': alerts, 'totalAlerts': int(data[1]),
                              'events': int(data[2]), 'syscheck': int(data[3]), 'firewall': int(data[4])})
             alerts = []
 
-    return False, affected
+    return affected
 
 
 def get_daemons_stats_(filename):
@@ -146,7 +145,7 @@ def get_daemons_stats_(filename):
             for key, value in kv_regex.findall(daemons_data):
                 items[key] = float(value[1:-1])
         except Exception as e:
-            return WazuhInternalError(1104, extra_message=str(e))
+            raise WazuhInternalError(1104, extra_message=str(e))
     except IOError:
         raise WazuhError(1308, extra_message=filename)
 

@@ -28,7 +28,7 @@ def test_totals_(date_):
     """Verify totals_() function works as expected"""
     data_ = '1-2-3-4\n22-34-5-3\n15--107--1483--1257--0'
     with patch("builtins.open", mock_open(read_data=data_)):
-        affected = stats.totals_(date_)[1]
+        affected = stats.totals_(date_)
         if affected:
             for line in data_:
                 data = line.split('-')
@@ -53,8 +53,8 @@ def test_totals_ko_():
             stats.totals_(date(1996, 8, 13))
 
     with patch("builtins.open", mock_open(read_data='15-571-3-2\n15--107--1483')):
-        result = stats.totals_(date(1996, 8, 13))
-        assert result[0]
+        with pytest.raises(WazuhInternalError, match=".* 1309 .*"):
+            stats.totals_(date(1996, 8, 13))
 
 
 @patch('wazuh.core.common.stats_path', new=test_data_path)
@@ -109,9 +109,8 @@ def test_get_daemons_stats_ko():
             stats.get_daemons_stats_('filename')
 
     with patch('wazuh.core.stats.open'):
-        response = stats.get_daemons_stats_('filename')
-        assert isinstance(response, WazuhException), 'The result is not WazuhResult type'
-        assert response.code == 1104, 'Response code is not the same'
+        with pytest.raises(WazuhInternalError, match=".* 1104 .*"):
+            stats.get_daemons_stats_('filename')
 
 
 @pytest.mark.parametrize("agent_id, daemon, response", [

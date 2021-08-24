@@ -8,7 +8,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.stats import get_daemons_stats_, hourly_, totals_, weekly_
-from wazuh.core.exception import WazuhInternalError, WazuhException, WazuhResourceNotFound
+from wazuh.core.exception import WazuhException, WazuhResourceNotFound
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -34,9 +34,7 @@ def totals(date):
                                       some_msg='Could not read statistical information for some nodes',
                                       none_msg='Could not read statistical information for any node'
                                       )
-    failed, affected = totals_(date)
-    if failed:
-        result.add_failed_item(id_=node_id if cluster_enabled else 'manager', error=WazuhInternalError(1309))
+    affected = totals_(date)
     result.affected_items = affected
     result.total_affected_items = len(result.affected_items)
 
