@@ -1,5 +1,5 @@
 /**
- * @file fim_sync.c
+ * @file sync.c
  * @brief Definition of FIM data synchronization library
  * @date 2019-08-28
  *
@@ -11,12 +11,18 @@
  * Foundation.
  */
 
+#include "rsync.hpp"
+#include "db.hpp"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "syscheck.h"
 #include <shared.h>
 #include <openssl/evp.h>
-#include "syscheck.h"
 #include "integrity_op.h"
-#include "db/include/db.hpp"
-#include "registry/registry.h"
+#include "../../registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
@@ -44,6 +50,9 @@ DWORD WINAPI fim_run_integrity(void __attribute__((unused)) * args) {
 #else
 void * fim_run_integrity(void * args) {
 #endif
+
+    RemoteSync();
+
     // Keep track of synchronization failures
     long sync_interval = syscheck.sync_interval;
     struct timespec start;
@@ -72,7 +81,7 @@ void * fim_run_integrity(void * args) {
         // Get messages until timeout
         char * msg;
 
-        while ((msg = queue_pop_ex_timedwait(fim_sync_queue, &timeout))) {
+        while ((msg =  static_cast<char*>(queue_pop_ex_timedwait(fim_sync_queue, &timeout)))) {
             long margin = time(NULL) + syscheck.sync_response_timeout;
 
             fim_sync_dispatch(msg);
@@ -238,6 +247,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         range_size = 0;
     }
 
+    char* plain = 0;
     switch (range_size) {
     case 0:
         return;
@@ -251,7 +261,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         }
 
         file_data = fim_entry_json(start, entry);
-        char * plain = dbsync_state_msg(component, file_data);
+        plain = dbsync_state_msg(component, file_data);
         fim_send_sync_msg(component, plain);
         os_free(plain);
         free_entry(entry);
@@ -271,7 +281,6 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
             unsigned char digest[EVP_MAX_MD_SIZE] = {0};
             unsigned int digest_size = 0;
             os_sha1 hexdigest;
-            char *plain;
 
             // Send message with checksum of first half
             EVP_DigestFinal_ex(ctx_left, digest, &digest_size);
@@ -376,7 +385,8 @@ void fim_sync_dispatch(char * payload) {
     }
 
     cJSON * id = cJSON_GetObjectItem(root, "id");
-
+    char* begin = 0;
+    char* end = 0;
     if (!cJSON_IsNumber(id)) {
         mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
         goto end;
@@ -393,8 +403,8 @@ void fim_sync_dispatch(char * payload) {
         goto end;
     }
 
-    char * begin = cJSON_GetStringValue(cJSON_GetObjectItem(root, "begin"));
-    char * end = cJSON_GetStringValue(cJSON_GetObjectItem(root, "end"));
+    begin = cJSON_GetStringValue(cJSON_GetObjectItem(root, "begin"));
+    end = cJSON_GetStringValue(cJSON_GetObjectItem(root, "end"));
 
     if (begin == NULL || end == NULL) {
         mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
@@ -428,3 +438,6 @@ void fim_sync_push_msg(const char * msg) {
         free(copy);
     }
 }
+#ifdef __cplusplus
+}
+#endif
