@@ -84,9 +84,9 @@ else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Restoring..." >> ./logs/upgrade.log
 
     # Cleanup before restore
-    CONTROL="$WAZUH_HOME/bin/wazuh-control"
+    CONTROL="./bin/wazuh-control"
     if [ ! -f $CONTROL ]; then
-        CONTROL="$WAZUH_HOME/bin/ossec-control"
+        CONTROL="./bin/ossec-control"
     fi
     $CONTROL stop >> ./logs/upgrade.log 2>&1
 
@@ -113,9 +113,9 @@ else
     # Restore service
     /bin/launchctl load /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1
 
-    CONTROL="$WAZUH_HOME/bin/wazuh-control"
+    CONTROL="./bin/wazuh-control"
     if [ ! -f $CONTROL ]; then
-        CONTROL="$WAZUH_HOME/bin/ossec-control"
+        CONTROL="./bin/ossec-control"
     fi
 
     $CONTROL start >> ./logs/upgrade.log 2>&1
