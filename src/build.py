@@ -10,6 +10,10 @@
 import argparse
 from ci import utils
 
+module_list = ['wazuh_modules/syscollector', 'shared_modules/dbsync', 'shared_modules/rsync', 'shared_modules/utils',
+               'data_provider']
+
+
 class CommandLineParser:
 
     def _argIsValid(self, arg):
@@ -19,11 +23,7 @@ class CommandLineParser:
         :param arg: Argument being selected in the command line.
         :return True is 'arg' is a correct one, False otherwise.
         """
-        ret = False
-        if arg == 'wazuh_modules/syscollector' or arg == 'shared_modules/dbsync' or arg == 'shared_modules/rsync' or arg == 'shared_modules/utils' or arg == 'data_provider':
-            # Available modules so far
-            ret = True
-        return ret
+        return arg in module_list
 
     def processArgs(self):
         """
@@ -43,7 +43,6 @@ class CommandLineParser:
         parser.add_argument("--sformat", help="Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
 
         args = parser.parse_args()
-
         if self._argIsValid(args.readytoreview):
             utils.runReadyToReview(args.readytoreview)
             action = True
@@ -77,6 +76,7 @@ class CommandLineParser:
                 action = True
             if not action:
                 parser.print_help()
+
 
 if __name__ == "__main__":
     cmdLineParser = CommandLineParser()
