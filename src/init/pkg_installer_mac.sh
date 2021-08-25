@@ -3,7 +3,9 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 
 WAZUH_HOME=${1}
+WAZUH_HOME=${WAZUH_HOME:-'.'}
 WAZUH_VERSION=${2}
+WAZUH_VERSION=${WAZUH_VERSION:-'x.y.z'}
 
 SERVICE=wazuh-agent
 # Generating Backup
