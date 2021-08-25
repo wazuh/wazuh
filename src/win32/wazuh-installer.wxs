@@ -489,7 +489,6 @@
         <DirectoryRef Id="TMP">
             <Component Id="CMP_TMP" Guid="EC4352C1-4110-4E6A-9A5E-E31F22702705" KeyPath="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_tmp" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_tmp_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
