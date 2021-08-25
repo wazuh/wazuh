@@ -9,6 +9,15 @@
 <decoder name="junos-ids">
     <program_name>junos-ids</program_name>
 </decoder>
+<!--
+Aug 24 04:58:58 192.168.1.1 junos-ids: 2017-08-24T04:58:58.724Z firewall1 RT_IDS - IDP_ATTACK_LOG_EVENT_LS [junos@2636.1.1.1.2.105 logical-system-name="LSYS-mylsys" epoch-time="1629889852" message-type="ANOMALY" source-address="192.168.1.1" source-port="37126" destination-address="10.0.0.1" destination-port="8080" protocol-name="TCP" service-name="HTTP" application-name="PERFORCE" rule-name="1" rulebase-name="IPS" policy-name="Client-And-Server-Protection" export-id="1715" repeat-count="0" action="NONE" threat-severity="HIGH" attack-name="HTTP:OVERFLOW:CONTENT-OVERFLOW" nat-source-address="0.0.0.0" nat-source-port="0" nat-destination-address="0.0.0.0" nat-destination-port="0" elapsed-time="0" inbound-bytes="0" outbound-bytes="0" inbound-packets="0" outbound-packets="0" source-zone-name="MY-ZONE-1" source-interface-name="xe-2/0/3" destination-zone-name="MY-ZONE-2" destination-interface-name="reth25.4064" packet-log-id="0" alert="no" username="N/A" roles="N/A" message="-"]
+-->
+<decoder name="junos-ids-lsys">
+        <parent>junos-ids</parent>
+        <prematch>EVENT_LS</prematch>
+        <regex offset="after_parent">(\S+) (RT_IDP) - (IDP_\S+_LS) \S+ logical-system-name="(\S+)"\.+ source-address="(\S+)" source-port="(\S+)" destination-address="(\S+)" destination-port="(\S+)"\.* protocol-name="(\S+)" \S+ application-name="(\S+)" rule-name="(\S+)" rulebase-name="(\S+)" policy-name="(\S+)" \S+ \S+ \S+ threat-severity="(\S+)" attack-name="(\S+)"</regex>
+        <order>firewall_name, cat, sub_cat, lsys, srcip, srcport, dstip, dstport, protocol, application.name, rule.name, rulebase.name, policy.name, threat.severity, attack.name, source_zone, destination_zone, interface</order>
+</decoder>
 
 <!--
 Aug 24 04:58:58 192.168.1.1 junos-ids: 2017-08-24T04:58:58.724Z sis-srx-EUH-03 RT_IDS - RT_SCREEN_IP [junos@2636.1.1.1.2.35 attack-name="IP spoofing!" source-address="192.168.1.1" destination-address="192.168.1.2" protocol-id="17" source-zone-name="mpls-untrust" interface-name="intf2.210" action="drop"]
@@ -58,6 +67,22 @@ wazuh
     <program_name>junos-flow</program_name>
 </decoder>
 
+<!--
+Sep 23 18:17:09 192.168.1.1 junos-flow: 2017-09-23T18:17:08.717Z firewall1 RT_FLOW - RT_FLOW_SESSION_CREATE_LS [junos@2636.1.1.1.2.105 logical-system-name="LSYS-mylsys" source-address="10.21.37.3" source-port="45521" destination-address="192.168.13.37" destination-port="443" connection-tag="0" service-name="junos-https" nat-source-address="192.168.13.37" nat-source-port="45521" nat-destination-address="192.168.13.37" nat-destination-port="443" nat-connection-tag="0" src-nat-rule-type="N/A" src-nat-rule-name="N/A" dst-nat-rule-type="N/A" dst-nat-rule-name="N/A" protocol-id="6" policy-name="MY-POLICY(global)" source-zone-name="MY-ZONE1" destination-zone-name="MY-ZONE2" session-id-32="474034335" username="N/A" roles="N/A" packet-incoming-interface="xe-2/0/3" application="UNKNOWN" nested-application="UNKNOWN" encrypted="UNKNOWN" application-category="N/A" application-sub-category="N/A" application-risk="-1" application-characteristics="N/A"]
+-->
+
+<decoder name="junos-rt-flow-lsys">
+        <parent>junos-rt-flow</parent>
+        <prematch>RT_FLOW_SESSION_CREATE_LS</prematch>
+        <regex offset="after_parent">(\S+) (RT_FLOW) - (\S+) \S+ logical-system-name="(\S+)" source-address="(\S+)" source-port="(\S+)" destination-address="(\S+)" destination-port="(\S+)"</regex>
+        <order>firewall_name, cat, subcat, lsys, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<decoder name="junos-rt-flow-lsys">
+        <parent>junos-rt-flow</parent>
+        <regex offset="after_parent">policy-name="(\S+)" source-zone-name="(\S+)" destination-zone-name="(\S+)"</regex>
+        <order>policy.name, source_zone, destination_zone</order>
+</decoder>
 
 <!--
 Sep 23 18:17:09 192.168.1.1 junos-flow: 2017-09-23T18:17:08.717Z sis-srx-ABN-01 RT_FLOW - RT_FLOW_SESSION_CREATE [junos@2636.1.1.1.2.39 source-address="192.168.1.1" source-port="1080" destination-address="192.168.1.2" destination-port="8010" service-name="icmp" nat-source-address="192.168.0.1" nat-source-port="1008" nat-destination-address="192.168.0.2" nat-destination-port="8001" src-nat-rule-name="None" dst-nat-rule-name="None" protocol-id="1" policy-name="Templ-Firewall-monitoring" source-zone-name="untrust" destination-zone-name="trust" session-id-32="8xxx1" username="unauthenticated-user" roles="N/A" packet-incoming-interface="intf0.0" application="UNKNOWN"
@@ -271,4 +296,4 @@ Sep 21 15:25:06 192.168.1.1 junos-flow: 2017-09-21T15:25:06.141Z sis-srx-ICP-01 
     <parent>junos-rt-flow</parent>
     <regex offset="after_parent">protocol-name="(\S+)"]</regex>
     <order>protocol_name</order>
-</decoder> 
+</decoder>
