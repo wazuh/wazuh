@@ -90,8 +90,6 @@ else
     fi
     $CONTROL stop >> ./logs/upgrade.log 2>&1
 
-    rm -rf /Library/StartupItems/WAZUH/ >> ./logs/upgrade.log 2>&1
-
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Deleting upgrade files..." >> ./logs/upgrade.log
     for dir in ${FOLDERS_TO_BACKUP[@]}; do
         rm -rf ${dir} >> ./logs/upgrade.log 2>&1
@@ -103,6 +101,7 @@ else
     # Clean service
     /bin/launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1
     rm -rf /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1
+    rm -rf /Library/StartupItems/WAZUH/ >> ./logs/upgrade.log 2>&1
 
     # Restore backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...."
