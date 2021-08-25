@@ -99,6 +99,7 @@
 #define VU_REMOVED_VULN       "(5490): The vulnerability '%s' affecting '%s' was solved"
 #define VU_AG_BASELINE_SCAN   "(5491): A baseline scan will be run on agent '%.3d'"
 #define VU_INS_DEPS           "(5492): Inserting '%s' vulnerabilities dependencies."
+#define VU_DEP_FLAG           "(5493): Dependency '%s' of agent '%.3d' meets the vulnerability criteria: Version (%s) '%s' '%s'."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
