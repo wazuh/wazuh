@@ -85,12 +85,12 @@ WriteRootcheck()
 {
     # Adding to the config file
     if [ "X$ROOTCHECK" = "Xyes" ]; then
-      if ([ ${INSTYPE} = 'server' ] || [ ${INSTYPE} = 'local' ]); then
+      if [ ${INSTYPE} = 'agent' ]; then
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g;" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_AGENT
+      else
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g; \
                 s|etc/shared/|etc/rootcheck/|g;" \
                 "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_AGENT
-      else
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g;" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_AGENT
       fi
       echo "" >> $NEWCONFIG_AGENT
     else

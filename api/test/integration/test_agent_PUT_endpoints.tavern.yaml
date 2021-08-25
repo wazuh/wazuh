@@ -1179,7 +1179,7 @@ stages:
               task_id: !anyint
               module: upgrade_module
               command: upgrade_custom
-              status: Updating
+              status: !anystr
               create_time: !anystr
               update_time: !anystr
           total_affected_items: 1
