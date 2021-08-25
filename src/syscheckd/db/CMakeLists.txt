@@ -71,7 +71,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1 -D_WIN32_WINNT=0x600 -DWIN_EXPORT)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/db.cpp
+add_library(fimdb STATIC ${CMAKE_SOURCE_DIR}/src/sync.cpp
+                         ${CMAKE_SOURCE_DIR}/src/db.cpp
                          ${CMAKE_SOURCE_DIR}/src/file.cpp)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
