@@ -217,8 +217,10 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                                 file_metadata['md5'] = md5(abs_file_path)
                             # Use the relative file path as a key to save its metadata dictionary.
                             walk_files[relative_file_path] = file_metadata
-                    except Exception as e:
-                        logger.debug(f"Could not get checksum of file {file_}: {e}")
+                    except FileNotFoundError as e:
+                        logger.debug(f"File {file_} was deleted in previous iteration: {e}")
+                    except PermissionError as e:
+                        logger.error(f"Can't read metadata from file {file_}: {e}")
             else:
                 break
     except OSError as err:
