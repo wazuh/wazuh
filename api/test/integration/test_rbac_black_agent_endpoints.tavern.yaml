@@ -152,17 +152,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      json:
-        error: 0
-        data:
-          client:
-            auto_restart: !anystr
-            config-profile: !anystr
-            crypto_method: !anystr
-            notify_time: !anyint
-            remote_conf: !anystr
-            server: !anything
-            time-reconnect: !anyint
 
 ---
 test_name: GET /agents/{agent_id}/group/is_sync
@@ -255,21 +244,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - global:
-               start: !anystr
-               end: !anystr
-               files: !anything
-             interval:
-               start: !anystr
-               end: !anystr
-               files: !anything
-         failed_items: []
-         total_affected_items: 1
-         total_failed_items: 0
 
 ---
 test_name: GET /groups
@@ -401,13 +375,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data:
-         affected_items:
-           - config: !anything
-             filters: !anything
-         total_affected_items: !anyint
 
 ---
 test_name: GET /groups/{group_id}/files
@@ -472,9 +439,6 @@ stages:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-     json:
-       error: 0
-       data: !anything
 
 ---
 test_name: GET /groups/{group_id}/files/{filename}/xml
@@ -1586,9 +1550,6 @@ stages:
       status_code: 403
       json:
         error: 4000
-        dapi_errors:
-          master-node: # We have permission to see node name
-            error: !anystr
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
