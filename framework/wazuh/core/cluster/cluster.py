@@ -223,8 +223,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                         logger.error(f"Can't read metadata from file {file_}: {e}")
             else:
                 break
-    except OSError as err:
-        raise WazuhError(3015, f'{err}')
+    except OSError as e:
+        raise WazuhInternalError(3015, e)
     return walk_files
 
 
