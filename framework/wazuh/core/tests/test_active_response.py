@@ -20,7 +20,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 # Functions
 
 def agent_info(expected_exception: int = None) -> dict:
-    """Return dict to cause or not a exception code 1651 on active_response.send_command().
+    """Return dict to cause or not a exception code 1707 on active_response.send_command().
 
     Parameters
     ----------
@@ -32,14 +32,14 @@ def agent_info(expected_exception: int = None) -> dict:
     dict
         Agent basic information with status depending on the expected_exception.
     """
-    if expected_exception == 1651:
+    if expected_exception == 1707:
         return {'status': 'random'}
     else:
         return {'status': 'active'}
 
 
 def agent_info_exception_and_version(expected_exception: int = None, version: str = '') -> dict:
-    """Return dict with status and version to cause or not a exception code 1651 on active_response.send_command().
+    """Return dict with status and version to cause or not a exception code 1707 on active_response.send_command().
 
     Parameters
     ----------
@@ -53,7 +53,7 @@ def agent_info_exception_and_version(expected_exception: int = None, version: st
     dict
         Agent basic information with status depending on the expected_exception.
     """
-    if expected_exception == 1651:
+    if expected_exception == 1707:
         return {'status': 'random', 'version': version} if version else {'status': 'random'}
     else:
         return {'status': 'active', 'version': version} if version else {'status': 'active'}

@@ -24,9 +24,9 @@ pthread_mutex_t download_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char* invalid_platforms[] = {
     "darwin",
-    "solaris",
+    "sunos",
     "aix",
-    "hpux",
+    "hp-ux",
     "bsd"
 };
 

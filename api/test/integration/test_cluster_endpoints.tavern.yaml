@@ -706,9 +706,6 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
-marks:
-  - xfail # Sometimes fails due to https://github.com/wazuh/wazuh/issues/6746
-
 stages:
 
   - name: Request cluster validation

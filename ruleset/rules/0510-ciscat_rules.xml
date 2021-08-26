@@ -210,7 +210,7 @@
     <if_sid>87401, 87402</if_sid>
     <field name="cis.score">^4\d|^3\d</field>
     <description>CIS-CAT Report overview: Score less than 50% ($(cis.score))</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 
@@ -218,7 +218,7 @@
     <if_sid>87403</if_sid>
     <field name="cis-data.score">^4\d|^3\d</field>
     <description>CIS-CAT Report overview: Score less than 50% ($(cis-data.score) %)</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 
@@ -226,7 +226,7 @@
     <if_sid>87401, 87402</if_sid>
     <field name="cis.score">^2\d|^1\d|^\d$</field>
     <description>CIS-CAT Report overview: Score less than 30% ($(cis.score))</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 
@@ -234,7 +234,7 @@
     <if_sid>87403</if_sid>
     <field name="cis-data.score">^2\d|^1\d|^\d$</field>
     <description>CIS-CAT Report overview: Score less than 30% ($(cis-data.score) %)</description>
-    <group>gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
   </rule>
 

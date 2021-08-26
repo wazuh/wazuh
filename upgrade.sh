@@ -16,4 +16,4 @@ if [ "X${WAZUH_VERSION}" = "X" ] ; then
     fi
 fi
 
-(sleep 5 && chmod +x ${WAZUH_HOME}/var/upgrade/src/init/*.sh && ${WAZUH_HOME}/var/upgrade/src/init/pkg_installer.sh ${WAZUH_HOME} ${WAZUH_VERSION}) >/dev/null 2>&1 &
+(sleep 5 && chmod +x ${WAZUH_HOME}/var/upgrade/src/init/*.sh && ${WAZUH_HOME}/var/upgrade/src/init/pkg_installer.sh ${WAZUH_HOME} ${WAZUH_VERSION} && find ${WAZUH_HOME}/var/upgrade/* -not -name upgrade_result -delete) >/dev/null 2>&1 &
