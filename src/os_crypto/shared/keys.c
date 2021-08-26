@@ -53,7 +53,7 @@ static void save_removed_key(keystore *keys, const char *key) {
 }
 
 /* Create the final key */
-int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key)
+int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, const char *key, time_t time_added)
 {
     os_md5 filesum1;
     os_md5 filesum2;
@@ -102,6 +102,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->time_added = time_added;
     keys->keyentries[keys->keysize]->updating_time = 0;
     keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
@@ -302,7 +303,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
             strncpy(key, valid_str, KEYSIZE - 1);
 
             /* Generate the key hash */
-            OS_AddKey(keys, id, name, ip, key);
+            OS_AddKey(keys, id, name, ip, key, 0);
 
             /* Clear the memory */
             __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -638,6 +639,7 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     }
 
     copy->sock = key->sock;
+    copy->time_added = key->time_added;
     w_mutex_init(&copy->mutex, NULL);
     copy->peer_info = key->peer_info;
 
@@ -673,6 +675,91 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {
 
     const int key_id = OS_IsAllowedID(keys, agent_id);
-    
+
     return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);
+}
+
+// Parse the agent timestamps file into the keystore structure
+
+int OS_ReadTimestamps(keystore * keys) {
+    char line[OS_BUFFER_SIZE];
+
+    FILE * fp = fopen(TIMESTAMP_FILE, "r");
+
+    if (fp == NULL) {
+        return errno == ENOENT ? 0 : -1;
+    }
+
+    while (fgets(line, OS_BUFFER_SIZE, fp) != NULL) {
+        char * sep;
+        char * date = line;
+
+        /*
+         * Forward to the next character after the third whitespace
+         * Example:
+         * 001 my-agent any 2021-08-03 10:32:34
+         */
+
+        for (int i = 0; i < 3; i++) {
+            sep = strchr(date, ' ');
+
+            if (sep != NULL) {
+                *sep = '\0';
+                date = sep + 1;
+            } else {
+                break;
+            }
+        }
+
+        if (sep == NULL) {
+            continue;
+        }
+
+        int keyid = OS_IsAllowedID(keys, line);
+
+        if (keyid != -1) {
+            struct tm tm = { .tm_isdst = -1 };
+
+            if (sscanf(date, "%d-%d-%d %d:%d:%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 6) {
+                tm.tm_year -= 1900;
+                tm.tm_mon -= 1;
+                keys->keyentries[keyid]->time_added = mktime(&tm);
+            }
+        }
+    }
+
+    fclose(fp);
+    return 0;
+}
+
+// Write the agent timestamp data into the timestamps file
+
+int OS_WriteTimestamps(keystore * keys) {
+    File file;
+
+    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+        merror("Couldn't open timestamp file for writing.");
+        return -1;
+    }
+
+    for (unsigned i = 0; i < keys->keysize; i++) {
+        keyentry *entry = keys->keyentries[i];
+
+        if (entry->time_added == 0) {
+            continue;
+        }
+
+        char timestamp[40];
+        char cidr[20];
+        struct tm tm_result = { .tm_sec = 0 };
+
+        strftime(timestamp, 40, "%Y-%m-%d %H:%M:%S", localtime_r(&entry->time_added, &tm_result));
+        fprintf(file.fp, "%s %s %s %s\n", entry->id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, timestamp);
+    }
+
+    fclose(file.fp);
+    int r = OS_MoveFile(file.name, TIMESTAMP_FILE);
+    free(file.name);
+
+    return r;
 }
