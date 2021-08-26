@@ -22,6 +22,13 @@
 #define HOST_NAME_MAX 64
 #endif
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+  #define STATIC
+#else
+  #define STATIC static
+#endif
+
 /* Internal structures */
 typedef struct _file_sum {
     int mark;
@@ -37,7 +44,16 @@ typedef struct group_t {
 static OSHash *invalid_files;
 
 /* Internal functions prototypes */
-static void read_controlmsg(const char *agent_id, char *msg);
+
+/**
+ * @brief Get agent group
+ * @param agent_id. Agent id to assign a group
+ * @param msg. Message from agent to process and validate current configuration files
+ * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
+ * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
+ */
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group);
+static void read_controlmsg(const char *agent_id, char *msg, char *group);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
 static void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
@@ -221,11 +237,16 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                     }
                 }
             }
-         } else {
+        } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", msg);
             os_free(data->message);
             os_strdup(msg, data->message);
+
+            os_free(data->group);
+            if (OS_SUCCESS != lookfor_agent_group(key->id, data->message, &data->group)) {
+                mdebug1("Error getting agent group for agent: '%s'", key->id);
+            }
 
             /* Mark data as changed and insert into queue */
             if (!data->changed) {
@@ -1015,20 +1036,113 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     return (0);
 }
 
+/* look for agent group */
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
+{
+    char group[OS_SIZE_65536];
+    file_sum **f_sum = NULL;
+    char *end;
+    agent_group *agt_group;
+    int ret = OS_INVALID;
+    char *message;
+    char *fmsg;
+
+    if (!groups) {
+        mdebug2("Nothing to share with agent");
+        return OS_INVALID;
+    }
+
+    // Get agent group
+    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
+        strncpy(group, agt_group->group, OS_SIZE_65536);
+        group[OS_SIZE_65536 - 1] = '\0';
+        set_agent_group(agent_id, group);
+    } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
+        group[0] = '\0';
+    }
+    mdebug2("Agent '%s' group is '%s'", agent_id, group);
+
+    if (group[0]) {
+        os_strdup(group, *r_group);
+        return OS_SUCCESS;
+    }
+
+    /* Lock mutex */
+    w_mutex_lock(&files_mutex);
+
+    // make a copy to keep original msg for read_controlmsg
+    os_strdup(msg, message);
+    fmsg = message;
+
+    // Skip agent-info and label data
+    if (message = strchr(message, '\n'), !message) {
+        merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
+        w_mutex_unlock(&files_mutex);
+        os_free(fmsg);
+        return OS_INVALID;
+    }
+
+    for (message++; (*message == '\"' || *message == '!' || *message == '#') && (end = strchr(message, '\n')); message = end + 1);
+
+    /* Parse message */
+    while (*message != '\0') {
+        char *md5;
+        char *file;
+
+        md5 = message;
+        file = message;
+
+        message = strchr(message, '\n');
+        if (!message) {
+            merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
+            break;
+        }
+
+        *message = '\0';
+        message++;
+
+        // Skip labeled data
+        if (*md5 == '\"' || *md5 == '!' || *md5 == '#') {
+            continue;
+        }
+
+        file = strchr(file, ' ');
+        if (!file) {
+            merror("Invalid message from agent ID '%s' (strchr ' ')", agent_id);
+            break;
+        }
+
+        *file = '\0';
+        file++;
+
+        // If group was not got, guess it by matching sum
+        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, file, md5);
+        if (!guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
+            // If the group could not be guessed, set to "default"
+            // or if the user requested not to guess the group, through the internal
+            // option 'guess_agent_group', set to "default"
+            strncpy(group, "default", OS_SIZE_65536);
+        }
+        set_agent_group(agent_id, group);
+        os_strdup(group, *r_group);
+        ret = OS_SUCCESS;
+        mdebug2("Group assigned: '%s'", group);
+        break;
+    }
+
+    /* Unlock mutex */
+    w_mutex_unlock(&files_mutex);
+    os_free(fmsg);
+    return ret;
+}
+
 /* Read the available control message from the agent */
-static void read_controlmsg(const char *agent_id, char *msg)
+static void read_controlmsg(const char *agent_id, char *msg, char *group)
 {
     int i;
-    char group[OS_SIZE_65536];
     file_sum **f_sum = NULL;
     os_md5 tmp_sum;
     char *end;
-    agent_group *agt_group;
-
-    if (!groups) {
-        /* Nothing to share with agent */
-        return;
-    }
 
     mdebug2("read_controlmsg(): reading '%s'", msg);
     memset(&tmp_sum, 0, sizeof(os_md5));
@@ -1040,32 +1154,16 @@ static void read_controlmsg(const char *agent_id, char *msg)
         return;
     }
 
-    for (msg++; (*msg == '\"' || *msg == '!') && (end = strchr(msg, '\n')); msg = end + 1);
-
-
-    // Get agent group
-    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-        strncpy(group, agt_group->group, OS_SIZE_65536);
-        group[OS_SIZE_65536 - 1] = '\0';
-        set_agent_group(agent_id, group);
-    } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
-        group[0] = '\0';
-    }
-    mdebug2("Agent '%s' group is '%s'",agent_id,group);
+    for (msg++; (*msg == '\"' || *msg == '!' || *msg == '#') && (end = strchr(msg, '\n')); msg = end + 1);
 
     /* Lock mutex */
     w_mutex_lock(&files_mutex);
 
-    // If group was got, get file sum array
-
-    if (group[0]) {
-        if (f_sum = find_sum(group), !f_sum) {
-            /* Unlock mutex */
-            w_mutex_unlock(&files_mutex);
-
-            mdebug1("No such group '%s' for agent '%s'", group, agent_id);
-            return;
-        }
+    if (f_sum = find_sum(group), !f_sum) {
+        /* Unlock mutex */
+        w_mutex_unlock(&files_mutex);
+        merror("No such group '%s' for agent '%s'", group, agent_id);
+        return;
     }
 
     /* Parse message */
@@ -1087,7 +1185,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         // Skip labeled data
 
-        if (*md5 == '\"' || *md5 == '!') {
+        if (*md5 == '\"' || *md5 == '!' || *md5 == '#') {
             continue;
         }
 
@@ -1099,28 +1197,6 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         *file = '\0';
         file++;
-
-        // If group was not got, guess it by matching sum
-
-        mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
-        if (!f_sum) {
-            if (!guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
-                // If the group could not be guessed, set to "default"
-                // or if the user requested not to guess the group, through the internal
-                // option 'guess_agent_group', set to "default"
-                strncpy(group, "default", OS_SIZE_65536);
-
-                if (f_sum = find_sum(group), !f_sum) {
-                    /* Unlock mutex */
-                    w_mutex_unlock(&files_mutex);
-
-                    merror("No such group '%s' for agent '%s'", group, agent_id);
-                    return;
-                }
-            }
-
-            set_agent_group(agent_id, group);
-        }
 
         /* New agents only have merged.mg */
         if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
@@ -1216,6 +1292,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
     /* Should never leave this loop */
     while (1) {
         char * msg = NULL;
+        char * group = NULL;
 
         /* Pop data from queue */
         char *agent_id = linked_queue_pop_ex(pending_queue);
@@ -1225,6 +1302,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         if (data = OSHash_Get(pending_data, agent_id), data) {
             os_strdup(data->message, msg);
+            os_strdup(data->group, group);
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", agent_id);
             os_free(agent_id);
@@ -1235,11 +1313,12 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
         /* Unlock mutex */
         w_mutex_unlock(&lastmsg_mutex);
 
-        if (msg && agent_id) {
-            read_controlmsg(agent_id, msg);
+        if (msg && agent_id && group) {
+            read_controlmsg(agent_id, msg, group);
         }
         os_free(agent_id);
         os_free(msg);
+        os_free(group);
 
         // Mark message as dispatched
         w_mutex_lock(&lastmsg_mutex);
@@ -1300,6 +1379,7 @@ void *update_shared_files(__attribute__((unused)) void *none) {
 void free_pending_data(pending_data_t *data) {
     if (!data) return;
     os_free(data->message);
+    os_free(data->group);
     os_free(data);
 }
 
