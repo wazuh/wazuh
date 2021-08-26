@@ -5,25 +5,26 @@
 SERVICE=wazuh-agent
 
 # Generating Backup
+CURRENT_DIR=`pwd`
 TMP_DIR_BACKUP=./tmp_bkp
 rm -rf ./tmp_bkp/
 
 BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 declare -a FOLDERS_TO_BACKUP
 
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." > ./logs/upgrade.log
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 
 # Generate wazuh home directory tree to backup
-FOLDERS_TO_BACKUP+=(./active-response)
-FOLDERS_TO_BACKUP+=(./bin)
-FOLDERS_TO_BACKUP+=(./etc)
-FOLDERS_TO_BACKUP+=(./lib)
-FOLDERS_TO_BACKUP+=(./queue)
-[ -d "./ruleset" ] && FOLDERS_TO_BACKUP+=(./ruleset)
-[ -d "./wodles" ] && FOLDERS_TO_BACKUP+=(./wodles)
-[ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(./agentless)
-[ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(./logs/ossec)
-[ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(./var/selinux)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/active-response)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/bin)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/etc)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/lib)
+FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/queue)
+[ -d "./ruleset" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/ruleset)
+[ -d "./wodles" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/wodles)
+[ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/agentless)
+[ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/logs/ossec)
+[ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/var/selinux)
 
 for dir in "${FOLDERS_TO_BACKUP[@]}"; do
     mkdir -p "${TMP_DIR_BACKUP}${dir}"
@@ -79,6 +80,7 @@ while read -r line; do
 done <<< "$BACKUP_LIST_FILES"
 
 # Generate Backup
+mkdir -p ./backup
 tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
 rm -rf ./tmp_bkp/
 
@@ -135,7 +137,7 @@ else
     fi
 
     # Restore backup
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...."
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
     tar xzf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
 
     # Restore SELinuxPolicy
