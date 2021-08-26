@@ -52,7 +52,7 @@ done <<< "$BACKUP_LIST_FILES"
 
 # Generate Backup
 mkdir -p ./backup
-tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
+cd ./tmp_bkp && zip -r ../backup/backup_[${BDATE}].zip . >> ../logs/upgrade.log 2>&1 && cd ..
 rm -rf ./tmp_bkp/
 
 # Installing upgrade
@@ -105,7 +105,7 @@ else
 
     # Restore backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
-    tar xzf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
+    unzip ./backup/backup_[${BDATE}].zip -d / >> ./logs/upgrade.log 2>&1
 
     echo -ne "2" > ./var/upgrade/upgrade_result
 
