@@ -17,7 +17,7 @@
 int main (int argc, char **argv) {
     (void)argc;
     char iptables[COMMANDSIZE_4096];
-    char iptables_tmp[COMMANDSIZE_4096 - 5];
+    char iptables_tmp[COMMANDSIZE_4096 - 5] = "";
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     cJSON *input_json = NULL;
@@ -62,7 +62,6 @@ int main (int argc, char **argv) {
     }
 
     int ip_version = get_ip_version(srcip);
-    memset(iptables_tmp, '\0', COMMANDSIZE_4096);
     if (ip_version == 4) {
         strcpy(iptables_tmp, IP4TABLES);
     } else if (ip_version == 6) {

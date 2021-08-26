@@ -92,7 +92,7 @@ void Rules_OP_CreateRules() {
 
 }
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node,
                        EventList **last_event_list, OSStore **decoder_list, OSList* log_msg)
 {
     OS_XML xml;
@@ -313,8 +313,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 goto cleanup;
             }
             if ((!node[i]->attributes) || (!node[i]->values)
-                || (!node[i]->values[0]) || (!node[i]->attributes[0]) 
-                || (strcasecmp(node[i]->attributes[0], "name") != 0) 
+                || (!node[i]->values[0]) || (!node[i]->attributes[0])
+                || (strcasecmp(node[i]->attributes[0], "name") != 0)
                 || (node[i]->attributes[1])) {
                 smerror(log_msg, "rules_op: Invalid root element '%s'."
                        "Only the group name is allowed", node[i]->element);
@@ -589,7 +589,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_group) == 0) {
                         config_ruleinfo->group = loadmemory(config_ruleinfo->group, rule_opt[k]->content, log_msg);
- 
+
                     } else if (strcasecmp(rule_opt[k]->element, xml_comment) == 0) {
 
                         char *newline;
@@ -823,7 +823,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                         lookup_type = LR_ADDRESS_MATCH_VALUE;
                                     } else {
                                         smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.", 
+                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.",
                                                 rule_opt[k]->values[list_att_num]);
                                         goto cleanup;
                                     }
@@ -870,7 +870,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                     os_calloc(1, sizeof(OSMatch), matcher);
                                     if (!OSMatch_Compile(rule_opt[k]->values[list_att_num], matcher, 0)) {
                                         smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, REGEX_COMPILE, rule_opt[k]->values[list_att_num], 
+                                        smerror(log_msg, REGEX_COMPILE, rule_opt[k]->values[list_att_num],
                                             matcher->error);
                                         goto cleanup;
                                     }
@@ -1502,8 +1502,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 /* Check for valid use of frequency */
-                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field 
-                    || config_ruleinfo->different_field || config_ruleinfo->frequency) 
+                if ((config_ruleinfo->context_opts || config_ruleinfo->same_field
+                    || config_ruleinfo->different_field || config_ruleinfo->frequency)
                     && !config_ruleinfo->context) {
                     smerror(log_msg, "Invalid use of frequency/context options. "
                            "Missing if_matched on rule '%d'.", config_ruleinfo->sigid);
@@ -1721,7 +1721,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     os_free(location);
                 }
-                
+
                 /* Add location */
                 if (action) {
                     w_calloc_expression_t(&config_ruleinfo->action, action_type);
@@ -1904,7 +1904,7 @@ cleanup:
     os_free(action)
     OS_ClearNode(rule);
     OS_ClearNode(rule_opt);
-    
+
     if (config_ruleinfo != NULL) {
         os_remove_ruleinfo(config_ruleinfo);
     }
@@ -2226,7 +2226,13 @@ STATIC int getattributes(char **attributes, char **values,
         }
         /* Rule noalert */
         else if (strcasecmp(attributes[k], xml_noalert) == 0) {
-            *noalert = 1;
+            if (strcmp(values[k], "0") == 0) {
+                *noalert = 0;
+            } else if (strcmp(values[k], "1") == 0) {
+                *noalert = 1;
+            } else {
+                smwarn(log_msg, "Invalid value for attribute '%s'", xml_noalert);
+            }
         } else if (strcasecmp(attributes[k], xml_overwrite) == 0) {
             if (strcmp(values[k], "yes") == 0) {
                 *overwrite = 1;
@@ -3090,7 +3096,7 @@ w_exp_type_t w_check_attr_type(xml_node * node, w_exp_type_t default_type, int r
     const char * xml_type = "type";
     const char * str_type = w_get_attr_val_by_name(node, xml_type);
 
-    if (!str_type) { 
+    if (!str_type) {
         return default_type;
     }
 

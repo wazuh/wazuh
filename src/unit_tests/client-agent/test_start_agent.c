@@ -148,7 +148,7 @@ static int setup_test(void **state) {
 
     /* Keys */
     keys_init(&keys);
-    OS_AddKey(&keys, "001", "agent0", "any", "6958b43cb096e036f872d65d6a4dc01b3c828f64a204c04");
+    OS_AddKey(&keys, "001", "agent0", "any", "6958b43cb096e036f872d65d6a4dc01b3c828f64a204c04", 0);
     os_set_agent_crypto_method(&keys,agt->crypto_method);
 
     _s_verify_counter = 0;
