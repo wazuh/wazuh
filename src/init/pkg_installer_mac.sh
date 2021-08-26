@@ -9,7 +9,7 @@ rm -rf ./tmp_bkp/
 BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 declare -a FOLDERS_TO_BACKUP
 
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." > "./logs/upgrade.log"
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." > ./logs/upgrade.log
 
 # Generate wazuh home directory tree to backup
 FOLDERS_TO_BACKUP+=(./active-response)
@@ -29,12 +29,11 @@ for dir in "${FOLDERS_TO_BACKUP[@]}"; do
 done
 
 if [ -f /etc/ossec-init.conf ]; then
-    mkdir -p "./tmp_bkp/etc"
-    cp -p /etc/ossec-init.conf "./tmp_bkp/etc"
+    mkdir -p ./tmp_bkp/etc
+    cp -p /etc/ossec-init.conf ./tmp_bkp/etc
 fi
 
-# Save service file.
-# TODO: Check permissions?
+# Save service file
 mkdir -p "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
 cp -a /Library/LaunchDaemons/com.wazuh.agent.plist "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
 
@@ -51,7 +50,7 @@ while read -r line; do
 done <<< "$BACKUP_LIST_FILES"
 
 # Generate Backup
-tar czf "./backup/backup_[${BDATE}].tar.gz" -C "./tmp_bkp" . >>"./logs/upgrade.log" 2>&1
+tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
 rm -rf ./tmp_bkp/
 
 # Installing upgrade
@@ -70,13 +69,13 @@ while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
     . ./var/run/wazuh-agentd.state >> ./logs/upgrade.log 2>&1
     sleep 1
     COUNTER=$[COUNTER - 1]
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >>./logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >> ./logs/upgrade.log
 done
 
 # Check connection
 if [ "$status" = "connected" -a $RESULT -eq 0 ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Connected to manager." >> ./logs/upgrade.log
-    echo -ne "0" >./var/upgrade/upgrade_result
+    echo -ne "0" > ./var/upgrade/upgrade_result
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade finished successfully." >> ./logs/upgrade.log
 else
     # Restore backup
@@ -106,7 +105,7 @@ else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...."
     tar xzf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
 
-    echo -ne "2" >./var/upgrade/upgrade_result
+    echo -ne "2" > ./var/upgrade/upgrade_result
 
     # Restore service
     /bin/launchctl load /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1
