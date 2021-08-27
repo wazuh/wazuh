@@ -62,7 +62,6 @@ def test_send_message_ko():
 
 def test_format_msg():
     """Test if messages are formatted properly before to be sent."""
-    # f'{{"integration": "gcp", "{self.key_name}": {msg}}}'
     client = get_wazuhgcloud_subscriber()
     formatted_message = client.format_msg(test_message)
 

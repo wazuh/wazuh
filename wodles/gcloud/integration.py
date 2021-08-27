@@ -101,7 +101,7 @@ class WazuhGCloudSubscriber:
         ack_ids = []
         for received_message in response.received_messages:
             formatted_message = self.format_msg(received_message.message.data)
-            logger.debug(f'Processing event:\n{formatted_message}')
+            logger.debug(f'Processing event: {formatted_message}')
             ack_ids.append(received_message.ack_id)
             self.send_message(formatted_message)
 

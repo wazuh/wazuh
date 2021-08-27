@@ -22,7 +22,7 @@ log_levels = {0: logging.NOTSET,
               4: logging.ERROR,
               5: logging.CRITICAL,
               }
-logging_format = logging.Formatter('%(asctime)s %(name)s: %(levelname)s: %(message)s', '%Y/%m/%d %H:%M:%S')
+logging_format = logging.Formatter('%(name)s: %(levelname)s: %(message)s', '%Y/%m/%d %H:%M:%S')
 
 
 def get_script_arguments():
