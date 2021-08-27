@@ -2687,16 +2687,23 @@ class AWSCloudWatchLogs(AWSService):
         result_list = list()
         try:
             debug('Getting log streams for "{}" log group'.format(log_group), 1)
-            response = self.client.describe_log_streams(logGroupName=log_group)
 
-            for log_stream in response['logStreams']:
+            # Get all log streams using the token of the previous call to describe_log_streams
+            response = self.client.describe_log_streams(logGroupName=log_group)
+            log_streams = response['logStreams']
+            while token := response.get('nextToken'):
+                response = self.client.describe_log_streams(logGroupName=log_group, nextToken=token)
+                log_streams.extend(response['logStreams'])
+
+            for log_stream in log_streams:
                 debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
                 result_list.append(log_stream['logStreamName'])
 
             if result_list == list():
                 debug('No log streams were found for log group "{}"'.format(log_group), 1)
         except Exception:
-            debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(log_group), 0)
+            debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
+                log_group), 0)
 
         return result_list
 
