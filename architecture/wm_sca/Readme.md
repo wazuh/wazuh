@@ -24,12 +24,12 @@ This module is composed of a main thread, from which two other secondary threads
 The provided sequence diagram shows the basic flow of Wazuh's **SCA** module. The main steps are:
 
 1. **SCA** begins its start-up process:
-    1. **SCA**'s main thread starts working according to the configuration provided in `ossec.conf`.
-    2. Data structures are initialized. 
+    1. **SCA**'s main thread starts working according to the configuration provided in `agent.conf`.
+    2. Data structures are initialized.
     3. Dump and request threads originate from the main one. They continue to run in parallel in an infinite loop.
 2. The main thread starts its infinite loop, where the scans are performed:
     1. The **SCA** policies are dumped in memory
-    2. The scan is conducted. Checks are tested/executed. 
+    2. The scan is conducted. Checks are tested/executed.
     3. Results are stored in memory
 3. Once the results are available, they are synchronized with the manager through `wm_sca_dump_db_thread`.
 4. The `wm_sca_request_thread` keeps processing manager requests to ensure the synchronization succeeded

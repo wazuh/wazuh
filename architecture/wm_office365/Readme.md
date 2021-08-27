@@ -11,7 +11,7 @@ This program is free software; you can redistribute it and/or modify it under th
 3. [Findings](#findings)
 
 ## Purpose
-The audit log allows organization admins to quickly review the actions performed by members of your organization. It includes details such as who performed the action, what the action was, and when it was performed. 
+The audit log allows organization admins to quickly review the actions performed by members of your organization. It includes details such as who performed the action, what the action was, and when it was performed.
 
 Wazuh allows you to collect all the logs from Office 365 using its API through:
 - Office365 module
@@ -28,4 +28,4 @@ Sequence diagram shows the basic flow of Wazuh Office365 integration based on th
 
 
 ## Findings
-* Sensitive information can be detected (tenant_id, client_id, and client_secret or client_secret_path) into ossec.conf file, because is used as a plain text without obfuscation. This can lead to potential attacks and information theft.
+* Sensitive information can be detected (tenant_id, client_id, and client_secret or client_secret_path) into agent.conf file, because is used as a plain text without obfuscation. This can lead to potential attacks and information theft.
