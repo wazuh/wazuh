@@ -32,6 +32,8 @@ static const char *XML_LOG_GROUP = "aws_log_groups";
 static const char *XML_REMOVE_LOG_STREAMS = "remove_log_streams";
 static const char *XML_DISCARD_FIELD = "field";
 static const char *XML_DISCARD_REGEX = "discard_regex";
+static const char *XML_STS_ENDPOINT = "sts_endpoint";
+static const char *XML_SERVICE_ENDPOINT = "service_endpoint";
 static const char *XML_BUCKET_TYPE = "type";
 static const char *XML_SERVICE_TYPE = "type";
 static const char *XML_BUCKET_NAME = "name";
@@ -291,6 +293,16 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         } else {
                             mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
                         }
+                    } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->sts_endpoint);
+                            os_strdup(children[j]->content, cur_bucket->sts_endpoint);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_SERVICE_ENDPOINT)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->service_endpoint);
+                            os_strdup(children[j]->content, cur_bucket->service_endpoint);
+                        }
                     } else {
                         merror("No such child tag '%s' of bucket at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
                         OS_ClearNode(children);
@@ -426,6 +438,16 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         }
                     } else {
                         mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
+                    }
+                } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_service->sts_endpoint);
+                        os_strdup(children[j]->content, cur_service->sts_endpoint);
+                    }
+                } else if (!strcmp(children[j]->element, XML_SERVICE_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_service->service_endpoint);
+                        os_strdup(children[j]->content, cur_service->service_endpoint);
                     }
                 } else {
                     merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);

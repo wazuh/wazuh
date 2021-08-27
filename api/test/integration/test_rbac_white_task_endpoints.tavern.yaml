@@ -48,10 +48,10 @@ stages:
         data:
           affected_items:
             - agent_id: "001"
-              create_time: !anyint
+              create_time: !anystr
               node: !anystr
               status: !anystr
-              last_update_time: !anyint
+              last_update_time: !anystr
               command: "upgrade"
               module: "upgrade_module"
               task_id: 1

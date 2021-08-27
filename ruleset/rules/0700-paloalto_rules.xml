@@ -1,9 +1,12 @@
 <!--
   -  PaloAlto v9.0 rules
-  -  ID range: 64500 - 64511
   -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  -  ID range: 64500 - 64511
 -->
 
 <group name="paloalto,">

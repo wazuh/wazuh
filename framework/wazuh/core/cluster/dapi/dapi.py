@@ -93,6 +93,7 @@ class DistributedAPI:
         self.broadcasting = broadcasting
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
         self.current_user = current_user
+        self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db')
@@ -229,6 +230,7 @@ class DistributedAPI:
             common.broadcast.set(self.broadcasting)
             common.cluster_nodes.set(self.nodes)
             common.current_user.set(self.current_user)
+            common.origin_module.set(self.origin_module)
             data = self.f(**self.f_kwargs)
             common.reset_context_cache()
             self.debug_log("Finished executing request locally")

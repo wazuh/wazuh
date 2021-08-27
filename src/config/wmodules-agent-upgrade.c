@@ -197,6 +197,12 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
         }
     } else {
         minfo("WPK verification with CA is disabled.");
+        if (wcom_ca_store) {
+            for (int i = 0; wcom_ca_store[i]; ++i) {
+                os_free(wcom_ca_store[i]);
+            }
+            os_free(wcom_ca_store);
+        }
     }
     #endif
 

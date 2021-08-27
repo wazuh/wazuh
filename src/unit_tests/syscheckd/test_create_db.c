@@ -4335,13 +4335,16 @@ static void test_fim_realtime_event_file_exists(void **state) {
     fim_data_t *fim_data = *state;
     struct stat buf = { .st_mode = 0 };
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-#ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 #else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
@@ -4385,10 +4388,8 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
 static void test_fim_realtime_event_file_missing(void **state) {
 
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     struct stat stat_buf = { .st_mode = 0 };
 #ifdef TEST_WINAGENT

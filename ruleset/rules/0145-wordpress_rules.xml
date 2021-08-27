@@ -55,9 +55,6 @@
     <if_sid>9500</if_sid>
     <match>Warning: IDS:</match>
     <description>Attack against Wordpress detected.</description>
-    <mitre>
-      <id>T1102</id>
-    </mitre>
     <group>pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 

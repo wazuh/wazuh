@@ -406,11 +406,8 @@ DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args) {
 #elif defined INOTIFY_ENABLED
 void *fim_run_realtime(__attribute__((unused)) void * args) {
     int nfds = -1;
-    w_mutex_lock(&syscheck.fim_realtime_mutex);
-    if (syscheck.realtime != NULL) {
-        mdebug2(FIM_NUM_WATCHES, OSHash_Get_Elem_ex(syscheck.realtime->dirtb));
-    }
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+
+    fim_realtime_print_watches();
 
     while (FOREVER()) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
@@ -445,6 +442,7 @@ void *fim_run_realtime(__attribute__((unused)) void * args) {
             sleep(SYSCHECK_WAIT);
         }
     }
+    return NULL;
 }
 
 #else
@@ -747,11 +745,7 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
     } else {
         fim_link_delete_range(configuration);
 
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-        if (syscheck.realtime && syscheck.realtime->dirtb) {
-            fim_delete_realtime_watches(configuration);
-        }
-        w_mutex_unlock(&syscheck.fim_realtime_mutex);
+        fim_realtime_delete_watches(configuration);
 
 #ifdef ENABLE_AUDIT
         if (configuration->options & WHODATA_ACTIVE) {
@@ -762,55 +756,6 @@ STATIC void fim_link_check_delete(directory_t *configuration) {
         os_free(configuration->symbolic_links);
         w_mutex_unlock(&syscheck.fim_symlink_mutex);
     }
-}
-
-void fim_delete_realtime_watches(__attribute__((unused)) const directory_t *configuration) {
-#ifdef INOTIFY_ENABLED
-    OSHashNode *hash_node;
-    char *data;
-    W_Vector * watch_to_delete = W_Vector_init(1024);
-    unsigned int inode_it = 0;
-    int deletion_it = 0;
-    directory_t *dir_conf;
-    directory_t *watch_conf;
-
-    assert(watch_to_delete != NULL);
-    assert(configuration != NULL);
-
-    dir_conf = fim_configuration_directory(configuration->symbolic_links);
-
-    if (dir_conf == NULL) {
-        W_Vector_free(watch_to_delete);
-        return;
-    }
-
-    for (hash_node = OSHash_Begin(syscheck.realtime->dirtb, &inode_it); hash_node;
-         hash_node = OSHash_Next(syscheck.realtime->dirtb, &inode_it, hash_node)) {
-        data = hash_node->data;
-        if (data == NULL) {
-            continue;
-        }
-        watch_conf = fim_configuration_directory(data);
-
-        if (dir_conf == watch_conf) {
-            W_Vector_insert(watch_to_delete, hash_node->key);
-            deletion_it++;
-        }
-    }
-
-    deletion_it--;
-    while(deletion_it >= 0) {
-        const char * wd_str = W_Vector_get(watch_to_delete, deletion_it);
-        assert(wd_str != NULL);
-
-        inotify_rm_watch(syscheck.realtime->fd, atol(wd_str));
-        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd_str));
-        deletion_it--;
-    }
-
-    W_Vector_free(watch_to_delete);
-#endif
-    return;
 }
 
 STATIC void fim_link_delete_range(directory_t *configuration) {

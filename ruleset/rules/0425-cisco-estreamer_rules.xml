@@ -51,11 +51,10 @@
         <id>APP-DETECT</id>
         <match>DNS request for potential malware</match>
         <mitre>
-          <id>T1071</id>
-          <id>T1043</id>
+          <id>T1071.004</id>
         </mitre>
         <description>Cisco eStreamer: APP-DETECT DNS request for potential malware</description>
-        <group>gdpr_IV_35.7.d,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
 </group>

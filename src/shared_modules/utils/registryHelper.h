@@ -34,7 +34,16 @@ namespace Utils
             {}
             ~Registry()
             {
-                RegCloseKey(m_registryKey);
+                close();
+            }
+
+            void close()
+            {
+                if (m_registryKey)
+                {
+                    RegCloseKey(m_registryKey);
+                    m_registryKey = nullptr;
+                }
             }
 
             DWORD dword(const std::string& valueName) const
@@ -97,6 +106,34 @@ namespace Utils
                 }
 
                 return ret;
+            }
+
+            void enumerate(const std::function<void(const std::string&)>& callback) const
+            {
+                std::vector<std::string> ret;
+                constexpr auto MAX_KEY_NAME_SIZE{255};//https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
+                char buff[MAX_KEY_NAME_SIZE] {};
+                DWORD size{MAX_KEY_NAME_SIZE};
+                DWORD index{0};
+                auto result{RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr)};
+
+                while (result == ERROR_SUCCESS)
+                {
+                    callback(buff);
+                    size = MAX_KEY_NAME_SIZE;
+                    ++index;
+                    result = RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr);
+                }
+
+                if (result != ERROR_NO_MORE_ITEMS)
+                {
+                    throw std::system_error
+                    {
+                        result,
+                        std::system_category(),
+                        "Error enumerating registry."
+                    };
+                }
             }
 
             bool enumerate(std::vector<std::string>& values) const

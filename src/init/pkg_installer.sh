@@ -5,24 +5,6 @@
 WAZUH_HOME=${1}
 WAZUH_VERSION=${2}
 
-# Generating Backup
-BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
-
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." > ${WAZUH_HOME}/logs/upgrade.log
-mkdir -p ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}/bin
-mkdir -p ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}/etc
-mkdir -p ${WAZUH_HOME}/tmp_bkp/etc
-
-cp -rp ${WAZUH_HOME}/bin ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}
-cp -rp ${WAZUH_HOME}/etc ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}
-
-if [ -f /etc/ossec-init.conf ]; then
-    cp -p /etc/ossec-init.conf ${WAZUH_HOME}/tmp_bkp/etc
-fi
-
-tar czf ${WAZUH_HOME}/backup/backup_${WAZUH_VERSION}_[${BDATE}].tar.gz -C ${WAZUH_HOME}/tmp_bkp . >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
-rm -rf ${WAZUH_HOME}/tmp_bkp
-
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ${WAZUH_HOME}/logs/upgrade.log
 chmod +x ${WAZUH_HOME}/var/upgrade/install.sh
@@ -48,22 +30,15 @@ if [ "$status" = "connected" -a $RESULT -eq 0  ]; then
     echo -ne "0" > ${WAZUH_HOME}/var/upgrade/upgrade_result
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade finished successfully." >> ${WAZUH_HOME}/logs/upgrade.log
 else
-    # Restoring backup
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Restoring..." >> ${WAZUH_HOME}/logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed..." >> ${WAZUH_HOME}/logs/upgrade.log
 
     CONTROL="$WAZUH_HOME/bin/wazuh-control"
     if [ ! -f $CONTROL ]; then
         CONTROL="$WAZUH_HOME/bin/ossec-control"
     fi
 
-    $CONTROL stop >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
-    tar xzf ${WAZUH_HOME}/backup/backup_${WAZUH_VERSION}_[${BDATE}].tar.gz -C / >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Trying to start the agent on its current state..." >> ${WAZUH_HOME}/logs/upgrade.log
+    $CONTROL start >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
     echo -ne "2" > ${WAZUH_HOME}/var/upgrade/upgrade_result
 
-    CONTROL="$WAZUH_HOME/bin/wazuh-control"
-    if [ ! -f $CONTROL ]; then
-        CONTROL="$WAZUH_HOME/bin/ossec-control"
-    fi
-
-    $CONTROL start >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
 fi

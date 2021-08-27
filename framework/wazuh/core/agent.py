@@ -10,6 +10,7 @@ import re
 import tempfile
 import threading
 from base64 import b64encode
+from copy import deepcopy
 from datetime import date, datetime
 from functools import lru_cache
 from json import dumps, loads
@@ -23,7 +24,7 @@ import api.configuration as aconf
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
+from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, date_format
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
@@ -31,8 +32,8 @@ from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 
-detect_wrong_lines = re.compile(r'(.+ .+ .+ .+)')
-detect_valid_lines = re.compile(r'^(\d+) (.*) (.*) (.*)', re.MULTILINE)
+detect_wrong_lines = re.compile(r'(.+ .+ (?:any|\d+\.\d+\.\d+\.\d+) \w+)')
+detect_valid_lines = re.compile(r'^(\d{3,}) (.+) (any|\d+\.\d+\.\d+\.\d+) (\w+)', re.MULTILINE)
 
 mutex = threading.Lock()
 lock_file = None
@@ -61,7 +62,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _filter_date(self, date_filter, filter_db_name):
         WazuhDBQuery._filter_date(self, date_filter, filter_db_name)
-        self.query = self.query[:-1] + ' AND id != 0'
+        self.query += ' AND id != 0'
 
     def _sort_query(self, field):
         if field == 'os.version':
@@ -77,7 +78,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.fields['id'] = 'id'
             self.query = self.query[:-1] + ' OR id LIKE :search_id)'
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() \
-                else self.search['value']
+                else re.sub(f"[{self.special_characters}]", '_', self.search['value'])
 
     def _format_data_into_dictionary(self):
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
@@ -399,13 +400,13 @@ class Agent:
     def load_info_from_db(self, select=None):
         """Gets attributes of existing agent.
         """
-        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
-                                      query="id={}".format(self.id), count=False, get_data=True,
-                                      remove_extra_fields=False)
-        try:
-            data = db_query.run()['items'][0]
-        except IndexError:
-            raise WazuhResourceNotFound(1701)
+        with WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
+                                query="id={}".format(self.id), count=False, get_data=True,
+                                remove_extra_fields=False) as db_query:
+            try:
+                data = db_query.run()['items'][0]
+            except IndexError:
+                raise WazuhResourceNotFound(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -929,18 +930,31 @@ class Agent:
                             filters=None, q=""):
         """Gets a list of available agents with basic attributes.
 
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
-        :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
-        :param filters: Defines required field filters.
-        Format: {"field1":"value1", "field2":["value2","value3"]}
-        :param q: Defines query to filter in DB.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        Parameters
+        ----------
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : str
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        search : str
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
+        select : str
+            Select fields to return. Format: {"fields":["field1","field2"]}.
+        filters : dict
+            Defines required field filters.
+        q : str
+            Defines query to filter in DB.
+
+        Returns
+        -------
+        Information gathered from the database query
         """
+        pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
+                                    filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      filters=filters, query=q)
+                                      query=q, **pfilters)
         data = db_query.run()
 
         return data
@@ -1250,7 +1264,7 @@ def expand_group(group_name):
             try:
                 with open(path.join(common.groups_path, file), 'r') as f:
                     file_content = f.readlines()
-                len(file_content) == 1 and group_name in file_content[0] and agents_ids.add(file)
+                len(file_content) == 1 and group_name in file_content[0].strip().split(',') and agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
                 pass
@@ -1373,5 +1387,8 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()
+    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format))
+                       for k, v in agent_info.items() if k in {'create_time', 'update_time'})
+     for agent_info in data['data']]
 
     return data

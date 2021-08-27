@@ -6,8 +6,9 @@
 
 import argparse
 import sys
+from atexit import register
 
-from wazuh.core import common
+from wazuh.core import common, utils
 
 
 def start(foreground, root, config_file):
@@ -43,6 +44,7 @@ def start(foreground, root, config_file):
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
         set_secure_headers
+    from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
@@ -130,11 +132,13 @@ def start(foreground, root, config_file):
         print(f"Starting API as root")
 
     # Foreground/Daemon
+    utils.check_pid('wazuh-apid')
     if not foreground:
         pyDaemonModule.pyDaemon()
-        pyDaemonModule.create_pid('wazuh-apid', os.getpid())
-    else:
-        print(f"Starting API in foreground")
+    pid = os.getpid()
+    pyDaemonModule.create_pid('wazuh-apid', pid) or register(pyDaemonModule.delete_pid, 'wazuh-apid', pid)
+    if foreground:
+        print(f"Starting API in foreground (pid: {pid})")
 
     # Load the SPEC file into memory to use as a reference for future calls
     wazuh.security.load_spec()
@@ -159,6 +163,9 @@ def start(foreground, root, config_file):
                 options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging,
                                          set_secure_headers]})
 
+    # Maximum body size that the API can accept (bytes)
+    app.app._client_max_size = configuration.api_conf['max_upload_size']
+
     # Enable CORS
     if api_conf['cors']['enabled']:
         import aiohttp_cors
@@ -176,6 +183,9 @@ def start(foreground, root, config_file):
     # Enable cache plugin
     if api_conf['cache']['enabled']:
         setup_cache(app.app)
+
+    # Add application signals
+    app.app.on_response_prepare.append(modify_response_headers)
 
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')

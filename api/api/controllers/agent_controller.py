@@ -19,6 +19,7 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
+from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -988,31 +989,37 @@ async def get_group_file_xml(request, group_id, file_name, pretty=False, wait_fo
 async def restart_agents_by_group(request, group_id, pretty=False, wait_for_complete=False):
     """Restart all agents from a group.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :return: AllItemsResponseAgents
-    """
-    f_kwargs = {'group_list': [group_id], 'select': ['id']}
+    Parameters
+    ----------
+    request
+    group_id : str
+        Group name
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
 
+    Returns
+    -------
+    Response
+    """
+    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
     dapi = DistributedAPI(f=agent.get_agents_in_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          f_kwargs=f_kwargs,
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
-
     agents = raise_if_exc(await dapi.distribute_function())
-    agent_list = [a['id'] for a in agents.affected_items]
 
+    agent_list = [a['id'] for a in agents.affected_items]
     if not agent_list:
         data = AffectedItemsWazuhResult(none_msg='Restart command was not sent to any agent')
         return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
     f_kwargs = {'agent_list': agent_list}
-
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',

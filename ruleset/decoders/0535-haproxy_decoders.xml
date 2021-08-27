@@ -1,6 +1,7 @@
 <!--
   -  haproxy http log decoder
-  -  Author: George Kissandrakis <gkissand@gmail.com>, Jose Cruz
+  -  Author: George Kissandrakis <gkissand@gmail.com>
+  -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->

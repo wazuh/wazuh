@@ -99,6 +99,7 @@ class WazuhDBQuerySyscollector(WazuhDBQuery):
                          *args, **kwargs)
         self.array = array
         self.nested = nested
+        self.date_fields = {'scan.time', 'install_time'}
 
     def _format_data_into_dictionary(self):
         if self.nested:
