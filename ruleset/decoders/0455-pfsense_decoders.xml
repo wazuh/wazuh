@@ -70,7 +70,7 @@ Sample Logs:
 -->
 
 <decoder name="pfsense-firewall">
-    <prematch>^\d\s\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d</prematch>
+    <prematch type="pcre2">^\d\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}</prematch>
 </decoder>
 
 <decoder name="pfsense-extract">
