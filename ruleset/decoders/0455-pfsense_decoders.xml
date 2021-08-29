@@ -84,8 +84,8 @@ Sample Logs:
 -->
 <decoder name="pfsense-extract">
    <parent>pfsense-firewall</parent>
-   <regex>\S*,,,(\d+),(\S*),(\w+),(\w+),(\w+),(4),(\w+),,(\d+),(\d+),(\d+),(\w+),(17),(udp),(\d+),(\d+.\d+.\d+.\d+),(\d+.\d+.\d+.\d+),(\d+),(\d+),(\d+)</regex>
-    <order>tracker, interface, reason, action, direction, ip-version, tos, ttl, id, offset, flags, protocol-id, protocol-text, length, srcip, dstip, srcport, dstport, data-length</order>
+   <regex type="pcre2">,,,(\d+),(\w*),(\w+),(\w+),(\w+),(4),(\w+),,(\d+),(\d+),(\d+),(\w+),(17),(udp),(\d+),(\d+\.\d+\.\d+\.\d+),(\d+\.\d+\.\d+\.\d+),(\d+),(\d+),(\d+)</regex>
+   <order>tracker, interface, reason, action, direction, ip-version, tos, ttl, id, offset, flags, protocol-id, protocol-text, length, srcip, dstip, srcport, dstport, data-length</order>
 </decoder>
 
 <!--
@@ -94,6 +94,6 @@ Sample Logs:
 
 <decoder name="pfsense-extract">
    <parent>pfsense-firewall</parent>
-   <regex>\S*,,,(\d+),(\S*),(\w+),(\w+),(\w+),(4),(\w+),(\d+),(\d+),(\d+),(\d+),(\w+),(6),(tcp),(\d+),(\d+.\d+.\d+.\d+),(\d+.\d+.\d+.\d+),(\d+),(\d+),(\d+),(\w+),(\d+),(\S*),(\S*),(\S*),(\S*)</regex>
-   <order>tracker, interface, reason, action, direction, ip-version, tos, ttl, id, offset, flags, protocol-id, protocol-text, length, srcip, dstip, srcport, dstport, data-length, tcp-flags, seq-number, ack, window, urg, options</order>
+   <regex type="pcre2">,,,(\d+),(\w*),(\w+),(\w+),(\w+),(4),(\w+),(\d+),(\d+),(\d+),(\d+),(\w+),(6),(tcp),(\d+),(\d+\.\d+\.\d+\.\d+),(\d+\.\d+\.\d+\.\d+),(\d+),(\d+),(\d+),(\w+),(\d+),(\w*),(\w*),(\w*),(\S*)</regex>
+   <order>tracker, interface, reason, action, direction, ip-version, tos, ecn, ttl, id, offset, flags, protocol-id, protocol-text, length, srcip, dstip, srcport, dstport, data-length, tcp-flags, seq-number, ack, window, urg, options</order>
 </decoder>
