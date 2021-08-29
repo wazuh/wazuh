@@ -52,7 +52,7 @@ Sample Logs:
 
 <decoder name="smokescreen-extract">
    <parent>smokescreen-deception</parent>
-   <regex type="pcre2">"timestamp":"(\S+)","attacker.id":"(\S+)","attacker.name":"(.*?)","email.subject":"(.*?)","email.body.plain":\["(.*?)"\],"email.body.attachments":\[(.*?)\],"decoy.id":"(\S+)","decoy.name":"(.*?)","decoy.group":"(\S+)","decoy.type":"(\S+)","type":"(\S+)","kill_chain_phase":"(.*?)","decoy.client.id":"(\S+)","decoy.client.name":"(\S+)","decoy.appliance.id":"(\S+)","decoy.appliance.name":"(.*?)","email.evidence_id":"(.*?)"</regex>
+   <regex type="pcre2">"timestamp":"([\d\-\:TZ]+)","attacker\.id":"([\w\@\.\_\-]+)","attacker\.name":"([\w\s]+)","email\.subject":"([\w\s]+)","email\.body\.plain":\["(.*?)"\],"email\.body\.attachments":\[([\w\"\_\,]+)\],"decoy\.id":"(\d+)","decoy\.name":"([\w\s]+)","decoy\.group":"(\w+)","decoy\.type":"(\w+)","type":"(\w+)","kill_chain_phase":"([\w\s]+)","decoy\.client\.id":"(\w+)","decoy\.client\.name":"(\w+)","decoy\.appliance\.id":"(\w+)","decoy\.appliance\.name":"(\w+)","email\.evidence_id":"(\d+)"</regex>
    <order>timestamp, attacker.id, attacker.name, email.subject, email.body.plain, email.body.attachments, decoy.id, decoy.name, decoy.group, decoy.type, type, kill_chain_phase, decoy.client.id, decoy.client.name, decoy.appliance.id, decoy.appliance.name, email.evidence_id</order>
 </decoder>
 
