@@ -33,7 +33,7 @@ Sample Logs:
 
 <decoder name="smokescreen-extract">
    <parent>smokescreen-deception</parent>
-   <regex>(\S+)T(\S+)\s(\S+)\s(IllusionBLACK)</regex>
+   <regex type="pcre2">(\d{4}\-\d{2}\-\d{2})T(\d{2}:\d{2}:\d{2}\.\d{3}Z)\s(\S+)\s(IllusionBLACK)</regex>
    <order>Date, Time, Hostname, Device.Type</order>
 </decoder>
 
