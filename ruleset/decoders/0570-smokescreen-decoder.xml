@@ -28,7 +28,7 @@ Sample Logs:
 -->
 
 <decoder name="smokescreen-deception">
-    <prematch>\S+\s\S+\sIllusionBLACK</prematch>
+    <prematch type="pcre2">\d{4}\-\d{2}\-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s(\S+)\sIllusionBLACK</prematch>
 </decoder>
 
 <decoder name="smokescreen-extract">
