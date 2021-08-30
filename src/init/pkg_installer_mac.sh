@@ -39,20 +39,23 @@ mkdir -p "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
 cp -a /Library/LaunchDaemons/com.wazuh.agent.plist "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
 
 mkdir -p "${TMP_DIR_BACKUP}/Library/StartupItems/WAZUH"
-cp -r /Library/StartupItems/WAZUH/* ${TMP_DIR_BACKUP}/Library/StartupItems/WAZUH
+cp -a /Library/StartupItems/WAZUH/* ${TMP_DIR_BACKUP}/Library/StartupItems/WAZUH
 
 # Saves modes and owners of the directories
 BACKUP_LIST_FILES=$(find "${TMP_DIR_BACKUP}/" -type d)
 
 while read -r line; do
     org=$(echo "${line}" | awk "sub(\"${TMP_DIR_BACKUP}\",\"\")")
-    chown --reference=$org $line
-    chmod --reference=$org $line
+    owner=$(stat -f %Su ${org})
+    group=$(stat -f %Sg ${org})
+    mode=$(stat -f %A ${org})
+    chown $owner:$group $line
+    chmod $mode $line
 done <<< "$BACKUP_LIST_FILES"
 
 # Generate Backup
 mkdir -p ./backup
-cd ./tmp_bkp && zip -r ../backup/backup_[${BDATE}].zip . >> ../logs/upgrade.log 2>&1 && cd ..
+tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
 rm -rf ./tmp_bkp/
 
 # Installing upgrade
@@ -105,7 +108,14 @@ else
 
     # Restore backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
-    unzip ./backup/backup_[${BDATE}].zip -d / >> ./logs/upgrade.log 2>&1
+    mkdir -p ./backup/restore
+    tar xzf ./backup/backup_[${BDATE}].tar.gz -C ./backup/restore >> ./logs/upgrade.log 2>&1
+
+    for dir in ./backup/restore/*; do
+        cp -a ${dir}/* /$(basename ${dir}) >> ./logs/upgrade.log 2>&1
+    done
+
+    rm -rf ./backup/restore
 
     echo -ne "2" > ./var/upgrade/upgrade_result
 
