@@ -547,7 +547,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
     char path[PATH_MAX + 1];
     char ** files;
     char ** subdir;
-    char agent_conf_multi_path[PATH_MAX + 1] = {0};
+    char multi_path[PATH_MAX] = { 0 };
 
     if (!hash_multigroup) {
         return;
@@ -558,8 +558,8 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
         group = strtok_r(multi_group, delim, &save_ptr);
 
         /* Delete agent.conf from multi group before appending to it */
-        snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
-        unlink(agent_conf_multi_path);
+        snprintf(multi_path, PATH_MAX,"%s/%s",MULTIGROUPS_DIR, hash_multigroup);
+        cldir_ex(multi_path);
 
         while( group != NULL ) {
             /* Now for each group copy the files to the multi-group folder */
