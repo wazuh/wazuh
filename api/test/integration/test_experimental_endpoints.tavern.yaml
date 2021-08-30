@@ -65,7 +65,7 @@ test_name: DELETE /experimental/syscheck
 
 stages:
 
-  - name: Request
+  - name: Try to delete syscheck scans (Some failed, agents are newer than expected)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
@@ -98,7 +98,7 @@ stages:
           total_affected_items: 2
           total_failed_items: 11
 
-  - name: Request
+  - name: Try to delete syscheck scans (Failed, agents are newer than expected)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"

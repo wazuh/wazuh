@@ -140,7 +140,7 @@ test_name: DELETE /syscheck
 
 stages:
 
-  - name: Try to delete syscheck scans in agent 002 (Allow)
+  - name: Try to delete syscheck scans in agent 002 (Failed, agent is newer than expected)
     request:
       verify: False
       method: DELETE
