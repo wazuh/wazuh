@@ -1248,7 +1248,7 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
       method: PUT
-      data: "{invalid_ossec_conf:s}"
+      data: "{invalid_wazuh_conf:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json

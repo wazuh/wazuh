@@ -94,7 +94,7 @@ def test_get_status(mock_status):
     (None, 'warning', 2, None, False)
 ])
 
-def test_wazuh_log(tag, level, total_items, sort_by, sort_ascending, q):
+def test_wazuh_log(tag, level, total_items, sort_by, sort_ascending):
     """Test reading wazuh.log file contents.
 
     Parameters
@@ -115,7 +115,7 @@ def test_wazuh_log(tag, level, total_items, sort_by, sort_ascending, q):
         wazuh_log_file = get_logs()
         tail_patch.return_value = wazuh_log_file.splitlines()
 
-        result = wazuh_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=sort_ascending, q=q)
+        result = wazuh_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=sort_ascending)
 
         # Assert type, number of items and presence of trailing characters
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
@@ -124,7 +124,7 @@ def test_wazuh_log(tag, level, total_items, sort_by, sort_ascending, q):
         if tag is not None and level != 'wazuh-modulesd:syscollector':
             assert all('\n' not in log['description'] for log in result.render()['data']['affected_items'])
         if sort_by:
-            reversed_result = wazuh_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending, q=q)
+            reversed_result = wazuh_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending)
             for i in range(total_items):
                 assert result.render()['data']['affected_items'][i][sort_by[0]] == \
                        reversed_result.render()['data']['affected_items'][total_items - 1 - i][sort_by[0]]
