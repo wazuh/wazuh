@@ -1,7 +1,7 @@
 <!--
   -  Windows Event Channel ruleset
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -91,6 +91,12 @@
     <description>Group of Microsoft Security Essentials rules</description>
   </rule>
 
+  <rule id="60018" level="0">
+    <if_sid>60000</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-WMI-Activity$</field>
+    <options>no_full_log</options>
+    <description>Group of Microsoft Windows Management Instrumentation (WMI) rules</description>
+  </rule>
   <!-- Rules to classify events by level (for rules with no defined channel) -->
 
   <rule id="60009" level="0">

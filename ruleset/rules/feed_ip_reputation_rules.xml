@@ -1,0 +1,15 @@
+<!--
+  -  Wazuh feed - Rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="feed,">
+    <rule id="200001" level="10">
+      <if_group>web|attack|attacks</if_group>
+      <list field="srcip" lookup="address_match_key">etc/lists/ip_reputation</list>
+      <description>Source IP address has been found in the IP reputation database</description>
+      <group>wazuh_profeed,ip_reputation,attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,</group>
+    </rule>
+</group>

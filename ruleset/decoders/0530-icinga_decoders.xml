@@ -1,0 +1,204 @@
+<!--
+  -  Icinga  decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+Log samples:
+[2019-07-26 19:04:58 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!swap' (PID: 5764, arguments: '/usr/lib64/nagios/plugins/check_swap' '-c' '25%' '-w' '50%') terminated with exit code 128,output: execvpe(/usr/lib64/nagios/plugins/check_swap) failed: No such file or directory
+
+[2019-07-26 19:05:00 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!disk' (PID: 5778, arguments: '/usr/lib64/nagios/plugins/check_disk' '-c' '10%' '-w' '20%' '-X' 'none' '-X' 'tmpfs' '-X' 'sysfs' '-X' 'proc' '-X' 'configfs' '-X' 'devtmpfs' '-X' 'devfs' '-X' 'mtmfs' '-X' 'tracefs' '-X' 'cgroup' '-X' 'fuse.gvfsd-fuse' '-X' 'fuse.gvfs-fuse-daemon' '-X' 'fdescfs' '-X' 'overlay' '-X' 'nsfs' '-X' 'squashfs' '-m') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_disk) failed: No such file or directory
+
+[2019-07-26 19:05:00 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!disk /' (PID: 5782, arguments: '/usr/lib64/nagios/plugins/check_disk' '-c' '10%' '-w' '20%' '-X' 'none' '-X' 'tmpfs' '-X' 'sysfs' '-X' 'proc' '-X' 'configfs' '-X' 'devtmpfs' '-X' 'devfs' '-X' 'mtmfs' '-X' 'tracefs' '-X' 'cgroup' '-X' 'fuse.gvfsd-fuse' '-X' 'fuse.gvfs-fuse-daemon' '-X' 'fdescfs' '-X' 'overlay' '-X' 'nsfs' '-X' 'squashfs' '-m' '-p' '/') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_disk) failed: No such file or directory
+
+[2019-07-26 19:05:02 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31' (PID: 5805, arguments: '/usr/lib64/nagios/plugins/check_ping' '-H' '127.0.0.1' '-c' '5000,100%' '-w' '3000,80%')
+terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_ping) failed: No such file or directory
+
+[2019-07-26 19:05:18 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!ping6' (PID: 5916, arguments: '/usr/lib64/nagios/plugins/check_ping' '-6' '-H' '::1' '-c' '200,15%' '-w' '100,5%') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_ping) failed: No such file or directory
+
+[2019-07-26 19:05:24 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!http' (PID: 5958, arguments: '/usr/lib64/nagios/plugins/check_http' '-I' '127.0.0.1' '-u' '/') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_http) failed: No such file or directory
+
+[2019-07-26 19:05:28 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!ssh' (PID: 5986, arguments: '/usr/lib64/nagios/plugins/check_ssh' '127.0.0.1') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_ssh) failed: No such file or directory
+
+[2019-07-26 19:05:28 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!procs' (PID: 5987, arguments: '/usr/lib64/nagios/plugins/check_procs' '-c' '400' '-w' '250') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_procs) failed: No such file or directory
+
+[2019-07-26 19:05:35 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!load' (PID: 6128, arguments: '/usr/lib64/nagios/plugins/check_load' '-c' '10,6,4' '-w' '5,4,3') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_load) failed: No such file or directory
+
+[2019-07-26 19:05:37 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!ping4' (PID: 6136, arguments: '/usr/lib64/nagios/plugins/check_ping' '-4' '-H' '127.0.0.1' '-c' '200,15%' '-w' '100,5%') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_ping) failed: No such file or directory
+
+[2019-07-26 19:05:41 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!users' (PID: 6171, arguments: '/usr/lib64/nagios/plugins/check_users' '-c' '50' '-w' '20') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_users) failed: No such file or directory
+
+[2019-07-26 19:05:44 +0000] information/ConfigObject: Dumping program state to file '/var/lib/icinga2/icinga2.state'
+[2019-07-26 19:05:57 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!swap' (PID: 6274, arguments: '/usr/lib64/nagios/plugins/check_swap' '-c' '25%' '-w' '50%') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_swap) failed: No such file or directory
+
+[2019-07-26 19:05:58 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!disk /' (PID: 6288, arguments: '/usr/lib64/nagios/plugins/check_disk' '-c' '10%' '-w' '20%' '-X' 'none' '-X' 'tmpfs' '-X' 'sysfs' '-X' 'proc' '-X' 'configfs' '-X' 'devtmpfs' '-X' 'devfs' '-X' 'mtmfs' '-X' 'tracefs' '-X' 'cgroup' '-X' 'fuse.gvfsd-fuse' '-X' 'fuse.gvfs-fuse-daemon' '-X' 'fdescfs' '-X' 'overlay' '-X' 'nsfs' '-X' 'squashfs' '-m' '-p' '/') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_disk) failed: No such file or directory
+
+[2019-07-26 19:06:00 +0000] warning/PluginCheckTask: Check command for object 'centos-7-31!disk' (PID: 6297, arguments: '/usr/lib64/nagios/plugins/check_disk' '-c' '10%' '-w' '20%' '-X' 'none' '-X' 'tmpfs' '-X' 'sysfs' '-X' 'proc' '-X' 'configfs' '-X' 'devtmpfs' '-X' 'devfs' '-X' 'mtmfs' '-X' 'tracefs' '-X' 'cgroup' '-X' 'fuse.gvfsd-fuse' '-X' 'fuse.gvfs-fuse-daemon' '-X' 'fdescfs' '-X' 'overlay' '-X' 'nsfs' '-X' 'squashfs' '-m') terminated with exit code 128, output: execvpe(/usr/lib64/nagios/plugins/check_disk) failed: No such file or directory
+
+
+[2019-07-26 19:07:05 +0000] information/Checkable: Checking for configured notifications for object 'centos-7-31'
+[2019-07-26 19:07:05 +0000] information/Notification: Sending 'Recovery' notification 'centos-7-31!mail-icingaadmin' for user 'icingaadmin'
+[2019-07-26 19:07:05 +0000] information/Notification: Completed sending 'Recovery' notification 'centos-7-31!mail-icingaadmin' for checkable 'centos-7-31' and user 'icingaadmin'.
+[2019-07-26 19:07:19 +0000] information/Checkable: Checking for configured notifications for object 'centos-7-31!ping6'
+[2019-07-26 19:07:20 +0000] information/Checkable: Checking for configured notifications for object 'centos-7-31!http'
+[2019-07-26 19:07:22 +0000] information/Checkable: Checking for configured notifications for object 'centos-7-31!procs'
+[2019-07-26 19:07:27 +0000] information/Checkable: Checking for configured notifications for object 'centos-7-31!ssh'
+[2019-07-26 19:08:05 +0000] warning/Process: Killing process group 6849 ('/etc/icinga2/scripts/mail-host-notification.sh' '-4' '127.0.0.1' '-6' '::1' '-b' '' '-c' '' '-d' '2019-07-26 19:07:05 +0000' '-l' 'centos-7-31' '-n' 'centos-7-31' '-o' 'PING OK - Packet loss = 0%, RTA = 0.04 ms' '-r' 'icinga@localhost' '-s' 'UP' '-t' 'RECOVERY' '-v' 'false') after timeout of 60 seconds
+[2019-02-14 13:02:11 +0100] notice/Process: Running command '/etc/icinga2/scripts/mail-service-notification.sh' '-d' '2019-02-14 13:02:11 +0100' '-e' 'CPU' '-n' 'scmdrcx' '-o' 'CRITICAL: CPU Idle = 1.69% ' '-r' 'tomas.bohunek@moneta.cz' '-s' 'CRITICAL' '-t' 'PROBLEM' '-u' 'CPU': PID 5740
+[2019-02-14 13:02:11 +0100] notice/Process: PID 5740 ('/etc/icinga2/scripts/mail-service-notification.sh' '-d' '2019-02-14 13:02:11 +0100' '-e' 'CPU' '-n' 'scmdrcx' '-o' 'CRITICAL: CPU Idle = 1.69% ' '-r' 'tomas.bohunek@moneta.cz' '-s' 'CRITICAL' '-t' 'PROBLEM' '-u' 'CPU') terminated with exit code 67
+[2019-02-14 13:02:11 +0100] warning/PluginNotificationTask: Notification command for object 'myczvl1dd0scm1.ux.mbid.cz!CPU' (PID: 5740, arguments: '/etc/icinga2/scripts/mail-service-notification.sh' '-d' '2019-02-14 13:02:11 +0100' '-e' 'CPU' '-n' 'scmdrcx' '-o' 'CRITICAL: CPU Idle = 1.69% ' '-r' 'tomas.bohunek@moneta.cz' '-s' 'CRITICAL' '-t' 'PROBLEM' '-u' 'CPU') terminated with exit code 67, output: WARNING: RunAsUser for MSP ignored, check group ids (egid=298, want=51)
+
+[2019-02-14 10:15:25 +0000] notice/JsonRpcConnection: Received 'event::Heartbeat' message from 'zenoss.hpc.imperial.ac.uk'
+[2019-02-14 10:15:27 +0000] information/ApiListener: New client connection from [192.168.96.134]:51328 (no client certificate)
+[2019-02-14 10:15:27 +0000] notice/ApiListener: New HTTP client
+[2019-02-14 10:15:27 +0000] debug/HttpRequest: line: POST /v1/actions/process-check-result?service=/cx1-106-1-1.cx1.hpc.ic.ac.uk!cx1-mom-check HTTP/1.1, tokens: 3
+[2019-02-14 10:15:27 +0000] notice/WorkQueue: Spawning WorkQueue threads for 'HttpServerConnection'
+[2019-02-14 10:15:27 +0000] information/HttpServerConnection: Request: POST /v1/actions/process-check-result?service=/cx1-106-1-1.cx1.hpc.ic.ac.uk%21cx1-mom-check (from [192.168.96.134]:51328, user: client-pki-ticket-cx1-admin)
+[2019-02-14 10:15:27 +0000] warning/TlsStream: TLS stream was disconnected.
+[2019-02-14 10:15:27 +0000] debug/HttpServerConnection: Http client disconnected
+[2019-02-14 10:15:27 +0000] notice/WorkQueue: Stopped WorkQueue threads for 'HttpServerConnection'
+[2019-02-14 10:15:29 +0000] notice/JsonRpcConnection: Received 'log::SetLogPosition' message from 'zenoss.hpc.imperial.ac.uk'
+[2019-02-14 10:15:30 +0000] information/WorkQueue: #4 (ApiListener, RelayQueue) items: 0, rate: 0.133333/s (8/min 8/5min 8/15min);
+[2019-02-14 10:15:30 +0000] information/WorkQueue: #5 (ApiListener, SyncQueue) items: 0, rate: 0.0166667/s (1/min 1/5min 1/15min);
+[2019-02-14 10:15:30 +0000] notice/CheckerComponent: Pending checkables: 0; Idle checkables: 15; Checks/s: 0
+[2019-02-14 10:15:30 +0000] notice/ApiListener: Setting log position for identity 'zenoss.hpc.imperial.ac.uk': 2019/02/13 16:47:02
+[2019-02-14 10:15:30 +0000] information/WorkQueue: #8 (JsonRpcConnection, #0) items: 0, rate: 0.1/s (6/min 6/5min 6/15min);
+[2019-02-14 10:15:30 +0000] information/WorkQueue: #10 (JsonRpcConnection, #2) items: 0, rate:  0/s (0/min 0/5min 0/15min);
+
+-->
+
+<decoder name="icinga">
+    <prematch>[\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+] \w+/\w+: \p*\w+</prematch>
+</decoder>
+
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>[(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d) +\d+] (\w+)/(\w+):</regex>
+    <order>timestamp,msg_type,operation</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>[\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+] \w+/\w+: (\D+) '(\.+)'</regex>
+    <order>Process,object</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>PID: (\d+)</regex>
+    <order>PID</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>PID (\d+)</regex>
+    <order>PID</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'(\.+.sh)'</regex>
+    <order>script</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>arguments: '(\.+)'</regex>
+    <order>arguments</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-c' '(\.+)' '-w' '(\.+)'</regex>
+    <order>-c,-w</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>terminated with exit code (\d+), output: (\.+)</regex>
+    <order>exit_code, output</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-d' '(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d +\d+)'</regex>
+    <order>-d</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-e' '(\w+)'</regex>
+    <order>-e</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-n' '(\w+)'</regex>
+    <order>-n</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-o' '(\.+)'</regex>
+    <order>-o</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-r' '(\.+@\w+.\w+)'</regex>
+    <order>-r</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-s' '(\w+)'</regex>
+    <order>-s</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-t' '(\w+)'</regex>
+    <order>-t</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-u' '(\w+)'</regex>
+    <order>-u</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-H' '(\d+.\d+.\d+.\d+)'</regex>
+    <order>-H</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-l' '(\.+)'</regex>
+    <order>-l</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-r' '(\.+)'</regex>
+    <order>-r</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>'-v' '(\.+)'</regex>
+    <order>-v</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>items: (\d+)</regex>
+    <order>items</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>rate: (\.+/s \(\.+\))</regex>
+    <order>rate</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>message from '(\.+)'</regex>
+    <order>msg_src</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>Pending checkables: (\d+)</regex>
+    <order>pending_checkables</order>
+</decoder>
+<decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>Idle checkables: (\d+)</regex>
+    <order>iddle_checkables</order>
+</decoder><decoder name="icinga_child">
+    <parent>icinga</parent>
+    <regex>Checks/s: (\d+)</regex>
+    <order>checks/s</order>
+</decoder>

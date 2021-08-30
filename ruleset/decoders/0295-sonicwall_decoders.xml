@@ -2,7 +2,7 @@
   -  SonicWall decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -39,14 +39,32 @@
 
 <decoder name="sonicwall-fields">
   <parent>sonicwall</parent>
-  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+):(\d+):\S* dst=(\d+.\d+.\d+.\d+):(\d+):\S*</regex>
-  <order>srcip, srcport ,dstip, dstport, protocol</order>
+  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+):(\d+):\S*</regex>
+  <order>srcip, srcport</order>
 </decoder>
 
 <decoder name="sonicwall-fields">
   <parent>sonicwall</parent>
-  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+)\S* dst=(\d+.\d+.\d+.\d+)\S*</regex>
-  <order>srcip, dstip, protocol</order>
+  <regex offset="after_regex">dst=(\d+.\d+.\d+.\d+):(\d+):\S*</regex>
+  <order>dstip, dstport</order>
+</decoder>
+
+<decoder name="sonicwall-fields">
+  <parent>sonicwall</parent>
+  <regex offset="after_regex">src=(\d+.\d+.\d+.\d+)::|src=(\d+.\d+.\d+.\d+)\s</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="sonicwall-fields">
+  <parent>sonicwall</parent>
+  <regex offset="after_regex">dst=(\d+.\d+.\d+.\d+)::|dst=(\d+.\d+.\d+.\d+)\s</regex>
+  <order>dstip</order>
+</decoder>
+
+<decoder name="sonicwall-fields">
+  <parent>sonicwall</parent>
+  <regex offset="after_regex">proto=(\S+)</regex>
+  <order>protocol</order>
 </decoder>
 
 
