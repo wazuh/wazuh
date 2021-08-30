@@ -108,6 +108,7 @@ else
 
     # Restore backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
+    rm -rf ./backup/restore
     mkdir -p ./backup/restore
     tar xzf ./backup/backup_[${BDATE}].tar.gz -C ./backup/restore >> ./logs/upgrade.log 2>&1
 
