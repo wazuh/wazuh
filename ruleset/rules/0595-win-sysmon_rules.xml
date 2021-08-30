@@ -370,12 +370,4 @@
     <options>no_full_log</options>
   </rule>
 
-<!-- Cdb related rules -->
-  <rule id="61644" level="14">
-    <if_group>sysmon_event3</if_group>
-    <list field="win.eventdata.sourceIp" lookup="address_match_key">ruleset/lists/ip_reputation</list>
-    <description>Network connection to an IP present in malicious IP reputation database</description>
-    <group>ip_reputation,attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,</group>
-  </rule>
-
 </group>

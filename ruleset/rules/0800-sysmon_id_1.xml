@@ -285,18 +285,10 @@
         </mitre>
     </rule>
 
-    <rule id="92130" level="0">
+    <!-- Sample: {"win":{"eventdata":{"originalFileName":"reg.exe","image":"C:\\\\Windows\\\\System32\\\\reg.exe","product":"Microsoft® Windows® Operating System","parentProcessGuid":"{4dc16835-57e4-60f8-f782-260000000000}","description":"Registry Console Tool","logonGuid":"{4dc16835-577d-60f8-7c02-1b0000000000}","parentCommandLine":"\\\"C:\\\\Windows\\\\system32\\\\cmd.exe\\\"","processGuid":"{4dc16835-795e-60f8-c58a-770000000000}","logonId":"0x1b027c","parentProcessId":"5488","processId":"4616","currentDirectory":"C:\\\\Users\\\\AtomicRed\\\\Downloads\\\\shadow2\\\\","utcTime":"2021-07-21 19:45:34.763","hashes":"SHA1=C0DB341DEFA8EF40C03ED769A9001D600E0F4DAE,MD5=227F63E1D9008B36BDBCC4B397780BE4,SHA256=C0E25B1F9B22DE445298C1E96DDFCEAD265CA030FA6626F61A4A4786CC4A3B7D,IMPHASH=BE482BE427FE212CFEF2CDA0E61F19AC","parentImage":"C:\\\\Windows\\\\System32\\\\cmd.exe","ruleName":"technique_id=T1112,technique_name=Modify Registry","company":"Microsoft Corporation","commandLine":"reg  save HKLM\\\\sam C:\\\\Users\\\\ATOMIC~2\\\\AppData\\\\Local\\\\Temp\\\\sam","integrityLevel":"High","fileVersion":"10.0.19041.1 (WinBuild.160101.0800)","user":"EXCHANGETEST\\\\AtomicRed","terminalSessionId":"1"},"system":{"eventID":"1","keywords":"0x8000000000000000","providerGuid":"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}","level":"4","channel":"Microsoft-Windows-Sysmon/Operational","opcode":"0","message":"\"Process Create:\r\nRuleName: technique_id=T1112,technique_name=Modify Registry\r\nUtcTime: 2021-07-21 19:45:34.763\r\nProcessGuid: {4dc16835-795e-60f8-c58a-770000000000}\r\nProcessId: 4616\r\nImage: C:\\Windows\\System32\\reg.exe\r\nFileVersion: 10.0.19041.1 (WinBuild.160101.0800)\r\nDescription: Registry Console Tool\r\nProduct: Microsoft® Windows® Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: reg.exe\r\nCommandLine: reg  save HKLM\\sam C:\\Users\\ATOMIC~2\\AppData\\Local\\Temp\\sam\r\nCurrentDirectory: C:\\Users\\AtomicRed\\Downloads\\shadow2\\\r\nUser: EXCHANGETEST\\AtomicRed\r\nLogonGuid: {4dc16835-577d-60f8-7c02-1b0000000000}\r\nLogonId: 0x1B027C\r\nTerminalSessionId: 1\r\nIntegrityLevel: High\r\nHashes: SHA1=C0DB341DEFA8EF40C03ED769A9001D600E0F4DAE,MD5=227F63E1D9008B36BDBCC4B397780BE4,SHA256=C0E25B1F9B22DE445298C1E96DDFCEAD265CA030FA6626F61A4A4786CC4A3B7D,IMPHASH=BE482BE427FE212CFEF2CDA0E61F19AC\r\nParentProcessGuid: {4dc16835-57e4-60f8-f782-260000000000}\r\nParentProcessId: 5488\r\nParentImage: C:\\Windows\\System32\\cmd.exe\r\nParentCommandLine: \"C:\\Windows\\system32\\cmd.exe\" \"","version":"5","systemTime":"2021-07-21T19:45:34.7662294Z","eventRecordID":"298155","threadID":"3460","computer":"hrmanager.ExchangeTest.com","task":"1","processID":"2428","severityValue":"INFORMATION","providerName":"Microsoft-Windows-Sysmon"}}} -->
+    <rule id="92130" level="14">
         <if_group>sysmon_event1</if_group>
         <field name="win.eventdata.originalFileName" type="pcre2">(?i)reg.EXE</field>
-        <description>Reg.exe execution</description>
-        <mitre>
-            <id>T1112</id>
-            <id>T1012</id>
-        </mitre>
-    </rule>
-
-    <rule id="92131" level="14">
-        <if_sid>92130</if_sid>
         <field name="win.eventdata.commandLine" type="pcre2">(?i)save.+\\\\SAM</field>
         <description>Reg.exe used to dump SAM hive</description>
         <mitre>
@@ -304,14 +296,5 @@
         </mitre>
     </rule>
 
-    <rule id="92132" level="10">
-        <if_sid>92130</if_sid>
-        <field name="win.eventdata.commandLine" type="pcre2">(?i)add.+\/d\s+(")?(?:[A-Za-z\d+\/]{4})*(?:[A-Za-z\d+\/]{3}=|[A-Za-z\d+\/]{2}==)?</field>
-        <description>Value added to registry key has Base64-like pattern</description>
-        <mitre>
-            <id>T1027</id>
-            <id>T1112</id>
-        </mitre>
-    </rule>
 
 </group>
