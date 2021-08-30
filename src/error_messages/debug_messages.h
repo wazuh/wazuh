@@ -95,7 +95,9 @@
 #define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
 #define VU_DISCARD_CVE_ENTRY  "(5488): Package '%s' not affected by '%s' with misleading condition (%s '%s')."
 #define VU_INS_DEPS           "(5489): Inserting '%s' vulnerabilities dependencies."
-#define VU_DEP_FLAG           "(5490): Dependency '%s' of agent '%.3d' meets the vulnerability criteria: Version (%s) '%s' '%s'."
+#define VU_DEP_FLAG           "(5490): Dependency '%s' is installed on agent '%.3d': Version (%s) '%s' '%s'."
+#define VU_DEP_PRESCAN_START  "(5491): Starting SUSE dependency analysis for agent '%.3d'"
+#define VU_DEP_PRESCAN_FINISH "(5492): Finished SUSE dependency analysis for agent '%.3d'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
