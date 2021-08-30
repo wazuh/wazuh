@@ -101,7 +101,7 @@ def clear(agent_list=None):
                     except WazuhError as e:
                         result.add_failed_item(id_=agent_id, error=e)
                 else:
-                    result.add_failed_item(id_=agent_id, error=WazuhError(1760))
+                    result.add_failed_item(id_=agent_id, error=WazuhError(1760, extra_message="Only available for agents < v3.12.0."))
             else:
                 result.add_failed_item(id_=agent_id, error=WazuhError(1015))
 
