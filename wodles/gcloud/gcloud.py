@@ -45,11 +45,14 @@ try:
         # check permissions
         subscriber_client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
         subscriber_client.check_permissions()
-        futures.append(executor.submit(subscriber_client.process_messages, max_messages // n_threads))
+        messages_per_thread = max_messages // n_threads
+        remaining_messages = max_messages % n_threads
+        futures.append(executor.submit(subscriber_client.process_messages, messages_per_thread + remaining_messages))
 
-        for _ in range(n_threads - 1):
-            client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
-            futures.append(executor.submit(client.process_messages, max_messages // n_threads))
+        if messages_per_thread > 0:
+            for _ in range(n_threads - 1):
+                client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
+                futures.append(executor.submit(client.process_messages, messages_per_thread))
 
     num_processed_messages = sum([future.result() for future in futures])
 
