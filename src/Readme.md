@@ -27,8 +27,9 @@ Once the code is compiled and built successfully the following line should be ex
 
 ```
 usage: python3 build.py [-h] [-r READYTOREVIEW] [-m MAKE] [-t TESTS] [-c COVERAGE] [-v VALGRIND] [--clean CLEAN] [--cppcheck CPPCHECK]
+```
 
-optional arguments:
+### optional arguments:
   -h, --help            show this help message and exit
   -r READYTOREVIEW, --readytoreview READYTOREVIEW
                         Run all the quality checks needed to create a PR. Example: python3 build.py -r <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
@@ -46,7 +47,6 @@ optional arguments:
                         <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --sformat SFORMAT     Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat
                         <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
-
 
 Ready to review checks:
   1. runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
