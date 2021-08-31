@@ -23,6 +23,8 @@ log_levels = {0: logging.NOTSET,
               5: logging.CRITICAL,
               }
 logging_format = logging.Formatter('%(name)s: %(levelname)s: %(message)s', '%Y/%m/%d %H:%M:%S')
+min_num_threads = 1
+min_num_messages = 1
 
 
 def get_script_arguments():
@@ -48,7 +50,7 @@ def get_script_arguments():
                         help='Log level', required=False, default=3)
 
     parser.add_argument('-t', '--num_threads', dest='n_threads', type=int,
-                        help='Number of threads', required=False, default=1)
+                        help='Number of threads', required=False, default=min_num_threads)
 
     return parser.parse_args()
 

@@ -34,8 +34,14 @@ try:
     if n_threads > max_threads:
         n_threads = max_threads
         logger.warning(f'Reached maximum number of threads. Truncating to {max_threads}')
+    if n_threads < tools.min_num_threads:
+        logger.error(f'The minimum number of threads is {tools.min_num_threads}. Please check your configuration.')
+        os._exit(1)
+    if max_messages < tools.min_num_messages:
+        logger.error(f'The minimum number of messages is {tools.min_num_messages}. Please check your configuration.')
+        os._exit(1)
 
-    logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}" 
+    logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
                  f" message{'s' if max_messages > 1 else ''} each")
 
     # process messages
