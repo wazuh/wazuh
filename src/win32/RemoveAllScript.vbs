@@ -54,13 +54,17 @@ public function removeAll()
       objSFO.GetFile(home_dir + "\local_internal_options.conf").Name = "local_internal_options.conf.save"
    End If
 
+   If objSFO.fileExists(home_dir & "installer.log") Then
+      objSFO.GetFile(home_dir + "\installer.log").Name = "installer.log.save"
+   End If
+
    If objSFO.folderExists(home_dir) Then
       Set folder = objSFO.GetFolder(home_dir)
 
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the files specified here *will not* be deleted
        Dim filesToKeep: filesToKeep = Array("ossec.conf.save", "client.keys.save", _
-                                            "local_internal_options.conf.save")
+                                            "local_internal_options.conf.save", "installer.log.save")
 
       ' Construct a simple dictionary to check out later whether a file is in
       ' the list or not
@@ -70,6 +74,17 @@ public function removeAll()
          dicFiles.add x, x
       Next
 
+      ' Everything in the application's root folder will be deleted.
+      ' *BUT*, the subfolders, and the files inside, specified here *will not* be deleted
+      Dim subfoldersToKeep: subfoldersToKeep = Array("backup", "upgrade", "no_delete")
+
+      ' Construct a simple dictionary to check out later whether a subfolders is in
+      ' the list or not
+      Dim dicFolders: Set dicFolders = CreateObject("Scripting.Dictionary")
+      dicFolders.CompareMode = vbTextCompare
+      For Each x in subfoldersToKeep
+         dicFolders.add x, x
+      Next
 
       ' Delete the files in the root folder
       For Each f In folder.Files
@@ -81,12 +96,15 @@ public function removeAll()
          End If
       Next
 
-      ' And delete all the subfolders, empty or not
+      ' Delete the subfolders in the root folder
       For Each f In folder.SubFolders
-         On Error Resume Next
-         f.Delete True
+         name = f.name
+         ' Delete the file only if it is not in the list
+         If Not dicFolders.Exists(name) Then
+            On Error Resume Next
+            f.Delete True
+         End If
       Next
-
 
    End If   'objSFO.fileExists
 
