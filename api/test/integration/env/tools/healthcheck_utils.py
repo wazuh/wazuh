@@ -15,6 +15,9 @@ password = 'wazuh'
 base_url = "{}://{}:{}".format(protocol, host, port)
 login_url = "{}/security/user/authenticate".format(base_url)
 
+HEALTHCHECK_TOKEN_FILE = '/tmp/healthcheck/healthcheck.token'
+OSSEC_LOG_PATH = '/var/ossec/logs/ossec.log'
+
 
 def get_login_header(user, password):
     from base64 import b64encode
@@ -45,9 +48,6 @@ def get_response(url, headers):
 
     if request_result.status_code == 200:
         return json.loads(request_result.content.decode())
-
-
-OSSEC_LOG_PATH = "/var/ossec/logs/ossec.log"
 
 
 def get_agent_health_base():
@@ -92,16 +92,28 @@ def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
     check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check2 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check2 = get_manager_health() is None
     return check0 or check1 or check2
 
 
 def get_worker_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check1 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check1 = get_manager_health() is None
     return check0 or check1
 
 
 def get_manager_health_base():
     return get_master_health() if socket.gethostname() == 'wazuh-master' else get_worker_health()
+
+
+def get_manager_health():
+    if not os.path.isfile(HEALTHCHECK_TOKEN_FILE):
+        check = get_response(login_url, get_login_header(user, password))
+        if check:
+            with open(HEALTHCHECK_TOKEN_FILE, mode='w') as f:
+                f.write(f'{check}')
+        return check
+    else:
+        with open(HEALTHCHECK_TOKEN_FILE, mode='r') as f:
+            return f.read()
