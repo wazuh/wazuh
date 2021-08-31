@@ -65,11 +65,11 @@ ID: 80200 - 80499
     <rule id="80252" level="10" frequency="22" timeframe="600">
         <if_matched_sid>80251</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - high number of deleted object.</description>
-        <mitre>
-            <id>T1485</id>
-        </mitre>
         <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
     </rule>
 
     <!-- Logins -->
@@ -77,11 +77,11 @@ ID: 80200 - 80499
         <if_sid>80202</if_sid>
         <field name="aws.eventName">ConsoleLogin</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
-        <mitre>
-            <id>T1078</id>
-        </mitre>
         <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     </rule>
 
     <rule id="80254" level="5">
@@ -95,11 +95,11 @@ ID: 80200 - 80499
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
-        <mitre>
-            <id>T1110</id>
-        </mitre>
         <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
     </rule>
 
 
@@ -143,6 +143,9 @@ ID: 80200 - 80499
         <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
     </rule>
 
     <rule id="80306" level="6">
@@ -151,6 +154,9 @@ ID: 80200 - 80499
         <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
     </rule>
 
     <rule id="80307" level="10">
@@ -159,6 +165,9 @@ ID: 80200 - 80499
         <description>AWS GuardDuty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
         <group>aws_guardduty,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
     </rule>
 
 
@@ -297,6 +306,9 @@ ID: 80200 - 80499
         <description>AWS WAF - Multiple Blocked request.</description>
         <same_field>aws.httpRequest.clientIp</same_field>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
     </rule>
 
     <!-- AWS Config -->
@@ -333,6 +345,9 @@ ID: 80200 - 80499
         <description>AWS Config - History [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1526</id>
+    </mitre>
     </rule>
 
     <rule id="80454" level="3">
@@ -341,6 +356,9 @@ ID: 80200 - 80499
         <description>The resource was newly discovered. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1526</id>
+    </mitre>
     </rule>
 
     <rule id="80455" level="3">
@@ -349,6 +367,9 @@ ID: 80200 - 80499
         <description>The resource was discovered but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1526</id>
+    </mitre>
     </rule>
 
     <rule id="80456" level="3">
@@ -357,6 +378,9 @@ ID: 80200 - 80499
         <description>The resource was deleted. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
     </rule>
 
     <rule id="80457" level="3">
@@ -365,6 +389,9 @@ ID: 80200 - 80499
         <description>The resource was deleted but its configuration was not recorded since the recorder excludes the recording of resources of this type. AWS Config - History:  [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
         <group>aws_config,aws_config_history,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
     </rule>
 
     <!-- Config Snapshot -->
@@ -434,6 +461,9 @@ ID: 80200 - 80499
         <description>AWS KMS: [$(aws.eventName)] $(aws.userIdentity.type)</description>
         <group>aws_kms,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1078.004</id>
+    </mitre>
     </rule>
 
     <rule id="80492" level="3">
@@ -442,6 +472,9 @@ ID: 80200 - 80499
         <description>AWS KMS: [$(aws.eventName)] $(aws.userIdentity.type) - $(aws.userIdentity.userName) - $(aws.sourceIPAddress)</description>
         <group>aws_kms,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1078.004</id>
+    </mitre>
     </rule>
 
     <rule id="80493" level="0">
@@ -478,6 +511,9 @@ ID: 80200 - 80499
         <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
         <group>aws_inspector,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
     </rule>
 
     <rule id="80497" level="7">
@@ -486,6 +522,9 @@ ID: 80200 - 80499
         <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
         <group>aws_inspector,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
     </rule>
 
     <rule id="80498" level="4">
@@ -494,6 +533,9 @@ ID: 80200 - 80499
         <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
         <group>aws_inspector,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
     </rule>
 
     <rule id="80499" level="3">
@@ -502,6 +544,9 @@ ID: 80200 - 80499
         <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
         <group>aws_inspector,</group>
         <options>no_full_log</options>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
     </rule>
 
 </group>

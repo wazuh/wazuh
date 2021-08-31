@@ -44,6 +44,9 @@
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>Microsoft Security Essentials - Virus detected, but unable to remove</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
   </rule>
 
   <rule id="63604" level="7">
@@ -52,6 +55,9 @@
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>Microsoft Security Essentials - Virus detected and properly removed</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
   </rule>
 
   <rule id="63605" level="7">
@@ -60,6 +66,9 @@
     <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
     <description>Microsoft Security Essentials - Virus detected</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
   </rule>
 
    <rule id="63606" level="7">
@@ -76,6 +85,9 @@
     <description>Microsoft Security Essentials - Configuration changed</description>
     <options>no_full_log</options>
     <group>policy_changed,pci_dss_10.2.7,pci_dss_10.6.1,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="63608" level="9">
@@ -96,7 +108,7 @@
     <description>Microsoft Security Essentials - Real time protection failed</description>
     <options>no_full_log</options>
     <mitre>
-      <id>T1489</id>
+      <id>T1562.001</id>
     </mitre>
   </rule>
 
@@ -105,6 +117,9 @@
     <field name="win.system.eventID">^2012$</field>
     <description>Microsoft Security Essentials - Cannot use Dynamic Signature Service</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="63611" level="8">
@@ -113,6 +128,9 @@
     <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Loading definitions failed. Using last good set</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="63612" level="8">
@@ -121,6 +139,9 @@
     <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Engine update failed</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="63613" level="8">
@@ -129,6 +150,9 @@
     <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Definitions update failed</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="63614" level="7">
@@ -136,10 +160,10 @@
     <field name="win.system.eventID">^1005$</field>
     <group>pci_dss_10.6.1,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Scan error. Scan has stopped</description>
-    <mitre>
-      <id>T1489</id>
-    </mitre>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
   </rule>
 
   <rule id="63615" level="5">
@@ -148,6 +172,9 @@
     <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Microsoft Security Essentials - Scan stopped before completion</description>
     <options>no_full_log</options>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
   </rule>
 
   <rule id="63616" level="5">

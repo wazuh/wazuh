@@ -52,9 +52,9 @@
         <description>VirusTotal: Alert - $(virustotal.source.file) - $(virustotal.positives) engines detected this file</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
         <options>no_full_log</options>
-        <mitre>
-            <id>T1203</id>
-        </mitre>
+    <mitre>
+      <id>T1588.001</id>
+    </mitre>
     </rule>
 
 </group>

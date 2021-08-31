@@ -49,6 +49,9 @@
         <regex>\.+stop</regex>
         <description>Puppet Master stopped</description>
         <group>gpg13_4.14,</group>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     </rule>
 
     <!--
@@ -179,6 +182,9 @@
         <regex>\.+stop</regex>
         <description>Puppet Agent stopped</description>
         <group>gpg13_4.14,</group>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
     </rule>
 
     <!--
