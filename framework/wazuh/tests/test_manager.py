@@ -130,6 +130,38 @@ def test_wazuh_log(tag, level, total_items, sort_by, sort_ascending):
                        reversed_result.render()['data']['affected_items'][total_items - 1 - i][sort_by[0]]
 
 
+@pytest.mark.parametrize('q, field, operation, values', [
+    ('level=debug,level=error', 'level', 'OR', 'debug, error'),
+    ('timestamp=2019/03/26 19:49:15', 'timestamp', '=', '2019/03/26T19:49:15Z'),
+    ('timestamp<2019/03/26 19:49:14', 'timestamp', '<', '2019/03/26T19:49:15Z'),
+])
+def test_wazuh_log_q(q, field, operation, values):
+    """Check that the 'q' parameter is working correctly.
+
+    Parameters
+    ----------
+    q : str
+        Query to execute.
+    field : str
+        Field affected by the query.
+    operation : str
+        Operation type to be performed in the query.
+    values : str
+        Values used for the comparison.
+    """
+    with patch('wazuh.core.manager.tail') as tail_patch:
+        ossec_log_file = get_logs()
+        tail_patch.return_value = ossec_log_file.splitlines()
+
+        result = wazuh_log(q=q)
+
+        if operation != 'OR':
+            operators = {'=': operator.eq, '!=': operator.ne, '<': operator.lt, '>': operator.gt}
+            assert all(operators[operation](log[field], values) for log in result.render()['data']['affected_items'])
+        else:
+            assert all(log[field] in values for log in result.render()['data']['affected_items'])
+
+
 def test_wazuh_log_summary():
     """Tests wazuh_log_summary function works and returned data match with expected"""
     expected_result = {
