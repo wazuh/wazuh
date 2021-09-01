@@ -290,6 +290,7 @@ int receive_msg()
                                         minfo("Agent is restarting due to shared configuration changes.");
                                         restartAgent();
                                     } else {
+                                        clear_merged_hash_cache();
                                         minfo("Shared agent configuration has been updated.");
                                     }
                                 }

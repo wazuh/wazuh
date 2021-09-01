@@ -277,6 +277,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                                             minfo("Agent is restarting due to shared configuration changes.");
                                             restartAgent();
                                         } else {
+                                            clear_merged_hash_cache();
                                             minfo("Shared agent configuration has been updated.");
                                         }
                                     }
