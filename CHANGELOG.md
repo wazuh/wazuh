@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.2.1]
+
+### Fixed
+
+- **Core:**
+  - Fixed a false positive in Vulnerability Detector when packages have multiple conditions in the OVAL feed. ([#9647](https://github.com/wazuh/wazuh/pull/9647))
+
+
 ## [v4.2.0]
 
 ### Added
