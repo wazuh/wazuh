@@ -195,7 +195,7 @@ int main(int argc, char **argv)
             }
 
             if (dir_it->tag != NULL)
-                mdebug1(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
+                mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
 
             // Print diff file size limit
             if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
@@ -213,6 +213,12 @@ int main(int argc, char **argv)
         }
         else {
             minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
+        }
+
+        if (syscheck.file_limit_enabled) {
+            mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
+        } else {
+            mdebug2(FIM_FILE_LIMIT_UNLIMITED);
         }
 
         /* Print ignores. */

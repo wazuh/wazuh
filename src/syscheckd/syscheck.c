@@ -173,7 +173,7 @@ int Start_win32_Syscheck() {
                   syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
                   syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
             if (syscheck.file_size_enabled){
-                minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
+                mdebug1(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
             }
             r++;
         }
@@ -186,7 +186,7 @@ int Start_win32_Syscheck() {
             minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
 
             if (dir_it->tag != NULL) {
-                mdebug1(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
+                mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
             }
 
             // Print diff file size limit
