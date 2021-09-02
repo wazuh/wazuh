@@ -343,13 +343,13 @@
                         <File Id="WAZUH_AGENT.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install" />
                         <ServiceControl Id="ServiceControl" Name="WazuhSvc" Stop="both" Remove="uninstall" Wait="yes" />
-                        <Condition>NOT(OSSECINSTALLED) AND (VersionNT &lt; 600)</Condition>
+                        <Condition>NOT(OSSECINSTALLED) AND (VersionNT &lt; 501)</Condition>
                     </Component>
                     <Component Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" DiskId="1" Guid="FB49A2F0-3433-47D4-A668-4139718AFDAC">
                         <File Id="WAZUH_AGENT_UPGRADE_OSSEC.EXE" Name="wazuh-agent.exe" Source="wazuh-agent.exe" />
                         <ServiceInstall Name="WazuhSvc" Type="ownProcess" Start="auto" ErrorControl="normal" Description="Wazuh Windows Agent" DisplayName="Wazuh" Id="svc_install_upgrade_ossec" />
                         <ServiceControl Id="ServiceControl_ossec_upgrade" Name="WazuhSvc" Remove="uninstall" Start="install" Stop="both" Wait="yes" />
-                        <Condition>OSSECINSTALLED AND (OSSECRUNNING = "Running") AND (VersionNT &gt;= 600)</Condition>
+                        <Condition>OSSECINSTALLED AND (OSSECRUNNING = "Running") AND (VersionNT &gt;= 501)</Condition>
                     </Component>
                     <Component Id="VISTA_SEC.TXT" DiskId="1" Guid="20EF5801-369B-4EC2-87A2-59DCE56308D9">
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
