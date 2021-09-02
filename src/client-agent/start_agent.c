@@ -234,6 +234,7 @@ static void w_agentd_keys_init (void) {
         }
     }
     else {
+        /* If the key store was empty, the counters will already be initialized in the enrollment process */
         OS_StartCounter(&keys);
     }
 
