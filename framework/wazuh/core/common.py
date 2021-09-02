@@ -144,6 +144,7 @@ COMPILED_LISTS_EXTENSION = '.cdb'
 # Queues
 ARQUEUE = os.path.join(wazuh_path, 'queue', 'alerts', 'ar')
 EXECQ = os.path.join(wazuh_path, 'queue', 'alerts', 'execq')
+ANALYSISD = os.path.join(wazuh_path, 'queue', 'sockets', 'queue')
 
 # Socket
 AUTHD_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'auth')

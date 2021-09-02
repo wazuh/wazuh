@@ -10,11 +10,8 @@
 
 import argparse
 import logging
-import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
-
-from wazuh.core import common
 
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
@@ -25,7 +22,9 @@ log_levels = {0: logging.NOTSET,
               4: logging.ERROR,
               5: logging.CRITICAL,
               }
-logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+logging_format = logging.Formatter('%(name)s: %(levelname)s: %(message)s', '%Y/%m/%d %H:%M:%S')
+min_num_threads = 1
+min_num_messages = 1
 
 
 def get_script_arguments():
@@ -49,6 +48,9 @@ def get_script_arguments():
 
     parser.add_argument('-l', '--log_level', dest='log_level', type=int,
                         help='Log level', required=False, default=3)
+
+    parser.add_argument('-t', '--num_threads', dest='n_threads', type=int,
+                        help='Number of threads', required=False, default=min_num_threads)
 
     return parser.parse_args()
 
@@ -92,7 +94,3 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
     logger_file.addHandler(log_rotation_handler)
 
     return logger_file
-
-def get_wazuh_queue() -> str:
-    """Get Wazuh queue"""
-    return os.path.join(common.find_wazuh_path(), 'queue', 'sockets', 'queue')
