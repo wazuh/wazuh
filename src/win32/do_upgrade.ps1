@@ -1,15 +1,18 @@
 # Backup dirs
-New-Variable -Name BACKUP_DIR -Value ".\backup" -Option ReadOnly
+$Env:WAZUH_BACKUP_DIR = ".\backup"
 New-Variable -Name TMP_BACKUP_DIR -Value "wazuh_backup_tmp" -Option ReadOnly
 
 # Finding MSI useful constants
-New-Variable -Name DEFAULT_REG_START_PATH -Value "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\" -Option ReadOnly
-New-Variable -Name PUBLISHER_VALUE -Value "Wazuh, Inc." -Option ReadOnly
+$Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
+$Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
+
+# Select powershell
+Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 
 function backup_home
 {
     # Clean before backup
-    Remove-Item $BACKUP_DIR -recurse -ErrorAction SilentlyContinue -force
+    Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue -force
     Remove-Item $env:temp\$TMP_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 
     # Save wazuh home in tmp dir (Exclude not filter directories)
@@ -17,42 +20,46 @@ function backup_home
     Copy-Item .\*  $env:temp\$TMP_BACKUP_DIR -force
 
     # Move the tmp dir to local dir
-    New-Item -ItemType directory -Path $BACKUP_DIR -ErrorAction SilentlyContinue
-    Copy-Item $env:temp\$TMP_BACKUP_DIR\* $BACKUP_DIR -force
+    New-Item -ItemType directory -Path $Env:WAZUH_BACKUP_DIR -ErrorAction SilentlyContinue
+    Copy-Item $env:temp\$TMP_BACKUP_DIR\* $Env:WAZUH_BACKUP_DIR -force
     Remove-Item $env:temp\$TMP_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 
 }
 
 function backup_msi {
-	$path = Get-ChildItem $DEFAULT_REG_START_PATH
-	foreach ($subpaths in $path) {
-		$subpath = $subpaths | Get-ChildItem;
-		foreach ($subsubpath in $subpath) {
-			if ($subsubpath -match "InstallProperties") {
-				if ($subsubpath.GetValue("Publisher") -match $PUBLISHER_VALUE) {
-					$wazuh_msi_path = $subsubpath.GetValue("LocalPackage");
-					$msi_filename = Split-Path $wazuh_msi_path -leaf;
-					Copy-Item $wazuh_msi_path -Destination $BACKUP_DIR -force;
-					Write-Output "$msi_filename";
-				}
-			}
-		}
-	}
+    Start-NativePowerShell {
+        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
+        foreach ($subpaths in $path) {
+            $subpath = $subpaths | Get-ChildItem;
+            foreach ($subsubpath in $subpath) {
+                if ($subsubpath -match "InstallProperties") {
+                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
+                        $wazuh_msi_path = $subsubpath.GetValue("LocalPackage");
+                        $msi_filename = Split-Path $wazuh_msi_path -leaf;
+                        Copy-Item $wazuh_msi_path -Destination $Env:WAZUH_BACKUP_DIR -force;
+                        Write-Output "$msi_filename";
+                    }
+                }
+            }
+        }
+    }
 }
 
 function uninstall_wazuh {
-	$path = Get-ChildItem $DEFAULT_REG_START_PATH
-	foreach ($subpaths in $path) {
-		$subpath = $subpaths | Get-ChildItem;
-		foreach ($subsubpath in $subpath) {
-			if ($subsubpath -match "InstallProperties") {
-				if ($subsubpath.GetValue("Publisher") -match $PUBLISHER_VALUE) {
-					$UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet /norestart";
-					& "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString;
-				}
-			}
-		}
-	}
+    Start-NativePowerShell {
+        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
+        foreach ($subpaths in $path) {
+            $subpath = $subpaths | Get-ChildItem;
+            foreach ($subsubpath in $subpath) {
+                if ($subsubpath -match "InstallProperties") {
+                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
+                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet /norestart";
+                        & "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString;
+                    }
+                }
+            }
+        }
+    }
 }
 
 # Check new version and restart the Wazuh service
@@ -80,18 +87,18 @@ function restore
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
 
     # Saves ossec.log before remove fail update
-    Copy-Item ossec.log $BACKUP_DIR\ossec.log.fail_update -force
+    Copy-Item ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log.fail_update -force
 
     uninstall_wazuh
     Start-Sleep 5
 
-    $msi_backup_path = "$BACKUP_DIR\$msi_filename";
+    $msi_backup_path = "$Env:WAZUH_BACKUP_DIR\$msi_filename";
 	cmd /c start $msi_backup_path -quiet -norestart -log installer.log;
     Start-Sleep 5
 
     # Restore old files
-    Copy-Item $BACKUP_DIR\* .\ -force
-    # Remove-Item $BACKUP_DIR -recurse -ErrorAction SilentlyContinue
+    Copy-Item $Env:WAZUH_BACKUP_DIR\* .\ -force
+    # Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 
     # Get current version
     $current_version = (Get-Content VERSION)
@@ -205,3 +212,6 @@ Else
     $new_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
 }
+
+
+Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
