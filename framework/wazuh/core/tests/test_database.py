@@ -57,7 +57,7 @@ def test_connection__init__(mock_db_path, mock_max_attempts, mock_connect, max_a
 
 @patch('sqlite3.connect')
 def test_connection__init__ko(mock_connect):
-    """Check if the Connection class is initialized properly.
+    """Check that an exception is raised if Connection's constructor is called with invalid parameters.
 
     Parameters
     ----------

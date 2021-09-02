@@ -127,17 +127,19 @@ def test_wazuh_logger__init__(mock_formatter, mock_logger_name, mock_debug_level
         x.assert_called()
 
 
-@pytest.mark.parametrize('attribute, expected_exception', [
-    ('level', None),
-    ('foreground_mode', None),
-    ('doesnt_exists', AttributeError)
+@pytest.mark.parametrize('attribute, expected_exception, expected_value', [
+    ('level', None, 0),
+    ('foreground_mode', None, True),
+    ('doesnt_exists', AttributeError, None)
 ])
 @patch('wazuh.core.wlogging.CustomFileRotatingHandler')
-def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception):
+def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_value):
     """Test if WazuhLogger __getattr__ method works properly.
 
     Parameters
     ----------
+    expected_value: lol
+        Expected result of the __getattr__(attribute) call.
     mock_fh: MagicMock
         Mock of CustomFileRotatingHandler function.
     attribute: str
@@ -153,7 +155,7 @@ def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception):
     w_logger.setup_logger()
 
     if expected_exception is None:
-        w_logger.__getattr__(attribute)
+        assert w_logger.__getattr__(attribute) == expected_value
     else:
         with pytest.raises(expected_exception):
             w_logger.__getattr__('doesnt_exists')
