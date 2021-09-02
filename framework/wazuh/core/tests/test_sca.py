@@ -314,11 +314,16 @@ def test_wazuh_db_query_sca_check_run(agent_id, offset, limit, sort, search, sel
         mock_add_select.assert_called_once()
         mock_add_filters.assert_called_once()
         mock_add_search.assert_called_once()
-        if not count:
-            mock_add_limit.assert_called_once()
-            mock_add_sort.assert_called_once()
-            if data:
-                mock_execute_data.assert_called_once()
-                mock_format_data.assert_called_once()
-        else:
+
+        if count:
             mock_get_items.assert_called_once()
+            if not data:
+                # If it's only counting the number of items and it's not expecting data in return
+                # the execution should end here
+                return
+
+        mock_add_limit.assert_called_once()
+        mock_add_sort.assert_called_once()
+        if data:
+            mock_execute_data.assert_called_once()
+            mock_format_data.assert_called_once()
