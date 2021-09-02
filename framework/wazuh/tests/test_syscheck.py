@@ -125,11 +125,10 @@ def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_l
     agent_info_list : list
         List of agent IDs that `syscheck.get_agents_info` will return when mocked.
     """
-    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list), \
-            patch('wazuh.syscheck.Agent') as mock_agent:
-        mock_agent_instance = MagicMock()
-        mock_agent.return_value = mock_agent_instance
-        mock_agent_instance.version = agent_version
+    with patch('wazuh.syscheck.get_agents_info', return_value=set(agent_info_list)), \
+            patch('wazuh.syscheck.WazuhDBQueryAgents') as mock_wdbqa:
+        mock_wdbqa.return_value.run.return_value = {
+            'items': [{'id': ag_id, 'version': agent_version} for ag_id in agent_info_list]}
 
         result = clear(agent_list=agent_list)
         assert isinstance(result, AffectedItemsWazuhResult)
@@ -146,8 +145,7 @@ def test_syscheck_clear(wdb_close_mock, wdb_execute_mock, wdb_init_mock, agent_l
 @pytest.mark.parametrize('agent_version, expected_version_errcode', [
     ('v3.12.0', 1760),
     ('Wazuh v4.2.0', 1760),
-    (None, 1015),
-    ('v3.11.0', None)
+    (None, 1015)
 ])
 @pytest.mark.parametrize('agent_list, expected_result, agent_info_list', [
     (['001'], test_result[3], ['001']),
@@ -170,18 +168,15 @@ def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, a
     agent_info_list : list
         List of agent IDs that `syscheck.get_agents_info` will return when mocked.
     """
-    with patch('wazuh.syscheck.get_agents_info', return_value=agent_info_list), \
-            patch('wazuh.syscheck.Agent') as mock_agent:
-        mock_agent_instance = MagicMock()
-        mock_agent.return_value = mock_agent_instance
-        mock_agent_instance.version = agent_version
+    with patch('wazuh.syscheck.get_agents_info', return_value=set(agent_info_list)), \
+            patch('wazuh.syscheck.WazuhDBQueryAgents') as mock_wdbqa:
+        mock_wdbqa.return_value.run.return_value = {
+            'items': [{'id': ag_id, 'version': agent_version} for ag_id in agent_info_list]}
 
         result = clear(agent_list=agent_list)
-        # If it's not None it means that the error will be version related.
-        if expected_version_errcode is not None:
-            w_error = list(result.failed_items)[0]
-            assert expected_version_errcode == w_error.code
 
+        w_error = next(iter(result.failed_items))
+        assert expected_version_errcode == w_error.code
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.affected_items == expected_result['affected_items']
         assert result.total_affected_items == expected_result['total_affected_items']
