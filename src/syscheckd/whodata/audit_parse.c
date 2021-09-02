@@ -274,7 +274,7 @@ STATIC char *get_audit_field(const char *buffer, const char *key) {
     }
 
     // The key can be limited by one of these three characters
-    if (limiter_pos = strcspn(start, "\n \""), limiter_pos == 0) {
+    if (limiter_pos = strcspn(start, "\n\035 \""), limiter_pos == 0) {
         return NULL;
     }
 
