@@ -108,10 +108,15 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock);
  * @param[in] id Id of the agent for whom the keepalive must be updated.
  * @param[in] connection_status String with the connection status to be set.
  * @param[in] sync_status String with the cluster synchronization status to be set.
+ * @param [in] disconnected_time The time an agent is in a disconnected state.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, int *sock);
+int wdb_update_agent_keepalive(int id,
+                               const char *connection_status,
+                               const char *sync_status,
+                               time_t disconnected_time,
+                               int *sock);
 
 /**
  * @brief Update agent's connection status.
@@ -119,10 +124,15 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
  * @param[in] id Id of the agent for whom the connection status must be updated.
  * @param[in] connection_status String with the connection status to be set.
  * @param[in] sync_status String with the cluster synchronization status to be set.
+ * @param [in] disconnected_time The time an agent is in a disconnected state.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock);
+int wdb_update_agent_connection_status(int id,
+                                       const char *connection_status,
+                                       const char *sync_status,
+                                       time_t disconnected_time,
+                                       int *sock);
 
 /**
  * @brief Update agent group. If the group is not specified, it is set to NULL.

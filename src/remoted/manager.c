@@ -116,6 +116,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     int is_shutdown = 0;
     int agent_id = 0;
     int result = 0;
+    time_t disconnected_time = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
@@ -171,7 +172,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
         agent_id = atoi(key->id);
 
-        result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node?"syncreq":"synced", wdb_sock);
+        result = wdb_update_agent_keepalive(agent_id,
+                                            AGENT_CS_ACTIVE,
+                                            logr.worker_node?"syncreq":"synced",
+                                            disconnected_time,
+                                            wdb_sock);
 
         if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
@@ -197,7 +202,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node?"syncreq":"synced", wdb_sock);
+            result = wdb_update_agent_keepalive(agent_id,
+                                                AGENT_CS_PENDING,
+                                                logr.worker_node?"syncreq":"synced",
+                                                disconnected_time,
+                                                wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
@@ -207,7 +216,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             w_mutex_unlock(&lastmsg_mutex);
             agent_id = atoi(key->id);
 
-            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node?"syncreq":"synced", wdb_sock);
+            result = wdb_update_agent_connection_status(agent_id,
+                                                        AGENT_CS_DISCONNECTED,
+                                                        logr.worker_node?"syncreq":"synced",
+                                                        time(&disconnected_time),
+                                                        wdb_sock);
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);

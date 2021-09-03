@@ -287,6 +287,7 @@ extern char *schema_upgrade_v7_sql;
 extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
+extern char *schema_global_upgrade_v3_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -1346,9 +1347,14 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value);
  * @param [in] id The agent ID
  * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The value of sync_status
+ * @param [in] disconnected_time The time an agent is in a disconnected state.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char *sync_status);
+int wdb_global_update_agent_keepalive(wdb_t *wdb,
+                                      int id,
+                                      const char *connection_status,
+                                      const char *sync_status,
+                                      int disconnect_time);
 
 /**
  * @brief Function to update an agent connection status and the synchronization status.
@@ -1356,10 +1362,15 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID.
  * @param [in] connection_status The connection status to be set.
- * @param [in] sync_status The value of sync_status
+ * @param [in] sync_status The value of sync_status.
+ * @param [in] disconnected_time The time an agent is in a disconnected state.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status);
+int wdb_global_update_agent_connection_status(wdb_t *wdb,
+                                              int id,
+                                              const char* connection_status,
+                                              const char *sync_status,
+                                              int disconnected_time);
 
 /**
  * @brief Function to delete an agent from the agent table.

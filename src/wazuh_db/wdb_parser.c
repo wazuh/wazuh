@@ -4954,6 +4954,7 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
     cJSON *j_id = NULL;
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
+    cJSON *j_disconnected_time = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -4965,14 +4966,19 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
+        j_disconnected_time = cJSON_GetObjectItem(agent_data, "disconnected_time");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) &&
+            cJSON_IsString(j_connection_status) &&
+            cJSON_IsString(j_sync_status) &&
+            cJSON_IsNumber(j_disconnected_time)) {
             // Getting each field
             int id = j_id->valueint;
             char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
+            int disconnected_time = j_disconnected_time->valueint;
 
-            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, connection_status, sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_keepalive(wdb, id, connection_status, sync_status, disconnected_time)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -4998,6 +5004,7 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
     cJSON *j_id = NULL;
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
+    cJSON *j_disconnected_time = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -5009,14 +5016,19 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
+        j_disconnected_time = cJSON_GetObjectItem(agent_data, "disconnected_time");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) &&
+            cJSON_IsString(j_connection_status) &&
+            cJSON_IsString(j_sync_status) &&
+            cJSON_IsNumber(j_disconnected_time)) {
             // Getting each field
             int id = j_id->valueint;
             char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
+            int disconnected_time = j_disconnected_time->valueint;
 
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status, disconnected_time)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
