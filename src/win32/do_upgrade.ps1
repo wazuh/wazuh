@@ -125,7 +125,6 @@ function restore
     # Restore old files
     write-output "$(Get-Date -format u) - Restoring former Wazuh-Agent home files." >> .\upgrade\upgrade.log
     Copy-Item $Env:WAZUH_BACKUP_DIR\* .\ -force
-    # Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 
     # Get current version
     $current_version = (Get-Content VERSION)
@@ -236,11 +235,10 @@ If ($status -eq $null)
 Else
 {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    Remove-Item .\backup -recurse -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
     $new_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
 }
 
-
+Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
