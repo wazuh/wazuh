@@ -25,7 +25,9 @@ import os
 import datetime
 import argparse
 import hashlib
-from wazuh.core import common
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import utils
 
 try:
 	import requests
@@ -46,7 +48,7 @@ except Exception as e:
 	print("Azure Storage SDK for Python is missing: '{}', try 'pip install azure-storage-blob'.".format(e))
 	sys.exit(1)
 
-ADDR = '{}/queue/sockets/queue'.format(common.wazuh_path)
+ADDR = '{}/queue/sockets/queue'.format(utils.wazuh_path)
 BLEN = 212992
 
 utc = pytz.UTC
@@ -111,7 +113,7 @@ def set_logger():
 	if args.verbose:
 		logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 	else:
-		log_path = "{}/logs/azure_logs.log".format(common.wazuh_path)
+		log_path = "{}/logs/azure_logs.log".format(utils.wazuh_path)
 		logging.basicConfig(filename=log_path, level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 
 
