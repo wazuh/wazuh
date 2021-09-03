@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 - **Installer:**
   - Fixed a bug in the upgrade to 4.2.0 that disabled Eventchannel support on Windows agent. ([#9973](https://github.com/wazuh/wazuh/issues/9973))
 
+- **Modules:**
+  - Fixed a bug with Python-based integration modules causing the integrations to stop working in agents for Wazuh v4.2.0. ([#9975](https://github.com/wazuh/wazuh/issues/9975))
+
 
 ## [v4.2.0] - 2021-08-25
 
