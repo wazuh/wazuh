@@ -159,10 +159,74 @@ async def test_mitre_controller(mock_str_value,
         assert isinstance(result, web_response.Response)
 
     async def test_get_software():
-        pass
+        f_kwargs = {
+            'filters': {
+                'id': mock_str_value
+            },
+            'offset': mock_offset_value,
+            'limit': mock_limit,
+            'sort_by': None,
+            'sort_ascending': False,
+            'search_text': None,
+            'complementary_search': None,
+            'select': mock_str_value,
+            'q': None
+        }
+        calls = [call(f=mitre.mitre_software,
+                      f_kwargs=remove_nones_to_dict(f_kwargs),
+                      request_type='local_any',
+                      is_async=False,
+                      wait_for_complete=mock_bool_value,
+                      logger=mock_str_value,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        result = await get_software(mock_request,
+                                    software_ids=mock_str_value,
+                                    pretty=mock_bool_value,
+                                    wait_for_complete=mock_bool_value,
+                                    offset=mock_offset_value,
+                                    limit=mock_limit,
+                                    select=mock_str_value
+                                    )
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once()
+        assert isinstance(result, web_response.Response)
 
     async def test_get_tactics():
-        pass
+        f_kwargs = {
+            'filters': {
+                'id': mock_str_value,
+                },
+            'offset': mock_offset_value,
+            'limit': mock_limit,
+            'sort_by': None,
+            'sort_ascending': False,
+            'search_text': None,
+            'complementary_search': None,
+            'select': mock_str_value,
+            'q': None
+        }
+        calls = [call(f=mitre.mitre_tactics,
+                      f_kwargs=remove_nones_to_dict(f_kwargs),
+                      request_type='local_any',
+                      is_async=False,
+                      wait_for_complete=mock_bool_value,
+                      logger=mock_str_value,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        result = await get_tactics(mock_request,
+                                   tactic_ids=mock_str_value,
+                                   pretty=mock_bool_value,
+                                   wait_for_complete=mock_bool_value,
+                                   offset=mock_offset_value,
+                                   limit=mock_limit,
+                                   select=mock_str_value
+                                   )
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once()
+        assert isinstance(result, web_response.Response)
 
     async def test_get_techniques():
         f_kwargs = {
