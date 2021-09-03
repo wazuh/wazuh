@@ -347,7 +347,11 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
     }
 }
 
-int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char* sync_status) {
+int wdb_global_update_agent_keepalive(wdb_t *wdb,
+                                      int id,
+                                      const char *connection_status,
+                                      const char* sync_status,
+                                      int disconnected_time) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -370,7 +374,11 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
+    if (sqlite3_bind_int(stmt, 3, disconnected_time) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 4, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -386,7 +394,11 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
     }
 }
 
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status) {
+int wdb_global_update_agent_connection_status(wdb_t *wdb,
+                                              int id,
+                                              const char *connection_status,
+                                              const char *sync_status,
+                                              int disconnected_time) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -409,7 +421,11 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* co
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
+    if (sqlite3_bind_int(stmt, 3, disconnected_time) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 4, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -1098,10 +1114,15 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
     //Set every obtained agent as 'disconnected'
     cJSON* agent = NULL;
     cJSON_ArrayForEach(agent, result) {
-        cJSON* id = cJSON_GetObjectItem(agent,"id");
-        if (cJSON_IsNumber(id)) {
+        cJSON* id = cJSON_GetObjectItem(agent, "id");
+        cJSON* disconnected_time = cJSON_GetObjectItem(agent, "disconnected_time");
+        if (cJSON_IsNumber(id) && cJSON_IsNumber(disconnected_time)) {
             //Set connection status as disconnected
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id->valueint, "disconnected", sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb,
+                                                                        id->valueint,
+                                                                        "disconnected",
+                                                                        sync_status,
+                                                                        disconnected_time->valueint)) {
                 merror("Cannot set connection_status for agent %d", id->valueint);
                 *status = WDBC_ERROR;
             }
