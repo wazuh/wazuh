@@ -1,7 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.2.0]
+## [v4.2.1]
+
+### Fixed
+
+- **Installer:**
+  - Fixed a bug in the upgrade to 4.2.0 that disabled Eventchannel support on Windows agent. ([#9973](https://github.com/wazuh/wazuh/issues/9973))
+
+
+## [v4.2.0] - 2021-08-25
 
 ### Added
 
@@ -43,6 +51,7 @@ All notable changes to this project will be documented in this file.
   - Let FIM switch to real-time mode for directories where who-data is not available (Audit in immutable mode). ([#6828](https://github.com/wazuh/wazuh/pull/6828))
   - Changed the Active Response protocol to receive messages in JSON format that include the full alert. ([#7317](https://github.com/wazuh/wazuh/pull/7317))
   - Changed references to the product name in logs. ([#7264](https://github.com/wazuh/wazuh/pull/7264))
+  - Syscollector now synchronizes its database with the manager, avoiding full data delivery on each scan. ([#7379](https://github.com/wazuh/wazuh/pull/7379))
   - Remoted now supports both TCP and UDP protocols simultaneously. ([#7541](https://github.com/wazuh/wazuh/pull/7541))
   - Improved the unit tests for the os_net library. ([#7595](https://github.com/wazuh/wazuh/pull/7595))
   - FIM now removes the audit rules when their corresponding symbolic links change their target. ([#6999](https://github.com/wazuh/wazuh/pull/6999))
@@ -129,7 +138,7 @@ All notable changes to this project will be documented in this file.
   - Fixed a problem in the manager that left remote counter and agent group files when removing an agent. ([#8630](https://github.com/wazuh/wazuh/pull/8630))
   - Fixed an error in the agent on Windows that could corrupt the internal FIM databas due to disabling the disk sync. ([#8905](https://github.com/wazuh/wazuh/pull/8905))
   - Fixed a crash in Logcollector on Windows when handling the position of the file. ([#9364](https://github.com/wazuh/wazuh/pull/9364))
-  - Fixed a buffer underflow hazard in Remoted when handling input messages. ([#9285](https://github.com/wazuh/wazuh/pull/9285))
+  - Fixed a buffer underflow hazard in Remoted when handling input messages. Thanks to Johannes Segitz (@jsegitz). ([#9285](https://github.com/wazuh/wazuh/pull/9285))
   - Fixed a bug in the agent that tried to verify the WPK CA certificate even when verification was disabled. ([#9547](https://github.com/wazuh/wazuh/pull/9547))
 
 - **API:**
@@ -161,7 +170,7 @@ All notable changes to this project will be documented in this file.
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
 
-## [v4.1.5]
+## [v4.1.5] - 2021-04-22
 
 ### Fixed
 
