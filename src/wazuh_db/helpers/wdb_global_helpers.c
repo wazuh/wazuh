@@ -329,7 +329,11 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
     return result;
 }
 
-int wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, int *sock) {
+int wdb_update_agent_keepalive(int id,
+                               const char *connection_status,
+                               const char *sync_status,
+                               time_t disconnected_time,
+                               int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -348,6 +352,7 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "connection_status", connection_status);
     cJSON_AddStringToObject(data_in, "sync_status", sync_status);
+    cJSON_AddNumberToObject(data_in, "disconnected_time", disconnected_time);
     data_in_str = cJSON_PrintUnformatted(data_in);
 
     os_malloc(WDBQUERY_SIZE, wdbquery);
@@ -385,7 +390,11 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
     return result;
 }
 
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock) {
+int wdb_update_agent_connection_status(int id,
+                                       const char *connection_status,
+                                       const char *sync_status,
+                                       time_t disconnected_time,
+                                       int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -404,6 +413,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "connection_status", connection_status);
     cJSON_AddStringToObject(data_in, "sync_status", sync_status);
+    cJSON_AddNumberToObject(data_in, "disconnected_time", disconnected_time);
     data_in_str = cJSON_PrintUnformatted(data_in);
 
     os_malloc(WDBQUERY_SIZE, wdbquery);
