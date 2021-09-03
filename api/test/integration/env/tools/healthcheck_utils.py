@@ -111,9 +111,7 @@ def get_manager_health():
     if not os.path.isfile(HEALTHCHECK_TOKEN_FILE):
         check = get_response(login_url, get_login_header(user, password))
         if check:
-            with open(HEALTHCHECK_TOKEN_FILE, mode='w') as f:
-                f.write(f'{check}')
+            open(HEALTHCHECK_TOKEN_FILE, mode='w').close()
         return check
     else:
-        with open(HEALTHCHECK_TOKEN_FILE, mode='r') as f:
-            return f.read()
+        return True
