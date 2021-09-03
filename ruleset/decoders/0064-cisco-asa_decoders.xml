@@ -700,6 +700,26 @@
     <order>id, description, host_ip, src_mac, interface, int_mac_address</order>
 </decoder>
 
+<!--
+%ASA-4-722051: Group <anyconnect> User <test> IP <0.0.0.0> IPv4 Address <172.16.0.0> IPv6 address <::> assigned to session
+-->
+<decoder name="cisco-asa-assigned-to-session">
+    <parent>cisco-asa</parent>
+    <prematch offset="after_parent">4-722051</prematch>
+    <regex offset="after_parent">(\w+): \.* User \<(\.*)> IP \<(\.*)> IPv4 Address \<(\.*)> \.*> (\.*)</regex>
+    <order>id, srcuser, srcip, dstip, description</order>
+</decoder>
+
+<!--
+%ASA-4-113019: Group = Defaut, Username = test, IP = 0.0.0.0, Session disconnected. Session Type: SSL, Duration: 9h:21m:53s, Bytes xmt: 90089563, Bytes rcv: 35656660, Reason: Idle Timeout
+-->
+<decoder name="cisco-asa-session-disconnected">
+    <parent>cisco-asa</parent>
+    <prematch offset="after_parent">4-113019</prematch>
+    <regex offset="after_parent">(\w+): \.* Username = (\.*), IP = (\.*), (\.*). (\.*)</regex>
+    <order>id, srcuser, srcip, description, extra_data</order>
+</decoder>
+
 <decoder name="cisco-asa-generic">
     <parent>cisco-asa</parent>
     <prematch>%ASA-\d-\d+</prematch>
