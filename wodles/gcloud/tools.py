@@ -14,7 +14,8 @@ import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 
-from wazuh.core import common
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import utils
 
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
@@ -95,4 +96,4 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
 
 def get_wazuh_queue() -> str:
     """Get Wazuh queue"""
-    return os.path.join(common.find_wazuh_path(), 'queue', 'sockets', 'queue')
+    return os.path.join(utils.find_wazuh_path(), 'queue', 'sockets', 'queue')
