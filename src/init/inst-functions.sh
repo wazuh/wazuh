@@ -1072,6 +1072,9 @@ InstallServer()
     fi
 
     # Install the plugins files
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
+
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/aws
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3.py
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/aws/aws-s3
@@ -1117,6 +1120,9 @@ InstallAgent()
     # Install the plugins files
     # Don't install the plugins if they are already installed. This check affects
     # hybrid installation mode
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
+
     if [ ! -d ${INSTALLDIR}/wodles/aws ]; then
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/wodles/aws
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3

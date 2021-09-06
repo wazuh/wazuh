@@ -13,6 +13,9 @@ import logging
 import sys
 from logging.handlers import TimedRotatingFileHandler
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import utils
+
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
 log_levels = {0: logging.NOTSET,
