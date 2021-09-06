@@ -497,7 +497,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
     if (replace_entry == 0) {
         switch (fim_db_check_limit(fim_sql)) {
         case FIMDB_FULL:
-            mdebug1("Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
+            mdebug2("Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
                         data->name);
             w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_FULL;
@@ -534,7 +534,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
     if (rowid == 0) {
         switch (fim_db_check_limit(fim_sql)) {
         case FIMDB_FULL:
-            mdebug1("Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
+            mdebug2("Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
                     registry_arch[entry->arch], entry->path);
             w_mutex_unlock(&fim_sql->mutex);
             return FIMDB_FULL;

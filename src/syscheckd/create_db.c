@@ -81,7 +81,6 @@ void fim_generate_delete_event(fdb_t *fim_sql,
     w_mutex_unlock(mutex);
 
     if (json_event != NULL) {
-        mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
         send_syscheck_msg(json_event);
     }
 
@@ -100,7 +99,6 @@ void fim_delete_file_event(fdb_t *fim_sql,
     configuration = fim_configuration_directory(entry->file_entry.path);
 
     if (configuration == NULL) {
-        mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
         return;
     }
     /* Don't send alert if received mode and mode in configuration aren't the same.
@@ -226,11 +224,7 @@ time_t fim_scan() {
     end_of_scan = time(NULL);
 
     if (syscheck.file_limit_enabled) {
-        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
         fim_check_db_state();
-    }
-    else {
-        mdebug2(FIM_FILE_LIMIT_UNLIMITED);
     }
 
     if (_base_line == 0) {

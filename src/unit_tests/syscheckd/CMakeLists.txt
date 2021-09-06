@@ -127,7 +127,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_mutex_lock \
                           -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,expand_wildcards -Wl,--wrap,fim_add_inotify_watch \
                           -Wl,--wrap,fim_db_remove_wildcard_entry -Wl,--wrap,fim_db_file_update \
-                          -Wl,--wrap,fim_db_is_full")
+                          -Wl,--wrap,fim_db_is_full -Wl,--wrap,realtime_sanitize_watch_map")
 
 target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")

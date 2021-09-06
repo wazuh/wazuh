@@ -135,6 +135,7 @@ void test_fim_db_insert_entry_success(void **state) {
 \**********************************************************************************************************************/
 void test_fim_db_remove_path(void **state) {
     fim_file_data data;
+
 #ifndef TEST_WINAGENT
     char *entry_path = "/etc/some/path";
 #else
@@ -764,7 +765,7 @@ static void test_fim_db_remove_validated_path_valid_path(void **state) {
     // fim_db_check_transaction
     will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_fim_db_exec_simple_wquery("END;");
-    expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Database transaction completed.");
     expect_fim_db_exec_simple_wquery("BEGIN;");
 
     fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &evt_data, configuration, NULL);
