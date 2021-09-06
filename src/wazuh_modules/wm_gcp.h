@@ -22,6 +22,7 @@ typedef struct wm_gcp {
     int pull_on_start;
     int logging;
     int max_messages;
+    int num_threads;
     time_t next_time;
     char *project_id;
     char *subscription_name;
