@@ -1,0 +1,348 @@
+diff --git a/src/syscheckd/create_db.c b/src/syscheckd/create_db.c
+index a495e21465..8f9beeae87 100644
+--- a/src/syscheckd/create_db.c
++++ b/src/syscheckd/create_db.c
+@@ -81,7 +81,6 @@ void fim_generate_delete_event(fdb_t *fim_sql,
+     w_mutex_unlock(mutex);
+ 
+     if (json_event != NULL) {
+-        mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
+         send_syscheck_msg(json_event);
+     }
+ 
+@@ -100,7 +99,6 @@ void fim_delete_file_event(fdb_t *fim_sql,
+     configuration = fim_configuration_directory(entry->file_entry.path);
+ 
+     if (configuration == NULL) {
+-        mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
+         return;
+     }
+     /* Don't send alert if received mode and mode in configuration aren't the same.
+@@ -123,7 +121,9 @@ void fim_delete_file_event(fdb_t *fim_sql,
+         break;
+     }
+ 
++
+     fim_generate_delete_event(fim_sql, entry, mutex, evt_data, configuration, NULL);
++
+ }
+ 
+ 
+@@ -226,12 +226,8 @@ time_t fim_scan() {
+     end_of_scan = time(NULL);
+ 
+     if (syscheck.file_limit_enabled) {
+-        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
+         fim_check_db_state();
+     }
+-    else {
+-        mdebug2(FIM_FILE_LIMIT_UNLIMITED);
+-    }
+ 
+     if (_base_line == 0) {
+         _base_line = 1;
+diff --git a/src/syscheckd/db/fim_db.c b/src/syscheckd/db/fim_db.c
+index d507a24aef..58d19508c5 100644
+--- a/src/syscheckd/db/fim_db.c
++++ b/src/syscheckd/db/fim_db.c
+@@ -436,7 +436,8 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
+             }
+ 
+             // Updating timestamp only after a successful transaction end
+-            mdebug1("Database transaction completed.");
++            mdebug2("Database transaction completed.");
++
+             fim_sql->transaction.last_commit = now;
+         }
+ 
+diff --git a/src/syscheckd/db/fim_db_registries.c b/src/syscheckd/db/fim_db_registries.c
+index f3f9909a06..5602c19dbd 100644
+--- a/src/syscheckd/db/fim_db_registries.c
++++ b/src/syscheckd/db/fim_db_registries.c
+@@ -497,7 +497,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
+     if (replace_entry == 0) {
+         switch (fim_db_check_limit(fim_sql)) {
+         case FIMDB_FULL:
+-            mdebug1("Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
++            mdebug2("Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
+                         data->name);
+             w_mutex_unlock(&fim_sql->mutex);
+             return FIMDB_FULL;
+@@ -534,7 +534,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
+     if (rowid == 0) {
+         switch (fim_db_check_limit(fim_sql)) {
+         case FIMDB_FULL:
+-            mdebug1("Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
++            mdebug2("Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
+                     registry_arch[entry->arch], entry->path);
+             w_mutex_unlock(&fim_sql->mutex);
+             return FIMDB_FULL;
+diff --git a/src/syscheckd/fim_sync.c b/src/syscheckd/fim_sync.c
+index 735b52b473..da7f33d1c3 100644
+--- a/src/syscheckd/fim_sync.c
++++ b/src/syscheckd/fim_sync.c
+@@ -54,7 +54,7 @@ void * fim_run_integrity(void * args) {
+     while (1) {
+         bool sync_successful = true;
+ 
+-        mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
++        mdebug2("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
+ 
+         gettime(&start);
+         fim_sync_checksum(FIM_TYPE_FILE, &syscheck.fim_entry_mutex);
+@@ -89,7 +89,7 @@ void * fim_run_integrity(void * args) {
+         }
+         else {
+             // Duplicate for every failure
+-            mdebug1("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
++            mdebug2("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
+             sync_interval *= 2;
+             sync_interval = (sync_interval < syscheck.max_sync_interval) ? sync_interval : syscheck.max_sync_interval;
+         }
+diff --git a/src/syscheckd/main.c b/src/syscheckd/main.c
+index 399e6e5117..fceb0715f4 100644
+--- a/src/syscheckd/main.c
++++ b/src/syscheckd/main.c
+@@ -195,7 +195,7 @@ int main(int argc, char **argv)
+             }
+ 
+             if (dir_it->tag != NULL)
+-                mdebug1(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
++                mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
+ 
+             // Print diff file size limit
+             if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
+@@ -215,6 +215,12 @@ int main(int argc, char **argv)
+             minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
+         }
+ 
++        if (syscheck.file_limit_enabled) {
++            mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
++        } else {
++            mdebug2(FIM_FILE_LIMIT_UNLIMITED);
++        }
++
+         /* Print ignores. */
+         if(syscheck.ignore)
+             for (r = 0; syscheck.ignore[r] != NULL; r++)
+diff --git a/src/syscheckd/run_check.c b/src/syscheckd/run_check.c
+index 3f01e2a63e..9e10ea9e7f 100644
+--- a/src/syscheckd/run_check.c
++++ b/src/syscheckd/run_check.c
+@@ -622,10 +622,10 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
+                 if (real_path) {
+                     // Check if link has changed
+                     if (strcmp(real_path, dir_it->symbolic_links)) {
+-                        minfo(FIM_LINKCHECK_CHANGED, dir_it->path, dir_it->symbolic_links, real_path);
++                        mdebug2(FIM_LINKCHECK_CHANGED, dir_it->path, dir_it->symbolic_links, real_path);
+                         fim_link_update(real_path, dir_it);
+                     } else {
+-                        mdebug1(FIM_LINKCHECK_NOCHANGE, dir_it->symbolic_links);
++                        mdebug2(FIM_LINKCHECK_NOCHANGE, dir_it->symbolic_links);
+                     }
+                 } else {
+                     // Broken link
+@@ -705,7 +705,7 @@ STATIC void fim_link_update(const char *new_path, directory_t *configuration) {
+                 break;
+             }
+         } else if (strcmp(new_path, dir_it->symbolic_links ? dir_it->symbolic_links : dir_it->path) == 0) {
+-            mdebug1(FIM_LINK_ALREADY_ADDED, dir_it->path);
++            mdebug2(FIM_LINK_ALREADY_ADDED, dir_it->path);
+             is_new_link = false;
+             break;
+         }
+@@ -800,7 +800,7 @@ STATIC void fim_link_reload_broken_link(char *path, directory_t *configuration)
+         dir_it = node_it->data;
+         if (strcmp(path, dir_it->path) == 0) {
+             // If a configuration directory exists don't reload
+-            mdebug1(FIM_LINK_ALREADY_ADDED, dir_it->path);
++            mdebug2(FIM_LINK_ALREADY_ADDED, dir_it->path);
+             return;
+         }
+     }
+diff --git a/src/syscheckd/run_realtime.c b/src/syscheckd/run_realtime.c
+index 22b8a68b43..4374a52eaf 100644
+--- a/src/syscheckd/run_realtime.c
++++ b/src/syscheckd/run_realtime.c
+@@ -106,7 +106,7 @@ int fim_add_inotify_watch(const char *dir, const directory_t *configuration) {
+                     os_free(data);
+                 }
+ 
+-                mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
++                mdebug2(FIM_REALTIME_NEWDIRECTORY, dir);
+             }
+             else {
+                 if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+@@ -316,7 +316,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
+             merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, new_wd, errno);
+             return -1;
+         } else if (errno == ENOENT) {
+-            mdebug1("Removing watch on non existent directory '%s'", dir);
++            mdebug2("Removing watch on non existent directory '%s'", dir);
+             inotify_rm_watch(syscheck.realtime->fd, old_wd);
+             free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
+             return 0;
+@@ -342,7 +342,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
+             merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+         }
+ 
+-        mdebug1(FIM_REALTIME_NEWDIRECTORY, data);
++        mdebug2(FIM_REALTIME_NEWDIRECTORY, data);
+     } else if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+         merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
+         os_free(data);
+@@ -477,7 +477,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
+     if(rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
+         rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
+         free_win32rtfim_data(rtlocald);
+-        mdebug1(FIM_REALTIME_CALLBACK, wdchar);
++        mdebug2(FIM_REALTIME_CALLBACK, wdchar);
+         w_mutex_unlock(&syscheck.fim_realtime_mutex);
+         w_rwlock_unlock(&syscheck.directories_lock);
+         return;
+@@ -625,7 +625,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
+             configuration->dirs_status.object_type = WD_STATUS_FILE_TYPE;
+             configuration->dirs_status.status |= WD_STATUS_EXISTS;
+         } else {
+-            mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
++            mdebug2(FIM_WARN_REALTIME_OPENFAIL, dir);
+ 
+             configuration->dirs_status.object_type = WD_STATUS_UNK_TYPE;
+             configuration->dirs_status.status &= ~WD_STATUS_EXISTS;
+@@ -651,7 +651,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
+     if(rtlocald != NULL) {
+         if (!w_directory_exists(rtlocald->dir)) {
+             if (rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
+-                mdebug1(FIM_REALTIME_CALLBACK, rtlocald->dir);
++                mdebug2(FIM_REALTIME_CALLBACK, rtlocald->dir);
+                 rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, rtlocald->dir);
+                 free_win32rtfim_data(rtlocald);
+             } else if (rtlocald->h != NULL && rtlocald->h != INVALID_HANDLE_VALUE) {
+@@ -702,7 +702,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
+         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+     }
+ 
+-    mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
++    mdebug2(FIM_REALTIME_NEWDIRECTORY, dir);
+ 
+     w_mutex_unlock(&syscheck.fim_realtime_mutex);
+     return 1;
+diff --git a/src/syscheckd/syscheck.c b/src/syscheckd/syscheck.c
+index 983558cb7c..9fcd30f592 100644
+--- a/src/syscheckd/syscheck.c
++++ b/src/syscheckd/syscheck.c
+@@ -173,7 +173,7 @@ int Start_win32_Syscheck() {
+                   syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
+                   syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
+             if (syscheck.file_size_enabled){
+-                minfo(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
++                mdebug1(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
+             }
+             r++;
+         }
+@@ -186,7 +186,7 @@ int Start_win32_Syscheck() {
+             minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+ 
+             if (dir_it->tag != NULL) {
+-                mdebug1(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
++                mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
+             }
+ 
+             // Print diff file size limit
+diff --git a/src/syscheckd/whodata/audit_rule_handling.c b/src/syscheckd/whodata/audit_rule_handling.c
+index e5c3e90471..e4e9065a2b 100644
+--- a/src/syscheckd/whodata/audit_rule_handling.c
++++ b/src/syscheckd/whodata/audit_rule_handling.c
+@@ -121,17 +121,17 @@ int fim_rules_initial_load() {
+         // The rule is not in audit_rule_list
+         case 0:
+             if (retval = audit_add_rule(directory, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
+-                mdebug1(FIM_AUDIT_NEWRULE, directory);
++                mdebug2(FIM_AUDIT_NEWRULE, directory);
+                 rules_added++;
+             } else if (retval != -EEXIST) {
+                 mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
+             } else {
+-                mdebug1(FIM_AUDIT_ALREADY_ADDED, directory);
++                mdebug2(FIM_AUDIT_ALREADY_ADDED, directory);
+             }
+             break;
+ 
+         case 1:
+-            mdebug1(FIM_AUDIT_RULEDUP, directory);
++            mdebug2(FIM_AUDIT_RULEDUP, directory);
+             break;
+ 
+         default:
+@@ -188,19 +188,19 @@ void fim_audit_reload_rules() {
+                 if (!reported) {
+                     merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
+                 } else {
+-                    mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
++                    mdebug2(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
+                 }
+                 reported = 1;
+                 break;
+             }
+ 
+             if (retval = audit_add_rule(directory->path, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
+-                mdebug1(FIM_AUDIT_NEWRULE, directory->path);
++                mdebug2(FIM_AUDIT_NEWRULE, directory->path);
+                 rules_added++;
+             } else if (retval != -EEXIST) {
+                 mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory->path);
+             } else {
+-                mdebug1(FIM_AUDIT_ALREADY_ADDED, directory->path);
++                mdebug2(FIM_AUDIT_ALREADY_ADDED, directory->path);
+             }
+ 
+             break;
+@@ -214,7 +214,7 @@ void fim_audit_reload_rules() {
+                 node = OSList_GetCurrentlyNode(whodata_directories);
+                 continue;
+             } else {
+-                mdebug1(FIM_AUDIT_RULEDUP, directory->path);
++                mdebug2(FIM_AUDIT_RULEDUP, directory->path);
+             }
+             break;
+ 
+diff --git a/src/syscheckd/whodata/win_whodata.c b/src/syscheckd/whodata/win_whodata.c
+index f35fd9c22f..8810736434 100644
+--- a/src/syscheckd/whodata/win_whodata.c
++++ b/src/syscheckd/whodata/win_whodata.c
+@@ -184,7 +184,7 @@ int set_winsacl(const char *dir, directory_t *configuration) {
+         retval = 0;
+         goto end;
+     case 1:
+-        mdebug1(FIM_SACL_CHECK_CONFIGURE, dir);
++        mdebug2(FIM_SACL_CHECK_CONFIGURE, dir);
+         configuration->dirs_status.status |= WD_IGNORE_REST;
+ 
+         // Empty SACL
+@@ -461,7 +461,7 @@ void restore_sacls() {
+             if (security_descriptor) {
+                 LocalFree((HLOCAL)security_descriptor);
+             }
+-            mdebug1(FIM_SACL_RESTORED, dir_it->path);
++            mdebug2(FIM_SACL_RESTORED, dir_it->path);
+         }
+     }
+     w_rwlock_unlock(&syscheck.directories_lock);
+@@ -772,7 +772,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
+                 if (result == 1) {
+                     whodata_evt *w_evtdup;
+ 
+-                    mdebug1(FIM_WHODATA_HANDLE_UPDATE, hash_id);
++                    mdebug2(FIM_WHODATA_HANDLE_UPDATE, hash_id);
+                     if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), !w_evtdup) {
+                         merror(FIM_ERROR_WHODATA_HANDLER_REMOVE, hash_id);
+                         free_whodata_event(w_evt);
+@@ -998,7 +998,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
+                     }
+                 }
+             } else {
+-                mdebug1(FIM_WHODATA_DELETE, dir_it->path);
++                mdebug2(FIM_WHODATA_DELETE, dir_it->path);
+                 d_status->status &= ~WD_STATUS_EXISTS;
+                 d_status->object_type = WD_STATUS_UNK_TYPE;
+             }
