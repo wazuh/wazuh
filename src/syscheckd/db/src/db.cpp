@@ -8,6 +8,7 @@
 
 #include "dbsync.hpp"
 #include "db.hpp"
+#include "db_statements.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,33 +92,21 @@ static char *find_key_value_limiter(char *input);
 
 #endif
 
+std::string CreateStatement()
+{
+    std::string ret = CREATE_FILE_DB_STATEMENT;
+#ifdef WIN32
+    ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
+    ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
+#endif
+
+    return ret;
+}
+
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
 
-    constexpr auto DATABASE_TEMP {"TEMP.db"};
-    const auto sql{R"fim(CREATE TABLE IF NOT EXISTS file_entry (
-                        path TEXT NOT NULL,
-                        mode INTEGER,
-                        last_event INTEGER,
-                        scanned INTEGER,
-                        options INTEGER,
-                        checksum TEXT NOT NULL,
-                        dev INTEGER,
-                        inode INTEGER,
-                        size INTEGER,
-                        perm TEXT,
-                        attributes TEXT,
-                        uid INTEGER,
-                        gid INTEGER,
-                        user_name TEXT,
-                        group_name TEXT,
-                        hash_md5 TEXT,
-                        hash_sha1 TEXT,
-                        hash_sha256 TEXT,
-                        mtime INTEGER,
-                        PRIMARY KEY(path));)fim"
-                    };
-    DBSync dbsync{HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql};
+    std::unique_ptr<DBSync> handler_DBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, CreateStatement());
 
     const char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
 
