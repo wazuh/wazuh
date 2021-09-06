@@ -120,7 +120,7 @@ class WazuhGCloudSubscriber:
         :return: Number of processed messages
         """
         try:
-            self.wazuh_queue.connect(common.ANALYSISD)
+            self.wazuh_queue.connect(utils.ANALYSISD)
             with self.subscriber:
                 processed_messages = 0
                 pulled_messages = self.pull_request(max_messages)
