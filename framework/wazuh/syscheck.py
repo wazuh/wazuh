@@ -94,7 +94,7 @@ def clear(agent_list: list = None):
 
     for item in data['items']:
         agent_id = item['id']
-        agent_version = item['version']
+        agent_version = item.get('version', None)  # If the value was NULL in the DB the key might not exist
         if agent_version is not None:
             if WazuhVersion(agent_version) < WazuhVersion('v3.12.0'):
                 try:
