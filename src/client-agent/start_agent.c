@@ -233,8 +233,10 @@ static void w_agentd_keys_init (void) {
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-
-    OS_StartCounter(&keys);
+    else {
+        /* If the key store was empty, the counters will already be initialized in the enrollment process */
+        OS_StartCounter(&keys);
+    }
 
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
                         agt->profile);
