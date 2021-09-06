@@ -6,7 +6,11 @@ $Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion
 $Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
 
 # Select powershell
-Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+if ([Environment]::Is64BitOperatingSystem) {
+    Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+} else {
+    Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
+}
 
 function backup_home
 {
