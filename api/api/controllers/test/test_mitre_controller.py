@@ -28,7 +28,7 @@ with patch('wazuh.common.wazuh_uid'):
 async def test_mitre_controller(mock_request):
     async def test_get_metadata():
         calls = [call(f=mitre.mitre_metadata,
-                      f_kwargs={},
+                      f_kwargs=ANY,
                       request_type='local_any',
                       is_async=False,
                       wait_for_complete=False,
