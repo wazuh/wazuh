@@ -13,6 +13,29 @@ if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [Syst
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
 }
 
+# Forces Wazuh-Agent to stop
+function stop_wazuh_agent
+{
+    param (
+        $process_name
+    )
+
+    Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
+    $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
+    $counter = 5
+
+    while($process_id -ne $null -And $counter -gt 0)
+    {
+        write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
+        $counter--
+        Get-Service -Name "Wazuh" | Stop-Service
+        taskkill /pid $process_id /f /T
+        Start-Sleep 2
+        $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
+    }
+
+}
+
 function backup_home
 {
     write-output "$(Get-Date -format u) - Backing up Wazuh home files." >> .\upgrade\upgrade.log
@@ -77,7 +100,7 @@ function uninstall_wazuh {
             foreach ($subsubpath in $subpath) {
                 if ($subsubpath -match "InstallProperties") {
                     if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet /norestart"
+                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet"
                     }
                 }
             }
@@ -140,15 +163,15 @@ function restore
     Copy-Item ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log -force
 
     # Uninstall the latest version of the Wazuh-Agent.
+    stop_wazuh_agent("wazuh-agent")
     uninstall_wazuh
-    $counter = 6
+    $counter = 10
 
-    do
-    {
+    do {
         write-output "$(Get-Date -format u) - Waiting for the uninstallation end." >> .\upgrade\upgrade.log
         $counter--
         Start-Sleep 5
-     } While((is_wazuh_installed) -And $counter -gt 0)
+    } While((is_wazuh_installed) -And $counter -gt 0)
 
     # Install the former version of the Wazuh-Agent
     if ($msi_filename -ne $null) {
@@ -197,19 +220,7 @@ $previous_msi_name = backup_msi
 
 # Ensure implicated processes are stopped before launch the upgrade
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
-Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
-$process_id = (Get-Process $current_process -ErrorAction SilentlyContinue).id
-$counter = 5
-
-while($process_id -ne $null -And $counter -gt 0)
-{
-    write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
-    $counter--
-    Get-Service -Name "Wazuh" | Stop-Service
-    taskkill /pid $process_id /f /T
-    Start-Sleep 2
-    $process_id = (Get-Process $current_process -ErrorAction SilentlyContinue).id
-}
+stop_wazuh_agent($current_process)
 
 # Install
 install
