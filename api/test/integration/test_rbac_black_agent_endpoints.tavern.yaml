@@ -1550,6 +1550,9 @@ stages:
       status_code: 403
       json:
         error: 4000
+        dapi_errors:
+          master-node: # We have permission to see node name
+            error: !anystr
 
 ---
 test_name: PUT /agents/node/{node_id}/restart
