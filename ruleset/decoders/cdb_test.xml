@@ -1,0 +1,5 @@
+<decoder name="cdb-test">
+  <prematch>test_threatintel</prematch>
+  <regex type="pcre2" offset="after_prematch">(\d+\.\d+\.\d+\.\d+)</regex>
+  <order>srcip</order>
+</decoder>

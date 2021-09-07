@@ -1,0 +1,10 @@
+<group name="feed_test">
+
+<rule id="42069" level="9">
+  <decoded_as>cdb-test</decoded_as>
+  <list field="srcip" lookup="address_match_key">etc/lists/ip_reputation</list>
+  <description>ip found in malicious list.</description>
+  <group>feed_test</group>
+</rule>
+
+</group>
