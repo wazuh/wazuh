@@ -1333,13 +1333,13 @@ def agents_padding(result, agent_list):
     return agent_list
 
 
-def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
+def core_upgrade_agents(agents_list, command='upgrade_result', wpk_repo=None, version=None,
                         force=False, use_http=False, file_path=None, installer=None, get_result=False):
     """Send command to upgrade module / task module
 
     Parameters
     ----------
-    agents_chunk : list
+    agents_list : list
         List of agents ID's.
     command : str
         Command sent to the socket.
@@ -1367,7 +1367,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
                'origin': {'module': 'api'},
                'command': command,
                'parameters': {
-                   'agents': agents_chunk,
+                   'agents': agents_list,
                    'version': version,
                    'force_upgrade': force,
                    'use_http': use_http,
@@ -1378,7 +1378,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
                }
     else:
         msg = {'version': 1, 'origin': {'module': 'api'}, 'command': command,
-               'module': 'api', 'parameters': {'agents': agents_chunk}}
+               'module': 'api', 'parameters': {'agents': agents_list}}
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
 
