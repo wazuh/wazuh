@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 - **Modules:**
   - Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
+  - Removed CloudWatchLogs log stream limit when there are more than 50 log streams. ([#9934](https://github.com/wazuh/wazuh/pull/9934))
 
 ### Changed
 
