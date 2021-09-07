@@ -18,6 +18,10 @@ double __wrap_OS_AgentAntiquity(__attribute__((unused)) const char *name,
     return mock();
 }
 
+double __wrap_OS_AgentDisconnectedTime(__attribute__((unused)) const char *id) {
+    return mock();
+}
+
 void __wrap_OS_RemoveAgentGroup(__attribute__((unused)) const char *id) {
     // Empty wrapper
 }
