@@ -6,7 +6,7 @@ $Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion
 $Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
 
 # Select powershell
-if ([Environment]::Is64BitOperatingSystem) {
+if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [System.IntPtr]::Size -eq 4) {
     write-output "$(Get-Date -format u) Searching sysnative Powershell..." >> .\upgrade\upgrade.log
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
@@ -111,6 +111,7 @@ function check-installation
 # Check unistall
 function is_wazuh_installed
 {
+    $retval = $FALSE
     # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
     $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
     foreach ($subpaths in $path) {
@@ -118,12 +119,12 @@ function is_wazuh_installed
         foreach ($subsubpath in $subpath) {
             if ($subsubpath -match "InstallProperties") {
                 if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                    Write-Output $TRUE
+                    $retval = $TRUE
                 }
             }
         }
     }
-
+    Write-Output $retval
 }
 
 function restore
@@ -147,7 +148,7 @@ function restore
         write-output "$(Get-Date -format u) - Waiting for the uninstallation end." >> .\upgrade\upgrade.log
         $counter--
         Start-Sleep 5
-     } While(is_wazuh_installed -And $counter -gt 0)
+     } While((is_wazuh_installed) -And $counter -gt 0)
 
     # Install the former version of the Wazuh-Agent
     if ($msi_filename -ne $null) {
