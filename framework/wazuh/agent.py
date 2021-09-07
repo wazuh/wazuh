@@ -849,22 +849,24 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     if version and not version.startswith('v'):
         version = f'v{version}'
 
-    agent_results = core_upgrade_agents(command='upgrade' if not (installer or file_path) else 'upgrade_custom',
-                                        agents_list=agent_list, wpk_repo=wpk_repo, version=version, force=force,
-                                        use_http=use_http, file_path=file_path, installer=installer)
+    # Check if the list is not empty after the padding
+    if agent_list:
+        agent_results = core_upgrade_agents(command='upgrade' if not (installer or file_path) else 'upgrade_custom',
+                                            agents_list=agent_list, wpk_repo=wpk_repo, version=version, force=force,
+                                            use_http=use_http, file_path=file_path, installer=installer)
 
-    for agent_result in agent_results['data']:
-        if agent_result['error'] == 0:
-            task_agent = {
-                'agent': str(agent_result['agent']).zfill(3),
-                'task_id': agent_result['task_id']
-            }
-            result.affected_items.append(task_agent)
-            result.total_affected_items += 1
-        else:
-            error = WazuhError(code=1810 + agent_result['error'], cmd_error=True,
-                               extra_message=agent_result['message'])
-            result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
+        for agent_result in agent_results['data']:
+            if agent_result['error'] == 0:
+                task_agent = {
+                    'agent': str(agent_result['agent']).zfill(3),
+                    'task_id': agent_result['task_id']
+                }
+                result.affected_items.append(task_agent)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1810 + agent_result['error'], cmd_error=True,
+                                   extra_message=agent_result['message'])
+                result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
     result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
     return result
