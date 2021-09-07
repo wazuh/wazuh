@@ -1,0 +1,617 @@
+  
+<!--
+  -  Decoders for watchguard-firebox
+  -  Created by FMI Groupe (ph3nix, Orsiris de Jong) for Wazuh, Inc.
+  -  Copyright (C) 2021, FMI Groupe, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+
+   Changelog
+   2021/07/08 - Orsiris de Jong - Added IGMP protocol to protocol list
+                                - Added generic traffic decoder as last resort
+								- Added security event (SIGD) decoder
+   2021/07/06 - Orsiris de Jong - Added Link Monitor external interface detection
+                                - Fix firewall / proxy rules (missing srcport and dstport, bogus protocol detection)
+                                - Fix SSL VPN authentication via wgcgi has no msg_id
+   2021/06/10 - Orsiris de Jong - Switched to sibling decoders
+                                  - Added IPv4 and IPv6 specific regexes (kept separate because it's already confusing, and IPv6 may contain IPv4 mapped addresses)
+                                  - IPv4 REGEX is pretty generic
+                                  - IPv6 REGEX is my own (shorter) variant of https://stackoverflow.com/a/17871737/2635443
+                                  - Port REGEX just allows 0-65535 ports
+                                  - Protocol REGEX is just a plain list of possible protocols found in these logs
+                                  - geo_src and geo_dst REGEX just allow a 3 character (ISO 3166-1 alpha-3) country detection
+                                  - msg_id REGEX allows hexa digits in XXXX-XXXX form
+                                - Added startup/shutdown / feature key detection
+                                - Added various APT blocker, Intrusion detection and antivirus messages decoders
+                                - Added various attack decoders for port scans, flooding, DoS, MAC spoofing
+                                - Added various load balance probe, layer 2 looping decoders
+                                - Added packet filter and proxy traffic decoders
+                                - Added unhandled traffic decoders
+                                - Switched to sibling decoders usage
+                                
+   2021/04/21 - ph3nix          - Initial release
+                                - Authentication detection, VPN authentication, VPN traffic and generic traffic
+
+Watchguard firewall serial numbers are:
+- FVE = Virtual appliances
+- D0F = T10/T15 appliances
+- D02 = T35/T40/T55 appliances
+
+Watchguard event catalog https://www.watchguard.com/help/docs/fireware/12/en-US/log_catalog/Log-Catalog_v12_7.pdf
+
+-->
+
+<!-- FIREWALL DECODER -->
+<decoder name="watchguard-firebox-firewall">
+  <prematch type="pcre2">(FVE\w+|D0F\w+|D02\w+)\s(\(\S+\))?\s?firewall: </prematch>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="XXXX-XXXX"
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="([0-9a-fA-F]{4}-[0-9a-fA-F]{4})"</regex>
+  <order>id</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0159" PORT scan attack against 32.21.56.8 from 12.34.23.67 detected.
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0162" SYN flood attack against 2001:0db8:85a3:08d3:1319:8a2e:0370:7344 from FF01::101 detected. 100 SYN packets dropped since last alarm.
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0160" DDOS against server 10.0.1.34 detected.
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0161" DDOS from client 10.0.1.34 detected.
+-->
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">^\s([Dd]eny|[Aa]llow)</regex>
+  <order>action</order>
+</decoder>
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">from\s(client)?\s?((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>src, srcip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2">from\s(client)?\s?(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>src, srcip</order>
+</decoder>
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">against\s(server)?\s?((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>dst, dstip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">against\s(server)?\s?(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>dst, dstip</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0168" Blocked site: Traffic detected from 10.0.1.2 to 61.231.45.165.
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0169" IP spoofing: Traffic detected from 10.0.1.2 to 43.123.12.26.
+-->
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">from\s\S+\sto\s((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>dstip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">from\s\S+\sto\s(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>dstip</order>
+</decoder>
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">[Ss]ource [Ii][Pp]:\s((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">[Ss]ource [Ii]p:\s(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">[Dd]estination [Ii][Pp]:\s((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>dstip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">[Dd]estination [Ii]p:\s(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>dstip</order>
+</decoder>
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">ip=((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">ip=(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">[Ss]ource [Pp]ort:\s([1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[0-9]{1,4})\s?</regex>
+  <order>srcport</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">[Dd]estination [Pp]ort:\s([1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[0-9]{1,4})\s?</regex>
+  <order>dstport</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">mac=([0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2})</regex>
+  <order>mac</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">interface=(\S+)</regex>
+  <order>src</order>
+</decoder>
+
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0172" Blocked port: Traffic detected from 10.0.1.2 to 61.231.45.165 on port 513.
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">to\s\S+\son\sport\s([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])\s?</regex>
+  <order>dstport</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">.*(SYN|syn|TCP|tcp|UDP|udp|ICMP|icmp|IGMP|igmp|[Ii][Pp][Ss][Ee][Cc]|[Ii][Kk][Ee])|http|HTTP|https|HTTPS|smtp|SMTP|IMAP|imap|dns|DNS.*</regex>
+  <order>protocol</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">geo_src="([a-zA-Z]{3})"</regex>
+  <order>geosrc</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">geo_dst="([a-zA-Z]{3})"</regex>
+  <order>geodst</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="[0-9a-fA-F]{4}-[0-9a-fA-F]{4}" (DDOS)</regex>
+  <order>reason</order>
+</decoder>
+
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-0027" Firewall is starting up
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-0028" Firewall is shutting down 
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">.*([Ff]irewall is\s.*)\s?</regex>
+  <order>reason</order>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-003A" Unable to read the feature keys, some features may be unavailable
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">(Unable to read the feature keys)</regex>
+  <order>reason</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0159" PORT scan attack against 192.168.20.2 from 123.146.23.149 detected. (port_scan_dos)
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0162" SYN flood attack against 2001:0db8:85a3:08d3:1319:8a2e:0370:7344 from FF01::101 detected. 100 SYN packets dropped since last alarm
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="[0-9a-fA-F]{4}-[0-9a-fA-F]{4}" (.*? attack) against</regex>
+  <order>reason</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="[0-9a-fA-F]{4}-[0-9a-fA-F]{4}" (.*? attack) against</regex>
+  <order>reason</order>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-0029" IP address 192.168.111.254 will not be added to the blocked sites list because it is exempt
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">IP address (\S+).*exempt</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-0040" Idle timeout has occurred for blocked site 192.168.111.10
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">Idle timeout has occurred for blocked site\s(\S+)</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-00C9" TCP probe packets timeout, Load Balance Server 10.10.10.100 is offline.
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-00CB" ICMP probe packets timeout, Load Balance Server 10.10.10.100 is offline.
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">probe packets.*Load Balance Server (\S+)</regex>
+  <order>dstip</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">.*(timeout).*</regex>
+  <order>reason</order>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-0004" The Application Control feature has expired.
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-0005" The IPS feature has expired.
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"\s+(.*feature has expired).*</regex>
+  <order>reason</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3001-1001" Temporarily blocking host 120.220.13.183 (reason = Port scan attack)
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3001-1001" Temporarily blocking host 198.13.111.226 (reason = autoblock by policy)
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">.*blocking host (\S+)</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3001-1002" The Temporary Blocked Sites list is full (capacity=1000). The oldest entry 10.0.5.96 was removed.
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">.*entry\s(\S+)\swas removed</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="4900-0001" [Link Monitor] External unable to resolve domain name www.example.com
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">\[.*\]\s(\S+).*domain name\s(\S+)</regex>
+  <order>src, dst</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="4900-0002" [Link Monitor] No response received on External from TCP host 192.168.1.218 port 9999
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="4900-0003" [Link Monitor] External interface failed because a probe to the target host failed
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">received\son\s(\S+)\sfrom.*?host\s(\S+)\sport\s(\d+)</regex>
+  <order>src, dstip, dstport</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">\[.*\]\s(\S+)\sinterface\s(.*)</regex>
+  <order>src, reason</order>
+</decoder>
+
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="[0-9a-fA-F]{4}-[0-9a-fA-F]{4}" \[.*\]</regex>
+  <order>reason</order>
+</decoder>
+
+<!--
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="0F01-0015" APT threat notified. Details='Policy Name: HTTPS-proxy-00 Reason: high APT threat detected Task_UUID: d09445005c3f4a9a9bb78c8cb34edc2a Source IP: 10.0.1.2 Source Port: 43130 Destination IP: 67.228.175.200 Destination Port: 443 Proxy Type: HTTP Proxy Host: analysis.lastline.com Path: /docs/lastline-demo-sample.exe'
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">(APT threat.*)\..*Details='(.*?)'</regex>
+  <order>reason, data</order>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-012E" Cannot relearn system MAC address, possible loop or MAC spoofing, ip=192.168.111.10, mac=00:50:da:c7:90:5d, interface=5
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="3000-012C" ARP spoofing attack detected, ip=192.168.111.10, mac=00:50:da:c7:90:5d, interface=5
+-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">.*ip=(\S+),\s+,\sinterface=(\S+)</regex>
+  <order>srcip, srcmac, src</order>
+</decoder>
+
+<!--
+GENERIC TRAFFIC FROM PACKET FILTER
+
+# Normal traffic rules
+Mar 21 23:37:51 FW-125852 FVE1001001001 firewall: msg_id="3000-0148" Allow Trusted Firebox 90 icmp 20 128 192.168.100.99 192.168.100.254 8 0 id=1 seq=8  (Ping-00)
+Mar 21 23:43:20 FW-125852 FVE1001001001 firewall: msg_id="3000-0148" Allow Firebox External 91 udp 20 64 10.0.1.2 213.133.99.99 47189 53  (Any From Firebox-00)
+Apr 15 12:10:53 FW-125852 FVE1001001001 firewall: msg_id="3000-0148" Allow Trusted External 76 udp 20 63 192.168.100.250 162.159.200.123 48216 123  (Outgoing-00)
+Apr 15 12:18:24 FW-125852 FVE1001001001 firewall: msg_id="3000-0148" Allow Trusted External 52 tcp 20 127 192.168.100.99 216.58.212.131 50173 80 offset 8 S 237777105 win 61690  (Outgoing-00)
+May 17 09:52:27 FW-152458 FVE1001001001 firewall: msg_id="3000-0148" Deny Trusted External 76 udp 20 63 192.168.85.101 78.47.158.133 50595 123  geo_dst="DEU"  (Unhandled Internal Packet-00)
+May 17 09:52:27 FW-152458 FVE1001001001 firewall: msg_id="3000-0148" Deny External Firebox 36 igmp 24 1 0.0.0.0 224.0.0.1  (Unhandled External Packet-00)
+
+# App Control
+Apr 15 12:18:24 FW-125852 FVE1001001001 firewall: msg_id="3000-0149" Allow 1-Trusted 0-External 40 tcp 20 127 10.0.1.2 206.190.60.138 53008 80 offset 5 AF 3212213617 win 257 app_name="World Wide Web HTTP" cat_name="Network Protocols" app_beh_name="connect" app_id="63" app_cat_id="18" app_ctl_disp="2" sig_vers="18.123" msg="Application identified" (HTTP-00)
+
+# IPS Traffic detected 
+Apr 15 12:18:24 FW-125852 FVE1001001001 firewall: msg_id="3000-0150" Deny 1-Trusted 0-External 1440 tcp 20 61 10.0.1.2 192.168.130.126 55810 80 offset 5A 447868619 win 54 signature_name="EXPLOIT Apple QuickTime FLIC Animation file buffer overflow -1-2" signature_cat="Misc" signature_id="1112464" severity="4" sig_vers="18.124" msg="IPS detected" (HTTP-00)
+
+# Traffic connection terminated
+Apr 15 12:18:24 FW-125852 FVE1001001001 firewall: msg_id="3000-0151" Allow 1-Trusted 0-External tcp 10.0.1.2 192.168.0.1 53018 80 app_id="63" app_cat_id="18" app_ctl_disp="2" duration="80" sent_bytes="652" rcvd_bytes="423" (HTTP-00)
+Apr 15 12:18:24 FW-125852 FVE1001001001 firewall: msg_id="3000-0151" Allow Firebox Iface_Bouygues icmp 89.87.170.163 8.8.4.4 duration="30" sent_bytes="48" rcvd_bytes="48"  (Any From Firebox-00)
+Apr 15 12:18:24 FW-125852 FVE1001001001 firewall: msg_id="3000-0151" Allow 1-Trusted 0-External tcp 10.0.1.2 192.168.0.1 53018 80 app_id="63" app_cat_id="18" app_ctl_disp="2" duration="80" sent_bytes="652" rcvd_bytes="423" (HTTP-00)
+Sep  3 10:39:59 FireboxV_CLIENT FVE1001001001 (2021-09-03T08:39:59) firewall: msg_id="3000-0151" Allow SITE BO Trusted tcp 192.168.95.223 192.168.90.153 38430 11194 duration="121" sent_bytes="60" rcvd_bytes="0"  (BOVPN-Allow.in-00)
+# Hostile traffic
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="3000-0173" Deny 0-External Firebox 52 tcp 20 127 206.190.60.138 10.0.0.1 62443 80 offset 8 S 832026162 win 8192 blocked sites (Internal Policy)
+
+HTTP PROXY FILTER (rules 1xFF-0001 > 2xFF-0007)
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1AFF-0001" Deny 1-Trusted 6-Ext-access tcp 10.0.1.2 192.168.53.82 60654 80 msg="ProxyDeny: HTTP server response timeout" (HTTP-proxy-00)
+
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1AFF-0025" Deny 1-Trusted 0-External tcp 10.0.1.2 107.20.162.187 55531 80 msg="ProxyDeny: HTTP header IPS match" proxy_act="HTTP-Client.1" signature_id="1055396" severity="5" signature_name="WEB Cross-site Scripting-9" signature_cat="Web Attack" sig_vers="18.001" host="intext.nav-links.com" path="/util/intexteval.pl?action=startup" (HTTP-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1AFF-0029" Allow 1-Trusted 0-External tcp 10.0.1.2 8.25.35.115 51859 80 msg="ProxyAllow: HTTP AV scanning error" proxy_act="HTTP-Client.3" error="avg scanner is not created" host="api.yontoo.com" path="/LoadJS.ashx" (HTTP-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1CFF-0013" Allow 0-External 1-Trusted tcp 11.11.11.2 11.11.11.5 20 43974 msg="ProxyAllow: FTP DLP object unscannable" proxy_act="FTP-Client.3" ctl_ src="11.11.11.2:5120" ctl_dst="10.0.1.49:47553" dlp_sensor="test" error="unscannable object (File was encrypted)" authenticated_user="testuser" file="test.zip" (FTP-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1CFF-0014" Allow 0-External 1-Trusted tcp 11.11.11.2 11.11.11.5 20 43813 msg="ProxyAllow: FTP DLP object too large" proxy_act="FTP-Client.3" error="DLP scan limit (5242880) exceeded" (FTP-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="22FF-000E" Allow 1-Trusted 0-External tcp 10.0.1.3 100.100.100.3 60275 143 msg="ProxyReplace: IMAP Classified as suspect SPAM" proxy_act="IMAPClient.Standard.1" mbx="INBOX" user="wg" (IMAP-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="28FF-0005" Deny 1-Trusted 0-External udp 10.0.1.3 192.168.53.143 5060 5060 msg="ProxyDeny: SIP codec" proxy_act="SIP-Client.1" codec="speex" (SIPALG-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="0F01-0015" APT threat notified. Details='Policy Name: HTTPS-proxy-00 Reason: high APT threat detected Task_UUID: d09445005c3f4a9a9bb78c8cb34edc2a Source IP: 10.0.1.2 Source Port: 43130 Destination IP: 67.228.175.200 Destination Port: 443 Proxy Type: HTTP Proxy Host: analysis.lastline.com Path: /docs/lastline-demo-sample.exe'
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1AFF-0025" Deny 1-Trusted 0-External tcp 10.0.1.2 107.20.162.187 55531 80 msg="ProxyDeny: HTTP header IPS match" proxy_act="HTTP-Client.1" signature_id="1055396" severity="5" signature_name="WEB Cross-site Scripting-9" signature_cat="Web Attack" sig_vers="18.001" host="intext.nav-links.com" path="/util/intexteval.pl?action=startup" (HTTP-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1AFF-0026" Deny 4-Trusted-1 0-External tcp 192.168.53.92 188.40.238.252 45617 443 msg="ProxyDeny: HTTP body IPS match" proxy_act="HTTP-Client.4" signature_id="1051723" severity="5" signature_name="Virus Eicar test string" signature_cat="Virus/Worm" sig_vers="18.001" host="secure.eicar.org" path="/eicar.com.txt" src_user="testuser@test.net" (HTTPS-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="1AFF-0028" Deny 2-Internal-traffic 4-External-traffic tcp 10.0.1.8 192.168.53.92 57525 80 msg="ProxyDrop: HTTP Virus found" proxy_act="HTTP-Client.1" virus="EICAR_ Test" host="192.168.53.92" path="/viruses/eicar.com" (HTTP-proxy-00)
+
+May 28 06:58:26 FW-123346 FVE1010101001 firewall: msg_id="2DFF-0007" Deny 1-Trusted 0-External tcp 10.0.1.2 54.173.101.99 60180 23 msg="ProxyAllow: IP DNSWatch content filtered domain" proxy_act="TCP-UDP-Proxy.Standard.1" Protocol="telnet" geo_dst="USA" (TCP-UDP-proxy-00)
+-->
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">msg="(.*?)"</regex>
+  <order>reason</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">.*\((.*?)\)$</regex>
+  <order>reason</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">signature_cat="(.*?)"</regex>
+  <order>extra_data</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">error="(.*?)"</regex>
+  <order>extra_data</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">authenticated_user="(.*?)"</regex>
+  <order>srcuser</order>
+</decoder>
+
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">src_user="(.*?)"</regex>
+  <order>srcuser</order>
+</decoder>
+
+
+<!-- PACKET FILTER LOGS -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">([Dd]eny|[Aa]llow)\s(\S+)\s(\S+)\s(\d+)\s(\w+)\s(\d+)\s(\d+)\s(\S+)\s(\S+)\s([1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[0-9]{1,4})\s([1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[0-9]{1,4})\s</regex>
+  <order>action, src, dst, packetlen, protocol, iphlen, ttl, srcip, dstip, srcport, dstport</order>
+</decoder>
+
+<!-- traffic connection terminated filter when not using tcp
+This one is tricky since source might be something with a space, so we drop src and dst to be sure to catch this one-->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">([Dd]eny|[Aa]llow).*(SYN|syn|TCP|tcp|UDP|udp|ICMP|icmp|IGMP|igmp|[Ii][Pp][Ss][Ee][Cc]|[Ii][Kk][Ee]|http|HTTP|https|HTTPS|smtp|SMTP|IMAP|imap|dns|DNS)\s(\S+)\s(\S+)\s.*duration="(\d+)\"</regex>
+  <order>action, protocol, srcip, dstip, duration</order>
+</decoder>
+
+<!-- PROXY LOGS -->
+<!-- Also works with "traffic connection terminated" packet filter when using tcp -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">([Dd]eny|[Aa]llow)\s(\S+)\s(\S+)\s(\w+)\s(\S+)\s(\S+)\s([1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[0-9]{1,4})\s([1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[0-9]{1,4})\s</regex>
+  <order>action, src, dst, protocol, srcip, dstip, srcport, dstport</order>
+</decoder>
+
+<!-- Generic catch all traffic decoder -->
+<decoder name="watchguard-firebox-firewall-info">
+  <parent>watchguard-firebox-firewall</parent>
+  <regex type="pcre2" offset="after_parent">([Dd]eny|[Aa]llow)\s(\S+)\s(\S+)\s(\d+)\s(\w+)\s(\d+)\s(\d+)\s(\S+)\s(\S+)\s</regex>
+  <order>action, src, dst, packetlen, protocol, iphlen, ttl, srcip, dstip</order>
+</decoder>
+
+<!-- AUTHENTICATION DECODER -->
+<decoder name="watchguard-firebox-auth">
+  <prematch type="pcre2">(FVE\w+|D0F\w+|D02\w+)\s(\(\S+\))?\s?(admd|wgagent|sessiond|sslvpn|wgcgi)\[\w+\]: </prematch>
+</decoder>
+
+<!--
+Apr 15 14:40:22 FW-125852 FVE1001001001 firewall: msg_id="XXXX-XXXX"
+-->
+
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="([0-9a-fA-F]{4}-[0-9a-fA-F]{4})"</regex>
+  <order>id</order>
+</decoder>
+
+<!--
+User authentication failed
+Feb 25 15:33:44 FW-125852 FVE1000000000 admd[2060]: msg_id="1100-0005" Authentication of Admin user [admin@Firebox-DB] from 192.168.100.100 was rejected, password is incorrect
+Mar 21 15:48:45 FW-125852 D020010010010 admd[2107]: msg_id="1100-0005" Authentication of Firewall user [testuser@Firebox-DB] from 192.168.100.99 was rejected, password is incorrect
+Mar 21 15:48:45 FW-125852 FVE1001001001 admd[2107]: msg_id="1100-0005" Authentication of Firewall user [testuser@Firebox-DB] from fe80::20c:29ff:fe59:7afa was rejected, password is incorrect
+Watchguard syntax: Authentication of %s user [%s@%s] from %s rejected, %s
+
+WebUI&WSM authentification failed
+Mar 21 14:11:32 FW-125852 FVE1001001001 wgagent[2159]: msg_id="5000-0001" WebUI User azerty@Firebox-DB from 10.0.0.2 log in attempt was rejected - invalid credentials.
+Mar 22 00:01:07 FW-125852 FVE1001001001 wgagent[2159]: msg_id="5000-0001" WSM User status@Firebox-DB from 192.168.100.99 log in attempt was rejected - invalid credentials.
+Mar 22 00:01:07 FW-125852 FVE1001001001 wgagent[2159]: msg_id="5000-0001" WSM User status@Firebox-DB from fe80::20c:29ff:fe59:7afa log in attempt was rejected - invalid credentials.
+Watchguard syntax: WebUI User %s@%s from %s log in attempt was rejected - %s
+
+User authentication success
+Feb 25 16:06:07 FW-125852 FVE1000000000 sessiond[2102]: msg_id="3E00-0002" Management user admin@Firebox-DB from 192.168.100.100 logged in
+Feb 25 16:06:07 FW-125852 FVE1000000000 sessiond[2102]: msg_id="3E00-0002" Management user admin@Firebox-DB from fe80::20c:29ff:fe59:7afa logged in
+Watchguard syntax: %s %s%s%s from %s logged in
+
+VPN User authentication success
+Mar 21 15:28:27 FW-125852 FVE1001001001 sslvpn[2154]: msg_id="2500-0000" Mobile VPN with SSL user testuser logged in. Virtual IP address is 192.168.25.2. Real IP address is 192.168.100.99
+Mar 21 15:28:27 FW-125852 FVE1001001001 sslvpn[2154]: msg_id="2500-0000" Mobile VPN with SSL user testuser logged in. Virtual IP address is ac::d0:::1. Real IP address is fe80::20c:29ff:fe59:7afa
+Mar 21 15:28:27 FW-125852 FVE1001001001 sslvpn[2154]: msg_id="2500-0000" Mobile VPN with SSL user testuser logged in. Virtual IP address is fe80::20c:29ff:fe59:7afa. Real IP address is ac::d0:::1
+Watchguard syntax: Mobile VPN with SSL user %s logged in. Virtual IP address is %s. Real IP address is %s.
+
+VPN User authentication failed
+Mar 21 15:48:45 FW-125852 FVE1001001001 wgcgi[29063]: SSL VPN user testuser@Firebox-DB from 192.168.100.99 was rejected - Unspecified.
+-->
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">from\s((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2">from\s?(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">Virtual IP address is\s((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>dstip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2">Virtual IP address is\s?(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>dstip</order>
+</decoder>
+
+<!-- IPv4 -->
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">Real IP address is\s((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3})</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- IPv6 -->
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2">Real IP address is\s?(([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|[Ff][Ee]80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])\.{3,3})(25[0-5]|2[0-4][0-9]|1{0,1}[0-9]{0,1}[0-9])|:((:[0-9a-fA-F]{1,4}){1,7}|:))</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"(?:\sAuthentication of)?\s(.*?\s[Uu]ser)\s\[?([^\[\]\s]+)</regex>
+  <order>account_type, srcuser</order>
+</decoder>
+
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">was (rejected),?\s?-?\s?(.*)</regex>
+  <order>action, reason</order>
+</decoder>
+
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">(logged in)</regex>
+  <order>action</order>
+</decoder>
+
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">(rejected)</regex>
+  <order>action</order>
+</decoder>
+
+<!-- Special case for wgcgi auth where no msg id is given... Thanks WG -->
+<decoder name="watchguard-firebox-auth-info">
+  <parent>watchguard-firebox-auth</parent>
+  <regex type="pcre2" offset="after_parent">^(SSL VPN) user\s(\S+)\s</regex>
+  <order>id, srcuser</order>
+</decoder>
+
+<!-- SECURITY EVENTS DECODER -->
+<!-- Thanks to WG security event msg_ids don't follow a easy to find logic
+
+2021 Jul 08 11:32:28 FW-200275->192.168.1.254 Jul  8 11:32:00 FW-200275 D020010010010 (2021-07-08T09:32:00) sigd[14182]: msg_id="2E02-0006" Process crashed
+2021 Jul 08 11:32:28 FW-200275->192.168.1.254 Jul  8 11:32:00 FW-200275 D020010010010 (2021-07-08T09:32:00) sigd[14182]: msg_id="2E02-0065" Scheduled IPS update started
+2021 Jul 08 11:32:29 FW-200275->192.168.1.254 Jul  8 11:32:01 FW-200275 D020010010010 (2021-07-08T09:32:01) sigd[14182]: msg_id="2E02-0069" Device already has the latest IPS signature version (4.1176)
+-->
+<decoder name="watchguard-firebox-sigd">
+  <prematch type="pcre2">(FVE\w+|D0F\w+|D02\w+)\s(\(\S+\))?\s?sigd\[\w+\]: </prematch>
+</decoder>
+
+<decoder name="watchguard-firebox-sigd-info">
+  <parent>watchguard-firebox-sigd</parent>
+  <regex type="pcre2" offset="after_parent">msg_id="([0-9a-fA-F]{4}-[0-9a-fA-F]{4})" (.*)</regex>
+  <order>id, reason</order>
+</decoder>
