@@ -8,6 +8,20 @@ All notable changes to this project will be documented in this file.
 - **Core:**
   - Fixed a false positive in Vulnerability Detector when packages have multiple conditions in the OVAL feed. ([#9647](https://github.com/wazuh/wazuh/pull/9647))
 
+- **API:**
+  - Fixed a bug with distributed API calls when the cluster is disabled. ([#9984](https://github.com/wazuh/wazuh/pull/9984))
+
+- **Modules:**
+  - Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
+
+### Changed
+
+- **Modules:**
+  - Reworked the Google Cloud Pub/Sub integration module to increase the number of processed events per second allowing multithreading. Added new `num_threads` option to module configuration. ([#9927](https://github.com/wazuh/wazuh/pull/9927))
+
+- **External dependencies:**
+  - Upgrade google-cloud-pubsub dependency to the latest stable version (2.7.1).  ([#9964](https://github.com/wazuh/wazuh/pull/9964))
+  
 
 ## [v4.2.1] - 2021-09-03
 
@@ -111,6 +125,7 @@ All notable changes to this project will be documented in this file.
   - Changed error message to debug when iterating a file listed that is already deleted. ([#8499](https://github.com/wazuh/wazuh/pull/8499))
   - Fixed cluster timeout exceptions. ([#8901](https://github.com/wazuh/wazuh/pull/8901))
   - Fixed unhandled KeyError when an error command is received in any cluster node. ([#8872](https://github.com/wazuh/wazuh/pull/8872))
+  - Fixed unhandled cluster error in send_string() communication protocol. ([#8943](https://github.com/wazuh/wazuh/pull/8943))
 
 - **Core:**
   - Fixed a bug in FIM when setting scan_time to "12am" or "12pm". ([#6934](https://github.com/wazuh/wazuh/pull/6934))
@@ -166,6 +181,9 @@ All notable changes to this project will be documented in this file.
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
   - Fixed SCA checks for RHEL7 and CentOS 7. Thanks to J. Daniel Medeiros (@jdmedeiros). ([#7645](https://github.com/wazuh/wazuh/pull/7645))
   - Fixed the match criteria of the AWS WAF rules. ([#8111](https://github.com/wazuh/wazuh/pull/8111))
+
+- **Modules:**
+  - Fixed an error when trying to use a non-default aws profile with CloudWatchLogs ([#9331](https://github.com/wazuh/wazuh/pull/9331))
 
 ### Removed
 
