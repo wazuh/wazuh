@@ -44,7 +44,7 @@ char *getFullnameById(const char *id);
 int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key);
 int OS_RemoveAgent(const char *id);
 double OS_AgentAntiquity(const char *name, const char *ip);
-double OS_AgentDisconnected_time(const char *id);
+double OS_AgentDisconnectedTime(const char *id);
 double OS_AgentAntiquity_ID(const char *id);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
