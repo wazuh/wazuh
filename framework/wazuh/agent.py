@@ -892,17 +892,19 @@ def get_upgrade_result(agent_list=None):
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
 
-    task_results = core_upgrade_agents(agents_list=agent_list, get_result=True)
+    # Check if the list is not empty after the padding
+    if agent_list:
+        task_results = core_upgrade_agents(agents_list=agent_list, get_result=True)
 
-    for task_result in task_results['data']:
-        task_error = task_result.pop('error')
-        if task_error == 0:
-            task_result['agent'] = str(task_result['agent']).zfill(3)
-            result.affected_items.append(task_result)
-            result.total_affected_items += 1
-        else:
-            error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['message'])
-            result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
+        for task_result in task_results['data']:
+            task_error = task_result.pop('error')
+            if task_error == 0:
+                task_result['agent'] = str(task_result['agent']).zfill(3)
+                result.affected_items.append(task_result)
+                result.total_affected_items += 1
+            else:
+                error = WazuhError(code=1810 + task_error, cmd_error=True, extra_message=task_result['message'])
+                result.add_failed_item(id_=str(task_result.pop('agent')).zfill(3), error=error)
     result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
 
     return result
