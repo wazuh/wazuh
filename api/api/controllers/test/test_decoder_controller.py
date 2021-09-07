@@ -9,8 +9,6 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
-
         from api.controllers.decoder_controller import (get_decoders,
                                                         get_decoders_files,
                                                         get_decoders_parents,
@@ -19,8 +17,8 @@ with patch('wazuh.common.wazuh_uid'):
                                                         delete_file)
         from wazuh import decoder as decoder_framework
         from wazuh.tests.util import RBAC_bypasser
-
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio

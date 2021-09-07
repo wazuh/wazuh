@@ -8,13 +8,11 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
-
         from api.controllers.ciscat_controller import get_agents_ciscat_results
         from wazuh import ciscat
         from wazuh.tests.util import RBAC_bypasser
-
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio

@@ -9,8 +9,6 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
-
         from api.controllers.cdb_list_controller import (get_lists,
                                                          get_file,
                                                          put_file,
@@ -18,8 +16,8 @@ with patch('wazuh.common.wazuh_uid'):
                                                          get_lists_files)
         from wazuh import cdb_list
         from wazuh.tests.util import RBAC_bypasser
-
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio

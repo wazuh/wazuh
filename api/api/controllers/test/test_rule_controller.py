@@ -10,8 +10,6 @@ with patch('wazuh.common.wazuh_uid'):
         with patch('api.configuration.api_conf'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
-            del sys.modules['wazuh.rbac.orm']
-
             from api.controllers.rule_controller import (get_rules,
                                                          get_rules_groups,
                                                          get_rules_requirement,
@@ -21,8 +19,8 @@ with patch('wazuh.common.wazuh_uid'):
                                                          delete_file)
             from wazuh import rule as rule_framework
             from wazuh.tests.util import RBAC_bypasser
-
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio
