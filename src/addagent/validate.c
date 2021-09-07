@@ -522,7 +522,7 @@ double OS_AgentAntiquity(const char *name, const char *ip){
     return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
 
-double OS_AgentDisconnected_time(const char *id) {
+double OS_AgentDisconnectedTime(const char *id) {
     time_t disconnected_time = 0;
     cJSON *json_agent_info = NULL;
     cJSON *json_field = NULL;

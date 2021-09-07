@@ -12,6 +12,7 @@
 #define MANAGE_AGENTS_WRAPPERS_H
 
 double __wrap_OS_AgentAntiquity(const char *name, const char *ip);
+double __wrap_OS_AgentDisconnectedTime(const char *id);
 void __wrap_OS_RemoveAgentGroup(const char *id);
 
 #endif
