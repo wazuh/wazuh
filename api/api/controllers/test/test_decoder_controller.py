@@ -91,7 +91,7 @@ async def test_decoder_controller(mock_request, mock_bool):
             else:
                 assert isinstance(result, ConnexionResponse)
 
-    async def test_put_file():        
+    async def test_put_file():
         with patch('api.controllers.decoder_controller.Body.validate_content_type'):
             with patch('api.controllers.decoder_controller.Body.decode_body', return_value={}):
                 calls = [call(f=decoder_framework.upload_decoder_file,

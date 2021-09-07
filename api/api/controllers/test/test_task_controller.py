@@ -19,21 +19,27 @@ with patch('wazuh.common.wazuh_uid'):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'value1'}}])
-async def test_get_vulnerability_agent(mock_request):
-    with patch('api.controllers.task_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
-        with patch('api.controllers.task_controller.DistributedAPI.distribute_function',
-                   return_value=AsyncMock()) as mock_dfunc:
-            with patch('api.controllers.task_controller.raise_if_exc', return_value={}) as mock_exc:
-                calls = [call(f=task.get_task_status,
-                              f_kwargs=ANY,
-                              request_type='local_master',
-                              is_async=False,
-                              wait_for_complete=False,
-                              logger=ANY,
-                              rbac_permissions=mock_request['token_info']['rbac_policies']
-                              )
-                         ]
-                result = await get_tasks_status(mock_request)
-                mock_dapi.assert_has_calls(calls)
-                mock_exc.assert_called_once_with(mock_dfunc.return_value)
-                assert isinstance(result, web_response.Response)
+async def test_task_controller(mock_request):
+    async def test_get_tasks_status():
+        calls = [call(f=task.get_task_status,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      wait_for_complete=False,
+                      logger=ANY,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        result = await get_tasks_status(mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
+
+    functions = [test_get_tasks_status()
+                 ]
+    for test_funct in functions:
+        with patch('api.controllers.task_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
+            with patch('api.controllers.task_controller.DistributedAPI.distribute_function',
+                       return_value=AsyncMock()) as mock_dfunc:
+                with patch('api.controllers.task_controller.raise_if_exc', return_value={}) as mock_exc:
+                    await test_funct

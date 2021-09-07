@@ -172,6 +172,9 @@ async def test_syscollector_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    mock_request.request = {'aux', 'value2'}
+    aux_d = {'token_info': {'rbac_policies': 'value1'}}
+    mock_request.__getitem__.side_effect = aux_d.__getitem__
     functions = [test_get_hardware_info(),
                  test_get_hotfix_info(),
                  test_get_network_address_info(),
@@ -182,9 +185,6 @@ async def test_syscollector_controller(mock_request):
                  test_get_ports_info(),
                  test_get_processes_info()
                  ]
-    mock_request.request = {'aux', 'value2'}
-    aux_d = {'token_info': {'rbac_policies': 'value1'}}
-    mock_request.__getitem__.side_effect = aux_d.__getitem__
     for test_funct in functions:
         with patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
             with patch('api.controllers.syscollector_controller.DistributedAPI.distribute_function',
