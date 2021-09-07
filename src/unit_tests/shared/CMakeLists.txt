@@ -79,7 +79,7 @@ list(APPEND shared_tests_names "test_utf8_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_log_builder")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int")
 
 list(APPEND shared_tests_names "test_custom_output_search_replace")
 list(APPEND shared_tests_flags " ")
