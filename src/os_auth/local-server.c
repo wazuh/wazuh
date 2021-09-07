@@ -43,12 +43,12 @@ static const struct {
     { 9004, "No such argument" },
     { 9005, "No such name" },
     { 9006, "No such IP" },
-    { 9007, "Duplicated IP" },
-    { 9008, "Duplicated name" },
+    { 9007, "Duplicate IP" },
+    { 9008, "Duplicate name" },
     { 9009, "Issue generating key" },
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
-    { 9012, "Duplicated ID" },
+    { 9012, "Duplicate ID" },
     { 9013, "Maximum number of agents reached" },
     { 9014, "Invalid Group(s) Name(s)" },
     { 9015, "Cannot execute this request on a worker node" }
@@ -243,13 +243,11 @@ char* local_dispatch(const char *input) {
             if (item = cJSON_GetObjectItem(arguments, "force"), item) {
                 if (item->valueint == -1) {
                     force_options.enabled = false;
-                }
-                else {
+                } else {
                     force_options.enabled = true;
                     force_options.connection_time = item->valueint;
                 }
-            }
-            else {
+            } else {
                 force_options.enabled = false;
             }
 
@@ -301,9 +299,8 @@ char* local_dispatch(const char *input) {
         }
 
         cJSON_Delete(request);
-    }
-    // Read configuration commands
-    else {
+    } else {
+        // Read configuration commands
         authcom_dispatch(input,&output);
     }
 
@@ -340,16 +337,16 @@ cJSON* local_add(const char *id,
         }
     }
 
-    // Check for duplicated ID
+    // Check for duplicate ID
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        minfo("Duplicated ID '%s'.", keys.keyentries[index]->id);
+        minfo("Duplicate ID '%s'.", keys.keyentries[index]->id);
         if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
             ierror = EDUPID;
             goto fail;
         }
     }
 
-    /* Check for duplicated IP */
+    /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
             if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
@@ -365,7 +362,7 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
-    /* Check for duplicated names */
+    /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
         if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
                 ierror = EDUPNAME;

@@ -16,13 +16,16 @@
 #include "shared.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-typedef enum _crypt_method{
-    W_METH_BLOWFISH,W_METH_AES
+typedef enum _crypt_method {
+    W_METH_BLOWFISH, W_METH_AES
 } crypt_method;
 
-typedef enum _key_mode{
+/**
+ * @brief Enumerator that defines the key initialization modes.
+ */
+typedef enum _key_mode {
     W_RAW_KEY, W_ENCRYPTION_KEY, W_DUAL_KEY
-}key_mode_t;
+} key_mode_t;
 
 typedef struct keystore_flags_t {
     unsigned int key_mode:2;        // Type of key to be initialized

@@ -25,8 +25,7 @@
 #endif
 */
 
-int OS_SHA1_File(const char *fname, os_sha1 output, int mode)
-{
+int OS_SHA1_File(const char *fname, os_sha1 output, int mode) {
     SHA_CTX c;
     FILE *fp;
     unsigned char buf[2048 + 2];
@@ -59,8 +58,7 @@ int OS_SHA1_File(const char *fname, os_sha1 output, int mode)
     return (0);
 }
 
-int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output)
-{
+int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output) {
     unsigned char md[SHA_DIGEST_LENGTH];
     size_t n;
 
@@ -77,8 +75,7 @@ int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output)
     return (0);
 }
 
-int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output)
-{
+int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output) {
     unsigned char temp[SHA_DIGEST_LENGTH];
     size_t n;
 
@@ -102,7 +99,7 @@ int OS_SHA1_strings(os_sha1 output, ...) {
     va_list parameters;
     char* parameter = NULL;
     va_start(parameters, output);
-    while(parameter = va_arg(parameters, char*), parameter) {
+    while (parameter = va_arg(parameters, char*), parameter) {
         SHA1_Update(&c, parameter, strlen(parameter));
     }
     va_end(parameters);

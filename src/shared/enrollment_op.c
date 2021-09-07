@@ -277,18 +277,18 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         snprintf(buf, 2048, "OSSEC A:'%s'", lhostname);
     }
 
-    if(cfg->target_cfg->centralized_group){
+    if (cfg->target_cfg->centralized_group) {
         w_enrollment_concat_group(buf, cfg->target_cfg->centralized_group);
     }
 
-    if(w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
+    if (w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
             os_free(lhostname);
         return -1;
     }
 
-    if (cfg->keys->keysize > 0){
+    if (cfg->keys->keysize > 0) {
         w_enrollment_concat_key(buf, cfg->keys->keyentries[0]);
     }
 
@@ -307,7 +307,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
     mdebug1("Request sent to manager");
 
     os_free(buf);
-    if(lhostname != cfg->target_cfg->agent_name)
+    if (lhostname != cfg->target_cfg->agent_name)
         os_free(lhostname);
     return 0;
 }

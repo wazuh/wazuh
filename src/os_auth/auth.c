@@ -35,7 +35,7 @@ void add_insert(const keyentry *entry,const char *group) {
     node->ip = strdup(entry->ip->ip);
     node->group = NULL;
 
-    if(group != NULL)
+    if (group != NULL)
         node->group = strdup(group);
 
     (*insert_tail) = node;
@@ -62,11 +62,11 @@ w_err_t w_auth_parse_data(const char* buf,
                           char *ip,
                           char **agentname,
                           char **groups,
-                          char **key_hash){
+                          char **key_hash) {
 
     bool parseok = FALSE;
     /* Checking for shared password authentication. */
-    if(authpass) {
+    if (authpass) {
         /* Format is pretty simple: OSSEC PASS: PASS WHATEVERACTION */
         parseok = FALSE;
         if (strncmp(buf, "OSSEC PASS: ", 12) == 0) {
@@ -122,18 +122,17 @@ w_err_t w_auth_parse_data(const char* buf,
 
     /* Check for valid centralized group */
     char centralized_group_token[2] = "G:";
-    if(strncmp(++buf, centralized_group_token, 2)==0)
-    {
+    if (strncmp(++buf, centralized_group_token, 2) == 0) {
         char tmp_groups[OS_SIZE_65536+1] = {0};
         sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
 
         /* Validate the group name */
-        if(0 > w_validate_group_name(tmp_groups, response)) {
+        if (0 > w_validate_group_name(tmp_groups, response)) {
             merror("Invalid group name: %.255s... ,",tmp_groups);
             return OS_INVALID;
         }
         *groups = wstr_delete_repeated_groups(tmp_groups);
-        if(!*groups){
+        if (!*groups) {
             snprintf(response, 2048, "ERROR: Insuficient memory");
             return OS_MEMERR;
         }
@@ -142,35 +141,33 @@ w_err_t w_auth_parse_data(const char* buf,
         /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
         buf+= 2+strlen(tmp_groups)+2;
 
-    }else{
+    } else {
         buf--;
     }
 
     /* Check for IP when client uses -i option */
     char client_source_ip[IPSIZE + 1] = {0};
     char client_source_ip_token[3] = "IP:";
-    if(strncmp(++buf, client_source_ip_token, 3)==0) {
+    if (strncmp(++buf, client_source_ip_token, 3) == 0) {
         char format[15];
         sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
         sscanf(buf, format, client_source_ip);
 
         /* If IP: != 'src' overwrite the provided ip */
-        if(strncmp(client_source_ip,"src",3) != 0)
-        {
+        if (strncmp(client_source_ip,"src",3) != 0) {
             if (!OS_IsValidIP(client_source_ip, NULL)) {
                 merror("Invalid IP: '%s'", client_source_ip);
                 snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE, "%s", client_source_ip);
+            snprintf(ip, IPSIZE + 1, "%s", client_source_ip);
         }
 
         /* Forward the string pointer IP:'........' 3 for IP: , 2 for '' */
         buf+= 3 + strlen(client_source_ip) + 2;
-    }
-    else{
+    } else {
         buf--;
-        if(!config.flags.use_source_ip) {
+        if (!config.flags.use_source_ip) {
             // use_source-ip = 0 and no -I argument in agent
             snprintf(ip, IPSIZE, "any");
         }
@@ -178,8 +175,7 @@ w_err_t w_auth_parse_data(const char* buf,
 
     /* Check for key hash when the agent already has one*/
     char key_hash_token[2] = "K:";
-    if(strncmp(++buf, key_hash_token, 2)==0)
-    {
+    if (strncmp(++buf, key_hash_token, 2) == 0) {
         os_calloc(1, sizeof(os_sha1), *key_hash);
         char format[15] = {0};
         sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1));
@@ -191,18 +187,18 @@ w_err_t w_auth_parse_data(const char* buf,
 
 w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,
-                             authd_force_options_t *force_options){
+                             authd_force_options_t *force_options) {
 
     /* Check if the agent replacement is allowed */
     if (!force_options->enabled) {
-        minfo("Agent '%s' won´t be removed because the force option is disabled.", key->id);
+        minfo("Agent '%s' won't be removed because the force option is disabled.", key->id);
         return OS_INVALID;
     }
 
     /* Check if the agent antiquity complies with the configuration to be removed */
     double antiquity = 0;
     if (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < force_options->connection_time) {
-        minfo("Agent '%s' doesn´t comply with the antiquity to be removed.", key->id);
+        minfo("Agent '%s' doesn't comply with the antiquity to be removed.", key->id);
         return OS_INVALID;
     }
 
@@ -227,21 +223,21 @@ w_err_t w_auth_validate_data(char *response,
                              const char *ip,
                              const char *agentname,
                              const char *groups,
-                             const char *key_hash){
+                             const char *key_hash) {
     int index = 0;
 
     /* Validate the group(s) name(s) */
-    if (groups){
-        if (OS_SUCCESS != w_auth_validate_groups(groups, response)){
+    if (groups) {
+        if (OS_SUCCESS != w_auth_validate_groups(groups, response)) {
             return OS_INVALID;
         }
     }
 
-    /* Check for duplicated IP */
+    /* Check for duplicate IP */
     if (strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
-        minfo("Duplicated IP '%s' (%s).", ip, keys.keyentries[index]->id);
+        minfo("Duplicate IP '%s' (%s).", ip, keys.keyentries[index]->id);
         if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options)) {
-            snprintf(response, 2048, "ERROR: Duplicated IP: %s", ip);
+            snprintf(response, 2048, "ERROR: Duplicate IP: %s", ip);
             return OS_INVALID;
         }
     }
@@ -253,11 +249,11 @@ w_err_t w_auth_validate_data(char *response,
         return OS_INVALID;
     }
 
-    /* Check for duplicated name */
+    /* Check for duplicate name */
     if (index = OS_IsAllowedName(&keys, agentname), index >= 0) {
-        minfo("Duplicated name '%s' (%s).", agentname, keys.keyentries[index]->id);
+        minfo("Duplicate name '%s' (%s).", agentname, keys.keyentries[index]->id);
         if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options)) {
-            snprintf(response, 2048, "ERROR: Duplicated agent name: %s", agentname);
+            snprintf(response, 2048, "ERROR: Duplicate agent name: %s", agentname);
             return OS_INVALID;
         }
     }
@@ -265,7 +261,7 @@ w_err_t w_auth_validate_data(char *response,
     return OS_SUCCESS;
 }
 
-w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key){
+w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key) {
 
     /* Add the new agent */
     int index;
@@ -277,7 +273,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
     }
 
     /* Add the agent to the centralized configuration group */
-    if(groups) {
+    if (groups) {
         char path[PATH_MAX];
         if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
@@ -304,12 +300,12 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
 
-    while( group != NULL ) {
+    while ( group != NULL ) {
         DIR * dp;
         char dir[PATH_MAX + 1] = {0};
 
         /* Check limit */
-        if(max_multigroups > MAX_GROUPS_PER_MULTIGROUP){
+        if (max_multigroups > MAX_GROUPS_PER_MULTIGROUP) {
             merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
             if (response) {
                 snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
@@ -322,7 +318,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         dp = opendir(dir);
         if (!dp) {
             merror("Invalid group: %.255s",group);
-            if (response){
+            if (response) {
                 snprintf(response, 2048, "ERROR: Invalid group: %s", group);
             }
             ret = OS_INVALID;

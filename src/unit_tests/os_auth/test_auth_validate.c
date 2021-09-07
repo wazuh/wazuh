@@ -160,19 +160,19 @@ static void test_w_auth_validate_data(void **state) {
 
     /* Existent IP */
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001).");
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won´t be removed because the force option is disabled.");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated IP: "EXISTENT_IP1"");
+    assert_string_equal(response, "ERROR: Duplicate IP: "EXISTENT_IP1"");
 
     /* Existent Agent Name */
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT1"' (001).");
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won´t be removed because the force option is disabled.");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
     err = w_auth_validate_data(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated agent name: "EXISTENT_AGENT1"");
+    assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT1"");
 
    /* Manager name */
    char host_name[512];
@@ -202,18 +202,18 @@ static void test_w_auth_validate_data_force_insert(void **state) {
     char response[2048] = {0};
     w_err_t err;
 
-    /* Duplicated IP*/
+    /* Duplicate IP*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"' (001).");
     expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
     will_return(__wrap_OS_AgentAntiquity, 0);
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
-     /* Duplicated Name*/
+     /* Duplicate Name*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002).");
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT2"' (002).");
     expect_string(__wrap__minfo, formatted_msg, "Removing old agent '002'.");
     will_return(__wrap_OS_AgentAntiquity, 0);
     err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL, NULL);
@@ -271,7 +271,7 @@ static void test_w_auth_replace_agent_force_disabled(void **state) {
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
 
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won´t be removed because the force option is disabled.");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
     err = w_auth_replace_agent(&key, NULL, &config.force_options);
 
     assert_int_equal(err, OS_INVALID);
@@ -287,7 +287,7 @@ static void test_w_auth_replace_agent_not_comply_antiquity(void **state) {
     will_return(__wrap_OS_AgentAntiquity, 10);
     config.force_options.connection_time = 100;
 
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' doesn´t comply with the antiquity to be removed.");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' doesn't comply with the antiquity to be removed.");
     err = w_auth_replace_agent(&key, NULL, &config.force_options);
 
     assert_int_equal(err, OS_INVALID);

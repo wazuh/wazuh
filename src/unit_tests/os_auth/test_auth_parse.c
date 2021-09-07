@@ -30,16 +30,16 @@ typedef struct _mocked_log {
 
 //Sets all the expected log messages
 void set_expected_log (mocked_log* log) {
-    if(log->merror) {
+    if (log->merror) {
             expect_string(__wrap__merror, formatted_msg, log->merror);
     }
-    if(log->mwarn) {
+    if (log->mwarn) {
             expect_string(__wrap__mwarn, formatted_msg, log->mwarn);
     }
-    if(log->minfo) {
+    if (log->minfo) {
             expect_string(__wrap__minfo, formatted_msg, log->minfo);
     }
-    if(log->mdebug) {
+    if (log->mdebug) {
             expect_string(__wrap__mdebug1, formatted_msg, log->mdebug);
     }
 }
@@ -128,7 +128,7 @@ static void test_w_auth_parse_data(void **state) {
     char *key_hash = NULL;
     w_err_t err;
 
-    for(unsigned i=0; parse_values[i].buffer; i++) {
+    for (unsigned i=0; parse_values[i].buffer; i++) {
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';
         strncpy(ip, parse_values[i].src_ip, IPSIZE);
@@ -136,23 +136,20 @@ static void test_w_auth_parse_data(void **state) {
         err = w_auth_parse_data(parse_values[i].buffer, response, parse_values[i].pass, ip, &agentname, &groups, &key_hash);
 
         assert_int_equal(err, parse_values[i].expected_response.err);
-        if(err == OS_SUCCESS) {
+        if (err == OS_SUCCESS) {
             assert_string_equal(ip, parse_values[i].expected_params.ip);
             assert_string_equal(agentname, parse_values[i].expected_params.name);
-            if(groups){
+            if (groups) {
                 assert_string_equal(groups, parse_values[i].expected_params.groups);
-            }
-            else{
+            } else {
                 assert_null(parse_values[i].expected_params.groups);
             }
-            if(key_hash){
+            if (key_hash) {
                 assert_string_equal(key_hash, parse_values[i].expected_params.key);
-            }
-            else{
+            } else {
                 assert_null(parse_values[i].expected_params.key);
             }
-        }
-        else {
+        } else {
             assert_string_equal(response, parse_values[i].expected_response.response);
         }
 

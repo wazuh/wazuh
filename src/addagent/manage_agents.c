@@ -228,7 +228,7 @@ int add_agent(int json_output)
                 if (json_output) {
                     cJSON *json_root = cJSON_CreateObject();
                     cJSON_AddNumberToObject(json_root, "error", 79);
-                    cJSON_AddStringToObject(json_root, "message", "Duplicated IP for agent");
+                    cJSON_AddStringToObject(json_root, "message", "Duplicate IP for agent");
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
