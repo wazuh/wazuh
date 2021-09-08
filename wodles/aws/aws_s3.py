@@ -2284,7 +2284,6 @@ class AWSInspector(AWSService):
                                                               aws_region=self.inspector_region,
                                                               retain_db_records=self.retain_db_records))
         # close connection with DB
-        self.db_connector.commit()
         self.close_db()
 
 
@@ -2486,7 +2485,8 @@ class AWSCloudWatchLogs(AWSService):
 
                 self.purge_db(log_group=log_group)
         finally:
-            self.close_database()
+            debug("committing changes and closing the DB", 1)
+            self.close_db()
 
     def remove_aws_log_stream(self, log_group, log_stream):
         """Remove a log stream from a log group in AWS Cloudwatch Logs.
@@ -2747,12 +2747,6 @@ class AWSCloudWatchLogs(AWSService):
                                                                     aws_region=self.region,
                                                                     aws_log_group=log_group,
                                                                     aws_log_stream=log_stream))
-
-    def close_database(self):
-        """Commit the changes to the DB and close the connection."""
-        debug("committing changes and closing the DB", 1)
-        self.db_connector.commit()
-        self.close_db()
 
 
 ################################################################################
