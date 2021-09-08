@@ -42,8 +42,7 @@ with patch('wazuh.common.wazuh_uid'):
                                                          update_policy,
                                                          update_role,
                                                          update_rule,
-                                                         update_user,
-                                                         WazuhException as wes)
+                                                         update_user)
         from wazuh import security
         from wazuh.core.exception import WazuhException
         from wazuh.rbac import preprocessor
@@ -53,10 +52,13 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_user', ['user1'])
-@pytest.mark.parametrize('mock_bool', [(True), (False)])
-@pytest.mark.parametrize('mock_raise', [(True), (False)])
-async def test_security_controller(mock_user, mock_bool, mock_raise):
+@pytest.mark.parametrize('mock_request, mock_user, mock_bool, mock_raise', [
+    (MagicMock(), 'user1', True, False),
+    (MagicMock(), 'user1', True, True),
+    (MagicMock(), 'user1', False, False),
+    (MagicMock(), 'user1', False, True)
+    ])
+async def test_security_controller(mock_request, mock_user, mock_bool, mock_raise):
     async def test_login_user():
         calls = [call(f=preprocessor.get_permissions,
                       f_kwargs=ANY,
@@ -66,122 +68,623 @@ async def test_security_controller(mock_user, mock_bool, mock_raise):
                       )
                  ]
         if not mock_raise:
-            result = await login_user(mock_user,
+            result = await login_user(user=mock_user,
                                       raw=mock_bool)
             mock_dapi.assert_has_calls(calls)
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             assert isinstance(result, web_response.Response)
-        # else:
-        #     with pytest.raises(ValueError):
-        #         mock_token.side_effect = ValueError
-        #         result = await login_user(mock_user,
-        #                                 raw=mock_bool)
-        #         mock_dapi.assert_has_calls(calls)
-        #         mock_exc.assert_called_once()
-        #         assert isinstance(result, web_response.Response)
+        else:
+            mock_token.side_effect = WazuhException(999)
+            result = await login_user(user=mock_user,
+                                      raw=mock_bool)
+            mock_dapi.assert_has_calls(calls)
+            mock_exc.assert_has_calls([call(mock_dfunc.return_value),
+                                       call(mock_token.side_effect)])
+            assert isinstance(result, web_response.Response)
 
     async def test_run_as_login():
-        pass
+        calls = [call(f=preprocessor.get_permissions,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY
+                      )
+                 ]
+        if not mock_raise:
+            result = await run_as_login(request=AsyncMock(),
+                                        user=mock_user,
+                                        raw=mock_bool)
+            mock_dapi.assert_has_calls(calls)
+            mock_exc.assert_called_once_with(mock_dfunc.return_value)
+            assert isinstance(result, web_response.Response)
+        else:
+            mock_token.side_effect = WazuhException(999)
+            result = await run_as_login(request=AsyncMock(),
+                                        user=mock_user,
+                                        raw=mock_bool)
+            mock_dapi.assert_has_calls(calls)
+            mock_exc.assert_has_calls([call(mock_dfunc.return_value),
+                                       call(mock_token.side_effect)])
+            assert isinstance(result, web_response.Response)
 
     async def test_get_user_me():
-        pass
+        calls = [call(f=security.get_user_me,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      current_user=mock_request['token_info']['sub'],
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_user_me(request=mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_get_user_me_policies():
-        pass
+        with patch('api.controllers.security_controller.WazuhResult', return_value='mock_wr_result') as mock_wr:
+            result = await get_user_me_policies(request=mock_request)
+            mock_wr.assert_called_with({'data': mock_request['token_info']['rbac_policies'],
+                                        'message': "Current user processed policies information was returned"})
+        assert isinstance(result, web_response.Response)
 
     async def test_logout_user():
-        pass
+        calls = [call(f=security.revoke_current_user_tokens,
+                      request_type='local_master',
+                      is_async=False,
+                      current_user=mock_request['token_info']['sub'],
+                      wait_for_complete=False,
+                      logger=ANY
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await logout_user(request=mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_get_users():
-        pass
+        calls = [call(f=security.get_users,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_users(request=mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_edit_run_as():
-        pass
+        calls = [call(f=security.edit_run_as,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      current_user=mock_request['token_info']['sub'],
+                      rbac_permissions=mock_request['token_info']['rbac_policies'],
+                      wait_for_complete=False
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await edit_run_as(request=mock_request,
+                                   user_id=mock_user,
+                                   allow_run_as=mock_bool)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_create_user():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.CreateUserModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.create_user,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await create_user(request=mock_request)
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_update_user():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.CreateUserModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.update_user,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await update_user(request=mock_request,
+                                               user_id='001')
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_delete_users():
-        pass
+        calls = [call(f=security.remove_users,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      current_user=mock_request['token_info']['sub'],
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await delete_users(request=mock_request,
+                                    user_ids='all')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_get_roles():
-        pass
+        calls = [call(f=security.get_roles,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_roles(request=mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_add_role():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.RoleModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.add_role,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await add_role(request=mock_request)
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_remove_roles():
-        pass
+        calls = [call(f=security.remove_roles,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await remove_roles(request=mock_request,
+                                    role_ids='all')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_update_role():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.RoleModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.update_role,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await update_role(request=mock_request,
+                                               role_id='001')
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_get_rules():
-        pass
+        calls = [call(f=security.get_rules,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_rules(request=mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_add_rule():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.RuleModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.add_rule,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await add_rule(request=mock_request)
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_update_rule():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.RuleModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.update_rule,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await update_rule(request=mock_request,
+                                               rule_id='001')
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_remove_rules():
-        pass
+        calls = [call(f=security.remove_rules,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await remove_rules(request=mock_request,
+                                    rule_ids='all')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_get_policies():
-        pass
+        calls = [call(f=security.get_policies,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_policies(request=mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_add_policy():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.PolicyModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.add_policy,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await add_policy(request=mock_request)
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_remove_policies():
-        pass
+        calls = [call(f=security.remove_policies,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await remove_policies(request=mock_request,
+                                       policy_ids='all')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_update_policy():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.PolicyModel.get_kwargs', return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    calls = [call(f=security.update_policy,
+                                  f_kwargs=ANY,
+                                  request_type='local_master',
+                                  is_async=False,
+                                  logger=ANY,
+                                  rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                  wait_for_complete=False
+                                  )
+                             ]
+                    mock_exc.return_value = 'mock_exc_value'
+                    result = await update_policy(request=mock_request,
+                                                 policy_id='001')
+                    mock_dapi.assert_has_calls(calls)
+                    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                    assert isinstance(result, web_response.Response)
 
     async def test_set_user_role():
-        pass
+        calls = [call(f=security.set_user_role,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await set_user_role(request=mock_request,
+                                     user_id='001',
+                                     role_ids='001')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_remove_user_role():
-        pass
+        calls = [call(f=security.remove_user_role,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await remove_user_role(request=mock_request,
+                                        user_id='001',
+                                        role_ids='001')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_set_role_policy():
-        pass
+        calls = [call(f=security.set_role_policy,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await set_role_policy(request=mock_request,
+                                       role_id='001',
+                                       policy_ids='001')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_remove_role_policy():
-        pass
+        calls = [call(f=security.remove_role_policy,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await remove_role_policy(request=mock_request,
+                                          role_id='001',
+                                          policy_ids='001')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_set_role_rule():
-        pass
+        calls = [call(f=security.set_role_rule,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await set_role_rule(request=mock_request,
+                                     role_id='001',
+                                     rule_ids='001')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_remove_role_rule():
-        pass
+        calls = [call(f=security.remove_role_rule,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await remove_role_rule(request=mock_request,
+                                        role_id='001',
+                                        rule_ids='001')
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_get_rbac_resources():
-        pass
+        calls = [call(f=security.get_rbac_resources,
+                      f_kwargs=ANY,
+                      request_type='local_any',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=True
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_rbac_resources()
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_get_rbac_actions():
-        pass
+        calls = [call(f=security.get_rbac_actions,
+                      f_kwargs=ANY,
+                      request_type='local_any',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=True
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_rbac_actions()
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_revoke_all_tokens():
-        pass
+        with patch('api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
+            calls = [call(f=security.wrapper_revoke_tokens,
+                          f_kwargs=ANY,
+                          request_type='distributed_master',
+                          is_async=False,
+                          broadcasting=True,
+                          wait_for_complete=True,
+                          logger=ANY,
+                          rbac_permissions=mock_request['token_info']['rbac_policies'],
+                          nodes=mock_snodes.return_value
+                          )
+                     ]
+            mock_exc.return_value = 'mock_exc_value'
+            result = await revoke_all_tokens(request=mock_request)
+            mock_dapi.assert_has_calls(calls)
+            mock_exc.assert_called_once_with(mock_dfunc.return_value)
+            assert isinstance(result, web_response.Response)
 
     async def test_get_security_config():
-        pass
+        calls = [call(f=security.get_security_config,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY,
+                      wait_for_complete=False,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value = 'mock_exc_value'
+        result = await get_security_config(request=mock_request)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
 
     async def test_security_revoke_tokens():
-        pass
+        with patch('api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
+            calls = [call(f=security.revoke_tokens,
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=True,
+                          broadcasting=True,
+                          logger=ANY,
+                          nodes=mock_snodes.return_value
+                          )
+                     ]
+            mock_exc.return_value = 'mock_exc_value'
+            await security_revoke_tokens()
+            mock_dapi.assert_has_calls(calls)
+            mock_exc.assert_called_once_with(mock_dfunc.return_value)
 
     async def test_put_security_config():
-        pass
+        with patch('api.controllers.security_controller.Body.validate_content_type'):
+            with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
+                       return_value=AsyncMock()):
+                with patch('api.controllers.security_controller.remove_nones_to_dict'):
+                    with patch('api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
+                        calls = [call(f=security.update_security_config,
+                                      f_kwargs=ANY,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'],
+                                      wait_for_complete=False
+                                      )
+                                 ]
+                        mock_exc.return_value = 'mock_exc_value'
+                        result = await put_security_config(request=mock_request)
+                        mock_dapi.assert_has_calls(calls)
+                        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                        assert isinstance(result, web_response.Response)
 
     async def test_delete_security_config():
-        pass
+        with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
+                   return_value=AsyncMock()):
+            with patch('api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
+                calls = [call(f=security.update_security_config,
+                              f_kwargs=ANY,
+                              request_type='local_master',
+                              is_async=False,
+                              logger=ANY,
+                              wait_for_complete=False,
+                              rbac_permissions=mock_request['token_info']['rbac_policies']
+                              )
+                         ]
+                mock_exc.return_value = 'mock_exc_value'
+                result = await delete_security_config(request=mock_request)
+                mock_dapi.assert_has_calls(calls)
+                mock_exc.assert_called_once_with(mock_dfunc.return_value)
+                assert isinstance(result, web_response.Response)
 
+    aux_d = {'token_info': {'rbac_policies': 'rbac_policies_value', 'sub': 'sub_value', 'run_as': 'run_as_value'}}
+    mock_request.__getitem__.side_effect = aux_d.__getitem__
     functions = [test_login_user(),
                  test_run_as_login(),
                  test_get_user_me(),

@@ -17,7 +17,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'value1'}}])
+@pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'rbac_policies_value'}}])
 async def test_sca_controller(mock_request):
     async def test_get_sca_agent():
         calls = [call(f=sca.get_sca_list,

@@ -24,8 +24,10 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [MagicMock()])
-@pytest.mark.parametrize('mock_bool', [(True), (False)])
+@pytest.mark.parametrize('mock_request, mock_bool', [
+    (MagicMock(), True),
+    (MagicMock(), False)
+    ])
 async def test_rule_controller(mock_request, mock_bool):
     async def test_get_rules():
         calls = [call(f=rule_framework.get_rules,
@@ -140,8 +142,8 @@ async def test_rule_controller(mock_request, mock_bool):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
-    mock_request.request = {'aux', 'value2'}
-    aux_d = {'token_info': {'rbac_policies': 'value1'}}
+    mock_request.request = {'aux', 'aux_value'}
+    aux_d = {'token_info': {'rbac_policies': 'rbac_policies_value'}}
     mock_request.__getitem__.side_effect = aux_d.__getitem__
     functions = [test_get_rules(),
                  test_get_rules_groups(),
@@ -156,5 +158,5 @@ async def test_rule_controller(mock_request, mock_bool):
             with patch('api.controllers.rule_controller.DistributedAPI.distribute_function',
                        return_value=AsyncMock()) as mock_dfunc:
                 with patch('api.controllers.rule_controller.raise_if_exc',
-                           return_value={'message': 'value1'}) as mock_exc:
+                           return_value={'message': 'message_value'}) as mock_exc:
                     await test_funct

@@ -32,8 +32,10 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'value1'}}])
-@pytest.mark.parametrize('mock_bool', [(True), (False)])
+@pytest.mark.parametrize('mock_request, mock_bool', [
+    ({'token_info': {'rbac_policies': 'rbac_policies_value'}}, True),
+    ({'token_info': {'rbac_policies': 'rbac_policies_value'}}, False)
+    ])
 async def test_manager_controller(mock_request, mock_bool):
     async def test_get_status():
         calls = [call(f=manager.get_status,
@@ -289,5 +291,5 @@ async def test_manager_controller(mock_request, mock_bool):
             with patch('api.controllers.manager_controller.DistributedAPI.distribute_function',
                        return_value=AsyncMock()) as mock_dfunc:
                 with patch('api.controllers.manager_controller.raise_if_exc',
-                           return_value={'message': 'value1'}) as mock_exc:
+                           return_value={'message': 'message_value'}) as mock_exc:
                     await test_funct
