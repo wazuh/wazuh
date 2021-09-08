@@ -9,21 +9,27 @@
  * Foundation.
  */
 
+#include "os_err.h"
+#include "os_xml/os_xml.h"
 #include "shared.h"
 #include "authd-config.h"
 #include "config.h"
+#include <string.h>
 
 #ifndef WIN32
 
 static short eval_bool(const char *str);
+int w_read_force_config(XML_NODE node, authd_config_t *config);
+int get_time_interval(char *source, time_t *interval);
 
-int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
+int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
     static const char *xml_disabled = "disabled";
     static const char *xml_port = "port";
     static const char *xml_use_source_ip = "use_source_ip";
-    static const char *xml_force_insert = "force_insert";
-    static const char *xml_force_time = "force_time";
+    static const char *xml_force_insert = "force_insert";       // Deprecated since 4.3.0
+    static const char *xml_force_time = "force_time";           // Deprecated since 4.3.0
+    static const char *xml_force = "force";
     static const char *xml_purge = "purge";
     static const char *xml_use_password = "use_password";
     static const char *xml_limit_maxagents = "limit_maxagents";
@@ -51,7 +57,6 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     }
     config->port = 1515;
     config->flags.use_source_ip = 0;
-    config->force_options.enabled = false;
     config->flags.clear_removed = 0;
     config->flags.use_password = 0;
     config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
@@ -60,6 +65,11 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     config->manager_key = strdup(manager_key);
     config->flags.auto_negotiate = 0;
     config->flags.remote_enrollment = 1;
+    config->force_options.enabled = true;
+    config->force_options.key_mismatch = true;
+    config->force_options.disconnected_time_enabled = true;
+    config->force_options.disconnected_time = 3600;
+    config->force_options.after_registration_time = 3600;
 
     if (!node)
         return 0;
@@ -104,7 +114,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             }
 
-            config->force_options.enabled = b;
+            config->force_options.enabled = (b ? true : false);
         } else if (!strcmp(node[i]->element, xml_force_time)) {
             char *end;
             config->force_options.connection_time = strtol(node[i]->content, &end, 10);
@@ -113,6 +123,20 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
+        } else if (!strcmp(node[i]->element, xml_force)) {
+            xml_node **chld_node = NULL;
+
+            if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
+                merror(XML_INVELEM, node[i]->element);
+                OS_ClearNode(chld_node);
+                return  OS_INVALID;
+            }
+
+            if (w_read_force_config(chld_node, config)) {
+                OS_ClearNode(chld_node);
+                return OS_INVALID;
+            }
+            OS_ClearNode(chld_node);
         } else if (!strcmp(node[i]->element, xml_purge)) {
             short b = eval_bool(node[i]->content);
 
@@ -191,5 +215,100 @@ short eval_bool(const char *str) {
     } else {
         return OS_INVALID;
     }
+}
+
+int get_time_interval(char *source, time_t *interval) {
+    char *endptr;
+    *interval = strtoul(source, &endptr, 0);
+
+    if ((!*interval && endptr == source) || *interval < 0) {
+        return OS_INVALID;
+    }
+
+    switch (*endptr) {
+    case 'd':
+        *interval *= 86400;
+        break;
+    case 'h':
+        *interval *= 3600;
+        break;
+    case 'm':
+        *interval *= 60;
+        break;
+    case 's':
+    case '\0':
+        break;
+    default:
+        return OS_INVALID;
+    }
+
+    return 0;
+}
+
+int w_read_force_config(XML_NODE node, authd_config_t *config) {
+    /* XML Definitions */
+    static const char *xml_enabled = "enabled";
+    static const char *xml_key_mismatch = "key_mismatch";
+    static const char *xml_disconnected_time = "disconnected_time";
+    static const char *xml_after_registration_time = "after_registration_time";
+
+    for (int i = 0; node[i]; i++) {
+        // enabled
+        if (!strcmp(node[i]->element, xml_enabled)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->force_options.enabled = (b ? true : false);
+        }
+        // key_mismatch
+        else if (!strcmp(node[i]->element, xml_key_mismatch)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->force_options.key_mismatch = (b ? true : false);
+        }
+        // disconnected_time
+        else if (!strcmp(node[i]->element, xml_disconnected_time)) {
+            if (node[i]->attributes && node[i]->attributes[0] && !strcmp(node[i]->attributes[0], xml_enabled)) {
+                if (node[i]->values && node[i]->values[0]) {
+
+                    short b = eval_bool(node[i]->values[0]);
+
+                    if (b < 0) {
+                        merror(XML_VALUEERR, node[i]->attributes[0], node[i]->values[0]);
+                        return OS_INVALID;
+                    } else if (b > 0) {
+                        config->force_options.disconnected_time_enabled = true;
+                        if (!strcmp(node[i]->element, xml_disconnected_time)) {
+                            if (get_time_interval(node[i]->content, &config->force_options.disconnected_time)) {
+                                merror("Invalid interval for '%s' option", node[i]->element);
+                                return OS_INVALID;
+                            }
+                        }
+                    } else {
+                        config->force_options.disconnected_time_enabled = false;
+                    }
+                } else {
+                    merror(XML_VALUENULL, node[i]->attributes[0]);
+                    return OS_INVALID;
+                }
+            }
+        // after_registration_time
+        } else if (!strcmp(node[i]->element, xml_after_registration_time)) {
+            if (get_time_interval(node[i]->content, &config->force_options.after_registration_time)) {
+                merror("Invalid interval for '%s' option", node[i]->element);
+                return OS_INVALID;
+            }
+        }
+    }
+    return OS_SUCCESS;
 }
 #endif
