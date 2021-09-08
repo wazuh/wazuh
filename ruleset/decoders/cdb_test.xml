@@ -4,6 +4,12 @@
   <order>srcip</order>
 </decoder>
 
+<decoder name="dummy-test">
+  <prematch>test_threatintel_dummy</prematch>
+  <regex type="pcre2" offset="after_prematch">(\d+\.\d+\.\d+\.\d+)</regex>
+  <order>srcip</order>
+</decoder>
+
 
 <!--
 1.0.157.33:

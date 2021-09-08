@@ -7,4 +7,10 @@
   <group>feed_test</group>
 </rule>
 
+<rule id="42070" level="9">
+  <decoded_as>dummy-test</decoded_as>
+  <description>dummy test rule matched</description>
+  <group>feed_test</group>
+</rule>
+
 </group>
