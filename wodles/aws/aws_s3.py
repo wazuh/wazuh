@@ -2439,20 +2439,8 @@ class AWSCloudWatchLogs(AWSService):
                                                   db_values['end_time'] if db_values else None), 2)
                     result_before = None
                     result_after = None
-                    if self.only_logs_after_millis is None:
-                        if db_values:
-                            result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                         token=None, start_time=None,
-                                                                         end_time=db_values['start_time'])
-                            if db_values['end_time'] is not None:
-                                result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                            token=db_values['token'],
-                                                                            start_time=db_values['end_time'] + 1,
-                                                                            end_time=None)
-                        else:
-                            result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                        token=None, start_time=None, end_time=None)
-                    elif db_values is None:
+
+                    if db_values is None:
                         result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                      token=None, start_time=self.only_logs_after_millis,
                                                                      end_time=None)
