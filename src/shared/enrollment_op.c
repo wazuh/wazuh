@@ -491,6 +491,8 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
  *
  * @param buff buffer where the KEY section will be concatenated
  * @param key_entry The key that will be concatenated
+ *
+ * @pre buff must be 69633 bytes long
  */
 static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
     assert(buff != NULL);
@@ -501,7 +503,9 @@ static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
     os_calloc(OS_SIZE_512, sizeof(char), opt_buf);
     w_get_key_hash(key_entry, output);
     snprintf(opt_buf, OS_SIZE_512, " K:'%s'", output);
-    strncat(buff,opt_buf,OS_SIZE_512);
+    if (strlen(buff) < (OS_SIZE_65536 + OS_SIZE_4096)) {
+        strncat(buff, opt_buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buff));
+    }
     free(opt_buf);
 }
 

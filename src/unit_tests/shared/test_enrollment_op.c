@@ -128,8 +128,8 @@ int teardown_file_ops(void **state) {
 // Setup
 int test_setup_concats(void **state) {
     char *buf;
-    os_calloc(OS_SIZE_65536, sizeof(char), buf);
-    buf[OS_SIZE_65536 - 1] = '\0';
+    os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
+    buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
     *state = buf;
     return 0;
 }
@@ -167,10 +167,13 @@ int test_setup_context(void **state) {
 int test_teardown_context(void **state) {
     w_enrollment_ctx *cfg = *state;
     os_free(cfg->target_cfg->manager_name);
+    os_free(cfg->target_cfg->centralized_group);
     os_free(cfg->target_cfg->agent_name);
+    os_free(cfg->target_cfg->sender_ip);
     os_free(cfg->target_cfg);
     os_free(cfg->cert_cfg->agent_cert);
     os_free(cfg->cert_cfg->agent_key);
+    os_free(cfg->cert_cfg->authpass);
     os_free(cfg->cert_cfg->ca_cert);
     os_free(cfg->cert_cfg->ciphers);
     os_free(cfg->cert_cfg->authpass_file);
@@ -189,12 +192,12 @@ int test_setup_context_2(void **state) {
     local_target = w_enrollment_target_init();
     local_target->manager_name = strdup("valid_hostname");
     local_target->agent_name = strdup("test_agent");
-    local_target->sender_ip = "192.168.1.1";
+    local_target->sender_ip = strdup("192.168.1.1");
     local_target->port = 1234;
-    local_target->centralized_group = "test_group";
+    local_target->centralized_group = strdup("test_group");
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
-    local_cert->authpass = "test_password";
+    local_cert->authpass = strdup("test_password");
     local_cert->agent_cert = strdup("CERT");
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
@@ -235,14 +238,14 @@ int test_setup_w_enrollment_request_key(void **state) {
     w_enrollment_target* local_target;
     local_target = w_enrollment_target_init();
     local_target->manager_name = strdup("valid_hostname");
-    local_target->agent_name = "test_agent";
-    local_target->sender_ip = "192.168.1.1";
+    local_target->agent_name = strdup("test_agent");
+    local_target->sender_ip = strdup("192.168.1.1");
     local_target->port = 1234;
-    local_target->centralized_group = "test_group";
+    local_target->centralized_group = strdup("test_group");
     w_enrollment_cert* local_cert;
     local_cert = w_enrollment_cert_init();
     local_cert->auto_method = 0;
-    local_cert->authpass = "test_password";
+    local_cert->authpass = strdup("test_password");
     local_cert->agent_cert = strdup("CERT");
     local_cert->agent_key = strdup("KEY");
     local_cert->ca_cert = strdup("CA_CERT");
@@ -259,10 +262,14 @@ int test_setup_w_enrollment_request_key(void **state) {
 //Teardown
 int test_teardown_w_enrollment_request_key(void **state) {
     w_enrollment_ctx *cfg = *state;
+    os_free(cfg->target_cfg->agent_name);
+    os_free(cfg->target_cfg->centralized_group);
     os_free(cfg->target_cfg->manager_name);
+    os_free(cfg->target_cfg->sender_ip);
     os_free(cfg->target_cfg);
     os_free(cfg->cert_cfg->agent_cert);
     os_free(cfg->cert_cfg->agent_key);
+    os_free(cfg->cert_cfg->authpass);
     os_free(cfg->cert_cfg->ca_cert);
     os_free(cfg->cert_cfg->ciphers);
     os_free(cfg->cert_cfg->authpass_file);
@@ -386,13 +393,13 @@ void test_w_enrollment_concat_group(void **state) {
 /**********************************************/
 /************* w_enrollment_concat_key ****************/
 void test_w_enrollment_concat_key_empty_buff(void **state) {
-    keyentry keys;
+    keyentry key;
 
-    keyentry_init(&keys, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
 
-    expect_assert_failure(w_enrollment_concat_key(NULL, &keys));
+    expect_assert_failure(w_enrollment_concat_key(NULL, &key));
 
-    free_keyentry(&keys);
+    free_keyentry(&key);
 }
 
 void test_w_enrollment_concat_key_empty_key_structure(void **state) {
@@ -402,15 +409,15 @@ void test_w_enrollment_concat_key_empty_key_structure(void **state) {
 
 void test_w_enrollment_concat_key(void **state) {
     char *buf = *state;
-    keyentry keys;
+    keyentry key;
 
-    keyentry_init(&keys, NEW_AGENT1, AGENT1_ID, NEW_IP1, RAW_KEY);
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, RAW_KEY);
 
-    w_enrollment_concat_key(buf, &keys);
+    w_enrollment_concat_key(buf, &key);
 
     assert_string_equal(buf, " K:'0965e68d9935a35530910bf32d35052995efe7bd'");
 
-    free_keyentry(&keys);
+    free_keyentry(&key);
 }
 
 /**********************************************/
@@ -641,6 +648,26 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     assert_int_equal(ret, -1);
 }
 
+void test_w_enrollment_send_message_concat_src_ip_error(void **state) {
+    w_enrollment_ctx *cfg = *state;
+#ifdef WIN32
+    will_return(wrap_gethostname, "host.name");
+    will_return(wrap_gethostname, 0);
+#else
+    will_return(__wrap_gethostname, "host.name");
+    will_return(__wrap_gethostname, 0);
+#endif
+    expect_string(__wrap__minfo, formatted_msg, "Using agent name as: host.name");
+
+    // Force an incompatible sender_ip and use_src_ip combination
+    cfg->target_cfg->sender_ip = strdup("192.168.1.1");
+    cfg->target_cfg->use_src_ip = 1;
+    expect_string(__wrap__merror, formatted_msg, "Incompatible sender_ip options: Forcing IP while using use_source_ip flag.");
+
+    int ret = w_enrollment_send_message(cfg);
+    assert_int_equal(ret, -1);
+}
+
 void test_w_enrollment_send_message_ssl_error(void **state) {
     w_enrollment_ctx *cfg = *state;
 #ifdef WIN32
@@ -662,16 +689,65 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
 
 void test_w_enrollment_send_message_success(void **state) {
     w_enrollment_ctx *cfg = *state;
+    // Configuring a key to be concatenated
+    cfg->keys->keyentries = (keyentry **)realloc(cfg->keys->keyentries,
+                                            (cfg->keys->keysize + 2) * sizeof(keyentry *));
+    cfg->keys->keyentries[cfg->keys->keysize + 1] = NULL;
+    os_calloc(1, sizeof(keyentry), cfg->keys->keyentries[cfg->keys->keysize]);
+    keyentry_init(cfg->keys->keyentries[cfg->keys->keysize], NEW_AGENT1, AGENT1_ID, NEW_IP1, RAW_KEY);
+    cfg->keys->keysize = 1;
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: test_agent");
     expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
-    expect_string(__wrap_SSL_write, buf, "OSSEC PASS: test_password OSSEC A:'test_agent' G:'test_group' IP:'192.168.1.1'\n");
+    expect_string(__wrap_SSL_write, buf, "OSSEC PASS: test_password OSSEC A:'test_agent' G:'test_group' IP:'192.168.1.1' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
     will_return(__wrap_SSL_write, 0);
     expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
     int ret = w_enrollment_send_message(cfg);
     assert_int_equal(ret, 0);
+    // Free the configured key memory
+    for (unsigned int i = 0; i <= cfg->keys->keysize; i++) {
+        if (cfg->keys->keyentries[i]) {
+            OS_FreeKey(cfg->keys->keyentries[i]);
+            cfg->keys->keyentries[i] = NULL;
+        }
+    }
+    os_free(cfg->keys->keyentries);
+}
+
+void test_w_enrollment_send_message_success_different_hostname(void **state) {
+    w_enrollment_ctx *cfg = *state;
+    // Configuring a key to be concatenated
+    cfg->keys->keyentries = (keyentry **)realloc(cfg->keys->keyentries,
+                                            (cfg->keys->keysize + 2) * sizeof(keyentry *));
+    cfg->keys->keyentries[cfg->keys->keysize + 1] = NULL;
+    os_calloc(1, sizeof(keyentry), cfg->keys->keyentries[cfg->keys->keysize]);
+    keyentry_init(cfg->keys->keyentries[cfg->keys->keysize], NEW_AGENT1, AGENT1_ID, NEW_IP1, RAW_KEY);
+    cfg->keys->keysize = 1;
+    // Configuring hostname
+#ifdef WIN32
+    will_return(wrap_gethostname, "host.name");
+    will_return(wrap_gethostname, 0);
+#else
+    will_return(__wrap_gethostname, "host.name");
+    will_return(__wrap_gethostname, 0);
+#endif
+    expect_string(__wrap__minfo, formatted_msg, "Using agent name as: host.name");
+    expect_value(__wrap_SSL_write, ssl, cfg->ssl);
+    expect_string(__wrap_SSL_write, buf, "OSSEC A:'host.name' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
+    will_return(__wrap_SSL_write, 0);
+    expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
+    int ret = w_enrollment_send_message(cfg);
+    assert_int_equal(ret, 0);
+    // Free the configured key memory
+    for (unsigned int i = 0; i <= cfg->keys->keysize; i++) {
+        if (cfg->keys->keyentries[i]) {
+            OS_FreeKey(cfg->keys->keyentries[i]);
+            cfg->keys->keyentries[i] = NULL;
+        }
+    }
+    os_free(cfg->keys->keyentries);
 }
 
 /**********************************************/
@@ -1150,8 +1226,10 @@ int main() {
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_wrong_hostname, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_invalid_hostname, test_setup_context_3, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_fix_invalid_hostname, test_setup_context, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_concat_src_ip_error, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_ssl_error, test_setup_context, test_teardown_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_success, test_setup_context_2, test_teardown_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_send_message_success_different_hostname, test_setup_context, test_teardown_context),
         // w_enrollment_store_key_entry
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_null_key, setup_file_ops, teardown_file_ops),
         cmocka_unit_test_setup_teardown(test_w_enrollment_store_key_entry_cannot_open, setup_file_ops, teardown_file_ops),
