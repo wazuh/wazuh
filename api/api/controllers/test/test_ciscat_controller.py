@@ -34,7 +34,6 @@ async def test_ciscat_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
-    mock_request.request = {'pass', 'pass_value'}
     aux_d = {'token_info': {'rbac_policies': 'rbac_policies_value'}}
     mock_request.__getitem__.side_effect = aux_d.__getitem__
     functions = [test_get_agents_ciscat_results()
