@@ -29,7 +29,7 @@ async def test_active_response_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await run_command(mock_request)
+        result = await run_command(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)

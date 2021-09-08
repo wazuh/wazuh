@@ -47,7 +47,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_status(mock_request)
+        result = await get_status(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -62,12 +62,12 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_info(mock_request)
+        result = await get_info(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
-    async def test_get_configuration(mock_bool):
+    async def test_get_configuration():
         with patch('api.controllers.manager_controller.isinstance', return_value=mock_bool) as mock_isinstance:
             calls = [call(f=manager.read_ossec_conf,
                           f_kwargs=ANY,
@@ -78,7 +78,7 @@ async def test_manager_controller(mock_request, mock_bool):
                           rbac_permissions=mock_request['token_info']['rbac_policies']
                           )
                      ]
-            result = await get_configuration(mock_request)
+            result = await get_configuration(request=mock_request)
             mock_dapi.assert_has_calls(calls)
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             if mock_isinstance.return_value:
@@ -96,7 +96,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_stats(mock_request)
+        result = await get_stats(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -111,7 +111,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_stats_hourly(mock_request)
+        result = await get_stats_hourly(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -126,7 +126,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_stats_weekly(mock_request)
+        result = await get_stats_weekly(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -141,7 +141,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_stats_analysisd(mock_request)
+        result = await get_stats_analysisd(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -156,7 +156,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_stats_remoted(mock_request)
+        result = await get_stats_remoted(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -171,7 +171,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_log(mock_request)
+        result = await get_log(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -186,7 +186,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_log_summary(mock_request)
+        result = await get_log_summary(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -201,7 +201,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_api_config(mock_request)
+        result = await get_api_config(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -216,7 +216,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await put_restart(mock_request)
+        result = await put_restart(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -231,7 +231,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_conf_validation(mock_request)
+        result = await get_conf_validation(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -246,7 +246,7 @@ async def test_manager_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_manager_config_ondemand(mock_request,
+        result = await get_manager_config_ondemand(request=mock_request,
                                                    component='component1')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -264,7 +264,7 @@ async def test_manager_controller(mock_request, mock_bool):
                               rbac_permissions=mock_request['token_info']['rbac_policies']
                               )
                          ]
-                result = await update_configuration(mock_request,
+                result = await update_configuration(request=mock_request,
                                                     body={})
                 mock_dapi.assert_has_calls(calls)
                 mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -272,7 +272,7 @@ async def test_manager_controller(mock_request, mock_bool):
 
     functions = [test_get_status(),
                  test_get_info(),
-                 test_get_configuration(mock_bool),
+                 test_get_configuration(),
                  test_get_stats(),
                  test_get_stats_hourly(),
                  test_get_stats_weekly(),

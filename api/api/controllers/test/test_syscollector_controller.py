@@ -36,7 +36,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_hardware_info(mock_request,
+        result = await get_hardware_info(request=mock_request,
                                          agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -52,7 +52,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_hotfix_info(mock_request,
+        result = await get_hotfix_info(request=mock_request,
                                        agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -68,7 +68,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_network_address_info(mock_request,
+        result = await get_network_address_info(request=mock_request,
                                                 agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -84,7 +84,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_network_interface_info(mock_request,
+        result = await get_network_interface_info(request=mock_request,
                                                   agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -100,7 +100,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_network_protocol_info(mock_request,
+        result = await get_network_protocol_info(request=mock_request,
                                                  agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -116,7 +116,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_os_info(mock_request,
+        result = await get_os_info(request=mock_request,
                                    agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -132,7 +132,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_packages_info(mock_request,
+        result = await get_packages_info(request=mock_request,
                                          agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -148,7 +148,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_ports_info(mock_request,
+        result = await get_ports_info(request=mock_request,
                                       agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -164,7 +164,7 @@ async def test_syscollector_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_processes_info(mock_request,
+        result = await get_processes_info(request=mock_request,
                                           agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)

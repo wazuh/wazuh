@@ -29,7 +29,7 @@ async def test_sca_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_sca_agent(mock_request)
+        result = await get_sca_agent(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -44,7 +44,7 @@ async def test_sca_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_sca_checks(mock_request)
+        result = await get_sca_checks(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)

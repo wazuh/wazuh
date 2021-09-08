@@ -28,7 +28,7 @@ async def test_task_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_tasks_status(mock_request)
+        result = await get_tasks_status(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)

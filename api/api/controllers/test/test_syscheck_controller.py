@@ -32,7 +32,7 @@ async def test_syscheck_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await put_syscheck(mock_request)
+        result = await put_syscheck(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -47,7 +47,7 @@ async def test_syscheck_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_syscheck_agent(mock_request,
+        result = await get_syscheck_agent(request=mock_request,
                                           agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -63,7 +63,7 @@ async def test_syscheck_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await delete_syscheck_agent(mock_request)
+        result = await delete_syscheck_agent(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -78,7 +78,7 @@ async def test_syscheck_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_last_scan_agent(mock_request,
+        result = await get_last_scan_agent(request=mock_request,
                                            agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)

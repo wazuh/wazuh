@@ -28,7 +28,7 @@ async def test_ciscat_controller(mock_request):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_agents_ciscat_results(mock_request,
+        result = await get_agents_ciscat_results(request=mock_request,
                                                  agent_id='001')
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)

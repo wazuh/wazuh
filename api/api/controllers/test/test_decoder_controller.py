@@ -37,7 +37,7 @@ async def test_decoder_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_decoders(mock_request)
+        result = await get_decoders(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -52,7 +52,7 @@ async def test_decoder_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_decoders_files(mock_request)
+        result = await get_decoders_files(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -67,12 +67,12 @@ async def test_decoder_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await get_decoders_parents(mock_request)
+        result = await get_decoders_parents(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
-    async def test_get_file(mock_bool):
+    async def test_get_file():
         with patch('api.controllers.decoder_controller.isinstance', return_value=mock_bool) as mock_isinstance:
             calls = [call(f=decoder_framework.get_decoder_file,
                           f_kwargs=ANY,
@@ -83,7 +83,7 @@ async def test_decoder_controller(mock_request, mock_bool):
                           rbac_permissions=mock_request['token_info']['rbac_policies']
                           )
                      ]
-            result = await get_file(mock_request)
+            result = await get_file(request=mock_request)
             mock_dapi.assert_has_calls(calls)
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             if mock_isinstance.return_value:
@@ -103,7 +103,7 @@ async def test_decoder_controller(mock_request, mock_bool):
                               rbac_permissions=mock_request['token_info']['rbac_policies']
                               )
                          ]
-                result = await put_file(mock_request,
+                result = await put_file(request=mock_request,
                                         body={})
                 mock_dapi.assert_has_calls(calls)
                 mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -119,7 +119,7 @@ async def test_decoder_controller(mock_request, mock_bool):
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        result = await delete_file(mock_request)
+        result = await delete_file(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
@@ -127,7 +127,7 @@ async def test_decoder_controller(mock_request, mock_bool):
     functions = [test_get_decoders(),
                  test_get_decoders_files(),
                  test_get_decoders_parents(),
-                 test_get_file(mock_bool),
+                 test_get_file(),
                  test_put_file(),
                  test_delete_file()
                  ]
