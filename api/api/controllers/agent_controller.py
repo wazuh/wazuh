@@ -499,7 +499,7 @@ async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_c
     # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
         agents_list = '*'
-        
+
     f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': version,
@@ -513,7 +513,7 @@ async def put_upgrade_agents(request, agents_list=None, pretty=False, wait_for_c
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
+                          broadcasting=agents_list == '*'
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -542,8 +542,10 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
     ApiResponse
         Upgrade message after trying to upgrade the agents.
     """
+    # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
-        agents_list = None
+        agents_list = '*'
+
     f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
                 'installer': installer}
@@ -554,7 +556,8 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          broadcasting=agents_list == '*'
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
