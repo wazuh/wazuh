@@ -202,6 +202,16 @@ w_err_t w_auth_replace_agent(keyentry *key,
         return OS_INVALID;
     }
 
+    /* Check if the agent has been disconnected longer than the value specified in the configuration option*/
+    double disconnected_time = 0;
+    if (force_options->disconnected_time_enabled) {
+        disconnected_time = (long)OS_AgentDisconnected_time(key->id);
+        if (disconnected_time < force_options->disconnected_time) {
+            minfo("Agent '%s' has not been disconnected long enough to be replaced.", key->id);
+            return OS_INVALID;
+        }
+    }
+
     /* Check if the agent key is the same than the existent in the manager */
     if (key_hash) {
         os_sha1 manager_key_hash;
