@@ -12,8 +12,7 @@ with patch('wazuh.common.wazuh_uid'):
                                                              get_hotfix_info,
                                                              get_network_address_info,
                                                              get_network_interface_info,
-                                                             get_network_protocol_info,
-                                                             get_os_info,
+                                                             get_network_protocol_info, get_os_info,
                                                              get_packages_info,
                                                              get_ports_info,
                                                              get_processes_info)

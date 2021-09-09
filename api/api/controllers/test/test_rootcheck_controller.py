@@ -8,10 +8,10 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.rootcheck_controller import (put_rootcheck,
-                                                          delete_rootcheck,
+        from api.controllers.rootcheck_controller import (delete_rootcheck,
+                                                          get_last_scan_agent,
                                                           get_rootcheck_agent,
-                                                          get_last_scan_agent)
+                                                          put_rootcheck)
         from wazuh import rootcheck
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

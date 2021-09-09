@@ -9,11 +9,10 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.cdb_list_controller import (get_lists,
-                                                         get_file,
-                                                         put_file,
-                                                         delete_file,
-                                                         get_lists_files)
+        from api.controllers.cdb_list_controller import (delete_file, get_file,
+                                                         get_lists,
+                                                         get_lists_files,
+                                                         put_file)
         from wazuh import cdb_list
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

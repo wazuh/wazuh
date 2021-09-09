@@ -8,10 +8,10 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.syscheck_controller import (put_syscheck,
+        from api.controllers.syscheck_controller import (delete_syscheck_agent,
+                                                         get_last_scan_agent,
                                                          get_syscheck_agent,
-                                                         delete_syscheck_agent,
-                                                         get_last_scan_agent)
+                                                         put_syscheck)
         from wazuh import syscheck
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser        

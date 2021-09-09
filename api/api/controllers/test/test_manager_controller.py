@@ -9,23 +9,23 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.manager_controller import (get_status,
-                                                        get_info,
+        import wazuh.stats as stats
+        from api.controllers.manager_controller import (get_api_config,
+                                                        get_conf_validation,
                                                         get_configuration,
-                                                        get_stats,
-                                                        get_stats_hourly,
-                                                        get_stats_weekly,
-                                                        get_stats_analysisd,
-                                                        get_stats_remoted,
+                                                        get_info,
                                                         get_log,
                                                         get_log_summary,
-                                                        get_api_config,
-                                                        put_restart,
-                                                        get_conf_validation,
                                                         get_manager_config_ondemand,
+                                                        get_stats,
+                                                        get_stats_analysisd,
+                                                        get_stats_hourly,
+                                                        get_stats_remoted,
+                                                        get_stats_weekly,
+                                                        get_status,
+                                                        put_restart,
                                                         update_configuration)
         from wazuh import manager
-        import wazuh.stats as stats
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']

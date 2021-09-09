@@ -12,18 +12,15 @@ with patch('wazuh.common.wazuh_uid'):
                                                              clear_syscheck_database,
                                                              get_cis_cat_results,
                                                              get_hardware_info,
+                                                             get_hotfixes_info,
                                                              get_network_address_info,
                                                              get_network_interface_info,
                                                              get_network_protocol_info,
                                                              get_os_info,
                                                              get_packages_info,
                                                              get_ports_info,
-                                                             get_processes_info,
-                                                             get_hotfixes_info)
-        from wazuh import ciscat
-        from wazuh import rootcheck
-        from wazuh import syscheck
-        from wazuh import syscollector
+                                                             get_processes_info)
+        from wazuh import ciscat, rootcheck, syscheck, syscollector
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']

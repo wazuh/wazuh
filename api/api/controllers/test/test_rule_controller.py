@@ -10,13 +10,12 @@ with patch('wazuh.common.wazuh_uid'):
         with patch('api.configuration.api_conf'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
-            from api.controllers.rule_controller import (get_rules,
+            from api.controllers.rule_controller import (delete_file, get_file,
+                                                         get_rules,
+                                                         get_rules_files,
                                                          get_rules_groups,
                                                          get_rules_requirement,
-                                                         get_rules_files,
-                                                         get_file,
-                                                         put_file,
-                                                         delete_file)
+                                                         put_file)
             from wazuh import rule as rule_framework
             from wazuh.tests.util import RBAC_bypasser
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser

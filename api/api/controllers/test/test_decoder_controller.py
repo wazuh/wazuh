@@ -9,12 +9,11 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.decoder_controller import (get_decoders,
+        from api.controllers.decoder_controller import (delete_file,
+                                                        get_decoders,
                                                         get_decoders_files,
                                                         get_decoders_parents,
-                                                        get_file,
-                                                        put_file,
-                                                        delete_file)
+                                                        get_file, put_file)
         from wazuh import decoder as decoder_framework
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
