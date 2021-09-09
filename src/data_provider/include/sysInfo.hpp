@@ -42,6 +42,8 @@ public:
     nlohmann::json processes();
     nlohmann::json networks();
     nlohmann::json ports();
+    void packages(std::function<void(nlohmann::json &)>);
+    void processes(std::function<void(nlohmann::json &)>);
 private:
     virtual std::string getSerialNumber() const;
     virtual std::string getCpuName() const;
@@ -53,6 +55,8 @@ private:
     virtual nlohmann::json getProcessesInfo() const;
     virtual nlohmann::json getNetworks() const;
     virtual nlohmann::json getPorts() const;
+    virtual void getPackages(std::function<void(nlohmann::json &)>) const;
+    virtual void getProcessesInfo(std::function<void(nlohmann::json &)>) const;
 };
 
 #endif //_SYS_INFO_HPP

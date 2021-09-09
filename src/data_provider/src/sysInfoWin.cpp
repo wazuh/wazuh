@@ -756,3 +756,13 @@ nlohmann::json SysInfo::getPorts() const
 
     return ports;
 }
+
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
+{
+    // TO DO
+}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
+{
+    // TO DO
+}

@@ -14,6 +14,7 @@
 #define _SYS_INFO_H
 
 // Define EXPORTED for any platform
+#include "commonDefs.h"
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -91,6 +92,25 @@ EXPORTED int sysinfo_ports(cJSON** js_result);
  * @param js_data Information to be freed.
  */
 EXPORTED void sysinfo_free_result(cJSON** js_data);
+
+/**
+ * @brief Obtains the processes information from the current OS being analyzed.
+ *
+ * @param callback Resulting single process data where the specific information will be stored.
+ *
+ * return 0 on success, -1 otherwhise.
+ */
+EXPORTED int sysinfo_processes_cb(callback_data_t cb);
+
+/**
+ * @brief Obtains the packages information from the current OS being analyzed.
+ *
+ * @param callback Resulting single package data where the specific information will be stored.
+ *
+ * return 0 on success, -1 otherwhise.
+ */
+EXPORTED int sysinfo_packages_cb(callback_data_t cb);
+
 
 typedef int(*sysinfo_networks_func)(cJSON** jsresult);
 typedef void(*sysinfo_free_result_func)(cJSON** jsresult);
