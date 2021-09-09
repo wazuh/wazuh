@@ -1,8 +1,12 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import importlib.util
+import inspect
 import sys
 from json import JSONDecodeError
+from os import listdir
+from os.path import abspath, dirname, join
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -16,6 +20,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         from api.util import deserialize_model
 
         del sys.modules['api.authentication']
+
+models_path = dirname(dirname(abspath(__file__)))
 
 
 class TestModel(bm.Body):
@@ -37,6 +43,7 @@ class TestModel(bm.Body):
 
 class RequestMock:
     """Class Request mock."""
+
     def __init__(self, content_type):
         self._content_type = content_type
 
@@ -252,3 +259,28 @@ def test_body_validate_content_type_ko():
         TestModel.validate_content_type(request, 'application/xml')
 
     assert exc.value.ext['code'] == 6002
+
+
+@pytest.mark.parametrize('module_name', [module for module in listdir(models_path) if module.endswith('model.py')])
+@patch('api.util.deserialize_model')
+def test_all_models(deserialize_mock, module_name):
+    """Test that all API models classes are correctly defined."""
+    # Load API model
+    spec = importlib.util.spec_from_file_location('test_module', join(models_path, module_name))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # Get all defined classes
+    for module_classes in inspect.getmembers(module, inspect.isclass):
+        for module_class in module_classes[1:]:
+            if module_class.__module__ == 'test_module':
+                # Check if they can be defined
+                instance = module_class()
+                for p in [p for p in module_class.__dict__ if not p.startswith('__')]:
+                    # Assert that all its attributes have defined properties (getter and setter)
+                    setattr(instance, p, 'test')
+                    assert getattr(instance, p) == 'test'
+
+                # Test the only possible overwritten method: `from_dict`
+                getattr(module_class, 'from_dict')('test')
+                deserialize_mock.assert_called_with('test', module_class)
