@@ -36,6 +36,16 @@ int main()
         std::cout << networks.dump(JSON_PRETTY_SPACES) << std::endl;
         std::cout << os.dump(JSON_PRETTY_SPACES) << std::endl;
         std::cout << ports.dump(JSON_PRETTY_SPACES) << std::endl;
+
+        info.processes([](nlohmann::json & process)
+        {
+            std::cout << process.dump(JSON_PRETTY_SPACES) << std::endl;
+        });
+
+        info.packages([](nlohmann::json & package)
+        {
+            std::cout << package.dump(JSON_PRETTY_SPACES) << std::endl;
+        });
     }
     catch (const std::exception& e)
     {

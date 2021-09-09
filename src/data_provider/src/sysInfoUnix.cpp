@@ -97,3 +97,12 @@ nlohmann::json SysInfo::getPorts() const
 {
     return nlohmann::json();
 }
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
+{
+    // TODO
+}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
+{
+    // TODO
+}

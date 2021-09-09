@@ -11,6 +11,18 @@
 #include "sysInfo.hpp"
 #include "sysInfo.h"
 
+struct CJsonDeleter
+{
+    void operator()(char* json)
+    {
+        cJSON_free(json);
+    }
+    void operator()(cJSON* json)
+    {
+        cJSON_Delete(json);
+    }
+};
+
 nlohmann::json SysInfo::hardware()
 {
     nlohmann::json ret;
@@ -45,6 +57,16 @@ nlohmann::json SysInfo::networks()
 nlohmann::json SysInfo::ports()
 {
     return getPorts();
+}
+
+void SysInfo::processes(std::function<void(nlohmann::json&)> callback)
+{
+    getProcessesInfo(callback);
+}
+
+void SysInfo::packages(std::function<void(nlohmann::json&)> callback)
+{
+    getPackages(callback);
 }
 
 #ifdef __cplusplus
@@ -182,6 +204,63 @@ void sysinfo_free_result(cJSON** js_data)
     {
         cJSON_Delete(*js_data);
     }
+}
+int sysinfo_packages_cb(callback_data_t callback_data)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (callback_data.callback)
+        {
+            const auto callbackWrapper
+            {
+                [callback_data](nlohmann::json & jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
+                }
+            };
+            SysInfo info;
+            info.packages(callbackWrapper);
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+    return retVal;
+}
+
+int sysinfo_processes_cb(callback_data_t callback_data)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (callback_data.callback)
+        {
+            const auto callbackWrapper
+            {
+                [callback_data](nlohmann::json & jsonResult)
+                {
+                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
+                }
+            };
+            SysInfo info;
+            info.processes(callbackWrapper);
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+    return retVal;
 }
 
 #ifdef __cplusplus
