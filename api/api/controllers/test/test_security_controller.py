@@ -51,14 +51,20 @@ with patch('wazuh.common.wazuh_uid'):
         del sys.modules['wazuh.rbac.orm']
 
 
+class CustomMagicMockReturn(dict):
+    dikt = {'dikt_key': 'dikt_value'}
+
+    def __init__(self):
+        super().__init__(self)
+        super().__setitem__('data', 'data_value')
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request, mock_user, mock_bool, mock_raise', [
-    (MagicMock(), 'user1', True, False),
-    (MagicMock(), 'user1', True, True),
-    (MagicMock(), 'user1', False, False),
-    (MagicMock(), 'user1', False, True)
+@pytest.mark.parametrize('mock_request, mock_user, mock_bool', [
+    (MagicMock(), 'user1', True),
+    (MagicMock(), 'user1', False)
     ])
-async def test_security_controller(mock_request, mock_user, mock_bool, mock_raise):
+async def test_security_controller(mock_request, mock_user, mock_bool):
     async def test_login_user():
         calls = [call(f=preprocessor.get_permissions,
                       f_kwargs=ANY,
@@ -67,20 +73,27 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       logger=ANY
                       )
                  ]
-        if not mock_raise:
-            result = await login_user(user=mock_user,
-                                      raw=mock_bool)
-            mock_dapi.assert_has_calls(calls)
-            mock_exc.assert_called_once_with(mock_dfunc.return_value)
-            assert isinstance(result, web_response.Response)
-        else:
-            mock_token.side_effect = WazuhException(999)
-            result = await login_user(user=mock_user,
-                                      raw=mock_bool)
-            mock_dapi.assert_has_calls(calls)
-            mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                                       call(mock_token.side_effect)])
-            assert isinstance(result, web_response.Response)
+        result = await login_user(user=mock_user,
+                                  raw=mock_bool)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
+
+    async def test_login_user_raise():
+        calls = [call(f=preprocessor.get_permissions,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY
+                      )
+                 ]
+        mock_token.side_effect = WazuhException(999)
+        result = await login_user(user=mock_user,
+                                  raw=mock_bool)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_has_calls([call(mock_dfunc.return_value),
+                                   call(mock_token.side_effect)])
+        assert isinstance(result, web_response.Response)
 
     async def test_run_as_login():
         calls = [call(f=preprocessor.get_permissions,
@@ -90,22 +103,29 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       logger=ANY
                       )
                  ]
-        if not mock_raise:
-            result = await run_as_login(request=AsyncMock(),
-                                        user=mock_user,
-                                        raw=mock_bool)
-            mock_dapi.assert_has_calls(calls)
-            mock_exc.assert_called_once_with(mock_dfunc.return_value)
-            assert isinstance(result, web_response.Response)
-        else:
-            mock_token.side_effect = WazuhException(999)
-            result = await run_as_login(request=AsyncMock(),
-                                        user=mock_user,
-                                        raw=mock_bool)
-            mock_dapi.assert_has_calls(calls)
-            mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                                       call(mock_token.side_effect)])
-            assert isinstance(result, web_response.Response)
+        result = await run_as_login(request=AsyncMock(),
+                                    user=mock_user,
+                                    raw=mock_bool)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
+
+    async def test_run_as_login_raise():
+        calls = [call(f=preprocessor.get_permissions,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      logger=ANY
+                      )
+                 ]
+        mock_token.side_effect = WazuhException(999)
+        result = await run_as_login(request=AsyncMock(),
+                                    user=mock_user,
+                                    raw=mock_bool)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_has_calls([call(mock_dfunc.return_value),
+                                   call(mock_token.side_effect)])
+        assert isinstance(result, web_response.Response)
 
     async def test_get_user_me():
         calls = [call(f=security.get_user_me,
@@ -118,7 +138,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_user_me(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -140,7 +159,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       logger=ANY
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await logout_user(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -156,7 +174,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_users(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -173,7 +190,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       wait_for_complete=False
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await edit_run_as(request=mock_request,
                                    user_id=mock_user,
                                    allow_run_as=mock_bool)
@@ -194,7 +210,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await create_user(request=mock_request)
                     mock_dapi.assert_has_calls(calls)
                     mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -213,7 +228,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await update_user(request=mock_request,
                                                user_id='001')
                     mock_dapi.assert_has_calls(calls)
@@ -231,7 +245,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await delete_users(request=mock_request,
                                     user_ids='all')
         mock_dapi.assert_has_calls(calls)
@@ -248,7 +261,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_roles(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -267,7 +279,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await add_role(request=mock_request)
                     mock_dapi.assert_has_calls(calls)
                     mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -283,7 +294,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await remove_roles(request=mock_request,
                                     role_ids='all')
         mock_dapi.assert_has_calls(calls)
@@ -303,7 +313,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await update_role(request=mock_request,
                                                role_id='001')
                     mock_dapi.assert_has_calls(calls)
@@ -320,7 +329,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_rules(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -339,7 +347,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await add_rule(request=mock_request)
                     mock_dapi.assert_has_calls(calls)
                     mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -358,7 +365,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await update_rule(request=mock_request,
                                                rule_id='001')
                     mock_dapi.assert_has_calls(calls)
@@ -375,7 +381,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await remove_rules(request=mock_request,
                                     rule_ids='all')
         mock_dapi.assert_has_calls(calls)
@@ -392,7 +397,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_policies(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -411,7 +415,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await add_policy(request=mock_request)
                     mock_dapi.assert_has_calls(calls)
                     mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -427,7 +430,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await remove_policies(request=mock_request,
                                        policy_ids='all')
         mock_dapi.assert_has_calls(calls)
@@ -447,7 +449,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                   wait_for_complete=False
                                   )
                              ]
-                    mock_exc.return_value = 'mock_exc_value'
                     result = await update_policy(request=mock_request,
                                                  policy_id='001')
                     mock_dapi.assert_has_calls(calls)
@@ -464,7 +465,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await set_user_role(request=mock_request,
                                      user_id='001',
                                      role_ids='001')
@@ -482,7 +482,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await remove_user_role(request=mock_request,
                                         user_id='001',
                                         role_ids='001')
@@ -500,7 +499,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await set_role_policy(request=mock_request,
                                        role_id='001',
                                        policy_ids='001')
@@ -518,7 +516,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await remove_role_policy(request=mock_request,
                                           role_id='001',
                                           policy_ids='001')
@@ -536,7 +533,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await set_role_rule(request=mock_request,
                                      role_id='001',
                                      rule_ids='001')
@@ -554,7 +550,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await remove_role_rule(request=mock_request,
                                         role_id='001',
                                         rule_ids='001')
@@ -571,7 +566,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       wait_for_complete=True
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_rbac_resources()
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -586,7 +580,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       wait_for_complete=True
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_rbac_actions()
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -605,7 +598,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                           nodes=mock_snodes.return_value
                           )
                      ]
-            mock_exc.return_value = 'mock_exc_value'
             result = await revoke_all_tokens(request=mock_request)
             mock_dapi.assert_has_calls(calls)
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -621,7 +613,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                       rbac_permissions=mock_request['token_info']['rbac_policies']
                       )
                  ]
-        mock_exc.return_value = 'mock_exc_value'
         result = await get_security_config(request=mock_request)
         mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -638,7 +629,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                           nodes=mock_snodes.return_value
                           )
                      ]
-            mock_exc.return_value = 'mock_exc_value'
             await security_revoke_tokens()
             mock_dapi.assert_has_calls(calls)
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -658,7 +648,6 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                                       wait_for_complete=False
                                       )
                                  ]
-                        mock_exc.return_value = 'mock_exc_value'
                         result = await put_security_config(request=mock_request)
                         mock_dapi.assert_has_calls(calls)
                         mock_exc.assert_called_once_with(mock_dfunc.return_value)
@@ -677,16 +666,15 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
                               rbac_permissions=mock_request['token_info']['rbac_policies']
                               )
                          ]
-                mock_exc.return_value = 'mock_exc_value'
                 result = await delete_security_config(request=mock_request)
                 mock_dapi.assert_has_calls(calls)
                 mock_exc.assert_called_once_with(mock_dfunc.return_value)
                 assert isinstance(result, web_response.Response)
 
-    aux_d = {'token_info': {'rbac_policies': 'rbac_policies_value', 'sub': 'sub_value', 'run_as': 'run_as_value'}}
-    mock_request.__getitem__.side_effect = aux_d.__getitem__
     functions = [test_login_user(),
+                 test_login_user_raise(),
                  test_run_as_login(),
+                 test_run_as_login_raise(),
                  test_get_user_me(),
                  test_get_user_me_policies(),
                  test_logout_user(),
@@ -725,7 +713,8 @@ async def test_security_controller(mock_request, mock_user, mock_bool, mock_rais
         with patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
             with patch('api.controllers.security_controller.DistributedAPI.distribute_function',
                        return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.security_controller.raise_if_exc') as mock_exc:
+                with patch('api.controllers.security_controller.raise_if_exc',
+                           return_value=CustomMagicMockReturn()) as mock_exc:
                     with patch('api.controllers.security_controller.generate_token',
                                return_value='token') as mock_token:
                         await test_funct

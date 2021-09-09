@@ -142,8 +142,6 @@ async def test_rule_controller(mock_request, mock_bool):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
-    aux_d = {'token_info': {'rbac_policies': 'rbac_policies_value'}}
-    mock_request.__getitem__.side_effect = aux_d.__getitem__
     functions = [test_get_rules(),
                  test_get_rules_groups(),
                  test_get_rules_requirement(),

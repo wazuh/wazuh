@@ -51,6 +51,14 @@ with patch('wazuh.common.wazuh_uid'):
         del sys.modules['wazuh.rbac.orm']
 
 
+class CustomMagicMockReturn(dict):
+    affected_items = [{'id': '001'}]
+
+    def __init__(self):
+        super().__init__(self)
+        super().__setitem__('data', 'data_value')
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [MagicMock()])
 async def test_agent_controller(mock_request):
@@ -528,33 +536,45 @@ async def test_agent_controller(mock_request):
         assert isinstance(result, ConnexionResponse)
 
     async def test_restart_agents_by_group():
-        calls1 = [call(f=agent.get_agents_in_group,
-                       f_kwargs=ANY,
-                       request_type='local_master',
-                       is_async=False,
-                       wait_for_complete=False,
-                       logger=ANY,
-                       rbac_permissions=mock_request['token_info']['rbac_policies']
-                       )
-                  ]
-        calls2 = [call(f=agent.restart_agents,
-                       f_kwargs=ANY,
-                       request_type='distributed_master',
-                       is_async=False,
-                       wait_for_complete=False,
-                       logger=ANY,
-                       rbac_permissions=mock_request['token_info']['rbac_policies']
-                       )
-                  ]
-        mock_exc.return_value = MagicMock()
-        mock_exc.affected_items = [{'id': '001'}]
+        calls = [call(f=agent.get_agents_in_group,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      wait_for_complete=False,
+                      logger=ANY,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      ),
+                 call(f=agent.restart_agents,
+                      f_kwargs=ANY,
+                      request_type='distributed_master',
+                      is_async=False,
+                      wait_for_complete=False,
+                      logger=ANY,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
         result = await restart_agents_by_group(request=mock_request,
                                                group_id='001')
-        mock_dapi.assert_has_calls(calls1, calls2)
+        mock_dapi.assert_has_calls(calls)
+        mock_exc.assert_has_calls(mock_dfunc.return_value, mock_dfunc.return_value)
+        assert isinstance(result, web_response.Response)
+
+    async def test_restart_agents_by_group_empty_agent_list():
+        calls = [call(f=agent.get_agents_in_group,
+                      f_kwargs=ANY,
+                      request_type='local_master',
+                      is_async=False,
+                      wait_for_complete=False,
+                      logger=ANY,
+                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                      )
+                 ]
+        mock_exc.return_value.affected_items = []
+        result = await restart_agents_by_group(request=mock_request,
+                                               group_id='001')
+        mock_dapi.assert_has_calls(calls)
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
-        # UNDER DEVELOPMENT
-        # No esta tomando bien la 2da llamada a la api distrib.
 
     async def test_insert_agent():
         with patch('api.controllers.agent_controller.Body.validate_content_type'):
@@ -649,8 +669,6 @@ async def test_agent_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
-    aux_d = {'token_info': {'rbac_policies': 'rbac_policies_value'}}
-    mock_request.__getitem__.side_effect = aux_d.__getitem__
     functions = [test_delete_agents(),
                  test_get_agents(),
                  test_add_agent(),
@@ -681,6 +699,7 @@ async def test_agent_controller(mock_request):
                  test_get_group_file_json(),
                  test_get_group_file_xml(),
                  test_restart_agents_by_group(),
+                 test_restart_agents_by_group_empty_agent_list(),
                  test_insert_agent(),
                  test_get_agent_no_group(),
                  test_get_agent_outdated(),
@@ -692,7 +711,7 @@ async def test_agent_controller(mock_request):
         with patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
             with patch('api.controllers.agent_controller.DistributedAPI.distribute_function',
                        return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.agent_controller.raise_if_exc', 
-                           return_value={'data': 'data_value'}) as mock_exc:
+                with patch('api.controllers.agent_controller.raise_if_exc',
+                           return_value=CustomMagicMockReturn()) as mock_exc:
                     with patch('api.configuration.api_conf', return_value={'use_only_authd': False}):
                         await test_funct
