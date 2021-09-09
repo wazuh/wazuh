@@ -12,6 +12,7 @@ Thu Mar 18 13:15:20 2021 +00:00\nLENGTH : '261'\nACTION :[6] 'COMMIT'\nDATABASE 
 Thu Mar 18 13:15:20 2021 +00:00\nLENGTH : '347'\nACTION :[92] 'select 'OPENMODE:'||open_mode||':' as open, 'LOGMODE:'||log_mode||':' as log from v$database'\nDATABASE USER:[1] '/'\nPRIVILEGE :[6] 'XXXXX'\nCLIENT USER:[5] 'yyyyy'\nCLIENT TERMINAL:[5] 'pts/0'\nSTATUS:[1] '0'\nDBID:[10] '9999999'\nSESSIONID:[10] '11111111'\nUSERHOST:[13] 'ip-11-22-33-44'\nCLIENT ADDRESS:[0] ''\nACTION NUMBER:[1] '3'
 -->
 
+<!-- RDS decoders -->
 <decoder name="RDS">
     <prematch>^\w\w\w \w\w\w \d+ \d\d:\d\d:\d\d \d\d\d\d +\d\d:\d\d</prematch>
 </decoder>
