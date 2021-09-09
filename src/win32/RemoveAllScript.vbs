@@ -76,7 +76,7 @@ public function removeAll()
 
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the subfolders, and the files inside, specified here *will not* be deleted
-      Dim subfoldersToKeep: subfoldersToKeep = Array("backup", "upgrade", "no_delete")
+      Dim subfoldersToKeep: subfoldersToKeep = Array("backup", "upgrade")
 
       ' Construct a simple dictionary to check out later whether a subfolders is in
       ' the list or not

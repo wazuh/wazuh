@@ -157,13 +157,13 @@ function restore
     )
 
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
+    stop_wazuh_agent("wazuh-agent")
 
     # Saves ossec.log before remove fail update
     Copy-Item $Env:WAZUH_BACKUP_DIR\ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log.save -force
     Copy-Item ossec.log $Env:WAZUH_BACKUP_DIR\ossec.log -force
 
     # Uninstall the latest version of the Wazuh-Agent.
-    stop_wazuh_agent("wazuh-agent")
     uninstall_wazuh
     $counter = 10
 
@@ -186,7 +186,7 @@ function restore
     # Get current version
     $current_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - Current version: $($current_version)" >> .\upgrade\upgrade.log
-    check-installation
+    write-output "$(Get-Date -format u) - Restarting Wazuh service." >> .\upgrade\upgrade.log
     Get-Service -Name "Wazuh" | Start-Service
 }
 
