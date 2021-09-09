@@ -26,6 +26,7 @@ with patch('wazuh.common.wazuh_uid'):
     ({'token_info': {'rbac_policies': 'rbac_policies_value'}}, False)
     ])
 async def test_cdb_list_controller(mock_request, mock_bool):
+    """Test all cdb_list_controller endpoints"""
     async def test_get_lists():
         calls = [call(f=cdb_list.get_lists,
                       f_kwargs=ANY,
@@ -108,6 +109,7 @@ async def test_cdb_list_controller(mock_request, mock_bool):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_get_lists(),
                  test_get_file(),
                  test_put_file(),

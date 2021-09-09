@@ -19,6 +19,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'rbac_policies_value'}}])
 async def test_sca_controller(mock_request):
+    """Test all sca_controller endpoints"""
     async def test_get_sca_agent():
         calls = [call(f=sca.get_sca_list,
                       f_kwargs=ANY,
@@ -49,6 +50,7 @@ async def test_sca_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_get_sca_agent(),
                  test_get_sca_checks()
                  ]

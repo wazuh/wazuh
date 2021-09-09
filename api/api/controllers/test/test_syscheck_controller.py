@@ -21,6 +21,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [MagicMock()])
 async def test_syscheck_controller(mock_request):
+    """Test all syscheck_controller endpoints"""
     async def test_put_syscheck():
         calls = [call(f=syscheck.run,
                       f_kwargs=ANY,
@@ -84,6 +85,7 @@ async def test_syscheck_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_put_syscheck(),
                  test_get_syscheck_agent(),
                  test_delete_syscheck_agent(),

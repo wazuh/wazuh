@@ -29,6 +29,7 @@ with patch('wazuh.common.wazuh_uid'):
     (MagicMock(), False)
     ])
 async def test_rule_controller(mock_request, mock_bool):
+    """Test all rule_controller endpoints"""
     async def test_get_rules():
         calls = [call(f=rule_framework.get_rules,
                       f_kwargs=ANY,
@@ -142,6 +143,7 @@ async def test_rule_controller(mock_request, mock_bool):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_get_rules(),
                  test_get_rules_groups(),
                  test_get_rules_requirement(),

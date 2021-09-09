@@ -32,6 +32,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [MagicMock()])
 async def test_experimental_controller(mock_request):
+    """Test all experimental_controller endpoints"""
     async def test_clear_rootcheck_database():
         calls = [call(f=rootcheck.clear,
                       f_kwargs=ANY,
@@ -226,6 +227,7 @@ async def test_experimental_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_clear_rootcheck_database(),
                  test_clear_syscheck_database(),
                  test_get_cis_cat_results(),

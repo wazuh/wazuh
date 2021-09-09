@@ -18,6 +18,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [MagicMock()])
 async def test_ciscat_controller(mock_request):
+    """Test all ciscat_controller endpoints"""
     async def test_get_agents_ciscat_results():
         calls = [call(f=ciscat.get_ciscat_results,
                       f_kwargs=ANY,
@@ -34,6 +35,7 @@ async def test_ciscat_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_get_agents_ciscat_results()
                  ]
     for test_funct in functions:

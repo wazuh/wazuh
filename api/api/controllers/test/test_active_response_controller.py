@@ -18,6 +18,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'rbac_policies_value'}}])
 async def test_active_response_controller(mock_request):
+    """Test all active_response_controller endpoints"""
     async def test_run_command():
         calls = [call(f=active_response.run_command,
                       f_kwargs=ANY,
@@ -34,6 +35,7 @@ async def test_active_response_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_run_command()
                  ]
     for test_funct in functions:

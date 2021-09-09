@@ -24,6 +24,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'rbac_policies_value'}}])
 async def test_mitre_controller(mock_request):
+    """Test all mitre_controller endpoints"""
     async def test_get_metadata():
         calls = [call(f=mitre.mitre_metadata,
                       f_kwargs=ANY,
@@ -129,6 +130,7 @@ async def test_mitre_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_get_metadata(),
                  test_get_groups(),
                  test_get_mitigations(),

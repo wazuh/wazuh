@@ -62,6 +62,7 @@ class CustomMagicMockReturn(dict):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mock_request', [MagicMock()])
 async def test_agent_controller(mock_request):
+    """Test all agent_controller endpoints"""
     async def test_delete_agents():
         calls = [call(f=agent.delete_agents,
                       f_kwargs=ANY,
@@ -669,6 +670,7 @@ async def test_agent_controller(mock_request):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_delete_agents(),
                  test_get_agents(),
                  test_add_agent(),

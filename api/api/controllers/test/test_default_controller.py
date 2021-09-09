@@ -16,12 +16,14 @@ with patch('wazuh.common.wazuh_uid'):
 
 @pytest.mark.asyncio
 async def test_default_controller():
+    """Test all default_controller endpoints"""
     async def test_default_info():
         result = await default_info()
         mock_lspec.assert_called_once_with()
         mock_wresult.assert_called_once_with({'data': ANY})
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_default_info()
                  ]
     for test_funct in functions:

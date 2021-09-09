@@ -27,6 +27,7 @@ with patch('wazuh.common.wazuh_uid'):
     ({'token_info': {'rbac_policies': 'rbac_policies_value'}}, False)
     ])
 async def test_decoder_controller(mock_request, mock_bool):
+    """Test all decoder_controller endpoints"""
     async def test_get_decoders():
         calls = [call(f=decoder_framework.get_decoders,
                       f_kwargs=ANY,
@@ -124,6 +125,7 @@ async def test_decoder_controller(mock_request, mock_bool):
         mock_exc.assert_called_once_with(mock_dfunc.return_value)
         assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_get_decoders(),
                  test_get_decoders_files(),
                  test_get_decoders_parents(),

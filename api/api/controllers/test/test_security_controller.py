@@ -65,6 +65,7 @@ class CustomMagicMockReturn(dict):
     (MagicMock(), 'user1', False)
     ])
 async def test_security_controller(mock_request, mock_user, mock_bool):
+    """Test all security_controller endpoints"""
     async def test_login_user():
         calls = [call(f=preprocessor.get_permissions,
                       f_kwargs=ANY,
@@ -671,6 +672,7 @@ async def test_security_controller(mock_request, mock_user, mock_bool):
                 mock_exc.assert_called_once_with(mock_dfunc.return_value)
                 assert isinstance(result, web_response.Response)
 
+    # Function list containing all sub tests declared above.
     functions = [test_login_user(),
                  test_login_user_raise(),
                  test_run_as_login(),
