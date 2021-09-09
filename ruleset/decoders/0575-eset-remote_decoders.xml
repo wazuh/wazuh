@@ -18,3 +18,12 @@
   <regex>^\<\d+>\d+ (\d+-\d+-\d+T\d+:\d+:\d+.\d+\w) (\w+) (\w+) (\d+)</regex>
   <order>timestamp,type,source,msg_id</order>
 </decoder>
+
+<decoder name="eset-bsd">
+  <program_name>ERAServer</program_name>
+</decoder>
+
+<decoder name="eset-main-child">
+  <parent>eset-bsd</parent>
+  <plugin_decoder offset="after_parent">JSON_Decoder</plugin_decoder>
+</decoder>
