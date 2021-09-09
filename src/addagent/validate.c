@@ -522,6 +522,32 @@ double OS_AgentAntiquity(const char *name, const char *ip){
     return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
 
+double OS_AgentDisconnected_time(const char *id) {
+    time_t disconnected_time = 0;
+    cJSON *json_agent_info = NULL;
+    cJSON *json_field = NULL;
+    char *status = NULL;
+
+    if (json_agent_info = wdb_get_agent_info(atoi(id), NULL), !json_agent_info) {
+        mdebug1("Failed to get agent '%s' information from Wazuh DB.", id);
+        return OS_INVALID;
+    }
+
+    json_field = cJSON_GetObjectItem(json_agent_info->child, "connection_status");
+    if (cJSON_IsString(json_field)) {
+        status = json_field->valuestring;
+    }
+
+    json_field = cJSON_GetObjectItem(json_agent_info->child, "disconnected_time");
+    if (cJSON_IsNumber(json_field) && !strcmp(status, AGENT_CS_DISCONNECTED)) {
+        disconnected_time = json_field->valueint;
+    } else {
+        return disconnected_time;
+    }
+
+    return disconnected_time == OS_INVALID ? OS_INVALID : difftime(time(NULL), disconnected_time);
+}
+
  /* !CLIENT */
  #endif
 
