@@ -1,21 +1,23 @@
 <group name="eset,">
 
-    <rule id="770000" level="0">
-        <decoded_as>eset-main</decoded_as>
-        <description>Eset Console Logs</description>
-    </rule>
+  <rule id="770000" level="0">
+      <decoded_as>eset-bsd</decoded_as>
+      <description>Eset Console Logs</description>
+  </rule>
 
-    <rule id="770001" level="5">
-        <if_sid>770000</if_sid>
-        <field name="severity">^Warning$</field>
-        <description>Eset: Warning message was logged from $(hostname)</description>
-    </rule>
+  <rule id="770001" level="3">
+      <if_sid>770000</if_sid>
+      <field name="event_type">^Threat_Event$</field>
+      <description>Eset: Threat Event rules Group</description>
+      <group>threat_event,</group>
+  </rule>
 
-    <rule id="770002" level="7">
-        <if_sid>770000</if_sid>
-        <field name="severity">^Error$</field>
-        <description>Eset: Error message was logged from $(hostname)</description>
-    </rule>
+  <rule id="770002" level="3">
+      <if_sid>770000</if_sid>
+      <field name="event_type">^FirewallAggregated_Event$</field>
+      <description>Eset: Firewall Aggregated rules Group</description>
+      <group>firewallaggregated_event,</group>
+  </rule>
 
     <rule id="770003" level="3">
        <if_sid>770000</if_sid>
