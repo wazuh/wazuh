@@ -52,6 +52,8 @@ cJSON *getAuthdConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *auth = cJSON_CreateObject();
+    cJSON *force = cJSON_CreateObject();
+    cJSON *disconnected_time = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(auth,"port",config.port);
     if (config.force_options.connection_time ==  -1)
@@ -73,6 +75,13 @@ cJSON *getAuthdConfig(void) {
     if (config.manager_cert) cJSON_AddStringToObject(auth,"ssl_manager_cert",config.manager_cert);
     if (config.manager_key) cJSON_AddStringToObject(auth,"ssl_manager_key",config.manager_key);
 
+    if (config.force_options.enabled) cJSON_AddStringToObject(force, "enabled", "yes"); else cJSON_AddStringToObject(force, "enabled", "no");
+    if (config.force_options.key_mismatch) cJSON_AddStringToObject(force, "key_mismatch", "yes"); else cJSON_AddStringToObject(force, "key_mismatch", "no");
+    if (config.force_options.disconnected_time_enabled) cJSON_AddStringToObject(disconnected_time, "enabled", "yes"); else cJSON_AddStringToObject(disconnected_time, "enabled", "no");
+    if (config.force_options.disconnected_time) cJSON_AddNumberToObject(disconnected_time, "disconnected_time", config.force_options.disconnected_time);
+    cJSON_AddItemToObject(force, "disconnected_time", disconnected_time);
+    if (config.force_options.after_registration_time) cJSON_AddNumberToObject(force, "after_registration_time", config.force_options.after_registration_time);
+    cJSON_AddItemToObject(auth, "force", force);
     cJSON_AddItemToObject(root,"auth",auth);
 
     return root;
