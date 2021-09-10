@@ -10,34 +10,63 @@
 - Will extract src IP, src Port, dst IP, dst Port, Protocol and action from the pfsense logs, when available.
 -->
 
-<!-- PFSENSE
+<!-- PFSENSE documentation
+https://docs.netgate.com/pfsense/en/latest/monitoring/logs/raw-filter-format.html
+
 Nov  8 12:37:34 pfSense filterlog: 5,,,1000102433,em0,match,block,in,4,0x0,,128,24677,0,none,17,udp,186,10.9.0.119,10.9.0.255,17500,17600,166
-Jan 22 18:34:00 filterlog: 65,,,0,vmx1,match,pass,out,4,0x0,,63,21011,0,none,1,icmp,56,192.168.105.11,192.168.105.1,datalength=36 
+Jan 22 18:34:00 filterlog: 65,,,0,vmx1,match,pass,out,4,0x0,,63,21011,0,none,1,icmp,56,192.168.105.11,192.168.105.1,datalength=36
+Sep  9 22:34:20 pfSense filterlog[66047] 280,,,1471783080,igb1,match,block,in,6,0x00,0x4e4e7,255,UDP,17,253,fe80::86e:7dc9:94ae:8218,ff02::fb,5353,5353,253
+
  -->
 <decoder name="pf">
   <program_name>filterlog</program_name>
 </decoder>
 
+<!--
+<rule-number>,<sub-rule-number>,<anchor>,(<tracker>),<real-interface>,<reason>,(<action>),<direction>,<ip-version> -->
 <decoder name="pf-fields">
   <parent>pf</parent>
-  <regex>^\S*,\S*,\S*,(\S*),\S*,\S*,(\S*),</regex>
-  <order>id,action</order>
+  <prematch offset="after_parent">^\S*,\S*,\S*,\S*,\S*,\S*,\S*,\S*,4,</prematch>
+  <regex>^\S*,\S*,\S*,(\S*),\S*,\S*,(\S*),\S*,(4),</regex>
+  <order>id,action,ipversion</order>
 </decoder>
 
+<!--
+<tos>,<ecn>,<ttl>,<id>,<offset>,<flags>,<protocol-id>,(<protocol-text>), (<length>),(<source-address>),(<destination-address>) -->
 <decoder name="pf-fields">
   <parent>pf</parent>
-  <regex offset="after_regex">\S*,\S*,\S*,\S*,\S*,\S*,\S*,\S*,\S*,(\S*),\S*,(\S*),(\S*),</regex>
-  <order>protocol,srcip,dstip</order>
+  <regex offset="after_regex">\S*,\S*,\S*,\S*,\S*,\S*,\S*,(\S*),(\d*),(\S*),(\S*),</regex>
+  <order>protocol,length,srcip,dstip</order>
 </decoder>
 
+<!-- For TCP or UDP only
+<source-port>,<destination-port>,<data-length>-->
 <decoder name="pf-fields">
   <parent>pf</parent>
   <regex offset="after_regex">(\d*),(\d*),\S*</regex>
   <order>srcport,dstport</order>
 </decoder>
 
-<decoder name="pf-fields">
+
+<!--
+<rule-number>,<sub-rule-number>,<anchor>,(<tracker>),<real-interface>,<reason>,(<action>),<direction>,(<ip-version>) -->
+<decoder name="pf-fields6">
   <parent>pf</parent>
-  <regex offset="after_regex">datalength=(\S*)|(\d*)</regex>
-  <order>length</order>
+  <prematch offset="after_parent">^\S*,\S*,\S*,\S*,\S*,\S*,\S*,\S*,6,</prematch>
+  <regex offset="after_parent">^\S*,\S*,\S*,(\S*),\S*,\S*,(\S*),\S*,(6),</regex>
+  <order>id,action,ipversion</order>
+</decoder>
+
+<!--<class>,<flow-label>,<hop-limit>,(<protocol-text>),<protocol-id>-->
+<decoder name="pf-fields6">
+  <parent>pf</parent>
+  <regex offset="after_regex">\S*,\S*,\S*,(\S*),\S*,</regex>
+  <order>protocol</order>
+</decoder>
+
+<!--(<length>),(<source-address>),(<destination-address>)-->
+<decoder name="pf-fields6">
+  <parent>pf</parent>
+  <regex offset="after_regex">(\d*),(\S*),(\S*),</regex>
+  <order>length,srcip,dstip</order>
 </decoder>
