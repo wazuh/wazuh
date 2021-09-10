@@ -52,6 +52,7 @@ constexpr auto OS_SQL_STATEMENT
     release TEXT,
     version TEXT,
     os_release TEXT,
+    os_display_version TEXT,
     checksum TEXT,
     PRIMARY KEY (os_name)) WITHOUT ROWID;)"
 };
