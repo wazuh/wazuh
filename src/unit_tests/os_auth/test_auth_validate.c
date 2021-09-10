@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "os_err.h"
 #include "shared.h"
 #include "../../os_auth/auth.h"
 #include "../../headers/sec.h"
@@ -36,8 +37,9 @@
 #define EXISTENT_GROUP1 "ExistentGroup1"
 #define EXISTENT_GROUP2 "ExistentGroup2"
 #define UNKNOWN_GROUP   "UnknownGroup"
+#define AGENT1_ID       "001"
 
-void keys_init(keystore *keys, int rehash_keys, int save_removed) {
+void keys_init(keystore *keys, key_mode_t key_mode, int save_removed) {
     /* Initialize hashes */
     keys->keyhash_id = OSHash_Create();
     keys->keyhash_ip = OSHash_Create();
@@ -51,12 +53,28 @@ void keys_init(keystore *keys, int rehash_keys, int save_removed) {
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
     keys->keysize = 0;
     keys->id_counter = 0;
-    keys->flags.rehash_keys = rehash_keys;
+    keys->flags.key_mode = key_mode;
     keys->flags.save_removed = save_removed;
 
     /* Add additional entry for sender == keysize */
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
+}
+
+void keyentry_init (keyentry *key, char *name, char *id, char *ip, char *raw_key) {
+    os_calloc(1, sizeof(os_ip), key->ip);
+    key->ip->ip = ip ? strdup(ip) : NULL;
+    key->name = name ? strdup(name) : NULL;
+    key->id = id ? strdup(id) : NULL;
+    key->raw_key = raw_key ? strdup(raw_key) : NULL;
+}
+
+void free_keyentry (keyentry *key) {
+    os_free(key->ip->ip);
+    os_free(key->ip);
+    os_free(key->name);
+    os_free(key->id);
+    os_free(key->raw_key);
 }
 
 //Params used on enrollment
@@ -71,7 +89,6 @@ typedef struct _enrollment_response {
     w_err_t err;
     char* response;
 } enrollment_response;
-
 
 extern struct keynode *queue_insert;
 extern struct keynode *queue_remove;
@@ -100,51 +117,62 @@ static int setup_group(void **state) {
 static int teardown_group(void **state) {
     OS_FreeKeys(&keys);
 
+    struct keynode *cur = NULL;
+    struct keynode *next = NULL;
+
+    for (cur = queue_remove; cur; cur = next) {
+        next = cur->next;
+        os_free(cur->id);
+        os_free(cur->name);
+        os_free(cur->ip);
+        os_free(cur);
+    }
+
     return 0;
 }
 
 int setup_validate_force_insert_0(void **state) {
-    config.flags.force_insert = 0;
+    config.force_options.enabled = 0;
     return 0;
 }
 
 int setup_validate_force_insert_1(void **state) {
-    config.flags.force_insert = 1;
+    config.force_options.enabled = 1;
     return 0;
 }
 
 /* tests */
-
 static void test_w_auth_validate_data(void **state) {
-
     char response[2048] = {0};
     w_err_t err;
 
     /* New agent / IP*/
     response[0] = '\0';
-    err = w_auth_validate_data(response,NEW_IP1, NEW_AGENT1, NULL);
+    err = w_auth_validate_data(response, NEW_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
     /* any IP*/
     response[0] = '\0';
-    err = w_auth_validate_data(response,ANY_IP, NEW_AGENT1, NULL);
+    err = w_auth_validate_data(response, ANY_IP, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
     /* Existent IP */
     response[0] = '\0';
-    expect_string(__wrap__merror, formatted_msg, "Duplicated IP "EXISTENT_IP1);
-    err = w_auth_validate_data(response,EXISTENT_IP1, NEW_AGENT1, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
+    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated IP: "EXISTENT_IP1"");
+    assert_string_equal(response, "ERROR: Duplicate IP: "EXISTENT_IP1"");
 
     /* Existent Agent Name */
     response[0] = '\0';
-    expect_string(__wrap__merror, formatted_msg, "Invalid agent name "EXISTENT_AGENT1" (duplicated)");
-    err = w_auth_validate_data(response,NEW_IP1, EXISTENT_AGENT1, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
+    err = w_auth_validate_data(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
-    assert_string_equal(response, "ERROR: Duplicated agent name: "EXISTENT_AGENT1"");
+    assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT1"");
 
    /* Manager name */
    char host_name[512];
@@ -157,7 +185,7 @@ static void test_w_auth_validate_data(void **state) {
     char merror_message[2048];
     snprintf(merror_message, 2048, "Invalid agent name %s (same as manager)", host_name);
     expect_string(__wrap__merror, formatted_msg, merror_message);
-    err = w_auth_validate_data(response,NEW_IP1, host_name, NULL);
+    err = w_auth_validate_data(response,NEW_IP1, host_name, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, err_response);
 
@@ -171,21 +199,24 @@ static void test_w_auth_validate_data(void **state) {
 }
 
 static void test_w_auth_validate_data_force_insert(void **state) {
-
     char response[2048] = {0};
     w_err_t err;
 
-    /* Duplicated IP*/
+    /* Duplicate IP*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated IP '"EXISTENT_IP1"' (001). Removing old agent.");
-    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"' (001).");
+    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
+    will_return(__wrap_OS_AgentAntiquity, 0);
+    err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
-     /* Duplicated Name*/
+     /* Duplicate Name*/
     response[0] = '\0';
-    expect_string(__wrap__minfo, formatted_msg, "Duplicated name '"EXISTENT_AGENT2"' (002). Removing old agent.");
-    err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL);
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT2"' (002).");
+    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '002'.");
+    will_return(__wrap_OS_AgentAntiquity, 0);
+    err = w_auth_validate_data(response, NEW_IP2, EXISTENT_AGENT2, NULL, NULL);
     assert_int_equal(err, OS_SUCCESS);
     assert_string_equal(response, "");
 
@@ -195,30 +226,6 @@ static void test_w_auth_validate_data_force_insert(void **state) {
     assert_true(index < 0);
     index = OS_IsAllowedName(&keys, EXISTENT_AGENT2);
     assert_true(index < 0);
-}
-
-static void test_w_auth_validate_data_register_limit(void **state) {
-    char response[2048] = {0};
-    char agent_name[2048] = "agent_x";
-    char error_message[2048];
-    w_err_t err;
-
-
-    //Filling most of keys element with a fixed key to reduce computing time
-    char fixed_key[KEYSIZE] = "1234";
-    for(unsigned i=0; i<100000; i++) {
-        OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, fixed_key);
-    }
-
-    //Adding last keys as usual
-    for(unsigned i=0; i<10; i++) {
-        snprintf(agent_name, 2048, "__agent_%d", i);
-        response[0] = '\0';
-        err = w_auth_validate_data(response,ANY_IP, agent_name, NULL);
-        assert_int_equal(err, OS_SUCCESS);
-        assert_string_equal(response, "");
-        OS_AddNewAgent(&keys, NULL, agent_name, ANY_IP, NULL);
-    }
 }
 
 static void test_w_auth_validate_groups(void **state) {
@@ -257,18 +264,74 @@ static void test_w_auth_validate_groups(void **state) {
     err = w_auth_validate_groups(EXISTENT_GROUP1","EXISTENT_GROUP2","UNKNOWN_GROUP, response);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Invalid group: "UNKNOWN_GROUP"");
-
 }
 
+static void test_w_auth_replace_agent_force_disabled(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' won't be removed because the force option is disabled.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    free_keyentry(&key);
+}
+
+static void test_w_auth_replace_agent_not_comply_antiquity(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+
+    // Mocking antiquity
+    will_return(__wrap_OS_AgentAntiquity, 10);
+    config.force_options.connection_time = 100;
+
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' doesn't comply with the antiquity to be removed.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    free_keyentry(&key);
+    config.force_options.connection_time = 0;
+}
+
+static void test_w_auth_replace_agent_existent_key_hash(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, "1234");
+    // This is the SHA1 hash of the string: IdNameKey
+    char *key_hash = "15153d246b71789195b48778875af94f9378ecf9";
+
+    will_return(__wrap_OS_AgentAntiquity, 0);
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' key already exists on the manager.");
+    err = w_auth_replace_agent(&key, key_hash, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    free_keyentry(&key);
+}
+
+static void test_w_auth_replace_agent_success(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+
+    will_return(__wrap_OS_AgentAntiquity, 0);
+    expect_string(__wrap__minfo, formatted_msg, "Removing old agent '001'.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_SUCCESS);
+    free_keyentry(&key);
+}
 
 int main(void) {
-
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_auth_validate_groups),
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_validate_data_register_limit, setup_validate_force_insert_0),
-
+        cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_insert_0),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_comply_antiquity, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_insert_1),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

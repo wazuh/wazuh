@@ -11,6 +11,8 @@
 #include "os_auth/auth.h"
 #include "os_net/os_net.h"
 #include "shared.h"
+#include "headers/sec.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
     /* Remove static qualifier when unit testing */
@@ -38,6 +40,7 @@ static int w_enrollment_process_response(SSL *ssl);
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
 static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
+static void w_enrollment_concat_key(char *buff, keyentry* key);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
 static char *w_enrollment_extract_agent_name(const w_enrollment_ctx *cfg);
@@ -92,17 +95,18 @@ void w_enrollment_cert_destroy(w_enrollment_cert *cert_cfg) {
     os_free(cert_cfg);
 }
 
-w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert) {
+w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_cert *cert, keystore *keys) {
     assert(target != NULL);
     assert(cert != NULL);
     w_enrollment_ctx *cfg;
     os_malloc(sizeof(w_enrollment_ctx), cfg);
     cfg->target_cfg = target;
     cfg->cert_cfg = cert;
-    cfg->enabled = 1;
+    cfg->enabled = true;
     cfg->ssl = NULL;
-    cfg->allow_localhost = 1;
+    cfg->allow_localhost = true;
     cfg->delay_after_enrollment = 20;
+    cfg->keys = keys;
     return cfg;
 }
 
@@ -135,7 +139,7 @@ int w_enrollment_request_key(w_enrollment_ctx *cfg, const char * server_address)
  * be obtained by obtaining hostname
  *
  * @param cfg configuration structure
- * @param allow_localhost 1 will allow localhost as name, 0 will throw an merror_exit
+ * @param allow_localhost true will allow localhost as name, false will throw an merror_exit
  * @return agent_name on succes
  *         NULL on errors
  * */
@@ -273,15 +277,19 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         snprintf(buf, 2048, "OSSEC A:'%s'", lhostname);
     }
 
-    if(cfg->target_cfg->centralized_group){
+    if (cfg->target_cfg->centralized_group) {
         w_enrollment_concat_group(buf, cfg->target_cfg->centralized_group);
     }
 
-    if(w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
+    if (w_enrollment_concat_src_ip(buf, cfg->target_cfg->sender_ip, cfg->target_cfg->use_src_ip)) {
         os_free(buf);
         if(lhostname != cfg->target_cfg->agent_name)
             os_free(lhostname);
         return -1;
+    }
+
+    if (cfg->keys->keysize > 0) {
+        w_enrollment_concat_key(buf, cfg->keys->keyentries[0]);
     }
 
     /* Append new line character */
@@ -299,7 +307,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
     mdebug1("Request sent to manager");
 
     os_free(buf);
-    if(lhostname != cfg->target_cfg->agent_name)
+    if (lhostname != cfg->target_cfg->agent_name)
         os_free(lhostname);
     return 0;
 }
@@ -395,6 +403,7 @@ static int w_enrollment_store_key_entry(const char* keys) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
+        os_free(file.name);
         return -1;
     }
 
@@ -402,10 +411,10 @@ static int w_enrollment_store_key_entry(const char* keys) {
     fclose(file.fp);
 
     if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
-        free(file.name);
+        os_free(file.name);
         return -1;
     }
-    free(file.name);
+    os_free(file.name);
 
 #endif /* !WIN32 */
 
@@ -475,6 +484,29 @@ static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_ce
     else {
         mdebug1("Registering agent to unverified manager");
     }
+}
+
+/**
+ * @brief Concatenates the current key of the agent, if exists, as  part of the enrollment message
+ *
+ * @param buff buffer where the KEY section will be concatenated
+ * @param key_entry The key that will be concatenated
+ *
+ * @pre buff must be 69633 bytes long
+ */
+static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
+    assert(buff != NULL);
+    assert(key_entry != NULL);
+
+    os_sha1 output;
+    char* opt_buf = NULL;
+    os_calloc(OS_SIZE_512, sizeof(char), opt_buf);
+    w_get_key_hash(key_entry, output);
+    snprintf(opt_buf, OS_SIZE_512, " K:'%s'", output);
+    if (strlen(buff) < (OS_SIZE_65536 + OS_SIZE_4096)) {
+        strncat(buff, opt_buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buff));
+    }
+    free(opt_buf);
 }
 
 /**

@@ -12,7 +12,8 @@ list(APPEND os_crypto_shared_tests_names "test_keys")
 list(APPEND os_crypto_shared_tests_flags "-Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Create \
                                 -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete \
                                 -Wl,--wrap,fopen,--wrap,fclose,--wrap,fflush,--wrap,fgets,--wrap,fgetpos,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fprintf \
-                                -Wl,--wrap,TempFile,--wrap,OS_MoveFile -Wl,--wrap,_merror")
+                                -Wl,--wrap,TempFile,--wrap,OS_MoveFile -Wl,--wrap,_merror \
+                                -Wl,--wrap,_mdebug2")
 
 # Compiling tests
 list(LENGTH os_crypto_shared_tests_names count)
