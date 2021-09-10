@@ -2,7 +2,7 @@
   -  Apache decoders
   -  Author: Daniel Cid.
   -  Updated by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
@@ -30,6 +30,8 @@
       - [notice] Apache configured
       - [Thu Oct 23 15:17:55.926123 2014] [ssl:info] [pid 18838] SSL Library Error: error:1407609B:SSL routines:SSL23_GET_CLIENT_HELLO:https proxy request -- speaking HTTP to HTTPS port!?
       - [Tue Sep 30 12:11:21.258612 2014] [ssl:error] [pid 30473] AH02032: Hostname www.example.com provided via SNI and hostname ssl://www.example.com provided via HTTP are different
+      - [Wed Jul 31 16:44:52.967837 2019] [core:notice] [pid 8575] AH00094: Command line: '/usr/sbin/httpd -D FOREGROUND'
+
 -->
 
 <decoder name="apache-errorlog">
@@ -65,4 +67,11 @@
     <prematch offset="after_parent">[client</prematch>
     <regex offset="after_prematch">^ (\S+):(\d+)] |^ (\S+)] </regex>
     <order>srcip,srcport</order>
+</decoder>
+
+<decoder name="apache24-errorlog-glpi">
+    <parent>apache-errorlog</parent>
+    <prematch offset="after_parent">^[pid \d+] \S+: </prematch>
+    <regex>[(\w+):(\w+)] [pid (\d+)] (\S+): (\.+)</regex>
+    <order>location, level, pid, id, description</order>
 </decoder>

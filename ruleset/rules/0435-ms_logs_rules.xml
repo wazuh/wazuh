@@ -1,7 +1,7 @@
 <!--
   -  Windows logs rules
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -14,12 +14,13 @@
     -->
     <rule id="83200" level="5">
         <if_sid>18101</if_sid>
-        <id>1102</id>
+        <id>^1102$</id>
+        <field name="type">Security</field>
         <description>The audit log was cleared</description>
-        <mitre>
-            <id>T1070</id>
-        </mitre>
         <group>log_clearing_auditlog,gpg13_10.1,gdpr_II_5.1.f,gdpr_IV_30.1.g,</group>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
     </rule>
 
     <!--
@@ -35,10 +36,10 @@
         <id>^104$</id>
         <extra_data>Microsoft-Windows-Eventlog</extra_data>
         <description>A Windows log file was cleared</description>
-        <mitre>
-            <id>T1070</id>
-        </mitre>
         <group>log_clearing,gpg13_10.1,gdpr_II_5.1.f,</group>
+    <mitre>
+      <id>T1070</id>
+    </mitre>
     </rule>
 
     <!--
@@ -48,11 +49,10 @@
         <if_sid>18101</if_sid>
         <id>^6005$</id>
         <description>The Event log service was started</description>
-        <mitre>
-            <id>T1050</id>
-        </mitre>
         <group>windows_log_service_started,gpg13_10.1,</group>
+    <mitre>
+      <id>T1543.003</id>
+    </mitre>
     </rule>
 
 </group>
-

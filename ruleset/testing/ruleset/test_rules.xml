@@ -13,6 +13,16 @@
     <description>Successfully</description>
   </rule>
 
+<!-- testing overwrite and field -->
+  <rule id="99901" level="3">
+    <field name="example">TEST1</field>
+    <description>Testing overwrite and field</description>
+  </rule>
+
+  <rule id="99901" level="6" overwrite="yes">
+    <field name="example">TEST2</field>
+    <description>Successfully</description>
+  </rule>
 
 <!-- Trigger alerts which depend on same_fields . Also it tests if_matched_sid -->
 <!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
@@ -460,22 +470,6 @@
   <if_matched_sid>999271</if_matched_sid>
   <different_srcuser />
   <description>Different srcuser works</description>
-</rule>
-
-<!-- Trigger alerts which depend on noalert. -->
-<!-- Dec 19 17:20:08 User test_noalert[12345]:Test noalert=1 -->
-<!-- Dec 19 17:20:08 User test_noalert[12345]:Test noalert=0 -->
-
-<rule id="999273" level="3" noalert="1">
-  <decoded_as>test_noalert</decoded_as>
-  <field name="noalert">1</field>
-  <description>No-alerting enabled.</description>
-</rule>
-
-<rule id="999274" level="3" noalert="0">
-  <decoded_as>test_noalert</decoded_as>
-  <field name="noalert">0</field>
-  <description>No-alerting disabled.</description>
 </rule>
 
 </group>

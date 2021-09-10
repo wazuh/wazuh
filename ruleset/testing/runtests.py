@@ -6,7 +6,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation
 
-import ConfigParser
+import configparser
 import subprocess
 import os
 import sys
@@ -15,6 +15,10 @@ import shutil
 import argparse
 import re
 import signal
+import xml.etree.ElementTree as ET
+
+from coverage import getRuleIds
+from coverage import getParentDecoderNames
 
 rules_test_fname_pattern = re.compile('^test_(.*?)_rules.xml$')
 decoders_test_fname_pattern = re.compile('^test_(.*?)_decoders.xml$')
@@ -29,21 +33,13 @@ class MultiOrderedDict(OrderedDict):
 
 def getWazuhInfo(wazuh_home):
     wazuh_control = os.path.join(wazuh_home, "bin", "wazuh-control")
-    wazuh_env_vars = {}
     try:
         proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
         (stdout, stderr) = proc.communicate()
     except:
         print("Seems like there is no Wazuh installation.")
         return None
-
-    env_variables = stdout.rsplit("\n")
-    env_variables.remove("")
-    for env_variable in env_variables:
-        key, value = env_variable.split("=")
-        wazuh_env_vars[key] = value.replace("\"", "")
-
-    return wazuh_env_vars
+    return True
 
 def provisionDR():
     base_dir = os.path.dirname(os.path.realpath(__file__))
@@ -78,6 +74,31 @@ def restart_analysisd():
     print("Restarting wazuh-manager...")
     ret = os.system('systemctl restart wazuh-manager')
 
+def _get_win_base_rules():
+    tree = ET.parse('/var/ossec/ruleset/rules/0575-win-base_rules.xml')
+    return tree
+
+def enable_win_eventlog_tests():
+    tree = _get_win_base_rules()
+    base_rule = tree.find('.//rule[@id="60000"]')
+    base_rule.remove(base_rule.find(".//decoded_as"))
+    base_rule.remove(base_rule.find(".//category"))
+    decoded_as = ET.SubElement(base_rule,"decoded_as")
+    decoded_as.text = "json"
+    tree.write("/var/ossec/ruleset/rules/0575-win-base_rules.xml")
+    restart_analysisd()
+
+def disable_win_eventlog_tests():
+    tree = _get_win_base_rules()
+    base_rule = tree.find('.//rule[@id="60000"]')
+    base_rule.remove(base_rule.find(".//decoded_as"))
+    decoded_as = ET.SubElement(base_rule,"decoded_as")
+    decoded_as.text = "windows_eventchannel"
+    category = ET.SubElement(base_rule,"category")
+    category.text = "ossec"
+    tree.write("/var/ossec/ruleset/rules/0575-win-base_rules.xml")
+    restart_analysisd()
+
 class OssecTester(object):
     def __init__(self, bdir):
         self._error = False
@@ -85,6 +106,9 @@ class OssecTester(object):
         self._quiet = False
         self._ossec_path = bdir + "/bin/"
         self._test_path = "./tests"
+        self._execution_data = {}
+        self.tested_rules = set()
+        self.tested_decoders = set()
 
     def buildCmd(self, rule, alert, decoder):
         cmd = ['%s/wazuh-logtest' % (self._ossec_path), ]
@@ -93,13 +117,16 @@ class OssecTester(object):
         return cmd
 
     def runTest(self, log, rule, alert, decoder, section, name, negate=False):
+        did_pass = "failed"
+        self.tested_rules.add(rule)
+        self.tested_decoders.add(decoder)
         p = subprocess.Popen(
             self.buildCmd(rule, alert, decoder),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
             shell=False)
-        std_out = p.communicate(log)[0]
+        std_out = p.communicate(log.encode())[0]
         if (p.returncode != 0 and not negate) or (p.returncode == 0 and negate):
             self._error = True
             print("")
@@ -117,7 +144,9 @@ class OssecTester(object):
             print(std_out)
         else:
             sys.stdout.write(".")
+            did_pass = "passed"
             sys.stdout.flush()
+        return did_pass
 
     def run(self, selective_test=False, geoip=False, custom=False):
         for aFile in os.listdir(self._test_path):
@@ -129,8 +158,9 @@ class OssecTester(object):
                     continue
                 if geoip is False and aFile.endswith("geoip.ini"):
                     continue
+                self._execution_data[aFile] = {"passed":0, "failed":0}
                 print("- [ File = %s ] ---------" % (aFile))
-                tGroup = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
+                tGroup = configparser.RawConfigParser(dict_type=MultiOrderedDict, strict=False)
                 tGroup.read([aFile])
                 tSections = tGroup.sections()
                 for t in tSections:
@@ -147,11 +177,22 @@ class OssecTester(object):
                                 neg = True
                             else:
                                 neg = False
-                            self.runTest(value, rule, alert, decoder,
-                                         t, name, negate=neg)
+                            self._execution_data[aFile][self.runTest(value, rule, alert, decoder,t, name, negate=neg)]+=1
                 print("")
                 print("")
         return self._error
+
+    def print_results(self):
+        template = "|{: ^25}|{: ^10}|{: ^10}|{: ^10}|"
+        print(template.format("File", "Passed", "Failed", "Status"))
+        print(template.format("--------", "--------", "--------", "--------"))
+        template = "|{: <25}|{: ^10}|{: ^10}|{: ^10}|"
+        for test_name in self._execution_data:
+            passed_count = self._execution_data[test_name]["passed"]
+            failed_count = self._execution_data[test_name]["failed"]
+            status = u'\u274c' if (failed_count > 0) else u'\u2705'
+            print(template.format(test_name, passed_count, failed_count, status))
+
 
 def cleanup(*args):
     cleanDR()
@@ -183,10 +224,28 @@ if __name__ == "__main__":
     if args.custom:
         provisionDR()
         restart_analysisd()
+
+    enable_win_eventlog_tests()
+
     OT = OssecTester(args.wazuh_home)
     error = OT.run(selective_test, args.geoip, args.custom)
+
     if args.custom:
         cleanDR()
         restart_analysisd()
+    else:
+        rules = getRuleIds("/var/ossec/ruleset/rules")
+        decoders = getParentDecoderNames("/var/ossec/ruleset/decoders")
+
+        template = "|{: ^10}|{: ^10}|{: ^10}|{: ^10}|"
+        print(template.format("Component", "Tested", "Total", "Coverage"))
+        print(template.format("--------", "--------", "--------", "--------"))
+        template = "|{: ^10}|{: ^10}|{: ^10}|{: ^10.2%}|"
+        print(template.format("Rules", len(OT.tested_rules), len(rules), len(OT.tested_rules)/len(rules)))
+        print(template.format("Decoders", len(OT.tested_decoders), len(decoders), len(OT.tested_decoders)/len(decoders)))
+        print("")
+
+    OT.print_results()
+    disable_win_eventlog_tests()
     if error:
         sys.exit(1)

@@ -1,0 +1,322 @@
+<!--
+  -  Sysmon Event ID 1 rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="sysmon_eid1_detections,">
+
+    <rule id="92010" level="4">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(c|w)script\.exe</field>
+        <description>Scripting interpreter spawned a new process</description>
+        <mitre>
+            <id>T1059.005</id>
+        </mitre>
+    </rule>
+
+    <rule id="92011" level="6">
+        <if_sid>92010</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(c|w)script\.exe.+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
+        <description>Scripting interpreter spawned new scripting interpreter</description>
+        <mitre>
+            <id>T1059</id>
+        </mitre>
+    </rule>
+
+    <rule id="92012" level="6">
+        <if_sid>92010</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">\\cmd\.exe</field>
+        <description>Scripting interpreter spawned Windows command shell instance</description>
+        <mitre>
+            <id>T1059.003</id>
+        </mitre>
+    </rule>
+
+    <rule id="92013" level="6">
+        <if_sid>92010</if_sid>
+        <field name="win.eventdata.image" type="pcre2">(?i)[c-z]:(\\\\Users\\\\Public\\\\|\\\\Users\\\\.+\\\\AppData\\\\local\\\\temp)</field>
+        <description>Scripting interpreter spawned a process from a suspicious path</description>
+        <mitre>
+            <id>T1059</id>
+        </mitre>
+    </rule>
+
+    <rule id="92021" level="4">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.commandLine" type="pcre2">\\cmd\.exe</field>
+        <field name="win.eventdata.parentImage" type="pcre2">(?i)\\powershell\.exe</field>
+        <description>Powershell process spawned Windows command shell instance</description>
+        <mitre>
+            <id>T1059.003</id>
+        </mitre>
+    </rule>
+
+    <rule id="92030" level="4">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(c|w)script\.exe.+[c-z]:\\(Windows\\Temp)|Users\\.+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
+        <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)cmd\.exe.+/(c|k)</field>
+        <description>Command shell started script with /c modifier</description>
+        <mitre>
+            <id>T1059</id>
+        </mitre>
+    </rule>
+
+    <rule id="92050" level="6">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\csc\.exe</field>
+        <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)powershell.+ExecutionPolicy\s+bypass</field>
+        <description>Powershell script compiling code using CSC.exe, possible malware drop</description>
+        <mitre>
+            <id>T1027.004</id>
+        </mitre>
+    </rule>
+
+    <rule id="92051" level="3">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)Set-MpPreference</field>
+        <description>Possible tampering on Windows Defender configuration by Powershell command</description>
+        <mitre>
+            <id>T1562</id>
+        </mitre>
+    </rule>
+
+    <rule id="92052" level="12">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableRealtimeMonitoring|drtm)\s+(\$true|1)</field>
+        <description>Windows Defender real time monitoring was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92053" level="13">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableIntrusionPreventionSystem|dips)\s+(\$true|1)</field>
+        <description>Windows Defender Intrusion prevention system was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92054" level="13">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableIOAVProtection|dioavp)\s+(\$true|1)</field>
+        <description>Windows Defender downloaded file scanning was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92055" level="13">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)(DisableScriptScanning|dscrptsc)\s+(\$true|1)</field>
+        <description>Windows Defender script scanning was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92056" level="13">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)EnableControlledFolderAccess\s+(disabled|AuditMode)</field>
+        <description>Windows Defender Controlled folder access was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92057" level="13">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)EnableNetworkProtection\s+(disabled|AuditMode)</field>
+        <description>Windows Defender network protection was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92058" level="13">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)MAPSReporting\s+(disabled|AuditMode)</field>
+        <description>Microsoft Active Protection Service (MAPS) was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92059" level="13">
+        <if_sid>92051</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)SubmitSamplesConsent\s+NeverSend</field>
+        <description>Windows Defender sample submit was disabled by Powershell command</description>
+        <mitre>
+            <id>T1562.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92060" level="13">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)CertUtil\.exe</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)CertUtil\.exe</field>
+        <description>Masqueraded CertUtil.exe with a different file name. Possible use to decode malware</description>
+        <mitre>
+            <id>T1036.003</id>
+            <id>T1140</id>
+        </mitre>
+    </rule>
+
+    <rule id="92061" level="13">
+        <if_sid>92060</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)decode\s+(.+)\s+.+\.exe</field>
+        <description>Masqueraded CertUtil.exe used to decode binary file</description>
+        <mitre>
+            <id>T1036.003</id>
+            <id>T1140</id>
+        </mitre>
+    </rule>
+
+    <rule id="92062" level="13">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)CertUtil\.exe</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)decode\s+(.+)\s+.+\.exe</field>
+        <description>CertUtil.exe used to decode binary file</description>
+        <mitre>
+            <id>T1140</id>
+        </mitre>
+    </rule>
+
+    <rule id="92063" level="13">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)MsMpEng\.exe</field>
+        <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)[c-z]:\\\\(ProgramData\\\\Microsoft|Program Files)\\\\Windows Defender</field>
+        <description>Windows Defender executed from suspicious path, possible DLL side-loading</description>
+        <mitre>
+            <id>T1574.002</id>
+        </mitre>
+    </rule>
+
+    <rule id="92115" level="3">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">qwinsta</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)\/server</field>
+        <description>Gathered user information from Remote Desktop Service sessions</description>
+        <mitre>
+            <id>T1033</id>
+        </mitre>
+    </rule>
+
+    <rule id="92105" level="6">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">PSCP</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)-scp</field>
+        <description>A file was copied to other system over SSH using pscp.exe</description>
+        <mitre>
+            <id>T1021.004</id>
+        </mitre>
+    </rule>
+
+    <rule id="92110" level="0">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.EXE</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)(Remove-Item|ri|rm|rmdir|del|erase|rd)\b</field>
+        <description>Powershell was used to delete files or directories</description>
+        <mitre>
+            <id>T107.004</id>
+        </mitre>
+    </rule>
+
+    <rule id="92120" level="8">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell.EXE</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)\\\\HarddiskVolumeShadowCopy.+\\\\(SAM|SECURITY)</field>
+        <description>Suspicious Powershell activity with VSS and Windows SAM hive</description>
+        <mitre>
+            <id>T1003.002</id>
+            <id>T1059.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92121" level="14">
+        <if_sid>92120</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)\[System.IO.File\]::Copy</field>
+        <description>Powershell used to copy SAM hive from VSS</description>
+        <mitre>
+            <id>T1003.002</id>
+            <id>T1059.001</id>
+        </mitre>
+    </rule>
+
+    <rule id="92130" level="0">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)reg.EXE</field>
+        <description>Reg.exe execution</description>
+        <mitre>
+            <id>T1112</id>
+            <id>T1012</id>
+        </mitre>
+    </rule>
+
+    <rule id="92131" level="14">
+        <if_sid>92130</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)save.+\\\\SAM</field>
+        <description>Reg.exe used to dump SAM hive</description>
+        <mitre>
+            <id>T1003.002</id>
+        </mitre>
+    </rule>
+
+    <rule id="92500" level="3">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.parentImage" type="pcre2">(?i)cmd.EXE</field>
+        <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)\s\/C\s</field>
+        <description>Suspicious Windows cmd shell execution</description>
+        <mitre>
+            <id>T1059.003</id>
+        </mitre>
+    </rule>
+
+    <rule id="92132" level="10">
+        <if_sid>92130</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)add.+\/d\s+(")?(?:[A-Za-z\d+\/]{4})*(?:[A-Za-z\d+\/]{3}=|[A-Za-z\d+\/]{2}==)?</field>
+        <description>Value added to registry key has Base64-like pattern</description>
+        <mitre>
+            <id>T1027</id>
+            <id>T1112</id>
+        </mitre>
+    </rule>
+    <rule id="92180" level="0">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)netsh.EXE</field>
+        <description>Netsh command invoked</description>
+    </rule>
+
+    <rule id="92181" level="10">
+        <if_sid>92180</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)advfirewall|firewall</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)add\srule</field>
+        <description>Netsh used to add firewall rule</description>
+        <mitre>
+            <id>T1562.004</id>
+        </mitre>
+    </rule>
+
+    <rule id="92182" level="14">
+        <if_sid>92181</if_sid>
+        <field name="win.eventdata.commandLine" type="pcre2">localport=5900</field>
+        <description>Netsh used to add firewall rule referencing port 5900, usually used for VNC</description>
+        <mitre>
+            <id>T1562.004</id>
+        </mitre>
+    </rule>
+
+    <rule id="92190" level="14">
+        <if_sid>92130</if_sid>
+        <field name="win.eventdata.originalFileName" type="pcre2">(?i)reg.EXE</field>
+        <field name="win.eventdata.commandLine" type="pcre2">(?i)IMPORT\s+[C-Z]:\\\\Users\\\\Public\\\\.+\.reg</field>
+        <description>Reg.exe modified registry using .reg file in suspicious location</description>
+        <mitre>
+            <id>T1112</id>
+        </mitre>
+    </rule>
+</group>
