@@ -42,6 +42,10 @@ public function removeAll()
       objSFO.DeleteFile(home_dir & "local_internal_options.conf.save")
    End If
 
+   If objSFO.fileExists(home_dir & "installer.log.save") AND objSFO.fileExists(home_dir & "installer.log") Then
+      objSFO.DeleteFile(home_dir & "installer.log.save")
+   End If
+
    If objSFO.fileExists(home_dir & "ossec.conf") Then
       objSFO.GetFile(home_dir + "\ossec.conf").Name = "ossec.conf.save"
    End If
