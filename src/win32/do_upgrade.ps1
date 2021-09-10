@@ -13,6 +13,29 @@ if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [Syst
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
 }
 
+# Check unistall
+function is_wazuh_installed
+{
+    Start-NativePowerShell {
+
+        $retval = $FALSE
+        # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
+        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
+        foreach ($subpaths in $path) {
+            $subpath = $subpaths | Get-ChildItem
+            foreach ($subsubpath in $subpath) {
+                if ($subsubpath -match "InstallProperties") {
+                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
+                        $retval = $TRUE
+                    }
+                }
+            }
+        }
+
+        Write-Output $retval
+    }
+}
+
 # Forces Wazuh-Agent to stop
 function stop_wazuh_agent
 {
@@ -88,10 +111,10 @@ function backup_msi {
     }
 }
 
-# Looks for the Wazuh-Agent uninstall command and executes it, if exists
-function uninstall_wazuh {
+# Looks for the Wazuh-Agent uninstall command
+function get_uninstall_string {
 
-    Start-NativePowerShell {
+	Start-NativePowerShell {
 
         $UninstallString = $null
         # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
@@ -106,24 +129,31 @@ function uninstall_wazuh {
                 }
             }
         }
+		Write-Output $UninstallString
+	}
+}
 
-        if ($UninstallString -ne $null) {
-            write-output "$(Get-Date -format u) - Performing the Wazuh-Agent uninstall using: `"$UninstallString`"." >> .\upgrade\upgrade.log
-            & "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString
+# Looks for the Wazuh-Agent uninstall command and executes it, if exists
+function uninstall_wazuh {
 
-            # registry takes some time to refresh (e.g.: NT 6.3)
-            Start-Sleep 5
-            $counter = 10
-            While((is_wazuh_installed) -And $counter -gt 0) {
-                write-output "$(Get-Date -format u) - Waiting for the uninstallation to end." >> .\upgrade\upgrade.log
-                $counter--
-                Start-Sleep 2
-            }
+    $UninstallString = get_uninstall_string
 
-        } else {
-            write-output "$(Get-Date -format u) - Wazuh-Agent uninstall command was not found." >> .\upgrade\upgrade.log
-        }
-    }
+	if ($UninstallString -ne $null) {
+		write-output "$(Get-Date -format u) - Performing the Wazuh-Agent uninstall using: `"$UninstallString`"." >> .\upgrade\upgrade.log
+		& "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString
+
+		# registry takes some time to refresh (e.g.: NT 6.3)
+		Start-Sleep 5
+		$counter = 10
+		While((is_wazuh_installed) -And $counter -gt 0) {
+			write-output "$(Get-Date -format u) - Waiting for the uninstallation to end." >> .\upgrade\upgrade.log
+			$counter--
+			Start-Sleep 2
+		}
+	} else {
+		write-output "$(Get-Date -format u) - Wazuh-Agent uninstall command was not found." >> .\upgrade\upgrade.log
+	}
+
 }
 
 # Check new version and restart the Wazuh service
@@ -140,29 +170,6 @@ function check-installation
     }
     write-output "$(Get-Date -format u) - Restarting Wazuh-Agent service." >> .\upgrade\upgrade.log
     Get-Service -Name "Wazuh" | Start-Service
-}
-
-# Check unistall
-function is_wazuh_installed
-{
-    Start-NativePowerShell {
-
-        $retval = $FALSE
-        # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
-        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
-        foreach ($subpaths in $path) {
-            $subpath = $subpaths | Get-ChildItem
-            foreach ($subsubpath in $subpath) {
-                if ($subsubpath -match "InstallProperties") {
-                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $retval = $TRUE
-                    }
-                }
-            }
-        }
-
-        Write-Output $retval
-    }
 }
 
 function restore
@@ -203,7 +210,6 @@ function restore
     write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 }
 
-
 # Stop UI and launch the msi installer
 function install
 {
@@ -212,7 +218,6 @@ function install
     write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
     cmd /c start (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
 }
-
 
 
 # Get current version
@@ -264,7 +269,7 @@ while($status -eq $null -And $counter -gt 0)
     Start-Sleep 2
     $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
 }
-write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
 
 # Forces fail
 $status = $null
@@ -302,7 +307,7 @@ Else
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
     write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
     $new_version = (Get-Content VERSION)
-    write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 
 Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
