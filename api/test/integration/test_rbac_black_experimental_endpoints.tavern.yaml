@@ -94,7 +94,7 @@ test_name: DELETE /experimental/syscheck
 
 stages:
 
-  - name: Try to delete syscheck information of all agents (Denied, agents are newer than expected).
+  - name: Request all agents (Partially allowed, user agnostic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
@@ -121,7 +121,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 5
 
-  - name: Try to delete syscheck information of a list of agents (Denied, agents are newer than expected or no permission)
+  - name: Request a list of agents (Partially allowed, user aware)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
