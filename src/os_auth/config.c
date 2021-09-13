@@ -78,7 +78,7 @@ cJSON *getAuthdConfig(void) {
     if (config.force_options.enabled) cJSON_AddStringToObject(force, "enabled", "yes"); else cJSON_AddStringToObject(force, "enabled", "no");
     if (config.force_options.key_mismatch) cJSON_AddStringToObject(force, "key_mismatch", "yes"); else cJSON_AddStringToObject(force, "key_mismatch", "no");
     if (config.force_options.disconnected_time_enabled) cJSON_AddStringToObject(disconnected_time, "enabled", "yes"); else cJSON_AddStringToObject(disconnected_time, "enabled", "no");
-    if (config.force_options.disconnected_time) cJSON_AddNumberToObject(disconnected_time, "disconnected_time", config.force_options.disconnected_time);
+    if (config.force_options.disconnected_time) cJSON_AddNumberToObject(disconnected_time, "value", config.force_options.disconnected_time);
     cJSON_AddItemToObject(force, "disconnected_time", disconnected_time);
     if (config.force_options.after_registration_time) cJSON_AddNumberToObject(force, "after_registration_time", config.force_options.after_registration_time);
     cJSON_AddItemToObject(auth, "force", force);
