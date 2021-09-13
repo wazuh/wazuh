@@ -92,7 +92,7 @@ def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
     check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check2 = get_api_health() is None
+    check2 = get_api_health()
     return check0 or check1 or check2
 
 
@@ -109,5 +109,8 @@ def get_api_health():
     if not os.path.exists(HEALTHCHECK_TOKEN_FILE):
         if get_response(login_url, get_login_header(user, password)):
             open(HEALTHCHECK_TOKEN_FILE, mode='w').close()
-            return True
-    return True
+            return 0
+        else:
+            return 1
+    else:
+        return 0
