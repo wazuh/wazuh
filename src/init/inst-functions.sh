@@ -81,8 +81,6 @@ DisableAuthd()
     echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     echo "    <port>1515</port>" >> $NEWCONFIG
     echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG
-    echo "    <force_insert>yes</force_insert>" >> $NEWCONFIG
-    echo "    <force_time>0</force_time>" >> $NEWCONFIG
     echo "    <purge>yes</purge>" >> $NEWCONFIG
     echo "    <use_password>no</use_password>" >> $NEWCONFIG
     echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG
