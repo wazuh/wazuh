@@ -66,7 +66,7 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["syscheck:clear"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1760]})
+                  post_proc_kwargs={'exclude_codes': [1760, 1015]})
 def clear(agent_list: list = None):
     """Clear the syscheck database of the specified agents.
 
