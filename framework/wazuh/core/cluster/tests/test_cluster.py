@@ -59,6 +59,8 @@ custom_incomplete_configuration = {
     }
 }
 
+def test_get_localhost_ips():
+    assert type(wazuh.core.cluster.cluster.get_localhost_ips()) is set
 
 def test_read_empty_configuration():
     """
