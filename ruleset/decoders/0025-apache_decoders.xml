@@ -34,6 +34,7 @@
 
 -->
 
+<!-- Parent decoders -->
 <decoder name="apache-errorlog">
     <program_name>^apache2|^httpd</program_name>
 </decoder>
@@ -46,6 +47,7 @@
     <prematch type="pcre2">^\[\w{3}\s\w{3}\s\d{1,2}+\s\d{2}:\d{2}:\d{2}(?:\.\d+)?\s\d{4}\]\s</prematch>
 </decoder>
 
+<!-- Siblings decoders -->
 <decoder name="apache-errorlog-fields">
     <parent>apache-errorlog</parent>
     <regex type="pcre2">\[(?:(\w+):)?:?(\w+)\]</regex>
@@ -74,4 +76,11 @@
     <parent>apache-errorlog</parent>
     <regex offset="after_parent" type="pcre2">\]\s((?:([^\[:]+):\s)?[^\[](?:.+referer:\s(.+)|.+)$)</regex>
     <order>message, id, referer</order>
+</decoder>
+
+<!-- Specific decoders -->
+<decoder name="apache-errorlog-fields">
+    <parent>apache-errorlog</parent>
+    <regex offset="after_parent" type="pcre2">\s\w+:\s([^"]+)"([^"]+)":\s([^\[]+)\[RemoteIP:\s([^\]]+)]</regex>
+    <order>apache.error_message, user, apache.error_reason, apache.remote_ip</order>
 </decoder>
