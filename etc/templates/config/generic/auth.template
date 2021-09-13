@@ -3,8 +3,6 @@
     <disabled>no</disabled>
     <port>1515</port>
     <use_source_ip>no</use_source_ip>
-    <force_insert>yes</force_insert>
-    <force_time>0</force_time>
     <purge>yes</purge>
     <use_password>no</use_password>
     <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>
