@@ -114,7 +114,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                 return OS_INVALID;
             }
 
-            config->force_options.enabled = (b ? true : false);
+            config->force_options.enabled = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
             char *end;
             config->force_options.connection_time = strtol(node[i]->content, &end, 10);
@@ -128,7 +128,6 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 merror(XML_INVELEM, node[i]->element);
-                OS_ClearNode(chld_node);
                 return  OS_INVALID;
             }
 
@@ -262,7 +261,7 @@ int w_read_force_config(XML_NODE node, authd_config_t *config) {
                 return OS_INVALID;
             }
 
-            config->force_options.enabled = (b ? true : false);
+            config->force_options.enabled = b;
         }
         // key_mismatch
         else if (!strcmp(node[i]->element, xml_key_mismatch)) {
@@ -273,33 +272,39 @@ int w_read_force_config(XML_NODE node, authd_config_t *config) {
                 return OS_INVALID;
             }
 
-            config->force_options.key_mismatch = (b ? true : false);
+            config->force_options.key_mismatch = b;
         }
         // disconnected_time
         else if (!strcmp(node[i]->element, xml_disconnected_time)) {
-            if (node[i]->attributes && node[i]->attributes[0] && !strcmp(node[i]->attributes[0], xml_enabled)) {
-                if (node[i]->values && node[i]->values[0]) {
+            if (node[i]->attributes && node[i]->attributes[0]) {
+                if (!strcmp(node[i]->attributes[0], xml_enabled)) {
+                    if (node[i]->values && node[i]->values[0]) {
 
-                    short b = eval_bool(node[i]->values[0]);
+                        short b = eval_bool(node[i]->values[0]);
 
-                    if (b < 0) {
-                        merror(XML_VALUEERR, node[i]->attributes[0], node[i]->values[0]);
-                        return OS_INVALID;
-                    } else if (b > 0) {
-                        config->force_options.disconnected_time_enabled = true;
-                        if (!strcmp(node[i]->element, xml_disconnected_time)) {
+                        if (b < 0) {
+                            merror(INV_VAL, node[i]->attributes[0]);
+                            return OS_INVALID;
+                        } else if (b > 0) {
+                            config->force_options.disconnected_time_enabled = true;
                             if (get_time_interval(node[i]->content, &config->force_options.disconnected_time)) {
                                 merror("Invalid interval for '%s' option", node[i]->element);
                                 return OS_INVALID;
                             }
+                        } else {
+                            config->force_options.disconnected_time_enabled = false;
                         }
                     } else {
-                        config->force_options.disconnected_time_enabled = false;
+                        merror(INV_VAL, node[i]->attributes[0]);
+                        return OS_INVALID;
                     }
                 } else {
-                    merror(XML_VALUENULL, node[i]->attributes[0]);
+                    merror(XML_INVATTR, node[i]->attributes[0], node[i]->element);
                     return OS_INVALID;
                 }
+            } else {
+                merror("Empty attribute for %s", node[i]->element);
+                return OS_INVALID;
             }
         // after_registration_time
         } else if (!strcmp(node[i]->element, xml_after_registration_time)) {
@@ -307,6 +312,9 @@ int w_read_force_config(XML_NODE node, authd_config_t *config) {
                 merror("Invalid interval for '%s' option", node[i]->element);
                 return OS_INVALID;
             }
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return OS_INVALID;
         }
     }
     return OS_SUCCESS;
