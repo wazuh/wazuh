@@ -76,6 +76,7 @@ class CallbackMock
         CallbackMock() = default;
         ~CallbackMock() = default;
         MOCK_METHOD(void, callbackMock, (ReturnTypeCallback type, std::string), ());
+        MOCK_METHOD(void, callbackMock, (nlohmann::json&), ());
 };
 
 struct CJsonDeleter final
@@ -133,6 +134,36 @@ TEST_F(SysInfoTest, packages)
     EXPECT_CALL(info, getPackages()).WillOnce(Return("packages"));
     const auto result {info.packages()};
     EXPECT_FALSE(result.empty());
+}
+
+TEST_F(SysInfoTest, processes_cb)
+{
+    SysInfoWrapper info;
+    CallbackMock wrapper;
+
+    auto expectedValue1
+    {
+        R"({"argvs":"180","cmd":"sleep","egroup":"root","euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":2478,"pid":"193797","ppid":2480,"priority":20,"processor":2,"resident":148,"rgroup":"root","ruser":"root","session":2478,"sgroup":"root","share":132,"size":2019,"start_time":6244007,"state":"S","stime":0,"suser":"root","tgid":193797,"tty":0,"utime":0,"vm_size":8076})"_json
+    };
+
+    auto expectedValue2
+    {
+        R"({"argvs":"181","cmd":"ls","egroup":"dword","euser":"dword","fgroup":"dword","name":"sleep","nice":0,"nlwp":1,"pgrp":2478,"pid":"193797","ppid":2480,"priority":20,"processor":2,"resident":148,"rgroup":"root","ruser":"root","session":2478,"sgroup":"root","share":132,"size":2019,"start_time":6244007,"state":"S","stime":0,"suser":"root","tgid":193797,"tty":0,"utime":0,"vm_size":8076})"_json
+    };
+
+    const auto processesCallback
+    {
+        [&wrapper](nlohmann::json & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+    EXPECT_CALL(info, getProcessesInfo(_)).WillOnce(DoAll(
+                                                        testing::InvokeArgument<0>(expectedValue1),
+                                                        testing::InvokeArgument<0>(expectedValue2)));
+    EXPECT_CALL(wrapper, callbackMock(expectedValue1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedValue2)).Times(1);
+    info.processes(processesCallback);
 }
 
 TEST_F(SysInfoTest, processes)

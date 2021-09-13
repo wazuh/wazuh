@@ -250,7 +250,9 @@ int sysinfo_processes_cb(callback_data_t callback_data)
                     callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
                 }
             };
+            // LCOV_EXCL_START
             SysInfo info;
+            // LCOV_EXCL_STOP
             info.processes(callbackWrapper);
             retVal = 0;
         }
