@@ -56,16 +56,9 @@ cJSON *getAuthdConfig(void) {
     cJSON *disconnected_time = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(auth,"port",config.port);
-    if (config.force_options.connection_time ==  -1)
-        cJSON_AddStringToObject(auth,"force_time","no");
-    else if (config.force_options.connection_time ==  0)
-        cJSON_AddStringToObject(auth,"force_time","always");
-    else
-        cJSON_AddNumberToObject(auth,"force_time",config.force_options.connection_time);
     if (config.flags.disabled) cJSON_AddStringToObject(auth,"disabled","yes"); else cJSON_AddStringToObject(auth,"disabled","no");
     if (config.flags.remote_enrollment) cJSON_AddStringToObject(auth,"remote_enrollment","yes"); else cJSON_AddStringToObject(auth,"remote_enrollment","no");
     if (config.flags.use_source_ip) cJSON_AddStringToObject(auth,"use_source_ip","yes"); else cJSON_AddStringToObject(auth,"use_source_ip","no");
-    if (config.force_options.enabled) cJSON_AddStringToObject(auth,"force_insert","yes"); else cJSON_AddStringToObject(auth,"force_insert","no");
     if (config.flags.clear_removed) cJSON_AddStringToObject(auth,"purge","yes"); else cJSON_AddStringToObject(auth,"purge","no");
     if (config.flags.use_password) cJSON_AddStringToObject(auth,"use_password","yes"); else cJSON_AddStringToObject(auth,"use_password","no");
     if (config.flags.verify_host) cJSON_AddStringToObject(auth,"ssl_verify_host","yes"); else cJSON_AddStringToObject(auth,"ssl_verify_host","no");

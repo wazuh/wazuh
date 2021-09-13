@@ -300,6 +300,16 @@ int main(int argc, char **argv)
             merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
         }
 
+        /* Set the Debug level */
+        if (debug_level == 0) {
+            /* Get debug level */
+            debug_level = getDefine_Int("authd", "debug", 0, 2);
+            while (debug_level != 0) {
+                nowDebug();
+                debug_level--;
+            }
+        }
+
         // Return -1 if not configured
         if (authd_read_config(OSSECCONF) < 0) {
             merror_exit(CONFIG_ERROR, OSSECCONF);
@@ -357,15 +367,6 @@ int main(int argc, char **argv)
     if (config.flags.disabled) {
         minfo("Daemon is disabled. Closing.");
         exit(0);
-    }
-
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("authd", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
     }
 
     mdebug1(WAZUH_HOMEDIR, home_path);
