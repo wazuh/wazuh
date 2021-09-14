@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from os import read
 import sys
 from datetime import datetime
 from time import time
@@ -60,6 +61,9 @@ custom_incomplete_configuration = {
 }
 
 def test_get_localhost_ips():
+    """
+    Test to check the correct output from the get_localhost_ips function
+    """
     assert type(wazuh.core.cluster.cluster.get_localhost_ips()) is set
 
 def test_read_empty_configuration():
@@ -99,19 +103,20 @@ def test_read_configuration(read_config):
 
 
 @pytest.mark.parametrize('read_config', [
-    {'cluster': {'disabled': 'yay'}},
-    {'cluster': {'key': '', 'nodes': ['192.158.35.13']}},
-    {'cluster': {'key': 'a' * 15, 'nodes': ['192.158.35.13']}},
-    {'cluster': {'port': 'string', 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
-    {'cluster': {'port': 90, 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
-    {'cluster': {'port': 70000, 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
-    {'cluster': {'node_type': 'random', 'key': 'a' * 32, 'nodes': ['192.158.35.13']}},
-    {'cluster': {'nodes': ['NODE_IP'], 'key': 'a' * 32}},
-    {'cluster': {'nodes': ['localhost'], 'key': 'a' * 32}},
-    {'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32}},
-    {'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32}}
+    {'cluster': {'key': ''}},
+    {'cluster': {'key': 'a' * 15}},
+    {'cluster': {'node_type': 'random', 'key': 'a' * 32}},
+    {'cluster': {'port': 'string', 'node_type': 'master'}},
+    {'cluster': {'port': 90}},
+    {'cluster': {'port': 70000}},
+    {'cluster': {'port': 1516}},
+    {'cluster': {'nodes': ['NODE_IP'], 'key': 'a' * 32, 'node_type': 'master'}},
+    {'cluster': {'nodes': ['localhost'], 'key': 'a' * 32, 'node_type': 'master'}},
+    {'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32, 'node_type': 'master'}},
+    {'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}},
+    {'cluster': {'nodes': ['127.0.1.1','127.0.1.2'], 'key': 'a' * 32, 'node_type': 'master'}}
 ])
-def test_checking_configuration(read_config):
+def test_check_cluster_config_ko(read_config):
     """
     Checks wrong configurations to check the proper exceptions are raised
     """
@@ -119,7 +124,73 @@ def test_checking_configuration(read_config):
         m.return_value = read_config.copy()
         with pytest.raises(WazuhException, match=r'.* 3004 .*'):
             configuration = wazuh.core.cluster.utils.read_config()
+
+            for key in m.return_value["cluster"]:
+                if key in configuration:
+                    configuration[key] = m.return_value["cluster"][key]          
+
             wazuh.core.cluster.cluster.check_cluster_config(configuration)
+
+
+def test_get_cluster_items_master_intervals():
+    """
+    Test to check the correct output of the get_cluster_items_master_intervals function
+    """
+    assert type(wazuh.core.cluster.cluster.get_cluster_items_master_intervals()) == dict
+
+
+def test_get_cluster_items_communication_intervals():
+    """
+    Test to check the correct output of the get_cluster_items_communication_intervals function
+    """
+    assert type(wazuh.core.cluster.cluster.get_cluster_items_communication_intervals()) == dict
+
+
+def test_get_cluster_items_worker_intervals():
+    """
+    Test to check the correct output of the get_cluster_items_worker_intervals function
+    """
+    assert type(wazuh.core.cluster.cluster.get_cluster_items_worker_intervals()) == dict
+
+
+def test_get_node():
+    """
+    Test to check the correct output of the get_node function
+    """
+    assert type(wazuh.core.cluster.cluster.get_node()) == dict
+
+
+def test_check_cluster_status():
+    """
+    Test to check the correct output of the check_cluster_status function
+    """
+    assert type(wazuh.core.cluster.cluster.check_cluster_status()) == bool
+
+
+def test_get_files_status_ok():
+    """
+    Test to check the correct output of the get_files_status function
+    """
+    assert type(wazuh.core.cluster.cluster.get_files_status(True)) == dict
+    assert type(wazuh.core.cluster.cluster.get_files_status(False)) == dict
+
+@patch(wazuh.core.cluster.cluster.walk_dir)
+def test_get_files_status_ko():
+    """
+    Test to check the wrong output of the get_files_status function
+    """
+    with pytest.raises(Exception):
+        wazuh.core.cluster.cluster.get_files_status("Falllllllllllllllllse")
+
+@patch('files', return_value=["all"])
+def test_walk_dir(mock_files, value):
+    """
+    Test to check if the expected exceptions are raised
+    """
+    with patch('previous_status', return_value={}):
+        with pytest.raises(KeyError):
+            pass
+
 
 
 agent_groups = b"default,windows-servers"

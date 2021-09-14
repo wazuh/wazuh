@@ -14,7 +14,7 @@ from shutil import rmtree
 from subprocess import check_output
 from time import time
 
-from wazuh import WazuhError, WazuhException
+from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.InputValidator import InputValidator
@@ -46,6 +46,7 @@ def check_cluster_config(config):
         - Cluster config block is not empty.
         - len(key) == 32 and only alphanumeric characters are used.
         - node_type is 'master' or 'worker'.
+        - Port is a int type.
         - 1024 < port < 65535.
         - Only 1 node is specified.
         - Reserved IPs are not used.
@@ -62,18 +63,22 @@ def check_cluster_config(config):
     """
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
-
+    
     if len(config['key']) == 0:
         raise WazuhError(3004, 'Unspecified key')
+
     elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
         raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
+    
+    elif type(config['port']) != int:
+        raise WazuhError(3004, "Port cannot be a string.")
 
     elif not 1024 < config['port'] < 65535:
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
-
+    
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
@@ -252,11 +257,12 @@ def get_files_status(get_md5=True):
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                          cluster_items['files']['excluded_extensions'], file_path, get_md5))
+            print(final_items)
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
     # Save the information collected in the current integration process.
     common.cluster_integrity_mtime.set(final_items)
-
+    print("aqui")
     return final_items
 
 
