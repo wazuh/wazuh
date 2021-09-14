@@ -290,7 +290,7 @@
   </rule>
   
   <!-- Multiple denied generic traffic -->
-  <rule id="91067" level="13" frequency="5" timeframe="300">
+  <rule id="91067" level="10" frequency="5" timeframe="300">
     <if_matched_group>packet_filter_deny</if_matched_group>
     <same_srcip />
     <description>Watchguard: firewall: Multiple denied traffic from same source $(srcip)</description>
@@ -422,7 +422,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
   </rule>
   
   <!-- Multiple denied proxy traffic -->
-  <rule id="91092" level="13" frequency="10" timeframe="240" ignore="90">
+  <rule id="91092" level="10" frequency="10" timeframe="240" ignore="90">
     <if_matched_sid>91091</if_matched_sid>
     <same_srcip />
     <description>Watchguard: proxy: Multiple denied traffic from same source $(srcip) on interface $(src)</description>
