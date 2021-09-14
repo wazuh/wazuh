@@ -37,6 +37,7 @@ static const char *XML_SERVICE_ENDPOINT = "service_endpoint";
 static const char *XML_BUCKET_TYPE = "type";
 static const char *XML_SERVICE_TYPE = "type";
 static const char *XML_BUCKET_NAME = "name";
+static const char *XML_ROLE_SESSION_DURATION = "role_session_duration";
 
 static const char *LEGACY_AWS_ACCOUNT_ALIAS = "LEGACY";
 
@@ -258,6 +259,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_bucket->iam_role_arn);
                             os_strdup(children[j]->content, cur_bucket->iam_role_arn);
                         }
+                    } else if (!strcmp(children[j]->element, XML_ROLE_SESSION_DURATION)){
+                        if (strlen(children[j]->content) != 0){
+                            free(cur_bucket->role_session_duration);
+                            os_strdup(children[j]->content, cur_bucket->role_session_duration);
+                        }
                     } else if (!strcmp(children[j]->element, XML_TRAIL_PREFIX)) {
                         if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->trail_prefix);
@@ -399,6 +405,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         free(cur_service->iam_role_arn);
                         os_strdup(children[j]->content, cur_service->iam_role_arn);
                     }
+                } else if (!strcmp(children[j]->element, XML_ROLE_SESSION_DURATION)){
+                        if (strlen(children[j]->content) != 0){
+                            free(cur_bucket->role_session_duration);
+                            os_strdup(children[j]->content, cur_bucket->role_session_duration);
+                        }
                 } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_service->only_logs_after);
