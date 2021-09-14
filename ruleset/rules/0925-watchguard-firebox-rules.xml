@@ -5,6 +5,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 
    Changelog
+   2021/09/14 - Orsiris de Jong - Revised some security alert levels, fix some typos
    2021/07/08 - Orsiris de Jong - Added security event rules
                                 - Added TSC compliance mapping
                                 - Various sanitizations
@@ -35,7 +36,7 @@
   <!-- ## BASIC RULES ## -->
   
   <!-- startup / shutdown rules -->
-  <rule id="91001" level="3">
+  <rule id="91001" level="2">
     <if_sid>91000</if_sid>
     <id type="pcre2">3000-002[7|8]</id>
     <description>Watchguard: $(reason)</description>
@@ -51,7 +52,7 @@
   <!-- ## ATTACK DETECTION RULES ## -->
   
   <!-- Port scan & Syn flood -->
-  <rule id="91011" level="9">
+  <rule id="91011" level="6">
     <if_sid>91000</if_sid>
     <id type="pcre2">3000-0(159|162)</id>
     <description>Watchguard: $(reason) detected from $(srcip) to $(dstip)</description>
@@ -59,7 +60,7 @@
   </rule>
   
   <!-- DDoS to -->
-  <rule id="91012" level="9">
+  <rule id="91012" level="6">
     <if_sid>91000</if_sid>
     <id>3000-0160</id>
     <description>Watchguard: $(reason) detected against $(dstip)</description>
@@ -67,7 +68,7 @@
   </rule>
   
   <!-- DDoS from -->
-  <rule id="91013" level="9">
+  <rule id="91013" level="6">
     <if_sid>91000</if_sid>
     <id>3000-0161</id>
     <description>Watchguard: $(reason) detected from $(dstip)</description>
@@ -75,42 +76,42 @@
   </rule>
   
   <!-- Unwanted traffic rules -->
-  <rule id="91014" level="9">
+  <rule id="91014" level="5">
     <if_sid>91000</if_sid>
     <id>3000-0168</id>
     <description>Watchguard: Blocked site: Traffic detected from $(srcip) to $(dstip)</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91015" level="10" frequency="10" timeframe="240" ignore="90">
+  <rule id="91015" level="10" frequency="20" timeframe="300" ignore="90">
     <if_matched_sid>91014</if_matched_sid>
     <same_srcip />
     <description>Watchguard: Blocked site: Recidiving traffic received from $(srcip)</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91016" level="9">
+  <rule id="91016" level="6">
     <if_sid>91000</if_sid>
     <id>3000-0169</id>
     <description>Watchguard: IP spoofing: Traffic detected from $(srcip) to $(dstip)</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91017" level="10" frequency="10" timeframe="240" ignore="90">
+  <rule id="91017" level="10" frequency="20" timeframe="300" ignore="90">
     <if_matched_sid>91016</if_matched_sid>
     <same_srcip />
     <description>Watchguard: IP spoofing: Recidiving traffic received from $(srcip)</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91018" level="9">
+  <rule id="91018" level="6">
     <if_sid>91000</if_sid>
     <id>3000-0172</id>
     <description>Watchguard: Blocked port: Traffic detected from $(srcip) to $(dstip) on port $(dstport)</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91019" level="10" frequency="10" timeframe="240" ignore="90">
+  <rule id="91019" level="10" frequency="20" timeframe="300" ignore="90">
     <if_matched_sid>91018</if_matched_sid>
     <same_srcip />
     <description>Watchguard: Blocked port: Recidiving traffic received from $(srcip)</description>
@@ -124,7 +125,7 @@
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91021" level="10">
+  <rule id="91021" level="12">
     <if_sid>91000</if_sid>
     <id>3000-012C</id>
     <description>Watchguard: ARP spoofing attack detected, ip=$(srcip), mac=$(srcmac), interface=$(src)</description>
@@ -137,7 +138,7 @@
     <group>spoofing,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91023" level="9">
+  <rule id="91023" level="12">
     <if_sid>91000</if_sid>
     <id>3000-012E</id>
     <description>Watchguard: Cannot relearn system MAC address, possible loop or MAC spoofing, ip=$(srcip), mac=$(srcmac), interface=$(src)</description>
@@ -151,7 +152,7 @@
   </rule>
   
   <!-- ## DIAGNOSTIC RULES ## -->
-  <rule id="91040" level="6">
+  <rule id="91040" level="7">
     <if_sid>91000</if_sid>
     <id type="pcre2">3000-00C[9|B]</id>
     <description>Watchguard: Load Balance Server $(dstip) is offline, protocol $(protocol)</description>
@@ -192,21 +193,21 @@
     <description>Watchguard: Idle timeout has occurred for blocked site $(srcip)</description>
   </rule>
  
-  <rule id="91052" level="12">
+  <rule id="91052" level="13">
     <if_sid>91000</if_sid>
-    <id>3000-1002</id>
+    <id>3001-1002</id>
     <description>Watchguard: The Temporary Blocked Sites list is full (capacity=1000). The oldest entry $(srcip) was removed</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91053" level="14" frequency="10" timeframe="240" ignore="90">
+  <rule id="91053" level="14" frequency="5" timeframe="300" ignore="90">
     <if_matched_sid>91052</if_matched_sid>
     <description>Watchguard: The Temporary Blocked Sites list cannot hold all the blocked sites. Probable DDoS attack ongoing</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <group>ddos</group>
   </rule>
  
-  <rule id="91054" level="12">
+  <rule id="91054" level="6">
     <if_sid>91000</if_sid>
     <id>3001-1001</id>
     <description>Watchguard: Temporarily blocking host $(srcip) - $(reason)</description>
@@ -218,12 +219,6 @@
     <description>Watchguard: Multiple blocked hosts in short timespan. Probable DDoS attack ongoing</description>
     <group>unwanted_traffic,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <group>ddos</group>
-  </rule>
-  
-  <rule id="91056" level="3">
-    <if_sid>91000</if_sid>
-    <id>3001-1002</id>
-    <description>Watchguard: Removing temporarily blocked host $(srcip) from list</description>
   </rule>
   
   <!-- ## PACKET FILTER RULES ## -->
@@ -249,7 +244,7 @@
   </rule>
  
   <!-- Normal denied traffic -->
-  <rule id="91062" level="3">
+  <rule id="91062" level="5">
     <if_sid>91000</if_sid>
     <id>3000-0148</id>
     <action type="pcre2">[Dd]eny</action>
@@ -285,7 +280,7 @@
   </rule>
   
   <!-- denied IPS Traffic -->
-  <rule id="91066" level="3">
+  <rule id="91066" level="6">
     <if_sid>91000</if_sid>
     <id>3000-0150</id>
     <action type="pcre2">[Dd]eny</action>
@@ -312,7 +307,7 @@
   <!-- Hostile traffic -->
   <rule id="91069" level="9">
     <if_sid>91000</if_sid>
-    <id>3000-0178</id>
+    <id>3000-0173</id>
     <description>Watchguard: firewall: Hostile traffic $(action) $(src) $(dst) packetlen=$(packetlen) $(protocol) iphlen=$(iphlen) ttl=$(ttl) from $(srcip):$(srcport) to $(dstip):$(dstport) - $(reason)</description>
     <group>firewall</group>
   </rule>
@@ -335,7 +330,7 @@ Default linux ping packet size + IPv6 Header + ICMP Header
 2021 Mar 21 22:01:42 FW-125852->192.168.100.254 Mar 21 23:01:42 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trusted Firebox 1300 icmp 20 128 192.168.100.99 192.168.100.254 8 0 id=1 seq=2  (Ping-00)
 2021 Mar 21 22:01:42 FW-125852->192.168.100.254 Mar 21 23:01:42 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trusted Firebox 60 icmp 20 128 192.168.100.99 192.168.100.254 8 0 id=1 seq=2  (Ping-00)
 -->
-  <rule id="91080" level="4">
+  <rule id="91080" level="8">
     <if_sid>91060</if_sid>
     <protocol>icmp</protocol>
     <field name="packetlen" type="pcre2">([0-9]{4,}|[1-9]0[5-9]|1[1-9][0-9]|[2-9][0-9]{2})</field>
@@ -361,7 +356,7 @@ Mar 21 23:43:20 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Fireb
 Mar 21 23:47:28 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Firebox External 60 udp 20 64 fe80::20c:29ff:fe59:7afa ac::d0:::1 47189 53  (Any From Firebox-00)
 -->
 
-  <rule id="91082" level="4">
+  <rule id="91082" level="8">
     <if_sid>91060</if_sid>
     <dstport>53</dstport>
     <field name="packetlen" type="pcre2">([0-9]{4,}|[1-9]3[3-9]|1[4-9][0-9]|[2-9][0-9]{2})</field>
@@ -384,7 +379,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
 Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trusted External 76 udp 20 63 fe80::20c:29ff:fe59:7afa ac::d0:::1 48216 123  (Outgoing-00)
 -->
 
-  <rule id="91084" level="4">
+  <rule id="91084" level="8">
     <if_sid>91060</if_sid>
     <dstport>123</dstport>
     <field name="packetlen" type="pcre2">([1-9][0-9]{2,}|[2-9][0-9]|1[0-9])[0-9]{1}|([9-9][7-9])</field>
@@ -417,7 +412,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
   </rule>
   
   <!-- denied proxy traffic -->
-  <rule id="91091" level="3">
+  <rule id="91091" level="5">
     <if_sid>91000</if_sid>
     <id type="pcre2">[1-2][0-9A-F]FF-[0-F]{4}</id>
     <action type="pcre2">[Dd]eny</action>
@@ -441,7 +436,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
   </rule>
 
   <!-- APT THREAT -->
-  <rule id="91030" level="12">
+  <rule id="91030" level="6">
     <if_sid>91000</if_sid>
     <id>0F01-0015</id>
     <description>Watchguard: $(reason) from $(srcip):$(srcport) to $(dstip):$(dstport) - $(data)</description>
@@ -449,7 +444,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
   </rule>
   
   <!-- ## UNHANDLED LOGS -->
-  <rule id="91100" level="3">
+  <rule id="91100" level="4">
     <if_sid>91000</if_sid>
     <description>Watchguard: Unhandled $(id) log recorded</description>
     <group>firewall</group>
@@ -464,7 +459,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
     <description>Grouping of Watchguard Firebox firewall rules</description>
   </rule>
   
-  <rule id="91201" level="9">
+  <rule id="91201" level="5">
     <if_sid>91200</if_sid>
     <id type="pcre2">1100-0005|5000-0001</id>
     <action>rejected</action>
@@ -475,7 +470,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
     <group>wg_userloginfailed,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <rule id="91202" level="10" frequency="5" timeframe="60" ignore="240">
+  <rule id="91202" level="10" frequency="5" timeframe="60" ignore="30">
     <if_matched_sid>91201</if_matched_sid>
     <same_source_ip/>
     <description>Watchguard: Multiple $(action) login for $(account_type) $(srcuser) from $(srcip) - $(reason)</description>
@@ -530,7 +525,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
   </rule>
   
   <!-- msg_id does not allow to determine the security event log level, hence we cannot decide of a reasonable alert level easily, we need to match keywords -->
-  <rule id="91301" level="9">
+  <rule id="91301" level="7">
     <if_sid>91300</if_sid>
     <match type="pcre2">$SIGD_BAD_WORDS</match>
     <description>Watchguard: Security event ERROR: $(reason)</description>
