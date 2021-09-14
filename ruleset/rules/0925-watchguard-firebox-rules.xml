@@ -22,7 +22,7 @@
 <!-- Using ID range 91000-91500 -->
 
 <!-- SETTING this to 1 fill filter FIN TCP connections that are very noisy -->
-<var name="NO_VERBOSE">1</var>
+<var name="VERBOSE">0</var>
 
 <!-- Which words are used in security event logs that should produce a warning -->
 <var name="SIGD_BAD_WORDS">[Ff]ailed|crash|shutdown</var>
@@ -225,7 +225,7 @@
   
   <!-- Normal allowed traffic -->
   <!-- For the sake of disk space, we will match Allow packets with level 0 NOOK nolaert -->
-  <rule id="91060" level="0">
+  <rule id="91060" level="$VERBOSE">
     <if_sid>91000</if_sid>
     <id>3000-0148</id>
     <action type="pcre2">[Aa]llow</action>
@@ -298,7 +298,7 @@
   </rule>
   
   <!-- Traffic connection terminated, very verbose, hence noalert -->
-  <rule id="91068" level="3" noalert="$NO_VERBOSE">
+  <rule id="91068" level="$VERBOSE">
     <if_sid>91000</if_sid>
     <id>3000-0151</id>
     <description>Watchguard: firewall: Traffic connection terminated: $(action) $(src) $(dst)  $(protocol) from $(srcip):$(srcport) to $(dstip):$(dstport) - $(reason)</description>
@@ -394,7 +394,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
     <group>hidden_tunnel,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>
 
-  <rule id="91086" level="14" frequency="3" timeframe="240" ignore="90"> <!-- NOOK -->
+  <rule id="91086" level="14" frequency="3" timeframe="240" ignore="90">
     <if_matched_group>hidden_tunnel</if_matched_group>
     <description>Watchguard: Possible multiple tunnel attacks ongoing. Please have a look</description>
     <group>pci_dss_10.6.1,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
@@ -404,7 +404,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
   <!-- ## PROXY FILTER RULES ## -->
   
   <!-- allowed proxy traffic is level 0 for disk space reasons -->
-  <rule id="91090" level="0">
+  <rule id="91090" level="$VERBOSE">
     <if_sid>91000</if_sid>
     <id type="pcre2">[1-2][0-9A-F]FF-[0-F]{4}</id>
     <action type="pcre2">[Aa]llow</action>
@@ -429,7 +429,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
     <group>proxy,access_denied,pci_dss_10.2.4,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
   
-  <!-- Possible DDoS or botnet attack NOOK -->
+  <!-- Possible DDoS or botnet attack -->
   <rule id="91093" level="14" frequency="3" timeframe="240" ignore="90">
     <if_matched_sid>91092</if_matched_sid>
     <description>Watchguard: proxy: Multiple recidiving traffic sent from same sources. Possible DDoS attack</description>
