@@ -340,6 +340,7 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     // This is the SHA1 hash of the string: IdNameKey
     char *key_hash = "15153d246b71789195b48778875af94f9378ecf9";
     config.force_options.disconnected_time_enabled = false;
+    config.force_options.key_mismatch = true;
 
     will_return(__wrap_OS_AgentAntiquity, 0);
     expect_string(__wrap__minfo, formatted_msg, "Agent '001' key already exists on the manager.");
