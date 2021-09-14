@@ -5,7 +5,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 
    Changelog
-   2021/09/14 - Orsiris de Jong - Revised some security alert levels, fix some typos
+   2021/09/14 - Orsiris de Jong - Revised some security alert levels, fix some typos, made unhandled logs rule work
    2021/07/08 - Orsiris de Jong - Added security event rules
                                 - Added TSC compliance mapping
                                 - Various sanitizations
@@ -238,7 +238,7 @@
     <if_sid>91000</if_sid>
     <id>3000-0148</id>
     <action type="pcre2">[Dd]eny</action>
-    <match type="pcre2">0.0.0.0\s0.0.0.0\s0\s0</match>
+    <match type="pcre2">0.0.0.0\s0.0.0.0\s</match>
     <description>Watchguard: firewall: Layer2 $(action) $(src) $(dst) packetlen=$(packetlen) $(protocol) iphlen=$(iphlen) ttl=$(ttl) from $(srcip):$(srcport) to $(dstip):$(dstport) - $(reason)</description>
     <group>packet_filter</group>
   </rule>
@@ -248,6 +248,7 @@
     <if_sid>91000</if_sid>
     <id>3000-0148</id>
     <action type="pcre2">[Dd]eny</action>
+	<match type="pcre2" negate="yes">0.0.0.0\s0.0.0.0\s</match>
     <description>Watchguard: firewall: $(action) $(src) $(dst) packetlen=$(packetlen) $(protocol) iphlen=$(iphlen) ttl=$(ttl) from $(srcip):$(srcport) to $(dstip):$(dstport) - $(reason)</description>
     <group>packet_filter,packet_filter_deny</group>
   </rule>
@@ -262,7 +263,7 @@
   </rule>
   
     <!--denied  App Control -->
-  <rule id="91064" level="3">
+  <rule id="91064" level="5">
     <if_sid>91000</if_sid>
     <id>3000-0149</id>
     <action type="pcre2">[Dd]eny</action>
@@ -444,7 +445,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
   </rule>
   
   <!-- ## UNHANDLED LOGS -->
-  <rule id="91100" level="4">
+  <rule id="91100" level="1">
     <if_sid>91000</if_sid>
     <description>Watchguard: Unhandled $(id) log recorded</description>
     <group>firewall</group>
@@ -506,7 +507,7 @@ Apr 15 12:10:53 FW-125852 FVE1032175935 firewall: msg_id="3000-0148" Allow Trust
     <group>wg_vpnloginsuccess,authentication_success,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <rule id="91207" level="9">
+  <rule id="91207" level="5">
     <if_sid>91200</if_sid>
     <id>SSL VPN</id>
     <action>rejected</action>
