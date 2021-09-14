@@ -13,12 +13,15 @@
 #include "os_net/os_net.h"
 #include "agentd.h"
 
+/* Keeps hash in memory until a change is identified */
+static char *g_shared_mg_file_hash = NULL;
+/* Keeps the timestamp of the last notification. */
 static time_t g_saved_time = 0;
 
 /* Return the names of the files in a directory */
 char *getsharedfiles()
 {
-    unsigned int m_size = 512;
+    unsigned int m_size = 64;
     char *ret;
     os_md5 md5sum;
 
@@ -29,12 +32,9 @@ char *getsharedfiles()
 
     /* We control these files, max size is m_size */
     ret = (char *)calloc(m_size + 1, sizeof(char));
-    if (!ret) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (NULL);
+    if (ret) {
+        snprintf(ret, m_size, "%s merged.mg\n", md5sum);
     }
-
-    snprintf(ret, m_size, "%s merged.mg\n", md5sum);
 
     return (ret);
 }
@@ -87,12 +87,16 @@ char *get_agent_ip()
 }
 #endif /* !WIN32 */
 
+/* Clear merged hash cache, to be updated in the next iteration.*/
+void clear_merged_hash_cache() {
+    os_free(g_shared_mg_file_hash);
+}
+
 /* Periodically send notification to server */
 void run_notify()
 {
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     static char tmp_labels[OS_MAXSTR - OS_SIZE_2048] = { '\0' };
-    char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
     char *agent_ip;
@@ -156,13 +160,15 @@ void run_notify()
     }
 
     /* Get shared files */
-    shared_files = getsharedfiles();
-    if (!shared_files) {
-        shared_files = strdup("\0");
-        if (!shared_files) {
+    struct stat stat_fd;
+    if (!g_shared_mg_file_hash) {
+        g_shared_mg_file_hash = getsharedfiles();
+        if (!g_shared_mg_file_hash) {
             merror(MEM_ERROR, errno, strerror(errno));
             return;
         }
+    } else if(stat(SHAREDCFG_FILE, &stat_fd) == -1 && ENOENT == errno) {
+        clear_merged_hash_cache();
     }
 
     agent_ip = get_agent_ip();
@@ -174,20 +180,20 @@ void run_notify()
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n",
-                    getuname(), md5sum, tmp_labels, shared_files, label_ip);
+                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x", label_ip);
         } else {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n",
-                    getuname(), tmp_labels, shared_files, label_ip);
+                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x", label_ip);
         }
     }
     else {
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n",
-                    getuname(), md5sum, tmp_labels, shared_files);
+                    getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x");
         } else {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n",
-                    getuname(), tmp_labels, shared_files);
+                    getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : "x");
         }
     }
     os_free(agent_ip);
@@ -196,7 +202,6 @@ void run_notify()
     mdebug2("Sending keep alive: %s", tmp_msg);
     send_msg(tmp_msg, -1);
 
-    free(shared_files);
     w_agentd_state_update(UPDATE_KEEPALIVE, (void *) &curr_time);
     return;
 }

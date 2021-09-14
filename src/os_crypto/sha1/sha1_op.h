@@ -24,6 +24,14 @@ int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output) __attribute((no
 int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output) __attribute((nonnull));
 
 /**
+ * @brief Get the SHA-1 digest from a list of strings.
+ *
+ * @param output[out] Output string.
+ * @param ...   [in] List of strings to calculate the SHA-1.
+ */
+int OS_SHA1_strings(os_sha1 output, ...);
+
+/**
  * @brief Get the hexadecimal result of a SHA-1 digest
  *
  * @param digest[in] Binary SHA-1 digest.
