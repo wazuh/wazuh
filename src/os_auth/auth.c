@@ -203,7 +203,7 @@ w_err_t w_auth_replace_agent(keyentry *key,
     }
 
     /* Check if the agent has been disconnected longer than the value specified in the configuration option*/
-    double disconnected_time = 0;
+    time_t disconnected_time = 0;
     if (force_options->disconnected_time_enabled) {
         disconnected_time = (long)OS_AgentDisconnectedTime(key->id);
         if (disconnected_time < force_options->disconnected_time) {
