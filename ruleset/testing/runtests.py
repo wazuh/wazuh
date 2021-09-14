@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -6,7 +6,10 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation
 
-import ConfigParser
+try:
+    import configparser as ConfigParser
+except ImportError:
+    import ConfigParser
 import subprocess
 import os
 import sys
@@ -33,8 +36,11 @@ def getWazuhInfo(wazuh_home):
     try:
         proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
         (stdout, stderr) = proc.communicate()
-    except:
-        print("Seems like there is no Wazuh installation.")
+        if sys.version_info[0] >= 3:
+            stdout = stdout.decode('utf-8')
+    except Exception as e:
+        print("Seems like there is no Wazuh installation:")
+        print(e)
         return None
 
     env_variables = stdout.rsplit("\n")
@@ -99,7 +105,11 @@ class OssecTester(object):
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
             shell=False)
-        std_out = p.communicate(log)[0]
+        if sys.version_info[0] >= 3:
+            std_out, _ = p.communicate(log.encode())
+            std_out = std_out.decode('utf-8')
+        else:
+            std_out, _ = p.communicate(log)
         if (p.returncode != 0 and not negate) or (p.returncode == 0 and negate):
             self._error = True
             print("")
