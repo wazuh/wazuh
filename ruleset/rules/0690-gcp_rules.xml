@@ -603,7 +603,7 @@ ID: 65000 - 65499
         <description>GCP VPC Firewall: ALLOW rule triggered</description>
         <options>no_full_log</options>
     </rule>
-  
+
     <!-- GCP VPC Flow -->
     <rule id="65050" level="2">
         <if_sid>65000</if_sid>
@@ -613,17 +613,18 @@ ID: 65000 - 65499
     </rule>
 
     <!-- GCP VPC Usage rules-->
-    <rule id="65051" level="2">
+    <rule id="65074" level="2">
         <if_sid>65000</if_sid>
-        <field name="gcp.s_request_id">^(?!^$).*</field>
-        <description>GCP VPC Usage grouped rules</description>
+        <field name="gcp.s_request_id">^(?!^$).+$</field>
+        <description>GCP VPC Usage event</description>
         <options>no_full_log</options>
     </rule>
 
     <!-- GCP VPC Storage rules-->
-    <rule id="65052" level="2">
+    <rule id="65075" level="2">
         <if_sid>65000</if_sid>
-        <field name="gcp.storage_byte_hours">^(?!^$).*</field>
-        <description>GCP VPC Storage grouped rules</description>
+        <field name="gcp.bucket">^(?!^$).+$</field>
+        <description>GCP VPC Storage event</description>
+    </rule>
 
 </group>
