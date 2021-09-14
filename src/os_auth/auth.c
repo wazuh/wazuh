@@ -216,7 +216,7 @@ w_err_t w_auth_replace_agent(keyentry *key,
     }
 
     /* Check if the agent key is the same than the existent in the manager */
-    if (key_hash) {
+    if (key_hash && force_options->key_mismatch) {
         os_sha1 manager_key_hash;
         w_get_key_hash(key, manager_key_hash);
         if (!strcmp(manager_key_hash, key_hash)) {
