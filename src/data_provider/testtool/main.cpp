@@ -42,7 +42,7 @@ class SysInfoPrinter final
         void printPackagesInfo()
         {
             m_data["packages"] = m_sysinfo.packages();
-            m_sysinfo.packages([](nlohmann::json& package)
+            m_sysinfo.packages([](nlohmann::json & package)
             {
                 std::cout << package.dump(JSON_PRETTY_SPACES) << std::endl;
             });
@@ -51,7 +51,7 @@ class SysInfoPrinter final
         void printProcessesInfo()
         {
             m_data["processes"] = m_sysinfo.processes();
-            m_sysinfo.processes([](nlohmann::json& process)
+            m_sysinfo.processes([](nlohmann::json & process)
             {
                 std::cout << process.dump(JSON_PRETTY_SPACES) << std::endl;
             });
@@ -89,10 +89,11 @@ int main(int argc, const char* argv[])
             printer.printPortsInfo();
             printer.printData();
         }
-        else
+        else if (argc == 2)
         {
-            CmdLineActions cmdLineArgs(argc, argv);
-            if(cmdLineArgs.hardwareArg())
+            CmdLineActions cmdLineArgs(argv);
+
+            if (cmdLineArgs.hardwareArg())
             {
                 printer.printHardwareInfo();
             }
@@ -116,7 +117,22 @@ int main(int argc, const char* argv[])
             {
                 printer.printPortsInfo();
             }
+            else
+            {
+                throw std::runtime_error
+                {
+                    "Action value: " + std::string(argv[1]) + " not found."
+                };
+            }
+
             printer.printData();
+        }
+        else
+        {
+            throw std::runtime_error
+            {
+                "Multiple action are not allowed"
+            };
         }
     }
     catch (const std::exception& e)

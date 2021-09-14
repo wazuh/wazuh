@@ -14,12 +14,11 @@ make TARGET=server|agent <DEBUG=1>
 ```
 
 ## How to use the tool
-In order to run the `sysinfo_test_tool` (located in `src/data_provider/build/bin` folder) utility the only step to be followed is just to execute the tool (without parameters):
 ```
-./sysinfo_test_tool
+Usage: sysinfo_test_tool [options]
 ```
 
-The information output will vary based on the Operating System the tool is being executed. 
+The information output will vary based on the Operating System the tool is being executed.
 A brief example could be similar to the following one:
 
 ```
@@ -30,3 +29,14 @@ A brief example could be similar to the following one:
 {"architecture":"x86_64","host_name":"martin-PC","os_codename":"focal","os_major":"20","os_minor":"04","os_name":"Ubuntu","os_patch":"2","os_platform":"ubuntu","os_version":"20.04.2 LTS (Focal Fossa)","release":"5.4.0-65-generic","sysname":"Linux","version":"#73-Ubuntu SMP Mon Jan 18 17:25:17 UTC 2021"},
 {"architecture":"x86_64","host_name":"martin-PC","os_codename":"focal","os_major":"20","os_minor":"04","os_name":"Ubuntu","os_patch":"2","os_platform":"ubuntu","os_version":"20.04.2 LTS (Focal Fossa)","release":"5.4.0-65-generic","sysname":"Linux","version":"#73-Ubuntu SMP Mon Jan 18 17:25:17 UTC 2021"}]
 ```
+
+### Optional arguments:
+
+|Argument|Description|
+|---|---|
+| `--hardware`  | Prints the current Operating System hardware information only. Example: `sysinfo_test_tool --hardware`   |
+| `--networks`  | Prints the current Operating System networks information only. Example: `sysinfo_test_tool --networks`   |
+| `--packages`  | Prints the current Operating System packages information only. Example: `sysinfo_test_tool --packages`   |
+| `--processes` | Prints the current Operating System processes information only. Example: `sysinfo_test_tool --processes` |
+| `--ports`     | Prints the current Operating System ports information only. Example: `sysinfo_test_tool --ports`         |
+| `--os`        | Prints the current Operating System information only. Example: `sysinfo_test_tool --os`                  |

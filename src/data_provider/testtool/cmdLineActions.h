@@ -14,87 +14,51 @@
 
 #include <string.h>
 
+constexpr auto HARDWARE_ACTION  { "--hardware"};
+constexpr auto NETWORKS_ACTION  { "--networks"};
+constexpr auto PACKAGES_ACTION  { "--packages"};
+constexpr auto PROCESSES_ACTION { "--processes"};
+constexpr auto PORTS_ACTION     { "--ports"};
+constexpr auto OS_ACTION        { "--os"};
+
 class CmdLineActions final
 {
     public:
-        CmdLineActions(const int argc, const char* argv[])
-            : m_hardware  { false }
-            , m_networks  { false }
-            , m_packages  { false }
-            , m_processes { false }
-            , m_ports     { false }
-            , m_os        { false }
-        {
-            const auto cmdArg { argv[1] };
-            if (argc == 2)
-            {
-                if (strncmp(cmdArg, "--hardware", 10) == 0)
-                {
-                    m_hardware = true;
-                }
-                else if (strncmp(cmdArg, "--networks", 10) == 0)
-                {
-                    m_networks = true;
-                }
-                else if (strncmp(cmdArg, "--packages", 10) == 0)
-                {
-                    m_packages = true;
-                }
-                else if (strncmp(cmdArg, "--processes", 11) == 0)
-                {
-                    m_processes = true;
-                }
-                else if (strncmp(cmdArg, "--ports", 7) == 0)
-                {
-                    m_ports = true;
-                }
-                else if (strncmp(cmdArg, "--os", 4) == 0)
-                {
-                    m_os = true;
-                }
-                else
-                {
-                    throw std::runtime_error
-                    {
-                        "Action value: " + std::string(cmdArg) + " not found."
-                    };
-                }
-            }
-            else
-            {
-                throw std::runtime_error
-                {
-                    "Multiple action are not allowed"
-                };
-            }
-        }
+        CmdLineActions(const char* argv[])
+            : m_hardware  { HARDWARE_ACTION  == std::string(argv[1]) }
+            , m_networks  { NETWORKS_ACTION  == std::string(argv[1]) }
+            , m_packages  { PACKAGES_ACTION  == std::string(argv[1]) }
+            , m_processes { PROCESSES_ACTION == std::string(argv[1]) }
+            , m_ports     { PORTS_ACTION     == std::string(argv[1]) }
+            , m_os        { OS_ACTION        == std::string(argv[1]) }
+        {}
 
-        bool hardwareArg()
+        bool hardwareArg() const
         {
             return m_hardware;
         };
 
-        bool networksArg()
+        bool networksArg() const
         {
             return m_networks;
         };
 
-        bool packagesArg()
+        bool packagesArg() const
         {
             return m_packages;
         };
 
-        bool processesArg()
+        bool processesArg() const
         {
             return m_processes;
         };
 
-        bool portsArg()
+        bool portsArg() const
         {
             return m_ports;
         };
 
-        bool osArg()
+        bool osArg() const
         {
             return m_os;
         };
@@ -122,12 +86,12 @@ class CmdLineActions final
         }
 
     private:
-        bool m_hardware;
-        bool m_networks;
-        bool m_packages;
-        bool m_processes;
-        bool m_ports;
-        bool m_os;
+        const bool m_hardware;
+        const bool m_networks;
+        const bool m_packages;
+        const bool m_processes;
+        const bool m_ports;
+        const bool m_os;
 };
 
 #endif // _CMD_LINE_ACTIONS_H_
