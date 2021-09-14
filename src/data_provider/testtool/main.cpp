@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include "cmdLineActions.h"
 #include "sysInfo.hpp"
 #include "sysInfo.h"
 
@@ -18,37 +19,125 @@ constexpr auto JSON_PRETTY_SPACES
     2
 };
 
-int main()
+class SysInfoPrinter final
+{
+    public:
+        SysInfoPrinter() = default;
+
+        void printHardwareInfo()
+        {
+            m_data["hw"] = m_sysinfo.hardware();
+        }
+
+        void printNetworksInfo()
+        {
+            m_data["networks"] = m_sysinfo.networks();
+        }
+
+        void printOSInfo()
+        {
+            m_data["os"] = m_sysinfo.os();
+        }
+
+        void printPackagesInfo()
+        {
+            m_data["packages"] = m_sysinfo.packages();
+            m_sysinfo.packages([](nlohmann::json & package)
+            {
+                std::cout << package.dump(JSON_PRETTY_SPACES) << std::endl;
+            });
+        }
+
+        void printProcessesInfo()
+        {
+            m_data["processes"] = m_sysinfo.processes();
+            m_sysinfo.processes([](nlohmann::json & process)
+            {
+                std::cout << process.dump(JSON_PRETTY_SPACES) << std::endl;
+            });
+        }
+
+        void printPortsInfo()
+        {
+            m_data["ports"] = m_sysinfo.ports();
+        }
+
+        void printData()
+        {
+            std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
+        }
+
+    private:
+        SysInfo m_sysinfo;
+        nlohmann::json m_data;
+};
+
+int main(int argc, const char* argv[])
 {
     try
     {
-        SysInfo info;
-        const auto& hw        {info.hardware()};
-        const auto& packages  {info.packages()};
-        const auto& processes {info.processes()};
-        const auto& networks  {info.networks()};
-        const auto& os        {info.os()};
-        const auto& ports     {info.ports()};
+        SysInfoPrinter printer;
 
-        std::cout << hw.dump(JSON_PRETTY_SPACES) << std::endl;
-        std::cout << packages.dump(JSON_PRETTY_SPACES) << std::endl;
-        std::cout << processes.dump(JSON_PRETTY_SPACES) << std::endl;
-        std::cout << networks.dump(JSON_PRETTY_SPACES) << std::endl;
-        std::cout << os.dump(JSON_PRETTY_SPACES) << std::endl;
-        std::cout << ports.dump(JSON_PRETTY_SPACES) << std::endl;
-
-        info.processes([](nlohmann::json & process)
+        if (argc == 1)
         {
-            std::cout << process.dump(JSON_PRETTY_SPACES) << std::endl;
-        });
-
-        info.packages([](nlohmann::json & package)
+            // Calling testtool without parameters - default all
+            printer.printHardwareInfo();
+            printer.printNetworksInfo();
+            printer.printOSInfo();
+            printer.printPackagesInfo();
+            printer.printProcessesInfo();
+            printer.printPortsInfo();
+            printer.printData();
+        }
+        else if (argc == 2)
         {
-            std::cout << package.dump(JSON_PRETTY_SPACES) << std::endl;
-        });
+            CmdLineActions cmdLineArgs(argv);
+
+            if (cmdLineArgs.hardwareArg())
+            {
+                printer.printHardwareInfo();
+            }
+            else if (cmdLineArgs.networksArg())
+            {
+                printer.printNetworksInfo();
+            }
+            else if (cmdLineArgs.osArg())
+            {
+                printer.printOSInfo();
+            }
+            else if (cmdLineArgs.packagesArg())
+            {
+                printer.printPackagesInfo();
+            }
+            else if (cmdLineArgs.processesArg())
+            {
+                printer.printProcessesInfo();
+            }
+            else if (cmdLineArgs.portsArg())
+            {
+                printer.printPortsInfo();
+            }
+            else
+            {
+                throw std::runtime_error
+                {
+                    "Action value: " + std::string(argv[1]) + " not found."
+                };
+            }
+
+            printer.printData();
+        }
+        else
+        {
+            throw std::runtime_error
+            {
+                "Multiple action are not allowed"
+            };
+        }
     }
     catch (const std::exception& e)
     {
         std::cerr << "Error getting system information: " << e.what() << std::endl;
+        CmdLineActions::showHelp();
     }
 }
