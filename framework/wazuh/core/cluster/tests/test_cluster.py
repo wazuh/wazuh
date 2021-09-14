@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from framework.wazuh.core.cluster.cluster import get_files_status
 from os import read
 import sys
 from datetime import datetime
@@ -136,60 +137,69 @@ def test_get_cluster_items_master_intervals():
     """
     Test to check the correct output of the get_cluster_items_master_intervals function
     """
-    assert type(wazuh.core.cluster.cluster.get_cluster_items_master_intervals()) == dict
+    assert isinstance(wazuh.core.cluster.cluster.get_cluster_items_master_intervals(),dict)
 
 
 def test_get_cluster_items_communication_intervals():
     """
     Test to check the correct output of the get_cluster_items_communication_intervals function
     """
-    assert type(wazuh.core.cluster.cluster.get_cluster_items_communication_intervals()) == dict
+    assert isinstance(wazuh.core.cluster.cluster.get_cluster_items_communication_intervals(),dict)
 
 
 def test_get_cluster_items_worker_intervals():
     """
     Test to check the correct output of the get_cluster_items_worker_intervals function
     """
-    assert type(wazuh.core.cluster.cluster.get_cluster_items_worker_intervals()) == dict
+    assert isinstance(wazuh.core.cluster.cluster.get_cluster_items_worker_intervals(),dict)
 
 
 def test_get_node():
     """
     Test to check the correct output of the get_node function
     """
-    assert type(wazuh.core.cluster.cluster.get_node()) == dict
+    test_dict = {"node_name": "master", "name": "master", "node_type": "master"}
+    
+    with patch(wazuh.core.cluster.read_config, side_effect=test_dict):
+        get_node = wazuh.core.cluster.cluster.get_node()
+        assert isinstance(get_node, dict)
+        assert get_node["node"] == test_dict["node_name"]
+        assert get_node["cluster"] == test_dict["name"]
+        assert get_node["type"] == test_dict["node_type"]
+    
+    
+# def test_check_cluster_status():
+#     """
+#     Test to check the correct output of the check_cluster_status function
+#     """
+#     assert type(wazuh.core.cluster.cluster.check_cluster_status()) == bool
+
+ 
+# def test_get_files_status():
+#     """
+#     Test to check the different outputs of the get_files_status function
+#     """
+
+#     test_dict = {"path": "metadata"}
+#     test_error = WazuhException
+
+#     with patch(wazuh.core.cluster.cluster.walk_dir, side_effect=test_dict):
+#         assert isinstance(get_files_status,dict)
+#         assert get_files_status()["path"] == test_dict["path"]
+
+#     with patch(wazuh.core.cluster.cluster.walk_dir, side_effect=test_error):
+#         with pytest.raises(Exception):
+#             get_files_status()
 
 
-def test_check_cluster_status():
-    """
-    Test to check the correct output of the check_cluster_status function
-    """
-    assert type(wazuh.core.cluster.cluster.check_cluster_status()) == bool
-
-
-def test_get_files_status_ok():
-    """
-    Test to check the correct output of the get_files_status function
-    """
-    assert type(wazuh.core.cluster.cluster.get_files_status(True)) == dict
-    assert type(wazuh.core.cluster.cluster.get_files_status(False)) == dict
-
-@patch(wazuh.core.cluster.cluster.walk_dir)
-def test_get_files_status_ko():
-    """
-    Test to check the wrong output of the get_files_status function
-    """
-    with pytest.raises(Exception):
-        wazuh.core.cluster.cluster.get_files_status("Falllllllllllllllllse")
-
-@patch('files', return_value=["all"])
-def test_walk_dir(mock_files, value):
-    """
-    Test to check if the expected exceptions are raised
-    """
-    with patch('previous_status', return_value={}):
-        with pytest.raises(KeyError):
-            pass
+# @patch('files', return_value=["all"])
+# def test_walk_dir(mock_files, value):
+#     """
+#     Test to check if the expected exceptions are raised
+#     """
+#     with patch('previous_status', return_value={}):
+#         with pytest.raises(KeyError):
+#             pass
 
 
 

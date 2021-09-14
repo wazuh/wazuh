@@ -73,8 +73,8 @@ def check_cluster_config(config):
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
     
-    elif type(config['port']) != int:
-        raise WazuhError(3004, "Port cannot be a string.")
+    elif not isinstance(config['port'], int):
+        raise WazuhError(3004, "Port has to be an integer.")
 
     elif not 1024 < config['port'] < 65535:
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
@@ -262,7 +262,6 @@ def get_files_status(get_md5=True):
             logger.warning(f"Error getting file status: {e}.")
     # Save the information collected in the current integration process.
     common.cluster_integrity_mtime.set(final_items)
-    print("aqui")
     return final_items
 
 
