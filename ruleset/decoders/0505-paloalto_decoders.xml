@@ -5,97 +5,45 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<decoder name="paloalto_system">
-  <prematch type="pcre2">^\d?,?\d+\/\d+\/\d+\s\d+:\d+:\d+,\d+,SYSTEM,\w*</prematch>
+
+<!-- Generic paloalto decoder -->
+<decoder name="paloalto">
+  <prematch type="pcre2">^[^,]*,\d+\/\d+\/\d+\s\d+:\d+:\d+,\d+,\w+,</prematch>
 </decoder>
 
-<decoder name="paloalto_system_fields">
-  <parent>paloalto_system</parent>
-  <regex>(\d*/\d*/\d* \d*:\d*:\d*),(\d*),(\w*),(\w*),\.*,(\.*),(\.*),(\S*),(\.*),</regex>
-  <order>receive_time,serial_number,type,content_type,time_generated,virtual_system,eventid,object</order>
+<!-- paloalto system decoders -->
+<!-- Supported versions
+  - 8.X-9.X: FUTURE_USE, Receive Time, Serial Number, Type, Content/Threat Type, FUTURE_USE, Generated Time, Virtual System, Event ID, Object, FUTURE_USE, FUTURE_USE, Module, Severity, Description, Sequence Number, Action Flags, Device Group Hierarchy Level 1, Device Group Hierarchy Level 2, Device Group Hierarchy Level 3, Device Group Hierarchy Level 4, Virtual System Name, Device Name
+
+  - 10.X: FUTURE_USE, Receive Time, Serial Number, Type, Content/Threat Type, FUTURE_USE, Generated Time, Virtual System, Event ID, Object, FUTURE_USE, FUTURE_USE, Module, Severity, Description, Sequence Number, Action Flags, Device Group Hierarchy Level 1, Device Group Hierarchy Level 2, Device Group Hierarchy Level 3, Device Group Hierarchy Level 4, Virtual System Name, Device Name, FUTURE_USE, FUTURE_USE, High Resolution Timestamp
+-->
+<decoder name="paloalto-system-fields">
+  <parent>paloalto</parent>
+  <prematch type="pcre2">^[^,]*,\d+\/\d+\/\d+\s\d+:\d+:\d+,\d+,SYSTEM,</prematch>
+  <regex type="pcre2">^[^,]*,(\d+\/\d+\/\d+\s\d+:\d+:\d+),(\d+),(SYSTEM),</regex>
+  <order>receive_time, serial_number, type</order>
 </decoder>
 
-<decoder name="paloalto_system_fields">
-  <parent>paloalto_system</parent>
-  <regex offset="after_regex">\.*,\.*,(\w*),(\w*),"(\.*)",(\d*),(\S*),(\d*,\d*,\d*,\d*),(\.*),(\S*)</regex>
-  <order>module,severity,description,sequence_number,actionflags,dg_hier_level_1_to_dg_hier_level_4,virtual_system_name,device_name</order>
+<decoder name="paloalto-system-fields">
+  <parent>paloalto</parent>
+  <regex type="pcre2" offset="after_regex">^(\w+),[^,]*,(\d+\/\d+\/\d+\s\d+:\d+:\d+),([^,]*),([^,]*),([^,]*),</regex>
+  <order>content_type, generated_time, virtual_system, event_id, object</order>
 </decoder>
 
-<decoder name="paloalto_system_fields">
-  <parent>paloalto_system</parent>
-  <regex>^(\d),</regex>
-  <order>domain</order>
+<decoder name="paloalto-system-fields">
+  <parent>paloalto</parent>
+  <regex type="pcre2" offset="after_regex">^[^,]*,[^,]*,(\w*),(\w*),(?:"([^"]*)")?,(\d*),([^,]*),</regex>
+  <order>module, severity, description, sequence_number, action_flags</order>
 </decoder>
 
-
-<decoder name="paloalto_traffic">
-  <prematch>\d*/\d*/\d* \d*:\d*:\d*,\d*,TRAFFIC,\w*</prematch>
+<decoder name="paloalto-system-fields">
+  <parent>paloalto</parent>
+  <regex type="pcre2" offset="after_regex">^([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)</regex>
+  <order>dg_hier_level_1, dg_hier_level_2, dg_hier_level_3, dg_hier_level_4, virtual_system_name, device_name</order>
 </decoder>
 
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex>(\d*/\d*/\d* \d*:\d*:\d*),(\d*),(\w*),(\w*),\.*,(\.*),(\S*),(\S*),</regex>
-  <order>receive_time,serial_number,type,content_type,generated_time,src_ip,dst_ip</order>
+<decoder name="paloalto-system-fields">
+  <parent>paloalto</parent>
+  <regex type="pcre2" offset="after_regex">^,[^,]*,[^,]*,([^,]*)</regex>
+  <order>hish_resolution_timestamp</order>
 </decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),</regex>
-  <order>nat_src_ip,nat_dst_ip,rule_name,src_user,dst_user,application,virtual_system</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),\.*,(\.*),</regex>
-  <order>src_zone,dst_zone,inbound_interface,outbound_interface,log_action,session_id</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),</regex>
-  <order>src_port,dst_port,nat_src_port,nat_dst_port,flags,protocol,action,bytes,bytes_sent</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),\.*,(\.*),\.*,(\.*),(\.*),</regex>
-  <order>bytes_received,packets,start_time,category,sequence_number,action_flags</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),\.*,(\.*),(\.*),(\.*),</regex>
-  <order>src_location,dst_location,packets_sent,packets_received,session_end_reason</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),</regex>
-  <order>dg_hier_level_1,dg_hier_level_2,dg_hier_level_3,dg_hier_level_4</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),</regex>
-  <order>virtual_system_name,device_name,action_src,src_vm_uuid</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),(\.*),(\.*),</regex>
-  <order>dst_vm_uuid,tunnel_id,monitor_tag,parent_session_id,parent_start_time,tunnel_type</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*),(\.*),(\.*),</regex>
-  <order>sctp_association_id,sctp_chunks,sctp_chunks_sent,sctp_chunks_received</order>
-</decoder>
-
-<decoder name="paloalto_traffic_fields">
-  <parent>paloalto_traffic</parent>
-  <regex offset="after_regex">(\.*),(\.*)</regex>
-  <order>uuid_for_rule,http/2_connection</order>
-</decoder>
-
-
