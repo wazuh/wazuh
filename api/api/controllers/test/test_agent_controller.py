@@ -9,6 +9,7 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
+        from api.controllers.test.utils import CustomMagicMockReturn
         from api.controllers.agent_controller import (add_agent,
                                                       delete_agents,
                                                       delete_groups,
@@ -49,14 +50,6 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
-
-
-class CustomMagicMockReturn(dict):
-    affected_items = [{'id': '001'}]
-
-    def __init__(self):
-        super().__init__(self)
-        super().__setitem__('data', 'data_value')
 
 
 @pytest.mark.asyncio

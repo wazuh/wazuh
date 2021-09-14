@@ -9,6 +9,7 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.active_response_controller import run_command
+        from api.controllers.test.utils import CustomMagicMockReturn
         from wazuh import active_response
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -19,7 +20,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.active_response_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.active_response_controller.remove_nones_to_dict')
 @patch('api.controllers.active_response_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.active_response_controller.raise_if_exc', return_value={})
+@patch('api.controllers.active_response_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_active_response_controller(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Test all active_response_controller endpoints"""
     async def test_run_command():

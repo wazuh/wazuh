@@ -10,6 +10,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.rbac.decorators
         from api.controllers.sca_controller import (get_sca_agent,
                                                     get_sca_checks)
+        from api.controllers.test.utils import CustomMagicMockReturn
         from wazuh import sca
         from wazuh.core.common import database_limit
         from wazuh.tests.util import RBAC_bypasser
@@ -21,7 +22,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.sca_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.sca_controller.remove_nones_to_dict')
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.sca_controller.raise_if_exc', return_value={})
+@patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_sca_controller(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Test all sca_controller endpoints"""
     async def test_get_sca_agent():
