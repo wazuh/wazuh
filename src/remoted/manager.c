@@ -116,7 +116,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     int is_shutdown = 0;
     int agent_id = 0;
     int result = 0;
-    time_t disconnected_time = 0;
 
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
@@ -175,7 +174,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         result = wdb_update_agent_keepalive(agent_id,
                                             AGENT_CS_ACTIVE,
                                             logr.worker_node?"syncreq":"synced",
-                                            disconnected_time,
+                                            0,
                                             wdb_sock);
 
         if (OS_SUCCESS != result) {
@@ -205,7 +204,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             result = wdb_update_agent_keepalive(agent_id,
                                                 AGENT_CS_PENDING,
                                                 logr.worker_node?"syncreq":"synced",
-                                                disconnected_time,
+                                                0,
                                                 wdb_sock);
 
             if (OS_SUCCESS != result) {
@@ -219,7 +218,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             result = wdb_update_agent_connection_status(agent_id,
                                                         AGENT_CS_DISCONNECTED,
                                                         logr.worker_node?"syncreq":"synced",
-                                                        time(&disconnected_time),
+                                                        time(NULL),
                                                         wdb_sock);
 
             if (OS_SUCCESS != result) {

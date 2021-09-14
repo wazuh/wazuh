@@ -398,7 +398,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb,
                                               int id,
                                               const char *connection_status,
                                               const char *sync_status,
-                                              int disconnected_time) {
+                                              time_t disconnected_time) {
     sqlite3_stmt *stmt = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -1115,14 +1115,13 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
     cJSON* agent = NULL;
     cJSON_ArrayForEach(agent, result) {
         cJSON* id = cJSON_GetObjectItem(agent, "id");
-        cJSON* disconnected_time = cJSON_GetObjectItem(agent, "disconnected_time");
-        if (cJSON_IsNumber(id) && cJSON_IsNumber(disconnected_time)) {
+        if (cJSON_IsNumber(id)) {
             //Set connection status as disconnected
             if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb,
                                                                         id->valueint,
                                                                         "disconnected",
                                                                         sync_status,
-                                                                        disconnected_time->valueint)) {
+                                                                        time(NULL))) {
                 merror("Cannot set connection_status for agent %d", id->valueint);
                 *status = WDBC_ERROR;
             }
