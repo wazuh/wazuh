@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
@@ -11,52 +11,85 @@ with patch('wazuh.common.wazuh_uid'):
         from api.controllers.sca_controller import (get_sca_agent,
                                                     get_sca_checks)
         from wazuh import sca
+        from wazuh.core.common import database_limit
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'rbac_policies_value'}}])
-async def test_sca_controller(mock_request):
+@patch('api.controllers.sca_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.sca_controller.remove_nones_to_dict')
+@patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.sca_controller.raise_if_exc', return_value={})
+async def test_sca_controller(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Test all sca_controller endpoints"""
     async def test_get_sca_agent():
-        calls = [call(f=sca.get_sca_list,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
+        filters = {'name': None,
+                   'description': None,
+                   'references': None
+                   }
+        f_kwargs = {'agent_list': [None],
+                    'offset': 0,
+                    'limit': database_limit,
+                    'sort': None,
+                    'search': None,
+                    'q': None,
+                    'filters': filters
+                    }
         result = await get_sca_agent(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        mock_dapi.assert_called_with(f=sca.get_sca_list,
+                                     f_kwargs=mock_remove.return_value,
+                                     request_type='distributed_master',
+                                     is_async=False,
+                                     wait_for_complete=False,
+                                     logger=ANY,
+                                     rbac_permissions=mock_request['token_info']['rbac_policies']
+                                     )
+        mock_exc.assert_called_with(mock_dfunc.return_value)
+        mock_remove.assert_called_with(f_kwargs)
         assert isinstance(result, web_response.Response)
 
     async def test_get_sca_checks():
-        calls = [call(f=sca.get_sca_checks,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
+        filters = {'title': None,
+                   'description': None,
+                   'rationale': None,
+                   'remediation': None,
+                   'command': None,
+                   'status': None,
+                   'reason': None,
+                   'file': None,
+                   'process': None,
+                   'directory': None,
+                   'registry': None,
+                   'references': None,
+                   'result': None,
+                   'condition': None
+                   }
+        f_kwargs = {'policy_id': None,
+                    'agent_list': [None],
+                    'offset': 0,
+                    'limit': database_limit,
+                    'sort': None,
+                    'search': None,
+                    'q': None,
+                    'filters': filters
+                    }
         result = await get_sca_checks(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        mock_dapi.assert_called_with(f=sca.get_sca_checks,
+                                     f_kwargs=mock_remove.return_value,
+                                     request_type='distributed_master',
+                                     is_async=False,
+                                     wait_for_complete=False,
+                                     logger=ANY,
+                                     rbac_permissions=mock_request['token_info']['rbac_policies'])
+        mock_exc.assert_called_with(mock_dfunc.return_value)
+        mock_remove.assert_called_with(f_kwargs)
         assert isinstance(result, web_response.Response)
 
     # Function list containing all sub tests declared above.
-    functions = [test_get_sca_agent(),
-                 test_get_sca_checks()
+    functions = [test_get_sca_agent,
+                 test_get_sca_checks
                  ]
     for test_funct in functions:
-        with patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
-            with patch('api.controllers.sca_controller.DistributedAPI.distribute_function',
-                       return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.sca_controller.raise_if_exc', return_value={}) as mock_exc:
-                    await test_funct
+        await test_funct()

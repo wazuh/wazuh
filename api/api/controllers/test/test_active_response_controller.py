@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
@@ -16,35 +16,32 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'rbac_policies_value'}}])
-async def test_active_response_controller(mock_request):
+@patch('api.controllers.active_response_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.active_response_controller.remove_nones_to_dict')
+@patch('api.controllers.active_response_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.active_response_controller.raise_if_exc', return_value={})
+async def test_active_response_controller(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Test all active_response_controller endpoints"""
     async def test_run_command():
-        calls = [call(f=active_response.run_command,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      broadcasting=True,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await run_command(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
+        with patch('api.controllers.active_response_controller.Body'):
+            with patch('api.controllers.active_response_controller.ActiveResponseModel.get_kwargs',
+                       side_effect=AsyncMock()) as mock_getkwargs:
+                result = await run_command(request=mock_request)
+                mock_dapi.assert_called_with(f=active_response.run_command,
+                                             f_kwargs=mock_remove.return_value,
+                                             request_type='distributed_master',
+                                             is_async=False,
+                                             wait_for_complete=False,
+                                             logger=ANY,
+                                             broadcasting=True,
+                                             rbac_permissions=mock_request['token_info']['rbac_policies']
+                                             )
+                mock_exc.assert_called_with(mock_dfunc.return_value)
+                mock_remove.assert_called_with(mock_getkwargs.side_effect.return_value)
+                assert isinstance(result, web_response.Response)
 
     # Function list containing all sub tests declared above.
-    functions = [test_run_command()
+    functions = [test_run_command
                  ]
     for test_funct in functions:
-        with patch('api.controllers.active_response_controller.DistributedAPI.__init__',
-                   return_value=None) as mock_dapi:
-            with patch('api.controllers.active_response_controller.DistributedAPI.distribute_function',
-                       return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.active_response_controller.raise_if_exc', return_value={}) as mock_exc:
-                    with patch('api.controllers.active_response_controller.Body'):
-                        with patch('api.controllers.active_response_controller.ActiveResponseModel.get_kwargs',
-                                   side_effect=AsyncMock, return_value={}):
-                            await test_funct
+        await test_funct()
