@@ -399,7 +399,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                     wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
                     if(wfd){
                         char buffer[4096];
-                        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+                        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
                             mdebug2("integratord: %s", buffer);
                         }
                         int wp_closefd = wpclose(wfd);

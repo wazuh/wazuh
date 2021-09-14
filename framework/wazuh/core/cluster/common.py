@@ -564,6 +564,9 @@ class Handler(asyncio.Protocol):
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=WazuhJSONEncoder).encode()
             res = await self.send_request(b'dapi_err', exc_info)
+        finally:
+            # Remove the string after using it
+            self.in_str.pop(string_id, None)
 
     async def forward_sendsync_response(self, data: bytes):
         """Forward a sendsync response from master node.
@@ -584,7 +587,10 @@ class Handler(asyncio.Protocol):
             self.logger.error(f"Error sending send sync response to local client: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=WazuhJSONEncoder).encode()
-            await self.send_request(b'sendsyn_err', exc_info)
+            await self.send_request(b'sendsync_err', exc_info)
+        finally:
+            # Remove the string after using it
+            self.in_str.pop(string_id, None)
 
     def data_received(self, message: bytes) -> None:
         """Handle received data from other peer.

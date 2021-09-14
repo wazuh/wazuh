@@ -258,16 +258,11 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-        if(data->queue >= 0){
-            close(data->queue);
-        }
-
         if ((data->queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
             if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                close(data->queue);
             }
         }
     }

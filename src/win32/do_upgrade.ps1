@@ -1,13 +1,3 @@
-function backup
-{
-    New-Item -ItemType directory -Path .\backup -ErrorAction SilentlyContinue
-    New-Item -ItemType directory -Path $env:temp\backup -ErrorAction SilentlyContinue
-    Copy-Item .\* $env:temp\backup -force
-    Remove-Item $env:temp\backup\backup -recurse -ErrorAction SilentlyContinue
-    Copy-Item $env:temp\backup\* .\backup -force
-    Remove-Item $env:temp\backup -recurse -ErrorAction SilentlyContinue
-}
-
 # Stop UI and launch the msi installer
 function install
 {
@@ -15,12 +5,6 @@ function install
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
     cmd /c start (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
-}
-
-function restore
-{
-    Copy-Item .\backup\* .\ -force
-    Remove-Item .\backup -recurse -ErrorAction SilentlyContinue
 }
 
 # Check new version and restart the Wazuh service
@@ -49,10 +33,6 @@ If (!(Test-Path ".\wazuh-agent.exe"))
 {
     $current_process = "ossec-agent"
 }
-
-# Generating backup
-write-output "$(Get-Date -format u) - Generating backup." >> .\upgrade\upgrade.log
-backup
 
 # Ensure implicated processes are stopped before launch the upgrade
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
@@ -101,27 +81,14 @@ write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgr
 If ($status -eq $null)
 {
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    Get-Service -Name "Wazuh" | Stop-Service
-    restore
-    write-output "$(Get-Date -format u) - Upgrade failed: Restoring." >> .\upgrade\upgrade.log
-    If ($current_process -eq "wazuh-agent")
-    {
-        .\wazuh-agent.exe install-service >> .\upgrade\upgrade.log
-    }
-    Else
-    {
-        sc.exe delete WazuhSvc -ErrorAction SilentlyContinue -Force
-        Remove-Item .\wazuh-agent.exe -ErrorAction SilentlyContinue
-        Remove-Item .\wazuh-agent.state -ErrorAction SilentlyContinue
-        .\ossec-agent.exe install-service >> .\upgrade\upgrade.log
-    }
-    Start-Service -Name "Wazuh" -ErrorAction SilentlyContinue
+    write-output "$(Get-Date -format u) - Upgrade failed. Agent installation may be broken." >> .\upgrade\upgrade.log
 }
 Else
 {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    Remove-Item .\backup -recurse -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
     $new_version = (Get-Content VERSION)
     write-output "$(Get-Date -format u) - New version: $($new_version)" >> .\upgrade\upgrade.log
 }
+
+Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue

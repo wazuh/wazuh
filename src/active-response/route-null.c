@@ -9,66 +9,54 @@
 
 #include "active_responses.h"
 
+#define ROUTE "route"
+
 int main (int argc, char **argv) {
     (void)argc;
-    char *srcip;
-    char *action;
-    char input[BUFFERSIZE];
+    int action = OS_INVALID;
     cJSON *input_json = NULL;
 
-#ifndef WIN32
-    char *home_path = w_homedir(argv[0]);
-
-    /* Trim absolute path to get Wazuh's installation directory */
-    home_path = w_strtok_r_str_delim("/active-response", &home_path);
-
-    /* Change working directory */
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-    os_free(home_path);
-#endif
-    
-    write_debug_file(argv[0], "Starting");
-
-    memset(input, '\0', BUFFERSIZE);
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file(argv[0], "Cannot read input from stdin");
-        return OS_INVALID;
-    }
-
-    write_debug_file(argv[0], input);
-
-    input_json = get_json_from_input(input);
-    if (!input_json) {
-        write_debug_file(argv[0], "Invalid input format");
-        return OS_INVALID;
-    }
-
-    action = get_command(input_json);
-    if (!action) {
-        write_debug_file(argv[0], "Cannot read 'command' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file(argv[0], "Invalid value of 'command'");
-        cJSON_Delete(input_json);
+    action = setup_and_check_message(argv, &input_json);
+    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
         return OS_INVALID;
     }
 
     // Get srcip
-    srcip = get_srcip_from_json(input_json);
+    const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         write_debug_file(argv[0], "Cannot read 'srcip' from data");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
+    if (action == ADD_COMMAND) {
+        char **keys = NULL;
+        int action2 = OS_INVALID;
+
+        os_calloc(2, sizeof(char *), keys);
+        os_strdup(srcip, keys[0]);
+        keys[1] = NULL;
+
+        action2 = send_keys_and_check_message(argv, keys);
+
+        os_free(keys);
+
+        // If necessary, abort execution
+        if (action2 != CONTINUE_COMMAND) {
+            cJSON_Delete(input_json);
+
+            if (action2 == ABORT_COMMAND) {
+                write_debug_file(argv[0], "Aborted");
+                return OS_SUCCESS;
+            } else {
+                return OS_INVALID;
+            }
+        }
+    }
+
 #ifndef WIN32
-    wfd_t *wfd = NULL;
     struct utsname uname_buffer;
+    wfd_t *wfd = NULL;
 
     if (uname(&uname_buffer) < 0) {
         write_debug_file(argv[0], "Cannot get system name");
@@ -77,32 +65,52 @@ int main (int argc, char **argv) {
     }
 
     if (!strcmp("Linux", uname_buffer.sysname)) {
-        if (!strcmp("add", action)) {
-            char *cmd[5] = { "route", "add", srcip, "reject", NULL };
-            if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
+        if (action == ADD_COMMAND) {
+            char *exec_cmd1[5] = { NULL, NULL, NULL, NULL, NULL };
+
+            const char *arg1[5] = { ROUTE, "add", srcip, "reject", NULL };
+            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+            wfd = wpopenv(ROUTE, exec_cmd1, W_BIND_STDERR);
+            if (!wfd) {
                 write_debug_file(argv[0], "Unable to run route");
             } else {
                 wpclose(wfd);
             }
         } else {
-            char *cmd[5] = { "route", "del", srcip, "reject", NULL };
-            if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
+            char *exec_cmd1[5] = { NULL, NULL, NULL, NULL, NULL };
+
+            const char *arg1[5] = { ROUTE, "del", srcip, "reject", NULL };
+            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+            wfd = wpopenv(ROUTE, exec_cmd1, W_BIND_STDERR);
+            if (!wfd) {
                 write_debug_file(argv[0], "Unable to run route");
             } else {
                 wpclose(wfd);
             }
         }
     } else if (!strcmp("FreeBSD", uname_buffer.sysname)) {
-        if (!strcmp("add", action)) {
-            char *cmd[7] = { "route", "-q", "add", srcip, "127.0.0.1", "-blackhole", NULL };
-            if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
+        if (action == ADD_COMMAND) {
+            char *exec_cmd1[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+            const char *arg1[7] = { ROUTE, "-q", "add", srcip, "127.0.0.1", "-blackhole", NULL };
+            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+            wfd = wpopenv(ROUTE, exec_cmd1, W_BIND_STDERR);
+            if (!wfd) {
                 write_debug_file(argv[0], "Unable to run route");
             } else {
                 wpclose(wfd);
             }
         } else {
-            char *cmd[7] = { "route", "-q", "delete", srcip, "127.0.0.1", "-blackhole", NULL };
-            if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
+            char *exec_cmd1[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+            const char *arg1[7] = { ROUTE, "-q", "delete", srcip, "127.0.0.1", "-blackhole", NULL };
+            memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+            wfd = wpopenv(ROUTE, exec_cmd1, W_BIND_STDERR);
+            if (!wfd) {
                 write_debug_file(argv[0], "Unable to run route");
             } else {
                 wpclose(wfd);
@@ -112,7 +120,7 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], "Invalid system");
     }
 #else
-    if (!strcmp("add", action)) {
+    if (action == ADD_COMMAND) {
         const char *regex = ".*Default Gateway.*[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*";
         const char *tmp_file = "default-gateway.txt";
         char *gateway = NULL;
@@ -123,8 +131,8 @@ int main (int argc, char **argv) {
 
         FILE *fp = fopen(tmp_file, "r");
         if(fp != NULL) {
-            char output_buf[BUFFERSIZE];
-            while (fgets(output_buf, BUFFERSIZE, fp)) {
+            char output_buf[OS_MAXSTR];
+            while (fgets(output_buf, OS_MAXSTR, fp)) {
                 char *ptr = strchr(output_buf, ':');
                 if (ptr != NULL) {
                     os_free(gateway);

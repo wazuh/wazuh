@@ -30,8 +30,7 @@ do                                                                      \
     {                                                                   \
         if(m_logFunction)                                               \
         {                                                               \
-            const std::string error{"task: " + std::string{ex.what()}}; \
-            m_logFunction(SYS_LOG_ERROR, error);                        \
+            m_logFunction(SYS_LOG_ERROR, std::string{ex.what()});       \
         }                                                               \
     }                                                                   \
 }while(0)

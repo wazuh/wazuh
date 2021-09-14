@@ -54,9 +54,10 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.database_limit, s
         if agent_list[0] in get_agents_info():
             select = list(fields_translation_sca.keys()) if select is None else select
 
-            db_query = WazuhDBQuerySCA(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
-                                       select=select, count=True, get_data=True, query=q, filters=filters)
-            data = db_query.run()
+            with WazuhDBQuerySCA(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
+                                 select=select, count=True, get_data=True, query=q, filters=filters) as db_query:
+                data = db_query.run()
+
             result.affected_items.extend(data['items'])
             result.total_affected_items = data['totalItems']
         else:
@@ -112,12 +113,12 @@ def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common
                            )
 
             # Workaround for too long sca_checks results until the chunk algorithm is implemented (1/2)
-            db_query = WazuhDBQuerySCA(agent_id=agent_list[0], offset=0, limit=None, sort=None, filters=filters,
-                                       search=None, select=full_select, count=True, get_data=True,
-                                       query=f"policy_id={policy_id}",
-                                       default_query=default_query_sca_check,
-                                       default_sort_field='policy_id', fields=fields_translation, count_field='id')
-            result_dict = db_query.run()
+            with WazuhDBQuerySCA(agent_id=agent_list[0], offset=0, limit=None, sort=None, filters=filters,
+                                 search=None, select=full_select, count=True, get_data=True,
+                                 query=f"policy_id={policy_id}", default_query=default_query_sca_check,
+                                 default_sort_field='policy_id', fields=fields_translation,
+                                 count_field='id') as db_query:
+                result_dict = db_query.run()
 
             if 'items' in result_dict:
                 checks = result_dict['items']

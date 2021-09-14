@@ -44,6 +44,7 @@ def start(foreground, root, config_file):
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
         set_secure_headers
+    from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
@@ -182,6 +183,9 @@ def start(foreground, root, config_file):
     # Enable cache plugin
     if api_conf['cache']['enabled']:
         setup_cache(app.app)
+
+    # Add application signals
+    app.app.on_response_prepare.append(modify_response_headers)
 
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')

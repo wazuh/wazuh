@@ -1273,8 +1273,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_ARCH].value);
             } else if (strcmp(object->string, "value_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
-            } else if (strcmp(object->string, "value_type") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_TYPE].value);
             }
 
             break;
@@ -1719,6 +1717,8 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
                 dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->fields[FIM_ATTRS_BEFORE].value; //LCOV_EXCL_LINE
             } else if (new_state && strcmp(attr_it->string, "symlink_path") == 0) {
                 dst_data = &lf->fields[FIM_SYM_PATH].value;
+            } else if (strcmp(attr_it->string, "value_type") == 0) {
+                dst_data = &lf->fields[FIM_REGISTRY_VALUE_TYPE].value;
             }
 
             if (dst_data) {

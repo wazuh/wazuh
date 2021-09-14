@@ -1,7 +1,51 @@
+import json
 import os
 import re
 import socket
 import time
+
+# Configuration
+protocol = 'https'
+host = 'localhost'
+port = '55000'
+user = 'testing'
+password = 'wazuh'
+
+# Variables
+base_url = "{}://{}:{}".format(protocol, host, port)
+login_url = "{}/security/user/authenticate".format(base_url)
+
+
+def get_login_header(user, password):
+    from base64 import b64encode
+    basic_auth = f"{user}:{password}".encode()
+    return {'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
+
+
+def get_response(url, headers):
+    """Get API result for GET request.
+
+    Parameters
+    ----------
+    url : str
+        URL of the API (+ endpoint and parameters if needed).
+    headers : dict
+        Headers required by the API.
+
+    Returns
+    -------
+    Dict
+        API response for the request.
+    """
+    import urllib3
+    # Disable insecure https warnings (for self-signed SSL certificates)
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    from requests import get
+    request_result = get(url, headers=headers, verify=False)
+
+    if request_result.status_code == 200:
+        return json.loads(request_result.content.decode())
+
 
 OSSEC_LOG_PATH = "/var/ossec/logs/ossec.log"
 
@@ -48,14 +92,14 @@ def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
     check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check2 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check2 = get_response(login_url, get_login_header(user, password)) is None
     return check0 or check1 or check2
 
 
 def get_worker_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
-    check1 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    check1 = get_response(login_url, get_login_header(user, password)) is None
     return check0 or check1
 
 

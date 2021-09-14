@@ -70,6 +70,8 @@ class LocalClientHandler(client.AbstractClient):
                 return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
             self.response = self.in_str[data].payload
             self.response_available.set()
+            # Remove the string after using it
+            self.in_str.pop(data, None)
             return b'ok', b'Distributed api response received'
         elif command == b'ok':
             if data.startswith(b'Error'):

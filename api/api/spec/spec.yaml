@@ -5425,7 +5425,7 @@ paths:
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
                 hostname: "wazuh"
-                timestamp: "2019-04-02T08:08:11+0000"
+                timestamp: "2019-04-02T08:08:11Z"
 
   /active-response:
     put:
@@ -6096,8 +6096,8 @@ paths:
                 data:
                   affected_items:
                     - global:
-                        start: '2021-05-27 08:01:38'
-                        end: '2021-05-27 08:08:13'
+                        start: '2021-05-27T08:01:38Z'
+                        end: '2021-05-27T08:08:13Z'
                         files:
                           - location: df -P
                             events: 20
@@ -6124,8 +6124,8 @@ paths:
                               - name: agent
                                 drops: 0
                       interval:
-                        start: '2021-05-27 08:08:08'
-                        end: '2021-05-27 08:08:08'
+                        start: '2021-05-27T08:08:08Z'
+                        end: '2021-05-27T08:08:08Z'
                         files:
                           - location: df -P
                             events: 0
@@ -6289,8 +6289,8 @@ paths:
                       module: "upgrade_module"
                       command: "upgrade"
                       status: "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
-                      create_time: "2020/11/03 15:59:32"
-                      update_time: "2020/11/03 16:01:55"
+                      create_time: "2020-11-03T15:59:32Z"
+                      update_time: "2020-11-03T16:01:55Z"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -7437,8 +7437,11 @@ paths:
                     failed_items:
                       - error:
                           code: 1707
-                          message: "Impossible to restart non-active agent: never_connected"
-                          remediation: "Please, make sure agent is active before attempting to restart"
+                          message: "Cannot send request, agent is not active"
+                          remediation: "Please, check non-active agents connection and try again.
+                           Visit https://documentation.wazuh.com/current/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html
+                           to obtain more information on registering and connecting agents"
                         id:
                           - '009'
                           - '010'
@@ -7829,12 +7832,12 @@ paths:
                         sync_integrity_free: true
                         sync_extravalid_free: true
                         last_check_integrity:
-                          date_start_master: 2021-05-27 10:50:51.325656
-                          date_end_master: 2021-05-27 10:50:51.342140
+                          date_start_master: 2021-05-27T10:50:51.325656Z
+                          date_end_master: 2021-05-27T10:50:51.342140Z
                         last_sync_integrity:
-                          date_start_master: 2021-05-27 10:48:54.086973
-                          tmp_date_start_master: 2021-05-27 10:48:54.086973
-                          date_end_master: 2021-05-27 10:48:54.093328
+                          date_start_master: 2021-05-27T10:48:54.086973Z
+                          tmp_date_start_master: 2021-05-27T10:48:54.086973Z
+                          date_end_master: 2021-05-27T10:48:54.093328Z
                           total_extra_valid: 0
                           total_files:
                             missing: 2
@@ -7842,10 +7845,10 @@ paths:
                             extra_valid: 0
                             shared: 0
                         last_sync_agentinfo:
-                          date_start_master: 2021-05-27 10:50:49.174463
-                          date_end_master: 2021-05-27 10:50:49.175921
+                          date_start_master: 2021-05-27T10:50:49.174463Z
+                          date_end_master: 2021-05-27T10:50:49.175921Z
                           n_synced_chunks: 1
-                        last_keep_alive: 2021-05-27 10:50:08.985208
+                        last_keep_alive: 2021-05-27T10:50:08.985208Z
                     - info:
                         name: worker2
                         type: worker
@@ -7856,12 +7859,12 @@ paths:
                         sync_integrity_free: true
                         sync_extravalid_free: true
                         last_check_integrity:
-                          date_start_master: 2021-05-27 10:50:51.939323
-                          date_end_master: 2021-05-27 10:50:51.955007
+                          date_start_master: 2021-05-27T10:50:51.939323Z
+                          date_end_master: 2021-05-27T10:50:51.955007Z
                         last_sync_integrity:
-                          date_start_master: 2021-05-27 10:48:54.706395
-                          tmp_date_start_master: 2021-05-27 10:48:54.706395
-                          date_end_master: 2021-05-27 10:48:54.726944
+                          date_start_master: 2021-05-27T10:48:54.706395Z
+                          tmp_date_start_master: 2021-05-27T10:48:54.706395Z
+                          date_end_master: 2021-05-27T10:48:54.726944Z
                           total_extra_valid: 0
                           total_files:
                             missing: 2
@@ -7869,10 +7872,10 @@ paths:
                             extra_valid: 0
                             shared: 0
                         last_sync_agentinfo:
-                          date_start_master: 2021-05-27 10:50:48.832800
-                          date_end_master: 2021-05-27 10:50:48.833854
+                          date_start_master: 2021-05-27T10:50:48.832800Z
+                          date_end_master: 2021-05-27T10:50:48.833854Z
                           n_synced_chunks: 1
-                        last_keep_alive: 2021-05-27 10:50:18.650204
+                        last_keep_alive: 2021-05-27T10:50:18.650204Z
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -9159,15 +9162,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: '2021-05-27T12:18:08+00:00'
+                    - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
                       description: " TCP socket 20 already in keystore. Updating..."
-                    - timestamp: '2021-05-27T12:18:08+00:00'
+                    - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
                       description: " Agent '003' group is 'default'"
-                    - timestamp: '2021-05-27T12:18:08+00:00'
+                    - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-remoted
                       level: debug
                       description: " Agent '003' with group 'default' file 'merged.mg' MD5
@@ -9704,7 +9707,7 @@ paths:
                     - "INFO: (7202): Session initialized with token '8cd2d6d1'"
                   token: 8cd2d6d1
                   output:
-                    timestamp: 2021-05-27T12:46:03.391+0000
+                    timestamp: 2021-05-27T12:46:03.391000Z
                     rule:
                       level: 2
                       description: "Unknown problem somewhere in the system."
@@ -10558,15 +10561,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - timestamp: '2020-04-15T14:47:54+00:00'
+                    - timestamp: '2020-04-15T14:47:54Z'
                       tag: wazuh-modulesd:syscollector
                       level: info
                       description: "Start syscheck scan"
-                    - timestamp: '2020-04-15T14:47:51+00:00'
+                    - timestamp: '2020-04-15T14:47:51Z'
                       tag: wazuh-modulesd:syscollector
                       level: info
                       description: "Starting evaluation"
-                    - timestamp: '2020-04-15T13:50:24+00:00'
+                    - timestamp: '2020-04-15T13:50:24Z'
                       tag: wazuh-maild
                       level: error
                       description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
@@ -10902,8 +10905,8 @@ paths:
                         North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group
                       name: APT38
                       id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
-                      modified_time: '2020-03-30 18:50:43.737000'
-                      created_time: '2019-01-29 21:27:24.793000'
+                      modified_time: '2020-03-30T18:50:43.737000Z'
+                      created_time: '2019-01-29T21:27:24.793000Z'
                       software:
                         - tool--03342581-f790-4f03-ba41-e82e67392e23
                         - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
@@ -11043,8 +11046,8 @@ paths:
                       description: "Prevent files from having a trailing space after the extension."
                       name: "Space after Filename Mitigation"
                       id: "course-of-action--02f0f92a-0a51-4c94-9bda-6437b9a93f22"
-                      modified_time: '2019-07-25 11:46:32.010000'
-                      created_time: '2018-10-17 00:14:20.652000'
+                      modified_time: '2019-07-25T11:46:32.010000Z'
+                      created_time: '2018-10-17T00:14:20.652000Z'
                       techniques:
                         - "attack-pattern--e2907cea-4b43-4ed7-a570-0fdf0fbeea00"
                       references:
@@ -11163,8 +11166,8 @@ paths:
                         group. (Citation: Baumgartner Naikon 2015)"
                       name: HDoor
                       id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
-                      modified_time: '2019-04-25 02:33:53.419000'
-                      created_time: '2017-05-31 21:32:40.801000'
+                      modified_time: '2019-04-25T02:33:53.419000Z'
+                      created_time: '2017-05-31T21:32:40.801000Z'
                       groups:
                         - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
                       techniques:
@@ -11230,8 +11233,8 @@ paths:
                     - description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
                       name: "Lateral Movement"
                       id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
-                      modified_time: "2019-07-19 17:44:36.953000"
-                      created_time: "2018-10-17 00:14:20.652000"
+                      modified_time: "2019-07-19T17:44:36.953000Z"
+                      created_time: "2018-10-17T00:14:20.652000Z"
                       short_name: "lateral-movement"
                       techniques:
                         - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
@@ -11319,9 +11322,9 @@ paths:
 
                         Detection efforts may be focused on related stages of the adversary lifecycle, such as during Initial Access.
                       id: attack-pattern--9d48cab2-7929-4812-ad22-f536665f0109
-                      modified_time: '2020-10-25 22:58:23.086000'
+                      modified_time: '2020-10-25T22:58:23.086000Z'
                       deprecated: 0
-                      created_time: '2020-10-02 15:45:17.628000'
+                      created_time: '2020-10-02T15:45:17.628000Z'
                       name: Gather Victim Network Information
                       description: |-
                         Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
@@ -11448,13 +11451,13 @@ paths:
               example:
                 data:
                   affected_items:
-                    - date_first: "2020-10-23 10:34:09"
+                    - date_first: "2020-10-23T10:34:09Z"
                       log: "Ending CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
-                      date_last: "2020-10-23 10:34:09"
+                      date_last: "2020-10-23T10:34:09Z"
                       status: "outstanding"
-                    - date_first: "2020-10-23 10:33:43"
+                    - date_first: "2020-10-23T10:33:43Z"
                       log: "Starting CIS-CAT scan. File: /var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml."
-                      date_last: "2020-10-23 10:33:49"
+                      date_last: "2020-10-23T10:33:49Z"
                       status: "outstanding"
                   total_affected_items: 2
                   total_failed_items: 0
@@ -11543,8 +11546,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - start: "2021-05-28 11:49:50"
-                      end: "2021-05-28 11:49:59"
+                    - start: "2021-05-28T11:49:50Z"
+                      end: "2021-05-28T11:49:59Z"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -11799,7 +11802,7 @@ paths:
                       relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0015-ossec_rules.xml
-                      path: ruleset/rules
+                      relative_dirname: ruleset/rules
                       status: enabled
                     - file: 0016-wazuh_rules.xml
                       relative_dirname: ruleset/rules
@@ -16653,8 +16656,8 @@ paths:
                       module: upgrade_module
                       command: upgrade
                       status: In progress
-                      create_time: 2020/11/10 11:55:33
-                      update_time: 2020/11/10 11:55:36
+                      create_time: 2020-11-10T11:55:33Z
+                      update_time: 2020-11-10T11:55:36Z
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []

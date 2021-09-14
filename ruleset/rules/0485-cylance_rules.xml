@@ -25,7 +25,7 @@
         <mitre>
             <id>T1203</id>
         </mitre>
-        <group>gdpr_IV_35.7.d,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!--
@@ -115,6 +115,6 @@
     	<if_sid>87050</if_sid>
     	<field name="cylance_threats.file_status">unsafe</field>
     	<description>Cylance Threat: File $(cylance_threats.file_path) is unsafe</description>
-        <group>gdpr_IV_35.7.d,</group>
+        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 </group>
