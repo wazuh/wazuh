@@ -4837,12 +4837,10 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
     int last_id = 0;
     int keepalive = 0;
     const char *sync_status = "synced";
-    int disconnected_time = 1631108606;
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
-        cJSON_AddItemToObject(json_agent, "disconnected_time", cJSON_CreateNumber(disconnected_time));
         cJSON_AddItemToArray(root, json_agent);
     }
 
@@ -4870,7 +4868,7 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
         expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
         will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 3);
-        expect_value(__wrap_sqlite3_bind_int, value, 1631108606);
+        expect_value(__wrap_sqlite3_bind_int, value, time(NULL));
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 4);
         expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
@@ -4894,12 +4892,10 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
     int last_id = 0;
     int keepalive = 100;
     const char *sync_status = "synced";
-    int disconnected_time = 1631108606;
     cJSON* root = cJSON_CreateArray();
     for (int i=0; i<agents_amount; i++){
         cJSON* json_agent = cJSON_CreateObject();
         cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(i));
-        cJSON_AddItemToObject(json_agent, "disconnected_time", cJSON_CreateNumber(disconnected_time));
         cJSON_AddItemToArray(root, json_agent);
     }
 
@@ -4927,7 +4923,7 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
         expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
         will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 3);
-        expect_value(__wrap_sqlite3_bind_int, value, 1631108606);
+        expect_value(__wrap_sqlite3_bind_int, value, time(NULL));
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
         expect_value(__wrap_sqlite3_bind_int, index, 4);
         expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
