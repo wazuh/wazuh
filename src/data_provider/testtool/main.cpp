@@ -62,6 +62,11 @@ class SysInfoPrinter final
             m_data["ports"] = m_sysinfo.ports();
         }
 
+        void printHotfixes()
+        {
+            m_data["hotfixes"] = m_sysinfo.hotfixes();
+        }
+
         void printData()
         {
             std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
@@ -87,6 +92,7 @@ int main(int argc, const char* argv[])
             printer.printPackagesInfo();
             printer.printProcessesInfo();
             printer.printPortsInfo();
+            printer.printHotfixes();
             printer.printData();
         }
         else if (argc == 2)
@@ -116,6 +122,10 @@ int main(int argc, const char* argv[])
             else if (cmdLineArgs.portsArg())
             {
                 printer.printPortsInfo();
+            }
+            else if (cmdLineArgs.hotfixesArg())
+            {
+                printer.printHotfixes();
             }
             else
             {
