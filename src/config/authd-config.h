@@ -12,6 +12,9 @@
 #define AD_CONF_UNPARSED 3
 #define AD_CONF_UNDEFINED 2
 
+/**
+ * @brief Structure that defines the force options for agent replacement.
+ **/
 typedef struct authd_force_options_t {
     bool enabled;
     int connection_time;
