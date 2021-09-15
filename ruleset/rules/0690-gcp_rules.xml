@@ -615,7 +615,7 @@ ID: 65000 - 65499
     <!-- GCP VPC Usage rules-->
     <rule id="65074" level="2">
         <if_sid>65000</if_sid>
-        <field name="gcp.s_request_id">^(?!^$).+$</field>
+        <field name="gcp.s_request_id" type="pcre2">^(?!^$).+$</field>
         <description>GCP VPC Usage event</description>
         <options>no_full_log</options>
     </rule>
@@ -623,7 +623,7 @@ ID: 65000 - 65499
     <!-- GCP VPC Storage rules-->
     <rule id="65075" level="2">
         <if_sid>65000</if_sid>
-        <field name="gcp.bucket">^(?!^$).+$</field>
+        <field name="gcp.bucket" type="pcre2">^(?!^$).+$</field>
         <description>GCP VPC Storage event</description>
     </rule>
 
