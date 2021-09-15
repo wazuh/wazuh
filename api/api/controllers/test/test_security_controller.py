@@ -3,48 +3,22 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from aiohttp import web_response
-
 from api.controllers.test.utils import CustomMagicMockReturn
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.security_controller import (add_policy,
-                                                         add_role,
-                                                         add_rule,
-                                                         create_user,
-                                                         delete_security_config,
-                                                         delete_users,
-                                                         edit_run_as,
-                                                         get_policies,
-                                                         get_rbac_actions,
-                                                         get_rbac_resources,
-                                                         get_roles,
-                                                         get_rules,
-                                                         get_security_config,
-                                                         get_user_me,
-                                                         get_user_me_policies,
-                                                         get_users,
-                                                         login_user,
-                                                         logout_user,
-                                                         put_security_config,
-                                                         remove_policies,
-                                                         remove_role_policy,
-                                                         remove_role_rule,
-                                                         remove_roles,
-                                                         remove_rules,
-                                                         remove_user_role,
-                                                         revoke_all_tokens,
-                                                         run_as_login,
-                                                         security_revoke_tokens,
-                                                         set_role_policy,
-                                                         set_role_rule,
-                                                         set_user_role,
-                                                         update_policy,
-                                                         update_role,
-                                                         update_rule,
-                                                         update_user)
+        from api.controllers.security_controller import (add_policy, add_role, add_rule, create_user,
+                                                         delete_security_config, delete_users, edit_run_as,
+                                                         get_policies, get_rbac_actions, get_rbac_resources, get_roles,
+                                                         get_rules, get_security_config, get_user_me,
+                                                         get_user_me_policies, get_users, login_user, logout_user,
+                                                         put_security_config, remove_policies, remove_role_policy,
+                                                         remove_role_rule, remove_roles, remove_rules, remove_user_role,
+                                                         revoke_all_tokens, run_as_login, security_revoke_tokens,
+                                                         set_role_policy, set_role_rule, set_user_role, update_policy,
+                                                         update_role, update_rule, update_user)
         from wazuh import security
         from wazuh.core.exception import WazuhException
         from wazuh.rbac import preprocessor

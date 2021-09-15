@@ -8,12 +8,8 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.mitre_controller import (get_groups, get_metadata,
-                                                      get_mitigations,
-                                                      get_references,
-                                                      get_software,
-                                                      get_tactics,
-                                                      get_techniques)
+        from api.controllers.mitre_controller import (get_groups, get_metadata, get_mitigations, get_references,
+                                                      get_software, get_tactics, get_techniques)
         from wazuh import mitre
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

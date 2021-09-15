@@ -3,21 +3,16 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-
 from api.controllers.test.utils import CustomMagicMockReturn
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.syscollector_controller import (get_hardware_info,
-                                                             get_hotfix_info,
-                                                             get_network_address_info,
-                                                             get_network_interface_info,
-                                                             get_network_protocol_info, get_os_info,
-                                                             get_packages_info,
-                                                             get_ports_info,
-                                                             get_processes_info)
+        from api.controllers.syscollector_controller import (get_hardware_info, get_hotfix_info,
+                                                             get_network_address_info, get_network_interface_info,
+                                                             get_network_protocol_info, get_os_info, get_packages_info,
+                                                             get_ports_info, get_processes_info)
         from wazuh import syscollector
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

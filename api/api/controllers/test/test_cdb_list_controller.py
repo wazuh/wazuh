@@ -11,10 +11,7 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.cdb_list_controller import (delete_file, get_file,
-                                                         get_lists,
-                                                         get_lists_files,
-                                                         put_file)
+        from api.controllers.cdb_list_controller import (delete_file, get_file, get_lists, get_lists_files, put_file)
         from wazuh import cdb_list
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -86,10 +83,10 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.cdb_list_controller.Body.validate_content_type'):
-        with patch('api.controllers.cdb_list_controller.Body.decode_body', return_value={}):
+        with patch('api.controllers.cdb_list_controller.Body.decode_body') as mock_dbody:
             f_kwargs = {'filename': None,
                         'overwrite': False,
-                        'content': {}
+                        'content': mock_dbody.return_value
                         }
             result = await put_file(request=mock_request,
                                     body={})

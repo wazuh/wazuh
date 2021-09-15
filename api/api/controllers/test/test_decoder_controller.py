@@ -3,19 +3,15 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from connexion.lifecycle import ConnexionResponse
-
 from api.controllers.test.utils import CustomMagicMockReturn
+from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.decoder_controller import (delete_file,
-                                                        get_decoders,
-                                                        get_decoders_files,
-                                                        get_decoders_parents,
-                                                        get_file, put_file)
+        from api.controllers.decoder_controller import (delete_file, get_decoders, get_decoders_files,
+                                                        get_decoders_parents, get_file, put_file)
         from wazuh import decoder as decoder_framework
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -149,10 +145,10 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.decoder_controller.Body.validate_content_type'):
-        with patch('api.controllers.decoder_controller.Body.decode_body', return_value={}):
+        with patch('api.controllers.decoder_controller.Body.decode_body') as mock_dbody:
             f_kwargs = {'filename': None,
                         'overwrite': False,
-                        'content': {}
+                        'content': mock_dbody.return_value
                         }
             result = await put_file(request=mock_request,
                                     body={})

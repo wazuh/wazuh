@@ -3,16 +3,15 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from connexion.lifecycle import ConnexionResponse
-
 from api.controllers.test.utils import CustomMagicMockReturn
+from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         with patch('api.configuration.api_conf'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
-            from api.controllers.rule_controller import (delete_file, get_file, get_rules, get_rules_files, 
+            from api.controllers.rule_controller import (delete_file, get_file, get_rules, get_rules_files,
                                                          get_rules_groups, get_rules_requirement, put_file)
             from wazuh import rule as rule_framework
             from wazuh.tests.util import RBAC_bypasser
@@ -183,10 +182,10 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 @patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.rule_controller.Body.validate_content_type'):
-        with patch('api.controllers.rule_controller.Body.decode_body', return_value={}):
+        with patch('api.controllers.rule_controller.Body.decode_body') as mock_dbody:
             f_kwargs = {'filename': None,
                         'overwrite': False,
-                        'content': {}
+                        'content': mock_dbody.return_value
                         }
             result = await put_file(request=mock_request,
                                     body={})

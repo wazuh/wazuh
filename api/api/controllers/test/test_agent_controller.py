@@ -3,50 +3,27 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from aiohttp import web_response
-from connexion.lifecycle import ConnexionResponse
-
 from api.controllers.test.utils import CustomMagicMockReturn
+from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.agent_controller import (add_agent,
-                                                      delete_agents,
-                                                      delete_groups,
+        from api.controllers.agent_controller import (add_agent, delete_agents, delete_groups,
                                                       delete_multiple_agent_single_group,
                                                       delete_single_agent_multiple_groups,
-                                                      delete_single_agent_single_group,
-                                                      get_agent_config,
-                                                      get_agent_fields,
-                                                      get_agent_key,
-                                                      get_agent_no_group,
-                                                      get_agent_outdated,
-                                                      get_agent_summary_os,
-                                                      get_agent_summary_status,
-                                                      get_agent_upgrade,
-                                                      get_agents,
-                                                      get_agents_in_group,
-                                                      get_component_stats,
-                                                      get_group_config,
-                                                      get_group_file_json,
-                                                      get_group_file_xml,
-                                                      get_group_files,
-                                                      get_list_group,
-                                                      get_sync_agent,
-                                                      insert_agent,
-                                                      post_group,
-                                                      post_new_agent,
-                                                      put_agent_single_group,
-                                                      put_group_config,
-                                                      put_multiple_agent_single_group,
-                                                      put_upgrade_agents,
-                                                      put_upgrade_custom_agents,
-                                                      reconnect_agents,
-                                                      restart_agent,
-                                                      restart_agents,
-                                                      restart_agents_by_group,
-                                                      restart_agents_by_node)
+                                                      delete_single_agent_single_group, get_agent_config,
+                                                      get_agent_fields, get_agent_key, get_agent_no_group,
+                                                      get_agent_outdated, get_agent_summary_os,
+                                                      get_agent_summary_status, get_agent_upgrade, get_agents,
+                                                      get_agents_in_group, get_component_stats, get_group_config,
+                                                      get_group_file_json, get_group_file_xml, get_group_files,
+                                                      get_list_group, get_sync_agent, insert_agent, post_group,
+                                                      post_new_agent, put_agent_single_group, put_group_config,
+                                                      put_multiple_agent_single_group, put_upgrade_agents,
+                                                      put_upgrade_custom_agents, reconnect_agents, restart_agent,
+                                                      restart_agents, restart_agents_by_group, restart_agents_by_node)
         from wazuh import agent, stats
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser

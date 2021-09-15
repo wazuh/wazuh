@@ -3,16 +3,13 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-
 from api.controllers.test.utils import CustomMagicMockReturn
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.syscheck_controller import (delete_syscheck_agent,
-                                                         get_last_scan_agent,
-                                                         get_syscheck_agent,
+        from api.controllers.syscheck_controller import (delete_syscheck_agent, get_last_scan_agent, get_syscheck_agent,
                                                          put_syscheck)
         from wazuh import syscheck
         from wazuh.tests.util import RBAC_bypasser
