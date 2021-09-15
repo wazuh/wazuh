@@ -18,6 +18,11 @@ void SysInfoTest::TearDown()
 {
 };
 
+auto PROCESSES_EXPECTED
+{
+    R"([{"test":"processes"}])"_json
+};
+
 using ::testing::_;
 using ::testing::Return;
 
@@ -59,8 +64,36 @@ nlohmann::json SysInfo::getPorts() const
     return {};
 }
 void SysInfo::getPackages(std::function<void(nlohmann::json&)>) const {}
-void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)>) const {}
 
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)>callback) const
+{
+    callback(PROCESSES_EXPECTED);
+}
+
+class CallbackMock
+{
+    public:
+        CallbackMock() = default;
+        ~CallbackMock() = default;
+        MOCK_METHOD(void, callbackMock, (ReturnTypeCallback type, std::string), ());
+};
+
+struct CJsonDeleter final
+{
+    void operator()(char* json)
+    {
+        cJSON_free(json);
+    }
+};
+
+static void callback(const ReturnTypeCallback type,
+                     const cJSON* json,
+                     void* ctx)
+{
+    CallbackMock* wrapper { reinterpret_cast<CallbackMock*>(ctx)};
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(json) };
+    wrapper->callbackMock(type, std::string(spJsonBytes.get()));
+}
 
 class SysInfoWrapper: public SysInfo
 {
@@ -152,14 +185,31 @@ TEST_F(SysInfoTest, packages_c_interface)
 
 TEST_F(SysInfoTest, processes_c_interface)
 {
+
     cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_processes(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
 
+
+TEST_F(SysInfoTest, processes_cb_c_interface)
+{
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+    EXPECT_CALL(wrapper, callbackMock(GENERIC, PROCESSES_EXPECTED.dump())).Times(1);
+    EXPECT_EQ(0, sysinfo_processes_cb(callbackData));
+}
+
+TEST_F(SysInfoTest, processes_cb_c_interface_test_empty_callback)
+{
+    callback_data_t cb_data = { .callback = NULL, .user_data = NULL };
+    EXPECT_EQ(-1, sysinfo_processes_cb(cb_data));
+}
+
 TEST_F(SysInfoTest, network_c_interface)
 {
+
     cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_networks(&object));
     EXPECT_TRUE(object);
