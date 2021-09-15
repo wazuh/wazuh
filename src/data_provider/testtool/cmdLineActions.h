@@ -20,6 +20,7 @@ constexpr auto PACKAGES_ACTION  { "--packages"};
 constexpr auto PROCESSES_ACTION { "--processes"};
 constexpr auto PORTS_ACTION     { "--ports"};
 constexpr auto OS_ACTION        { "--os"};
+constexpr auto HOTFIXES_ACTION  { "--hotfixes"};
 
 class CmdLineActions final
 {
@@ -31,6 +32,7 @@ class CmdLineActions final
             , m_processes { PROCESSES_ACTION == std::string(argv[1]) }
             , m_ports     { PORTS_ACTION     == std::string(argv[1]) }
             , m_os        { OS_ACTION        == std::string(argv[1]) }
+            , m_hotfixes  { HOTFIXES_ACTION  == std::string(argv[1]) }
         {}
 
         bool hardwareArg() const
@@ -63,6 +65,11 @@ class CmdLineActions final
             return m_os;
         };
 
+        bool hotfixesArg() const
+        {
+            return m_hotfixes;
+        };
+
         static void showHelp()
         {
             std::cout << "\nUsage: sysinfo_test_tool [options]\n"
@@ -74,6 +81,7 @@ class CmdLineActions final
                       << "\t--processes \tPrints the current Operating System processes information.\n"
                       << "\t--ports \tPrints the current Operating System ports information.\n"
                       << "\t--os \t\tPrints the current Operating System information.\n"
+                      << "\t--hotfixes \tPrints the current Operating System hotfixes information.\n"
                       << "\nExamples:"
                       << "\n\t./sysinfo_test_tool"
                       << "\n\t./sysinfo_test_tool --hardware"
@@ -82,6 +90,7 @@ class CmdLineActions final
                       << "\n\t./sysinfo_test_tool --processes"
                       << "\n\t./sysinfo_test_tool --ports"
                       << "\n\t./sysinfo_test_tool --os"
+                      << "\n\t./sysinfo_test_tool --hotfixes"
                       << std::endl;
         }
 
@@ -92,6 +101,7 @@ class CmdLineActions final
         const bool m_processes;
         const bool m_ports;
         const bool m_os;
+        const bool m_hotfixes;
 };
 
 #endif // _CMD_LINE_ACTIONS_H_
