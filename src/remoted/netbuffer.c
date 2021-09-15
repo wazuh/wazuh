@@ -135,3 +135,37 @@ end:
     w_mutex_unlock(&mutex);
     return recv_len;
 }
+
+int nb_send(int socket, pthread_mutex_t *ext_mutex, ssize_t msg_size, char *msg) {
+
+    int retval = 0;
+    int error = 0;
+
+    w_mutex_lock(ext_mutex);
+    retval = OS_SendSecureTCP(socket, (uint32_t) msg_size, (const void *) msg);
+    w_mutex_unlock(ext_mutex);
+    error = errno;
+
+    if (retval < 0) {
+        switch (error) {
+        case 0:
+            mwarn("socket [%d], A message could not be delivered completely.", socket);
+            break;
+        case EPIPE:
+        case EBADF:
+        case ECONNRESET:
+            mdebug1("socket [%d],Agent may have disconnected.", socket);
+            break;
+        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+        case EWOULDBLOCK:
+#endif
+            mwarn("socket [%d],Agent is not responding.", socket);
+            break;
+        default:
+            merror(strerror(error), socket);
+        }
+    }
+
+    return retval;
+}

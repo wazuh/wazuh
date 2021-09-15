@@ -315,12 +315,6 @@ STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client)
 {
 
 
-
-
-
-
-
-
 }
 
 // Message handler thread

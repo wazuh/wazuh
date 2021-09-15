@@ -58,6 +58,7 @@ typedef struct sockbuffer_t {
     char * data;
     unsigned long data_size;
     unsigned long data_len;
+    pthread_mutex_t *mutex;
 } sockbuffer_t;
 
 typedef struct netbuffer_t {
@@ -164,6 +165,19 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_inf
 int nb_close(netbuffer_t * buffer, int sock);
 int nb_recv(netbuffer_t * buffer, int sock);
 
+/**
+ * @brief Send message through TCP protocol, the failure messages are queued
+ * to try to send next time thread cycle.
+ *
+ * @param socket, socket id where send message.
+ * @param ext_mutex, mutex to lock before send message.
+ * @param msg_size, size of message to send.
+ * @param msg, message to send.
+ *
+ * @return.
+ */
+int nb_send(int socket, pthread_mutex_t * ext_mutex, ssize_t msg_size, char * msg);
+
 /* Network counter */
 
 void rem_initList(size_t initial_size);
@@ -189,6 +203,7 @@ extern rlim_t nofile;
 extern int guess_agent_group;
 extern int group_data_flush;
 extern unsigned receive_chunk;
+extern unsigned send_chunk;
 extern int buffer_relax;
 extern int tcp_keepidle;
 extern int tcp_keepintvl;
