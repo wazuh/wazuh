@@ -31,7 +31,6 @@ arg = argp.parse_args()
 db_dir = arg.db_dir
 db_file = arg.db_file
 db_name = (db_dir + db_file)
-sql_unc = 'SELECT * from alert WHERE classification IS NULL'
 sql_all = 'SELECT * from alert'
 c_name = getpwuid( getuid() )[4]
 
@@ -52,16 +51,21 @@ def user_menu():
 
     """User menu options."""
 
+    if c_name == 'root':
+        print('You are root, run as your user.')
+        sys.exit()
+
     def print_menu():
         print(59 * ' ')
         print(20 * '-', 'SIEM SOC OPS MENU', 20 * '-')
         print('1. Display all unclassified alerts ')
         print('2. Display all alerts, ever ')
-        print('3. Classify a single alert ')
-        print('4. Classify a range of alerts ')
-        print('5. Classify ALL unclassified alerts (careful now) ')
-        print('6. Display last x days of alerts ')
-        print('7. Quit ')
+        print('3. Display last x days of alerts ')
+        print('4. Classify a single alert ')
+        print('5. Classify a range of alerts ')
+        print('6. Classify ALL unclassified alerts (careful now) ')
+        print('7. Classify alerts for a single host')
+        print('8. Quit ')
         print(59 * '-')
         print(59 * ' ')
 
@@ -69,15 +73,15 @@ def user_menu():
         print_menu()
         while True:
             try:
-                choice = int(input("Enter your choice [1-7]: "))
+                choice = int(input("Enter your choice [1-8]: "))
 
             except ValueError:
                 print("Please enter a valid number.")
 
             else:
-                if 1 <= choice <= 6:
+                if 1 <= choice <= 7:
                     break
-                elif choice == 7:
+                elif choice == 8:
                     print("Exiting..")
                     break
                 else:
@@ -95,10 +99,16 @@ def display_unc():
     """Print unclassified alerts."""
 
     tty_size = set_tty()
+    sql_unc = 'SELECT * from alert WHERE classification IS NULL'
 
     if pretty_ascii:
         tab = tt.Texttable(max_width=tty_size)
         tab.reset()
+
+    c_host = input("Enter optional host filter: ")
+
+    if c_host:
+        sql_unc = gen_sql_unc(c_host)
 
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
@@ -219,6 +229,34 @@ def gen_sql(class_txt, db_id):
     return sql_cls
 
 
+def gen_sql_all(class_txt):
+
+    """Generate the sql statement used to classify all alerts."""
+
+    final_text = class_txt
+    sql_cls_all = 'UPDATE alert SET classification = "{}" WHERE classification IS NULL'.format(final_text)
+    return sql_cls_all
+
+
+def gen_sql_all_host(class_txt, agent):
+
+    """Generate the sql statement used to classify all alerts for a host."""
+
+    final_text = class_txt
+    agent_name = agent
+    sql_cls_all_host = 'UPDATE alert SET classification = "{}" WHERE agent_name = "{}" AND classification IS NULL'.format(final_text, agent_name)
+    return sql_cls_all_host
+
+
+def gen_sql_unc(agent):
+
+    """Generate sql statement to filter by agent."""
+
+    agent_name = agent
+    sql_agt = 'SELECT * from alert WHERE agent_name = "{}" AND classification IS NULL'.format(agent_name)
+    return sql_agt
+
+
 def classify_alert():
 
     """Classify a single alert by ID from the list."""
@@ -279,12 +317,39 @@ def classify_range():
             break
 
 
+def classify_all_host():
+
+    """Classify all alerts for one host with an UPDATE statement."""
+
+    print("Alert(s) being logged by: %s" % (c_name))
+    c_host = input("Enter host name: ")
+    c_case = input("Enter case reference: ")
+    c_text = input("Enter classification: ").replace('"','')
+    final_text = (c_name + ':' + ' ' + c_case + ':' + ' ' + c_text)
+    conn = sqlite3.connect(db_name)
+    cur = conn.cursor()
+    sql = gen_sql_all_host(final_text, c_host)
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def classify_all():
 
     """Classify all alerts with an UPDATE statement."""
 
-    print ('Classify all unclassified alerts:')
-    print ('TODO: I\'m not sure we actually want this (lazy?) option? ')
+    print("Alert(s) being logged by: %s" % (c_name))
+    c_case = input("Enter case reference: ")
+    c_text = input("Enter classification: ").replace('"','')
+    final_text = (c_name + ':' + ' ' + c_case + ':' + ' ' + c_text)
+    conn = sqlite3.connect(db_name)
+    cur = conn.cursor()
+    sql = gen_sql_all(final_text)
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 def main():
@@ -301,18 +366,21 @@ def main():
             display_all()
 
         if choice == 3:
-            classify_alert()
-
-        if choice == 4:
-            classify_range()
-
-        if choice == 5:
-            classify_all()
-
-        if choice == 6:
             display_recent()
 
+        if choice == 4:
+            classify_alert()
+
+        if choice == 5:
+            classify_range()
+
+        if choice == 6:
+            classify_all()
+
         if choice == 7:
+            classify_all_host()
+
+        if choice == 8:
             break
 
 
