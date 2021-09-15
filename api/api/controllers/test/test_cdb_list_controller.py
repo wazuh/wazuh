@@ -1,9 +1,11 @@
 import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
 from connexion.lifecycle import ConnexionResponse
+
+from api.controllers.test.utils import CustomMagicMockReturn
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -20,105 +22,137 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request, mock_bool', [
-    ({'token_info': {'rbac_policies': 'rbac_policies_value'}}, True),
-    ({'token_info': {'rbac_policies': 'rbac_policies_value'}}, False)
-    ])
-async def test_cdb_list_controller(mock_request, mock_bool):
-    """Test all cdb_list_controller endpoints"""
-    async def test_get_lists():
-        calls = [call(f=cdb_list.get_lists,
-                      f_kwargs=ANY,
-                      request_type='local_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await get_lists(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
+@patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
+@patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    f_kwargs = {'offset': 0,
+                'select': None,
+                'limit': None,
+                'sort_by': ['relative_dirname', 'filename'],
+                'sort_ascending': True,
+                'search_text': None,
+                'complementary_search': None,
+                'filename': None,
+                'relative_dirname': None,
+                }
+    result = await get_lists(request=mock_request)
+    mock_dapi.assert_called_once_with(f=cdb_list.get_lists,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)
 
-    async def test_get_file():
-        with patch('api.controllers.cdb_list_controller.isinstance', return_value=mock_bool) as mock_isinstance:
-            calls = [call(f=cdb_list.get_list_file,
-                          f_kwargs=ANY,
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=False,
-                          logger=ANY,
-                          rbac_permissions=mock_request['token_info']['rbac_policies']
-                          )
-                     ]
-            result = await get_file(request=mock_request)
-            mock_dapi.assert_has_calls(calls)
+
+@pytest.mark.asyncio
+@patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
+@patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@pytest.mark.parametrize('mock_bool', [True, False])
+async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
+    with patch('api.controllers.cdb_list_controller.isinstance', return_value=mock_bool) as mock_isinstance:
+        f_kwargs = {'filename': None,
+                    'raw': False
+                    }
+        result = await get_file(request=mock_request)
+        mock_dapi.assert_called_once_with(f=cdb_list.get_list_file,
+                                          f_kwargs=mock_remove.return_value,
+                                          request_type='local_master',
+                                          is_async=False,
+                                          wait_for_complete=False,
+                                          logger=ANY,
+                                          rbac_permissions=mock_request['token_info']['rbac_policies']
+                                          )
+        mock_exc.assert_called_once_with(mock_dfunc.return_value)
+        mock_remove.assert_called_once_with(f_kwargs)
+        if mock_isinstance.return_value:
+            assert isinstance(result, web_response.Response)
+        else:
+            assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
+@patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    with patch('api.controllers.cdb_list_controller.Body.validate_content_type'):
+        with patch('api.controllers.cdb_list_controller.Body.decode_body', return_value={}):
+            f_kwargs = {'filename': None,
+                        'overwrite': False,
+                        'content': {}
+                        }
+            result = await put_file(request=mock_request,
+                                    body={})
+            mock_dapi.assert_called_once_with(f=cdb_list.upload_list_file,
+                                              f_kwargs=mock_remove.return_value,
+                                              request_type='local_master',
+                                              is_async=False,
+                                              wait_for_complete=False,
+                                              logger=ANY,
+                                              rbac_permissions=mock_request['token_info']['rbac_policies']
+                                              )
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
-            if mock_isinstance.return_value:
-                assert isinstance(result, web_response.Response)
-            else:
-                assert isinstance(result, ConnexionResponse)
+            mock_remove.assert_called_once_with(f_kwargs)
+            assert isinstance(result, web_response.Response)
 
-    async def test_put_file():
-        with patch('api.controllers.cdb_list_controller.Body.validate_content_type'):
-            with patch('api.controllers.cdb_list_controller.Body.decode_body', return_value={}):
-                calls = [call(f=cdb_list.upload_list_file,
-                              f_kwargs=ANY,
-                              request_type='local_master',
-                              is_async=False,
-                              wait_for_complete=False,
-                              logger=ANY,
-                              rbac_permissions=mock_request['token_info']['rbac_policies']
-                              )
-                         ]
-                result = await put_file(request=mock_request,
-                                        body={})
-                mock_dapi.assert_has_calls(calls)
-                mock_exc.assert_called_once_with(mock_dfunc.return_value)
-                assert isinstance(result, web_response.Response)
 
-    async def test_delete_file():
-        calls = [call(f=cdb_list.delete_list_file,
-                      f_kwargs=ANY,
-                      request_type='local_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await delete_file(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
+@pytest.mark.asyncio
+@patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
+@patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    f_kwargs = {'filename': None
+                }
+    result = await delete_file(request=mock_request)
+    mock_dapi.assert_called_once_with(f=cdb_list.delete_list_file,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)
 
-    async def test_get_lists_files():
-        calls = [call(f=cdb_list.get_path_lists,
-                      f_kwargs=ANY,
-                      request_type='local_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await get_lists_files(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
 
-    # Function list containing all sub tests declared above.
-    functions = [test_get_lists(),
-                 test_get_file(),
-                 test_put_file(),
-                 test_delete_file(),
-                 test_get_lists_files()
-                 ]
-    for test_funct in functions:
-        with patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
-            with patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function',
-                       return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.cdb_list_controller.raise_if_exc',
-                           return_value={'message': 'message_value'}) as mock_exc:
-                    await test_funct
+@pytest.mark.asyncio
+@patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
+@patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_get_lists_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    f_kwargs = {'offset': 0,
+                'limit': None,
+                'sort_by': ['relative_dirname', 'filename'],
+                'sort_ascending': True,
+                'search_text': None,
+                'complementary_search': None,
+                'search_in_fields': ['filename', 'relative_dirname'],
+                'filename': None,
+                'relative_dirname': None,
+                }
+    result = await get_lists_files(request=mock_request)
+    mock_dapi.assert_called_once_with(f=cdb_list.get_path_lists,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)

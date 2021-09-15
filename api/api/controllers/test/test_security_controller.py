@@ -4,11 +4,12 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 import pytest
 from aiohttp import web_response
 
+from api.controllers.test.utils import CustomMagicMockReturn
+
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.test.utils import CustomMagicMockReturn
         from api.controllers.security_controller import (add_policy,
                                                          add_role,
                                                          add_rule,

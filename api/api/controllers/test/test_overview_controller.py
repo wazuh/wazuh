@@ -1,8 +1,10 @@
 import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
+
+from api.controllers.test.utils import CustomMagicMockReturn
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -16,30 +18,20 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [{'token_info': {'rbac_policies': 'rbac_policies_value'}}])
-async def test_overview_controller(mock_request):
-    """Test all overview_controller endpoints"""
-    async def test_get_overview_agents():
-        calls = [call(f=agent.get_full_overview,
-                      f_kwargs=ANY,
-                      request_type='local_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await get_overview_agents(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
-
-    # Function list containing all sub tests declared above.
-    functions = [test_get_overview_agents()
-                 ]
-    for test_funct in functions:
-        with patch('api.controllers.overview_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
-            with patch('api.controllers.overview_controller.DistributedAPI.distribute_function',
-                       return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.overview_controller.raise_if_exc', return_value={}) as mock_exc:
-                    await test_funct
+@patch('api.controllers.overview_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.overview_controller.remove_nones_to_dict')
+@patch('api.controllers.overview_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.overview_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_get_overview_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_overview_agents(request=mock_request)
+    mock_dapi.assert_called_once_with(f=agent.get_full_overview,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with({})
+    assert isinstance(result, web_response.Response)

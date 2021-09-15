@@ -1,8 +1,10 @@
 import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
+
+from api.controllers.test.utils import CustomMagicMockReturn
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -19,81 +21,113 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [MagicMock()])
-async def test_syscheck_controller(mock_request):
-    """Test all syscheck_controller endpoints"""
-    async def test_put_syscheck():
-        calls = [call(f=syscheck.run,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      broadcasting=True,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await put_syscheck(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
+@patch('api.controllers.syscheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.syscheck_controller.remove_nones_to_dict')
+@patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_put_syscheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    f_kwargs = {'agent_list': '*'
+                }
+    result = await put_syscheck(request=mock_request)
+    mock_dapi.assert_called_once_with(f=syscheck.run,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      broadcasting=True,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)
 
-    async def test_get_syscheck_agent():
-        calls = [call(f=syscheck.files,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await get_syscheck_agent(request=mock_request,
-                                          agent_id='001')
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
 
-    async def test_delete_syscheck_agent():
-        calls = [call(f=syscheck.clear,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await delete_syscheck_agent(request=mock_request)
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
+@pytest.mark.asyncio
+@patch('api.controllers.syscheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.syscheck_controller.remove_nones_to_dict')
+@patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_get_syscheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    type_ = mock_request.query.get('type', None)
+    hash_ = mock_request.query.get('hash', None)
+    file_ = mock_request.query.get('file', None)
+    filters = {'type': type_,
+               'md5': None,
+               'sha1': None,
+               'sha256': None,
+               'hash': hash_,
+               'file': file_,
+               'arch': None,
+               'value.name': mock_request.query.get('value.name', None),
+               'value.type': mock_request.query.get('value.type', None)
+               }
+    f_kwargs = {'agent_list': ['001'],
+                'offset': 0,
+                'limit': None,
+                'select': None,
+                'sort': None,
+                'search': None,
+                'summary': False,
+                'filters': filters,
+                'distinct': False,
+                'q': None
+                }
+    result = await get_syscheck_agent(request=mock_request,
+                                      agent_id='001')
+    mock_dapi.assert_called_once_with(f=syscheck.files,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)
 
-    async def test_get_last_scan_agent():
-        calls = [call(f=syscheck.last_scan,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await get_last_scan_agent(request=mock_request,
-                                           agent_id='001')
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
 
-    # Function list containing all sub tests declared above.
-    functions = [test_put_syscheck(),
-                 test_get_syscheck_agent(),
-                 test_delete_syscheck_agent(),
-                 test_get_last_scan_agent()
-                 ]
-    for test_funct in functions:
-        with patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
-            with patch('api.controllers.syscheck_controller.DistributedAPI.distribute_function',
-                       return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.syscheck_controller.raise_if_exc', return_value={}) as mock_exc:
-                    await test_funct
+@pytest.mark.asyncio
+@patch('api.controllers.syscheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.syscheck_controller.remove_nones_to_dict')
+@patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_delete_syscheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    f_kwargs = {'agent_list': ['*']
+                }
+    result = await delete_syscheck_agent(request=mock_request)
+    mock_dapi.assert_called_once_with(f=syscheck.clear,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.syscheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.syscheck_controller.remove_nones_to_dict')
+@patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_get_last_scan_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    f_kwargs = {'agent_list': ['001']
+                }
+    result = await get_last_scan_agent(request=mock_request,
+                                       agent_id='001')
+    mock_dapi.assert_called_once_with(f=syscheck.last_scan,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)

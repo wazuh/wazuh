@@ -5,11 +5,12 @@ import pytest
 from aiohttp import web_response
 from connexion.lifecycle import ConnexionResponse
 
+from api.controllers.test.utils import CustomMagicMockReturn
+
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.test.utils import CustomMagicMockReturn
         from api.controllers.agent_controller import (add_agent,
                                                       delete_agents,
                                                       delete_groups,

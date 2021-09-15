@@ -1,8 +1,10 @@
 import sys
-from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
+
+from api.controllers.test.utils import CustomMagicMockReturn
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -16,31 +18,40 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('mock_request', [MagicMock()])
-async def test_ciscat_controller(mock_request):
-    """Test all ciscat_controller endpoints"""
-    async def test_get_agents_ciscat_results():
-        calls = [call(f=ciscat.get_ciscat_results,
-                      f_kwargs=ANY,
-                      request_type='distributed_master',
-                      is_async=False,
-                      wait_for_complete=False,
-                      logger=ANY,
-                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                      )
-                 ]
-        result = await get_agents_ciscat_results(request=mock_request,
-                                                 agent_id='001')
-        mock_dapi.assert_has_calls(calls)
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        assert isinstance(result, web_response.Response)
-
-    # Function list containing all sub tests declared above.
-    functions = [test_get_agents_ciscat_results()
-                 ]
-    for test_funct in functions:
-        with patch('api.controllers.ciscat_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
-            with patch('api.controllers.ciscat_controller.DistributedAPI.distribute_function',
-                       return_value=AsyncMock()) as mock_dfunc:
-                with patch('api.controllers.ciscat_controller.raise_if_exc', return_value={}) as mock_exc:
-                    await test_funct
+@patch('api.controllers.ciscat_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.ciscat_controller.remove_nones_to_dict')
+@patch('api.controllers.ciscat_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.ciscat_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+async def test_get_agents_ciscat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    f_kwargs = {
+        'agent_list': ['001'],
+        'offset': 0,
+        'limit': None,
+        'sort': None,
+        'search': None,
+        'select': None,
+        'filters': {
+            'benchmark': None,
+            'profile': None,
+            'pass': mock_request.query.get('pass', None),
+            'fail': None,
+            'error': None,
+            'notchecked': None,
+            'unknown': None,
+            'score': None
+            },
+        'q': None
+        }
+    result = await get_agents_ciscat_results(request=mock_request,
+                                             agent_id='001')
+    mock_dapi.assert_called_once_with(f=ciscat.get_ciscat_results,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)
