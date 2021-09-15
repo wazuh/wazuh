@@ -79,7 +79,7 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
     return return_code;
 }
 
-int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_command command, void *task) {
+int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task) {
     char *tmp_agent_version = NULL;
     char *manager_version = NULL;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
@@ -88,6 +88,8 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_comm
         if (tmp_agent_version = strchr(wazuh_version, 'v'), tmp_agent_version) {
 
             if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT) < 0) {
+                return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
+            } else if (wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_MINIMAL_VERSION_SUPPORT_MACOS) < 0 && !strcmp(platform, "darwin")) {
                 return_code = WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED;
             } else if (WM_UPGRADE_UPGRADE == command) {
                 wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
