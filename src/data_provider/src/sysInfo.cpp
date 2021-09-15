@@ -69,6 +69,11 @@ void SysInfo::packages(std::function<void(nlohmann::json&)> callback)
     getPackages(callback);
 }
 
+nlohmann::json SysInfo::hotfixes()
+{
+    return getHotfixes();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -254,6 +259,28 @@ int sysinfo_processes_cb(callback_data_t callback_data)
             SysInfo info;
             // LCOV_EXCL_STOP
             info.processes(callbackWrapper);
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+    return retVal;
+}
+
+int sysinfo_hotfixes(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& hotfixes       {info.hotfixes()};
+            *js_result = cJSON_Parse(hotfixes.dump().c_str());
             retVal = 0;
         }
     }

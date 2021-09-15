@@ -411,3 +411,9 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) con
 {
     // TO DO
 }
+
+nlohmann::json SysInfo::getHotfixes() const
+{
+    // Currently not supported for this OS.
+    return nlohmann::json();
+}
