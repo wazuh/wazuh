@@ -86,18 +86,18 @@ rm -rf ./tmp_bkp/
 
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
-
 chmod +x ./var/upgrade/install.sh
 ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
 
 # Check installation result
 RESULT=$?
+
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/upgrade.log
 
 # Wait connection
 status="pending"
 COUNTER=30
-while [ "$status" != "connected" -a $COUNTER -gt 0  ]; do
+while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
     . ./var/run/wazuh-agentd.state >> ./logs/upgrade.log 2>&1
     sleep 1
     COUNTER=$[COUNTER - 1]
@@ -105,13 +105,15 @@ while [ "$status" != "connected" -a $COUNTER -gt 0  ]; do
 done
 
 # Check connection
-if [ "$status" = "connected" -a $RESULT -eq 0  ]; then
+if [ "$status" = "connected" -a $RESULT -eq 0 ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Connected to manager." >> ./logs/upgrade.log
     echo -ne "0" > ./var/upgrade/upgrade_result
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade finished successfully." >> ./logs/upgrade.log
 else
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed..." >> ./logs/upgrade.log
+    # Restore backup
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Restoring..." >> ./logs/upgrade.log
 
+    # Cleanup before restore
     CONTROL="./bin/wazuh-control"
     if [ ! -f $CONTROL ]; then
         CONTROL="./bin/ossec-control"
@@ -153,8 +155,23 @@ else
         fi
     fi
 
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Trying to start the agent on its current state..." >> ./logs/upgrade.log
-    $CONTROL start >> ./logs/upgrade.log 2>&1
     echo -ne "2" > ./var/upgrade/upgrade_result
 
+    # Restore service
+    if [ -n "${INIT_PATH}" ]; then
+        if [ $CHK_CONFIG -eq 1 ]; then
+            /sbin/chkconfig --add ${SERVICE} >> ./logs/upgrade.log 2>&1
+        fi
+    fi
+
+    if [ -n "${SYSTEMD_SERVICE_UNIT_PATH}" ]; then
+        systemctl daemon-reload >> ./logs/upgrade.log 2>&1
+    fi
+
+    CONTROL="./bin/wazuh-control"
+    if [ ! -f $CONTROL ]; then
+        CONTROL="./bin/ossec-control"
+    fi
+
+    $CONTROL start >> ./logs/upgrade.log 2>&1
 fi
