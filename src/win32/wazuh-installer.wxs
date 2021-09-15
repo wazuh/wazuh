@@ -69,7 +69,7 @@
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
-        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" />
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no"/>
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
@@ -284,6 +284,9 @@
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
                     <Component Id="REGISTRY_INSTALL_DIR" Guid="63E18998-4DBB-4C34-A1AD-09AA809A1C15" KeyPath="yes">
                         <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhInstallDirProperty" Name="WazuhInstallDir" Type="string" Value="[APPLICATIONFOLDER]" />
+                         <CreateFolder>
+                            <Permission User="Administrators" GenericAll="yes" /> 
+                         </CreateFolder>
                     </Component>
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" >
