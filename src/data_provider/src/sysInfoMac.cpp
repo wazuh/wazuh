@@ -246,37 +246,11 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
 
-    int32_t maxProc{};
-    size_t len { sizeof(maxProc) };
-    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
-
-    if (ret)
+    getProcessesInfo([&jsProcessesList](nlohmann::json & processInfo)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading kernel max processes."
-        };
-    }
-
-    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
-    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
-
-    for (int index = 0; index < processesCount; ++index)
-    {
-        ProcessTaskInfo taskInfo{};
-        const auto pid { spPids.get()[index] };
-        const auto sizeTask
-        {
-            proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
-        };
-
-        if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
-        {
-            jsProcessesList.push_back(getProcessInfo(taskInfo, pid));
-        }
-    }
+        // Append the current json process object to the list of processes
+        jsProcessesList.push_back(processInfo);
+    });
 
     return jsProcessesList;
 }
@@ -386,9 +360,40 @@ nlohmann::json SysInfo::getPorts() const
     return ports;
 }
 
-void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    // TODO.
+    int32_t maxProc{};
+    size_t len { sizeof(maxProc) };
+    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading kernel max processes."
+        };
+    }
+
+    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
+    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
+
+    for (int index = 0; index < processesCount; ++index)
+    {
+        ProcessTaskInfo taskInfo{};
+        const auto pid { spPids.get()[index] };
+        const auto sizeTask
+        {
+            proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
+        };
+
+        if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
+        {
+            auto processInfo = getProcessInfo(taskInfo, pid);
+            callback(processInfo);
+        }
+    }
 }
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
