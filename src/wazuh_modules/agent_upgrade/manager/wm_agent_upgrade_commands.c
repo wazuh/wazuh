@@ -331,7 +331,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
     }
 
     // Validate Wazuh version to upgrade
-    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info->wazuh_version, agent_task->task_info->command, agent_task->task_info->task);
+    validate_result = wm_agent_upgrade_validate_version(agent_task->agent_info->wazuh_version, agent_task->agent_info->platform, agent_task->task_info->command, agent_task->task_info->task);
 
     return validate_result;
 }

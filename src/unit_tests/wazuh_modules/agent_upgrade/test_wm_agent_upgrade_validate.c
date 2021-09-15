@@ -728,10 +728,11 @@ void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = false;
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
     assert_string_equal(task->wpk_version, "v3.13.0");
@@ -741,8 +742,9 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_ok(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE_CUSTOM, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
@@ -751,8 +753,9 @@ void test_wm_agent_upgrade_validate_version_upgrade_non_minimal(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v2.1.1";
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
@@ -761,8 +764,9 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal(void **st
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v2.1.1";
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE_CUSTOM, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
 
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
@@ -771,11 +775,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_older_version(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.13.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = false;
     os_strdup("v3.12.0", task->custom_version);
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT);
     assert_string_equal(task->wpk_version, "v3.12.0");
@@ -785,11 +790,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_greater_version(void **state
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = false;
     os_strdup("v3.13.1", task->custom_version);
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_GREATER_MASTER);
     assert_string_equal(task->wpk_version, "v3.13.1");
@@ -799,11 +805,12 @@ void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
 {
     wm_upgrade_task *task = state[1];
     char *wazuh_version = "v3.9.1";
+    char *platform = "ubuntu";
 
     task->force_upgrade = true;
     os_strdup("v3.13.1", task->custom_version);
 
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, WM_UPGRADE_UPGRADE, task);
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
     assert_string_equal(task->wpk_version, "v3.13.1");
@@ -812,10 +819,37 @@ void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
 void test_wm_agent_upgrade_validate_version_version_null(void **state)
 {
     wm_upgrade_task *task = state[1];
+    char *platform = "ubuntu";
 
-    int ret = wm_agent_upgrade_validate_version(NULL, WM_UPGRADE_UPGRADE_CUSTOM, task);
+    int ret = wm_agent_upgrade_validate_version(NULL, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
 
     assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_ok_macos(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.3.0";
+    char *platform = "darwin";
+
+    task->force_upgrade = true;
+    os_strdup("v4.3.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_version, "v4.3.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_non_minimal_macos(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.2.0";
+    char *platform = "darwin";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
 
 void test_wm_agent_upgrade_validate_wpk_exist(void **state)
@@ -1296,6 +1330,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_greater_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_force, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_version_null, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_ok_macos, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_non_minimal_macos, setup_validate_wpk_version, teardown_validate_wpk_version),
         // wm_agent_upgrade_validate_wpk
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist, setup_validate_wpk, teardown_validate_wpk),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_diff_sha1, setup_validate_wpk, teardown_validate_wpk),
