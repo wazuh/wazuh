@@ -18,6 +18,11 @@ void SysInfoTest::TearDown()
 {
 };
 
+auto PROCESSES_EXPECTED
+{
+    R"([{"test":"processes"}])"_json
+};
+
 using ::testing::_;
 using ::testing::Return;
 
@@ -59,8 +64,37 @@ nlohmann::json SysInfo::getPorts() const
     return {};
 }
 void SysInfo::getPackages(std::function<void(nlohmann::json&)>) const {}
-void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)>) const {}
 
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)>callback) const
+{
+    callback(PROCESSES_EXPECTED);
+}
+
+class CallbackMock
+{
+    public:
+        CallbackMock() = default;
+        ~CallbackMock() = default;
+        MOCK_METHOD(void, callbackMock, (ReturnTypeCallback type, std::string), ());
+        MOCK_METHOD(void, callbackMock, (nlohmann::json&), ());
+};
+
+struct CJsonDeleter final
+{
+    void operator()(char* json)
+    {
+        cJSON_free(json);
+    }
+};
+
+static void callback(const ReturnTypeCallback type,
+                     const cJSON* json,
+                     void* ctx)
+{
+    CallbackMock* wrapper { reinterpret_cast<CallbackMock*>(ctx)};
+    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(json) };
+    wrapper->callbackMock(type, std::string(spJsonBytes.get()));
+}
 
 class SysInfoWrapper: public SysInfo
 {
@@ -100,6 +134,36 @@ TEST_F(SysInfoTest, packages)
     EXPECT_CALL(info, getPackages()).WillOnce(Return("packages"));
     const auto result {info.packages()};
     EXPECT_FALSE(result.empty());
+}
+
+TEST_F(SysInfoTest, processes_cb)
+{
+    SysInfoWrapper info;
+    CallbackMock wrapper;
+
+    auto expectedValue1
+    {
+        R"({"argvs":"180","cmd":"sleep","egroup":"root","euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":2478,"pid":"193797","ppid":2480,"priority":20,"processor":2,"resident":148,"rgroup":"root","ruser":"root","session":2478,"sgroup":"root","share":132,"size":2019,"start_time":6244007,"state":"S","stime":0,"suser":"root","tgid":193797,"tty":0,"utime":0,"vm_size":8076})"_json
+    };
+
+    auto expectedValue2
+    {
+        R"({"argvs":"181","cmd":"ls","egroup":"dword","euser":"dword","fgroup":"dword","name":"sleep","nice":0,"nlwp":1,"pgrp":2478,"pid":"193797","ppid":2480,"priority":20,"processor":2,"resident":148,"rgroup":"root","ruser":"root","session":2478,"sgroup":"root","share":132,"size":2019,"start_time":6244007,"state":"S","stime":0,"suser":"root","tgid":193797,"tty":0,"utime":0,"vm_size":8076})"_json
+    };
+
+    const auto processesCallback
+    {
+        [&wrapper](nlohmann::json & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+    EXPECT_CALL(info, getProcessesInfo(_)).WillOnce(DoAll(
+                                                        testing::InvokeArgument<0>(expectedValue1),
+                                                        testing::InvokeArgument<0>(expectedValue2)));
+    EXPECT_CALL(wrapper, callbackMock(expectedValue1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedValue2)).Times(1);
+    info.processes(processesCallback);
 }
 
 TEST_F(SysInfoTest, processes)
@@ -152,14 +216,31 @@ TEST_F(SysInfoTest, packages_c_interface)
 
 TEST_F(SysInfoTest, processes_c_interface)
 {
+
     cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_processes(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
 
+
+TEST_F(SysInfoTest, processes_cb_c_interface)
+{
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+    EXPECT_CALL(wrapper, callbackMock(GENERIC, PROCESSES_EXPECTED.dump())).Times(1);
+    EXPECT_EQ(0, sysinfo_processes_cb(callbackData));
+}
+
+TEST_F(SysInfoTest, processes_cb_c_interface_test_empty_callback)
+{
+    callback_data_t cb_data = { .callback = NULL, .user_data = NULL };
+    EXPECT_EQ(-1, sysinfo_processes_cb(cb_data));
+}
+
 TEST_F(SysInfoTest, network_c_interface)
 {
+
     cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_networks(&object));
     EXPECT_TRUE(object);
