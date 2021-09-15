@@ -31,6 +31,11 @@ netbuffer_t netbuffer_send;
 
 wnotify_t * notify = NULL;
 
+STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client);
+STATIC void handle_incoming_data_from_tcp_socket(const int sock_client);
+STATIC void handle_new_udp_connection(void);
+STATIC void handle_new_tcp_connection(wnotify_t * notify);
+
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
@@ -75,7 +80,6 @@ static int key_request_reconnect();
 void HandleSecure()
 {
     const int protocol = logr.proto[logr.position];
-    int sock_client;
     int n_events = 0;
 
     struct sockaddr_in peer_info;
@@ -121,7 +125,7 @@ void HandleSecure()
 
         mdebug2("Creating %d sender threads.", sender_pool);
 
-        for (unsigned int i = 0; i < sender_pool; i++) {
+        for (int i = 0; i < sender_pool; i++) {
             w_create_thread(wait_for_msgs, NULL);
         }
     }
@@ -190,7 +194,7 @@ void HandleSecure()
             continue;
         }
 
-        for (unsigned int i = 0u; i < n_events; i++) {
+        for (int i = 0u; i < n_events; i++) {
             // Returns the fd of the socket that recived a message
             wevent_t event;
             int fd = wnotify_get(notify, i, &event);
@@ -221,7 +225,6 @@ void HandleSecure()
 
     manager_free();
 }
-
 
 STATIC void handle_new_tcp_connection(wnotify_t * notify)
 {
@@ -269,11 +272,12 @@ STATIC void handle_incoming_data_from_tcp_socket(const int sock_client)
 {
     char buffer[OS_MAXSTR + 1];
     struct sockaddr_in peer_info;
+    int recv_b = 0;
 
     memset(buffer, '\0', OS_MAXSTR + 1);
     memset(&peer_info, 0, sizeof(struct sockaddr_in));
 
-    switch (const int recv_b = nb_recv(&netbuffer_recv, sock_client), recv_b) {
+    switch (recv_b = nb_recv(&netbuffer_recv, sock_client), recv_b) {
     case -2:
         mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info.sin_addr), sock_client);
         _close_sock(&keys, sock_client);
@@ -307,7 +311,7 @@ STATIC void handle_incoming_data_from_tcp_socket(const int sock_client)
     }
 }
 
-STATIC int handle_outgoing_data_to_tcp_socket(const int sock_client)
+STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client)
 {
 
 

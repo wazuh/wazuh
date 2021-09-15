@@ -12,13 +12,13 @@
 #ifndef NOTIFY_OP_H
 #define NOTIFY_OP_H
 
-typedef emun {
+typedef enum {
     WO_UNKNOWN = 0,
     WO_READ  = 1,
     WO_WRITE = 2
 } woperation_t;
 
-typedef emun {
+typedef enum {
     WE_UNKNOWN = 0,
     WE_READ  = 1,
     WE_WRITE = 2
@@ -37,7 +37,7 @@ typedef struct wnotify_t {
 static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * event) {
     if (event != NULL) {
         const uint32_t events = notify->events[index].events;
-        *event = (events & EPOLLIN ? WE_READ : 0) | (events & EPOLLOUT ? WE_WRITE : 0)
+        *event = (wevent_t)((events & EPOLLIN ? WE_READ : WE_UNKNOWN) | (events & EPOLLOUT ? WE_WRITE : WE_UNKNOWN));
     }
 
     return notify->events[index].data.fd;
@@ -57,7 +57,7 @@ typedef struct wnotify_t {
 static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * event) {
     if (event != NULL) {
         const unsigned int filter = notify->events[index].filter;
-        *event = (filter & EPOLLIN ? EVFILT_READ : 0) | (filter & EVFILT_WRITE ? WE_WRITE : 0)
+        *event = (wevent_t)((filter & EPOLLIN ? EVFILT_READ : WE_UNKNOWN) | (filter & EVFILT_WRITE ? WE_WRITE : WE_UNKNOWN));
     }
 
     return notify->events[index].ident;
