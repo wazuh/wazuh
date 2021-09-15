@@ -1,3 +1,4 @@
 *:*.c
 *:*syscollector.h
-*:*src/syscollectorImp.cpp:951
+*:*src/syscollectorImp.cpp:1084
+*:*tests/sysCollectorImp/syscollectorImp_test.cpp

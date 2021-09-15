@@ -588,8 +588,6 @@ nlohmann::json SysInfo::getPackages() const
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, ret);
     }
-    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
-    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
     return ret;
 }
 
@@ -764,4 +762,12 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
 {
     // TO DO
+}
+
+nlohmann::json SysInfo::getHotfixes() const
+{
+    nlohmann::json ret;
+    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+    return ret;
 }
