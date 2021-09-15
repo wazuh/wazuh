@@ -50,7 +50,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
-time_t get_agent_registration_time(int id);
+time_t get_time_since_agent_registration(int id);
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output);

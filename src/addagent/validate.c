@@ -568,7 +568,7 @@ double get_time_since_agent_disconnection(const char *id) {
  * @retval OS_INVALID On error: failed to get the agent's info
  * @retval 0 On error: failed to get the date_add field from JSON response
  */
-time_t get_agent_registration_time(int id) {
+time_t get_time_since_agent_registration(int id) {
     cJSON *root = NULL;
     cJSON *j_date_add = NULL;
     time_t date_add = 0;
