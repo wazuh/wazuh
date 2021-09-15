@@ -13,6 +13,9 @@
 #include "remoted.h"
 #include "os_net/os_net.h"
 
+netbuffer_t netbuffer_send;
+extern wnotify_t * notify;
+
 /* pthread key update mutex */
 static pthread_rwlock_t keyupdate_rwlock;
 

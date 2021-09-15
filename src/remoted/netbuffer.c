@@ -14,6 +14,9 @@
 #include <os_net/os_net.h>
 #include "remoted.h"
 
+extern netbuffer_t netbuffer_send;
+extern wnotify_t * notify;
+
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
