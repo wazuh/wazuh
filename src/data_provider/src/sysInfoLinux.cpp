@@ -316,19 +316,16 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
 
-    const SysInfoProcessesTable spProcTable
+    const auto callback
     {
-        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
+        [&jsProcessesList](nlohmann::json & processInfo)
+        {
+            // Append the current json process object to the list of processes
+            jsProcessesList.push_back(processInfo);
+        }
     };
 
-    SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
-
-    while (nullptr != spProcInfo)
-    {
-        // Append the current json process object to the list of processes
-        jsProcessesList.push_back(getProcessInfo(spProcInfo));
-        spProcInfo.reset(readproc(spProcTable.get(), nullptr));
-    }
+    getProcessesInfo(callback);
 
     return jsProcessesList;
 }
@@ -391,13 +388,26 @@ nlohmann::json SysInfo::getPorts() const
     return ports;
 }
 
-void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    // TO DO
+
+    const SysInfoProcessesTable spProcTable
+    {
+        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
+    };
+
+    SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
+
+    while (nullptr != spProcInfo)
+    {
+        // Get process information object and push it to the caller
+        auto processInfo = getProcessInfo(spProcInfo);
+        callback(processInfo);
+        spProcInfo.reset(readproc(spProcTable.get(), nullptr));
+    }
 }
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
 {
     // TO DO
 }
-
