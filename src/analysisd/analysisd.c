@@ -507,17 +507,19 @@ int main_analysisd(int argc, char **argv)
     mdebug1(PRIVSEP_MSG, home_path, user);
     os_free(home_path);
 
-    /* Signal manipulation */
-    StartSIG(ARGV0);
+    if (!test_config) {
+        /* Signal manipulation */
+        StartSIG(ARGV0);
 
-    /* Create the PID file */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
+        /* Create the PID file */
+        if (CreatePID(ARGV0, getpid()) < 0) {
+            merror_exit(PID_ERROR);
+        }
 
-    /* Set the queue */
-    if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        /* Set the queue */
+        if ((m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
+            merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+        }
     }
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
