@@ -193,6 +193,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->secret_key) cJSON_AddStringToObject(buck,"secret_key",iter->secret_key);
             if (iter->aws_profile) cJSON_AddStringToObject(buck,"aws_profile",iter->aws_profile);
             if (iter->iam_role_arn) cJSON_AddStringToObject(buck,"iam_role_arn",iter->iam_role_arn);
+            if (iter->iam_role_duration) cJSON_AddStringToObject(buck, "iam_role_duration",iter->iam_role_duration);
             if (iter->aws_account_id) cJSON_AddStringToObject(buck,"aws_account_id",iter->aws_account_id);
             if (iter->aws_account_alias) cJSON_AddStringToObject(buck,"aws_account_alias",iter->aws_account_alias);
             if (iter->trail_prefix) cJSON_AddStringToObject(buck,"path",iter->trail_prefix);
@@ -223,7 +224,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->secret_key) cJSON_AddStringToObject(service,"secret_key",iter->secret_key);
             if (iter->aws_profile) cJSON_AddStringToObject(service,"aws_profile",iter->aws_profile);
             if (iter->iam_role_arn) cJSON_AddStringToObject(service,"iam_role_arn",iter->iam_role_arn);
-            if (iter->role_session_duration) cJSON_AddStringToObject(service, "role_session_duration")
+            if (iter->iam_role_duration) cJSON_AddStringToObject(service, "iam_role_duration",iter->iam_role_duration);
             if (iter->aws_account_id) cJSON_AddStringToObject(service,"aws_account_id",iter->aws_account_id);
             if (iter->aws_account_alias) cJSON_AddStringToObject(service,"aws_account_alias",iter->aws_account_alias);
             if (iter->only_logs_after) cJSON_AddStringToObject(service,"only_logs_after",iter->only_logs_after);
@@ -348,6 +349,10 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     if (exec_bucket->iam_role_arn) {
         wm_strcat(&command, "--iam_role_arn", ' ');
         wm_strcat(&command, exec_bucket->iam_role_arn, ' ');
+    }
+    if (exec_bucket->iam_role_duration){
+        wm_strcat(&command, "--iam_role_duration", ' ');
+        wm_strcat(&command, exec_bucket->iam_role_duration, ' ');
     }
     if (exec_bucket->aws_organization_id) {
         wm_strcat(&command, "--aws_organization_id", ' ');
@@ -521,9 +526,9 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
         wm_strcat(&command, "--iam_role_arn", ' ');
         wm_strcat(&command, exec_service->iam_role_arn, ' ');
     }
-    if (exec_service->role_session_duration){
-        wm_strcat(&command, "--duration-seconds", ' ');
-        wm_strcat(&command, exec_service->role_session_duration, ' ');
+    if (exec_service->iam_role_duration){
+        wm_strcat(&command, "--iam_role_duration", ' ');
+        wm_strcat(&command, exec_service->iam_role_duration, ' ');
     }
     if (exec_service->aws_account_id) {
         wm_strcat(&command, "--aws_account_id", ' ');

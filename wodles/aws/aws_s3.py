@@ -23,8 +23,6 @@
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
 #   15 - Invalid VPC endpoint URL
-#   16 - Used --duration-seconds argument but no iam_role_arn provided
-#   17 - Invalid session duration specified
 
 import argparse
 import signal
@@ -81,12 +79,12 @@ class WazuhIntegration:
     :param service name: Name of the service (s3 for services which stores logs in buckets)
     :param region: Region of service
     :param bucket: Bucket name to extract logs from
-    :param role_session_duration: The desired duration of the session that is going to be assumed.
+    :param iam_role_duration: The desired duration of the session that is going to be assumed.
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None, role_session_duration=None):
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         # SQL queries
         self.sql_find_table_names = """
                             SELECT
@@ -162,7 +160,7 @@ class WazuhIntegration:
                                       region=region,
                                       sts_endpoint=sts_endpoint,
                                       service_endpoint=service_endpoint,
-                                      role_session_duration=role_session_duration
+                                      iam_role_duration=iam_role_duration
                                       )
 
         # db_name is an instance variable of subclass
@@ -226,7 +224,7 @@ class WazuhIntegration:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None,
-                   sts_endpoint=None, service_endpoint=None, role_session_duration=None):
+                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
@@ -250,15 +248,14 @@ class WazuhIntegration:
         try:
             if iam_role_arn:
                 sts_client = boto_session.client('sts', endpoint_url=sts_endpoint)
-                if role_session_duration is None:
-                    sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
-                                                                 RoleSessionName='WazuhLogParsing'
-                                                                 )
-                else:
-                    sts_role_assumption = sts_client.assume_role(RoleArn=iam_role_arn,
-                                                                 RoleSessionName='WazuhLogParsing',
-                                                                 DurationSeconds=role_session_duration
-                                                                 )
+                assume_role_kwargs = {'RoleArn': iam_role_arn,
+                                      'RoleSessionName': 'WazuhLogParsing'
+                                      }
+                if iam_role_duration is not None:
+                    assume_role_kwargs['DurationSeconds'] = iam_role_duration
+
+                sts_role_assumption = sts_client.assume_role(**assume_role_kwargs)
+
                 sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
                                             aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
@@ -361,7 +358,7 @@ class AWSBucket(WazuhIntegration):
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  prefix, suffix, delete_file, aws_organization_id, region,
-                 discard_field, discard_regex, sts_endpoint, service_endpoint, role_session_duration=None):
+                 discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         """
         AWS Bucket constructor.
 
@@ -488,7 +485,7 @@ class AWSBucket(WazuhIntegration):
                                   discard_regex=discard_regex,
                                   sts_endpoint=sts_endpoint,
                                   service_endpoint=service_endpoint,
-                                  role_session_duration=role_session_duration
+                                  iam_role_duration=iam_role_duration
                                   )
         self.retain_db_records = 500
         self.reparse = reparse
@@ -2352,7 +2349,7 @@ class AWSService(WazuhIntegration):
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name, only_logs_after, region, aws_log_groups=None, remove_log_streams=None,
                  discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
-                 role_session_duration=None):
+                 iam_role_duration=None):
         # DB name
         self.db_name = 'aws_services'
         # table name
@@ -2362,7 +2359,7 @@ class AWSService(WazuhIntegration):
                                   aws_profile=aws_profile, iam_role_arn=iam_role_arn,
                                   service_name=service_name, region=region, discard_field=discard_field,
                                   discard_regex=discard_regex, sts_endpoint=sts_endpoint,
-                                  service_endpoint=service_endpoint, role_session_duration=role_session_duration)
+                                  service_endpoint=service_endpoint, iam_role_duration=iam_role_duration)
 
         # get sts client (necessary for getting account ID)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
@@ -2459,7 +2456,7 @@ class AWSInspector(AWSService):
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups=None,
                  remove_log_streams=None, discard_field=None, discard_regex=None,
-                 sts_endpoint=None, service_endpoint=None, role_session_duration=None):
+                 sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
 
         self.service_name = 'inspector'
         self.inspector_region = region
@@ -2469,7 +2466,7 @@ class AWSInspector(AWSService):
                             service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
                             remove_log_streams=remove_log_streams, discard_field=discard_field,
                             discard_regex=discard_regex, sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
-                            role_session_duration=role_session_duration)
+                            iam_role_duration=iam_role_duration)
 
         # max DB records for region
         self.retain_db_records = 5
@@ -2582,7 +2579,7 @@ class AWSCloudWatchLogs(AWSService):
     def __init__(self, reparse, access_key, secret_key, aws_profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups,
                  remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
-                 role_session_duration=None):
+                 iam_role_duration=None):
 
         self.sql_cloudwatch_create_table = """
                                 CREATE TABLE
@@ -2656,7 +2653,7 @@ class AWSCloudWatchLogs(AWSService):
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             region=region, aws_log_groups=aws_log_groups, remove_log_streams=remove_log_streams,
                             service_name='cloudwatchlogs', discard_field=discard_field, discard_regex=discard_regex,
-                            role_session_duration=role_session_duration, sts_endpoint=sts_endpoint,
+                            iam_role_duration=iam_role_duration, sts_endpoint=sts_endpoint,
                             service_endpoint=service_endpoint)
 
         self.region = region
@@ -3061,6 +3058,23 @@ def arg_valid_regions(arg_string):
     return final_regions
 
 
+def arg_valid_iam_role_duration(duration: int or None, iam_role_arn: str or None):
+    """Checks if the role session duration specified is a valid parameter.
+
+    Parameters
+    ----------
+    duration: int or None
+        The desired session duration in seconds.
+    iam_role_arn: str or None
+        The iam role arn provided.
+    """
+    # Session duration must be between 15m and 12h
+    if not (duration is None or (900 <= duration <= 3600)):
+        raise ValueError("Invalid session duration specified. Value must be between 900 and 3600.")
+    if duration is not None and iam_role_arn is None:
+        raise Exception('Used --iam_role_duration argument but no --iam_role_arn provided.')
+
+
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring AWS",
@@ -3118,13 +3132,12 @@ def get_script_arguments():
                         help='URL for the VPC endpoint to use to obtain the STS token.')
     parser.add_argument('-se', '--service_endpoint', type=str, dest='service_endpoint', default=None,
                         help='URL for the VPC endpoint to use to obtain the logs.')
-    parser.add_argument('-ds', '--duration-seconds', type=int, dest='role_session_duration', default=None,
+    parser.add_argument('-rd', '--iam_role_duration', type=int, dest='iam_role_duration', default=None,
                         help='The duration, in seconds, of the role session. Value can range from 900s to the max'
                         ' session duration set for the role.')
     parsed_args = parser.parse_args()
 
-    if 'role_session_duration' in vars(parsed_args) and parsed_args.iam_role_arn is None:
-        parser.exit(status=16, message='error: Used --duration-seconds argument but no --iam_role_arn provided\n')
+    arg_valid_iam_role_duration(parsed_args.iam_role_duration, parsed_args.iam_role_arn)
     return parsed_args
 
 
@@ -3135,8 +3148,6 @@ def get_script_arguments():
 def main(argv):
     # Parse arguments
     options = get_script_arguments()
-    if not utils.check_role_session_duration(options.role_session_duration):
-        raise Exception("Invalid session duration specified. Value must be between 900 and 43200.")
 
 
     if int(options.debug) > 0:
@@ -3187,7 +3198,7 @@ def main(argv):
                                  discard_regex=options.discard_regex,
                                  sts_endpoint=options.sts_endpoint,
                                  service_endpoint=options.service_endpoint,
-                                 role_session_duration=options.role_session_duration
+                                 iam_role_duration=options.iam_role_duration
                                  )
             # check if bucket is empty or credentials are wrong
             bucket.check_bucket()
@@ -3221,7 +3232,7 @@ def main(argv):
                                        discard_regex=options.discard_regex,
                                        sts_endpoint=options.sts_endpoint,
                                        service_endpoint=options.service_endpoint,
-                                       role_session_duration=options.role_session_duration
+                                       iam_role_duration=options.iam_role_duration
                                        )
                 service.get_alerts()
 

@@ -28,7 +28,7 @@ typedef struct wm_aws_bucket {
     char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
-    unsigned int role_session_duration;      // IAM role session duration
+    char *iam_role_duration;        // IAM role session duration
     char *aws_organization_id;          // AWS organization ID
     char *aws_account_id;               // AWS account ID(s)
     char *aws_account_alias;            // AWS account alias
@@ -52,7 +52,7 @@ typedef struct wm_aws_service {
     char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
-    unsigned int role_session_duration;      // IAM role session duration
+    char *iam_role_duration;        // IAM role session duration
     char *aws_account_id;               // AWS account ID(s)
     char *aws_account_alias;            // AWS account alias
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
