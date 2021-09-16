@@ -14,6 +14,7 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 #include "shared.h"
+#include "../addagent/manage_agents.h"
 
 #define RELAUNCH_TIME 300
 
@@ -384,7 +385,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         if (sock = auth_connect(), sock < 0) {
             mwarn("Could not connect to authd socket. Is authd running?");
         } else {
-            w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
+            w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert ? BYPASS_FORCE_SETTINGS : USE_MASTER_FORCE_SETTINGS, 1, agent_id->valuestring, 0);
             close(sock);
         }
         cJSON_Delete(agent_infoJSON);
