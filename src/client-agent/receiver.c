@@ -300,12 +300,15 @@ int receive_msg()
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                     send_msg(msg_output, -1);
                                 }
-                                else if (agt->flags.remote_conf && !verifyRemoteConf()) {
-                                    if (agt->flags.auto_restart) {
-                                        minfo("Agent is restarting due to shared configuration changes.");
-                                        restartAgent();
-                                    } else {
-                                        minfo("Shared agent configuration has been updated.");
+                                else {
+                                    clear_merged_hash_cache();
+                                    if (agt->flags.remote_conf && !verifyRemoteConf()) {
+                                        if (agt->flags.auto_restart) {
+                                            minfo("Agent is restarting due to shared configuration changes.");
+                                            restartAgent();
+                                        } else {
+                                            minfo("Shared agent configuration has been updated.");
+                                        }
                                     }
                                 }
                             }

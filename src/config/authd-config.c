@@ -51,7 +51,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     }
     config->port = 1515;
     config->flags.use_source_ip = 0;
-    config->flags.force_insert = 0;
+    config->force_options.enabled = false;
     config->flags.clear_removed = 0;
     config->flags.use_password = 0;
     config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
@@ -104,10 +104,10 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             }
 
-            config->flags.force_insert = b;
+            config->force_options.enabled = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
             char *end;
-            config->force_time = strtol(node[i]->content, &end, 10);
+            config->force_options.connection_time = strtol(node[i]->content, &end, 10);
 
             if (*end != '\0') {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);

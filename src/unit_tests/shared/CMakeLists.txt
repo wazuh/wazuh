@@ -151,9 +151,6 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wra
                                 -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
 endif()
 
-list(APPEND shared_tests_names "test_keys")
-list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
-
 list(APPEND shared_tests_names "test_atomic")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
