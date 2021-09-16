@@ -566,7 +566,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
 
-    getProcessesInfo([&jsProcessesList](nlohmann::json& data)
+    getProcessesInfo([&jsProcessesList](nlohmann::json & data)
     {
         jsProcessesList.push_back(data);
     });
@@ -754,20 +754,13 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    fillProcessesData([&callback](const auto &processEntry)
+    fillProcessesData([&callback](const auto & processEntry)
     {
-        auto processInfo { getProcessInfo(processEntry) };
+        auto processInfo = getProcessInfo(processEntry);
 
         if (!processInfo.empty())
         {
-            if (processInfo.is_array() && processInfo.size() == 1)
-            {
-                callback(processInfo.at(0));  
-            }    
-            else
-            {
-                callback(processInfo);
-            }
+            callback(processInfo);
         }
     });
 }
