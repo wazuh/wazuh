@@ -114,10 +114,11 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
         // For sender buffer these must be always the same.
         assert(current_data_size == current_data_len);
-        if (current_data_size + msg_size <= OS_MAXSTR) {
-            os_realloc(data, current_data_len + msg_size, data);
+        if (current_data_size + msg_size + sizeof(uint32_t) <= OS_MAXSTR) {
+            os_realloc(data, current_data_len + msg_size + sizeof(uint32_t), data);
             netbuffer_send.buffers[socket].data = data;
-            memcpy(data + current_data_len, crypt_msg, msg_size);
+            *(uint32_t *)data = wnet_order(msg_size);
+            memcpy(data + current_data_len + sizeof(uint32_t), crypt_msg, msg_size);
             netbuffer_send.buffers[socket].data_size += msg_size;
             netbuffer_send.buffers[socket].data_len += msg_size;
             netbuffer_send.buffers[socket].mutex = &keys.keyentries[key_id]->mutex;
