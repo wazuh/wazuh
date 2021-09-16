@@ -1332,13 +1332,13 @@ def agents_padding(result, agent_list):
     return agent_list
 
 
-def core_upgrade_agents(agents_list, command='upgrade_result', wpk_repo=None, version=None,
+def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
                         force=False, use_http=False, file_path=None, installer=None, get_result=False):
     """Send command to upgrade module / task module
 
     Parameters
     ----------
-    agents_list : list
+    agents_chunk : list
         List of agents ID's.
     command : str
         Command sent to the socket.
@@ -1366,7 +1366,7 @@ def core_upgrade_agents(agents_list, command='upgrade_result', wpk_repo=None, ve
                'origin': {'module': 'api'},
                'command': command,
                'parameters': {
-                   'agents': agents_list,
+                   'agents': agents_chunk,
                    'version': version,
                    'force_upgrade': force,
                    'use_http': use_http,
@@ -1377,7 +1377,7 @@ def core_upgrade_agents(agents_list, command='upgrade_result', wpk_repo=None, ve
                }
     else:
         msg = {'version': 1, 'origin': {'module': 'api'}, 'command': command,
-               'module': 'api', 'parameters': {'agents': agents_list}}
+               'module': 'api', 'parameters': {'agents': agents_chunk}}
 
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
 
@@ -1389,10 +1389,8 @@ def core_upgrade_agents(agents_list, command='upgrade_result', wpk_repo=None, ve
     data = loads(s.receive().decode())
     s.close()
 
-    # Update agent information when getting upgrade results
-    date_format_from_socket = "%Y/%m/%d %H:%M:%S"
-    [agent_info.update(
-        (k, datetime.strptime(v, date_format_from_socket).strftime(date_format)) for k, v in agent_info.items() if
-        k in {'create_time', 'update_time'} and re.match(date_format_from_socket, v)) for agent_info in data['data']]
+    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format))
+                       for k, v in agent_info.items() if k in {'create_time', 'update_time'})
+     for agent_info in data['data']]
 
     return data
