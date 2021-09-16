@@ -183,20 +183,25 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
     """
     walk_files = {}
+    print(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5)
 
     # Get the information collected in the previous integration process.
     previous_status = common.cluster_integrity_mtime.get()
 
     full_dirname = path.join(common.wazuh_path, dirname)
     # Get list of all files and directories inside 'full_dirname'.
+    print(full_dirname)
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
+            print("1", root_, full_dirname)
             # Check if recursive flag is set or root is actually the initial lookup directory.
             if recursive or root_ == full_dirname:
+                print("2")
                 for file_ in files_:
                     # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
                     if file_ in excluded_files or any([file_.endswith(ext) for ext in excluded_extensions]):
                         continue
+                    print("hola: ",files)    
                     try:
                         #  If 'all' files have been requested or entry is in the specified files list.
                         if files == ['all'] or file_ in files:
@@ -250,6 +255,7 @@ def get_files_status(get_md5=True):
     cluster_items = get_cluster_items()
 
     final_items = {}
+
     for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
@@ -257,8 +263,8 @@ def get_files_status(get_md5=True):
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                          cluster_items['files']['excluded_extensions'], file_path, get_md5))
-            print(final_items)
         except Exception as e:
+            print("TESTING: ",e)
             logger.warning(f"Error getting file status: {e}.")
     # Save the information collected in the current integration process.
     common.cluster_integrity_mtime.set(final_items)
@@ -309,9 +315,11 @@ def compress_files(name, list_path, cluster_control_json=None):
     """
     failed_files = list()
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
+    print(zip_file_path)
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
+        print("hasta aqui")
         # write files
         if list_path:
             for f in list_path:
@@ -328,6 +336,7 @@ def compress_files(name, list_path, cluster_control_json=None):
             zf.writestr("files_metadata.json", json.dumps(cluster_control_json))
         except Exception as e:
             raise WazuhError(3001, str(e))
+    except
 
     return zip_file_path
 
