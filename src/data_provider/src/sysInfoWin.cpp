@@ -566,14 +566,10 @@ static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
 nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
-    fillProcessesData([&jsProcessesList](const auto & processEntry)
-    {
-        const auto& processInfo { getProcessInfo(processEntry) };
 
-        if (!processInfo.empty())
-        {
-            jsProcessesList.push_back(processInfo);
-        }
+    getProcessesInfo([&jsProcessesList](nlohmann::json & data)
+    {
+        jsProcessesList.push_back(data);
     });
 
     return jsProcessesList;
@@ -752,9 +748,13 @@ nlohmann::json SysInfo::getPorts() const
     return ports;
 }
 
-void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
+void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    // TO DO
+    fillProcessesData([&callback](const auto & processEntry)
+    {
+        auto processInfo = getProcessInfo(processEntry);
+        callback(processInfo);
+    });
 }
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
