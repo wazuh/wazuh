@@ -40,44 +40,64 @@ class SyncWorker:
     Define methods to synchronize files with master.
     """
 
-    def __init__(self, cmd: bytes, files_to_sync: Dict, files_metadata: Dict, logger, worker):
+    def __init__(self, cmd: bytes, logger, worker):
         """Class constructor.
 
         Parameters
         ----------
         cmd : bytes
             Request command to send to the master.
-        files_to_sync : dict
-            Paths (keys) and metadata (values) of the files to send to the master. Keys in this dictionary
-            will be iterated to add the files they refer to the zip file that the master will receive.
-        files_metadata : dict
-            Paths (keys) and metadata (values) of the files to send to the master. This dict will be included as
-            a JSON file named files_metadata.json.
         logger : Logger object
             Logger to use during synchronization process.
         worker : WorkerHandler object
             The WorkerHandler object that creates this one.
         """
         self.cmd = cmd
-        self.files_to_sync = files_to_sync
-        self.files_metadata = files_metadata
         self.logger = logger
         self.worker = worker
 
-    async def sync(self):
-        """Start synchronization process with the master and send necessary information."""
-        start_time = time.time()
+    async def request_permission(self, start_time: float):
+        """Request permission to start synchronization process with the master.
+
+        Parameters
+        ----------
+        start_time : float
+            Start time to be used when logging task duration if permission is not granted.
+
+        Returns
+        -------
+        bool
+            Whether permission is granted.
+        """
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
+
         if isinstance(result, Exception):
             self.logger.error(f"Error asking for permission: {result}")
-            return
         elif result == b'True':
             self.logger.debug("Permission to synchronize granted.")
+            return True
         else:
             self.logger.info(f"Finished in {(time.time()-start_time):.3f}s. Master didn't grant permission to "
-                             f"synchronize.")
-            return
+                             f"synchronize because there is a task still in progress.")
+        return False
 
+    async def sync(self, files_to_sync: Dict, files_metadata: Dict):
+        """Send metadata and files to the master node.
+
+        Parameters
+        ----------
+        files_to_sync : dict
+            Paths (keys) and metadata (values) of the files to send to the master. Keys in this dictionary
+            will be iterated to add the files they refer to the zip file that the master will receive.
+        files_metadata : dict
+            Paths (keys) and metadata (values) of the files to send to the master. This dict will be included as
+            a JSON file named files_metadata.json.
+
+        Returns
+        -------
+        bool
+            True if files were correctly sent to the master node, None otherwise.
+        """
         # Start the synchronization process with the master and get a taskID.
         task_id = await self.worker.send_request(command=self.cmd, data=b'')
         if isinstance(task_id, Exception):
@@ -89,11 +109,10 @@ class SyncWorker:
             await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
             return
 
-        self.logger.debug("Compressing files and 'files_metadata.json'." if self.files_to_sync else
+        self.logger.debug("Compressing files and 'files_metadata.json'." if files_to_sync else
                           "Compressing 'files_metadata.json'.")
-        compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name,
-                                                                         list_path=self.files_to_sync,
-                                                                         cluster_control_json=self.files_metadata)
+        compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
+                                                                         cluster_control_json=files_metadata)
 
         try:
             # Send zip file to the master into chunks.
@@ -166,7 +185,7 @@ class SyncWazuhdb:
             self.logger.debug("Permission to synchronize granted.")
         else:
             self.logger.info(f"Finished in {(time.time()-start_time):.3f}s. Master didn't grant permission to "
-                             f"synchronize.")
+                             f"synchronize because there is a task still in progress.")
             return
 
         try:
@@ -397,6 +416,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.setup_receive_files_from_master()
         elif command == b'syn_m_c_e':
             return self.end_receiving_integrity(data.decode())
+        elif command == b'syn_m_e_ok':
+            return self.sync_extravalid_ok_from_master()
+        elif command == b'syn_m_e_err':
+            return self.sync_extravalid_err_from_master(data.decode())
         elif command == b'syn_m_c_r':
             return self.error_receiving_integrity(data.decode())
         elif command == b'syn_m_a_e':
@@ -508,6 +531,39 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                               f"Sync not required.")
         return b'ok', b'Thanks'
 
+    def sync_extravalid_ok_from_master(self) -> Tuple[bytes, bytes]:
+        """Function called when the master sends the "syn_m_e_ok" command.
+
+        This method is called once the master finishes processing extra-valid files. It logs
+        how long it took for the Integrity sync task to finish.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        integrity_logger = self.task_loggers['Integrity sync']
+        integrity_logger.info(f"Finished in {(time.time() - self.integrity_check_status['date_start']):.3f}s.")
+        return b'ok', b'Thanks'
+
+    def sync_extravalid_err_from_master(self, response) -> Tuple[bytes, bytes]:
+        """Function called when the master sends the "syn_m_e_err" command.
+
+        This method is called when there is an error processing extra-valid files in the master node.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        integrity_logger = self.task_loggers['Integrity sync']
+        integrity_logger.error(f"There was an error while processing extra valid files on the master: {response}")
+        return b'ok', b'Thanks'
+
     def sync_agent_info_from_master(self, response) -> Tuple[bytes, bytes]:
         """Function called when the master sends the "syn_m_a_e" command.
 
@@ -566,14 +622,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         compares it with its own information.
         """
         logger = self.task_loggers["Integrity check"]
+        integrity_check = SyncWorker(cmd=b'syn_i_w_m', logger=logger, worker=self)
+
         while True:
             try:
                 if self.connected:
                     logger.info("Starting.")
                     start_time = time.time()
-                    if await SyncWorker(cmd=b'syn_i_w_m', files_to_sync={}, logger=logger, worker=self,
-                                        files_metadata=wazuh.core.cluster.cluster.get_files_status()).sync():
+                    if await integrity_check.request_permission(start_time=start_time):
                         self.integrity_check_status['date_start'] = start_time
+                        await integrity_check.sync(files_metadata=wazuh.core.cluster.cluster.get_files_status(),
+                                                   files_to_sync={})
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
                 logger.error(f"Error synchronizing integrity: {e}")
@@ -629,31 +688,32 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Keys are paths of files missing in the master node.
         """
         logger = self.task_loggers["Integrity sync"]
+
         try:
             before = time.time()
             logger.debug("Starting sending extra valid files to master.")
+            extra_valid_sync = SyncWorker(cmd=b'syn_e_w_m', logger=logger, worker=self)
+
             # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
-            n_files, merged_file = \
-                wazuh.core.cluster.cluster.merge_info(merge_type='agent-groups', files=extra_valid.keys(),
-                                                      node_name=self.name)
+            n_files, merged_file = wazuh.core.cluster.cluster.merge_info(merge_type='agent-groups', node_name=self.name,
+                                                                         files=extra_valid.keys())
             files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
                                            'cluster_item_key': 'queue/agent-groups/'}} if n_files else {}
-            await SyncWorker(cmd=b'syn_e_w_m', files_to_sync=files_to_sync, files_metadata=files_to_sync,
-                             logger=logger, worker=self).sync()
-            after = time.time()
-            logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
-            logger.info(f"Finished in {(after - self.integrity_sync_status['date_start']):.3f}s.")
+
+            # Permission is not requested since it was already granted in the 'Integrity check' task.
+            await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
+            logger.debug(f"Finished sending extra valid files in {(time.time() - before):.3f}s.")
 
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
-            await self.send_request(command=b'syn_e_w_m_r',
+            await self.send_request(command=b'syn_i_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
-            await self.send_request(command=b'syn_e_w_m_r', data=b'None ' + exc_info.encode())
+            await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
         """Perform relevant actions for each file according to its status.
@@ -700,14 +760,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Updating local files: Start.")
                 self.update_master_files_in_worker(ko_files, zip_path)
                 logger.debug("Updating local files: End.")
-                date_end = time.time() - self.integrity_sync_status['date_start']
 
             # Send extra valid files to the master.
             if ko_files['extra_valid']:
                 logger.debug("Master requires some worker files.")
                 asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
             else:
-                date_end and logger.info(f"Finished in {date_end:.3f}s.")
+                logger.info(f"Finished in {time.time() - self.integrity_sync_status['date_start']:.3f}s.")
 
         finally:
             zip_path and shutil.rmtree(zip_path)
