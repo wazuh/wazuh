@@ -110,10 +110,11 @@ int OS_SetSendTimeout(int socket, int seconds);
  * @param sock Socket file descriptor.
  * @param size Message length, in bytes.
  * @param msg Pointer to the message content.
+ * @param sent_bytes Pointer to a variable that will hold the amount of bytes sent. It can be set to NULL.
  * @retval 0 on success.
  * @retval OS_SOCKTERR on error.
  */
-int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
+int OS_SendSecureTCP(int sock, uint32_t size, const void * msg, ssize_t* sent_bytes);
 
 /* Receive secure TCP message
  * This function reads a header containing message size as 4-byte little-endian unsigned integer.
