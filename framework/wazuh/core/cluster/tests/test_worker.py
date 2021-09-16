@@ -171,71 +171,71 @@ def test_ReceiveIntegrityTask():
 
 
 @pytest.mark.asyncio
-async def test_SyncWorker(create_log, caplog):
-    async def check_message(mock, expected_message):
+async def test_SyncTask(create_log, caplog):
+    async def check_message(mock, expected_message, method, *args, **kwargs):
         with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=mock)):
             with caplog.at_level(logging.DEBUG):
-                await sync_worker.sync()
+                await method(*args, **kwargs)
                 assert expected_message in caplog.records[-1].message
 
     worker_handler = get_worker_handler()
+    sync_task = worker.SyncTask(cmd=b'testing', logger=logger, worker=worker_handler)
 
-    sync_worker = worker.SyncFiles(cmd=b'testing', files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'},
-                                   logger=logger, worker=worker_handler)
+    await check_message(mock=KeyError(1), expected_message=f"Error asking for permission: 1",
+                        method=sync_task.request_permission)
+    await check_message(mock=b'False', expected_message="Master didn't grant permission to start",
+                        method=sync_task.request_permission)
+    await check_message(mock=b'True', expected_message="Permission to synchronize granted.",
+                        method=sync_task.request_permission)
 
-    send_request_mock = KeyError(1)
-    await check_message(mock=send_request_mock, expected_message=f"Error asking for permission: 1")
-    await check_message(mock=b'False', expected_message="Master didn't grant permission to synchronize.")
-    await check_message(mock=b'True', expected_message="Zip file sent to master.")
+
+@pytest.mark.asyncio
+async def test_SyncWorker(create_log, caplog):
+    worker_handler = get_worker_handler()
+    sync_worker = worker.SyncFiles(cmd=b'testing', logger=logger, worker=worker_handler)
 
     error = WazuhException(1001)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
-            await sync_worker.sync()
+            await sync_worker.sync(files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'})
             assert 'Error sending zip file' in caplog.records[-1].message
 
     error = KeyError(1)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
-            await sync_worker.sync()
+            await sync_worker.sync(files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'})
             assert 'Error sending zip file' in caplog.records[-1].message
+
 
 @pytest.mark.asyncio
 async def test_SyncWazuhdb(create_log, caplog):
-    async def check_message(mock, expected_messages):
+    async def check_message(mock, expected_messages, *args, **kwargs):
         with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=mock)):
             with caplog.at_level(logging.DEBUG):
-                await sync_worker.sync()
+                await sync_worker.sync(*args, **kwargs)
                 for i, expected_message in enumerate(expected_messages):
                     assert expected_message in caplog.records[-(i + 1)].message
-                # assert expected_message in caplog.records[-1].message
 
     worker_handler = get_worker_handler()
-
     sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m', data_retriever=MagicMock(),
                                      get_data_command='test-get', set_data_command='test-set')
-    await check_message(mock=KeyError(1), expected_messages=["Error asking for permission: 1"])
-    await check_message(mock=b'False', expected_messages=["Master didn't grant permission to synchronize."])
 
     sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
                                      data_retriever=lambda x: [])
     await check_message(mock=b'True', expected_messages=["(0 chunks sent)",
-                                                         "Obtained 0 chunks of data in",
-                                                         "Permission to synchronize granted."])
+                                                         "Obtained 0 chunks of data in"], start_time=123.456)
 
     sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
                                      data_retriever=lambda x: ['test0', 'test1'])
     await check_message(mock=b'True', expected_messages=["All chunks sent.",
-                                                         "Obtained 2 chunks of data in",
-                                                         "Permission to synchronize granted."])
+                                                         "Obtained 2 chunks of data in"], start_time=123.456)
 
     sync_worker = worker.SyncWazuhdb(worker=worker_handler, logger=logger, cmd=b'syn_a_w_m',
                                      get_data_command='test-get', set_data_command='test-set',
                                      data_retriever=lambda x: exec('raise(WazuhException(1000))'))
-    await check_message(mock=b'True', expected_messages=["Error obtaining data from wazuh-db",
-                                                         "Permission to synchronize granted."])
+    await check_message(mock=b'True', expected_messages=["Error obtaining data from wazuh-db"], start_time=123.456)
 
 
 @pytest.mark.asyncio
