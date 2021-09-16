@@ -8,6 +8,7 @@
  * Foundation
  */
 
+#include "cJSON.h"
 #include "shared.h"
 #include "os_crypto/sha256/sha256_op.h"
 #include "../os_net/os_net.h"
@@ -619,8 +620,17 @@ static cJSON* w_create_agent_add_payload(const char *name,
         cJSON_AddStringToObject(arguments, "id", id);
     }
 
-    if (force >= 0) {
-        cJSON_AddNumberToObject(arguments, "force", force);
+    if (force == BYPASS_FORCE_SETTINGS) {
+        cJSON* j_force = cJSON_CreateObject();
+        cJSON* j_disconnected_time = cJSON_CreateObject();
+        cJSON_AddItemToObjectCS(j_force, "disconnected_time", j_disconnected_time);
+        cJSON_AddItemToObjectCS(arguments, "force", j_force);
+        // Sending a generic configuration that replaces an agent in every possible situation
+        cJSON_AddBoolToObject(j_force, "enabled", true);
+        cJSON_AddBoolToObject(j_force, "key_mismatch", false);
+        cJSON_AddNumberToObject(j_force, "after_registration_time", 0);
+        cJSON_AddBoolToObject(j_disconnected_time, "enabled", false);
+        cJSON_AddNumberToObject(j_disconnected_time, "value", 0);
     }
 
     return request;
