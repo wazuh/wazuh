@@ -142,12 +142,11 @@ void nb_send(int socket) {
     const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
  
-    ssize_t sent_bytes = 0;
-    const int retval = OS_SendSecureTCP(socket, amount_of_data_to_send, (const void *)netbuffer_send.buffers[socket].data, &sent_bytes);
+    const int ssize_t sent_bytes = send(socket, (const void *)netbuffer_send.buffers[socket].data, amount_of_data_to_send, 0);
 
     const int error = errno;
 
-    if ((retval == 0) || ((retval < 0) && ((error == 0) || (error == ETIMEDOUT)))) {
+    if ((sent_bytes == 0) || ((sent_bytes < 0) && ((error == 0) || (error == ETIMEDOUT)))) {
         assert(sent_bytes <= current_data_len);
         if (sent_bytes == current_data_len) {
             os_free(netbuffer_send.buffers[socket].data);
