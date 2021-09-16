@@ -106,17 +106,20 @@ stages:
     response:
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
-          affected_items:
-            - '000'
-            - '002'
-            - '004'
-            - '006'
-            - '008'
-          failed_items: []
-          total_affected_items: 5
-          total_failed_items: 0
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1760
+              id:
+                - '000'
+                - '002'
+                - '004'
+                - '006'
+                - '008'
+          total_affected_items: 0
+          total_failed_items: 5
 
   - name: Request a list of agents (Partially allowed, user aware)
     request:
@@ -130,19 +133,22 @@ stages:
     response:
       status_code: 200
       json:
-        error: 2
+        error: 1
         data:
-          affected_items:
-            - '002'
-            - '006'
+          affected_items: []
           failed_items:
+            - error:
+                code: 1760
+              id:
+                - '002'
+                - '006'
             - error:
                 code: 4000
               id:
                 - '001'
                 - '005'
-          total_affected_items: 2
-          total_failed_items: 2
+          total_affected_items: 0
+          total_failed_items: 4
 
 ---
 test_name: GET /experimental/ciscat/results

@@ -3,8 +3,8 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 from datetime import datetime
-
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, plain_dict_to_nested_dict
+from wazuh.core.wdb import WazuhDBConnection
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
@@ -36,3 +36,7 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
                           self._data]
 
         return super()._format_data_into_dictionary()
+
+
+def syscheck_delete_agent(agent: str, wdb_conn: WazuhDBConnection) -> None:
+    wdb_conn.execute(f"agent {agent} sql delete from fim_entry", delete=True)
