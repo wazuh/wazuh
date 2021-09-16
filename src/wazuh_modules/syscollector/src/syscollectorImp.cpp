@@ -931,7 +931,7 @@ static bool isElementDuplicated(const nlohmann::json & input, const std::pair<st
 }
 
 void Syscollector::updateAndNotifyChanges(const std::string& table,
-                                          const nlohmann::json& input)
+                                          const nlohmann::json& values)
 {
     const std::map<ReturnTypeCallback, std::string> operationsMap
     {
@@ -995,6 +995,10 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
         queueSize,
         callback
     };
+    nlohmann::json jsResult;
+    nlohmann::json input;
+    input["table"] = table;
+    input["data"] = values;
     txn.syncTxnRow(input);
     txn.getDeletedRows(callback);
 }
@@ -1193,10 +1197,8 @@ void Syscollector::scanHardware()
     if (m_hardware)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting hardware scan");
-        nlohmann::json input;
-        input["table"] = HW_TABLE;
-        input["data"] = getHardwareData();
-        updateAndNotifyChanges(HW_TABLE, input);
+        const auto& hwData{getHardwareData()};
+        updateAndNotifyChanges(HW_TABLE, hwData);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending hardware scan");
     }
 }
@@ -1219,10 +1221,8 @@ void Syscollector::scanOs()
     if (m_os)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting os scan");
-        nlohmann::json input;
-        input["table"] = OS_TABLE;
-        input["data"] = getOSData();
-        updateAndNotifyChanges(OS_TABLE, input);
+        const auto& osData{getOSData()};
+        updateAndNotifyChanges(OS_TABLE, osData);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending os scan");
     }
 }
@@ -1267,7 +1267,7 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                 ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);
                 ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
-                ifaceTableDataList.push_back(std::move(ifaceTableData));
+                ifaceTableDataList.push_back(ifaceTableData);
 
                 // "dbsync_network_protocol" table data to update and notify
                 nlohmann::json protoTableData {};
@@ -1287,7 +1287,7 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = 0;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                        addressTableDataList.push_back(std::move(addressTableData));
+                        addressTableDataList.push_back(addressTableData);
                     }
                 }
 
@@ -1303,16 +1303,16 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = 1;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                        addressTableDataList.push_back(std::move(addressTableData));
+                        addressTableDataList.push_back(addressTableData);
                     }
                 }
                 protoTableData["checksum"]  = getItemChecksum(protoTableData);
                 protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
-                protoTableDataList.push_back(std::move(protoTableData));
+                protoTableDataList.push_back(protoTableData);
             }
-            ret[NET_IFACE_TABLE] = std::move(ifaceTableDataList);
-            ret[NET_PROTOCOL_TABLE] = std::move(protoTableDataList);
-            ret[NET_ADDRESS_TABLE] = std::move(addressTableDataList);
+            ret[NET_IFACE_TABLE] = ifaceTableDataList;
+            ret[NET_PROTOCOL_TABLE] = protoTableDataList;
+            ret[NET_ADDRESS_TABLE] = addressTableDataList;
         }
     }
     return ret;
@@ -1323,32 +1323,23 @@ void Syscollector::scanNetwork()
     if (m_network)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting network scan");
-        auto networkData(getNetworkData());
+        const auto& networkData{getNetworkData()};
         if (!networkData.is_null())
         {
-            auto itIface { networkData.find(NET_IFACE_TABLE) };
+            const auto itIface { networkData.find(NET_IFACE_TABLE) };
             if (itIface != networkData.end())
             {
-                nlohmann::json input;
-                input["table"] = NET_IFACE_TABLE;
-                input["data"] = std::move(*itIface);
-                updateAndNotifyChanges(NET_IFACE_TABLE, input);
+                updateAndNotifyChanges(NET_IFACE_TABLE, itIface.value());
             }
-            auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
+            const auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
             if (itProtocol != networkData.end())
             {
-                nlohmann::json input;
-                input["table"] = NET_PROTOCOL_TABLE;
-                input["data"] = std::move(*itProtocol);
-                updateAndNotifyChanges(NET_PROTOCOL_TABLE, input);
+                updateAndNotifyChanges(NET_PROTOCOL_TABLE, itProtocol.value());
             }
-            auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
+            const auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
             if (itAddress != networkData.end())
             {
-                nlohmann::json input;
-                input["table"] = NET_ADDRESS_TABLE;
-                input["data"] = std::move(*itAddress);
-                updateAndNotifyChanges(NET_ADDRESS_TABLE, input);
+                updateAndNotifyChanges(NET_ADDRESS_TABLE, itAddress.value());
             }
         }
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending network scan");
@@ -1367,18 +1358,20 @@ nlohmann::json Syscollector::getPackagesData()
     nlohmann::json ret;
     nlohmann::json packagesList;
     nlohmann::json hotfixesList;
-    auto packagesData (m_spInfo->packages());
+    const auto& packagesData { m_spInfo->packages() };
 
     if (!packagesData.is_null())
     {
-        m_spNormalizer->removeExcluded("packages", packagesData);
-        m_spNormalizer->normalize("packages", packagesData);
-        for (auto& item : packagesData)
+        const auto& normalizedPackagesData
+        {
+            m_spNormalizer->normalize("packages", m_spNormalizer->removeExcluded("packages", packagesData))
+        };
+        for (auto item : normalizedPackagesData)
         {
             item["checksum"] = getItemChecksum(item);
             if(item.find("hotfix") != item.end())
             {
-                hotfixesList.push_back(std::move(item));
+                hotfixesList.push_back(item);
             }
             else
             {
@@ -1386,12 +1379,12 @@ nlohmann::json Syscollector::getPackagesData()
                 if(!isElementDuplicated(packagesList, std::make_pair("item_id", itemId)))
                 {
                     item["item_id"] = itemId;
-                    packagesList.push_back(std::move(item));
+                    packagesList.push_back(item);
                 }
             }
         }
-        ret[HOTFIXES_TABLE] = std::move(hotfixesList);
-        ret[PACKAGES_TABLE] = std::move(packagesList);
+        ret[HOTFIXES_TABLE] = hotfixesList;
+        ret[PACKAGES_TABLE] = packagesList;
     }
     return ret;
 }
@@ -1401,26 +1394,20 @@ void Syscollector::scanPackages()
     if (m_packages)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting packages scan");
-        auto packagesData (getPackagesData());
+        const auto& packagesData { getPackagesData() };
         if (!packagesData.is_null())
         {
-            auto itPackages { packagesData.find(PACKAGES_TABLE) };
+            const auto itPackages { packagesData.find(PACKAGES_TABLE) };
             if (itPackages != packagesData.end())
             {
-                nlohmann::json input;
-                input["table"] = PACKAGES_TABLE;
-                input["data"] = std::move(*itPackages);
-                updateAndNotifyChanges(PACKAGES_TABLE, input);
+                updateAndNotifyChanges(PACKAGES_TABLE, itPackages.value());
             }
             if (m_hotfixes)
             {
-                auto itHotFixes { packagesData.find(HOTFIXES_TABLE) };
+                const auto itHotFixes { packagesData.find(HOTFIXES_TABLE) };
                 if (itHotFixes != packagesData.end())
                 {
-                    nlohmann::json input;
-                    input["table"] = HOTFIXES_TABLE;
-                    input["data"] = std::move(*itHotFixes);
-                    updateAndNotifyChanges(HOTFIXES_TABLE, input);
+                    updateAndNotifyChanges(HOTFIXES_TABLE, itHotFixes.value());
                 }
             }
         }
@@ -1504,10 +1491,8 @@ void Syscollector::scanPorts()
     if (m_ports)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting ports scan");
-        nlohmann::json input;
-        input["table"] = PORTS_TABLE;
-        input["data"] = getPortsData();
-        updateAndNotifyChanges(PORTS_TABLE, input);
+        const auto& portsData { getPortsData() };
+        updateAndNotifyChanges(PORTS_TABLE, portsData);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending ports scan");
     }
 }
@@ -1520,13 +1505,13 @@ void Syscollector::syncPorts()
 nlohmann::json Syscollector::getProcessesData()
 {
     nlohmann::json ret;
-    auto processes(m_spInfo->processes());
+    const auto& processes{m_spInfo->processes()};
     if (!processes.is_null())
     {
-        for (auto& item : processes)
+        for (auto item : processes)
         {
             item["checksum"] = getItemChecksum(item);
-            ret.push_back(std::move(item));
+            ret.push_back(item);
         }
     }
     return ret;
@@ -1537,10 +1522,8 @@ void Syscollector::scanProcesses()
     if (m_processes)
     {
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting processes scan");
-        nlohmann::json input;
-        input["table"] = PROCESSES_TABLE;
-        input["data"] = getProcessesData();
-        updateAndNotifyChanges(PROCESSES_TABLE, input);
+        const auto& processesData{getProcessesData()};
+        updateAndNotifyChanges(PROCESSES_TABLE, processesData);
         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
 }

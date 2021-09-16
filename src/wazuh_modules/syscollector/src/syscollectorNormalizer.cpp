@@ -20,9 +20,10 @@ SysNormalizer::SysNormalizer(const std::string& configFile,
 {
 }
 
-void SysNormalizer::removeExcluded(const std::string& type,
-                                   nlohmann::json& data) const
+nlohmann::json SysNormalizer::removeExcluded(const std::string& type,
+                                             const nlohmann::json& data) const
 {
+    nlohmann::json ret(data);
     const auto exclusionsIt{m_typeExclusions.find(type)};
     if (exclusionsIt != m_typeExclusions.cend())
     {
@@ -32,23 +33,23 @@ void SysNormalizer::removeExcluded(const std::string& type,
             {
                 std::regex pattern{exclusionItem["pattern"].get_ref<const std::string&>()};
                 const auto& fieldName{exclusionItem["field_name"].get_ref<const std::string&>()};
-                if (data.is_array())
+                if (ret.is_array())
                 {
-                    for (auto item{data.begin()}; item != data.end(); ++item)
+                    for (auto item{ret.begin()}; item != ret.end(); ++item)
                     {
                         const auto fieldIt{item->find(fieldName)};
                         if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
                         {
-                            data.erase(item);
+                            ret.erase(item);
                         }
                     }
                 }
                 else
                 {
-                    const auto fieldIt{data.find(fieldName)};
-                    if (fieldIt != data.end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                    const auto fieldIt{ret.find(fieldName)};
+                    if (fieldIt != ret.end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
                     {
-                        data.clear();
+                        ret.clear();
                     }
                 }
             }
@@ -58,6 +59,7 @@ void SysNormalizer::removeExcluded(const std::string& type,
             // LCOV_EXCL_STOP
         }
     }
+    return ret;
 }
 
 
@@ -105,24 +107,26 @@ static void normalizeItem(const nlohmann::json& dictionary,
     }
 }
 
-void SysNormalizer::normalize(const std::string& type,
-                              nlohmann::json& data) const
+nlohmann::json SysNormalizer::normalize(const std::string& type,
+                                        const nlohmann::json& data) const
 {
+    nlohmann::json ret(data);
     const auto dictionaryIt{m_typeDictionary.find(type)};
     if (dictionaryIt != m_typeDictionary.cend())
     {
-        if (data.is_array())
+        if (ret.is_array())
         {
-            for (auto& item : data)
+            for (auto& item : ret)
             {
                 normalizeItem(dictionaryIt->second, item);
             }
         }
         else
         {
-            normalizeItem(dictionaryIt->second, data);
+            normalizeItem(dictionaryIt->second, ret);
         }
     }
+    return ret;
 }
 
 std::map<std::string, nlohmann::json> SysNormalizer::getTypeValues(const std::string& configFile,

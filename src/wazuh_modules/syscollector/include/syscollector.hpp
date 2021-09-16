@@ -81,7 +81,7 @@ private:
 
     void registerWithRsync();
     void updateAndNotifyChanges(const std::string& table,
-                                const nlohmann::json& input);
+                                const nlohmann::json& values);
     void scanHardware();
     void scanOs();
     void scanNetwork();
