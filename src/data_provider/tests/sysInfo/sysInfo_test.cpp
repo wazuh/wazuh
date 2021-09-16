@@ -23,6 +23,11 @@ auto PROCESSES_EXPECTED
     R"([{"test":"processes"}])"_json
 };
 
+auto PACKAGES_EXPECTED
+{
+    R"([{"test":"packages"}])"_json
+};
+
 using ::testing::_;
 using ::testing::Return;
 
@@ -67,7 +72,11 @@ nlohmann::json SysInfo::getHotfixes() const
 {
     return {};
 }
-void SysInfo::getPackages(std::function<void(nlohmann::json&)>) const {}
+
+void SysInfo::getPackages(std::function<void(nlohmann::json&)>callback) const
+{
+    callback(PACKAGES_EXPECTED);
+}
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)>callback) const
 {
@@ -131,6 +140,36 @@ TEST_F(SysInfoTest, hardware)
     EXPECT_CALL(info, getMemory(_));
     const auto result {info.hardware()};
     EXPECT_FALSE(result.empty());
+}
+
+TEST_F(SysInfoTest, packages_cb)
+{
+    SysInfoWrapper info;
+    CallbackMock wrapper;
+
+    auto expectedValue1
+    {
+        R"({"architecture":"x86_64","hostname":"TINACHO","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 95","os_release":"sp1","os_version":"6.1.7601"})"_json
+    };
+
+    auto expectedValue2
+    {
+        R"({"architecture":"x86_64","hostname":"OCTACORE","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 3.1","os_release":"sp1","os_version":"6.1.7601"})"_json
+    };
+
+    const auto packagesCallback
+    {
+        [&wrapper](nlohmann::json & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+    EXPECT_CALL(info, getPackages(_)).WillOnce(DoAll(
+                                                   testing::InvokeArgument<0>(expectedValue1),
+                                                   testing::InvokeArgument<0>(expectedValue2)));
+    EXPECT_CALL(wrapper, callbackMock(expectedValue1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedValue2)).Times(1);
+    info.packages(packagesCallback);
 }
 
 TEST_F(SysInfoTest, packages)
@@ -227,15 +266,27 @@ TEST_F(SysInfoTest, packages_c_interface)
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
 
+TEST_F(SysInfoTest, packages_cb_c_interface)
+{
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+    EXPECT_CALL(wrapper, callbackMock(GENERIC, PACKAGES_EXPECTED.dump())).Times(1);
+    EXPECT_EQ(0, sysinfo_packages_cb(callbackData));
+}
+
+TEST_F(SysInfoTest, packages_cb_c_interface_test_empty_callback)
+{
+    callback_data_t cb_data = { .callback = NULL, .user_data = NULL };
+    EXPECT_EQ(-1, sysinfo_packages_cb(cb_data));
+}
+
 TEST_F(SysInfoTest, processes_c_interface)
 {
-
     cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_processes(&object));
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
-
 
 TEST_F(SysInfoTest, processes_cb_c_interface)
 {
@@ -253,7 +304,6 @@ TEST_F(SysInfoTest, processes_cb_c_interface_test_empty_callback)
 
 TEST_F(SysInfoTest, network_c_interface)
 {
-
     cJSON* object = NULL;
     EXPECT_EQ(0, sysinfo_networks(&object));
     EXPECT_TRUE(object);
