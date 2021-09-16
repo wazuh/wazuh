@@ -171,3 +171,11 @@
   <regex type="pcre2" offset="after_regex">^,([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)</regex>
   <order>application_subcategory, application_category, application_technology, application_risk, application_characteristic, application_container, application_saas, application_sanctioned_state</order>
 </decoder>
+
+<!-- Generic decoder for others modules not decoded further-->
+<decoder name="paloalto-others">
+  <parent>paloalto</parent>
+  <prematch type="pcre2">^[^,]*,\d+\/\d+\/\d+\s\d+:\d+:\d+,\d+,\w+,</prematch>
+  <regex type="pcre2">^[^,]*,(\d+\/\d+\/\d+\s\d+:\d+:\d+),(\d+),(\w+)</regex>
+  <order>receive_time, serial_number, type</order>
+</decoder>
