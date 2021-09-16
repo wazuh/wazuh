@@ -1,9 +1,10 @@
 # Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-from unittest.mock import patch, ANY
 from datetime import datetime
+from json import loads
+from unittest.mock import patch, ANY
+
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -28,20 +29,35 @@ def test_wazuh_db_query_syscheck__init__(mock_wdbquery, mock_backend, agent):
                                      get_data=True, date_fields={'mtime', 'date'})
 
 
+@pytest.mark.parametrize('data, is_json', [
+    ({'end': 1603648351, 'start': 1603645251, 'module': 'api', 'date': 1627893702, 'mtime': 1627893600,
+     'perm': 'rwxr-xr-x'},
+     False),
+    ({'end': 1603648351, 'start': 1603645251, 'module': 'api', 'date': 1627893702, 'mtime': 1627893600,
+     'perm': '{"S-1-5-18": {"name": "SYSTEM", "allowed": ["delete", "read_control", "write_dac", "write_owner", '
+             '"read_data", "write_data", "append_data", "read_ea", "write_ea", "execute"]}}'},
+     True)
+])
 @patch("wazuh.core.syscheck.WazuhDBBackend")
-def test_wazuh_db_syscheck_format_data_into_dictionary(mock_backend):
+def test_wazuh_db_syscheck_format_data_into_dictionary(mock_backend, data, is_json):
     """Test if _format_data_into_dictionary() returns the expected element."""
     test = syscheck.WazuhDBQuerySyscheck('002', offset=0, limit=1000, sort=None, search='test',
-                                         select=['end', 'start', 'module', 'date', 'mtime'],
+                                         select=['end', 'start', 'module', 'date', 'mtime', 'perm'],
                                          filters={}, table='pm_event', query='',
                                          fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module',
-                                                 'date': 'date', 'mtime': 'mtime'})
+                                                 'date': 'date', 'mtime': 'mtime', 'perm': 'perm'})
     test._add_select_to_query()
-    test._data = [{'end': 1603648351, 'start': 1603645251, 'module': 'api', 'date': 1627893702, 'mtime': 1627893600}]
+    test._data = [data]
     result = test._format_data_into_dictionary()
 
-    assert result['items'][0]['end'] == datetime.utcfromtimestamp(1603648351) and \
-           result['items'][0]['start'] == datetime.utcfromtimestamp(1603645251) and \
-           result['items'][0]['module'] == 'api' and \
-           result['items'][0]['date'] == datetime.utcfromtimestamp(1627893702) and \
-           result['items'][0]['mtime'] == datetime.utcfromtimestamp(1627893600)
+    assert result['items'][0]['end'] == datetime.utcfromtimestamp(data['end'])
+    assert result['items'][0]['start'] == datetime.utcfromtimestamp(data['start'])
+    assert result['items'][0]['module'] == data['module']
+    assert result['items'][0]['date'] == datetime.utcfromtimestamp(data['date'])
+    assert result['items'][0]['mtime'] == datetime.utcfromtimestamp(data['mtime'])
+    if is_json:
+        assert isinstance(result['items'][0]['perm'], dict)
+        assert result['items'][0]['perm'] == loads(data['perm'])
+    else:
+        assert isinstance(result['items'][0]['perm'], str)
+        assert result['items'][0]['perm'] == data['perm']
