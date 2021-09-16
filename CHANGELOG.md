@@ -21,7 +21,6 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in Wazuh DB that held wrong agent timestamp data. ([#9705](https://github.com/wazuh/wazuh/pull/9705))
 - Fixed a bug in Remoted that kept deleted shared files in the multi-groups' merged.mg file. ([#9942](https://github.com/wazuh/wazuh/pull/9942))
 - Fixed a bug in Analysisd that overwrote its queue socket when launched in test mode. ([#9987](https://github.com/wazuh/wazuh/pull/9987))
-- Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
 
 ### Agent
 
@@ -39,6 +38,9 @@ All notable changes to this project will be documented in this file.
 - Fixed a memory leak in the agent when enrolling for the first time if it had no previous key. ([#9967](https://github.com/wazuh/wazuh/pull/9967))
 - Removed CloudWatchLogs log stream limit when there are more than 50 log streams. ([#9934](https://github.com/wazuh/wazuh/pull/9934))
 - Fixed a problem in the Windows installer that causes the agent to be unable to get uninstalled or upgraded. ([#9897](https://github.com/wazuh/wazuh/pull/9897))
+- Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
+- Fixed a bug in AWS CloudWatch Logs module that caused already processed logs to be collected and reprocessed. ([#10024](https://github.com/wazuh/wazuh/pull/10024))
+- Avoid duplicate alerts from case-insensitive 32-bit registry values in FIM configuration for Windows agents. ([#8256](https://github.com/wazuh/wazuh/pull/8256))
 
 ### RESTful API
 
