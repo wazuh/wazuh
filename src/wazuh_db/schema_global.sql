@@ -1,10 +1,12 @@
 /*
  * SQL Schema for global database
  * Copyright (C) 2015-2021, Wazuh Inc.
+ *
  * June 30, 2016.
+ *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
- */
+*/
 
 CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
@@ -30,7 +32,8 @@ CREATE TABLE IF NOT EXISTS agent (
     last_keepalive INTEGER,
     `group` TEXT DEFAULT 'default',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
-    connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected'
+    connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
+    disconnected_time INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
@@ -66,4 +69,4 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '2');
+INSERT INTO metadata (key, value) VALUES ('db_version', '3');

@@ -386,8 +386,13 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
     }
 }
 
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status) {
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *connection_status, const char *sync_status) {
     sqlite3_stmt *stmt = NULL;
+    time_t disconnected_time = 0;
+
+    if (!strcmp(connection_status, AGENT_CS_DISCONNECTED)) {
+        disconnected_time = time(NULL);
+    }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -409,7 +414,11 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* co
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_int(stmt, 3, id) != SQLITE_OK) {
+    if (sqlite3_bind_int(stmt, 3, disconnected_time) != SQLITE_OK) {
+            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            return OS_INVALID;
+    }
+    if (sqlite3_bind_int(stmt, 4, id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -1098,7 +1107,7 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
     //Set every obtained agent as 'disconnected'
     cJSON* agent = NULL;
     cJSON_ArrayForEach(agent, result) {
-        cJSON* id = cJSON_GetObjectItem(agent,"id");
+        cJSON* id = cJSON_GetObjectItem(agent, "id");
         if (cJSON_IsNumber(id)) {
             //Set connection status as disconnected
             if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id->valueint, "disconnected", sync_status)) {
@@ -1215,7 +1224,7 @@ sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
         struct stmt_cache_list *node_stmt = NULL;
         for (node_stmt = wdb->cache_list; node_stmt ; node_stmt=node_stmt->next) {
             if (node_stmt->value.query) {
-                if (strcmp(node_stmt->value.query, query) == 0) 
+                if (strcmp(node_stmt->value.query, query) == 0)
                 {
                     if (sqlite3_reset(node_stmt->value.stmt) != SQLITE_OK || sqlite3_clear_bindings(node_stmt->value.stmt) != SQLITE_OK) {
                         mdebug1("DB(%s) sqlite3_reset() stmt(%s): %s", wdb->id, sqlite3_sql(node_stmt->value.stmt), sqlite3_errmsg(wdb->db));
@@ -1271,7 +1280,7 @@ bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *
         strcat(query, kv_value->value);
         strcat(query, ";");
         sqlite3_stmt *stmt = wdb_get_cache_stmt(wdb, query);
-        
+
         if (NULL != stmt) {
             ret_val = SQLITE_DONE == wdb_step(stmt) ? true : false;
         } else {
@@ -1279,7 +1288,7 @@ bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *
         }
         ret_val = ret_val && wdb_insert_dbsync(wdb, kv_value, data);
     }
-    
+
     return ret_val;
 }
 
@@ -1292,7 +1301,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
         strcat(query, kv_value->value);
         strcat(query, " VALUES (");
         struct column_list const *column = NULL;
-                
+
         for (column = kv_value->column_list; column ; column=column->next) {
             strcat(query, "?");
             if (column->next) {
@@ -1302,7 +1311,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
         strcat(query, ");");
 
         sqlite3_stmt *stmt = wdb_get_cache_stmt(wdb, query);
-        
+
         if (NULL != stmt) {
             char *field_value = strtok(data, FIELD_SEPARATOR_DBSYNC);
             for (column = kv_value->column_list; column ; column=column->next) {
@@ -1384,7 +1393,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
             }
         }
         strcat(query, " WHERE ");
-         
+
         first_condition_element = true;
         for (column = kv_value->column_list; column ; column=column->next) {
             if (column->value.is_pk) {
