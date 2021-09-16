@@ -1389,8 +1389,10 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     data = loads(s.receive().decode())
     s.close()
 
-    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format))
-                       for k, v in agent_info.items() if k in {'create_time', 'update_time'})
-     for agent_info in data['data']]
+    # Update agent information when getting upgrade results
+    date_format_from_socket = "%Y/%m/%d %H:%M:%S"
+    [agent_info.update(
+        (k, datetime.strptime(v, date_format_from_socket).strftime(date_format)) for k, v in agent_info.items() if
+        k in {'create_time', 'update_time'} and re.match(date_format_from_socket, v)) for agent_info in data['data']]
 
     return data
