@@ -234,6 +234,7 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify)
     const int sock_client = accept(logr.tcp_sock, (struct sockaddr *) &peer_info, &logr.peer_size);
     if (sock_client >= 0) {
         nb_open(&netbuffer_recv, sock_client, &peer_info);
+        nb_open(&netbuffer_send, sock_client, &peer_info);
         rem_inc_tcp();
         mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
 
@@ -313,8 +314,7 @@ STATIC void handle_incoming_data_from_tcp_socket(const int sock_client)
 
 STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client)
 {
-
-
+    nb_send(sock_client);
 }
 
 // Message handler thread

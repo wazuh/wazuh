@@ -86,6 +86,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return (-1);
     }
 
+    const int socket = keys.keyentries[key_id]->sock;
+
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
         key_unlock();
@@ -105,11 +107,31 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
         retval = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
         error = errno;
-    } else if (keys.keyentries[key_id]->sock >= 0) {
-
-        netbuffer_send.buffers[keys.keyentries[key_id]->sock].mutex = &keys.keyentries[key_id]->mutex;
-        wnotify_modify(notify, keys.keyentries[key_id]->sock, WO_READ|WO_WRITE);
-
+    } else if (socket >= 0) {
+        w_mutex_lock(&keys.keyentries[key_id]->mutex);
+        char * data = netbuffer_send.buffers[socket].data;
+        const unsigned long current_data_size = netbuffer_send.buffers[socket].data_size;
+        const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
+        // For sender buffer these must be always the same.
+        assert(current_data_size == current_data_len);
+        if (current_data_size + msg_size <= OS_MAXSTR) {
+            os_realloc(data, current_data_len + msg_size, data);
+            netbuffer_send.buffers[socket].data = data;
+            memcpy(data + current_data_len, crypt_msg, msg_size);
+            netbuffer_send.buffers[socket].data_size += msg_size;
+            netbuffer_send.buffers[socket].data_len += msg_size;
+            netbuffer_send.buffers[socket].mutex = &keys.keyentries[key_id]->mutex;
+            wnotify_modify(notify, socket, WO_READ | WO_WRITE);
+            retval = OS_SUCCESS;
+        }
+        else
+        {
+            retval = OS_SIZELIM;
+            merror("Packet dropped for agent id [%s]. Could not append data into buffer because there is not enough space. [buffer_size=%lu, msg_size=%lu]", agent_id, current_data_size, msg_size);
+        }
+        // For sender buffer these must be always the same.
+        assert(netbuffer_send.buffers[socket].data_size == netbuffer_send.buffers[socket].data_len);
+        w_mutex_unlock(&keys.keyentries[key_id]->mutex);
     } else {
         key_unlock();
         mdebug1("Send operation cancelled due to closed socket.");
