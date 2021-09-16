@@ -264,7 +264,7 @@ def test_compare_files(mock_get_cluster_items):
     Test to check the different outputs of the compare_files function
     """
     mock_get_cluster_items.return_value = {'files': {"some": "field"}}
-    cluster.compare_files( {"some/path/": "files2"},{"some/path/": "files", "some/path2/": {"cluster_item_key": "key"}}, "worker1")
+    #cluster.compare_files( {"some/path/": "files2"},{"some/path/": "files", "some/path2/": {"cluster_item_key": "key"}}, "worker1")
 
 
     #with patch('wazuh.core.common.wazuh_path', return_value = "/var/ossec/"):
