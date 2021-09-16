@@ -522,7 +522,15 @@ double OS_AgentAntiquity(const char *name, const char *ip){
     return output == OS_INVALID ? OS_INVALID : difftime(time(NULL), output);
 }
 
-double OS_AgentDisconnectedTime(const char *id) {
+/**
+ * @brief Returns the number of seconds since an agent has been disconnected
+ *
+ * @param id The agent ID
+ * @retval On success, it returns the difference between the current time and the disconnected_time field in the global DB
+ * @retval OS_INVALID On error: failed to get the agent's info
+ * @retval 0, The status is not disconnected
+ */
+double get_time_since_agent_disconnection(const char *id) {
     time_t disconnected_time = 0;
     cJSON *json_agent_info = NULL;
     cJSON *json_field = NULL;
@@ -534,12 +542,12 @@ double OS_AgentDisconnectedTime(const char *id) {
     }
 
     json_field = cJSON_GetObjectItem(json_agent_info->child, "connection_status");
-    if (cJSON_IsString(json_field)) {
+    if (json_field && cJSON_IsString(json_field)) {
         status = json_field->valuestring;
     }
 
     json_field = cJSON_GetObjectItem(json_agent_info->child, "disconnected_time");
-    if (cJSON_IsNumber(json_field) && status && !strcmp(status, AGENT_CS_DISCONNECTED)) {
+    if (json_field && cJSON_IsNumber(json_field) && status && !strcmp(status, AGENT_CS_DISCONNECTED)) {
         disconnected_time = json_field->valueint;
     }
 

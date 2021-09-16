@@ -107,12 +107,10 @@ int __wrap_wdb_global_set_agent_label(__attribute__((unused)) wdb_t *wdb,
 int __wrap_wdb_global_update_agent_keepalive(__attribute__((unused)) wdb_t *wdb,
                                             int id,
                                             char* connection_status,
-                                            char* status,
-                                            int disconnected_time) {
+                                            char* status) {
     check_expected(id);
     check_expected(connection_status);
     check_expected(status);
-    check_expected(disconnected_time);
     return mock();
 }
 
