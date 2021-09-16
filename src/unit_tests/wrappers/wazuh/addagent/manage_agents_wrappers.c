@@ -18,7 +18,7 @@ double __wrap_OS_AgentAntiquity(__attribute__((unused)) const char *name,
     return mock();
 }
 
-double __wrap_OS_AgentDisconnectedTime(__attribute__((unused)) const char *id) {
+double __wrap_get_time_since_agent_disconnection(__attribute__((unused)) const char *id) {
     return mock();
 }
 

@@ -136,7 +136,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnected_time = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnected_time = 0 WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnected_time = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_DELETE_AGENT] = "DELETE FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_NAME] = "SELECT name FROM agent WHERE id = ?;",
