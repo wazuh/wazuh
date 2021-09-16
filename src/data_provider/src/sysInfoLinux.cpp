@@ -223,11 +223,13 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100 * memFree / ramTotal);
 }
 
-
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    FactoryPackagesCreator<LINUX_TYPE>::getPackages(packages);
+    getPackages([&packages](nlohmann::json & data)
+    {
+        packages.push_back(data);
+    });
     return packages;
 }
 
@@ -407,9 +409,9 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     }
 }
 
-void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
-    // TO DO
+    FactoryPackagesCreator<LINUX_TYPE>::getPackages(callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
