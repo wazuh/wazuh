@@ -203,10 +203,13 @@ w_err_t w_auth_replace_agent(keyentry *key,
     }
 
     /* Check if the agent has been disconnected longer than the value specified in the configuration option*/
-    time_t disconnected_time = 0;
     if (force_options->disconnected_time_enabled) {
-        disconnected_time = (long)OS_AgentDisconnectedTime(key->id);
-        if (disconnected_time < force_options->disconnected_time) {
+        time_t disconnected_time = 0;
+        disconnected_time = (long)get_time_since_agent_disconnection(key->id);
+        if (!disconnected_time) {
+            minfo("Agent '%s' can't be replaced since it is not disconnected.", key->id);
+            return OS_INVALID;
+        } else if (disconnected_time > 0 && disconnected_time < force_options->disconnected_time) {
             minfo("Agent '%s' has not been disconnected long enough to be replaced.", key->id);
             return OS_INVALID;
         }

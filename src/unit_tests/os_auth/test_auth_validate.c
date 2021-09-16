@@ -302,11 +302,30 @@ static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state)
 
     will_return(__wrap_OS_AgentAntiquity, 0);
     // Mocking disconnected_time
-    will_return(__wrap_OS_AgentDisconnectedTime, 10);
+    will_return(__wrap_get_time_since_agent_disconnection, 10);
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
     expect_string(__wrap__minfo, formatted_msg, "Agent '001' has not been disconnected long enough to be replaced.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    free_keyentry(&key);
+    config.force_options.connection_time = 0;
+}
+
+static void test_w_auth_replace_agent_not_disconnected(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+
+    will_return(__wrap_OS_AgentAntiquity, 0);
+    // Mocking disconnected_time
+    will_return(__wrap_get_time_since_agent_disconnection, 0);
+    config.force_options.disconnected_time_enabled = true;
+    config.force_options.disconnected_time = 100;
+
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' can't be replaced since it is not disconnected.");
     err = w_auth_replace_agent(&key, NULL, &config.force_options);
 
     assert_int_equal(err, OS_INVALID);
@@ -352,6 +371,7 @@ int main(void) {
         cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_comply_antiquity, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected_long_enough, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_insert_1),
     };
