@@ -316,16 +316,11 @@ nlohmann::json SysInfo::getProcessesInfo() const
 {
     nlohmann::json jsProcessesList{};
 
-    const auto callback
+    getProcessesInfo([&jsProcessesList](nlohmann::json & processInfo)
     {
-        [&jsProcessesList](nlohmann::json & processInfo)
-        {
-            // Append the current json process object to the list of processes
-            jsProcessesList.push_back(processInfo);
-        }
-    };
-
-    getProcessesInfo(callback);
+        // Append the current json process object to the list of processes
+        jsProcessesList.push_back(processInfo);
+    });
 
     return jsProcessesList;
 }
