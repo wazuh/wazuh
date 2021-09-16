@@ -202,6 +202,8 @@ char* local_dispatch(const char *input) {
 
         if (!strcmp(function->valuestring, "add")) {
             cJSON *item = NULL;
+            cJSON *force = NULL;
+            cJSON *disconnected_time = NULL;
             char *id = NULL;
             char *name = NULL;
             char *ip = NULL;
@@ -240,18 +242,27 @@ char* local_dispatch(const char *input) {
             key_hash = (item = cJSON_GetObjectItem(arguments, "key_hash"), item) ? item->valuestring : NULL;
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
 
-            if (item = cJSON_GetObjectItem(arguments, "force"), item) {
-                if (item->valueint == -1) {
-                    force_options.enabled = false;
-                } else {
-                    force_options.enabled = true;
-                    force_options.connection_time = item->valueint;
+            if (force = cJSON_GetObjectItem(arguments, "force"), force) {
+                if (item = cJSON_GetObjectItem(force, "enabled"), item) {
+                    force_options.enabled = (bool)item->valueint;
                 }
-            } else {
-                force_options.enabled = false;
+                if (item = cJSON_GetObjectItem(force, "key_mismatch"), item) {
+                    force_options.key_mismatch = (bool)item->valueint;
+                }
+                if (disconnected_time = cJSON_GetObjectItem(force, "disconnected_time"), disconnected_time) {
+                    if (item = cJSON_GetObjectItem(disconnected_time, "enabled"), item) {
+                        force_options.disconnected_time_enabled = (bool)item->valueint;
+                    }
+                    if (item = cJSON_GetObjectItem(disconnected_time, "value"), item) {
+                        force_options.disconnected_time = (long)item->valueint;
+                    }
+                }
+                if (item = cJSON_GetObjectItem(force, "after_registration_time"), item) {
+                    force_options.after_registration_time = (long)item->valueint;
+                }
             }
 
-            response = local_add(id, name, ip, groups, key, key_hash, &force_options);
+            response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
 
             os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
