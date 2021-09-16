@@ -96,6 +96,7 @@ int sysinfo_hardware(cJSON** js_result)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 int sysinfo_packages(cJSON** js_result)
@@ -117,6 +118,7 @@ int sysinfo_packages(cJSON** js_result)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 int sysinfo_os(cJSON** js_result)
@@ -138,6 +140,7 @@ int sysinfo_os(cJSON** js_result)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 int sysinfo_processes(cJSON** js_result)
@@ -159,6 +162,7 @@ int sysinfo_processes(cJSON** js_result)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 int sysinfo_networks(cJSON** js_result)
@@ -180,6 +184,7 @@ int sysinfo_networks(cJSON** js_result)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 int sysinfo_ports(cJSON** js_result)
@@ -201,6 +206,7 @@ int sysinfo_ports(cJSON** js_result)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 void sysinfo_free_result(cJSON** js_data)
@@ -226,7 +232,9 @@ int sysinfo_packages_cb(callback_data_t callback_data)
                     callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
                 }
             };
+            // LCOV_EXCL_START
             SysInfo info;
+            // LCOV_EXCL_STOP
             info.packages(callbackWrapper);
             retVal = 0;
         }
@@ -236,6 +244,7 @@ int sysinfo_packages_cb(callback_data_t callback_data)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 
@@ -267,6 +276,7 @@ int sysinfo_processes_cb(callback_data_t callback_data)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 
@@ -289,6 +299,7 @@ int sysinfo_hotfixes(cJSON** js_result)
     {}
 
     // LCOV_EXCL_STOP
+
     return retVal;
 }
 
