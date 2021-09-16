@@ -6,6 +6,597 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
+<!--
+    Reference: https://help.fortinet.com/fddos/4-7-0/fortiddos/Appendix_B-Remote-Syslog-Reference.htm
+-->
+
+<decoder name="forti-like">
+   <prematch>^\w+=\S+ </prematch>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>devid=(\w+)|devid="(\.+)"|device_id=(\w+)|device_id="(\.+)"</regex>
+   <order>devid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>date=(\S+) time=(\S+)</regex>
+   <order>date,time</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>tz=(\w+)|tz="(\.+)"</regex>
+   <order>tz</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>type=(\w+)|type="(\.+)"</regex>
+   <order>type</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>spp=(\d)</regex>
+   <order>spp</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>evecode=(\d)</regex>
+   <order>evecode</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>evesubcode=(\d+)</regex>
+   <order>evesubcode</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>description="(\.+)"</regex>
+   <order>description</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dir=(\d)</regex>
+   <order>dir</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>protocol=(\d+)|proto=(\d+)</regex>
+   <order>protocol</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>sip=(\S+)</regex>
+   <order>srcip</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dip=(\S+)</regex>
+   <order>dstip</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dropcount=(\d+)</regex>
+   <order>dropCount</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>subnetid=(\S+)</regex>
+   <order>subnetid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>log_id=(\w+)</regex>
+   <order>logid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>msg_id=(\d+)</regex>
+   <order>msg_id</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>facility=(\S+)</regex>
+   <order>facility</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>level=(\w+)|level="(\.+)"</regex>
+   <order>level</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>direction=(\w+)|direction="(\.+)"</regex>
+   <order>direction</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>spp_name="(\.+)"</regex>
+   <order>spp_name</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>subnet_name="(\.+)"</regex>
+   <order>subnet_name</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>sppoperatingmode=(\S+)</regex>
+   <order>sppoperatingmode</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>devname=(\w+)|devname="(\.+)"</regex>
+   <order>devname</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>eventtime=(\d+)</regex>
+   <order>eventtime</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>logid=(\w+)|logid="(\.+)"</regex>
+   <order>logid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>subtype=(\w+)|subtype="(\.+)"</regex>
+   <order>subtype</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>vd=(\w+)|vd="(\.+)"</regex>
+   <order>vd</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>logdesc=(\w+)|logdesc="(\.+)"</regex>
+   <order>logdesc</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>sessionid=(\d+)</regex>
+   <order>sessionid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>policyid=(\d+)|polid="(\.*)"</regex>
+   <order>policyid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>policytype="(\.+)"</regex>
+   <order>policytype</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>poluuid="(\.+)"</regex>
+   <order>poluuid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>policyname="(\.+)"</regex>
+   <order>policyname</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srcip=(\S+)</regex>
+   <order>srcip</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srcport=(\d+)</regex>
+   <order>srcport</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srcintf="(\.+)"</regex>
+   <order>srcintf</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srcintfrole="(\.+)"</regex>
+   <order>srcintfrole</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dstip=(\S+)</regex>
+   <order>dstip</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dstport=(\d+)</regex>
+   <order>dstport</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dstintf="(\.+)"</regex>
+   <order>dstintf</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dstintfrole="(\.+)"</regex>
+   <order>dstintfrole</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>action=(\w+)|action="(\.+)"</regex>
+   <order>actn</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>alert=(\w+)|alert="(\.+)"</regex>
+   <order>alert</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>desc=(\w+)|desc="(\.+)"</regex>
+   <order>description</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>msg=(\w+)|msg="(\.+)"</regex>
+   <order>msg</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srccountry="(\.+)"</regex>
+   <order>srccountry</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dstcountry="(\.+)"</regex>
+   <order>dstcountry</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>service="(\.+)"</regex>
+   <order>service</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>trandisp="(\.+)"</regex>
+   <order>trandisp</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>duration=(\d+)</regex>
+   <order>duration</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>sentbyte=(\d+)</regex>
+   <order>sentbyte</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>rcvdbyte=(\d+)</regex>
+   <order>rcvdbyte</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>sentpkt=(\d+)</regex>
+   <order>sentpkt</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>rcvdpkt=(\d+)</regex>
+   <order>rcvdpkt</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>appcat="(\.+)"</regex>
+   <order>appcat</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srchwvendor="(\.+)"</regex>
+   <order>srchwvendor</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>osname="(\.+)"</regex>
+   <order>osname</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>unauthuser="(\.+)"</regex>
+   <order>unauthuser</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>unauthusersource="(\.+)"</regex>
+   <order>unauthusersource</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>mastersrcmac="(\.+)"</regex>
+   <order>mastersrcmac</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srcmac="(\.+)"</regex>
+   <order>srcmac</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srcserver=(\d+)|srcserver="(\.+)"</regex>
+   <order>srcserver</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>masterdstmac="(\.+)"</regex>
+   <order>masterdstmac</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dstmac="(\.+)"</regex>
+   <order>dstmac</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dstserver=(\d+)|dstserver="(\.+)"</regex>
+   <order>dstserver</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>botnetip=(\S+)|botnetip="(\S+)"</regex>
+   <order>botnetip</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>botnetdomain=(\S+)|botnetdomain="(\S+)"</regex>
+   <order>botnetdomain</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>status=(\w+)|status="(\w+)"</regex>
+   <order>fstatus</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>severity=(\w+)|severity="(\w+)"</regex>
+   <order>severity</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dtype=(\w+)|dtype="(\w+)"</regex>
+   <order>dtype</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>appcat=(\w+)|appcat="(\w+)"</regex>
+   <order>appcat</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>pri=(\w+)</regex>
+   <order>pri</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>session_id=(\w+)|session_id="(\.*)"</regex>
+   <order>sessionid</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>client_name=(\w+)|client_name="(\.*)"</regex>
+   <order>client.name</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>client_ip=(\S+)</regex>
+   <order>client.ip</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>client_cc=(\w+)|client_cc="(\.*)"</regex>
+   <order>client.cc</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>dst_ip="(\.*)"</regex>
+   <order>dstip</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>from="(\.*)"</regex>
+   <order>from</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>hfrom="(\.*)"</regex>
+   <order>hfrom</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>to="(\.*)"</regex>
+   <order>to</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>domain="(\.*)"</regex>
+   <order>domain</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>mailer="(\.*)"</regex>
+   <order>mailer</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>resolved="(\.*)"</regex>
+   <order>resolved</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>src_type="(\.*)"</regex>
+   <order>srctype</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>virus="(\.*)"</regex>
+   <order>virus</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>disposition="(\.*)"</regex>
+   <order>disposition</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>classifier="(\.*)"</regex>
+   <order>classifier</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>message_length="(\.*)"</regex>
+   <order>message.length</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>message_id="(\.*)"</regex>
+   <order>message.id</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>subject="(\.*)"</regex>
+   <order>subject</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>message.id="(\.*)"</regex>
+   <order>message.id</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>recv_time="(\.*)"</regex>
+   <order>recvtime</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>notif_delay="(\.*)"</regex>
+   <order>notifdelay</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>scan_time="(\.*)"</regex>
+   <order>scantime</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>xfer_time="(\.*)"</regex>
+   <order>xfertime</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>srcfolder="(\.*)"</regex>
+   <order>srcfolder</order>
+</decoder>
+
+<decoder name="forti-like-child">
+   <parent>forti-like</parent>
+   <regex>read_status="(\.*)"</regex>
+   <order>readstatus</order>
+</decoder>
+
+
 <!-- FortiOS 3.0 via syslog -->
 <decoder name="fortigate-firewall-v3">
     <prematch>date=\S+ time=\.+ devname=\S+ device_id=FG\w+ log_id=\d+ type=\S+ subtype=\S+ pri=\S+ vd=</prematch>
