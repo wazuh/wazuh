@@ -166,17 +166,11 @@ int nb_close(netbuffer_t * buffer, int sock);
 int nb_recv(netbuffer_t * buffer, int sock);
 
 /**
- * @brief Send message through TCP protocol, the failure messages are queued
- * to try to send next time thread cycle.
+ * @brief Send message through TCP protocol.
  *
  * @param socket, socket id where send message.
- * @param ext_mutex, mutex to lock before send message.
- * @param msg_size, size of message to send.
- * @param msg, message to send.
- *
- * @return.
  */
-int nb_send(int socket, pthread_mutex_t * ext_mutex, ssize_t msg_size, char * msg);
+void nb_send(int socket);
 
 /* Network counter */
 

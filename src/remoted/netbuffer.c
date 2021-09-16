@@ -136,36 +136,54 @@ end:
     return recv_len;
 }
 
-int nb_send(int socket, pthread_mutex_t *ext_mutex, ssize_t msg_size, char *msg) {
+void nb_send(int socket) {
+    w_mutex_lock(netbuffer_send.buffers[socket].mutex);
 
-    int retval = 0;
-    int error = 0;
+    const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
+    const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
+ 
+    ssize_t sent_bytes = 0;
+    const int retval = OS_SendSecureTCP(socket, amount_of_data_to_send, (const void *)netbuffer_send.buffers[socket].data, &sent_bytes);
 
-    w_mutex_lock(ext_mutex);
-    retval = OS_SendSecureTCP(socket, (uint32_t) msg_size, (const void *) msg);
-    w_mutex_unlock(ext_mutex);
-    error = errno;
+    const int error = errno;
 
-    if (retval < 0) {
-        switch (error) {
-        case 0:
-            mwarn("socket [%d], A message could not be delivered completely.", socket);
-            break;
-        case EPIPE:
-        case EBADF:
-        case ECONNRESET:
-            mdebug1("socket [%d],Agent may have disconnected.", socket);
-            break;
-        case EAGAIN:
+    if ((retval == 0) || ((retval < 0) && ((error == 0) || (error == ETIMEDOUT)))) {
+        assert(sent_bytes <= current_data_len);
+        if (sent_bytes == current_data_len) {
+            os_free(netbuffer_send.buffers[socket].data);
+            netbuffer_send.buffers[socket].data = NULL;
+            netbuffer_send.buffers[socket].data_len = 0;
+            netbuffer_send.buffers[socket].data_size = 0;
+        }
+        else { // sent_bytes < current_data_len
+            memmove(netbuffer_send.buffers[socket].data, netbuffer_send.buffers[socket].data + sent_bytes, sent_bytes);
+            os_realloc(netbuffer_send.buffers[socket].data, sent_bytes, netbuffer_send.buffers[socket].data);
+            netbuffer_send.buffers[socket].data_len -= sent_bytes;
+            netbuffer_send.buffers[socket].data_size -= sent_bytes;
+        }
+    }
+    else {
+        os_free(netbuffer_send.buffers[socket].data);
+        netbuffer_send.buffers[socket].data = NULL;
+        netbuffer_send.buffers[socket].data_len = 0;
+        netbuffer_send.buffers[socket].data_size = 0;
+
+        switch (errno) {
+            case EPIPE:
+            case EBADF:
+            case ECONNRESET:
+                mdebug1("socket [%d], Agent may have disconnected.", socket);
+                break;
+            case EAGAIN:
 #if EAGAIN != EWOULDBLOCK
-        case EWOULDBLOCK:
+            case EWOULDBLOCK:
 #endif
-            mwarn("socket [%d],Agent is not responding.", socket);
-            break;
-        default:
-            merror(strerror(error), socket);
+                mwarn("socket [%d], Agent is not responding.", socket);
+                break;
+            default:
+                merror(strerror(error), socket);
         }
     }
 
-    return retval;
+    w_mutex_unlock(netbuffer_send.buffers[socket].mutex);
 }
