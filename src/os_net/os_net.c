@@ -635,7 +635,7 @@ int OS_SetSendTimeout(int socket, int seconds)
 
 // Send secure TCP message
 
-int OS_SendSecureTCP(int sock, uint32_t size, const void * msg, ssize_t* sent_bytes) {
+int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     int retval = OS_SOCKTERR;
     void* buffer = NULL;
     size_t bufsz = size + sizeof(uint32_t);
@@ -648,14 +648,8 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg, ssize_t* sent_by
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
     errno = 0;
-
-    const int ssize_t sent = send(sock, buffer, bufsz, 0);
-    retval = sent == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
-
-    if (sent_bytes != NULL) {
-        *sent_bytes = sent;
-    }
-
+    retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
+    free(buffer);
     return retval;
 }
 
