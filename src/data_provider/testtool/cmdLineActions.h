@@ -14,25 +14,30 @@
 
 #include <string.h>
 
-constexpr auto HARDWARE_ACTION  { "--hardware"};
-constexpr auto NETWORKS_ACTION  { "--networks"};
-constexpr auto PACKAGES_ACTION  { "--packages"};
-constexpr auto PROCESSES_ACTION { "--processes"};
-constexpr auto PORTS_ACTION     { "--ports"};
-constexpr auto OS_ACTION        { "--os"};
-constexpr auto HOTFIXES_ACTION  { "--hotfixes"};
+constexpr auto HARDWARE_ACTION     { "--hardware"};
+constexpr auto NETWORKS_ACTION     { "--networks"};
+constexpr auto PACKAGES_ACTION     { "--packages"};
+constexpr auto PROCESSES_ACTION    { "--processes"};
+constexpr auto PORTS_ACTION        { "--ports"};
+constexpr auto OS_ACTION           { "--os"};
+constexpr auto HOTFIXES_ACTION     { "--hotfixes"};
+constexpr auto PROCESSES_CB_ACTION { "--processes-cb"};
+constexpr auto PACKAGES_CB_ACTION  { "--packages-cb"};
 
 class CmdLineActions final
 {
     public:
         CmdLineActions(const char* argv[])
-            : m_hardware  { HARDWARE_ACTION  == std::string(argv[1]) }
-            , m_networks  { NETWORKS_ACTION  == std::string(argv[1]) }
-            , m_packages  { PACKAGES_ACTION  == std::string(argv[1]) }
-            , m_processes { PROCESSES_ACTION == std::string(argv[1]) }
-            , m_ports     { PORTS_ACTION     == std::string(argv[1]) }
-            , m_os        { OS_ACTION        == std::string(argv[1]) }
-            , m_hotfixes  { HOTFIXES_ACTION  == std::string(argv[1]) }
+            : m_hardware          { HARDWARE_ACTION     == std::string(argv[1]) }
+            , m_networks          { NETWORKS_ACTION     == std::string(argv[1]) }
+            , m_packages          { PACKAGES_ACTION     == std::string(argv[1]) }
+            , m_processes         { PROCESSES_ACTION    == std::string(argv[1]) }
+            , m_ports             { PORTS_ACTION        == std::string(argv[1]) }
+            , m_os                { OS_ACTION           == std::string(argv[1]) }
+            , m_hotfixes          { HOTFIXES_ACTION     == std::string(argv[1]) }
+            , m_processesCallback { PROCESSES_CB_ACTION == std::string(argv[1]) }
+            , m_packagesCallback  { PACKAGES_CB_ACTION  == std::string(argv[1]) }
+
         {}
 
         bool hardwareArg() const
@@ -70,6 +75,17 @@ class CmdLineActions final
             return m_hotfixes;
         };
 
+        bool packagesCallbackArg() const
+        {
+            return m_packagesCallback;
+        };
+
+        bool processesCallbackArg() const
+        {
+            return m_processesCallback;
+        };
+
+
         static void showHelp()
         {
             std::cout << "\nUsage: sysinfo_test_tool [options]\n"
@@ -79,6 +95,8 @@ class CmdLineActions final
                       << "\t--networks \tPrints the current Operating System networks information.\n"
                       << "\t--packages \tPrints the current Operating System packages information.\n"
                       << "\t--processes \tPrints the current Operating System processes information.\n"
+                      << "\t--packages-cb \tPrints the current Operating System packages using callbacks to return information.\n"
+                      << "\t--processes-cb \tPrints the current Operating System processes using callback to return information.\n"
                       << "\t--ports \tPrints the current Operating System ports information.\n"
                       << "\t--os \t\tPrints the current Operating System information.\n"
                       << "\t--hotfixes \tPrints the current Operating System hotfixes information.\n"
@@ -91,6 +109,8 @@ class CmdLineActions final
                       << "\n\t./sysinfo_test_tool --ports"
                       << "\n\t./sysinfo_test_tool --os"
                       << "\n\t./sysinfo_test_tool --hotfixes"
+                      << "\n\t./sysinfo_test_tool --processes-cb"
+                      << "\n\t./sysinfo_test_tool --packages-cb"
                       << std::endl;
         }
 
@@ -102,6 +122,9 @@ class CmdLineActions final
         const bool m_ports;
         const bool m_os;
         const bool m_hotfixes;
+        const bool m_processesCallback;
+        const bool m_packagesCallback;
+
 };
 
 #endif // _CMD_LINE_ACTIONS_H_

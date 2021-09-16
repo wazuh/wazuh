@@ -35,10 +35,12 @@ A brief example could be similar to the following one:
 
 |Argument|Description|
 |---|---|
-| `--hardware`  | Prints the current Operating System hardware information only. Example: `sysinfo_test_tool --hardware`   |
-| `--networks`  | Prints the current Operating System networks information only. Example: `sysinfo_test_tool --networks`   |
-| `--packages`  | Prints the current Operating System packages information only. Example: `sysinfo_test_tool --packages`   |
-| `--processes` | Prints the current Operating System processes information only. Example: `sysinfo_test_tool --processes` |
-| `--ports`     | Prints the current Operating System ports information only. Example: `sysinfo_test_tool --ports`         |
-| `--os`        | Prints the current Operating System information only. Example: `sysinfo_test_tool --os`                  |
-| `--hotfixes`  | Prints the current Operating System hotfixes information only. Example: `sysinfo_test_tool --hotfixes`   |
+| `--hardware`     | Prints the current Operating System hardware information only. Example: `sysinfo_test_tool --hardware`                               |
+| `--networks`     | Prints the current Operating System networks information only. Example: `sysinfo_test_tool --networks`                               |
+| `--packages`     | Prints the current Operating System packages information only. Example: `sysinfo_test_tool --packages`                               |
+| `--processes`    | Prints the current Operating System processes information only. Example: `sysinfo_test_tool --processes`                             |
+| `--packages-cb`  | Prints the current Operating System packages information only with callbacks mechanism. Example: `sysinfo_test_tool --packages-cb`   |
+| `--processes-cb` | Prints the current Operating System processes information only with callbacks mechanism. Example: `sysinfo_test_tool --processes-cb` |
+| `--ports`        | Prints the current Operating System ports information only. Example: `sysinfo_test_tool --ports`                                     |
+| `--os`           | Prints the current Operating System information only. Example: `sysinfo_test_tool --os`                                              |
+| `--hotfixes`     | Prints the current Operating System hotfixes information only. Example: `sysinfo_test_tool --hotfixes`                               |
