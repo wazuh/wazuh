@@ -183,25 +183,20 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
     """
     walk_files = {}
-    print(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5)
 
     # Get the information collected in the previous integration process.
     previous_status = common.cluster_integrity_mtime.get()
 
     full_dirname = path.join(common.wazuh_path, dirname)
     # Get list of all files and directories inside 'full_dirname'.
-    print(full_dirname)
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
-            print("1", root_, full_dirname)
             # Check if recursive flag is set or root is actually the initial lookup directory.
             if recursive or root_ == full_dirname:
-                print("2")
                 for file_ in files_:
                     # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
                     if file_ in excluded_files or any([file_.endswith(ext) for ext in excluded_extensions]):
                         continue
-                    print("hola: ",files)    
                     try:
                         #  If 'all' files have been requested or entry is in the specified files list.
                         if files == ['all'] or file_ in files:
@@ -315,15 +310,16 @@ def compress_files(name, list_path, cluster_control_json=None):
     """
     failed_files = list()
     zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
-    print(zip_file_path)
+    
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
+
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
-        print("hasta aqui")
         # write files
         if list_path:
             for f in list_path:
                 try:
+                    print("1")
                     zf.write(filename=path.join(common.wazuh_path, f), arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
@@ -336,7 +332,6 @@ def compress_files(name, list_path, cluster_control_json=None):
             zf.writestr("files_metadata.json", json.dumps(cluster_control_json))
         except Exception as e:
             raise WazuhError(3001, str(e))
-    except
 
     return zip_file_path
 
@@ -429,6 +424,9 @@ def compare_files(good_files, check_files, node_name):
 
     # Missing files will be the ones that are present in good files (master) but not in the check files (worker).
     missing_files = {key: good_files[key] for key in good_files.keys() - check_files.keys()}
+    print(cluster_items)
+
+    print("1: ", check_files.keys() - good_files.keys())
 
     # Extra files are the ones present in check files (worker) but not in good files (master) and aren't extra valid.
     extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(),

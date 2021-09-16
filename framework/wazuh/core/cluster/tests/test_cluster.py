@@ -2,8 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+
 import logging
 import sys
+import zipfile
 from datetime import datetime
 from time import time
 from unittest import mock
@@ -24,6 +26,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.cluster as cluster
         import wazuh.core.cluster.utils as utils
         from wazuh import WazuhException
+        from wazuh.core.exception import WazuhError
 
 # Valid configurations
 default_cluster_configuration = {
@@ -170,11 +173,11 @@ def test_get_node():
         assert get_node["type"] == test_dict["node_type"]
 
 
-# def test_check_cluster_status():
-#     """
-#     Test to check the correct output of the check_cluster_status function
-#     """
-#     assert type(wazuh.core.cluster.cluster.check_cluster_status()) == bool
+def test_check_cluster_status():
+    """
+    Test to check the correct output of the check_cluster_status function
+    """
+    assert isinstance(cluster.check_cluster_status(), bool)
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
@@ -211,8 +214,6 @@ def test_get_files_status(mock_get_cluster_items):
     test_dict = {"path": "metadata"}
 
     with patch('wazuh.core.cluster.cluster.walk_dir', return_value=test_dict):
-        # mock_walk_dir.return_value = test_dict
-        print(cluster.get_files_status())
         assert isinstance(cluster.get_files_status(), dict)
         assert cluster.get_files_status()["path"] == test_dict["path"]
 
@@ -237,20 +238,42 @@ def test_get_files_status(mock_get_cluster_items):
 #         with pytest.raises(KeyError):
 #             pass
 
-#@patch('wazuh.core.common.wazuh_path', return_value = "/var/ossec/")
-def test_walk_files():
+
+@patch('wazuh.core.common.cluster_integrity_mtime')
+def test_walk_files(mock_cluster_integrity_mtime):
     """
     Test to check the different outputs of the walk_files function
     """
+    
+    with patch('os.path.join', return_value = '/some/path/'):
+        with patch('wazuh.core.cluster.cluster.walk') as w:
+            w.return_value = [('/foo/', ('bar',), ('baz',)),
+                                ('/foo/bar', (), ('spam', 'eggs', '.merged')),]
+            cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+            with patch('os.path.getmtime', return_value = 45):
+                mock_cluster_integrity_mtime.return_value = {"/some/path/": {"mod_time": 45}}
+                cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
+                
+                # with pytest.raises(KeyError):
+                #     mock_cluster_integrity_mtime.return_value = {"/some/path/": 45}
+                #     cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "", True)
 
-    with patch('wazuh.core.common.cluster_integrity_mtime', return_value = {"etc/shared/test": "metadata"}):
-        #with patch('wazuh.core.common.wazuh_path', return_value = "/var/ossec/"):
-        assert cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True) == {}
-        print("\n2 assert")
-        assert cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "etc/shared/", True) == {}
-        
+@patch('wazuh.core.cluster.cluster.get_cluster_items')
+def test_compare_files(mock_get_cluster_items):
+    """
+    Test to check the different outputs of the compare_files function
+    """
+    mock_get_cluster_items.return_value = {'files': {"some": "field"}}
+    cluster.compare_files( {"some/path/": "files2"},{"some/path/": "files", "some/path2/": {"cluster_item_key": "key"}}, "worker1")
 
-# def test_remove_directory_contents(caplog):
+
+    #with patch('wazuh.core.common.wazuh_path', return_value = "/var/ossec/"):
+#     assert cluster.walk_dir("/var/ossec/etc/shared/", False, ["all"], ["ar.conf"], [".xml", ".txt"], "", True) == {}
+#     print("\n2 assert")
+#     assert cluster.walk_dir("/var/ossec/etc/shared/", True, ["all"], ["ar.conf"], [".xml", ".txt"], "etc/shared/", True) == {}
+    
+
+# def test_remove_directory_contents():
 #     """
 #     Test to check the correct performance of the remove_directory_function
 #     """
@@ -261,10 +284,19 @@ def test_walk_files():
 #         assert cluster.clean_up()
 
 
-def test_compress_files():
-    with patch('os.path.exists', return_value = True):
-        with patch('wazuh.core.utils.mkdir_with_mode'):
-            assert isinstance(cluster.compress_files("some_name", ["some/path", "another/path"]), str)
+@patch('wazuh.core.cluster.cluster.mkdir_with_mode')
+@patch('wazuh.core.cluster.cluster.path.dirname', return_value = '/some/path')
+def test_compress_files(mock_path_dirname,mock_mkdir_with_mode):
+    """
+    Test to check if the compressing function is working properly
+    """
+    with patch('wazuh.core.cluster.cluster.path.exists', return_value = False):
+        cluster.compress_files("some_name", ["some/path", "another/path"], {"ko_file": "file"})
+        mock_mkdir_with_mode.assert_called_once_with('/some/path')
+
+        with patch('zipfile.ZipFile.write', side_effect = zipfile.LargeZipFile):
+            with pytest.raises(WazuhError, match=r'.* 3001 .*'):
+                cluster.compress_files("some_name", ["some/path", "another/path"])
 
 
 # @pytest.mark.asyncio
