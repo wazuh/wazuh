@@ -42,19 +42,11 @@ class SysInfoPrinter final
         void printPackagesInfo()
         {
             m_data["packages"] = m_sysinfo.packages();
-            m_sysinfo.packages([](nlohmann::json & package)
-            {
-                std::cout << package.dump(JSON_PRETTY_SPACES) << std::endl;
-            });
         }
 
         void printProcessesInfo()
         {
             m_data["processes"] = m_sysinfo.processes();
-            m_sysinfo.processes([](nlohmann::json & process)
-            {
-                std::cout << process.dump(JSON_PRETTY_SPACES) << std::endl;
-            });
         }
 
         void printPortsInfo()
@@ -70,6 +62,22 @@ class SysInfoPrinter final
         void printData()
         {
             std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
+        }
+
+        void printProcessesInfoCallback()
+        {
+            m_sysinfo.processes([this](nlohmann::json & process)
+            {
+                m_data["processes_cb"].push_back(process);
+            });
+        }
+
+        void printPackagesInfoCallback()
+        {
+            m_sysinfo.packages([this](nlohmann::json & package)
+            {
+                m_data["packages_cb"].push_back(package);
+            });
         }
 
     private:
@@ -94,6 +102,8 @@ int main(int argc, const char* argv[])
             printer.printPortsInfo();
             printer.printHotfixes();
             printer.printData();
+            printer.printPackagesInfoCallback();
+            printer.printProcessesInfoCallback();
         }
         else if (argc == 2)
         {
@@ -126,6 +136,14 @@ int main(int argc, const char* argv[])
             else if (cmdLineArgs.hotfixesArg())
             {
                 printer.printHotfixes();
+            }
+            else if (cmdLineArgs.packagesCallbackArg())
+            {
+                printer.printPackagesInfoCallback();
+            }
+            else if (cmdLineArgs.processesCallbackArg())
+            {
+                printer.printProcessesInfoCallback();
             }
             else
             {
