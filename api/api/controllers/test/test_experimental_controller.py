@@ -4,12 +4,13 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from aiohttp import web_response
 from api.controllers.test.utils import CustomMagicMockReturn
+from wazuh.core.exception import WazuhResourceNotFound
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.experimental_controller import (clear_rootcheck_database,
+        from api.controllers.experimental_controller import (check_experimental_feature_value, clear_rootcheck_database,
                                                              clear_syscheck_database, get_cis_cat_results,
                                                              get_hardware_info, get_hotfixes_info,
                                                              get_network_address_info, get_network_interface_info,
@@ -463,3 +464,15 @@ async def test_get_hotfixes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, web_response.Response)
+
+
+@patch('api.controllers.experimental_controller.raise_if_exc')
+def test_check_experimental_feature_value(mock_exc):
+    @check_experimental_feature_value
+    def func_():
+        pass
+    with patch('api.configuration.api_conf', new={'experimental_features': False}):
+        func_()
+        mock_exc.assert_called_once_with(WazuhResourceNotFound(code=1122))
+    with patch('api.configuration.api_conf', new={'experimental_features': True}):
+        func_()

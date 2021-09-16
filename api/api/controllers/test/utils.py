@@ -6,3 +6,10 @@ class CustomMagicMockReturn(dict):
         super().__init__(self)
         super().__setitem__('data', 'data_value')
         super().__setitem__('message', 'message_value')
+
+
+class CustomMagicMockReturnEmpty(dict):
+    affected_items = []
+
+    def __init__(self):
+        super().__init__(self)

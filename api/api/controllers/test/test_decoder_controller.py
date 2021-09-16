@@ -23,7 +23,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.decoder_controller.remove_nones_to_dict')
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomMagicMockReturn())
-async def test_decoder_controller(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     f_kwargs = {'names': None,
                 'offset': 0,
                 'limit': None,
