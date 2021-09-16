@@ -374,7 +374,7 @@ int add_agent(int json_output)
                     } else
                         merror_exit("Lost authd socket connection.");
                 }
-                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, env_remove_dup ? force_antiquity : -1, json_output,NULL,1) < 0) {
+                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, env_remove_dup ? BYPASS_FORCE_SETTINGS : USE_MASTER_FORCE_SETTINGS, json_output, NULL, 1) < 0) {
                     break;
                 }
             }

@@ -68,6 +68,12 @@ extern long int rand2;
 extern fpos_t fp_pos;
 extern char shost[];
 
+// Allows to force the agent's registration regardless the master's configuration
+typedef enum force_agent_registration {
+    BYPASS_FORCE_SETTINGS,
+    USE_MASTER_FORCE_SETTINGS
+}force_agent_registration;
+
 /* Internal defines */
 #define USER_SIZE       514
 #define FILE_SIZE       257
