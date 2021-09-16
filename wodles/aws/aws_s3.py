@@ -2284,7 +2284,6 @@ class AWSInspector(AWSService):
                                                               aws_region=self.inspector_region,
                                                               retain_db_records=self.retain_db_records))
         # close connection with DB
-        self.db_connector.commit()
         self.close_db()
 
 
@@ -2440,20 +2439,8 @@ class AWSCloudWatchLogs(AWSService):
                                                   db_values['end_time'] if db_values else None), 2)
                     result_before = None
                     result_after = None
-                    if self.only_logs_after_millis is None:
-                        if db_values:
-                            result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                         token=None, start_time=None,
-                                                                         end_time=db_values['start_time'])
-                            if db_values['end_time'] is not None:
-                                result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                            token=db_values['token'],
-                                                                            start_time=db_values['end_time'] + 1,
-                                                                            end_time=None)
-                        else:
-                            result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                        token=None, start_time=None, end_time=None)
-                    elif db_values is None:
+
+                    if db_values is None:
                         result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                      token=None, start_time=self.only_logs_after_millis,
                                                                      end_time=None)
@@ -2466,7 +2453,9 @@ class AWSCloudWatchLogs(AWSService):
                                                                         token=db_values['token'],
                                                                         start_time=db_values['end_time'] + 1,
                                                                         end_time=None)
-                    elif db_values['end_time'] is not None and self.only_logs_after_millis < db_values['end_time']:
+                    # It should be <= since if the timestamp is equal to db_values['end_time'] the logs with a timestamp
+                    # like that have already been processed and it should start processing the subsequent ones
+                    elif db_values['end_time'] is not None and self.only_logs_after_millis <= db_values['end_time']:
                         result_after = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                     token=db_values['token'],
                                                                     start_time=db_values['end_time'] + 1,
@@ -2486,7 +2475,8 @@ class AWSCloudWatchLogs(AWSService):
 
                 self.purge_db(log_group=log_group)
         finally:
-            self.close_database()
+            debug("committing changes and closing the DB", 1)
+            self.close_db()
 
     def remove_aws_log_stream(self, log_group, log_stream):
         """Remove a log stream from a log group in AWS Cloudwatch Logs.
@@ -2533,7 +2523,7 @@ class AWSCloudWatchLogs(AWSService):
         """
         response = None
         min_start_time = start_time
-        max_end_time = end_time
+        max_end_time = end_time if end_time is not None else start_time
         while response is None or response['events'] != list():
             debug('Getting CloudWatch logs from log stream "{}" in log group "{}" using token "{}", start_time '
                   '"{}" and end_time "{}"'.format(log_stream, log_group, token, start_time, end_time), 1)
@@ -2554,6 +2544,7 @@ class AWSCloudWatchLogs(AWSService):
             for event in response['events']:
                 debug('+++ Sending events to Analysd...', 1)
                 debug('The message is "{}"'.format(event['message']), 2)
+                debug('The message\'s timestamp is {}'.format(event["timestamp"]), 3)
                 self.send_msg(event['message'], dump_json=False)
 
                 if min_start_time is None:
@@ -2619,14 +2610,14 @@ class AWSCloudWatchLogs(AWSService):
         if result_after is not None:
             if min_start_time is None:
                 min_start_time = result_after['start_time']
-            else:
-                min_start_time = result_after['start_time'] if result_after[
-                                                                   'start_time'] < min_start_time else min_start_time
+            # It's necessary to ensure that we're not comparing None with int
+            elif result_after['start_time'] is not None:
+                min_start_time = result_after['start_time'] if result_after['start_time'] < min_start_time else min_start_time
 
             if max_end_time is None:
-                max_end_time = result_after['start_time']
-            else:
-                max_end_time = result_after['start_time'] if result_after['start_time'] > max_end_time else max_end_time
+                max_end_time = result_after['end_time']
+            elif result_after['end_time'] is not None:
+                max_end_time = result_after['end_time'] if result_after['end_time'] > max_end_time else max_end_time
 
         token = result_before['token'] if result_before is not None else None
         token = result_after['token'] if result_after is not None else token
@@ -2637,12 +2628,12 @@ class AWSCloudWatchLogs(AWSService):
             result = {'token': token}
 
             if values['start_time'] is not None:
-                result['start_time'] = min_start_time if min_start_time < values['start_time'] else values['start_time']
+                result['start_time'] = min_start_time if min_start_time is not None and min_start_time < values['start_time'] else values['start_time']
             else:
                 result['start_time'] = max_end_time
 
             if values['end_time'] is not None:
-                result['end_time'] = max_end_time if max_end_time > values['end_time'] else values['end_time']
+                result['end_time'] = max_end_time if max_end_time is not None and max_end_time > values['end_time'] else values['end_time']
             else:
                 result['end_time'] = max_end_time
             return result
@@ -2747,12 +2738,6 @@ class AWSCloudWatchLogs(AWSService):
                                                                     aws_region=self.region,
                                                                     aws_log_group=log_group,
                                                                     aws_log_stream=log_stream))
-
-    def close_database(self):
-        """Commit the changes to the DB and close the connection."""
-        debug("committing changes and closing the DB", 1)
-        self.db_connector.commit()
-        self.close_db()
 
 
 ################################################################################
