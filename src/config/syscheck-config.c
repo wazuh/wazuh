@@ -299,11 +299,10 @@ void dump_syscheck_registry(syscheck_config *syscheck,
         syscheck->registry[pl + 1].restrict_key = NULL;
         syscheck->registry[pl + 1].restrict_value = NULL;
         syscheck->registry[pl + 1].diff_size_limit = -1;
-        os_strdup(entry, syscheck->registry[pl].entry);
     } else {
         while (syscheck->registry[pl].entry != NULL) {
             /* Duplicated entry */
-            if (strcmp(syscheck->registry[pl].entry, entry) == 0 && arch == syscheck->registry[pl].arch) {
+            if (strcasecmp(syscheck->registry[pl].entry, entry) == 0 && arch == syscheck->registry[pl].arch) {
                 overwrite = pl;
                 mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
                 break;
@@ -319,7 +318,6 @@ void dump_syscheck_registry(syscheck_config *syscheck,
             syscheck->registry[pl + 1].restrict_key = NULL;
             syscheck->registry[pl + 1].restrict_value = NULL;
             syscheck->registry[pl + 1].diff_size_limit = -1;
-            os_strdup(entry, syscheck->registry[pl].entry);
         } else {
             if (syscheck->registry[pl].restrict_key) {
                 OSMatch_FreePattern(syscheck->registry[pl].restrict_key);
@@ -330,12 +328,16 @@ void dump_syscheck_registry(syscheck_config *syscheck,
                 os_free(syscheck->registry[pl].restrict_value);
             }
             os_free(syscheck->registry[pl].tag);
+            os_free(syscheck->registry[pl].entry);
         }
     }
+
+    os_strdup(entry, syscheck->registry[pl].entry);
     syscheck->registry[pl].recursion_level = recursion_level;
     syscheck->registry[pl].arch = arch;
     syscheck->registry[pl].opts = opts;
     syscheck->registry[pl].diff_size_limit = diff_size;
+
     if (tag) {
         os_strdup(tag, syscheck->registry[pl].tag);
     }
