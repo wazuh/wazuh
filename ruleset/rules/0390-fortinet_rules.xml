@@ -1,0 +1,2114 @@
+<!--
+  -  Fortigate rules
+  -  Author: Tom Hancock <t.m.h.a.ncoc.k+wazuh@gmail.com>
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="fortinet,">
+
+  <rule id="44400" level="0">
+      <decoded_as>forti-like</decoded_as>
+      <description>FortiNet Rules</description>
+  </rule>
+
+</group>
+
+
+<!--
+ID: 81600 - 80799
+-->
+
+<group name="fortigate,syslog,">
+  <rule id="81600" level="0">
+      <decoded_as>fortigate-firewall-v3</decoded_as>
+      <description>Fortigate v3 messages grouped.</description>
+  </rule>
+
+  <rule id="81601" level="0">
+      <decoded_as>fortigate-firewall-v4</decoded_as>
+      <description>Fortigate v4 messages grouped.</description>
+  </rule>
+
+  <rule id="81602" level="0">
+      <decoded_as>fortigate-firewall-v5</decoded_as>
+      <description>Fortigate v5 messages grouped.</description>
+  </rule>
+
+  <rule id="81641" level="0">
+      <decoded_as>fortigate-firewall-v6</decoded_as>
+      <description>Fortigate v6 messages grouped.</description>
+  </rule>
+
+  <rule id="81603" level="0">
+      <if_sid>81600,81601,81602,81641</if_sid>
+      <description>Fortigate messages grouped.</description>
+  </rule>
+
+  <!--
+  date=2016-06-15 time=10:42:31 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=event subtype=vpn level=error vd="root" logdesc="IPsec DPD failed" msg="IPsec DPD failure" action=dpd remip=1.2.3.4 locip=4.3.2.1 remport=500 locport=500 outintf="wan1" cookies="fsdagfdfgfdgfdg/qwerweafasfefsd" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="BW" status=dpd_failure
+  -->
+  <rule id="81604" level="4">
+      <if_sid>81603</if_sid>
+      <status>dpd_failure</status>
+      <description>Fortigate: IP Sec DPD Failed.</description>
+      <group>firewall_drop,pci_dss_1.4,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="81605" level="7" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81604</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple Firewall drop events from same source.</description>
+      <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,</group>
+  </rule>
+
+
+  <!--
+  date=2016-06-17 time=02:37:41 devname=Mobipay_Firewall devid=FGTXXXX9999999999 logid=0100032002 type=event subtype=system level=alert vd="root" logdesc="Admin login failed" sn=0 user="root" ui=ssh(222.186.130.227) action=login status=failed reason="name_invalid" msg="Administrator root login failed from ssh(222.186.130.227) because of invalid user name"
+  -->
+  <rule id="81606" level="4">
+      <if_sid>81603</if_sid>
+      <action>login</action>
+      <status>failed</status>
+      <description>Fortigate: Login failed.</description>
+      <group>authentication_failed,invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+  <rule id="81607" level="7" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81606</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple failed login events from same source.</description>
+      <mitre>
+        <id>T1110</id>
+      </mitre>
+      <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+
+  <!--
+  date=2016-06-14 time=10:47:23 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=event subtype=system level=alert vd="root" logdesc="Configuration changed" user="admin" ui=https(105.232.255.15) msg="Configuration is changed in the admin session"
+  -->
+  <rule id="81608" level="7">
+      <if_sid>81603</if_sid>
+      <match>Configuration is changed in the admin session</match>
+      <description>Fortigate: Configuration changed.</description>
+      <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+  </rule>
+
+  <rule id="81609" level="8" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81608</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple changed configuration events from same source.</description>
+      <mitre>
+        <id>T1089</id>
+      </mitre>
+      <group>gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!--
+  date=2016-06-15 time=09:41:35 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=utm subtype=ips eventtype=signature level=alert vd="root" severity=info srcip=192.168.10.8 dstip=157.55.235.162 srcintf="internal2" dstintf="wan2" policyid=2 sessionid=1473454 action=reset proto=6 service=tcp/20480 attack="HTTP.Unknown.Tunnelling" srcport=62216 dstport=80 direction=outgoing attackid=107347981 profile="default" ref="http://www.fortinet.com/ids/VID107347981" incidentserialno=1999871775 msg="http_decoder: HTTP.Unknown.Tunnelling,"
+  -->
+  <rule id="81610" level="4">
+      <if_sid>81603</if_sid>
+      <match>http_decoder: HTTP.Unknown.Tunnelling</match>
+      <description>Fortigate: Default tunneling setting. Could be IPS.</description>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <rule id="81611" level="7" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81610</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple default tunneling setting events from same source.</description>
+      <mitre>
+        <id>T1562.004</id>
+      </mitre>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  date=2016-06-16 time=09:03:03 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=event subtype=system level=information vd="root" logdesc="Object attribute configured" user="admin" ui="GUI(4.3.5.8)" action=Edit cfgtid=2162752 cfgpath="firewall.service.custom" cfgobj="Custom-TCP_10443" cfgattr="tcp-portrange[->10443]udp-portrange[->]sctp-portrange[->]" msg="Edit firewall.service.custom Custom-TCP_10443"
+  -->
+  <rule id="81612" level="3">
+      <if_sid>81603</if_sid>
+      <action>Edit</action>
+      <description>Fortigate: Firewall configuration changes</description>
+      <group>pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <rule id="81613" level="4" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81612</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple Firewall edit events from same source.</description>
+      <group>pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+
+  <!--
+  date=2016-06-15 time=21:35:09 devname=Device_Name devid=FGTXXXX9999999999 logid=0101039426 type=event subtype=vpn level=alert vd="root" logdesc="SSL VPN login fail" action="ssl-login-fail" tunneltype="ssl-web" tunnelid=0 remip=2.4.6.8 tunnelip=(null) user="my_user_name" group="N/A" dst_host="N/A" reason="sslvpn_login_unknown_user" msg="SSL user failed to logged in"
+  -->
+  <rule id="81614" level="4">
+      <if_sid>81603</if_sid>
+      <match>ssl-login-fail</match>
+      <description>Fortigate: SSL VPN User failed login attempt</description>
+      <group>authentication_failed,invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="81615" level="7" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81614</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple Firewall SSL VPN failed login events from same source.</description>
+      <mitre>
+        <id>T1110</id>
+        <id>T1133</id>
+      </mitre>
+      <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+  </rule>
+
+  <!--
+  date=2016-06-16 time=09:03:03 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=event subtype=system level=information vd="root" logdesc="Object attribute configured" user="admin" ui="GUI(4.3.5.8)" action=Add cfgtid=2162750 cfgpath="firewall.service.custom" cfgobj="Custom-TCP_10443" cfgattr="" msg="Add firewall.service.custom Custom-TCP_10443"
+  -->
+      <rule id="81631" level="3">
+      <if_sid>81603</if_sid>
+      <action>Add</action>
+      <description>Fortigate: Firewall configuration changes</description>
+      <group>pci_dss_1.4,gpg13_4.13,hipaa_164.312.a.1,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="81632" level="4" frequency="16" timeframe="45" ignore="240">
+      <if_matched_sid>81631</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple Firewall edit events from same source.</description>
+      <group>pci_dss_1.4,pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.a.1,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  date=2016-06-16 time=08:48:28 devname=Device_Name devid=FGTXXXX9999999999 logid=0100032003 type=event subtype=system level=information vd="root" logdesc="Admin logout successful" sn=1466062693 user="a@b.com.na" ui=https(4.3.5.253) action=logout status=success duration=615 state="Config-Changed" reason=exit msg="Administrator a@b.com.na logged out from https(2.3.8.1)"
+  -->
+  <rule id="81616" level="4">
+      <if_sid>81603</if_sid>
+      <action>logout</action>
+      <status>success</status>
+      <description>Fortigate: User logout successful</description>
+      <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+  <rule id="81617" level="7" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81616</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple Firewall logout events from same source.</description>
+      <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+  <!--
+  date=2016-06-16 time=10:49:08 devname=Device_Name devid=FGTXXXX9999999999 logid=0000000013 type=traffic subtype=forward level=notice vd=root srcip=4.3.5.161 srcport=51082 srcintf="internal1" dstip=54.192.197.185 dstport=80 dstintf="wan1" poluuid=d6217c58-8c42-51e5-c3a6-c7766895cbfd sessionid=199618 proto=6 action=deny policyid=8 dstcountry="United States" srccountry="Reserved" trandisp=snat transip=160.242.8.82 transport=51082 service="HTTP" appid=6 app="BitTorrent" appcat="P2P" apprisk=high applist="default" appact=drop-session duration=3 sentbyte=60 rcvdbyte=3050 sentpkt=1 utmaction=block countapp=1 crscore=5 craction=1048576
+  -->
+  <rule id="81618" level="1">
+      <if_sid>81603</if_sid>
+      <match>type=traffic|type="traffic"</match>
+      <description>Fortigate: Traffic to be aware of.</description>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <rule id="81619" level="3" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81618</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple high traffic events from same source.</description>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  date=2016-06-15 time=11:44:46 devname=Device_Name devid=FGTXXXX9999999999 logid=9999999999 type=utm subtype=webfilter eventtype=urlfilter level=warning vd="root" urlfilteridx=3 urlfilterlist="default" policyid=2 sessionid=1563645 user="" srcip=1.2.3.11 srcport=52414 srcintf="internal2" dstip=1.5.5.92 dstport=443 dstintf="wan2" proto=6 service=HTTPS hostname="4-edge-chat.facebook.com" profile="default" action=blocked reqtype=referral url="/p?partition=-2&cb=lz1k&failure=5&sticky_token=274&sticky_pool=atn2c06_chat-proxy" sentbyte=932 rcvdbyte=0 direction=outgoing msg="URL was blocked because it is in the URL filter list" crscore=30 crlevel=high
+  -->
+  <rule id="81620" level="3">
+      <if_sid>81603</if_sid>
+      <match>level=warning|level="warning"</match>
+      <action>blocked</action>
+      <description>Fortigate: URL Blocked by Firewall.</description>
+      <group>firewall_drop,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <rule id="81621" level="3" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81620</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple URL blocked from same source.</description>
+      <group>multiple_drops,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  date=2016-06-16 time=08:47:00 devname=Device_Name devid=FGTXXXX9999999999 logid=0101039947 type=event subtype=vpn level=information vd="root" logdesc="SSL VPN tunnel up" action="tunnel-up" tunneltype="ssl-tunnel" tunnelid=1050355638 remip=9.8.7.7 tunnelip=1.2.4.6 user="my_user_name" group="SSL_VPN" dst_host="N/A" reason="N/A" msg="SSL tunnel established"
+  -->
+  <rule id="81622" level="3">
+      <if_sid>81603</if_sid>
+      <match>level=information|level="information"</match>
+      <action>tunnel-up</action>
+      <description>Fortigate: VPN User connected.</description>
+      <mitre>
+        <id>T1078</id>
+      </mitre>
+      <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+  <rule id="81623" level="4" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81622</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple vpn user connected from same source.</description>
+      <mitre>
+        <id>T1078</id>
+      </mitre>
+      <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+  <!--
+  date=2016-06-16 time=08:49:26 devname=Device_Name devid=FGTXXXX9999999999 logid=0101039948 type=event subtype=vpn level=information vd="root" logdesc="SSL VPN tunnel down" action="tunnel-down" tunneltype="ssl-tunnel" tunnelid=1050355638 remip=5.7.8.9 tunnelip=8.4.2.1 user="my_user_name" group="SSL_VPN" dst_host="N/A" reason="N/A" duration=147 sentbyte=2284 rcvdbyte=2630 msg="SSL tunnel shutdown"
+  -->
+  <rule id="81624" level="3">
+      <if_sid>81603</if_sid>
+      <match>level=information|level="information"</match>
+      <action>tunnel-down</action>
+      <description>Fortigate: VPN User disconnected.</description>
+      <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+  <rule id="81625" level="4" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81624</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple user disconnected events from same source.</description>
+      <group>pci_dss_10.2.5,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,</group>
+  </rule>
+
+  <!--
+  date=2016-06-16 time=16:22:34 devname=Mobipay_Firewall devid=FGTXXXX9999999999 logid=0100032001 type=event subtype=system level=information vd="root" logdesc="Admin login successful" sn=1466090554 user="a@b.com.na" ui=https(10.42.8.253) action=login status=success reason=none profile="super_admin" msg="Administrator a@b.com.na logged in successfully from https(10.42.8.253)"
+  -->
+  <rule id="81626" level="3">
+      <if_sid>81603</if_sid>
+      <match>ui</match>
+      <status>success</status>
+      <action>login</action>
+      <description>Fortigate: User successfully logged into firewall interface.</description>
+      <group>pci_dss_10.6.1,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+
+
+  <rule id="81627" level="4" frequency="18" timeframe="45" ignore="240">
+      <if_matched_sid>81626</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple Firewall login events from same source.</description>
+      <group>pci_dss_10.6.1,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+
+  <!--
+  Mar 22 19:21:00 10.10.10.10 date=2016-03-22 time=19:20:46 devname=Text devid=FGT3HD0000000000 logid=0000018000 type=anomaly subtype=anomaly level=alert vd="root" severity=critical srcip=10.10.10.35 dstip=10.10.10.84 srcintf="port2" sessionid=0 action=detected proto=6 service=tcp/36875 count=1903 attack="tcp_syn_flood" srcport=32835 dstport=2960 attackid=100663396 profile="DoS-policy1" ref="http://www.fortinet.com/ids/VID100663396" msg="anomaly: tcp_syn_flood, 2001 > threshold 2000, repeats 1903 times" crscore=50 crlevel=critical
+  Mar 22 19:21:00 10.10.10.10 date=2016-03-22 time=19:20:46 devname=Text devid=FGT3HD0000000000 logid=0000018000 type=anomaly subtype=anomaly level=alert vd="root" severity=critical srcip=10.10.10.61 dstip=10.10.10.84 srcintf="port2" sessionid=0 action=dropped proto=6 service=NONE count=9 attack="IP.Bad.Header" attackid=127 profile="N/A" ref="http://www.fortinet.com/ids/VID127" msg="anomaly: IP.Bad.Header, repeats 9 times" crscore=50 crlevel=critical
+  -->
+  <rule id="81628" level="11">
+      <if_sid>81603</if_sid>
+      <match>attack</match>
+      <action>detected</action>
+      <description>Fortigate Attack Detected</description>
+      <group>attack,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  date=2019-05-15 time=17:56:41 logid="0419016384" type="utm" subtype="ips" eventtype="signature" level="alert" vd="root" eventtime=1557968201 severity="critical" srcip=10.1.100.22 srccountry="Reserved" dstip=172.16.200.55 srcintf="port10" srcintfrole="lan" dstintf="port9" dstintfrole="wan" sessionid=4017 action="dropped" proto=6 service="HTTP" policyid=1 attack="Adobe.Flash.newfunction.Handling.Code.Execution" srcport=46810 dstport=80 hostname="172.16.200.55" url="/ips/sig1.pdf" direction="incoming" attackid=23305 profile="block-critical-ips" ref="http://www.fortinet.com/ids/VID23305" incidentserialno=582633933 msg="applications3: Adobe.Flash.newfunction.Handling.Code.Execution," crscore=50 craction=4096 crlevel="critical"
+  -->
+  <rule id="81629" level="6">
+      <if_sid>81603</if_sid>
+      <match>attack</match>
+      <action>dropped</action>
+      <description>Fortigate Attack Dropped</description>
+      <group>attack,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  date=2019-05-13 time=17:05:59 logid="0720018433" type="utm" subtype="anomaly" eventtype="anomaly" level="alert" vd="vdom1" eventtime=1557792359461869329 severity="critical" srcip=10.1.100.11 srccountry="Reserved" dstip=172.16.200.55 srcintf="port12" srcintfrole="undefined" sessionid=0 action="clear_session" proto=1 service="PING" count=1 attack="icmp_flood" icmpid="0x1474" icmptype="0x08" icmpcode="0x00" attackid=16777316 policyid=1 policytype="DoS-policy" ref="http://www.fortinet.com/ids/VID16777316" msg="anomaly: icmp_flood, 51 > threshold 50" crscore=50 craction=4096 crlevel="critical"
+  -->
+  <rule id="81630" level="3">
+      <if_sid>81603</if_sid>
+      <match>attack</match>
+      <action>clear_session</action>
+      <description>Fortigate Attack: Session cleared.</description>
+      <group>attack,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  2018 Apr 09 16:05:06 inwazuhmgr->172.24.0.253 date=2018-04-09 time=16:05:06 devname=BA-RSYS-FW devid=FG600C3912803212 logid="1059028705" type="utm" subtype="app-ctrl" eventtype="app-ctrl-all" level="warning" vd="BA-EXORA" logtime=1523270106 appid=17244 srcip=172.24.150.115 dstip=139.59.35.216 srcport=62159 dstport=443 srcintf="port5" srcintfrole="undefined" dstintf="port4" dstintfrole="wan" proto=6 service="HTTPS" policyid=107 sessionid=3454918141 applist="block-high-risk" appcat="Proxy" app="OpenVPN" action="block" incidentserialno=798746654 msg="Proxy: OpenVPN," apprisk="elevated"
+  -->
+  <rule id="81633" level="3">
+      <if_sid>81603</if_sid>
+      <match>subtype="app-ctrl"|subtype=app-ctrl</match>
+      <action>pass</action>
+      <description>Fortigate: App passed by firewall.</description>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+  <!--
+  date=2019-05-15 time=18:03:35 logid="1059028705" type="utm" subtype="app-ctrl" eventtype="app-ctrl-all" level="warning" vd="root" eventtime=1557968615 appid=16072 srcip=10.1.100.22 dstip=195.8.215.136 srcport=50798 dstport=443 srcintf="port10" srcintfrole="lan" dstintf="port9" dstintfrole="wan" proto=6 service="HTTPS" direction="incoming" policyid=1 sessionid=4414 applist="block-social.media" appcat="Video/Audio" app="Dailymotion" action="block" hostname="www.dailymotion.com" incidentserialno=1962906682 url="/" msg="Video/Audio: Dailymotion," apprisk="elevated
+  -->
+  <rule id="81634" level="5">
+      <if_sid>81603</if_sid>
+      <match>subtype="app-ctrl"|subtype=app-ctrl</match>
+      <action>block</action>
+      <description>Fortigate: App blocked by firewall.</description>
+      <group>firewall_drop,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <rule id="81635" level="3" frequency="16" timeframe="45" ignore="240">
+      <if_matched_sid>81620</if_matched_sid>
+      <same_source_ip />
+      <description>Fortigate: Multiple URL blocked from same source.</description>
+      <group>multiple_drops,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <!--
+  2018 Apr 09 16:03:11 inwazuhmgr->172.0.0.1 date=2018-04-09 time=16:03:11 devname=BA-BE-BI devid=FG600C1234567890 logid="0101037141" type="event" subtype="vpn" level="notice" vd="BA-BEBI" logtime=1523269991 logdesc="IPsec tunnel statistics" msg="IPsec tunnel statistics" action="tunnel-stats" remip=1.1.1.1 locip=1.1.1.1 remport=500 locport=500 outintf="port3" cookies="c95409asssss4d44/b8a16eeeeebe269a" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="AWS-VPN-B" tunnelip=N/A tunnelid=2490314698 tunneltype="ipsec" duration=243565 sentbyte=116502517 rcvdbyte=347903642 nextstat=600
+  -->
+
+  <rule id="81636" level="1">
+      <if_sid>81603</if_sid>
+      <match>type="event" subtype="vpn" level="notice"|type=event subtype=vpn level=notice|type=event,subtype=vpn,level=notice</match>
+      <description>Fortigate: VPN related information.</description>
+  </rule>
+
+  <rule id="81637" level="1">
+      <if_sid>81603</if_sid>
+      <match>type="event" subtype="vpn" level="error"|type=event subtype=vpn level=error|type=event,subtype=vpn,level=error</match>
+      <description>Fortigate: VPN related error.</description>
+  </rule>
+
+<!--
+May 31 08:58:56 172.0.0.1 date=2018-05-31 time=08:58:56 devname="BA-BEBI" devid="FG600C1234567890" logid="0211008192" type="utm" subtype="virus" eventtype="infected" level="warning" vd="BA-BIBO" eventtime=1527737336 msg="File is infected." action="blocked" service="HTTP" sessionid=377413095 srcip=11.22.33.44 dstip=55.66.77.88 srcport=64982 dstport=80 srcintf="port5" srcintfrole="undefined" dstintf="port3" dstintfrole="wan" policyid=108 proto=6 direction="incoming" filename="FrontPageImgHandler.ashx" quarskip="File-was-not-quarantined." virus="Malware_Generic.P0" dtype="Virus" ref="http://www.fortinet.com/ve?vn=Malware_Generic.P0" virusid=7024603 url="http://www.badguys.web/FrontPageImgHandler.ashx?id=12" profile="Web-Browsing" agent="Chrome/66.0.3359.181" analyticscksum="a9165dbae34e6e2952270536e95a2bb154df61h6d95hfh6ee14b36123b" analyticssubmit="false" crscore=50 crlevel="critical"
+-->
+
+  <rule id="81638" level="6">
+      <if_sid>81603</if_sid>
+      <match>subtype=virus|subtype="virus"</match>
+      <description>Fortigate: Virus detected.</description>
+      <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+  <rule id="81639" level="6">
+      <if_sid>81638</if_sid>
+      <action>blocked</action>
+      <description>Fortigate: Blocked URL because a virus was detected.</description>
+      <group>firewall_drop,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
+  </rule>
+
+<!--
+2018 Jun 21 00:00:35 XXX->127.0.0.1 date=2018-06-21 time=03:00:35 devname="xxx" devid="FG123341414414" logid="111111111" type="utm" subtype="webfilter" eventtype="ftgd_allow" level="notice" vd="xxx" eventtime=111111111 policyid=111 sessionid=111111111 srcip=127.0.0.1 srcport=11111 srcintf="port1" srcintfrole="undefined" dstip=127.0.0.1 dstport=111 dstintf="port111" dstintfrole="undefined" proto=1 service="XXX" hostname="xxxxx.com" profile="xx" action="passthrough" reqtype="direct" url="/xxxxxxxxxxxx" sentbyte=11 rcvdbyte=111 direction="outgoing" msg="URL belongs to an allowed category in policy" method="domain" cat=50 catdesc="Information and Computer Security"
+NOTE: Since this rule can be noisy is set to level 1 by default.
+-->
+
+  <rule id="81640" level="1">
+      <if_sid>81603</if_sid>
+      <match>level=notice|level="notice"</match>
+      <action>passthrough</action>
+      <description>Fortigate: URL belongs to an allowed category.</description>
+  </rule>
+
+<!--
+date=2019-05-10 time=09:53:18 logid="0108037894" type="event" subtype="ha" level="critical" vd="root" eventtime=1557507199208575235 logdesc="Virtual cluster member joined" msg="Virtual cluster detected member join" vcluster=1 ha_group=0 sn="FG2K5E3916900286"
+-->
+
+  <rule id="81642" level="3">
+      <if_sid>81603</if_sid>
+      <match>subtype="ha" level="critical"|subtype=ha level=critical</match>
+      <description>Fortigate: Virtual cluster detected member join.</description>
+  </rule>
+
+<!--
+date=2019-05-10 time=15:48:31 logid="0105048038" type="event" subtype="wad" level="error" vd="root" eventtime=1557528511221374615 logdesc="SSL Fatal Alert received" session_id=5f88ddd1 policyid=0 srcip=172.18.70.15 srcport=59880 dstip=91.189.89.223 dstport=443 action="receive" alert="2" desc="unknown ca" msg="SSL Alert received"
+-->
+  <rule id="81643" level="7">
+      <if_sid>81603</if_sid>
+      <match>subtype="wad" level="error"|subtype=wad level=error</match>
+      <action>receive</action>
+      <description>Fortigate: SSL Fatal Alert.</description>
+  </rule>
+
+<!--
+date=2019-05-13 time=16:29:45 logid="0316013056" type="utm" subtype="webfilter" eventtype="ftgd_blk" level="warning" vd="vdom1" eventtime=1557790184975119738 policyid=1 sessionid=381780 srcip=10.1.100.11 srcport=44258 srcintf="port12" srcintfrole="undefined" dstip=185.244.31.158 dstport=80 dstintf="port11" dstintfrole="undefined" proto=6 service="HTTP" hostname="morrishittu.ddns.net" profile="test-webfilter" action="blocked" reqtype="direct" url="/" sentbyte=84 rcvdbyte=0 direction="outgoing" msg="URL belongs to a denied category in policy" method="domain" cat=26 catdesc="Malicious Websites" crscore=30 craction=4194304 crlevel="high"
+-->
+  <rule id="81644" level="6">
+      <if_sid>81603</if_sid>
+      <match>type="utm" subtype="webfilter"|type=utm subtype=webfilter</match>
+      <action>blocked</action>
+      <description>Fortigate: Blocked URL belongs to a denied category in policy.</description>
+  </rule>
+
+<!--
+date=2019-03-28 time=10:55:43 logid="1700062002" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime=1553795742 policyid=1 sessionid=11334 service="HTTPS" srcip=10.1.100.66 srcport=49082 dstip=172.16.200.99 dstport=443 srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto=6 action="blocked" msg="Server certificate blocked" reason="block-cert-req"
+-->
+
+  <rule id="81645" level="5">
+      <if_sid>81603</if_sid>
+      <match>type="utm" subtype="ssl" eventtype="ssl-anomalies"|type=utm subtype=ssl eventtype=ssl-anomalies</match>
+      <action>blocked</action>
+      <description>Fortigate: SSL anomalies. Blocked connection.</description>
+  </rule>
+<!--
+date=2019-05-15 time=16:28:17 logid="1800063000" type="utm" subtype="cifs" eventtype="cifs-filefilter" level="warning" vd="vdom1" eventtime=1557962895 msg="File was blocked by file filter." direction="incoming" action="blocked" service="CIFS" srcip=10.1.100.11 dstip=172.16.200.44 srcport=56348 dstport=445 srcintf="port21" srcintfrole="undefined" dstintf="port23" dstintfrole="undefined" policyid=1 proto=16 profile="cifs" filesize="13824" filename="sample\\test.xls" filtername="1" filetype="msoffice"
+-->
+  <rule id="81646" level="5">
+      <if_sid>81603</if_sid>
+      <match>type="utm" subtype="cifs" eventtype="cifs-filefilter"|type=utm subtype=cifs eventtype=cifs-filefilter</match>
+      <action>blocked</action>
+      <description>Fortigate: File was blocked by File Filter.</description>
+  </rule>
+
+
+  <!--
+  References:
+      For the creation of the parent rule I had in mind this article: https://kb.fortinet.com/kb/documentLink.do?externalID=FD44560
+      For the creation of the child rules I had in mind this article: https://help.fortinet.com/fa/faz50hlp/56/5-6-7/Content/FMG-FAZ/2200_Events/0200_Event_handlers/0400_Predefined_event_handlers.htm
+
+  Severity Correlation:
+      Critical: Level 10
+      High    : Level 7
+      Medium  : Level 5
+      Low     : Level 3
+
+  Groups Correlation:
+      Event Category
+      Log Type
+  -->
+
+  <rule id="44600" level="0">
+      <if_sid>44400</if_sid>
+      <field name="devid">^FG\S+|^FGT\S+</field>
+      <description>FortiGate Rules</description>
+  </rule>
+
+  <rule id="44601" level="10">
+      <if_sid>44600</if_sid>
+      <field name="appcat">^botnet$|^proxy$</field>
+      <group>application_control,</group>
+      <description>FortiGate: Application Control Event</description>
+  </rule>
+
+  <rule id="44602" level="10">
+      <if_sid>44601</if_sid>
+      <field name="actn">^pass$|^monitor$</field>
+      <group>application_control,</group>
+      <description>FortiGate: Botnet Application Allowed by Application Control</description>
+  </rule>
+
+  <rule id="44603" level="7">
+      <if_sid>44601</if_sid>
+      <field name="actn" negate="yes">^pass$|^monitor$</field>
+      <group>application_control,</group>
+      <description>FortiGate: Botnet Application Blocked by Application Control</description>
+  </rule>
+
+  <rule id="44604" level="5">
+      <if_sid>44600</if_sid>
+      <field name="logid">^1501054600$|^1501054601$</field>
+      <group>dns,</group>
+      <description>FortiGate: Botnet C-and-C Blocked by DNS Filtering</description>
+  </rule>
+
+  <rule id="44605" level="7">
+      <if_sid>44600</if_sid>
+      <field name="actn">^blocked$</field>
+      <field name="logid">^0202009248$|^0202009249$</field>
+      <group>antivirus,</group>
+      <description>FortiGate: Botnet C-and-C Blocked by IP-Reputation</description>
+  </rule>
+
+  <rule id="44606" level="10">
+      <if_sid>44601</if_sid>
+      <field name="actn">^detected$|^pass session$</field>
+      <group>ips,</group>
+      <description>FortiGate: Botnet Traffic Allowed by IPS</description>
+  </rule>
+
+  <rule id="44607" level="7">
+      <if_sid>44601</if_sid>
+      <field name="actn" negate="yes">^detected$|^pass session$</field>
+      <group>ips,</group>
+      <description>FortiGate: Botnet Traffic Blocked by IPS</description>
+  </rule>
+
+  <rule id="44608" level="10">
+      <if_sid>44600</if_sid>
+      <field name="actn">conserve mode</field>
+      <group>system,</group>
+      <description>FortiGate: System services entered conserve mode</description>
+  </rule>
+
+  <rule id="44609" level="7">
+      <if_sid>44600</if_sid>
+      <field name="level">^warning$</field>
+      <field name="botnetip">\.+</field>
+      <group>dns,</group>
+      <description>DNS Botnet C-and-C - High Severity</description>
+  </rule>
+
+  <rule id="44610" level="7">
+      <if_sid>44600</if_sid>
+      <field name="level">^warning$</field>
+      <field name="botnedomain">\.+</field>
+      <group>dns,</group>
+      <description>DNS Botnet C-and-C - High Severity</description>
+  </rule>
+
+  <rule id="44611" level="5">
+      <if_sid>44600</if_sid>
+      <field name="logdesc">^Virtual cluster move member$|^Virtual cluster member state moved$</field>
+      <group>eventlog,</group>
+      <description>FortiGate: HA Failover</description>
+  </rule>
+
+  <rule id="44612" level="7">
+      <if_sid>44600</if_sid>
+      <field name="actn">^interface-stat-change$</field>
+      <field name="fstatus">^down$</field>
+      <group>system,</group>
+      <description>FortiGate: Interface Down</description>
+  </rule>
+
+  <rule id="44613" level="5">
+      <if_sid>44600</if_sid>
+      <field name="actn">^interface-stat-change$</field>
+      <field name="fstatus">^up$</field>
+      <group>system,</group>
+      <description>FortiGate: Interface Up</description>
+  </rule>
+
+  <rule id="44614" level="5">
+      <if_sid>44600</if_sid>
+      <field name="actn">^phase2-down$</field>
+      <group>vpn,</group>
+      <description>FortiGate: IPsec Phase2 Down</description>
+  </rule>
+
+  <rule id="44615" level="5">
+      <if_sid>44600</if_sid>
+      <field name="actn">^phase2-up$</field>
+      <group>vpn,</group>
+      <description>FortiGate: IPsec Phase2 Up</description>
+  </rule>
+
+  <rule id="44616" level="5">
+      <if_sid>44600</if_sid>
+      <field name="virus">\.+</field>
+      <group>antivirus,</group>
+      <description>FortiGate: Antivirus Event</description>
+  </rule>
+
+  <rule id="44617" level="7">
+      <if_sid>44600</if_sid>
+      <field name="logid">^0211008193$|^0211008195$</field>
+      <group>antivirus,</group>
+      <description>FortiGate: Malware Traffic Allowed By AntiVirus</description>
+  </rule>
+
+  <rule id="44618" level="5">
+      <if_sid>44600</if_sid>
+      <field name="logid">^0211008192$|^0211008194$</field>
+      <group>antivirus,</group>
+      <description>FortiGate: Malware Traffic Blocked by AntiVirus</description>
+  </rule>
+
+  <rule id="44619" level="5">
+      <if_sid>44600</if_sid>
+      <field name="logid">^0211009234$|^0211009236$</field>
+      <group>antivirus,</group>
+      <description>FortiGate: Malware Traffic Blocked by FortiSandbox Signature Update</description>
+  </rule>
+
+  <rule id="44620" level="7">
+      <if_sid>44600</if_sid>
+      <field name="logid">^0211009235$|^0211009237$</field>
+      <group>antivirus,</group>
+      <description>FortiGate: Malware Traffic Allowed by FortiSandbox</description>
+  </rule>
+
+  <rule id="44621" level="7">
+      <if_sid>44600</if_sid>
+      <field name="actn">^power-supply-monitor$</field>
+      <field name="fstatus">^failure$</field>
+      <group>system,</group>
+      <description>FortiGate: Power Supply Failure</description>
+  </rule>
+
+  <rule id="44622" level="0">
+      <if_sid>44600</if_sid>
+      <field name="type">^utm$</field>
+      <group>utm,</group>
+      <description>FortiGate: UTM logs</description>
+  </rule>
+
+  <rule id="44623" level="7">
+      <if_sid>44622</if_sid>
+      <field name="virus">\.+</field>
+      <field name="dtype" negate="yes">^fortisandbox$</field>
+      <group>utm,antivirus,</group>
+      <description>FortiGate: UTM Antivirus Event</description>
+  </rule>
+
+  <rule id="44624" level="10">
+      <if_sid>44622</if_sid>
+      <field name="appcat">^botnet$|^proxy$</field>
+      <group>utm,application_control,</group>
+      <description>FortiGate: UTM App Ctrl Event</description>
+  </rule>
+
+  <rule id="44625" level="5">
+      <if_sid>44622</if_sid>
+      <field name="actn">^block$</field>
+      <group>utm,dlp,</group>
+      <description>FortiGate: UTM DLP Event</description>
+  </rule>
+
+  <rule id="44626" level="5">
+      <if_sid>44622</if_sid>
+      <field name="subtype">^webfilter$</field>
+      <group>utm,web_filter,</group>
+      <description>FortiGate: UTM Web Filter Event</description>
+  </rule>
+
+  <rule id="44627" level="0">
+      <if_sid>44600</if_sid>
+      <field name="subtype">^ips$</field>
+      <group>ips,</group>
+      <description>FortiGate: IPS Logs</description>
+  </rule>
+
+  <rule id="44628" level="10">
+      <if_sid>44627</if_sid>
+      <field name="severity">^critical$</field>
+      <group>ips,</group>
+      <description>FortiGate: IPS - Critical Severity</description>
+  </rule>
+
+  <rule id="44629" level="7">
+      <if_sid>44627</if_sid>
+      <field name="severity">^high$</field>
+      <group>ips,</group>
+      <description>FortiGate: IPS - High Severity</description>
+  </rule>
+
+  <rule id="44630" level="3">
+      <if_sid>44627</if_sid>
+      <field name="severity">^low$</field>
+      <group>ips,</group>
+      <description>FortiGate: IPS - Low Severity</description>
+  </rule>
+
+  <rule id="44631" level="5">
+      <if_sid>44627</if_sid>
+      <field name="severity">^medium$</field>
+      <group>ips,</group>
+      <description>FortiGate: IPS - High Severity</description>
+  </rule>
+
+
+
+</group>
+
+<!--
+    Reference:  https://help.fortinet.com/fddos/4-3-0/FortiDDoS/log_ref.htm
+-->
+
+<group name="fortiddos,">
+
+  <rule id="44401" level="0">
+      <if_sid>44400</if_sid>
+      <field name="devid">^FI\S+|^FDD\S+</field>
+      <description>FortiDDOS Rules.</description>
+  </rule>
+
+  <rule id="44402" level="0">
+      <if_sid>44401</if_sid>
+      <field name="evecode">^1$</field>
+      <group>layer3,</group>
+      <options>no_full_log</options>
+      <description>Group of Layer 3 Events.</description>
+  </rule>
+
+  <rule id="44403" level="0">
+      <if_sid>44401</if_sid>
+      <field name="evecode">^2$</field>
+      <group>layer4,</group>
+      <options>no_full_log</options>
+      <description>Group of Layer 4 Events.</description>
+  </rule>
+
+  <rule id="44404" level="0">
+      <if_sid>44401</if_sid>
+      <field name="evecode">^4$</field>
+      <group>layer7,</group>
+      <options>no_full_log</options>
+      <description>Group of Layer 7 Events.</description>
+  </rule>
+
+  <rule id="44405" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^0$</field>
+      <group>layer3,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the protocol has been reached.</description>
+  </rule>
+
+  <rule id="44406" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^1$</field>
+      <group>layer3,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the fragment threshold has been reached.</description>
+  </rule>
+
+  <rule id="44407" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^4$</field>
+      <group>layer3,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Drops due to predefined IP header rules: Invalid header length (less than 5 words) Total length less than 20 bytes End of Header before the data offset (while parsing options) Length field in the LSRR or SSRR IP option is other than (3+(n*4)) where n is a value greater than or equal to 1 Pointer in the LSRR or SSRR IP option is other than (n*4) where n is a value greater than or equal to 1</description>
+  </rule>
+
+  <rule id="44408" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^6$</field>
+      <options>no_full_log</options>
+      <description>An issue with hash collisions in the source tracking (ST) table.</description>
+  </rule>
+
+  <rule id="44409" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^7$</field>
+      <options>no_full_log</options>
+      <description>An issue with the source tracking (ST) table internal logic or memory.</description>
+  </rule>
+
+  <rule id="44410" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^8$</field>
+      <group>layer3,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the most-active-source threshold has been reached. Source IP address is reported.</description>
+  </rule>
+
+  <rule id="44411" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^10$</field>
+      <options>no_full_log</options>
+      <description>An issue with hash collisions in the destination tracking (DT) table.</description>
+  </rule>
+
+  <rule id="44412" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^11$</field>
+      <options>no_full_log</options>
+      <description>An issue with the destination tracking (DT) table internal logic or memory.</description>
+  </rule>
+
+  <rule id="44413" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^14$</field>
+      <group>layer3,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid IP header checksum.</description>
+  </rule>
+
+  <rule id="44414" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^15$</field>
+      <group>layer3,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Identical source and protected IP addresses (LAND attack).</description>
+  </rule>
+
+  <rule id="44415" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^16$</field>
+      <group>layer3,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Source/destination address is the local host (loopback address spoofing).</description>
+  </rule>
+
+  <rule id="44416" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^17$</field>
+      <group>layer3,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Drops due to predefined Layer 3 rules: IP version other than IPv4 or IPv6; EOP (End of Packet) before 20 bytes of IPv4 data; EOP comes before the length specified by Total Length; Reserved Flag set; More Frag and Don't Frag Flags set; Added Anomaly for DSCP and ECN</description>
+  </rule>
+
+  <rule id="44417" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^50$|^54$|^55$</field>
+      <group>layer3,ACL,</group>
+      <options>no_full_log</options>
+      <description>Layer 3: Denied by an SPP ACL rule.</description>
+  </rule>
+
+  <rule id="44418" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^59$</field>
+      <group>layer3,ACL,</group>
+      <options>no_full_log</options>
+      <description>Denied by the global geolocation ACL.</description>
+  </rule>
+
+  <rule id="44419" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^60$</field>
+      <group>layer3,ACL,</group>
+      <options>no_full_log</options>
+      <description>Denied by the global ACL.</description>
+  </rule>
+
+  <rule id="44420" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^61$</field>
+      <group>layer3,ACL,</group>
+      <options>no_full_log</options>
+      <description>Denied by the global IP Reputation ACL</description>
+  </rule>
+
+  <rule id="44421" level="5">
+      <if_sid>44402</if_sid>
+      <field name="evesubcode">^62$</field>
+      <group>layer3,ACL,</group>
+      <options>no_full_log</options>
+      <description>Denied by the global local address antispoofing ACL.</description>
+  </rule>
+
+  <rule id="44422" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^0$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the syn threshold has been reached.</description>
+  </rule>
+
+  <rule id="44423" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^6$</field>
+      <group>layer4,state_anomaly,</group>
+      <options>no_full_log</options>
+      <description>A foreign packet is a TCP packet that does not belong to any known connections.  Tracked when the SPP setting foreign-packet is enabled.</description>
+  </rule>
+
+  <rule id="44424" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^7$</field>
+      <group>layer4,state_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Sequence number of a packet was outside the acceptable window.  Tracked when the SPP setting seq-validation is enabled.</description>
+  </rule>
+
+  <rule id="44425" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^10$</field>
+      <options>no_full_log</options>
+      <description>An issue with hash collisions in TCP State Machine table.</description>
+  </rule>
+
+  <rule id="44426" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^11$</field>
+      <options>no_full_log</options>
+      <description>An issue with TCP State Machine table internal logic or memory.</description>
+  </rule>
+
+  <rule id="44427" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^12$</field>
+      <group>layer4,state_anomaly,</group>
+      <options>no_full_log</options>
+      <description>State of the TCP packet received was not consistent with the expected state. Tracked when the SPP setting state-transition-anomalies-validation is enabled.</description>
+  </rule>
+
+  <rule id="44428" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^15$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the new-connections threshold has been reached. A spike in new connections from IP addresses formerly determined to be legitimate might be a sign of a zombie attack.</description>
+  </rule>
+
+  <rule id="44429" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^17$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the TCP port has been reached.</description>
+  </rule>
+
+  <rule id="44430" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^18$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the UDP port has been reached.</description>
+  </rule>
+
+  <rule id="44431" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^19$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the type/code has been reached.</description>
+  </rule>
+
+  <rule id="44432" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^20$</field>
+      <group>layer4,state_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Slow Connection Aggressive Aging</description>
+  </rule>
+
+  <rule id="44433" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^22$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Slow connection attack detected and “Source blocking for slow connections” enabled. Source IP address is reported.</description>
+  </rule>
+
+  <rule id="44434" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^24$</field>
+      <group>layer4,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid TCP checksum.</description>
+  </rule>
+
+  <rule id="44435" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^25$</field>
+      <group>layer4,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid UDP checksum.</description>
+  </rule>
+
+  <rule id="44436" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^26$</field>
+      <group>layer4,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid ICMP checksum.</description>
+  </rule>
+
+  <rule id="44437" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^27$</field>
+      <group>layer4,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid TCP flag combination. If the urgent flag is set, then the urgent pointer must be non-zero. SYN, FIN or RST is set for fragmented packets.</description>
+  </rule>
+
+  <rule id="44438" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^28$</field>
+      <group>layer4,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Drops due to predefined Layer 4 header rules: Data offset is less than 5 for a TCP packet; EOP (End of packet) is detected before the 20 bytes of TCP header; EOP before the data offset indicated data offset; Length field in TCP window scale option is a value other than 3; Length field in TCP window scale option is a value other than 3; Missing UDP payload; Missing ICMP payload ; TCP Option Anamoly based on Option Type</description>
+  </rule>
+
+  <rule id="44439" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^52$|^53$|^54$</field>
+      <group>layer4,ACL,</group>
+      <options>no_full_log</options>
+      <description>Layer 4: Denied by an SPP ACL rule.</description>
+  </rule>
+
+  <rule id="44440" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^56$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the syn-per-src threshold has been reached. Source IP address is reported.</description>
+  </rule>
+
+  <rule id="44441" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^58$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the concurrent-connections-per-source threshold has been reached. Source IP address is reported.</description>
+  </rule>
+
+  <rule id="44442" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^82$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>DNS Query flood from Source</description>
+  </rule>
+
+  <rule id="44443" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^83$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>DNS Packet Track Flood from Source</description>
+  </rule>
+
+  <rule id="44444" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^86$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Invalid ICMP Type/Code</description>
+  </rule>
+
+  <rule id="44445" level="5">
+      <if_sid>44403</if_sid>
+      <field name="evesubcode">^87$</field>
+      <group>layer4,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>HTTP Method flood from source</description>
+  </rule>
+
+  <rule id="44446" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^0$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for a particular HTTP method threshold has been reached.</description>
+  </rule>
+
+  <rule id="44447" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^1$</field>
+      <group>layer7,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Packets dropped due to the unknown-opcode-anomaly rule (Global Settings > Settings page).</description>
+  </rule>
+
+  <rule id="44448" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^2$</field>
+      <group>layer7,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Packets dropped due to the invalid-opcode-anomaly rule (Global Settings > Settings page).</description>
+  </rule>
+
+  <rule id="44449" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^3$|^7$|^9$|^11$|^13$|^37$|^38$|^39$|^40$</field>
+      <group>layer7,ACL,</group>
+      <options>no_full_log</options>
+      <description>Layer 7: Denied by an SPP ACL rule.</description>
+  </rule>
+
+  <rule id="44450" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^4$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for a particular URL threshold has been reached.</description>
+  </rule>
+
+  <rule id="44451" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^5$</field>
+      <group>layer7,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid HTTP Method anomaly</description>
+  </rule>
+
+  <rule id="44452" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^6$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for a particular Host header threshold has been reached.</description>
+  </rule>
+
+  <rule id="44453" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^8$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for a particular Referer header threshold has been reached.</description>
+  </rule>
+
+  <rule id="44454" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^10$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for a particular Cookie header threshold has been reached.</description>
+  </rule>
+
+  <rule id="44455" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^12$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for a particular User-Agent threshold has been reached.</description>
+  </rule>
+
+  <rule id="44456" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^42$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid value in the OpCode field.</description>
+  </rule>
+
+  <rule id="44457" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^43$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Invalid combination in the flags field.</description>
+  </rule>
+
+  <rule id="44458" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^44$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS Header Anomaly</description>
+  </rule>
+
+  <rule id="44459" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^45$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>(QR) bit set to 1</description>
+  </rule>
+
+  <rule id="44460" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^46$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>recursion allowed (RA) bit set</description>
+  </rule>
+
+  <rule id="44461" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^47$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS query with count 0</description>
+  </rule>
+
+  <rule id="44462" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^48$|^53$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Question count not 1</description>
+  </rule>
+
+  <rule id="44463" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^49$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>recursion desired (RD) bit set</description>
+  </rule>
+
+  <rule id="44464" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^50$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS response with QCLASS</description>
+  </rule>
+
+  <rule id="44465" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^51$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS response with a resource specifying a TYPE ID</description>
+  </rule>
+
+  <rule id="44466" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^52$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>(QR) bit set to 0</description>
+  </rule>
+
+  <rule id="44467" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^54$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>TCP/UDP query or response message that exceeds the maximum header length</description>
+  </rule>
+
+  <rule id="44468" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^55$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS name that exceeds 255 characters</description>
+  </rule>
+
+  <rule id="44469" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^56$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Query or response with a label that exceeds the maximum length (63)</description>
+  </rule>
+
+  <rule id="44470" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^57$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS message with a pointer that points beyond the end of data</description>
+  </rule>
+
+  <rule id="44471" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^58$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>An asynchronous Transfer Full Range (AXFR) request (QTYPE=252)</description>
+  </rule>
+
+  <rule id="44472" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^59$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>A query/response in which the question/resource address class is not IN</description>
+  </rule>
+
+  <rule id="44473" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^60$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS Exploit Anomaly: Empty UDP message</description>
+  </rule>
+
+  <rule id="44474" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^61$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS Exploit Anomaly: Message ends prematurely</description>
+  </rule>
+
+  <rule id="44475" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^62$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>A query/response with less than two bytes of data specified in the two-byte prefix field</description>
+  </rule>
+
+  <rule id="44476" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^63$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>DNS request with request type set to ALL (QTYPE=255)</description>
+  </rule>
+
+  <rule id="44477" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^64$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>A query/response with TYPE or CLASS reserved values</description>
+  </rule>
+
+  <rule id="44478" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^65$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>A query/response with excess data</description>
+  </rule>
+
+  <rule id="44479" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^66$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>TTL value is greater than 7 days</description>
+  </rule>
+
+  <rule id="44480" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^67$</field>
+      <group>layer7,dns_anomaly,</group>
+      <options>no_full_log</options>
+      <description>A query/response with a null DNS name</description>
+  </rule>
+
+  <rule id="44481" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^68$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP Drops due to a response with no matching query.</description>
+  </rule>
+
+  <rule id="44482" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^69$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>TCP Drops due to a response with no matching query.</description>
+  </rule>
+
+  <rule id="44483" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^70$</field>
+      <group>layer7,</group>
+      <options>no_full_log</options>
+      <description>DNS DQRM Horizontal Link Limit Crossed</description>
+  </rule>
+
+  <rule id="44484" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^71$</field>
+      <group>layer7,</group>
+      <options>no_full_log</options>
+      <description>An issue with DQRM table internal logic or memory.</description>
+  </rule>
+
+  <rule id="44485" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^72$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP drops due to response sent to port 53.</description>
+  </rule>
+
+  <rule id="44486" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^73$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>TCP drops due to response sent to port 53.</description>
+  </rule>
+
+  <rule id="44487" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^74$|^75$|^76$|^77$|^78$|^79$|^80$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP drops due to LQ check during flood.</description>
+  </rule>
+
+  <rule id="44488" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^81$|^82$|^83$|^84$|^85$|^86$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP drops due to TTL check during flood.</description>
+  </rule>
+
+  <rule id="44489" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^87$|^88$|^89$|^90$|^91$|^92$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP drops due to TC=1 antispoofing check during flood</description>
+  </rule>
+
+  <rule id="44490" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^93$|^94$|^95$|^96$|^97$|^98$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP drops due to Retransmission antispoofing check during flood</description>
+  </rule>
+
+  <rule id="44491" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^99$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP drops because the response was served from the cache during a flood.</description>
+  </rule>
+
+  <rule id="44492" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^100$|^101$|^102$|^103$|^104$|^105$|^106$|^107$|^108$|^109$|^110$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP drops because the response was not served from the cache during a flood.</description>
+  </rule>
+
+  <rule id="44493" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^201$</field>
+      <group>layer7,header_anomaly,</group>
+      <options>no_full_log</options>
+      <description>Drops due to HTTP Range Header rule (Global Settings > Settings page).</description>
+  </rule>
+
+  <rule id="44494" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^111$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the dns-query threshold has been reached.</description>
+  </rule>
+
+  <rule id="44495" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^112$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the dns-question-count threshold has been reached.</description>
+  </rule>
+
+  <rule id="44496" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^113$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the dns-fragment threshold has been reached.</description>
+  </rule>
+
+  <rule id="44497" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^114$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the dns-zone-xfer threshold has been reached.</description>
+  </rule>
+
+  <rule id="44498" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^115$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the dns-mx threshold has been reached.</description>
+  </rule>
+
+  <rule id="44499" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^116$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>Effective rate limit for the dns-all threshold has been reached.</description>
+  </rule>
+
+  <rule id="44500" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^117$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>UDP Drops due to DQRM duplicate query check.</description>
+  </rule>
+
+  <rule id="44501" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^118$</field>
+      <group>layer7,rate_flood,</group>
+      <options>no_full_log</options>
+      <description>TCP Drops due to DQRM duplicate query check.</description>
+  </rule>
+
+  <rule id="44502" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^119$</field>
+      <group>layer7,ACL,</group>
+      <options>no_full_log</options>
+      <description>DNS Query ACL drops due to Query restricted to specific subnets</description>
+  </rule>
+
+  <rule id="44503" level="5">
+      <if_sid>44404</if_sid>
+      <field name="evesubcode">^120$</field>
+      <group>layer7,ACL,</group>
+      <options>no_full_log</options>
+      <description>DNS Query ACL Drops due to Blacklisted domains/ipv4 address</description>
+  </rule>
+
+</group>
+
+
+
+<!--
+References:
+    For the creation of the parent rule I had in mind this article: https://kb.fortinet.com/kb/documentLink.do?externalID=FD44560
+    For the creation of the child rules I had in mind this article: https://fortinetweb.s3.amazonaws.com/docs.fortinet.com/v2/attachments/f7868f9d-b70f-11ea-8b7d-00505692583a/FortiMail-6.4.0-Log_Reference.pdf
+Severity Correlation:
+    0 Emergency   Level 13
+    1 Alert       Level 10
+    2 Critical    Level 7
+    3 Error 	  Level 5
+    4 Warning 	  Level 3
+    5 Notice 	  Level 0
+    6 Information Level 0
+-->
+
+<group name="fortimail,">
+
+  <rule id="44640" level="0">
+      <if_sid>44400</if_sid>
+      <field name="devid">^FE\S+|^FMAIL\S+|^FML\S+</field>
+      <description>FortiMail Rules</description>
+  </rule>
+
+  <rule id="44641" level="0">
+      <if_sid>44640</if_sid>
+      <field name="pri">^information$|^notice$</field>
+      <description>FortiMail: Information Message</description>
+  </rule>
+
+  <rule id="44642" level="3">
+      <if_sid>44640</if_sid>
+      <field name="pri">^warning$</field>
+      <description>FortiMail: Warning Message</description>
+  </rule>
+
+  <rule id="44643" level="5">
+      <if_sid>44640</if_sid>
+      <field name="pri">^error$</field>
+      <description>FortiMail: Error Message</description>
+  </rule>
+
+  <rule id="44644" level="7">
+      <if_sid>44640</if_sid>
+      <field name="pri">^critical$</field>
+      <description>FortiMail: Critical Message</description>
+  </rule>
+
+  <rule id="44645" level="10">
+      <if_sid>44640</if_sid>
+      <field name="pri">^alert$</field>
+      <description>FortiMail: Alert Message</description>
+  </rule>
+
+  <rule id="44646" level="13">
+      <if_sid>44640</if_sid>
+      <field name="pri">^emergency$</field>
+      <description>FortiMail: Emergency Message</description>
+  </rule>
+
+  <rule id="44647" level="7">
+      <if_sid>44640</if_sid>
+      <field name="resolved">^forged$</field>
+      <description>FortiMail: DNS Record does not match</description>
+  </rule>
+
+  <rule id="44648" level="5">
+      <if_sid>44640</if_sid>
+      <field name="resolved">^fail$</field>
+      <description>FortiMail: DNS lookup is not successful</description>
+  </rule>
+
+  <rule id="44649" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">login successfully</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator successfully logged in using the web-based manager or CLI</description>
+  </rule>
+
+  <rule id="44650" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">logged in</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator from a specified IP address logged into the WebMail</description>
+  </rule>
+
+  <rule id="44651" level="5">
+      <if_sid>44641</if_sid>
+      <field name="msg">login failed from</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator failed to log in using the console, SSH, or telnet</description>
+  </rule>
+
+  <rule id="44652" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">^mailbox_get_header: failed$</field>
+      <group>system,config,</group>
+      <description>FortiMail: The WebMail GUI cannot display the email message, or the quarantined message in the web-based manager</description>
+  </rule>
+
+  <rule id="44653" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">^mailbox_get_num_parts: failed$</field>
+      <group>system,config,</group>
+      <description>FortiMail: Specific information in a message cannot be retrieved</description>
+  </rule>
+
+  <rule id="44654" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">^Could not get message part$</field>
+      <group>system,config,</group>
+      <description>FortiMail: The message cannot be read from the mailbox</description>
+  </rule>
+
+  <rule id="44655" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">^Could not save attachment$</field>
+      <group>system,config,</group>
+      <description>FortiMail: An unknown failure occurred when trying to prepare the attachment for a user to download</description>
+  </rule>
+
+  <rule id="44656" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">^Login from LCD successfully$</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator successfully logged in using the LCD</description>
+  </rule>
+
+  <rule id="44657" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">^Login from LCD failed$</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator failed to log in using the LCD</description>
+  </rule>
+
+  <rule id="44658" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">update settings \.+ changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a system update setting</description>
+  </rule>
+
+  <rule id="44659" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">ip address changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed an interface IP address using the CLI</description>
+  </rule>
+
+  <rule id="44660" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">status changed|has been brought up|have been changed by</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed the status of an interface</description>
+  </rule>
+
+  <rule id="44661" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">DNS has been changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed DNS settings using the CLI</description>
+  </rule>
+
+  <rule id="44662" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">default gateway has been changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed the default gateway IP address using the web-based manager</description>
+  </rule>
+
+  <rule id="44663" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Route entry|A route to|Routing entry</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a routing configuration</description>
+  </rule>
+
+  <rule id="44664" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">System timezone|Daylight Saving|System time</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed the system time settings</description>
+  </rule>
+
+  <rule id="44665" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">NTP server settings have been changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed NTP server settings using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44666" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Console \w+ setting has been changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed the console settings using the CLI</description>
+  </rule>
+
+  <rule id="44667" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">timeout value has been changed|auth timeout has been changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a timeout value using the CLI</description>
+  </rule>
+
+  <rule id="44668" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">System language has been changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed the system language to another language using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44669" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">LCD PIN</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed the LCD PIN setting using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44670" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Admin \w+ has been|admin \w+ password</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed another administrator using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44671" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">HA settings have been changed</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed HA settings using the CLI</description>
+  </rule>
+
+  <rule id="44672" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">SNMP</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed the SNMP Settings</description>
+  </rule>
+
+  <rule id="44673" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">FortiMail disclaimer</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has changed a FortiMail disclaimer Settings</description>
+  </rule>
+
+  <rule id="44674" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Local domain|local domain</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has modified local domains using the CLI</description>
+  </rule>
+
+  <rule id="44675" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">POP3</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has modified a POP3 setting using the CLI</description>
+  </rule>
+
+  <rule id="44676" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Relay server name</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has modified a relay server name using the CLI</description>
+  </rule>
+
+  <rule id="44677" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">smtp auth|smtp over ssl|SMTP server port number</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has modified SMTP Settings</description>
+  </rule>
+
+  <rule id="44678" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">email archiving|Archiving settings|Archiving policy|Archiving exempt</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has modified the email archiving Settings</description>
+  </rule>
+
+  <rule id="44679" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">system quarantine|System quarantine</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has modified a system quarantine setting using the CLI</description>
+  </rule>
+
+  <rule id="44680" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Mail Server settings|Mail server access</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has changed mail server settings using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44681" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Permission of mail</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator set or deleted permission of mail using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44682" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Permission of mail</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator set or deleted permission of mail using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44683" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Local user</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a local user using the CL</description>
+  </rule>
+
+  <rule id="44684" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">User group</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a user group using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44685" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">mail user</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a mail user using the CLI</description>
+  </rule>
+
+  <rule id="44686" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Mail server user|Mail Server User</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a mail server user using the web-based manager</description>
+  </rule>
+
+  <rule id="44687" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">IMAP</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator has modified a IMAP setting using the CLI</description>
+  </rule>
+
+  <rule id="44688" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">email banned word</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator removed an email banned word using the CLI</description>
+  </rule>
+
+  <rule id="44689" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">log setting|logsetting|Log setting|Log Policy</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed a log setting using the CLI</description>
+  </rule>
+
+  <rule id="44690" level="3">
+      <if_sid>44641</if_sid>
+      <field name="msg">Alertemail setting</field>
+      <group>system,config,</group>
+      <description>FortiMail: An administrator changed an alert email setting using the CLI</description>
+  </rule>
+
+  <rule id="44691" level="3">
+      <field name="subtype">dns</field>
+      <group>system,dns,</group>
+      <description>FortiMail: DNS query event</description>
+  </rule>
+
+  <rule id="44692" level="0">
+      <if_sid>44641</if_sid>
+      <field name="subtype">ha</field>
+      <group>system,ha,</group>
+      <description>FortiMail: System Event HA (high availability) log messages</description>
+  </rule>
+
+  <rule id="44693" level="3">
+      <if_sid>44692</if_sid>
+      <field name="msg">monitord: \.+ entering MASTER mode</field>
+      <group>system,ha,</group>
+      <description>FortiMail: The FortiMail unit is entering master mode</description>
+  </rule>
+
+  <rule id="44694" level="3">
+      <if_sid>44692</if_sid>
+      <field name="msg">configd: \.+ entering slave mode</field>
+      <group>system,ha,</group>
+      <description>FortiMail: The FortiMail unit is entering slave mode</description>
+  </rule>
+
+  <rule id="44695" level="3">
+      <if_sid>44692</if_sid>
+      <field name="msg">monitord: \.+ assuming MASTER role</field>
+      <group>system,ha,</group>
+      <description>FortiMail: The FortiMail unit is assuming the primary unit role because the retry limit was reached for connecting to the original primary unit</description>
+  </rule>
+
+  <rule id="44696" level="3">
+      <if_sid>44692</if_sid>
+      <field name="msg">hahbd:</field>
+      <group>system,ha,</group>
+      <description>FortiMail: Heartbeat related activities</description>
+  </rule>
+
+
+  <rule id="44697" level="3">
+      <if_sid>44692</if_sid>
+      <field name="msg">hasyncd:</field>
+      <group>system,ha,</group>
+      <description>FortiMail: Synchronization related information</description>
+  </rule>
+
+  <rule id="44698" level="0">
+      <field name="subtype">system</field>
+      <group>system,</group>
+      <description>FortiMail: System Event System log messages</description>
+  </rule>
+
+  <rule id="44699" level="5">
+      <if_sid>44698</if_sid>
+      <field name="msg">System has been restarted</field>
+      <group>system,</group>
+      <description>FortiMail: An administrator restarted the system using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44700" level="5">
+      <if_sid>44698</if_sid>
+      <field name="msg">System has been shutdown</field>
+      <group>system,</group>
+      <description>FortiMail: An administrator shut down the system using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44701" level="5">
+      <if_sid>44698</if_sid>
+      <field name="msg">System has been reloaded</field>
+      <group>system,</group>
+      <description>FortiMail: An administrator reloaded the system using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44702" level="5">
+      <if_sid>44698</if_sid>
+      <field name="msg">System has been reset to factory default</field>
+      <group>system,</group>
+      <description>FortiMail: An administrator reset the system to factory default using the CLI, web-based manager, or LCD</description>
+  </rule>
+
+  <rule id="44703" level="5">
+      <if_sid>44698</if_sid>
+      <field name="msg">System firmware has been</field>
+      <group>system,</group>
+      <description>FortiMail: An administrator upgraded/downgraded system firmware using the CLI or web-based manager</description>
+  </rule>
+
+  <rule id="44704" level="5">
+      <if_sid>44698</if_sid>
+      <field name="msg">Upgrade system firmware failed</field>
+      <group>system,</group>
+      <description>FortiMail: An administrator upgraded system firmware unsuccessfully using the CLI, console, telnet, or web-based manager</description>
+  </rule>
+
+  <rule id="44705" level="5">
+      <if_sid>44698</if_sid>
+      <field name="msg">System has been changed to \w+ mode</field>
+      <group>system,</group>
+      <description>FortiMail: An administrator or LCD user changed the mode to gateway, server, or transparent mode using the CLI, web-based manager or LCD</description>
+  </rule>
+
+  <rule id="44706" level="3">
+      <if_sid>44642</if_sid>
+      <field name="subtype">update</field>
+      <group>system,</group>
+      <description>FortiMail: The FortiMail unit updated the following FortiGuard services</description>
+  </rule>
+
+  <rule id="44707" level="3">
+      <field name="subtype">imap</field>
+      <group>event,</group>
+      <description>FortiMail: IMAP-related events</description>
+  </rule>
+
+  <rule id="44708" level="3">
+      <field name="subtype">pop3</field>
+      <group>event,</group>
+      <description>FortiMail: POP3-related events</description>
+  </rule>
+
+  <rule id="44709" level="3">
+      <if_sid>44641,44642,44643,44644,44645,44646</if_sid>
+      <field name="subtype">smtp</field>
+      <group>event,</group>
+      <description>FortiMail: SMTP-related events</description>
+  </rule>
+
+  <rule id="44710" level="3">
+      <if_sid>44709</if_sid>
+      <field name="msg">Starting flgrptd</field>
+      <group>event,</group>
+      <description>FortiMail: The reporting daemon is starting</description>
+  </rule>
+
+  <rule id="44711" level="3">
+      <if_sid>44709</if_sid>
+      <field name="msg">Successfully loaded virus db</field>
+      <group>event,</group>
+      <description>FortiMail: The antivirus database is successfully loaded</description>
+  </rule>
+
+  <rule id="44712" level="3">
+      <if_sid>44709</if_sid>
+      <field name="msg">FASR|FSAR</field>
+      <group>event,</group>
+      <description>FortiMail: FortiGuard Antispam Rule (FSAR) Operational Event</description>
+  </rule>
+
+  <rule id="44713" level="3">
+      <if_sid>44709</if_sid>
+      <field name="msg">aliases has been rebuilt</field>
+      <group>event,</group>
+      <description>FortiMail: Mail aliases have been rebuilt</description>
+  </rule>
+
+  <rule id="44714" level="3">
+      <if_sid>44709</if_sid>
+      <field name="msg">Restart the updated daemon to re-load default avengine</field>
+      <group>event,</group>
+      <description>FortiMail: Updated daemon is restarted to reload default antivirus engine and database</description>
+  </rule>
+
+  <rule id="44715" level="3">
+      <if_sid>44709</if_sid>
+      <field name="msg">Successfully loaded virus db</field>
+      <group>event,</group>
+      <description>FortiMail: The user successfully uploaded the antivirus database</description>
+  </rule>
+
+  <rule id="44716" level="3">
+      <if_sid>44709</if_sid>
+      <field name="msg">Bayesian Training</field>
+      <group>event,</group>
+      <description>FortiMail: The FortiMail unit is training a specific bayesian database</description>
+  </rule>
+
+  <rule id="44717" level="3">
+      <field name="subtype">webmail</field>
+      <group>event,</group>
+      <description>FortiMail: Event Webmail log messages</description>
+  </rule>
+
+  <rule id="44718" level="3">
+      <if_sid>44641</if_sid>
+      <field name="subtype">infected</field>
+      <group>encrypt,</group>
+      <description>FortiMail: The file contains the specified virus</description>
+  </rule>
+
+  <rule id="44719" level="3">
+      <if_sid>44641</if_sid>
+      <field name="type">spam</field>
+      <group>spam,</group>
+      <description>FortiMail: SPAM-related events</description>
+  </rule>
+
+  <rule id="44720" level="3">
+      <if_sid>44641</if_sid>
+      <field name="type">encrypt</field>
+      <group>encrypt,</group>
+      <description>FortiMail: FortiMail encrypted or decrypted an email</description>
+  </rule>
+
+  <rule id="44721" level="3">
+      <if_sid>44642,44643,44644,44645,44646</if_sid>
+      <field name="type">virus</field>
+      <group>event,</group>
+      <description>FortiMail: Virus related events</description>
+  </rule>
+
+</group>
