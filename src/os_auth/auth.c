@@ -215,6 +215,15 @@ w_err_t w_auth_replace_agent(keyentry *key,
         }
     }
 
+    /* Check if the agent is old enough to be removed */
+    if(force_options->after_registration_time > 0) {
+        time_t agent_registration_time = get_time_since_agent_registration(atoi(key->id));
+        if(agent_registration_time > 0 && agent_registration_time <= force_options->after_registration_time){
+            minfo("Agent '%s' doesn't comply with the registration time to be removed.", key->id);
+            return OS_INVALID;
+        }
+    }
+
     /* Check if the agent key is the same than the existent in the manager */
     if (key_hash && force_options->key_mismatch) {
         os_sha1 manager_key_hash;

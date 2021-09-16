@@ -8,9 +8,13 @@
  * Foundation
  */
 
+#include "cJSON.h"
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "os_err.h"
+#include "wazuh_db/wdb.h"
+#include <time.h>
 #ifndef CLIENT
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
@@ -555,6 +559,38 @@ double get_time_since_agent_disconnection(const char *id) {
 
     return disconnected_time == 0 ? 0 : difftime(time(NULL), disconnected_time);
 }
+
+/**
+ * @brief Returns the number of seconds since agent registration
+ *
+ * @param id The ID of the agent to get the registration time
+ * @retval On success, it returns the difference between the current time and the date_add field in the DB
+ * @retval OS_INVALID On error: failed to get the agent's info
+ * @retval 0 On error: failed to get the date_add field from JSON response
+ */
+time_t get_time_since_agent_registration(int id) {
+    cJSON *root = NULL;
+    cJSON *j_date_add = NULL;
+    time_t date_add = 0;
+
+    root = wdb_get_agent_info(id, NULL);
+
+    if (!root){
+        mdebug1("Failed to get agent info for agent '%d'", id);
+        return OS_INVALID;
+    }
+
+    j_date_add = cJSON_GetObjectItem(root->child, "date_add");
+    if(!j_date_add){
+        mdebug1("Failed to get registration time for agent '%d'.", id);
+    } else {
+        date_add = j_date_add->valueint;
+    }
+
+    cJSON_Delete(root);
+    return date_add <= 0 ? 0 : difftime(time(NULL), date_add);
+}
+
 
  /* !CLIENT */
  #endif
