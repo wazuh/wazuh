@@ -56,6 +56,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
             Synchronization process result.
         """
         super().done_callback(future)
+        # Integrity task is only freed if master is not waiting for Extra valid files.
         if not self.wazuh_common.extra_valid_requested:
             self.wazuh_common.sync_integrity_free = True
 
@@ -150,7 +151,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_agent_info_free = True
         self.sync_integrity_free = True
 
-        # Variable used to check when integrity sync process includes extra_valid files.
+        # Variable used to check whether integrity sync process includes extra_valid files.
         self.extra_valid_requested = False
 
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
@@ -821,15 +822,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             n_errors['errors'][data['cluster_item_key']] = 1 \
                                 if n_errors['errors'].get(data['cluster_item_key']) is None \
                                 else n_errors['errors'][data['cluster_item_key']] + 1
-                        await asyncio.sleep(0.000000001)
+
+                        # Let other tasks (DAPI, etc) that may arrive while processing extra-valid files to be run.
+                        await asyncio.sleep(0)
 
                 # If the file is not merged, move it directly to the destination path.
                 else:
                     zip_path = os.path.join(decompressed_files_path, name)
-                    utils.safe_move(zip_path, full_path,
-                                    ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                                    permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions']
-                                    )
+                    utils.safe_move(zip_path, full_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
+                                    permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'])
 
             except exception.WazuhException as e:
                 logger.debug2(f"Warning updating file '{name}': {e}")

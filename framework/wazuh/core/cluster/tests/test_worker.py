@@ -180,8 +180,8 @@ async def test_SyncWorker(create_log, caplog):
 
     worker_handler = get_worker_handler()
 
-    sync_worker = worker.SyncWorker(cmd=b'testing', files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'},
-                                    logger=logger, worker=worker_handler)
+    sync_worker = worker.SyncFiles(cmd=b'testing', files_to_sync={'files': ['testing']}, files_metadata={'testing': '0'},
+                                   logger=logger, worker=worker_handler)
 
     send_request_mock = KeyError(1)
     await check_message(mock=send_request_mock, expected_message=f"Error asking for permission: 1")
