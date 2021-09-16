@@ -139,12 +139,12 @@ end:
 void nb_send(int socket) {
     w_mutex_lock(netbuffer_send.buffers[socket].mutex);
 
-    const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
+    const ssize_t current_data_len = netbuffer_send.buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
  
-    const int ssize_t sent_bytes = send(socket, (const void *)netbuffer_send.buffers[socket].data, amount_of_data_to_send, 0);
+    const ssize_t sent_bytes = send(socket, (const void *)netbuffer_send.buffers[socket].data, amount_of_data_to_send, 0);
 
-    const int error = errno;
+    const int error = errno; // Race condition here, the usage if errno is not thread safe!!!
 
     if ((sent_bytes == 0) || ((sent_bytes < 0) && ((error == 0) || (error == ETIMEDOUT)))) {
         assert(sent_bytes <= current_data_len);
@@ -167,7 +167,7 @@ void nb_send(int socket) {
         netbuffer_send.buffers[socket].data_len = 0;
         netbuffer_send.buffers[socket].data_size = 0;
 
-        switch (errno) {
+        switch (error) {
             case EPIPE:
             case EBADF:
             case ECONNRESET:
