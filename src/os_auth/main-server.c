@@ -628,7 +628,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         if (OS_SUCCESS == w_auth_parse_data(buf, response, authpass, ip, &agentname, &centralized_group, &key_hash)) {
             if (config.worker_node) {
                 minfo("Dispatching request to master node");
-                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, config.force_options.enabled?config.force_options.connection_time:-1, NULL)) {
+                // The force registration settings are ignored for workers. The master decides.
+                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, USE_MASTER_FORCE_SETTINGS, NULL)) {
                     enrollment_ok = TRUE;
                 }
             }
