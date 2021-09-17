@@ -22,7 +22,7 @@
 
 static const char* get_ip(const Eventinfo *lf);
 
-void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar)
+void OS_Exec(int execq, int *arq, int *sock, const Eventinfo *lf, const active_response *ar)
 {
     char * exec_msg = NULL;
     char * msg = NULL;
@@ -85,13 +85,11 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 
         if (ar->location & ALL_AGENTS) {
 
-            int sock = -1;
             int *id_array = NULL;
 
-            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
+            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, sock);
             if(!id_array) {
                 merror("Unable to get agent's ID array.");
-                wdbc_close(&sock);
                 goto cleanup;
             }
 
@@ -107,11 +105,11 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 
                 snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
 
-                agt_labels = labels_find(c_agent_id, &sock);
+                agt_labels = labels_find(c_agent_id, sock);
                 agt_version = labels_get(agt_labels, "_wazuh_version");
 
                 if (!agt_version) {
-                    json_agt_info = wdb_get_agent_info(id_array[i], &sock);
+                    json_agt_info = wdb_get_agent_info(id_array[i], sock);
                     if (!json_agt_info) {
                         merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
                         labels_free(agt_labels);
@@ -159,11 +157,9 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             }
 
             os_free(id_array);
-            wdbc_close(&sock);
 
         } else {
 
-            int sock = -1;
             cJSON *json_agt_info = NULL;
             cJSON *json_agt_version = NULL;
             char c_agent_id[OS_SIZE_16];
@@ -185,12 +181,11 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 
             snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
 
-            agt_labels = labels_find(c_agent_id, &sock);
+            agt_labels = labels_find(c_agent_id, sock);
             agt_version = labels_get(agt_labels, "_wazuh_version");
 
             if (!agt_version) {
-                json_agt_info = wdb_get_agent_info(agt_id, &sock);
-                wdbc_close(&sock);
+                json_agt_info = wdb_get_agent_info(agt_id, sock);
                 if (!json_agt_info) {
                     merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
                     labels_free(agt_labels);
