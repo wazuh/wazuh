@@ -4,7 +4,6 @@ package "db" <<Folder>> #DDDDDD{
         DB_SUCCESS
         DB_ERROR
     }
-
     package "item" <<Folder>> {
         abstract DBItem {
             - String identifier
@@ -83,11 +82,79 @@ package "db" <<Folder>> #DDDDDD{
         + dbresult removeItem(DBItem)
         + dbresult setAllUnscanned()
     }
+    class FimDBWrapper {
+        - fim_tmp_file **tmp_file
+        - fdb_t *fim_sql
+        - int storage
+        - fim_entry **saved
+        - fim_file_data *data
+        - const char *path
+        - fim_type type
+        - DBItemWrapper *item_wrapper
 
+        + void fim_db_clean_file(fim_tmp_file **, int)
+        + int fim_db_file_update(fdb_t*, const char*, fim_file_data*, fim_entry**)
+        + int fim_db_get_checksum_range(fdb_t *, fim_type, const char *, const char *, int, EVP_MD_CTX *, EVP_MD_CTX *, char **, char * *)
+        + int fim_db_get_count_entries(fdb_t*)
+        + int fim_db_get_count_file_inode(fdb_t *)
+        + int fim_db_get_count_range(fdb_t *, fim_type, const char *, const char *, int *)
+        + int fim_db_get_count_registry_data(fdb_t *)
+        + int fim_db_get_count_registry_key(fdb_t *)
+        + int fim_db_get_data_checksum(fdb_t *, fim_type, void *)
+        + fim_entry* fim_db_get_entry_from_sync_msg(fdb_t *, __attribute__((unused)) fim_type, const char *)
+        + int fim_db_get_first_path(fdb_t *, int, char **)
+        + int fim_db_get_last_path(fdb_t *, int, char **)
+        + int fim_db_get_not_scanned(fdb_t *, fim_tmp_file **, int)
+        + fim_entry* fim_db_get_path(fdb_t*, const char*)
+        + int fim_db_get_path_from_pattern(fdb_t *, const char *, fim_tmp_file **, int)
+        + char ** fim_db_get_paths_from_inode(fdb_t*, unsigned long, unsigned long)
+        + int fim_db_get_path_range(fdb_t *, fim_type, const char *, const char *, fim_tmp_file **, int)
+        + int fim_db_get_registry_data_not_scanned(fdb_t *, fim_tmp_file **, int)
+        + fim_registry_key* fim_db_get_registry_key(fdb_t *, const char *, unsigned int)
+        + int fim_db_get_registry_keys_not_scanned(fdb_t *, fim_tmp_file **, int)
+        + int fim_db_get_registry_key_rowid(fdb_t *, const char *, unsigned int, unsigned int *)
+        + int fim_db_get_values_from_registry_key(fdb_t *, fim_tmp_file **, int, unsigned long int)
+        + fdb_t *fim_db_init(int)
+        + int fim_db_is_full(fdb_t*)
+        + int fim_db_insert_registry_data(fdb_t *, fim_registry_value_data *, unsigned int, unsigned int)
+        + int fim_db_insert_registry_key(fdb_t *, fim_registry_key *, unsigned int)
+        + int fim_db_process_missing_entry(fdb_t *, fim_tmp_file *, pthread_mutex_t *, int, event_data_t *)
+        + int fim_db_process_read_file(fdb_t *, fim_tmp_file *, __attribute__((unused)) int, pthread_mutex_t *, void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *), int, void *, void *, void *)
+        + int fim_db_process_read_registry_data_file(fdb_t *, fim_tmp_file *, pthread_mutex_t *, void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *), int, void *, void *, void *)
+        + int fim_db_read_line_from_file(fim_tmp_file *, int, int, char **)
+        + int fim_db_remove_path(fdb_t *, char *)
+        + int fim_db_remove_registry_key(fdb_t *, fim_entry *)
+        + int fim_db_remove_registry_value_data(fdb_t *, fim_registry_value_data *)
+        + int fim_db_remove_wildcard_entry(fdb_t *, fim_tmp_file *, pthread_mutex_t *, int, event_data_t *, directory_t *)
+        + int fim_db_set_all_registry_data_unscanned(fdb_t *)
+        + int fim_db_set_all_registry_key_unscanned(fdb_t *)
+        + int fim_db_set_all_unscanned(fdb_t *)
+        + int fim_db_set_registry_data_scanned(fdb_t *, const char *, unsigned int)
+        + int fim_db_set_registry_key_scanned(fdb_t *, const char *, unsigned int)
+    }
+    class DBItemWrapper {
+        - FimDB fim_db
+        - DBItem db_item
+
+        + DBItemWrapper(int, FimDB, DBItem)
+        + ~DBItemWrapper()
+        + int set_all_scanned(FimDB)
+        + int set_scanned(FimDB, DBItem)
+        + int remove_from_db(FimDB, DBItem)
+        + int insert_item(FimDB, DBItem)
+        + int is_full(FimDB)
+        + int get_count(FimDB)
+        + DBItem get_from_pattern(FimDB)
+        + int db_update(FimDB)
+    }
 }
-
+circle input_point
 
 DBItem <|-- FileItem
 DBItem <|-- RegistryValue
 DBItem <|-- RegistryKey
+FimDBWrapper  o-- DBItemWrapper
+DBItemWrapper  o-- DBItem
+DBItemWrapper  o-- FimDB
+input_point => FimDBWrapper
 @enduml
