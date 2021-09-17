@@ -254,6 +254,7 @@ def restart_agents_by_node(agent_list=None):
     -------
     AffectedItemsWazuhResult
     """
+    '000' in agent_list and agent_list.remove('000')
     return restart_agents(agent_list=agent_list)
 
 
