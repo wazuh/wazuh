@@ -14,6 +14,7 @@
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
 #include "syscheckd/syscheck.h"
+#include "config/authd-config.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -53,7 +54,7 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          const char *key_hash,
                                          const char *key,
                                          const char *id,
-                                         const int force);
+                                         authd_force_options_t *force_options);
 
 
 /* Check if syscheck is to be executed/restarted
@@ -605,7 +606,7 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          const char *key_hash,
                                          const char *key,
                                          const char *id,
-                                         const int force) {
+                                         authd_force_options_t *force_options) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -630,17 +631,17 @@ static cJSON* w_create_agent_add_payload(const char *name,
         cJSON_AddStringToObject(arguments, "id", id);
     }
 
-    if (force == BYPASS_FORCE_SETTINGS) {
+    if (force_options) {
         cJSON* j_force = cJSON_CreateObject();
         cJSON* j_disconnected_time = cJSON_CreateObject();
         cJSON_AddItemToObjectCS(j_force, "disconnected_time", j_disconnected_time);
         cJSON_AddItemToObjectCS(arguments, "force", j_force);
         // Sending a generic configuration that replaces an agent in every possible situation
-        cJSON_AddBoolToObject(j_force, "enabled", true);
-        cJSON_AddBoolToObject(j_force, "key_mismatch", false);
-        cJSON_AddNumberToObject(j_force, "after_registration_time", 0);
-        cJSON_AddBoolToObject(j_disconnected_time, "enabled", false);
-        cJSON_AddNumberToObject(j_disconnected_time, "value", 0);
+        cJSON_AddBoolToObject(j_force, "enabled", force_options->enabled);
+        cJSON_AddBoolToObject(j_force, "key_mismatch", force_options->key_mismatch);
+        cJSON_AddNumberToObject(j_force, "after_registration_time", force_options->after_registration_time);
+        cJSON_AddBoolToObject(j_disconnected_time, "enabled", force_options->disconnected_time_enabled);
+        cJSON_AddNumberToObject(j_disconnected_time, "value", force_options->disconnected_time);
     }
 
     return request;
@@ -863,7 +864,7 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *key_hash,
                                   char **id,
                                   char **key,
-                                  const int force,
+                                  authd_force_options_t *force_options,
                                   const char *agent_id) {
     int result;
     char response[OS_MAXSTR + 1];
@@ -873,10 +874,10 @@ int w_request_agent_add_clustered(char *err_response,
 
     if (agent_id){
         // Create key polling request
-        message = w_create_agent_add_payload(name, ip, groups, NULL, key_hash, agent_id, force);
+        message = w_create_agent_add_payload(name, ip, groups, NULL, key_hash, agent_id, force_options);
     } else {
         // Create dispatching request
-        message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force);
+        message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options);
     }
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
@@ -923,10 +924,10 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 #endif //!WIN32
 
 //Send a local agent add request.
-int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, const int force, const int json_format, const char *agent_id, int exit_on_error) {
+int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, authd_force_options_t *force_options, const int json_format, const char *agent_id, int exit_on_error) {
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force);
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 

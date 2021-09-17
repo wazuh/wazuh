@@ -629,7 +629,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             if (config.worker_node) {
                 minfo("Dispatching request to master node");
                 // The force registration settings are ignored for workers. The master decides.
-                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, USE_MASTER_FORCE_SETTINGS, NULL)) {
+                if (0 == w_request_agent_add_clustered(response, agentname, ip, centralized_group, key_hash, &new_id, &new_key, NULL, NULL)) {
                     enrollment_ok = TRUE;
                 }
             }

@@ -13,9 +13,13 @@
  */
 
 #include "manage_agents.h"
+#include "defs.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
+#include "os_err.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include "config/authd-config.h"
 
 #if defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
@@ -98,14 +102,32 @@ int add_agent(int json_output)
     c_ip.ip = NULL;
 
     char *id_exist = NULL;
-    int force_antiquity = INT_MAX;
+    int disconnected_time = OS_INVALID;
+    int after_registration_time = OS_INVALID;
+    authd_force_options_t authd_force_options = {0};
     int sock;
     int authd_running;
 
-    const char *env_remove_dup = getenv("OSSEC_REMOVE_DUPLICATED");
+    // Creating the configuration structure according to the parameters used
+    const char *env_disconnected_time = getenv("DISCONNECTED_TIME");
 
-    if (env_remove_dup) {
-        force_antiquity = strtol(env_remove_dup, NULL, 10);
+    if (env_disconnected_time) {
+        disconnected_time = strtol(env_disconnected_time, NULL, 10);
+        authd_force_options.disconnected_time = disconnected_time;
+        authd_force_options.disconnected_time_enabled = true;
+    } else{
+        authd_force_options.disconnected_time_enabled = false;
+    }
+
+    const char *env_after_registration_time = getenv("AFTER_REGISTRATION_TIME");
+
+    if (env_after_registration_time) {
+        after_registration_time = strtol(env_after_registration_time, NULL, 10);
+        authd_force_options.after_registration_time = after_registration_time;
+    }
+
+    if(after_registration_time != OS_INVALID || disconnected_time != OS_INVALID){
+        authd_force_options.enabled = true;
     }
 
     // Create socket
@@ -220,9 +242,37 @@ int add_agent(int json_output)
             _ip = NULL;
             c_ip.ip = NULL;
         } else if (!authd_running && (id_exist = IPExist(ip))) {
-            double antiquity = OS_AgentAntiquity_ID(id_exist);
+            bool replace_agent = false;
+            char error_message[OS_SIZE_128];
 
-            if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
+            /* Check if the agent has been disconnected longer than the value required*/
+            if (disconnected_time != OS_INVALID) {
+                time_t agent_time_since_desconnection = 0;
+                agent_time_since_desconnection = (long)get_time_since_agent_disconnection(id_exist);
+                if (!agent_time_since_desconnection) {
+                    snprintf(error_message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", id_exist);
+                    replace_agent = false;
+                } else if (agent_time_since_desconnection > 0 && agent_time_since_desconnection < disconnected_time) {
+                    snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", id_exist);
+                    replace_agent = false;
+                }
+                else {
+                    replace_agent = true;
+                }
+            }
+
+            /* Check if the agent is old enough to be removed */
+            if(replace_agent && after_registration_time != OS_INVALID) {
+                time_t agent_registration_time = get_time_since_agent_registration(atoi(id_exist));
+                if(agent_registration_time > 0 && agent_registration_time <= after_registration_time){
+                    snprintf(error_message, OS_SIZE_128, "Agent '%s' doesn't comply with the registration time to be removed.", id_exist);
+                    replace_agent = false;
+                } else {
+                    replace_agent = true;
+                }
+            }
+
+            if (replace_agent) {
                 OS_RemoveAgent(id_exist);
             } else {
                 if (json_output) {
@@ -232,7 +282,7 @@ int add_agent(int json_output)
                     printf("%s", cJSON_PrintUnformatted(json_root));
                     exit(1);
                 } else {
-                    printf(IP_DUP_ERROR, ip);
+                    printf("%s\n", error_message);
                     setenv("OSSEC_AGENT_IP", "", 1);
                     _ip = NULL;
                     free(c_ip.ip);
@@ -374,7 +424,7 @@ int add_agent(int json_output)
                     } else
                         merror_exit("Lost authd socket connection.");
                 }
-                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, env_remove_dup ? BYPASS_FORCE_SETTINGS : USE_MASTER_FORCE_SETTINGS, json_output, NULL, 1) < 0) {
+                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, &authd_force_options, json_output, NULL, 1) < 0) {
                     break;
                 }
             }
