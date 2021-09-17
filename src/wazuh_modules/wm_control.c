@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#if defined (__linux__) || defined (__MACH__) || defined (sun)
+#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
 #include "sysInfo.h"
 #include "sym_load.h"
@@ -33,7 +33,7 @@ void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 #include <ifaddrs.h>
 #elif defined sun
 #include <net/if.h>
@@ -78,7 +78,7 @@ char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
 
-#if defined __linux__ || defined __MACH__
+#if defined __linux__ || defined __MACH__ || defined(FreeBSD) || defined(OpenBSD)
     cJSON *object;
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
         const int error_code = sysinfo_network_ptr(&object);

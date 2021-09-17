@@ -1989,11 +1989,7 @@ void * w_output_thread(void * args){
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
                     if (result != 1) {
-#ifdef CLIENT
                         merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
-#else
-                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
-#endif
                     }
                     result = 1;
                 }

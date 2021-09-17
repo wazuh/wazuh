@@ -1,0 +1,96 @@
+<!--
+  -  AWS Cloudwatch decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+<!--
+Tested agains these sample logs:
+Thu Mar 18 13:15:20 2021 +00:00\nLENGTH : '263'\nACTION :[7] 'CONNECT'\nDATABASE USER:[1] '/'\nPRIVILEGE :[6] 'XXXXX'\nCLIENT USER:[5] 'yyyyy'\nCLIENT TERMINAL:[5] 'pts/0'\nSTATUS:[1] '0'\nDBID:[10] '9999999'\nSESSIONID:[10] '11111111'\nUSERHOST:[13] 'ip-11-22-33-44'\nCLIENT ADDRESS:[0] ''\nACTION NUMBER:[3] '100'
+Thu Mar 18 13:15:20 2021 +00:00\nLENGTH : '261'\nACTION :[6] 'COMMIT'\nDATABASE USER:[1] '/'\nPRIVILEGE :[6] 'XXXXX'\nCLIENT USER:[5] 'yyyyy'\nCLIENT TERMINAL:[5] 'pts/0'\nSTATUS:[1] '0'\nDBID:[10] '9999999'\nSESSIONID:[10] '11111111'\nUSERHOST:[13] 'ip-11-22-33-44'\nCLIENT ADDRESS:[0] ''\nACTION NUMBER:[2] '44'
+Thu Mar 18 13:15:20 2021 +00:00\nLENGTH : '261'\nACTION :[6] 'COMMIT'\nDATABASE USER:[1] '/'\nPRIVILEGE :[6] 'XXXXX'\nCLIENT USER:[5] 'yyyyy'\nCLIENT TERMINAL:[5] 'pts/0'\nSTATUS:[1] '0'\nDBID:[10] '9999999'\nSESSIONID:[10] '11111111'\nUSERHOST:[13] 'ip-11-22-33-44'\nCLIENT ADDRESS:[0] ''\nACTION NUMBER:[2] '44'
+Thu Mar 18 13:15:20 2021 +00:00\nLENGTH : '347'\nACTION :[92] 'select 'OPENMODE:'||open_mode||':' as open, 'LOGMODE:'||log_mode||':' as log from v$database'\nDATABASE USER:[1] '/'\nPRIVILEGE :[6] 'XXXXX'\nCLIENT USER:[5] 'yyyyy'\nCLIENT TERMINAL:[5] 'pts/0'\nSTATUS:[1] '0'\nDBID:[10] '9999999'\nSESSIONID:[10] '11111111'\nUSERHOST:[13] 'ip-11-22-33-44'\nCLIENT ADDRESS:[0] ''\nACTION NUMBER:[1] '3'
+-->
+
+<!-- RDS decoders -->
+<decoder name="RDS">
+    <prematch>^\w\w\w \w\w\w \d+ \d\d:\d\d:\d\d \d\d\d\d +\d\d:\d\d</prematch>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex>^(\w\w\w \w\w\w \d+ \d\d:\d\d:\d\d \d\d\d\d) +\d\d:\d\d</regex>
+    <order>timegenerated</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">LENGTH : '(\S+)'</regex>
+    <order>length</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">\\nACTION :(\.*)\\n</regex>
+    <order>action</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">DATABASE USER:([\d+] '\.*')</regex>
+    <order>database.user</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">PRIVILEGE :([\d+] '\.*')</regex>
+    <order>privilege</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">CLIENT USER:([\d+] '\.*')</regex>
+    <order>client.user</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">CLIENT TERMINAL:([\d+] '\.*')</regex>
+    <order>client.terminal</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">STATUS:([\d+] '\.*')</regex>
+    <order>status</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">DBID:([\d+] '\.*')</regex>
+    <order>dbid</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">SESSIONID:([\d+] '\.*')</regex>
+    <order>sessionid</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">USERHOST:([\d+] '\.*')</regex>
+    <order>userhost</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">CLIENT ADDRESS:([\d+] '\.*')</regex>
+    <order>client.address</order>
+</decoder>
+
+<decoder name="RDS-Child">
+    <parent>RDS</parent>
+    <regex offset="after_parent">ACTION NUMBER:([\d+] '\.*')</regex>
+    <order>action.number</order>
+</decoder>
