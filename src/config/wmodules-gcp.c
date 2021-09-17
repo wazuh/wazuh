@@ -17,6 +17,7 @@ static const char *XML_PROJECT_ID = "project_id";
 static const char *XML_SUBSCRIPTION_NAME = "subscription_name";
 static const char *XML_CREDENTIALS_FILE = "credentials_file";
 static const char *XML_MAX_MESSAGES = "max_messages";
+static const char *XML_NUM_THREADS = "num_threads";
 static const char *XML_PULL_ON_START = "pull_on_start";
 static const char *XML_LOGGING = "logging";
 
@@ -34,6 +35,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
         os_calloc(1, sizeof(wm_gcp), gcp);
         gcp->enabled = 1;
         gcp->max_messages = 100;
+        gcp->num_threads = 1;
         gcp->project_id = NULL;
         sched_scan_init(&(gcp->scan_config));
         gcp->scan_config.interval = WM_GCP_DEF_INTERVAL;
@@ -127,6 +129,23 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
 
             char *endptr;
             gcp->max_messages = strtoul(nodes[i]->content, &endptr, 0);
+        }
+        else if (!strcmp(nodes[i]->element, XML_NUM_THREADS)) {
+            if (strlen(nodes[i]->content) == 0) {
+                merror("Empty content for tag '%s'", XML_NUM_THREADS);
+                return OS_INVALID;
+            }
+
+            unsigned int j;
+            for(j=0; j < strlen(nodes[i]->content); j++) {
+                if (!isdigit(nodes[i]->content[j])) {
+                    merror("Tag '%s' from the '%s' module should not have an alphabetic character.", XML_NUM_THREADS, WM_GCP_CONTEXT.name);
+                    return OS_INVALID;
+                }
+            }
+
+            char *endptr;
+            gcp->num_threads = strtoul(nodes[i]->content, &endptr, 0);
         }
         else if (!strcmp(nodes[i]->element, XML_PULL_ON_START)) {
             int pull_on_start = eval_bool(nodes[i]->content);

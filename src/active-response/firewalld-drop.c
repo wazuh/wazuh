@@ -84,7 +84,7 @@ int main (int argc, char **argv) {
     if (!strcmp("Linux", uname_buffer.sysname)) {
         char arg1[COMMANDSIZE_4096];
         char fw_cmd[COMMANDSIZE_4096];
-        char fw_cmd_tmp[COMMANDSIZE_4096 - 5];
+        char fw_cmd_tmp[COMMANDSIZE_4096 - 5] = DEFAULT_FW_CMD;
 
         memset(arg1, '\0', COMMANDSIZE_4096);
         if (action == ADD_COMMAND) {
@@ -92,8 +92,6 @@ int main (int argc, char **argv) {
         } else {
             strcpy(arg1, "--remove-rich-rule=");
         }
-        memset(fw_cmd_tmp, '\0', COMMANDSIZE_4096);
-        strcpy(fw_cmd_tmp, DEFAULT_FW_CMD);
 
         memset(fw_cmd, '\0', COMMANDSIZE_4096);
 

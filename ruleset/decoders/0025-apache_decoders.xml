@@ -34,44 +34,53 @@
 
 -->
 
+<!-- Parent decoders -->
 <decoder name="apache-errorlog">
     <program_name>^apache2|^httpd</program_name>
 </decoder>
 
 <decoder name="apache-errorlog">
-    <prematch>^[warn] |^[notice] |^[error] </prematch>
+    <prematch type="pcre2">^\[\w+\]\s</prematch>
 </decoder>
 
 <decoder name="apache-errorlog">
-    <prematch>^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:warn] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:notice] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S*:error] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:info] </prematch>
+    <prematch type="pcre2">^\[\w{3}\s\w{3}\s\d{1,2}+\s\d{2}:\d{2}:\d{2}(?:\.\d+)?\s\d{4}\]\s</prematch>
 </decoder>
 
-
-<decoder name="apache24-errorlog-ip-port">
+<!-- Siblings decoders -->
+<decoder name="apache-errorlog-fields">
     <parent>apache-errorlog</parent>
-    <prematch offset="after_parent">[client \S+:\d+] \S+:</prematch>
-    <regex offset="after_parent">[client (\S+):(\d+)] (\S+): </regex>
-    <order>srcip,srcport,id</order>
+    <regex type="pcre2">\[(?:(\w+):)?:?(\w+)\]</regex>
+    <order>apache.module, severity</order>
 </decoder>
 
-<decoder name="apache24-errorlog-ip">
+<decoder name="apache-errorlog-fields">
     <parent>apache-errorlog</parent>
-    <prematch offset="after_parent">[client \S+] \S+:</prematch>
-    <regex offset="after_parent">[client (\S+)] (\S+): </regex>
-    <order>srcip,id</order>
+    <regex offset="after_parent" type="pcre2">\[pid\s(\d+)(?::tid\s(\d+))?\]</regex>
+    <order>pid, tid</order>
 </decoder>
 
-
-<decoder name="apache-errorlog-ip">
+<decoder name="apache-errorlog-fields">
     <parent>apache-errorlog</parent>
-    <prematch offset="after_parent">[client</prematch>
-    <regex offset="after_prematch">^ (\S+):(\d+)] |^ (\S+)] </regex>
-    <order>srcip,srcport</order>
+    <regex offset="after_parent" type="pcre2">\s([\w\-_]+\.\w+)\((\d+)\):\s</regex>
+    <order>apache.log_file, apache.log_line</order>
 </decoder>
 
-<decoder name="apache24-errorlog-glpi">
+<decoder name="apache-errorlog-fields">
     <parent>apache-errorlog</parent>
-    <prematch offset="after_parent">^[pid \d+] \S+: </prematch>
-    <regex>[(\w+):(\w+)] [pid (\d+)] (\S+): (\.+)</regex>
-    <order>location, level, pid, id, description</order>
+    <regex offset="after_parent" type="pcre2">\[client\s(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1)(?::(\d+))?\]</regex>
+    <order>srcip, srcport</order>
+</decoder>
+
+<decoder name="apache-errorlog-fields">
+    <parent>apache-errorlog</parent>
+    <regex offset="after_parent" type="pcre2">\]\s((?:([^\[:]+):\s)?[^\[](?:.+referer:\s(.+)|.+)$)</regex>
+    <order>message, id, referer</order>
+</decoder>
+
+<!-- Specific decoders -->
+<decoder name="apache-errorlog-fields">
+    <parent>apache-errorlog</parent>
+    <regex offset="after_parent" type="pcre2">\s\w+:\s([^"]+)"([^"]+)":\s([^\[]+)\[RemoteIP:\s([^\]]+)]</regex>
+    <order>apache.error_message, user, apache.error_reason, apache.remote_ip</order>
 </decoder>

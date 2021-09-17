@@ -9,11 +9,11 @@ from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQu
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.syscheck import WazuhDBQuerySyscheck
+from wazuh.core.syscheck import WazuhDBQuerySyscheck, syscheck_delete_agent
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.core.wdb import WazuhDBConnection
 from wazuh.rbac.decorators import expose_resources
+from wazuh.core.wdb import WazuhDBConnection
 
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
@@ -65,8 +65,9 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=["syscheck:clear"], resources=["agent:id:{agent_list}"])
-def clear(agent_list=None):
+@expose_resources(actions=["syscheck:clear"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1760, 1015]})
+def clear(agent_list: list = None):
     """Clear the syscheck database of the specified agents.
 
     Parameters
@@ -82,24 +83,37 @@ def clear(agent_list=None):
     result = AffectedItemsWazuhResult(all_msg='Syscheck database was cleared on returned agents',
                                       some_msg='Syscheck database was not cleared on some agents',
                                       none_msg="No syscheck database was cleared")
-    wdb_conn = WazuhDBConnection()
 
     system_agents = get_agents_info()
-    for agent in agent_list:
-        if agent not in system_agents:
-            result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
-        else:
-            try:
-                wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
-                # Update key fields which contains keys to value 000
-                wdb_conn.execute("agent {} sql update metadata set value = '000' "
-                                 "where key like 'fim_db%'".format(agent), update=True)
-                wdb_conn.execute("agent {} sql update metadata set value = '000' "
-                                 "where key = 'syscheck-db-completed'".format(agent), update=True)
-                result.affected_items.append(agent)
-            except WazuhError as e:
-                result.add_failed_item(id_=agent, error=e)
+    not_found_agents = set(agent_list) - system_agents
+    list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhResourceNotFound(1701)), not_found_agents))
 
+    wdb_conn = None
+    rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
+    db_query = WazuhDBQueryAgents(select=["id", "version"], **rbac_filters)
+    data = db_query.run()
+
+    for item in data['items']:
+        agent_id = item['id']
+        agent_version = item.get('version', None)  # If the value was NULL in the DB the key might not exist
+        if agent_version is not None:
+            if WazuhVersion(agent_version) < WazuhVersion('v3.12.0'):
+                try:
+                    if wdb_conn is None:
+                        wdb_conn = WazuhDBConnection()
+                    syscheck_delete_agent(agent_id, wdb_conn)
+                    result.affected_items.append(agent_id)
+
+                except WazuhError as e:
+                    result.add_failed_item(id_=agent_id, error=e)
+            else:
+                result.add_failed_item(id_=agent_id,
+                                       error=WazuhError(1760, extra_message="Agent version should be < v3.12.0."))
+        else:
+            result.add_failed_item(id_=agent_id, error=WazuhError(1015))
+
+    if wdb_conn is not None:
+        wdb_conn.close()
     result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
 
