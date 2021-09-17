@@ -343,16 +343,16 @@ nlohmann::json SysInfo::getPorts() const
 
             const auto portFound
             {
-                std::find_if(ports["ports"].begin(), ports["ports"].end(),
+                std::find_if(ports.begin(), ports.end(),
                              [&port](const auto & element)
                 {
                     return 0 == port.dump().compare(element.dump());
                 })
             };
 
-            if (ports["ports"].end() == portFound)
+            if (ports.end() == portFound)
             {
-                ports["ports"].push_back(port);
+                ports.push_back(port);
             }
         }
     }

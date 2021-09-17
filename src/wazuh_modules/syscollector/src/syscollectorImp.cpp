@@ -1504,18 +1504,30 @@ nlohmann::json Syscollector::getPortsData()
 
     if (!data.is_null())
     {
-        const auto& itPorts { data.find("ports") };
-
-        if (data.end() != itPorts)
+        for (auto item : data)
         {
-            for (auto item : itPorts.value())
-            {
-                const auto protocol { item.at("protocol").get_ref<const std::string&>() };
+            const auto protocol { item.at("protocol").get_ref<const std::string&>() };
 
-                if (Utils::startsWith(protocol, TCP_PROTOCOL))
+            if (Utils::startsWith(protocol, TCP_PROTOCOL))
+            {
+                // All ports.
+                if (m_portsAll)
                 {
-                    // All ports.
-                    if (m_portsAll)
+                    const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                    if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    {
+                        item["checksum"] = getItemChecksum(item);
+                        item["item_id"] = itemId;
+                        ret.push_back(item);
+                    }
+                }
+                else
+                {
+                    // Only listening ports.
+                    const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+
+                    if (isListeningState)
                     {
                         const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
@@ -1526,34 +1538,17 @@ nlohmann::json Syscollector::getPortsData()
                             ret.push_back(item);
                         }
                     }
-                    else
-                    {
-                        // Only listening ports.
-                        const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-
-                        if (isListeningState)
-                        {
-                            const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
-
-                            if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
-                            {
-                                item["checksum"] = getItemChecksum(item);
-                                item["item_id"] = itemId;
-                                ret.push_back(item);
-                            }
-                        }
-                    }
                 }
-                else if (Utils::startsWith(protocol, UDP_PROTOCOL))
-                {
-                    const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+            }
+            else if (Utils::startsWith(protocol, UDP_PROTOCOL))
+            {
+                const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                    if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
-                    {
-                        item["checksum"] = getItemChecksum(item);
-                        item["item_id"] = itemId;
-                        ret.push_back(item);
-                    }
+                if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                {
+                    item["checksum"] = getItemChecksum(item);
+                    item["item_id"] = itemId;
+                    ret.push_back(item);
                 }
             }
         }
