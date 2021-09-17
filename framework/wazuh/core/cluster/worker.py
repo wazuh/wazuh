@@ -561,7 +561,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Response message.
         """
         integrity_logger = self.task_loggers['Integrity sync']
-        integrity_logger.info(f"Finished in {(time.time() - self.integrity_check_status['date_start']):.3f}s.")
+        integrity_logger.info(f"Finished in {(time.time() - self.integrity_sync_status['date_start']):.3f}s.")
         return b'ok', b'Thanks'
 
     def sync_extravalid_err_from_master(self, response) -> Tuple[bytes, bytes]:
