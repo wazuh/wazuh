@@ -680,7 +680,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     test_time.tm_hour = 1;
     test_time.tm_min = 1;
     test_time.tm_sec = 1;
-    test_time.tm_isdst = 0;
+    test_time.tm_isdst = -1;
 
     date_returned = mktime(&test_time);
 
@@ -4372,7 +4372,7 @@ void test_get_agent_date_added_success(void **state) {
 
     // Getting data
     expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "001 agent1 any 2020-01-01 01:01:01");
+    will_return(__wrap_fgets, "001 agent1 any 2020-08-01 01:01:01");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
@@ -4381,12 +4381,12 @@ void test_get_agent_date_added_success(void **state) {
 
     // The date_returned variable is the date 2020-01-01 01:01:01 transformed to INT
     test_time.tm_year = 2020-1900;
-    test_time.tm_mon = 1-1;
+    test_time.tm_mon = 8-1;
     test_time.tm_mday = 1;
     test_time.tm_hour = 1;
     test_time.tm_min = 1;
     test_time.tm_sec = 1;
-    test_time.tm_isdst = 0;
+    test_time.tm_isdst = -1;
 
     date_returned = mktime(&test_time);
 
