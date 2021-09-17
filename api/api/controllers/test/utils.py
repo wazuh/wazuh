@@ -1,6 +1,7 @@
 class CustomMagicMockReturn(dict):
     dikt = {'dikt_key': 'dikt_value'}
     affected_items = [{'id': '001'}]
+    message = 'message_value'
 
     def __init__(self):
         super().__init__(self)
