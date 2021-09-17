@@ -178,7 +178,7 @@ std::string SysInfo::getSerialNumber() const
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
 }
 
-static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, nlohmann::json& result)
+static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
     const auto packages {Utils::enumerateDir(pkgDirectory) };
 
@@ -194,7 +194,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
                     // Only return valid content packages
-                    result.push_back(jsPackage);
+                    callback(jsPackage);
                 }
             }
         }
@@ -214,7 +214,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                         {
                             // Only return valid content packages
-                            result.push_back(jsPackage);
+                            callback(jsPackage);
                         }
                     }
                 }
@@ -228,17 +228,10 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json jsPackages;
-
-    for (const auto& packageDirectory : s_mapPackagesDirectories)
+    getPackages([&jsPackages](nlohmann::json & package)
     {
-        const auto pkgDirectory { packageDirectory.first };
-
-        if (Utils::existsDir(pkgDirectory))
-        {
-            getPackagesFromPath(pkgDirectory, packageDirectory.second, jsPackages);
-        }
-    }
-
+        jsPackages.push_back(package);
+    });
     return jsPackages;
 }
 
@@ -396,9 +389,17 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     }
 }
 
-void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
-    // TODO.
+    for (const auto& packageDirectory : s_mapPackagesDirectories)
+    {
+        const auto pkgDirectory { packageDirectory.first };
+
+        if (Utils::existsDir(pkgDirectory))
+        {
+            getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+        }
+    }
 }
 
 nlohmann::json SysInfo::getHotfixes() const

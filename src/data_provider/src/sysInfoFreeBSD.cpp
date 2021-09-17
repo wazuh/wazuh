@@ -102,26 +102,10 @@ std::string SysInfo::getSerialNumber() const
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json ret;
-    const auto query{Utils::exec(R"(pkg query -a "%n|%m|%v|%q|%c")")};
-
-    if (!query.empty())
+    getPackages([&ret](nlohmann::json & data)
     {
-        const auto lines{Utils::split(query, '\n')};
-
-        for (const auto& line : lines)
-        {
-            const auto data{Utils::split(line, '|')};
-            nlohmann::json package;
-            package["name"] = data[0];
-            package["vendor"] = data[1];
-            package["version"] = data[2];
-            package["architecture"] = data[3];
-            package["description"] = data[4];
-            package["format"] = "pkg";
-            ret.push_back(package);
-        }
-    }
-
+        ret.push_back(data);
+    });
     return ret;
 }
 
@@ -167,9 +151,27 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/
     // Currently not supported for this OS.
 }
 
-void SysInfo::getPackages(std::function<void(nlohmann::json&)> /*callback*/) const
+void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
-    // Currently not supported for this OS.
+    const auto query{Utils::exec(R"(pkg query -a "%n|%m|%v|%q|%c")")};
+
+    if (!query.empty())
+    {
+        const auto lines{Utils::split(query, '\n')};
+
+        for (const auto& line : lines)
+        {
+            const auto data{Utils::split(line, '|')};
+            nlohmann::json package;
+            package["name"] = data[0];
+            package["vendor"] = data[1];
+            package["version"] = data[2];
+            package["architecture"] = data[3];
+            package["description"] = data[4];
+            package["format"] = "pkg";
+            callback(package);
+        }
+    }
 }
 
 nlohmann::json SysInfo::getHotfixes() const
