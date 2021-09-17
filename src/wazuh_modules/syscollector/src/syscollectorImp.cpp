@@ -1446,10 +1446,13 @@ void Syscollector::scanPackages()
             rawData["item_id"] = getItemId(rawData, PACKAGES_ITEM_ID_FIELDS);
 
             input["table"] = PACKAGES_TABLE;
-            input["data"] = nlohmann::json::array( { m_spNormalizer->normalize("packages",
-                                                                               m_spNormalizer->removeExcluded("packages", rawData)) } );
+            const auto& data { m_spNormalizer->normalize("packages", m_spNormalizer->removeExcluded("packages", rawData)) };
 
-            txn.syncTxnRow(input);
+            if (!data.empty())
+            {
+                input["data"] = nlohmann::json::array( { data } );
+                txn.syncTxnRow(input);
+            }
         });
         txn.getDeletedRows(callback);
 
