@@ -2010,6 +2010,14 @@ class CiscoUmbrella(AWSCustomBucket):
 
 
 class AWSWAFBucket(AWSCustomBucket):
+    standard_http_headers = ['a-im', 'accept', 'accept-charset', 'accept-encoding', 'accept-language',
+                             'access-control-request-method', 'access-control-request-headers', 'authorization',
+                             'cache-control', 'connection', 'content-encoding', 'content-length', 'content-type',
+                             'cookie', 'date', 'expect', 'forwarded', 'from', 'host', 'http2-settings', 'if-match',
+                             'if-modified-since', 'if-none-match', 'if-range', 'if-unmodified-since', 'max-forwards',
+                             'origin', 'pragma', 'prefer', 'proxy-authorization', 'range', 'referer', 'te', 'trailer',
+                             'transfer-encoding', 'user-agent', 'upgrade', 'via', 'warning', 'x-requested-with',
+                             'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto']
 
     def __init__(self, **kwargs):
         db_table_name = 'waf'
@@ -2030,6 +2038,15 @@ class AWSWAFBucket(AWSCustomBucket):
                 try:
                     for event in json_event_generator(line.rstrip()):
                         event['source'] = 'waf'
+                        try:
+                            headers = {}
+                            for element in event['httpRequest']['headers']:
+                                name = element["name"]
+                                if name.lower() in self.standard_http_headers:
+                                    headers[name] = element["value"]
+                            event['httpRequest']['headers'] = headers
+                        except (KeyError, TypeError):
+                            pass
                         content.append(event)
                 except json.JSONDecodeError:
                     print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
