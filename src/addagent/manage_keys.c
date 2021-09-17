@@ -469,7 +469,7 @@ int k_bulkload(const char *cmdbulk)
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
         } else {
-            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, -1, NULL,NULL,1) < 0) {
+            if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, NULL, 0,NULL,1) < 0) {
                 goto cleanup;
             }
         }

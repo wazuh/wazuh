@@ -13,11 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-double __wrap_OS_AgentAntiquity(__attribute__((unused)) const char *name,
-                             __attribute__((unused)) const char *ip) {
-    return mock();
-}
-
 double __wrap_get_time_since_agent_disconnection(__attribute__((unused)) const char *id) {
     return mock();
 }
