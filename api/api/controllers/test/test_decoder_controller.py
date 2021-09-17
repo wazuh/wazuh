@@ -10,8 +10,11 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.decoder_controller import (delete_file, get_decoders, get_decoders_files,
-                                                        get_decoders_parents, get_file, put_file)
+        from api.controllers.decoder_controller import (delete_file,
+                                                        get_decoders,
+                                                        get_decoders_files,
+                                                        get_decoders_parents,
+                                                        get_file, put_file)
         from wazuh import decoder as decoder_framework
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -24,6 +27,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_decoders(request=mock_request)
     f_kwargs = {'names': None,
                 'offset': 0,
                 'limit': None,
@@ -37,7 +41,6 @@ async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
                 'status': None,
                 'relative_dirname': None
                 }
-    result = await get_decoders(request=mock_request)
     mock_dapi.assert_called_once_with(f=decoder_framework.get_decoders,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -57,6 +60,7 @@ async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_decoders_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_decoders_files(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
                 'sort_by': ['filename'],
@@ -67,7 +71,6 @@ async def test_get_decoders_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'status': None,
                 'relative_dirname': None
                 }
-    result = await get_decoders_files(request=mock_request)
     mock_dapi.assert_called_once_with(f=decoder_framework.get_decoders_files,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -87,6 +90,7 @@ async def test_get_decoders_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_decoders_parents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_decoders_parents(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
                 'select': None,
@@ -96,7 +100,6 @@ async def test_get_decoders_parents(mock_exc, mock_dapi, mock_remove, mock_dfunc
                 'complementary_search': None,
                 'parents': True
                 }
-    result = await get_decoders_parents(request=mock_request)
     mock_dapi.assert_called_once_with(f=decoder_framework.get_decoders,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -118,10 +121,10 @@ async def test_get_decoders_parents(mock_exc, mock_dapi, mock_remove, mock_dfunc
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
     with patch('api.controllers.decoder_controller.isinstance', return_value=mock_bool) as mock_isinstance:
+        result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
                     'raw': False
                     }
-        result = await get_file(request=mock_request)
         mock_dapi.assert_called_once_with(f=decoder_framework.get_decoder_file,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='local_master',
@@ -146,12 +149,12 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.decoder_controller.Body.validate_content_type'):
         with patch('api.controllers.decoder_controller.Body.decode_body') as mock_dbody:
+            result = await put_file(request=mock_request,
+                                    body={})
             f_kwargs = {'filename': None,
                         'overwrite': False,
                         'content': mock_dbody.return_value
                         }
-            result = await put_file(request=mock_request,
-                                    body={})
             mock_dapi.assert_called_once_with(f=decoder_framework.upload_decoder_file,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='local_master',
@@ -171,9 +174,9 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await delete_file(request=mock_request)
     f_kwargs = {'filename': None
                 }
-    result = await delete_file(request=mock_request)
     mock_dapi.assert_called_once_with(f=decoder_framework.delete_decoder_file,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',

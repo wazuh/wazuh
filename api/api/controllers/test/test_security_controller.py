@@ -36,12 +36,11 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
-                          mock_request=MagicMock()):
-    f_kwargs = {'user_id': '001'
-                }
+async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
     result = await login_user(user='001',
                               raw=mock_bool)
+    f_kwargs = {'user_id': '001'
+                }
     mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -60,13 +59,12 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
-                             mock_request=MagicMock()):
-    f_kwargs = {'user_id': '001'
-                }
+async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
     mock_token.side_effect = WazuhException(999)
     result = await login_user(user='001',
                               raw=mock_bool)
+    f_kwargs = {'user_id': '001'
+                }
     mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -89,12 +87,12 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
                             mock_request=AsyncMock()):
-    f_kwargs = {'user_id': '001',
-                'auth_context': await mock_request.json()
-                }
     result = await run_as_login(request=mock_request,
                                 user='001',
                                 raw=mock_bool)
+    f_kwargs = {'user_id': '001',
+                'auth_context': await mock_request.json()
+                }
     mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -115,13 +113,13 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
                                mock_request=AsyncMock()):
-    f_kwargs = {'user_id': '001',
-                'auth_context': await mock_request.json()
-                }
     mock_token.side_effect = WazuhException(999)
     result = await run_as_login(request=mock_request,
                                 user='001',
                                 raw=mock_bool)
+    f_kwargs = {'user_id': '001',
+                'auth_context': await mock_request.json()
+                }
     mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -141,9 +139,9 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_user_me(request=mock_request)
     f_kwargs = {'token': mock_request['token_info']
                 }
-    result = await get_user_me(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.get_user_me,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -159,10 +157,7 @@ async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 
 
 @pytest.mark.asyncio
-@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
-async def test_get_user_me_policies(mock_exc, mock_dapi, mock_dfunc, mock_request=MagicMock()):
+async def test_get_user_me_policies(mock_request=MagicMock()):
     with patch('api.controllers.security_controller.WazuhResult', return_value='mock_wr_result') as mock_wr:
         result = await get_user_me_policies(request=mock_request)
         mock_wr.assert_called_once_with({'data': mock_request['token_info']['rbac_policies'],
@@ -193,6 +188,7 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request=MagicMo
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_users(request=mock_request)
     f_kwargs = {'user_ids': None,
                 'offset': 0,
                 'limit': None,
@@ -202,7 +198,6 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'search_text': None,
                 'complementary_search': None
                 }
-    result = await get_users(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.get_users,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -222,12 +217,12 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
-    f_kwargs = {'user_id': '001',
-                'allow_run_as': False
-                }
     result = await edit_run_as(request=mock_request,
                                user_id='001',
                                allow_run_as=False)
+    f_kwargs = {'user_id': '001',
+                'allow_run_as': False
+                }
     mock_dapi.assert_called_once_with(f=security.edit_run_as,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -322,6 +317,7 @@ async def test_delete_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_u
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_roles(request=mock_request)
     f_kwargs = {'role_ids': None,
                 'offset': 0,
                 'limit': None,
@@ -331,7 +327,6 @@ async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'search_text': None,
                 'complementary_search': None
                 }
-    result = await get_roles(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.get_roles,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -424,6 +419,7 @@ async def test_update_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_rules(request=mock_request)
     f_kwargs = {'rule_ids': None,
                 'offset': 0,
                 'limit': None,
@@ -433,7 +429,6 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'search_text': None,
                 'complementary_search': None
                 }
-    result = await get_rules(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.get_rules,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -526,6 +521,7 @@ async def test_remove_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_policies(request=mock_request)
     f_kwargs = {'policy_ids': None,
                 'offset': 0,
                 'limit': None,
@@ -535,7 +531,6 @@ async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
                 'search_text': None,
                 'complementary_search': None
                 }
-    result = await get_policies(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.get_policies,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -627,13 +622,13 @@ async def test_update_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_set_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await set_user_role(request=mock_request,
+                                 user_id='001',
+                                 role_ids='001')
     f_kwargs = {'user_id': '001',
                 'role_ids': '001',
                 'position': None
                 }
-    result = await set_user_role(request=mock_request,
-                                 user_id='001',
-                                 role_ids='001')
     mock_dapi.assert_called_once_with(f=security.set_user_role,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -681,13 +676,13 @@ async def test_remove_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_set_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await set_role_policy(request=mock_request,
+                                   role_id='001',
+                                   policy_ids='001')
     f_kwargs = {'role_id': '001',
                 'policy_ids': '001',
                 'position': None
                 }
-    result = await set_role_policy(request=mock_request,
-                                   role_id='001',
-                                   policy_ids='001')
     mock_dapi.assert_called_once_with(f=security.set_role_policy,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -735,6 +730,9 @@ async def test_remove_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await set_role_rule(request=mock_request,
+                                 role_id='001',
+                                 rule_ids='001')
     f_kwargs = {'role_id': '001',
                 'rule_ids': '001',
                 'run_as': {
@@ -742,9 +740,6 @@ async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                     'run_as': mock_request['token_info']['run_as']
                     }
                 }
-    result = await set_role_rule(request=mock_request,
-                                 role_id='001',
-                                 rule_ids='001')
     mock_dapi.assert_called_once_with(f=security.set_role_rule,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -791,10 +786,10 @@ async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
-async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+    result = await get_rbac_resources()
     f_kwargs = {'resource': None
                 }
-    result = await get_rbac_resources()
     mock_dapi.assert_called_once_with(f=security.get_rbac_resources,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -812,10 +807,10 @@ async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
-async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+    result = await get_rbac_actions()
     f_kwargs = {'endpoint': None
                 }
-    result = await get_rbac_actions()
     mock_dapi.assert_called_once_with(f=security.get_rbac_actions,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -907,13 +902,11 @@ async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 
 @pytest.mark.asyncio
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 @patch('api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
-async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes,
-                                      mock_request=MagicMock()):
+async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfunc, mock_snodes):
     mock_isins.return_value = True if not mock_snodes else False
     with patch('api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
         await security_revoke_tokens()
@@ -938,9 +931,9 @@ async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
         with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             with patch('api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
+                result = await put_security_config(request=mock_request)
                 f_kwargs = {'updated_config': mock_getkwargs.return_value
                             }
-                result = await put_security_config(request=mock_request)
                 mock_dapi.assert_called_once_with(f=security.update_security_config,
                                                   f_kwargs=mock_remove.return_value,
                                                   request_type='local_master',
@@ -963,9 +956,9 @@ async def test_delete_security_config(mock_exc, mock_dapi, mock_remove, mock_dfu
     with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
                return_value=AsyncMock()) as mock_getkwargs:
         with patch('api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):
+            result = await delete_security_config(request=mock_request)
             f_kwargs = {'updated_config': mock_getkwargs.return_value
                         }
-            result = await delete_security_config(request=mock_request)
             mock_dapi.assert_called_once_with(f=security.update_security_config,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='local_master',

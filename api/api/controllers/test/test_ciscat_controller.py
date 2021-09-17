@@ -22,6 +22,8 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.ciscat_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.ciscat_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_agents_ciscat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_agents_ciscat_results(request=mock_request,
+                                             agent_id='001')
     f_kwargs = {
         'agent_list': ['001'],
         'offset': 0,
@@ -41,8 +43,6 @@ async def test_get_agents_ciscat_results(mock_exc, mock_dapi, mock_remove, mock_
             },
         'q': None
         }
-    result = await get_agents_ciscat_results(request=mock_request,
-                                             agent_id='001')
     mock_dapi.assert_called_once_with(f=ciscat.get_ciscat_results,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',

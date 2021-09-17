@@ -3,15 +3,17 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from connexion.lifecycle import ConnexionResponse
-
 from api.controllers.test.utils import CustomMagicMockReturn
+from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.cdb_list_controller import (delete_file, get_file, get_lists, get_lists_files, put_file)
+        from api.controllers.cdb_list_controller import (delete_file, get_file,
+                                                         get_lists,
+                                                         get_lists_files,
+                                                         put_file)
         from wazuh import cdb_list
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -24,6 +26,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_lists(request=mock_request)
     f_kwargs = {'offset': 0,
                 'select': None,
                 'limit': None,
@@ -34,7 +37,6 @@ async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'filename': None,
                 'relative_dirname': None,
                 }
-    result = await get_lists(request=mock_request)
     mock_dapi.assert_called_once_with(f=cdb_list.get_lists,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -56,10 +58,10 @@ async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
     with patch('api.controllers.cdb_list_controller.isinstance', return_value=mock_bool) as mock_isinstance:
+        result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
                     'raw': False
                     }
-        result = await get_file(request=mock_request)
         mock_dapi.assert_called_once_with(f=cdb_list.get_list_file,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='local_master',
@@ -84,12 +86,12 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.cdb_list_controller.Body.validate_content_type'):
         with patch('api.controllers.cdb_list_controller.Body.decode_body') as mock_dbody:
+            result = await put_file(request=mock_request,
+                                    body={})
             f_kwargs = {'filename': None,
                         'overwrite': False,
                         'content': mock_dbody.return_value
                         }
-            result = await put_file(request=mock_request,
-                                    body={})
             mock_dapi.assert_called_once_with(f=cdb_list.upload_list_file,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='local_master',
@@ -109,9 +111,9 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await delete_file(request=mock_request)
     f_kwargs = {'filename': None
                 }
-    result = await delete_file(request=mock_request)
     mock_dapi.assert_called_once_with(f=cdb_list.delete_list_file,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
@@ -131,6 +133,7 @@ async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_lists_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_lists_files(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
                 'sort_by': ['relative_dirname', 'filename'],
@@ -141,7 +144,6 @@ async def test_get_lists_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'filename': None,
                 'relative_dirname': None,
                 }
-    result = await get_lists_files(request=mock_request)
     mock_dapi.assert_called_once_with(f=cdb_list.get_path_lists,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',

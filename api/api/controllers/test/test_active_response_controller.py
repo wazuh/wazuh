@@ -24,17 +24,17 @@ with patch('wazuh.common.wazuh_uid'):
 async def test_run_command(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.active_response_controller.Body'):
         with patch('api.controllers.active_response_controller.ActiveResponseModel.get_kwargs',
-                   side_effect=AsyncMock()) as mock_getkwargs:
+                   return_value=AsyncMock()) as mock_getkwargs:
             result = await run_command(request=mock_request)
-            mock_dapi.assert_called_with(f=active_response.run_command,
-                                         f_kwargs=mock_remove.return_value,
-                                         request_type='distributed_master',
-                                         is_async=False,
-                                         wait_for_complete=False,
-                                         logger=ANY,
-                                         broadcasting=True,
-                                         rbac_permissions=mock_request['token_info']['rbac_policies']
-                                         )
-            mock_exc.assert_called_with(mock_dfunc.return_value)
-            mock_remove.assert_called_with(mock_getkwargs.side_effect.return_value)
+            mock_dapi.assert_called_once_with(f=active_response.run_command,
+                                              f_kwargs=mock_remove.return_value,
+                                              request_type='distributed_master',
+                                              is_async=False,
+                                              wait_for_complete=False,
+                                              logger=ANY,
+                                              broadcasting=True,
+                                              rbac_permissions=mock_request['token_info']['rbac_policies']
+                                              )
+            mock_exc.assert_called_once_with(mock_dfunc.return_value)
+            mock_remove.assert_called_once_with(mock_getkwargs.return_value)
             assert isinstance(result, web_response.Response)

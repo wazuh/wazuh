@@ -8,7 +8,9 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.default_controller import (BasicInfo, date_format, datetime, default_info, socket)
+        from api.controllers.default_controller import (BasicInfo, date_format,
+                                                        datetime, default_info,
+                                                        socket)
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
@@ -18,6 +20,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.default_controller.load_spec', return_value=MagicMock())
 @patch('api.controllers.default_controller.WazuhResult', return_value={})
 async def test_default_info(mock_wresult, mock_lspec):
+    result = await default_info()
     data = {
         'title': mock_lspec.return_value['info']['title'],
         'api_version': mock_lspec.return_value['info']['version'],
@@ -27,7 +30,6 @@ async def test_default_info(mock_wresult, mock_lspec):
         'hostname': socket.gethostname(),
         'timestamp': datetime.utcnow().strftime(date_format)
     }
-    result = await default_info()
     mock_lspec.assert_called_once_with()
     mock_wresult.assert_called_once_with({'data': BasicInfo.from_dict(data)})
     assert isinstance(result, web_response.Response)

@@ -11,8 +11,12 @@ with patch('wazuh.common.wazuh_uid'):
         with patch('api.configuration.api_conf'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
-            from api.controllers.rule_controller import (delete_file, get_file, get_rules, get_rules_files,
-                                                         get_rules_groups, get_rules_requirement, put_file)
+            from api.controllers.rule_controller import (delete_file, get_file,
+                                                         get_rules,
+                                                         get_rules_files,
+                                                         get_rules_groups,
+                                                         get_rules_requirement,
+                                                         put_file)
             from wazuh import rule as rule_framework
             from wazuh.tests.util import RBAC_bypasser
             wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -25,6 +29,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_rules(request=mock_request)
     f_kwargs = {'rule_ids': None,
                 'offset': 0,
                 'limit': None,
@@ -47,7 +52,6 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'tsc': None,
                 'mitre': None
                 }
-    result = await get_rules(request=mock_request)
     mock_dapi.assert_called_once_with(f=rule_framework.get_rules,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -67,6 +71,7 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_rules_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_rules_groups(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
                 'sort_by': [''],
@@ -74,7 +79,6 @@ async def test_get_rules_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
                 'search_text': None,
                 'complementary_search': None
                 }
-    result = await get_rules_groups(request=mock_request)
     mock_dapi.assert_called_once_with(f=rule_framework.get_groups,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -94,6 +98,8 @@ async def test_get_rules_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_rules_requirement(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_rules_requirement(request=mock_request,
+                                         requirement='-')
     f_kwargs = {'requirement': '_',
                 'sort_by': [''],
                 'sort_ascending': True,
@@ -102,8 +108,6 @@ async def test_get_rules_requirement(mock_exc, mock_dapi, mock_remove, mock_dfun
                 'offset': 0,
                 'limit': None
                 }
-    result = await get_rules_requirement(request=mock_request,
-                                         requirement='-')
     mock_dapi.assert_called_once_with(f=rule_framework.get_requirement,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -123,6 +127,7 @@ async def test_get_rules_requirement(mock_exc, mock_dapi, mock_remove, mock_dfun
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_rules_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_rules_files(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
                 'sort_by': ['filename'],
@@ -133,7 +138,6 @@ async def test_get_rules_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'filename': None,
                 'relative_dirname': None
                 }
-    result = await get_rules_files(request=mock_request)
     mock_dapi.assert_called_once_with(f=rule_framework.get_rules_files,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -155,10 +159,10 @@ async def test_get_rules_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
     with patch('api.controllers.rule_controller.isinstance', return_value=mock_bool) as mock_isinstance:
+        result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
                     'raw': False
                     }
-        result = await get_file(request=mock_request)
         mock_dapi.assert_called_once_with(f=rule_framework.get_rule_file,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='local_master',
@@ -183,12 +187,12 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.rule_controller.Body.validate_content_type'):
         with patch('api.controllers.rule_controller.Body.decode_body') as mock_dbody:
+            result = await put_file(request=mock_request,
+                                    body={})
             f_kwargs = {'filename': None,
                         'overwrite': False,
                         'content': mock_dbody.return_value
                         }
-            result = await put_file(request=mock_request,
-                                    body={})
             mock_dapi.assert_called_once_with(f=rule_framework.upload_rule_file,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='local_master',
@@ -208,9 +212,9 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await delete_file(request=mock_request)
     f_kwargs = {'filename': None
                 }
-    result = await delete_file(request=mock_request)
     mock_dapi.assert_called_once_with(f=rule_framework.delete_rule_file,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',

@@ -23,6 +23,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.task_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.task_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_tasks_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_tasks_status(request=mock_request)
     f_kwargs = {'select': None,
                 'search': None,
                 'offset': 0,
@@ -38,7 +39,6 @@ async def test_get_tasks_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
                 'sort': None,
                 'q': None
                 }
-    result = await get_tasks_status(request=mock_request)
     mock_dapi.assert_called_once_with(f=task.get_task_status,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',

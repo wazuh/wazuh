@@ -9,8 +9,12 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.mitre_controller import (get_groups, get_metadata, get_mitigations, get_references,
-                                                      get_software, get_tactics, get_techniques)
+        from api.controllers.mitre_controller import (get_groups, get_metadata,
+                                                      get_mitigations,
+                                                      get_references,
+                                                      get_software,
+                                                      get_tactics,
+                                                      get_techniques)
         from wazuh import mitre
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -42,6 +46,7 @@ async def test_get_metadata(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_groups(request=mock_request)
     f_kwargs = {
         'filters': {
             'id': None,
@@ -55,7 +60,6 @@ async def test_get_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
         'select': None,
         'q': None
     }
-    result = await get_groups(request=mock_request)
     mock_dapi.assert_called_once_with(f=mitre.mitre_groups,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -75,6 +79,7 @@ async def test_get_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_mitigations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_mitigations(request=mock_request)
     f_kwargs = {
         'filters': {
             'id': None,
@@ -88,7 +93,6 @@ async def test_get_mitigations(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
         'select': None,
         'q': None
     }
-    result = await get_mitigations(request=mock_request)
     mock_dapi.assert_called_once_with(f=mitre.mitre_mitigations,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -108,6 +112,7 @@ async def test_get_mitigations(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_references(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_references(request=mock_request)
     f_kwargs = {
         'filters': {
             'id': None,
@@ -121,7 +126,6 @@ async def test_get_references(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
         'select': None,
         'q': None
     }
-    result = await get_references(request=mock_request)
     mock_dapi.assert_called_once_with(f=mitre.mitre_references,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -141,6 +145,7 @@ async def test_get_references(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_software(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_software(request=mock_request)
     f_kwargs = {
         'filters': {
             'id': None,
@@ -154,7 +159,6 @@ async def test_get_software(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
         'select': None,
         'q': None
     }
-    result = await get_software(request=mock_request)
     mock_dapi.assert_called_once_with(f=mitre.mitre_software,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -174,6 +178,7 @@ async def test_get_software(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_tactics(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_tactics(request=mock_request)
     f_kwargs = {
         'filters': {
             'id': None,
@@ -187,7 +192,6 @@ async def test_get_tactics(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
         'select': None,
         'q': None
     }
-    result = await get_tactics(request=mock_request)
     mock_dapi.assert_called_once_with(f=mitre.mitre_tactics,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
@@ -207,6 +211,7 @@ async def test_get_tactics(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_techniques(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_techniques(request=mock_request)
     f_kwargs = {
         'filters': {
             'id': None,
@@ -220,7 +225,6 @@ async def test_get_techniques(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
         'select': None,
         'q': None
     }
-    result = await get_techniques(request=mock_request)
     mock_dapi.assert_called_once_with(f=mitre.mitre_techniques,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',

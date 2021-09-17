@@ -24,6 +24,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_sca_agent(request=mock_request)
     filters = {'name': None,
                'description': None,
                'references': None
@@ -36,7 +37,6 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 'q': None,
                 'filters': filters
                 }
-    result = await get_sca_agent(request=mock_request)
     mock_dapi.assert_called_once_with(f=sca.get_sca_list,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -56,6 +56,7 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_sca_checks(request=mock_request)
     filters = {'title': None,
                'description': None,
                'rationale': None,
@@ -80,7 +81,6 @@ async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'q': None,
                 'filters': filters
                 }
-    result = await get_sca_checks(request=mock_request)
     mock_dapi.assert_called_once_with(f=sca.get_sca_checks,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',

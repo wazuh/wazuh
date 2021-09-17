@@ -9,10 +9,10 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.syscollector_controller import (get_hardware_info, get_hotfix_info,
-                                                             get_network_address_info, get_network_interface_info,
-                                                             get_network_protocol_info, get_os_info, get_packages_info,
-                                                             get_ports_info, get_processes_info)
+        from api.controllers.syscollector_controller import (
+            get_hardware_info, get_hotfix_info, get_network_address_info,
+            get_network_interface_info, get_network_protocol_info, get_os_info,
+            get_packages_info, get_ports_info, get_processes_info)
         from wazuh import syscollector
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -25,12 +25,12 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_hardware_info(request=mock_request,
+                                     agent_id='001')
     f_kwargs = {'agent_list': ['001'],
                 'select': None,
                 'element_type': 'hardware'
                 }
-    result = await get_hardware_info(request=mock_request,
-                                     agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -50,6 +50,8 @@ async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_hotfix_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_hotfix_info(request=mock_request,
+                                   agent_id='001')
     filters = {'hotfix': None}
     f_kwargs = {'agent_list': ['001'],
                 'offset': 0,
@@ -61,8 +63,6 @@ async def test_get_hotfix_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'element_type': 'hotfixes',
                 'q': None
                 }
-    result = await get_hotfix_info(request=mock_request,
-                                   agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -82,6 +82,8 @@ async def test_get_hotfix_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_network_address_info(request=mock_request,
+                                            agent_id='001')
     filters = {'iface': None,
                'proto': None,
                'address': None,
@@ -98,8 +100,6 @@ async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_d
                 'element_type': 'netaddr',
                 'q': None
                 }
-    result = await get_network_address_info(request=mock_request,
-                                            agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -119,6 +119,8 @@ async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_network_interface_info(request=mock_request,
+                                              agent_id='001')
     filters = {'adapter': None,
                'type': mock_request.query.get('type', None),
                'state': None,
@@ -138,8 +140,6 @@ async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock
                 'element_type': 'netiface',
                 'q': None
                 }
-    result = await get_network_interface_info(request=mock_request,
-                                              agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -159,6 +159,8 @@ async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_network_protocol_info(request=mock_request,
+                                             agent_id='001')
     filters = {'iface': None,
                'type': mock_request.query.get('type', None),
                'gateway': None,
@@ -174,8 +176,6 @@ async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_
                 'element_type': 'netproto',
                 'q': None
                 }
-    result = await get_network_protocol_info(request=mock_request,
-                                             agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -195,12 +195,12 @@ async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_os_info(request=mock_request,
+                               agent_id='001')
     f_kwargs = {'agent_list': ['001'],
                 'select': None,
                 'element_type': 'os'
                 }
-    result = await get_os_info(request=mock_request,
-                               agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -220,6 +220,8 @@ async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_packages_info(request=mock_request,
+                                     agent_id='001')
     filters = {'vendor': None,
                'name': None,
                'architecture': None,
@@ -236,8 +238,6 @@ async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
                 'element_type': 'packages',
                 'q': None
                 }
-    result = await get_packages_info(request=mock_request,
-                                     agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -257,6 +257,8 @@ async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_ports_info(request=mock_request,
+                                  agent_id='001')
     filters = {'pid': None,
                'protocol': None,
                'tx_queue': None,
@@ -276,8 +278,6 @@ async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'element_type': 'ports',
                 'q': None
                 }
-    result = await get_ports_info(request=mock_request,
-                                  agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -297,6 +297,8 @@ async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.syscollector_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscollector_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    result = await get_processes_info(request=mock_request,
+                                      agent_id='001')
     filters = {'state': None,
                'pid': None,
                'ppid': None,
@@ -322,8 +324,6 @@ async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'element_type': 'processes',
                 'q': None
                 }
-    result = await get_processes_info(request=mock_request,
-                                      agent_id='001')
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',

@@ -10,12 +10,12 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.experimental_controller import (check_experimental_feature_value, clear_rootcheck_database,
-                                                             clear_syscheck_database, get_cis_cat_results,
-                                                             get_hardware_info, get_hotfixes_info,
-                                                             get_network_address_info, get_network_interface_info,
-                                                             get_network_protocol_info, get_os_info, get_packages_info,
-                                                             get_ports_info, get_processes_info)
+        from api.controllers.experimental_controller import (
+            check_experimental_feature_value, clear_rootcheck_database,
+            clear_syscheck_database, get_cis_cat_results, get_hardware_info,
+            get_hotfixes_info, get_network_address_info,
+            get_network_interface_info, get_network_protocol_info, get_os_info,
+            get_packages_info, get_ports_info, get_processes_info)
         from wazuh import ciscat, rootcheck, syscheck, syscollector
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -87,6 +87,7 @@ async def test_clear_syscheck_database(mock_exc, mock_dapi, mock_remove, mock_df
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    result = await get_cis_cat_results(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
                 'limit': None,
@@ -104,7 +105,6 @@ async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                     'pass': mock_request.query.get('pass', None)
                     }
                 }
-    result = await get_cis_cat_results(request=mock_request)
     mock_dapi.assert_called_once_with(f=ciscat.get_ciscat_results,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -126,6 +126,7 @@ async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    result = await get_hardware_info(request=mock_request)
     filters = {
         'board_serial': None
     }
@@ -141,7 +142,6 @@ async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
                 'filters': filters,
                 'element_type': 'hardware'
                 }
-    result = await get_hardware_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -164,6 +164,7 @@ async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                         mock_request=MagicMock()):
+    result = await get_network_address_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
                 'limit': None,
@@ -179,7 +180,6 @@ async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_d
                 },
                 'element_type': 'netaddr'
                 }
-    result = await get_network_address_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -202,6 +202,7 @@ async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                           mock_request=MagicMock()):
+    result = await get_network_interface_info(request=mock_request)
     filters = {
         'adapter': None,
         'type': mock_request.query.get('type', None),
@@ -220,7 +221,6 @@ async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock
                 'filters': filters,
                 'element_type': 'netiface'
                 }
-    result = await get_network_interface_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -243,6 +243,7 @@ async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                          mock_request=MagicMock()):
+    result = await get_network_protocol_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
                 'limit': None,
@@ -257,7 +258,6 @@ async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_
                 },
                 'element_type': 'netproto'
                 }
-    result = await get_network_protocol_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -279,6 +279,7 @@ async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    result = await get_os_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
                 'limit': None,
@@ -294,7 +295,6 @@ async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_ex
                 },
                 'element_type': 'os'
                 }
-    result = await get_os_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -316,6 +316,7 @@ async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_ex
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    result = await get_packages_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
                 'limit': None,
@@ -331,7 +332,6 @@ async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
                 },
                 'element_type': 'packages'
                 }
-    result = await get_packages_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -353,6 +353,7 @@ async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    result = await get_ports_info(request=mock_request)
     filters = {
         'pid': None,
         'protocol': None,
@@ -372,7 +373,6 @@ async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'filters': filters,
                 'element_type': 'ports'
                 }
-    result = await get_ports_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -394,6 +394,7 @@ async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    result = await get_processes_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
                 'limit': None,
@@ -418,7 +419,6 @@ async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 },
                 'element_type': 'processes'
                 }
-    result = await get_processes_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -440,6 +440,7 @@ async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_hotfixes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    result = await get_hotfixes_info(request=mock_request)
     filters = {'hotfix': None
                }
     f_kwargs = {'agent_list': '*',
@@ -451,7 +452,6 @@ async def test_get_hotfixes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
                 'filters': filters,
                 'element_type': 'hotfixes'
                 }
-    result = await get_hotfixes_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=syscollector.get_item_agent,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
