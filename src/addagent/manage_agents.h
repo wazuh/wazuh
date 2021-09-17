@@ -8,6 +8,9 @@
  * Foundation.
  */
 
+#ifndef MANAGEAGENTS_H
+#define MANAGEAGENTS_H
+
 #include "shared.h"
 #include "sec.h"
 #include "external/cJSON/cJSON.h"
@@ -156,3 +159,5 @@ typedef enum force_agent_registration {
 #define BANNER_CLIENT   "   (I)mport key from the server (I).\n" \
                         "   (Q)uit.\n" \
                         "Choose your action: I or Q: "
+
+#endif

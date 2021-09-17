@@ -22,6 +22,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "cJSON.h"
 
 /* redefinitons/wrapping */
 
@@ -37,9 +38,12 @@ static void test_create_agent_add_payload(void **state) {
     char* groups = "Group1,Group2";
     char* key = "1234";
     char* key_hash = "7110eda4d09e062aa5e4a390b0a572ac0d2c0220";
-    int force = 1;
+    int force = BYPASS_FORCE_SETTINGS;
     char* id = "001";
     cJSON* payload = NULL;
+    char* expected_force_payload = "{\"disconnected_time\":{\"enabled\":false,\"value\":0},"
+                                   "\"enabled\":true,\"key_mismatch\":false,\"after_registration_time\":0}";
+
     payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, force);
 
     assert_non_null(payload);
@@ -67,11 +71,14 @@ static void test_create_agent_add_payload(void **state) {
     assert_non_null(item);
     assert_string_equal(item->valuestring, id);
 
-    item = cJSON_GetObjectItem(arguments, "force");
-    assert_non_null(item);
-    assert_int_equal(item->valueint, force);
+    cJSON* j_force = cJSON_GetObjectItem(arguments, "force");
+    assert_non_null(j_force);
+
+    char* str_force = cJSON_PrintUnformatted(j_force);
+    assert_string_equal(str_force, expected_force_payload);
 
     cJSON_Delete(payload);
+    os_free(str_force);
 }
 
 #ifndef WIN32
