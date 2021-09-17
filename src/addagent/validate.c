@@ -516,9 +516,15 @@ double get_time_since_agent_disconnection(const char *id) {
         status = json_field->valuestring;
     }
 
-    json_field = cJSON_GetObjectItem(json_agent_info->child, "disconnected_time");
-    if (json_field && cJSON_IsNumber(json_field) && status && !strcmp(status, AGENT_CS_DISCONNECTED)) {
-        disconnected_time = json_field->valueint;
+    if (status) {
+        if (!strcmp(status, AGENT_CS_NEVER_CONNECTED)) {
+            return OS_INVALID;
+        } else if (!strcmp(status, AGENT_CS_DISCONNECTED)) {
+            json_field = cJSON_GetObjectItem(json_agent_info->child, "disconnected_time");
+            if (json_field && cJSON_IsNumber(json_field)) {
+                disconnected_time = json_field->valueint;
+            }
+        }
     }
 
     cJSON_Delete(json_agent_info);
