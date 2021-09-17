@@ -1390,9 +1390,9 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     s.close()
 
     # Update agent information when getting upgrade results
-    date_format_from_socket = "%Y/%m/%d %H:%M:%S"
+    # When the task has status "In Queue", the value update_time will have value 0
     [agent_info.update(
-        (k, datetime.strptime(v, date_format_from_socket).strftime(date_format)) for k, v in agent_info.items() if
-        k in {'create_time', 'update_time'} and re.match(date_format_from_socket, v)) for agent_info in data['data']]
+        (k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format)) for k, v in agent_info.items() if
+        k in {'create_time', 'update_time'} and v != '0') for agent_info in data['data']]
 
     return data
