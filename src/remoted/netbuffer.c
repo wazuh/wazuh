@@ -146,7 +146,7 @@ void nb_send(int socket) {
 
     const int error = errno; // Race condition here, the usage if errno is not thread safe!!!
 
-    if ((sent_bytes == 0) || ((sent_bytes < 0) && ((error == 0) || (error == ETIMEDOUT)))) {
+    if (sent_bytes > 0) {
         assert(sent_bytes <= current_data_len);
         if (sent_bytes == current_data_len) {
             os_free(netbuffer_send.buffers[socket].data);
@@ -161,7 +161,7 @@ void nb_send(int socket) {
             netbuffer_send.buffers[socket].data_size -= sent_bytes;
         }
     }
-    else {
+    else if (sent_bytes < 0) {
         os_free(netbuffer_send.buffers[socket].data);
         netbuffer_send.buffers[socket].data = NULL;
         netbuffer_send.buffers[socket].data_len = 0;
