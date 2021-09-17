@@ -195,13 +195,6 @@ w_err_t w_auth_replace_agent(keyentry *key,
         return OS_INVALID;
     }
 
-    /* Check if the agent antiquity complies with the configuration to be removed */
-    double antiquity = 0;
-    if (antiquity = OS_AgentAntiquity(key->name, key->ip->ip), antiquity > 0 && antiquity < force_options->connection_time) {
-        minfo("Agent '%s' doesn't comply with the antiquity to be removed.", key->id);
-        return OS_INVALID;
-    }
-
     /* Check if the agent has been disconnected longer than the value specified in the configuration option*/
     if (force_options->disconnected_time_enabled) {
         time_t disconnected_time = 0;
