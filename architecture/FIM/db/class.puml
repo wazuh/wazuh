@@ -1,0 +1,93 @@
+@startuml db_class
+package "db" <<Folder>> #DDDDDD{
+    enum "dbresult" {
+        DB_SUCCESS
+        DB_ERROR
+    }
+
+    package "item" <<Folder>> {
+        abstract DBItem {
+            - String identifier
+            - bool scanned
+            - time_t last_event
+            - string checksum
+            - enum mode
+            + fim_entry toFimEntry()
+            + nlohman::json toJson()
+            + bool getState()
+        }
+
+        class FileItem {
+            - int size
+            - string perm
+            - string attributes
+            - int uid
+            - string username
+            - int gid
+            - string groupname
+            - time_t time
+            - int inode
+            - string md5
+            - string sha1
+            - string sha256
+            - int dev
+            - int options
+            + json statement_conf
+            + FileItem()
+            + FileItem(fim_entry)
+            + ~FileItem()
+            + fim_entry toFIMEntry()
+            + json toJsonEntry()
+        }
+        class "RegistryValue" {
+            - int type
+            - int key_uid
+            - int size
+            - string md5
+            - string sha1
+            - string sha256
+            + json statement_conf
+            + RegistryValue()
+            + RegistryValue(fim_entry)
+            + ~RegistryValue()
+            + fim_entry toFIMEntry()
+            + json toJson()
+        }
+        class "RegistryKey" {
+            - string perms
+            - int uid
+            - string username
+            - int gid
+            - string groupname
+            - int mtime
+            - enum arch
+            + json statement_conf
+            + RegistryKey()
+            + RegistryKey(fim_entry)
+            + ~RegistryKey()
+            + fim_entry toFIMEntry()
+            + json to_Json()
+        }
+    }
+    class "FimDB"  <<(S,#FF7700) Singleton>> {
+        - string dbpath
+        - DBSync dbsyncHandler
+        - Rsync rsyncHandler
+        + FimDB()
+        + ~FimDB()
+        + FimDB getInstance()
+        + void sync()
+        + bool isFull
+        + dbresult insertItem(DBItem)
+        + dbresult removeItem(DBItem)
+        + dbresult removeItem(DBItem)
+        + dbresult setAllUnscanned()
+    }
+
+}
+
+
+DBItem <|-- FileItem
+DBItem <|-- RegistryValue
+DBItem <|-- RegistryKey
+@enduml
