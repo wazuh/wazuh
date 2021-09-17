@@ -375,7 +375,7 @@ nlohmann::json SysInfo::getPorts() const
                 Utils::replaceAll(row, "\t", " ");
                 Utils::replaceAll(row, "  ", " ");
                 std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
-                ports["ports"].push_back(port);
+                ports.push_back(port);
             }
 
             fileBody = true;

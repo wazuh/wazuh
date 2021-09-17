@@ -689,7 +689,7 @@ void expandPortData(T data, const std::map<pid_t, std::string>& processDataList,
         {
             nlohmann::json port;
             std::make_unique<PortImpl>(std::make_shared<WindowsPortWrapper>(data->table[i], processDataList))->buildPortData(port);
-            result["ports"].push_back(port);
+            result.push_back(port);
         }
     }
 }
