@@ -25,6 +25,18 @@ class CommandLineParser:
         """
         return arg in module_list
 
+    def _targetIsValid(self, arg):
+        """
+        Checks if the argument being selected is a correct one.
+
+        :param arg: Argument being selected in the command line.
+        :return True is 'arg' is a correct one, False otherwise.
+        """
+        validArguments = ['agent',
+                          'server',
+                          'winagent']
+        return arg in validArguments
+
     def processArgs(self):
         """
         Process the command line arguments and executes the corresponding argument's utility.
@@ -41,6 +53,7 @@ class CommandLineParser:
         parser.add_argument("--asan", help="Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
         parser.add_argument("--scheck", help="Run AStyle on the code for checking purposes. Example: python3 build.py --scheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
         parser.add_argument("--sformat", help="Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>")
+        parser.add_argument("--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
 
         args = parser.parse_args()
         if self._argIsValid(args.readytoreview):
@@ -73,6 +86,9 @@ class CommandLineParser:
                 action = True
             if self._argIsValid(args.sformat):
                 utils.runAStyleFormat(args.sformat)
+                action = True
+            if self._targetIsValid(args.scanbuild):
+                utils.runScanBuild(args.scanbuild)
                 action = True
             if not action:
                 parser.print_help()
