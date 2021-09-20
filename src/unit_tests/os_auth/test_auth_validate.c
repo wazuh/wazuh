@@ -312,6 +312,25 @@ static void test_w_auth_replace_agent_not_disconnected(void **state) {
     config.force_options.connection_time = 0;
 }
 
+static void test_w_auth_replace_agent_registered_recent(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+
+    // Mocking registration time
+    will_return(__wrap_get_time_since_agent_registration, 10);
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 100;
+
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' doesn't comply with the registration time to be removed.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    free_keyentry(&key);
+    config.force_options.after_registration_time = 0;
+}
+
+
 static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     w_err_t err;
     keyentry key;
@@ -319,6 +338,7 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     // This is the SHA1 hash of the string: IdNameKey
     char *key_hash = "15153d246b71789195b48778875af94f9378ecf9";
     config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
     config.force_options.key_mismatch = true;
 
     expect_string(__wrap__minfo, formatted_msg, "Agent '001' key already exists on the manager.");
@@ -349,6 +369,7 @@ int main(void) {
         cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_insert_0),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected_long_enough, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_registered_recent, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_insert_1),
         cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_insert_1),
     };
