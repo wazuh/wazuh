@@ -339,6 +339,8 @@ class WazuhException(Exception):
                },
         1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
                },
+        1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
+               },
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},

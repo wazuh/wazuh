@@ -12385,7 +12385,7 @@ paths:
       tags:
         - Syscheck
       summary: "Clear results"
-      description: "Clear file integrity monitoring scan results for a specified agent"
+      description: "Clear file integrity monitoring scan results for a specified agent. Only available for agents < 3.12.0, it doesn't apply for more recent ones"
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscheck:clear'

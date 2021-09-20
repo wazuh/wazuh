@@ -434,5 +434,18 @@
         <group>audit_generic,</group>
     </rule>
     -->
-</group>
 
+    <!-- Passwd rules -->
+    <rule id="100042" level="8">
+      <if_sid>80700</if_sid>
+      <field name="audit.type">ACCT_LOCK</field>
+      <description>Account password access locked</description>
+    </rule>
+
+    <rule id="100043" level="8">
+      <if_sid>80700</if_sid>
+      <field name="audit.type">ACCT_UNLOCK</field>
+      <description>Account password access unlocked</description>
+    </rule>
+    
+</group>

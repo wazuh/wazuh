@@ -48,7 +48,9 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from time import mktime
-from wazuh.core import common
+
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+import utils
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
@@ -141,8 +143,8 @@ class WazuhIntegration:
                             DROP TABLE {table};
                             """
 
-        self.wazuh_path = common.find_wazuh_path()
-        self.wazuh_version = common.get_wazuh_version()
+        self.wazuh_path = utils.find_wazuh_path()
+        self.wazuh_version = utils.get_wazuh_version()
         self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
@@ -2078,16 +2080,23 @@ class AWSWAFBucket(AWSCustomBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a WAF log file."""
+        def json_event_generator(data):
+            while data:
+                json_data, json_index = decoder.raw_decode(data)
+                data = data[json_index:]
+                yield json_data
+
         content = []
+        decoder = json.JSONDecoder()
         with self.decompress_file(log_key=log_key) as f:
             for line in f.readlines():
                 try:
-                    event = json.loads(line.rstrip())
+                    for event in json_event_generator(line.rstrip()):
+                        event['source'] = 'waf'
+                        content.append(event)
                 except json.JSONDecodeError:
                     print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
                     sys.exit(9)
-                event['source'] = 'waf'
-                content.append(event)
 
         return json.loads(json.dumps(content))
 
@@ -2922,9 +2931,15 @@ class AWSCloudWatchLogs(AWSService):
         result_list = list()
         try:
             debug('Getting log streams for "{}" log group'.format(log_group), 1)
-            response = self.client.describe_log_streams(logGroupName=log_group)
 
-            for log_stream in response['logStreams']:
+            # Get all log streams using the token of the previous call to describe_log_streams
+            response = self.client.describe_log_streams(logGroupName=log_group)
+            log_streams = response['logStreams']
+            while token := response.get('nextToken'):
+                response = self.client.describe_log_streams(logGroupName=log_group, nextToken=token)
+                log_streams.extend(response['logStreams'])
+
+            for log_stream in log_streams:
                 debug('Found "{}" log stream in {}'.format(log_stream['logStreamName'], log_group), 2)
                 result_list.append(log_stream['logStreamName'])
 
@@ -2933,7 +2948,8 @@ class AWSCloudWatchLogs(AWSService):
         except botocore.exceptions.EndpointConnectionError as e:
             print(f'ERROR: {str(e)}')
         except Exception:
-            debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(log_group), 0)
+            debug('++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
+                log_group), 0)
 
         return result_list
 
