@@ -143,9 +143,15 @@ package "db" <<Folder>> #DDDDDD{
         + int remove_from_db(FimDB, DBItem)
         + int insert_item(FimDB, DBItem)
         + int is_full(FimDB)
-        + int get_count(FimDB)
+        + int get_count(FimDB, std::string)
+        + int get_checksum_range(FimDB, type, std::string, std::string, int, EVP_MD_CTX*, EVP_MD_CTX*, &std::string, &std::string)
+        + int get_data_checksum(FimDB, std::string)
+        + fim_entry* get_entry_from_sync_msg(FimDB, std::string)
+        + int get_path(FimDB, &std::string, void*)
+        + int get_not_scanned(FimDB, fim_tmp_file **file, int storage)
+        + int get_db_item(FimDB, void*)
         + DBItem get_from_pattern(FimDB)
-        + int db_update(FimDB)
+        + int db_update(FimDB, DBItem)
     }
 }
 circle input_point
