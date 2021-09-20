@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -25,7 +25,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.mitre_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.mitre_controller.remove_nones_to_dict')
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_metadata(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_metadata(request=mock_request)
     mock_dapi.assert_called_once_with(f=mitre.mitre_metadata,
@@ -44,7 +44,7 @@ async def test_get_metadata(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.mitre_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.mitre_controller.remove_nones_to_dict')
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_groups(request=mock_request)
     f_kwargs = {
@@ -77,7 +77,7 @@ async def test_get_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.mitre_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.mitre_controller.remove_nones_to_dict')
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_mitigations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_mitigations(request=mock_request)
     f_kwargs = {
@@ -110,7 +110,7 @@ async def test_get_mitigations(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.mitre_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.mitre_controller.remove_nones_to_dict')
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_references(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_references(request=mock_request)
     f_kwargs = {
@@ -143,7 +143,7 @@ async def test_get_references(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.mitre_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.mitre_controller.remove_nones_to_dict')
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_software(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_software(request=mock_request)
     f_kwargs = {
@@ -176,7 +176,7 @@ async def test_get_software(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.mitre_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.mitre_controller.remove_nones_to_dict')
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_tactics(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_tactics(request=mock_request)
     f_kwargs = {
@@ -209,7 +209,7 @@ async def test_get_tactics(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.mitre_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.mitre_controller.remove_nones_to_dict')
 @patch('api.controllers.mitre_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.mitre_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_techniques(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_techniques(request=mock_request)
     f_kwargs = {

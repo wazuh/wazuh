@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 from wazuh.core.exception import WazuhResourceNotFound
 
 with patch('wazuh.common.wazuh_uid'):
@@ -27,7 +27,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_alist', ['001', 'all'])
 async def test_clear_rootcheck_database(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                         mock_alist, mock_request=MagicMock()):
@@ -56,7 +56,7 @@ async def test_clear_rootcheck_database(mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_alist', ['001', 'all'])
 async def test_clear_syscheck_database(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                        mock_alist, mock_request=MagicMock()):
@@ -85,7 +85,7 @@ async def test_clear_syscheck_database(mock_exc, mock_dapi, mock_remove, mock_df
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     result = await get_cis_cat_results(request=mock_request)
     f_kwargs = {'agent_list': '*',
@@ -124,7 +124,7 @@ async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     result = await get_hardware_info(request=mock_request)
     filters = {
@@ -161,7 +161,7 @@ async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                         mock_request=MagicMock()):
     result = await get_network_address_info(request=mock_request)
@@ -199,7 +199,7 @@ async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                           mock_request=MagicMock()):
     result = await get_network_interface_info(request=mock_request)
@@ -240,7 +240,7 @@ async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                          mock_request=MagicMock()):
     result = await get_network_protocol_info(request=mock_request)
@@ -277,7 +277,7 @@ async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     result = await get_os_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
@@ -314,7 +314,7 @@ async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_ex
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     result = await get_packages_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
@@ -351,7 +351,7 @@ async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     result = await get_ports_info(request=mock_request)
     filters = {
@@ -392,7 +392,7 @@ async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     result = await get_processes_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
@@ -438,7 +438,7 @@ async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.experimental_controller.remove_nones_to_dict')
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_hotfixes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
     result = await get_hotfixes_info(request=mock_request)
     filters = {'hotfix': None

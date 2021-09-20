@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -20,7 +20,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.active_response_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.active_response_controller.remove_nones_to_dict')
 @patch('api.controllers.active_response_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.active_response_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.active_response_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_run_command(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.active_response_controller.Body'):
         with patch('api.controllers.active_response_controller.ActiveResponseModel.get_kwargs',

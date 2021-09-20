@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -23,7 +23,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.rootcheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rootcheck_controller.remove_nones_to_dict')
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await put_rootcheck(request=mock_request)
     f_kwargs = {'agent_list': '*'
@@ -46,7 +46,7 @@ async def test_put_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.rootcheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rootcheck_controller.remove_nones_to_dict')
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await delete_rootcheck(request=mock_request)
     f_kwargs = {'agent_list': ['']
@@ -68,7 +68,7 @@ async def test_delete_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.rootcheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rootcheck_controller.remove_nones_to_dict')
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rootcheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_rootcheck_agent(request=mock_request)
     f_kwargs = {'agent_list': [None],
@@ -102,7 +102,7 @@ async def test_get_rootcheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.rootcheck_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rootcheck_controller.remove_nones_to_dict')
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_last_scan_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_last_scan_agent(request=mock_request)
     f_kwargs = {'agent_list': [None]

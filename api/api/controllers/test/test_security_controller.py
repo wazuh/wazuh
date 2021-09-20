@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -33,7 +33,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
@@ -56,7 +56,7 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
@@ -82,7 +82,7 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
@@ -108,7 +108,7 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
@@ -137,7 +137,7 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_user_me(request=mock_request)
     f_kwargs = {'token': mock_request['token_info']
@@ -168,7 +168,7 @@ async def test_get_user_me_policies(mock_request=MagicMock()):
 @pytest.mark.asyncio
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request=MagicMock()):
     result = await logout_user(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.revoke_current_user_tokens,
@@ -186,7 +186,7 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request=MagicMo
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_users(request=mock_request)
     f_kwargs = {'user_ids': None,
@@ -215,7 +215,7 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await edit_run_as(request=mock_request,
                                user_id='001',
@@ -241,7 +241,7 @@ async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.CreateUserModel.get_kwargs',
@@ -264,7 +264,7 @@ async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.CreateUserModel.get_kwargs',
@@ -288,7 +288,7 @@ async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_uids', ['001', 'all'])
 async def test_delete_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_uids, mock_request=MagicMock()):
     result = await delete_users(request=mock_request,
@@ -315,7 +315,7 @@ async def test_delete_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_u
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_roles(request=mock_request)
     f_kwargs = {'role_ids': None,
@@ -344,7 +344,7 @@ async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RoleModel.get_kwargs',
@@ -367,7 +367,7 @@ async def test_add_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_uids', ['001', 'all'])
 async def test_remove_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_uids, mock_request=MagicMock()):
     result = await remove_roles(request=mock_request,
@@ -393,7 +393,7 @@ async def test_remove_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_u
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RoleModel.get_kwargs',
@@ -417,7 +417,7 @@ async def test_update_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_rules(request=mock_request)
     f_kwargs = {'rule_ids': None,
@@ -446,7 +446,7 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RuleModel.get_kwargs',
@@ -469,7 +469,7 @@ async def test_add_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RuleModel.get_kwargs',
@@ -493,7 +493,7 @@ async def test_update_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
     result = await remove_rules(request=mock_request,
@@ -519,7 +519,7 @@ async def test_remove_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_policies(request=mock_request)
     f_kwargs = {'policy_ids': None,
@@ -548,7 +548,7 @@ async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.PolicyModel.get_kwargs',
@@ -571,7 +571,7 @@ async def test_add_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_pids', ['001', 'all'])
 async def test_remove_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_pids, mock_request=MagicMock()):
     result = await remove_policies(request=mock_request,
@@ -596,7 +596,7 @@ async def test_remove_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.PolicyModel.get_kwargs',
@@ -620,7 +620,7 @@ async def test_update_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await set_user_role(request=mock_request,
                                  user_id='001',
@@ -646,7 +646,7 @@ async def test_set_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
     result = await remove_user_role(request=mock_request,
@@ -674,7 +674,7 @@ async def test_remove_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await set_role_policy(request=mock_request,
                                    role_id='001',
@@ -700,7 +700,7 @@ async def test_set_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
     result = await remove_role_policy(request=mock_request,
@@ -728,7 +728,7 @@ async def test_remove_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await set_role_rule(request=mock_request,
                                  role_id='001',
@@ -757,7 +757,7 @@ async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
     result = await remove_role_rule(request=mock_request,
@@ -785,7 +785,7 @@ async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
     result = await get_rbac_resources()
     f_kwargs = {'resource': None
@@ -806,7 +806,7 @@ async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
     result = await get_rbac_actions()
     f_kwargs = {'endpoint': None
@@ -827,7 +827,7 @@ async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
 async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes,
@@ -856,7 +856,7 @@ async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, m
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.type', return_value=AffectedItemsWazuhResult)
 @patch('api.controllers.security_controller.len', return_value=0)
 async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mock_remove, mock_dfunc,
@@ -884,7 +884,7 @@ async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mo
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_security_config(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.get_security_config,
@@ -903,7 +903,7 @@ async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @pytest.mark.asyncio
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
 async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfunc, mock_snodes):
@@ -925,7 +925,7 @@ async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfun
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
@@ -951,7 +951,7 @@ async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
                return_value=AsyncMock()) as mock_getkwargs:

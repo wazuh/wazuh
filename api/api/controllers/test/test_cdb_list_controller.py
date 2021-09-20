@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
@@ -24,7 +24,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_lists(request=mock_request)
     f_kwargs = {'offset': 0,
@@ -54,7 +54,7 @@ async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
     with patch('api.controllers.cdb_list_controller.isinstance', return_value=mock_bool) as mock_isinstance:
@@ -82,7 +82,7 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 @patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.cdb_list_controller.Body.validate_content_type'):
         with patch('api.controllers.cdb_list_controller.Body.decode_body') as mock_dbody:
@@ -109,7 +109,7 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await delete_file(request=mock_request)
     f_kwargs = {'filename': None
@@ -131,7 +131,7 @@ async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.cdb_list_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cdb_list_controller.remove_nones_to_dict')
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_lists_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_lists_files(request=mock_request)
     f_kwargs = {'offset': 0,

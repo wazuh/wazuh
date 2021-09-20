@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
@@ -27,7 +27,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.rule_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rule_controller.remove_nones_to_dict')
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_rules(request=mock_request)
     f_kwargs = {'rule_ids': None,
@@ -69,7 +69,7 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.rule_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rule_controller.remove_nones_to_dict')
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rules_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_rules_groups(request=mock_request)
     f_kwargs = {'offset': 0,
@@ -96,7 +96,7 @@ async def test_get_rules_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.rule_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rule_controller.remove_nones_to_dict')
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rules_requirement(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_rules_requirement(request=mock_request,
                                          requirement='-')
@@ -125,7 +125,7 @@ async def test_get_rules_requirement(mock_exc, mock_dapi, mock_remove, mock_dfun
 @patch('api.controllers.rule_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rule_controller.remove_nones_to_dict')
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rules_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_rules_files(request=mock_request)
     f_kwargs = {'offset': 0,
@@ -155,7 +155,7 @@ async def test_get_rules_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.rule_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rule_controller.remove_nones_to_dict')
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
     with patch('api.controllers.rule_controller.isinstance', return_value=mock_bool) as mock_isinstance:
@@ -183,7 +183,7 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 @patch('api.controllers.rule_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rule_controller.remove_nones_to_dict')
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     with patch('api.controllers.rule_controller.Body.validate_content_type'):
         with patch('api.controllers.rule_controller.Body.decode_body') as mock_dbody:
@@ -210,7 +210,7 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.rule_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.rule_controller.remove_nones_to_dict')
 @patch('api.controllers.rule_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.rule_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await delete_file(request=mock_request)
     f_kwargs = {'filename': None

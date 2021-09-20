@@ -3,7 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomMagicMockReturn
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -22,7 +22,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.sca_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.sca_controller.remove_nones_to_dict')
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_sca_agent(request=mock_request)
     filters = {'name': None,
@@ -54,7 +54,7 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.sca_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.sca_controller.remove_nones_to_dict')
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomMagicMockReturn())
+@patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     result = await get_sca_checks(request=mock_request)
     filters = {'title': None,
