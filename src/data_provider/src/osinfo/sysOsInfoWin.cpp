@@ -165,11 +165,13 @@ static std::string getRelease(const std::string& build)
 static std::string getDisplayVersion()
 {
     std::string display_version;
-    if(IsWindows8OrGreater())
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+
+    if (!currentVersion.string("DisplayVersion", display_version))
     {
-        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
-        display_version = currentVersion.string("DisplayVersion");
+        display_version = UNKNOWN_VALUE;
     }
+
     return display_version;
 }
 
