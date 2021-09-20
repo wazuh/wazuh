@@ -141,7 +141,9 @@ void nb_send(int socket) {
 
     const ssize_t current_data_len = netbuffer_send.buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
- 
+
+    mdebug1("Msg added to buffer, buff.data_size: %d", amount_of_data_to_send);
+
     const ssize_t sent_bytes = send(socket, (const void *)netbuffer_send.buffers[socket].data, amount_of_data_to_send, 0);
 
     const int error = errno; // Race condition here, the usage if errno is not thread safe!!!
@@ -153,12 +155,14 @@ void nb_send(int socket) {
             netbuffer_send.buffers[socket].data = NULL;
             netbuffer_send.buffers[socket].data_len = 0;
             netbuffer_send.buffers[socket].data_size = 0;
+            wnotify_modify(notify, socket, WO_READ);
         }
         else { // sent_bytes < current_data_len
             memmove(netbuffer_send.buffers[socket].data, netbuffer_send.buffers[socket].data + sent_bytes, sent_bytes);
             os_realloc(netbuffer_send.buffers[socket].data, sent_bytes, netbuffer_send.buffers[socket].data);
             netbuffer_send.buffers[socket].data_len -= sent_bytes;
             netbuffer_send.buffers[socket].data_size -= sent_bytes;
+            wnotify_modify(notify, socket, WO_READ);
         }
     }
     else if (sent_bytes < 0) {
