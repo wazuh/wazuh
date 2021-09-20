@@ -29,20 +29,18 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_inf
 
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
     memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_in));
+
     w_mutex_unlock(&mutex);
 }
 
-int nb_close(netbuffer_t * buffer, int sock) {
-    int retval = close(sock);
+void nb_close(netbuffer_t * buffer, int sock) {
+
     w_mutex_lock(&mutex);
 
-    if (!retval) {
-        free(buffer->buffers[sock].data);
-        memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
-    }
+    free(buffer->buffers[sock].data);
+    memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
 
     w_mutex_unlock(&mutex);
-    return retval;
 }
 
 /*
@@ -137,7 +135,7 @@ end:
 }
 
 void nb_send(int socket) {
-    w_mutex_lock(netbuffer_send.buffers[socket].mutex);
+    w_mutex_lock(&mutex);
 
     const ssize_t current_data_len = netbuffer_send.buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
@@ -149,7 +147,7 @@ void nb_send(int socket) {
     const int error = errno; // Race condition here, the usage if errno is not thread safe!!!
 
     if (sent_bytes > 0) {
-        assert(sent_bytes <= current_data_len);
+        //assert(sent_bytes <= current_data_len);
         if (sent_bytes == current_data_len) {
             os_free(netbuffer_send.buffers[socket].data);
             netbuffer_send.buffers[socket].data = NULL;
@@ -162,16 +160,24 @@ void nb_send(int socket) {
             os_realloc(netbuffer_send.buffers[socket].data, sent_bytes, netbuffer_send.buffers[socket].data);
             netbuffer_send.buffers[socket].data_len -= sent_bytes;
             netbuffer_send.buffers[socket].data_size -= sent_bytes;
-            wnotify_modify(notify, socket, WO_READ);
         }
     }
     else if (sent_bytes < 0) {
-        os_free(netbuffer_send.buffers[socket].data);
-        netbuffer_send.buffers[socket].data = NULL;
-        netbuffer_send.buffers[socket].data_len = 0;
-        netbuffer_send.buffers[socket].data_size = 0;
+
+        if (error != ETIMEDOUT) {
+            os_free(netbuffer_send.buffers[socket].data);
+            netbuffer_send.buffers[socket].data = NULL;
+            netbuffer_send.buffers[socket].data_len = 0;
+            netbuffer_send.buffers[socket].data_size = 0;
+            wnotify_modify(notify, socket, WO_READ);
+        }
+
+        mdebug1("sent_bytes: %ld, errno %d, errnostr %s", sent_bytes, error, strerror(error));
 
         switch (error) {
+            case ETIMEDOUT:
+                mdebug1("socket [%d], Time out.", socket);
+                break;
             case EPIPE:
             case EBADF:
             case ECONNRESET:
@@ -188,5 +194,38 @@ void nb_send(int socket) {
         }
     }
 
-    w_mutex_unlock(netbuffer_send.buffers[socket].mutex);
+    w_mutex_unlock(&mutex);
+}
+
+void nb_queue(int socket, char *crypt_msg, ssize_t msg_size) {
+
+    w_mutex_lock(&mutex);
+
+    for (unsigned int retry = 0; retry < 1; retry++) {
+
+        char * data = netbuffer_send.buffers[socket].data;
+        const unsigned long current_data_size = netbuffer_send.buffers[socket].data_size;
+        const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
+        mdebug1("current_data_len %ld, current_data_size: %ld, msg_size: %ld", current_data_len, current_data_size, msg_size);
+
+        if (current_data_size + msg_size <= OS_MAXSTR) {
+            os_realloc(data, current_data_len + msg_size + sizeof(uint32_t), data);
+            netbuffer_send.buffers[socket].data = data;
+            *(uint32_t *)(data + current_data_len) = wnet_order(msg_size);
+            memcpy(data + current_data_len + sizeof(uint32_t), crypt_msg, msg_size);
+            netbuffer_send.buffers[socket].data_size += msg_size + sizeof(uint32_t);
+            netbuffer_send.buffers[socket].data_len += msg_size + sizeof(uint32_t);
+            wnotify_modify(notify, socket, WO_READ | WO_WRITE);
+
+            mdebug1("Msg added to buffer, buff.data_size: %ld", netbuffer_send.buffers[socket].data_size);
+            break;
+        }
+        else
+        {
+            merror("Could not append data into buffer, not enough space, Retrying.... [buffer_size=%lu, msg_size=%lu]", current_data_size, msg_size);
+            sleep(1);
+        }
+    }
+
+    w_mutex_unlock(&mutex);
 }

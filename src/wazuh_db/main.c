@@ -324,7 +324,7 @@ void * run_worker(__attribute__((unused)) void * args) {
         }
 
         peer = wnotify_get(notify_queue, 0, NULL);
-        if (wnotify_delete(notify_queue, peer) < 0) {
+        if (wnotify_delete(notify_queue, peer, WO_READ) < 0) {
             merror("at run_worker(): wnotify_delete(%d): %s (%d)",
                     peer, strerror(errno), errno);
         }

@@ -31,10 +31,10 @@ netbuffer_t netbuffer_send;
 
 wnotify_t * notify = NULL;
 
-STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client);
-STATIC void handle_incoming_data_from_tcp_socket(const int sock_client);
-STATIC void handle_new_udp_connection(void);
-STATIC void handle_new_tcp_connection(wnotify_t * notify);
+STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client, struct sockaddr_in * peer_info);
+STATIC void handle_incoming_data_from_tcp_socket(const int sock_client, struct sockaddr_in * peer_info);
+STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_in * peer_info);
+STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * peer_info);
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -206,19 +206,19 @@ void HandleSecure()
             }
             // If a new TCP connection was received and TCP is enabled
             else if ((fd == logr.tcp_sock) && (protocol & REMOTED_NET_PROTOCOL_TCP)) {
-                handle_new_tcp_connection(notify);
+                handle_new_tcp_connection(notify, &peer_info);
             }
             // If a new UDP connection was received and UDP is enabled
-            else if (fd == logr.udp_sock && protocol & REMOTED_NET_PROTOCOL_UDP) {
-                handle_new_udp_connection();
+            else if ((fd == logr.udp_sock) && (protocol & REMOTED_NET_PROTOCOL_UDP)) {
+                handle_incoming_data_from_udp_socket(&peer_info);
             }
             // If a message was received through a TCP client and tcp is enabled
             else if ((protocol & REMOTED_NET_PROTOCOL_TCP) && (event & WE_READ)) {
-                handle_incoming_data_from_tcp_socket(fd);
+                handle_incoming_data_from_tcp_socket(fd, &peer_info);
             }
             // If a TCP client socket is ready for sending and tcp is enabled.
             else if ((protocol & REMOTED_NET_PROTOCOL_TCP) && (event & WE_WRITE)) {
-                handle_outgoing_data_to_tcp_socket(fd);
+                handle_outgoing_data_to_tcp_socket(fd, &peer_info);
             }
         }
     }
@@ -226,17 +226,16 @@ void HandleSecure()
     manager_free();
 }
 
-STATIC void handle_new_tcp_connection(wnotify_t * notify)
+STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * peer_info)
 {
-    struct sockaddr_in peer_info;
-    memset(&peer_info, 0, sizeof(struct sockaddr_in));
 
-    const int sock_client = accept(logr.tcp_sock, (struct sockaddr *) &peer_info, &logr.peer_size);
+    const int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
     if (sock_client >= 0) {
-        nb_open(&netbuffer_recv, sock_client, &peer_info);
-        nb_open(&netbuffer_send, sock_client, &peer_info);
+        nb_open(&netbuffer_recv, sock_client, peer_info);
+        nb_open(&netbuffer_send, sock_client, peer_info);
         rem_inc_tcp();
-        mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
+        mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info->sin_addr), sock_client);
+
 
         if (wnotify_add(notify, sock_client, WO_READ) < 0) {
             merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
@@ -253,34 +252,26 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify)
     }
 }
 
-STATIC void handle_new_udp_connection(void)
+STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_in * peer_info)
 {
     char buffer[OS_MAXSTR + 1];
-    struct sockaddr_in peer_info;
-
     memset(buffer, '\0', OS_MAXSTR + 1);
-    memset(&peer_info, 0, sizeof(struct sockaddr_in));
 
-    const int recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *) &peer_info, &logr.peer_size);
+    const int recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *) peer_info, &logr.peer_size);
 
     if (recv_b > 0) {
-        rem_msgpush(buffer, recv_b, &peer_info, USING_UDP_NO_CLIENT_SOCKET);
+        rem_msgpush(buffer, recv_b, peer_info, USING_UDP_NO_CLIENT_SOCKET);
         rem_add_recv((unsigned long) recv_b);
     }
 }
 
-STATIC void handle_incoming_data_from_tcp_socket(const int sock_client)
+STATIC void handle_incoming_data_from_tcp_socket(const int sock_client, struct sockaddr_in * peer_info)
 {
-    char buffer[OS_MAXSTR + 1];
-    struct sockaddr_in peer_info;
     int recv_b = 0;
-
-    memset(buffer, '\0', OS_MAXSTR + 1);
-    memset(&peer_info, 0, sizeof(struct sockaddr_in));
 
     switch (recv_b = nb_recv(&netbuffer_recv, sock_client), recv_b) {
     case -2:
-        mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info.sin_addr), sock_client);
+        mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
         _close_sock(&keys, sock_client);
         return;
 
@@ -296,11 +287,11 @@ STATIC void handle_incoming_data_from_tcp_socket(const int sock_client)
         case ETIMEDOUT:
 #endif
             mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client,
-                    inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
+                    inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
             break;
         default:
             merror("TCP peer [%d] at %s: %s (%d)", sock_client,
-                    inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
+                    inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
         }
         fallthrough;
     case 0:
@@ -312,7 +303,7 @@ STATIC void handle_incoming_data_from_tcp_socket(const int sock_client)
     }
 }
 
-STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client)
+STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client, struct sockaddr_in * peer_info)
 {
     nb_send(sock_client);
 }
@@ -605,13 +596,15 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
-    int retval;
+    int retval = 0;
 
     key_lock_read();
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (nb_close(&netbuffer_recv, sock) == 0) {
+    if (!close(sock)) {
+        nb_close(&netbuffer_recv, sock);
+        nb_close(&netbuffer_send, sock);
         rem_dec_tcp();
     }
 

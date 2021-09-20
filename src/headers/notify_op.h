@@ -54,10 +54,11 @@ typedef struct wnotify_t {
     struct kevent * events;
 } wnotify_t;
 
+
 static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * event) {
     if (event != NULL) {
         const unsigned int filter = notify->events[index].filter;
-        *event = (wevent_t)((filter & EPOLLIN ? EVFILT_READ : WE_UNKNOWN) | (filter & EVFILT_WRITE ? WE_WRITE : WE_UNKNOWN));
+        *event = (wevent_t)((filter & EVFILT_READ ? WE_READ: WE_UNKNOWN) | (filter & EVFILT_WRITE ? WE_WRITE : WE_UNKNOWN));
     }
 
     return notify->events[index].ident;
@@ -70,7 +71,7 @@ static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * ev
 wnotify_t * wnotify_init(int size);
 int wnotify_add(wnotify_t * notify, int fd, const woperation_t op);
 int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op);
-int wnotify_delete(wnotify_t * notify, int fd);
+int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op);
 int wnotify_wait(wnotify_t * notify, int timeout);
 void wnotify_close(wnotify_t * notify);
 

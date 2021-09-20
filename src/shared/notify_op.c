@@ -30,20 +30,23 @@ wnotify_t * wnotify_init(int size) {
 }
 
 int wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
+
     const int operation = (op & WO_READ ? EPOLLIN : 0) | (op & WO_WRITE ? EPOLLOUT : 0);
     struct epoll_event request = { .events = operation, .data = { .fd = fd } };
     return epoll_ctl(notify->fd, EPOLL_CTL_ADD, fd, &request);
 }
 
-int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op)
-{
+int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
+
     const int operation = (op & WO_READ ? EPOLLIN : 0) | (op & WO_WRITE ? EPOLLOUT : 0);
     struct epoll_event request = { .events = operation, .data = { .fd = fd } };
     return epoll_ctl(notify->fd, EPOLL_CTL_MOD, fd, &request);
 }
 
-int wnotify_delete(wnotify_t * notify, int fd) {
-    struct epoll_event request = { .events = EPOLLIN, .data = { .fd = fd } };
+int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
+
+    const int operation = (op & WO_READ ? EPOLLIN : 0) | (op & WO_WRITE ? EPOLLOUT : 0);
+    struct epoll_event request = { .events = operation, .data = { .fd = fd } };
     return epoll_ctl(notify->fd, EPOLL_CTL_DEL, fd, &request);
 }
 
@@ -76,17 +79,18 @@ int wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
     return kevent(notify->fd, &request, 1, NULL, 0, NULL);
 }
 
-int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op)
-{
+int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
+
     // Re-adding an existing event will modify the parameters of the original event,
     // and not result in a duplicate entry.
     return wnotify_add(notify, fd, op);
 }
 
-int wnotify_delete(wnotify_t * notify, int fd) {
+int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
     struct kevent request;
 
-    EV_SET(&request, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
+    const int operation = (op & WO_READ ? EVFILT_READ : 0) | (op & WO_WRITE ? EVFILT_WRITE : 0);
+    EV_SET(&request, fd, operation, EV_DELETE, 0, 0, 0);
     return kevent(notify->fd, &request, 1, NULL, 0, NULL);
 }
 

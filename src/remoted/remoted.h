@@ -58,7 +58,6 @@ typedef struct sockbuffer_t {
     char * data;
     unsigned long data_size;
     unsigned long data_len;
-    pthread_mutex_t *mutex;
 } sockbuffer_t;
 
 typedef struct netbuffer_t {
@@ -162,7 +161,7 @@ cJSON *getRemoteGlobalConfig(void);
 /* Network buffer */
 
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info);
-int nb_close(netbuffer_t * buffer, int sock);
+void nb_close(netbuffer_t * buffer, int sock);
 int nb_recv(netbuffer_t * buffer, int sock);
 
 /**
@@ -171,6 +170,14 @@ int nb_recv(netbuffer_t * buffer, int sock);
  * @param socket, socket id where send message.
  */
 void nb_send(int socket);
+/**
+ * @brief Queue message through TCP protocol.
+ *
+ * @param socket, socket id where send message.
+ * @param crypt_msg, msg to send.
+ * @param msg_size, message size.
+ */
+void nb_queue(int socket, char *crypt_msg, ssize_t msg_size);
 
 /* Network counter */
 
