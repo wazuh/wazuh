@@ -61,7 +61,7 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
-    """Verify 'login_user_ko' endpoint is working as expected."""
+    """Verify 'login_user' endpoint is handling WazuhException as expected."""
     mock_token.side_effect = WazuhException(999)
     result = await login_user(user='001',
                               raw=mock_bool)
@@ -116,7 +116,7 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
                                mock_request=AsyncMock()):
-    """Verify 'run_as_login_ko' endpoint is working as expected."""
+    """Verify 'run_as_login' endpoint is handling WazuhException as expected."""
     mock_token.side_effect = WazuhException(999)
     result = await run_as_login(request=mock_request,
                                 user='001',
@@ -894,7 +894,7 @@ async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, m
 @patch('api.controllers.security_controller.len', return_value=0)
 async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                     mock_request=MagicMock()):
-    """Verify 'revoke_all_tokens_ko' endpoint is working as expected."""
+    """Verify 'revoke_all_tokens' endpoint is handling WazuhPermissionError as expected."""
     with patch('api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await revoke_all_tokens(request=mock_request)
         mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
