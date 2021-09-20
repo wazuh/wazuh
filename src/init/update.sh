@@ -35,20 +35,33 @@ getPreinstalledDirByType()
 {
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+
+        SED_EXTRACT_PREINSTALLEDDIR="s/^ExecStart=\/usr\/bin\/env \(.*\)\/bin\/wazuh-control start$/\1/p"
+
         if [ "X$pidir_service_name" = "Xwazuh-manager" ] || [ "X$pidir_service_name" = "Xwazuh-local" ]; then #manager, hibrid or local
             type="manager"
         else
             type="agent"
         fi
-        # RHEL 8 services should be installed in /usr/lib/systemd/system/
-        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" = "8" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" = "8" ]; then
-            SERVICE_UNIT_PATH=/usr/lib/systemd/system/wazuh-$type.service
-        else
-            SERVICE_UNIT_PATH=/etc/systemd/system/wazuh-$type.service
+
+        # Get the unit file and extract the Wazuh home path
+        PREINSTALLEDDIR=$(systemctl cat wazuh-${type}.service 2>/dev/null | sed -n "${SED_EXTRACT_PREINSTALLEDDIR}")
+        if [ -n "${PREINSTALLEDDIR}" ] && [ -d "${PREINSTALLEDDIR}" ]; then
+            return 0;
+        fi
+
+        # If fail, find the service file
+        # RHEL 8 / Amazon / openSUSE Tumbleweed the services should be installed in /usr/lib/systemd/system/
+        if [ -f /usr/lib/systemd/system/wazuh-${type}.service ]; then
+            SERVICE_UNIT_PATH=/usr/lib/systemd/system/wazuh-${type}.service
+        fi
+        # Others
+        if [ -f /etc/systemd/system/wazuh-${type}.service ]; then
+            SERVICE_UNIT_PATH=/etc/systemd/system/wazuh-${type}.service
         fi
 
         if [ -f "$SERVICE_UNIT_PATH" ]; then
-            PREINSTALLEDDIR=`sed -n 's/^ExecStart=\/usr\/bin\/env \(.*\)\/bin\/wazuh-control start$/\1/p' $SERVICE_UNIT_PATH`
+            PREINSTALLEDDIR=$(sed -n "${SED_EXTRACT_PREINSTALLEDDIR}" "${SERVICE_UNIT_PATH}")
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
