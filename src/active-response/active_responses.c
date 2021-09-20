@@ -231,12 +231,41 @@ const char* get_srcip_from_json(const cJSON *input) {
     }
 
     // Detect srcip
+#ifdef WIN32
+    srcip_json = get_srcip_from_win_eventdata(data_json);
+    if (srcip_json && (srcip_json->type == cJSON_String)) {
+        return srcip_json->valuestring;
+    }
+#endif
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
     if (srcip_json && (srcip_json->type == cJSON_String)) {
         return srcip_json->valuestring;
     }
 
     return NULL;
+}
+
+cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
+    cJSON *win_json = NULL;
+    cJSON *eventdata_json = NULL;
+    cJSON *ipAddress_json = NULL;
+
+    // Detect win
+    if (win_json = cJSON_GetObjectItem(data, "win"), !win_json || (win_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect eventdata
+    if (eventdata_json = cJSON_GetObjectItem(win_json, "eventdata"), !eventdata_json || (eventdata_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect ipAddress
+    if (ipAddress_json = cJSON_GetObjectItem(eventdata_json, "ipAddress"), !ipAddress_json || (ipAddress_json->type != cJSON_String)) {
+        return NULL;
+    }
+
+    return ipAddress_json;
 }
 
 const char* get_username_from_json(const cJSON *input) {

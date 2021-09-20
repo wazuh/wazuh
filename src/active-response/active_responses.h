@@ -88,6 +88,13 @@ const cJSON* get_alert_from_json(const cJSON *input);
 const char* get_srcip_from_json(const cJSON *input);
 
 /**
+ * Get srcip from win eventdata
+ * @param data Input
+ * @return cJSON * with the ipAddress or NULL on fail
+ * */
+cJSON* get_srcip_from_win_eventdata(const cJSON *data);
+
+/**
  * Get username from input
  * @param input Input
  * @return char * with the username or NULL on fail
