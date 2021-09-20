@@ -229,7 +229,8 @@ async def test_restart_agents_by_node(mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_agent_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
-    kwargs_param = {'configuration': 'configuration_value'}
+    kwargs_param = {'configuration': 'configuration_value'
+                    }
     result = await get_agent_config(request=mock_request,
                                     **kwargs_param)
     f_kwargs = {'agent_list': [None],

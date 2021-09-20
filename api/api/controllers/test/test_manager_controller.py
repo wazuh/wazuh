@@ -322,7 +322,8 @@ async def test_get_conf_validation(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomMagicMockReturn())
 async def test_get_manager_config_ondemand(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
-    kwargs_param = {'configuration': 'configuration_value'}
+    kwargs_param = {'configuration': 'configuration_value'
+                    }
     result = await get_manager_config_ondemand(request=mock_request,
                                                component='component1',
                                                **kwargs_param)
