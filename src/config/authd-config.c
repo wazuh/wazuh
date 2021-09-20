@@ -113,7 +113,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
-           legacy_force_insert = b;
+            legacy_force_insert = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
              mdebug1("The <%s> tag is deprecated since version 4.2.2.", xml_force_time);
         } else if (!strcmp(node[i]->element, xml_force)) {
