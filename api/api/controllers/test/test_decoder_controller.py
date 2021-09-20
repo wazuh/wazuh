@@ -27,6 +27,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_decoders' endpoint is working as expected."""
     result = await get_decoders(request=mock_request)
     f_kwargs = {'names': None,
                 'offset': 0,
@@ -60,6 +61,7 @@ async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_decoders_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_decoders_files' endpoint is working as expected."""
     result = await get_decoders_files(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
@@ -90,6 +92,7 @@ async def test_get_decoders_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_decoders_parents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_decoders_parents' endpoint is working as expected."""
     result = await get_decoders_parents(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
@@ -120,6 +123,7 @@ async def test_get_decoders_parents(mock_exc, mock_dapi, mock_remove, mock_dfunc
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
+    """Verify 'get_file' endpoint is working as expected."""
     with patch('api.controllers.decoder_controller.isinstance', return_value=mock_bool) as mock_isinstance:
         result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
@@ -147,6 +151,7 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'put_file' endpoint is working as expected."""
     with patch('api.controllers.decoder_controller.Body.validate_content_type'):
         with patch('api.controllers.decoder_controller.Body.decode_body') as mock_dbody:
             result = await put_file(request=mock_request,
@@ -174,6 +179,7 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'delete_file' endpoint is working as expected."""
     result = await delete_file(request=mock_request)
     f_kwargs = {'filename': None
                 }

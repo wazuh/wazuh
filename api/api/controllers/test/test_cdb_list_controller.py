@@ -26,6 +26,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_lists' endpoint is working as expected."""
     result = await get_lists(request=mock_request)
     f_kwargs = {'offset': 0,
                 'select': None,
@@ -57,6 +58,7 @@ async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
+    """Verify 'get_file' endpoint is working as expected."""
     with patch('api.controllers.cdb_list_controller.isinstance', return_value=mock_bool) as mock_isinstance:
         result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
@@ -84,6 +86,7 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'put_file' endpoint is working as expected."""
     with patch('api.controllers.cdb_list_controller.Body.validate_content_type'):
         with patch('api.controllers.cdb_list_controller.Body.decode_body') as mock_dbody:
             result = await put_file(request=mock_request,
@@ -111,6 +114,7 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'delete_file' endpoint is working as expected."""
     result = await delete_file(request=mock_request)
     f_kwargs = {'filename': None
                 }
@@ -133,6 +137,7 @@ async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.cdb_list_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cdb_list_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_lists_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_lists_files' endpoint is working as expected."""
     result = await get_lists_files(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,

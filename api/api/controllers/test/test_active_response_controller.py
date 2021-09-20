@@ -22,6 +22,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.active_response_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.active_response_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_run_command(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'run_command' endpoint is working as expected."""
     with patch('api.controllers.active_response_controller.Body'):
         with patch('api.controllers.active_response_controller.ActiveResponseModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:

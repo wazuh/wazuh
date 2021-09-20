@@ -23,6 +23,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.task_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.task_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_tasks_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_tasks_status' endpoint is working as expected."""
     result = await get_tasks_status(request=mock_request)
     f_kwargs = {'select': None,
                 'search': None,

@@ -22,6 +22,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.ciscat_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.ciscat_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_agents_ciscat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_agents_ciscat_results' endpoint is working as expected."""
     result = await get_agents_ciscat_results(request=mock_request,
                                              agent_id='001')
     f_kwargs = {

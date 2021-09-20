@@ -6,6 +6,7 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 class CustomAffectedItems(AffectedItemsWazuhResult):
+    """Mock custom values that are needed in controller tests"""
 
     def __init__(self, empty: bool = False):
         if not empty:

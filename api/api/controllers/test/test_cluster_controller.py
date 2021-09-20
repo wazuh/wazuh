@@ -29,6 +29,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_cluster_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_cluster_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_cluster_node(request=mock_request)
         mock_dapi.assert_called_once_with(f=cluster.get_node_wrapper,
@@ -53,6 +54,7 @@ async def test_get_cluster_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_cluster_nodes(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_cluster_nodes' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_cluster_nodes(request=mock_request)
         f_kwargs = {'filter_node': None,
@@ -87,6 +89,7 @@ async def test_get_cluster_nodes(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_healthcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_healthcheck' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_healthcheck(request=mock_request)
         f_kwargs = {'filter_node': None
@@ -114,6 +117,7 @@ async def test_get_healthcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_status' endpoint is working as expected."""
     result = await get_status(request=mock_request)
     mock_dapi.assert_called_once_with(f=cluster.get_status_json,
                                       f_kwargs=mock_remove.return_value,
@@ -134,6 +138,7 @@ async def test_get_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_config' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_config(request=mock_request)
         mock_dapi.assert_called_once_with(f=cluster.read_config_wrapper,
@@ -158,6 +163,7 @@ async def test_get_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_status_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_status_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_status_node(request=mock_request,
                                        node_id='001')
@@ -185,6 +191,7 @@ async def test_get_status_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_info_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_info_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_info_node(request=mock_request,
                                      node_id='001')
@@ -214,6 +221,7 @@ async def test_get_info_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_configuration_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
                                       mock_request=MagicMock()):
+    """Verify 'get_configuration_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         with patch('api.controllers.cluster_controller.isinstance', return_value=mock_bool) as mock_isinstance:
             result = await get_configuration_node(request=mock_request,
@@ -249,6 +257,7 @@ async def test_get_configuration_node(mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_date', [None, 'date_value'])
 async def test_get_stats_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_date, mock_request=MagicMock()):
+    """Verify 'get_stats_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         with patch('api.controllers.cluster_controller.deserialize_date', return_value='desdate_value') as mock_desdate:
             result = await get_stats_node(request=mock_request,
@@ -284,6 +293,7 @@ async def test_get_stats_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_hourly_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_hourly_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_stats_hourly_node(request=mock_request,
                                              node_id='001')
@@ -311,6 +321,7 @@ async def test_get_stats_hourly_node(mock_exc, mock_dapi, mock_remove, mock_dfun
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_weekly_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_weekly_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_stats_weekly_node(request=mock_request,
                                              node_id='001')
@@ -338,6 +349,7 @@ async def test_get_stats_weekly_node(mock_exc, mock_dapi, mock_remove, mock_dfun
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_analysisd_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_analysisd_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_stats_analysisd_node(request=mock_request,
                                                 node_id='001')
@@ -366,6 +378,7 @@ async def test_get_stats_analysisd_node(mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_remoted_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_remoted_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_stats_remoted_node(request=mock_request,
                                               node_id='001')
@@ -394,6 +407,7 @@ async def test_get_stats_remoted_node(mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_log_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_log_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_log_node(request=mock_request,
                                     node_id='001')
@@ -430,6 +444,7 @@ async def test_get_log_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_log_summary_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_log_summary_node' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_log_summary_node(request=mock_request,
                                             node_id='001')
@@ -457,6 +472,7 @@ async def test_get_log_summary_node(mock_exc, mock_dapi, mock_remove, mock_dfunc
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_api_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_api_config' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_api_config(request=mock_request)
         f_kwargs = {'node_list': '*'
@@ -484,6 +500,7 @@ async def test_get_api_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_restart(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'put_restart' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await put_restart(request=mock_request)
         f_kwargs = {'node_list': '*'
@@ -511,6 +528,7 @@ async def test_put_restart(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_conf_validation(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_conf_validation' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await get_conf_validation(request=mock_request)
         f_kwargs = {'node_list': '*'
@@ -538,6 +556,7 @@ async def test_get_conf_validation(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_node_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_node_config' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         kwargs_param = {'configuration': 'configuration_value'
                         }
@@ -572,6 +591,7 @@ async def test_get_node_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'update_configuration' endpoint is working as expected."""
     with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         with patch('api.controllers.cluster_controller.Body.validate_content_type'):
             with patch('api.controllers.cluster_controller.Body.decode_body') as mock_dbody:

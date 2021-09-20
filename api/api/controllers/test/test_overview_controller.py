@@ -22,6 +22,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.overview_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.overview_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_overview_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_overview_agents' endpoint is working as expected."""
     result = await get_overview_agents(request=mock_request)
     mock_dapi.assert_called_once_with(f=agent.get_full_overview,
                                       f_kwargs=mock_remove.return_value,

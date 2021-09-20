@@ -20,6 +20,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.default_controller.load_spec', return_value=MagicMock())
 @patch('api.controllers.default_controller.WazuhResult', return_value={})
 async def test_default_info(mock_wresult, mock_lspec):
+    """Verify 'default_info' endpoint is working as expected."""
     result = await default_info()
     data = {
         'title': mock_lspec.return_value['info']['title'],

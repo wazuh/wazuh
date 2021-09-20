@@ -25,6 +25,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_syscheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'put_syscheck' endpoint is working as expected."""
     result = await put_syscheck(request=mock_request)
     f_kwargs = {'agent_list': '*'
                 }
@@ -48,6 +49,7 @@ async def test_put_syscheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_syscheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_syscheck_agent' endpoint is working as expected."""
     result = await get_syscheck_agent(request=mock_request,
                                       agent_id='001')
     type_ = mock_request.query.get('type', None)
@@ -93,6 +95,7 @@ async def test_get_syscheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_syscheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'delete_syscheck_agent' endpoint is working as expected."""
     result = await delete_syscheck_agent(request=mock_request)
     f_kwargs = {'agent_list': ['*']
                 }
@@ -115,6 +118,7 @@ async def test_delete_syscheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfun
 @patch('api.controllers.syscheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.syscheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_last_scan_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_last_scan_agent' endpoint is working as expected."""
     result = await get_last_scan_agent(request=mock_request,
                                        agent_id='001')
     f_kwargs = {'agent_list': ['001']

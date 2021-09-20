@@ -25,6 +25,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'put_rootcheck' endpoint is working as expected."""
     result = await put_rootcheck(request=mock_request)
     f_kwargs = {'agent_list': '*'
                 }
@@ -48,6 +49,7 @@ async def test_put_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'delete_rootcheck' endpoint is working as expected."""
     result = await delete_rootcheck(request=mock_request)
     f_kwargs = {'agent_list': ['']
                 }
@@ -70,6 +72,7 @@ async def test_delete_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rootcheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_rootcheck_agent' endpoint is working as expected."""
     result = await get_rootcheck_agent(request=mock_request)
     f_kwargs = {'agent_list': [None],
                 'offset': 0,
@@ -104,6 +107,7 @@ async def test_get_rootcheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.rootcheck_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.rootcheck_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_last_scan_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_last_scan_agent' endpoint is working as expected."""
     result = await get_last_scan_agent(request=mock_request)
     f_kwargs = {'agent_list': [None]
                 }

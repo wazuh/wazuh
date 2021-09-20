@@ -31,6 +31,7 @@ with patch('wazuh.common.wazuh_uid'):
 @pytest.mark.parametrize('mock_alist', ['001', 'all'])
 async def test_clear_rootcheck_database(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                         mock_alist, mock_request=MagicMock()):
+    """Verify 'clear_rootcheck_database' endpoint is working as expected."""
     result = await clear_rootcheck_database(request=mock_request,
                                             agents_list=mock_alist)
     if 'all' in mock_alist:
@@ -60,6 +61,7 @@ async def test_clear_rootcheck_database(mock_exc, mock_dapi, mock_remove, mock_d
 @pytest.mark.parametrize('mock_alist', ['001', 'all'])
 async def test_clear_syscheck_database(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                        mock_alist, mock_request=MagicMock()):
+    """Verify 'clear_syscheck_database' endpoint is working as expected."""
     result = await clear_syscheck_database(request=mock_request,
                                            agents_list=mock_alist)
     if 'all' in mock_alist:
@@ -87,6 +89,7 @@ async def test_clear_syscheck_database(mock_exc, mock_dapi, mock_remove, mock_df
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    """Verify 'get_cis_cat_results' endpoint is working as expected."""
     result = await get_cis_cat_results(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
@@ -126,6 +129,7 @@ async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    """Verify 'get_hardware_info' endpoint is working as expected."""
     result = await get_hardware_info(request=mock_request)
     filters = {
         'board_serial': None
@@ -164,6 +168,7 @@ async def test_get_hardware_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                         mock_request=MagicMock()):
+    """Verify 'get_network_address_info' endpoint is working as expected."""
     result = await get_network_address_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
@@ -202,6 +207,7 @@ async def test_get_network_address_info(mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                           mock_request=MagicMock()):
+    """Verify 'get_network_interface_info' endpoint is working as expected."""
     result = await get_network_interface_info(request=mock_request)
     filters = {
         'adapter': None,
@@ -243,6 +249,7 @@ async def test_get_network_interface_info(mock_exc, mock_dapi, mock_remove, mock
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                          mock_request=MagicMock()):
+    """Verify 'get_network_protocol_info' endpoint is working as expected."""
     result = await get_network_protocol_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
@@ -279,6 +286,7 @@ async def test_get_network_protocol_info(mock_exc, mock_dapi, mock_remove, mock_
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    """Verify 'get_os_info' endpoint is working as expected."""
     result = await get_os_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
@@ -316,6 +324,7 @@ async def test_get_os_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_ex
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    """Verify 'get_packages_info' endpoint is working as expected."""
     result = await get_packages_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
@@ -353,6 +362,7 @@ async def test_get_packages_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    """Verify 'get_ports_info' endpoint is working as expected."""
     result = await get_ports_info(request=mock_request)
     filters = {
         'pid': None,
@@ -394,6 +404,7 @@ async def test_get_ports_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    """Verify 'get_processes_info' endpoint is working as expected."""
     result = await get_processes_info(request=mock_request)
     f_kwargs = {'agent_list': '*',
                 'offset': 0,
@@ -440,6 +451,7 @@ async def test_get_processes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_hotfixes_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+    """Verify 'get_hotfixes_info' endpoint is working as expected."""
     result = await get_hotfixes_info(request=mock_request)
     filters = {'hotfix': None
                }

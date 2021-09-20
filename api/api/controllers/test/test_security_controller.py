@@ -37,6 +37,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
+    """Verify 'login_user' endpoint is working as expected."""
     result = await login_user(user='001',
                               raw=mock_bool)
     f_kwargs = {'user_id': '001'
@@ -60,6 +61,7 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
+    """Verify 'login_user_ko' endpoint is working as expected."""
     mock_token.side_effect = WazuhException(999)
     result = await login_user(user='001',
                               raw=mock_bool)
@@ -87,6 +89,7 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
                             mock_request=AsyncMock()):
+    """Verify 'run_as_login' endpoint is working as expected."""
     result = await run_as_login(request=mock_request,
                                 user='001',
                                 raw=mock_bool)
@@ -113,6 +116,7 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
                                mock_request=AsyncMock()):
+    """Verify 'run_as_login_ko' endpoint is working as expected."""
     mock_token.side_effect = WazuhException(999)
     result = await run_as_login(request=mock_request,
                                 user='001',
@@ -139,6 +143,7 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_user_me' endpoint is working as expected."""
     result = await get_user_me(request=mock_request)
     f_kwargs = {'token': mock_request['token_info']
                 }
@@ -158,6 +163,7 @@ async def test_get_user_me(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 
 @pytest.mark.asyncio
 async def test_get_user_me_policies(mock_request=MagicMock()):
+    """Verify 'get_user_me_policies' endpoint is working as expected."""
     with patch('api.controllers.security_controller.WazuhResult', return_value='mock_wr_result') as mock_wr:
         result = await get_user_me_policies(request=mock_request)
         mock_wr.assert_called_once_with({'data': mock_request['token_info']['rbac_policies'],
@@ -170,6 +176,7 @@ async def test_get_user_me_policies(mock_request=MagicMock()):
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'logout_user' endpoint is working as expected."""
     result = await logout_user(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.revoke_current_user_tokens,
                                       request_type='local_master',
@@ -188,6 +195,7 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request=MagicMo
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_users' endpoint is working as expected."""
     result = await get_users(request=mock_request)
     f_kwargs = {'user_ids': None,
                 'offset': 0,
@@ -217,6 +225,7 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'edit_run_as' endpoint is working as expected."""
     result = await edit_run_as(request=mock_request,
                                user_id='001',
                                allow_run_as=False)
@@ -243,6 +252,7 @@ async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'create_user' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.CreateUserModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -266,6 +276,7 @@ async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'update_user' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.CreateUserModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -291,6 +302,7 @@ async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_uids', ['001', 'all'])
 async def test_delete_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_uids, mock_request=MagicMock()):
+    """Verify 'delete_users' endpoint is working as expected."""
     result = await delete_users(request=mock_request,
                                 user_ids=mock_uids)
     if 'all' in mock_uids:
@@ -317,6 +329,7 @@ async def test_delete_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_u
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_roles' endpoint is working as expected."""
     result = await get_roles(request=mock_request)
     f_kwargs = {'role_ids': None,
                 'offset': 0,
@@ -346,6 +359,7 @@ async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'add_role' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RoleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -370,6 +384,7 @@ async def test_add_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_uids', ['001', 'all'])
 async def test_remove_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_uids, mock_request=MagicMock()):
+    """Verify 'remove_roles' endpoint is working as expected."""
     result = await remove_roles(request=mock_request,
                                 role_ids=mock_uids)
     if 'all' in mock_uids:
@@ -395,6 +410,7 @@ async def test_remove_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_u
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'update_role' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RoleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -419,6 +435,7 @@ async def test_update_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_rules' endpoint is working as expected."""
     result = await get_rules(request=mock_request)
     f_kwargs = {'rule_ids': None,
                 'offset': 0,
@@ -448,6 +465,7 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'add_rule' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RuleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -471,6 +489,7 @@ async def test_add_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'update_rule' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.RuleModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -496,6 +515,7 @@ async def test_update_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
+    """Verify 'remove_rules' endpoint is working as expected."""
     result = await remove_rules(request=mock_request,
                                 rule_ids=mock_rids)
     if 'all' in mock_rids:
@@ -521,6 +541,7 @@ async def test_remove_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_policies' endpoint is working as expected."""
     result = await get_policies(request=mock_request)
     f_kwargs = {'policy_ids': None,
                 'offset': 0,
@@ -550,6 +571,7 @@ async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_add_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'add_policy' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.PolicyModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -574,6 +596,7 @@ async def test_add_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_pids', ['001', 'all'])
 async def test_remove_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_pids, mock_request=MagicMock()):
+    """Verify 'remove_policies' endpoint is working as expected."""
     result = await remove_policies(request=mock_request,
                                    policy_ids=mock_pids)
     if 'all' in mock_pids:
@@ -598,6 +621,7 @@ async def test_remove_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'update_policy' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.PolicyModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -622,6 +646,7 @@ async def test_update_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'set_user_role' endpoint is working as expected."""
     result = await set_user_role(request=mock_request,
                                  user_id='001',
                                  role_ids='001')
@@ -649,6 +674,7 @@ async def test_set_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
+    """Verify 'remove_user_role' endpoint is working as expected."""
     result = await remove_user_role(request=mock_request,
                                     user_id='001',
                                     role_ids=mock_rids)
@@ -676,6 +702,7 @@ async def test_remove_user_role(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'set_role_policy' endpoint is working as expected."""
     result = await set_role_policy(request=mock_request,
                                    role_id='001',
                                    policy_ids='001')
@@ -703,6 +730,7 @@ async def test_set_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
+    """Verify 'remove_role_policy' endpoint is working as expected."""
     result = await remove_role_policy(request=mock_request,
                                       role_id='001',
                                       policy_ids=mock_rids)
@@ -730,6 +758,7 @@ async def test_remove_role_policy(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'set_role_rule' endpoint is working as expected."""
     result = await set_role_rule(request=mock_request,
                                  role_id='001',
                                  rule_ids='001')
@@ -760,6 +789,7 @@ async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_rids', ['001', 'all'])
 async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_rids, mock_request=MagicMock()):
+    """Verify 'remove_role_rule' endpoint is working as expected."""
     result = await remove_role_rule(request=mock_request,
                                     role_id='001',
                                     rule_ids=mock_rids)
@@ -787,6 +817,7 @@ async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+    """Verify 'get_rbac_resources' endpoint is working as expected."""
     result = await get_rbac_resources()
     f_kwargs = {'resource': None
                 }
@@ -808,6 +839,7 @@ async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+    """Verify 'get_rbac_actions' endpoint is working as expected."""
     result = await get_rbac_actions()
     f_kwargs = {'endpoint': None
                 }
@@ -832,6 +864,7 @@ async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
 async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_snodes,
                                  mock_request=MagicMock()):
+    """Verify 'revoke_all_tokens' endpoint is working as expected."""
     mock_isins.return_value = True if not mock_snodes else False
     with patch('api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
         result = await revoke_all_tokens(request=mock_request)
@@ -861,6 +894,7 @@ async def test_revoke_all_tokens(mock_isins, mock_exc, mock_dapi, mock_remove, m
 @patch('api.controllers.security_controller.len', return_value=0)
 async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                     mock_request=MagicMock()):
+    """Verify 'revoke_all_tokens_ko' endpoint is working as expected."""
     with patch('api.controllers.security_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
         result = await revoke_all_tokens(request=mock_request)
         mock_dapi.assert_called_once_with(f=security.wrapper_revoke_tokens,
@@ -886,6 +920,7 @@ async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mo
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_security_config' endpoint is working as expected."""
     result = await get_security_config(request=mock_request)
     mock_dapi.assert_called_once_with(f=security.get_security_config,
                                       f_kwargs=mock_remove.return_value,
@@ -907,6 +942,7 @@ async def test_get_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.security_controller.isinstance')
 @pytest.mark.parametrize('mock_snodes', [None, AsyncMock()])
 async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfunc, mock_snodes):
+    """Verify 'security_revoke_tokens' endpoint is working as expected."""
     mock_isins.return_value = True if not mock_snodes else False
     with patch('api.controllers.security_controller.get_system_nodes', return_value=mock_snodes):
         await security_revoke_tokens()
@@ -927,6 +963,7 @@ async def test_security_revoke_tokens(mock_isins, mock_exc, mock_dapi, mock_dfun
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'put_security_config' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -953,6 +990,7 @@ async def test_put_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_security_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'delete_security_config' endpoint is working as expected."""
     with patch('api.controllers.security_controller.SecurityConfigurationModel.get_kwargs',
                return_value=AsyncMock()) as mock_getkwargs:
         with patch('api.controllers.security_controller.security_revoke_tokens', return_value=AsyncMock()):

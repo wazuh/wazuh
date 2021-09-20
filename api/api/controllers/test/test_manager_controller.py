@@ -29,6 +29,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_status' endpoint is working as expected."""
     result = await get_status(request=mock_request)
     mock_dapi.assert_called_once_with(f=manager.get_status,
                                       f_kwargs=mock_remove.return_value,
@@ -49,6 +50,7 @@ async def test_get_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_info' endpoint is working as expected."""
     result = await get_info(request=mock_request)
     mock_dapi.assert_called_once_with(f=manager.get_basic_info,
                                       f_kwargs=mock_remove.return_value,
@@ -70,6 +72,7 @@ async def test_get_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_bool', [True, False])
 async def test_get_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool, mock_request=MagicMock()):
+    """Verify 'get_configuration' endpoint is working as expected."""
     with patch('api.controllers.manager_controller.isinstance', return_value=mock_bool) as mock_isinstance:
         result = await get_configuration(request=mock_request)
         f_kwargs = {'section': None,
@@ -99,6 +102,7 @@ async def test_get_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 @pytest.mark.parametrize('mock_date', [None, 'date_value'])
 async def test_get_stats(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_date, mock_request=MagicMock()):
+    """Verify 'get_stats' endpoint is working as expected."""
     with patch('api.controllers.manager_controller.deserialize_date', return_value='desdate_value') as mock_desdate:
         result = await get_stats(request=mock_request,
                                  date=mock_date)
@@ -128,6 +132,7 @@ async def test_get_stats(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_date
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_hourly(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_hourly' endpoint is working as expected."""
     result = await get_stats_hourly(request=mock_request)
     mock_dapi.assert_called_once_with(f=stats.hourly,
                                       f_kwargs=mock_remove.return_value,
@@ -148,6 +153,7 @@ async def test_get_stats_hourly(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_weekly(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_weekly' endpoint is working as expected."""
     result = await get_stats_weekly(request=mock_request)
     mock_dapi.assert_called_once_with(f=stats.weekly,
                                       f_kwargs=mock_remove.return_value,
@@ -168,6 +174,7 @@ async def test_get_stats_weekly(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_analysisd' endpoint is working as expected."""
     result = await get_stats_analysisd(request=mock_request)
     f_kwargs = {'filename': common.analysisd_stats
                 }
@@ -190,6 +197,7 @@ async def test_get_stats_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_stats_remoted(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_stats_remoted' endpoint is working as expected."""
     result = await get_stats_remoted(request=mock_request)
     f_kwargs = {'filename': common.remoted_stats
                 }
@@ -212,6 +220,7 @@ async def test_get_stats_remoted(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_log(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_log' endpoint is working as expected."""
     result = await get_log(request=mock_request)
     f_kwargs = {'offset': 0,
                 'limit': None,
@@ -242,6 +251,7 @@ async def test_get_log(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reques
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_log_summary(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_log_summary' endpoint is working as expected."""
     result = await get_log_summary(request=mock_request)
     mock_dapi.assert_called_once_with(f=manager.ossec_log_summary,
                                       f_kwargs=mock_remove.return_value,
@@ -262,6 +272,7 @@ async def test_get_log_summary(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_api_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_api_config' endpoint is working as expected."""
     result = await get_api_config(request=mock_request)
     mock_dapi.assert_called_once_with(f=manager.get_api_config,
                                       f_kwargs=mock_remove.return_value,
@@ -282,6 +293,7 @@ async def test_get_api_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_put_restart(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'put_restart' endpoint is working as expected."""
     result = await put_restart(request=mock_request)
     mock_dapi.assert_called_once_with(f=manager.restart,
                                       f_kwargs=mock_remove.return_value,
@@ -302,6 +314,7 @@ async def test_put_restart(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_conf_validation(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_conf_validation' endpoint is working as expected."""
     result = await get_conf_validation(request=mock_request)
     mock_dapi.assert_called_once_with(f=manager.validation,
                                       f_kwargs=mock_remove.return_value,
@@ -322,6 +335,7 @@ async def test_get_conf_validation(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_manager_config_ondemand(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_manager_config_ondemand' endpoint is working as expected."""
     kwargs_param = {'configuration': 'configuration_value'
                     }
     result = await get_manager_config_ondemand(request=mock_request,
@@ -349,6 +363,7 @@ async def test_get_manager_config_ondemand(mock_exc, mock_dapi, mock_remove, moc
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'update_configuration' endpoint is working as expected."""
     with patch('api.controllers.manager_controller.Body.validate_content_type'):
         with patch('api.controllers.manager_controller.Body.decode_body') as mock_dbody:
             result = await update_configuration(request=mock_request,

@@ -24,6 +24,7 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_sca_agent' endpoint is working as expected."""
     result = await get_sca_agent(request=mock_request)
     filters = {'name': None,
                'description': None,
@@ -56,6 +57,7 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+    """Verify 'get_sca_checks' endpoint is working as expected."""
     result = await get_sca_checks(request=mock_request)
     filters = {'title': None,
                'description': None,
