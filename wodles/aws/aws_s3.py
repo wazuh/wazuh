@@ -3058,21 +3058,17 @@ def arg_valid_regions(arg_string):
     return final_regions
 
 
-def arg_valid_iam_role_duration(duration: int or None, iam_role_arn: str or None):
+def arg_valid_iam_role_duration(duration: int or None):
     """Checks if the role session duration specified is a valid parameter.
 
     Parameters
     ----------
     duration: int or None
         The desired session duration in seconds.
-    iam_role_arn: str or None
-        The iam role arn provided.
     """
     # Session duration must be between 15m and 12h
     if not (duration is None or (900 <= duration <= 3600)):
-        raise ValueError("Invalid session duration specified. Value must be between 900 and 3600.")
-    if duration is not None and iam_role_arn is None:
-        raise Exception('Used --iam_role_duration argument but no --iam_role_arn provided.')
+        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
 
 
 def get_script_arguments():
@@ -3137,7 +3133,10 @@ def get_script_arguments():
                         ' session duration set for the role.')
     parsed_args = parser.parse_args()
 
-    arg_valid_iam_role_duration(parsed_args.iam_role_duration, parsed_args.iam_role_arn)
+    arg_valid_iam_role_duration(parsed_args.iam_role_duration)
+    if parsed_args.iam_role_duration is not None and parsed_args.iam_role_arn is None:
+        raise Exception('Used --iam_role_duration argument but no --iam_role_arn provided.')
+
     return parsed_args
 
 
@@ -3148,7 +3147,6 @@ def get_script_arguments():
 def main(argv):
     # Parse arguments
     options = get_script_arguments()
-
 
     if int(options.debug) > 0:
         global debug_level
