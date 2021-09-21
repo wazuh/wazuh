@@ -16,16 +16,11 @@
 // Read configuration
 int authd_read_config(const char *path) {
     config.port = DEFAULT_PORT;
-    config.force_options.connection_time = -1;
 
     mdebug2("Reading configuration '%s'", path);
 
     if (ReadConfig(CAUTHD, path, &config, NULL) < 0) {
         return OS_INVALID;
-    }
-
-    if (!config.force_options.enabled) {
-        config.force_options.connection_time = -1;
     }
 
     if (!config.ciphers) {
