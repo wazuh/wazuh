@@ -1,0 +1,159 @@
+<decoder name="fortimail-like">
+   <prematch>time=\S+ device_id=\S+ log_id=\S+ |time=\S+ devid=\S+ log_id=\S+</prematch>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>pri=(\w+)</regex>
+   <order>pri</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>session_id=(\w+)|session_id="(\.*)"</regex>
+   <order>sessionid</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>client_name=(\w+)|client_name="(\.*)"</regex>
+   <order>client.name</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>client_ip=(\S+)</regex>
+   <order>client.ip</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>client_cc=(\w+)|client_cc="(\.*)"</regex>
+   <order>client.cc</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>dst_ip="(\.*)"</regex>
+   <order>dstip</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>from="(\.*)"</regex>
+   <order>from</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>hfrom="(\.*)"</regex>
+   <order>hfrom</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>to="(\.*)"</regex>
+   <order>to</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>domain="(\.*)"</regex>
+   <order>domain</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>mailer="(\.*)"</regex>
+   <order>mailer</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>resolved="(\.*)"</regex>
+   <order>resolved</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>src_type="(\.*)"</regex>
+   <order>srctype</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>virus="(\.*)"</regex>
+   <order>virus</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>disposition="(\.*)"</regex>
+   <order>disposition</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>classifier="(\.*)"</regex>
+   <order>classifier</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>message_length="(\.*)"</regex>
+   <order>message.length</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>message_id="(\.*)"</regex>
+   <order>message.id</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>subject="(\.*)"</regex>
+   <order>subject</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>message.id="(\.*)"</regex>
+   <order>message.id</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>recv_time="(\.*)"</regex>
+   <order>recvtime</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>notif_delay="(\.*)"</regex>
+   <order>notifdelay</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>scan_time="(\.*)"</regex>
+   <order>scantime</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>xfer_time="(\.*)"</regex>
+   <order>xfertime</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>srcfolder="(\.*)"</regex>
+   <order>srcfolder</order>
+</decoder>
+
+<decoder name="fortimail-like-child">
+   <parent>fortimail-like</parent>
+   <regex>read_status="(\.*)"</regex>
+   <order>readstatus</order>
+</decoder>
