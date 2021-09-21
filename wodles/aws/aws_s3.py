@@ -3058,17 +3058,29 @@ def arg_valid_regions(arg_string):
     return final_regions
 
 
-def arg_valid_iam_role_duration(duration: int or None):
+def arg_valid_iam_role_duration(arg_string):
     """Checks if the role session duration specified is a valid parameter.
 
     Parameters
     ----------
-    duration: int or None
+    arg_string: str or None
         The desired session duration in seconds.
+
+    Returns
+    -------
+    num_seconds: None or int
+        The returned value will be None if no duration was specified or if it was an invalid value; elsewhere,
+        it will return the number of seconds that the session will last.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the number provided is not in the expected range.
     """
     # Session duration must be between 15m and 12h
-    if not (duration is None or (900 <= duration <= 3600)):
+    if not (arg_string is None or (900 <= int(arg_string) <= 3600)):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
+    return int(arg_string)
 
 
 def get_script_arguments():
@@ -3128,12 +3140,11 @@ def get_script_arguments():
                         help='URL for the VPC endpoint to use to obtain the STS token.')
     parser.add_argument('-se', '--service_endpoint', type=str, dest='service_endpoint', default=None,
                         help='URL for the VPC endpoint to use to obtain the logs.')
-    parser.add_argument('-rd', '--iam_role_duration', type=int, dest='iam_role_duration', default=None,
+    parser.add_argument('-rd', '--iam_role_duration', type=arg_valid_iam_role_duration, dest='iam_role_duration', default=None,
                         help='The duration, in seconds, of the role session. Value can range from 900s to the max'
                         ' session duration set for the role.')
     parsed_args = parser.parse_args()
 
-    arg_valid_iam_role_duration(parsed_args.iam_role_duration)
     if parsed_args.iam_role_duration is not None and parsed_args.iam_role_arn is None:
         raise Exception('Used --iam_role_duration argument but no --iam_role_arn provided.')
 
