@@ -17,6 +17,13 @@
  */
 static char* build_json_keys_message(const char *ar_name, char **keys);
 
+/**
+ * Get srcip from win eventdata
+ * @param data Input
+ * @return cJSON * with the ipAddress or NULL on fail
+ * */
+static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
+
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -245,7 +252,7 @@ const char* get_srcip_from_json(const cJSON *input) {
     return NULL;
 }
 
-cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
+static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
     cJSON *win_json = NULL;
     cJSON *eventdata_json = NULL;
     cJSON *ipAddress_json = NULL;
