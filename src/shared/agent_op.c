@@ -15,6 +15,7 @@
 #include "../addagent/manage_agents.h"
 #include "syscheckd/syscheck.h"
 #include "config/authd-config.h"
+#include "os_auth/auth.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -622,16 +623,10 @@ static cJSON* w_create_agent_add_payload(const char *name,
     }
 
     if (force_options) {
-        cJSON* j_force = cJSON_CreateObject();
-        cJSON* j_disconnected_time = cJSON_CreateObject();
-        cJSON_AddItemToObjectCS(j_force, "disconnected_time", j_disconnected_time);
-        cJSON_AddItemToObjectCS(arguments, "force", j_force);
-        // Sending a generic configuration that replaces an agent in every possible situation
-        cJSON_AddBoolToObject(j_force, "enabled", force_options->enabled);
-        cJSON_AddBoolToObject(j_force, "key_mismatch", force_options->key_mismatch);
-        cJSON_AddNumberToObject(j_force, "after_registration_time", force_options->after_registration_time);
-        cJSON_AddBoolToObject(j_disconnected_time, "enabled", force_options->disconnected_time_enabled);
-        cJSON_AddNumberToObject(j_disconnected_time, "value", force_options->disconnected_time);
+        cJSON* j_force = w_force_options_to_json(force_options);
+        if(j_force){
+            cJSON_AddItemToObject(arguments, "force", j_force);
+        }
     }
 
     return request;
@@ -1016,6 +1011,25 @@ char * get_agent_id_from_name(const char *agent_name) {
     os_free(buffer);
 
     return NULL;
+}
+
+cJSON* w_force_options_to_json(authd_force_options_t *force_options){
+    if(!force_options){
+        return NULL;
+    }
+
+    cJSON* j_force_options = cJSON_CreateObject();
+    cJSON* j_disconnected_time = cJSON_CreateObject();
+
+    cJSON_AddBoolToObject(j_disconnected_time, "enabled", force_options->disconnected_time_enabled);
+    cJSON_AddNumberToObject(j_disconnected_time, "value", force_options->disconnected_time);
+    cJSON_AddItemToObject(j_force_options, "disconnected_time", j_disconnected_time);
+
+    cJSON_AddBoolToObject(j_force_options, "enabled", force_options->enabled);
+    cJSON_AddBoolToObject(j_force_options, "key_mismatch", force_options->key_mismatch);
+    cJSON_AddNumberToObject(j_force_options, "after_registration_time", force_options->after_registration_time);
+
+    return j_force_options;
 }
 
 /* Connect to the control socket if available */
