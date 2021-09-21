@@ -6,46 +6,49 @@ package "db" <<Folder>> #DDDDDD{
     }
     package "item" <<Folder>> {
         abstract DBItem {
-            - String identifier
-            - bool scanned
-            - time_t last_event
-            - string checksum
-            - enum mode
+            - String m_identifier
+            - bool m_scanned
+            - time_t m_lastEvent
+            - string m_checksum
+            - enum m_mode
+
             + fim_entry toFimEntry()
             + nlohman::json toJson()
             + bool getState()
         }
 
         class FileItem {
-            - int size
-            - string perm
-            - string attributes
-            - int uid
-            - string username
-            - int gid
-            - string groupname
-            - time_t time
-            - int inode
-            - string md5
-            - string sha1
-            - string sha256
-            - int dev
-            - int options
-            + json statement_conf
+            - int m_size
+            - string m_perm
+            - string m_attributes
+            - int m_uid
+            - string m_username
+            - int m_gid
+            - string m_groupname
+            - time_t m_time
+            - int m_inode
+            - string m_md5
+            - string m_sha1
+            - string m_sha256
+            - int m_dev
+            - int m_options
+            - nlohman::json m_statementConf
+
             + FileItem()
             + FileItem(fim_entry)
             + ~FileItem()
             + fim_entry toFIMEntry()
-            + json toJsonEntry()
+            + nlohman::json toJsonEntry()
         }
         class "RegistryValue" {
-            - int type
-            - int key_uid
-            - int size
-            - string md5
-            - string sha1
-            - string sha256
-            + json statement_conf
+            - int m_type
+            - int m_keyUid
+            - int m_size
+            - string m_md5
+            - string m_sha1
+            - string m_sha256
+            - nlohman::json m_statementConf
+
             + RegistryValue()
             + RegistryValue(fim_entry)
             + ~RegistryValue()
@@ -53,14 +56,15 @@ package "db" <<Folder>> #DDDDDD{
             + json toJson()
         }
         class "RegistryKey" {
-            - string perms
-            - int uid
-            - string username
-            - int gid
-            - string groupname
-            - int mtime
-            - enum arch
-            + json statement_conf
+            - string m_perms
+            - int m_uid
+            - string m_username
+            - int m_gid
+            - string m_groupname
+            - int m_time
+            - enum m_arch
+            - nlohman::json m_statementConf
+
             + RegistryKey()
             + RegistryKey(fim_entry)
             + ~RegistryKey()
@@ -69,28 +73,30 @@ package "db" <<Folder>> #DDDDDD{
         }
     }
     class "FimDB"  <<(S,#FF7700) Singleton>> {
-        - string dbpath
-        - DBSync dbsyncHandler
-        - Rsync rsyncHandler
+        - string m_dbpath
+        - DBSync m_dbsyncHandler
+        - Rsync m_rsyncHandler
+        - bool m_isFull
+
         + FimDB()
         + ~FimDB()
         + FimDB getInstance()
-        + void sync()
-        + bool isFull
+        + void syncDB()
+        + bool isFull()
         + dbresult insertItem(DBItem)
         + dbresult removeItem(DBItem)
-        + dbresult removeItem(DBItem)
+        + dbresult updateItem(DBItem)
         + dbresult setAllUnscanned()
     }
     class FimDBWrapper {
-        - fim_tmp_file **tmp_file
-        - fdb_t *fim_sql
-        - int storage
-        - fim_entry **saved
-        - fim_file_data *data
-        - const char *path
-        - fim_type type
-        - DBItemWrapper *item_wrapper
+        - fim_tmp_file **m_tmpFile
+        - fdb_t *m_fimSQL
+        - int m_storage
+        - fim_entry **m_saved
+        - fim_file_data *m_data
+        - const char *m_path
+        - fim_type m_type
+        - DBItemWrapper *m_itemWrapper
 
         + void fim_db_clean_file(fim_tmp_file **, int)
         + int fim_db_file_update(fdb_t*, const char*, fim_file_data*, fim_entry**)
@@ -133,25 +139,25 @@ package "db" <<Folder>> #DDDDDD{
         + int fim_db_set_registry_key_scanned(fdb_t *, const char *, unsigned int)
     }
     class DBItemWrapper {
-        - FimDB fim_db
-        - DBItem db_item
+        - FimDB m_FimDB
+        - DBItem m_DBItem
 
         + DBItemWrapper(int, FimDB, DBItem)
         + ~DBItemWrapper()
-        + int set_all_scanned(FimDB)
-        + int set_scanned(FimDB, DBItem)
-        + int remove_from_db(FimDB, DBItem)
-        + int insert_item(FimDB, DBItem)
-        + int is_full(FimDB)
-        + int get_count(FimDB, std::string)
-        + int get_checksum_range(FimDB, type, std::string, std::string, int, EVP_MD_CTX*, EVP_MD_CTX*, &std::string, &std::string)
-        + int get_data_checksum(FimDB, std::string)
-        + fim_entry* get_entry_from_sync_msg(FimDB, std::string)
-        + int get_path(FimDB, &std::string, void*)
-        + int get_not_scanned(FimDB, fim_tmp_file **file, int storage)
-        + int get_db_item(FimDB, void*)
-        + DBItem get_from_pattern(FimDB)
-        + int db_update(FimDB, DBItem)
+        + int setAllScanned(FimDB)
+        + int setScanned(FimDB, DBItem)
+        + int removeFromDB(FimDB, DBItem)
+        + int insertItem(FimDB, DBItem)
+        + int isFull(FimDB)
+        + int getCount(FimDB, std::string)
+        + int getChecksumRange(FimDB, type, std::string, std::string, int, EVP_MD_CTX*, EVP_MD_CTX*, &std::string, &std::string)
+        + int getDataChecksum(FimDB, std::string)
+        + fim_entry* getEntryFromSyncMsg(FimDB, std::string)
+        + int getPath(FimDB, &std::string, void*)
+        + int getNotScanned(FimDB, fim_tmp_file **file, int storage)
+        + int getDBItem(FimDB, void*)
+        + DBItem getFromPattern(FimDB)
+        + int dbUpdate(FimDB, DBItem)
     }
 }
 circle input_point
@@ -162,5 +168,6 @@ DBItem <|-- RegistryKey
 FimDBWrapper  o-- DBItemWrapper
 DBItemWrapper  o-- DBItem
 DBItemWrapper  o-- FimDB
+FimDB -- dbresult
 input_point => FimDBWrapper
 @enduml
