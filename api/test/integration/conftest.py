@@ -82,8 +82,8 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
     # Get current branch
     current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
     os.makedirs(test_logs_path, exist_ok=True)
-    with open(os.path.join(test_logs_path, 'docker-env.log'), mode='w') as fstdout,\
-         open(os.path.join(test_logs_path, 'docker-env-err.log'), mode='w') as fstderr:
+    with open(os.path.join(test_logs_path, 'docker.log'), mode='w') as fstdout,\
+         open(os.path.join(test_logs_path, 'docker-err.log'), mode='w') as fstderr:
         while values_build_env['retries'] < values_build_env['max_retries']:
             if build:
                 current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
@@ -108,11 +108,9 @@ def down_env():
     """Stop all Docker environments for the current test."""
     pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
     os.chdir(pwd)
-    with open(os.path.join(test_logs_path, 'docker-env.log'), mode='a') as fstdout,\
-         open(os.path.join(test_logs_path, 'docker-env-err.log'), mode='a') as fstderr:
-        current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"],
-                                           stdout=fstdout, stderr=fstderr, universal_newlines=True)
-        current_process.wait()
+    current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    current_process.wait()
 
 
 def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None):
