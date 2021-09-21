@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef MANAGEAGENTS_H
-#define MANAGEAGENTS_H
+#ifndef MANAGE_AGENTS_H
+#define MANAGE_AGENTS_H
 
 #include "shared.h"
 #include "sec.h"

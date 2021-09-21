@@ -169,7 +169,6 @@ w_err_t w_auth_add_agent(char *response,
                          char **id,
                          char **key);
 
-
 extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;
