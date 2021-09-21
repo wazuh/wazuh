@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in Remoted that kept deleted shared files in the multi-groups' merged.mg file. ([#9942](https://github.com/wazuh/wazuh/pull/9942))
 - Fixed a bug in Analysisd that overwrote its queue socket when launched in test mode. ([#9987](https://github.com/wazuh/wazuh/pull/9987))
 - Fixed a condition in the Windows Vulnerability Detector to prevent false positives when evaluating DU patches. ([#10016](https://github.com/wazuh/wazuh/pull/10016))
+- Fixed a memory leak when generating the Windows report in Vulnerability Detector. ([#10214](https://github.com/wazuh/wazuh/pull/10214))
 
 ### Agent
 
