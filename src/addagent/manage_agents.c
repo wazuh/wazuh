@@ -106,8 +106,6 @@ int add_agent(int json_output)
     c_ip.ip = NULL;
 
     char *id_exist = NULL;
-    int disconnected_time = OS_INVALID;
-    int after_registration_time = OS_INVALID;
     authd_force_options_t authd_force_options = {0};
     int sock;
     int authd_running;
@@ -116,8 +114,7 @@ int add_agent(int json_output)
     const char *env_disconnected_time = getenv("DISCONNECTED_TIME");
 
     if (env_disconnected_time) {
-        disconnected_time = strtol(env_disconnected_time, NULL, 10);
-        authd_force_options.disconnected_time = disconnected_time;
+        authd_force_options.disconnected_time = strtol(env_disconnected_time, NULL, 10);
         authd_force_options.disconnected_time_enabled = true;
         authd_force_options.enabled = true;
     } else{
@@ -127,8 +124,7 @@ int add_agent(int json_output)
     const char *env_after_registration_time = getenv("AFTER_REGISTRATION_TIME");
 
     if (env_after_registration_time) {
-        after_registration_time = strtol(env_after_registration_time, NULL, 10);
-        authd_force_options.after_registration_time = after_registration_time;
+        authd_force_options.after_registration_time = strtol(env_after_registration_time, NULL, 10);
         authd_force_options.enabled = true;
     }
 
@@ -259,7 +255,6 @@ int add_agent(int json_output)
                 cJSON *j_connection_status = NULL;
                 cJSON *j_disconnected_time = NULL;
                 time_t agent_time_since_desconnection = 0;
-                long int agent_disconnected_time = 0;
                 char *status;
 
                 j_connection_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
@@ -269,14 +264,15 @@ int add_agent(int json_output)
                     status = j_connection_status->valuestring;
                 }
 
-                if(!strcmp(status, AGENT_CS_DISCONNECTED)) {
+                if(!strcmp(status, AGENT_CS_NEVER_CONNECTED)){
+                    replace_agent = true;
+                } else if(!strcmp(status, AGENT_CS_DISCONNECTED)) {
                     j_disconnected_time = cJSON_GetObjectItem(j_agent_info->child, "disconnected_time");
                     if(!j_disconnected_time){
                         merror_exit("Failed to get disconnected time for agent '%s'.", id_exist);
                     } else {
-                        agent_disconnected_time = j_disconnected_time->valueint;
-                        agent_time_since_desconnection = difftime(time(NULL), agent_disconnected_time);
-                        if(agent_time_since_desconnection <= agent_disconnected_time){
+                        agent_time_since_desconnection = difftime(time(NULL), j_disconnected_time->valueint);
+                        if(agent_time_since_desconnection <= authd_force_options.disconnected_time){
                             replace_agent = false;
                             snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", id_exist);
                         } else {
@@ -291,7 +287,7 @@ int add_agent(int json_output)
 
             /* Check if the agent is old enough to be removed */
             if(!replace_agent && env_after_registration_time) {
-                if(after_registration_time == 0){
+                if(authd_force_options.after_registration_time == 0){
                     replace_agent = true;
                 } else {
                     cJSON *j_date_add = NULL;
@@ -306,7 +302,7 @@ int add_agent(int json_output)
 
                     time_t agent_registration_time = difftime(time(NULL), date_add);
 
-                    if(agent_registration_time <= after_registration_time){
+                    if(agent_registration_time <= authd_force_options.after_registration_time){
                         snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been registered long enough to be removed.", id_exist);
                         replace_agent = false;
                     } else {
