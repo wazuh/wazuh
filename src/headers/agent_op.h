@@ -149,6 +149,13 @@ cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 // Get the agent id
 char * get_agent_id_from_name(const char *agent_name);
 
+/**
+* @brief Returns an authd force options structure translated into a cJSON object
+* @param force_options The structure to be converted
+* @returns A cJSON object with all the parameters of the structure
+**/
+cJSON* w_force_options_to_json(authd_force_options_t *force_options);
+
 /* Check control module availability */
 #if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
 int control_check_connection();
