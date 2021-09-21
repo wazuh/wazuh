@@ -14,6 +14,7 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 #include "shared.h"
+#include "config/authd-config.h"
 
 #define RELAUNCH_TIME 300
 
@@ -384,7 +385,11 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         if (sock = auth_connect(), sock < 0) {
             mwarn("Could not connect to authd socket. Is authd running?");
         } else {
-            w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
+            authd_force_options_t authd_force_options = {0};
+            if(data->force_insert) {
+                authd_force_options.enabled = true;
+            }
+            w_request_agent_add_local(sock, id, agent_name->valuestring, agent_address->valuestring, NULL, agent_key->valuestring, &authd_force_options, 1, agent_id->valuestring, 0);
             close(sock);
         }
         cJSON_Delete(agent_infoJSON);

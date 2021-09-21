@@ -9,6 +9,9 @@
  * Foundation.
  */
 
+#ifndef AUTH_CONFIG_H
+#define AUTH_CONFIG_H
+
 #define AD_CONF_UNPARSED 3
 #define AD_CONF_UNDEFINED 2
 
@@ -46,3 +49,5 @@ typedef struct authd_config_t {
     long timeout_usec;
     bool worker_node;
 } authd_config_t;
+
+#endif
