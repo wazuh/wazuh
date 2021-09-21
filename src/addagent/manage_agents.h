@@ -46,12 +46,10 @@ char *IPExist(const char *u_ip);
 char *getFullnameById(const char *id);
 int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key);
 int OS_RemoveAgent(const char *id);
-double get_time_since_agent_disconnection(const char *id);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
 void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
-time_t get_time_since_agent_registration(int id);
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output);
