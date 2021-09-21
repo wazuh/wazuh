@@ -6,7 +6,7 @@ package "db" <<Folder>> #DDDDDD{
     }
     package "item" <<Folder>> {
         abstract DBItem {
-            - String m_identifier
+            - string m_identifier
             - bool m_scanned
             - time_t m_lastEvent
             - string m_checksum
@@ -18,7 +18,7 @@ package "db" <<Folder>> #DDDDDD{
         }
 
         class FileItem {
-            - int m_size
+            - unsigned int m_size
             - string m_perm
             - string m_attributes
             - int m_uid
@@ -26,15 +26,14 @@ package "db" <<Folder>> #DDDDDD{
             - int m_gid
             - string m_groupname
             - time_t m_time
-            - int m_inode
+            - unsigned long int m_inode
             - string m_md5
             - string m_sha1
             - string m_sha256
-            - int m_dev
+            - unsigned long int m_dev
             - int m_options
-            - nlohman::json m_statementConf
 
-            + FileItem()
+            + FileItem(args)
             + FileItem(fim_entry)
             + ~FileItem()
             + fim_entry toFIMEntry()
@@ -77,12 +76,13 @@ package "db" <<Folder>> #DDDDDD{
         - DBSync m_dbsyncHandler
         - Rsync m_rsyncHandler
         - bool m_isFull
+        - FimDB()
+        - ~FimDB()
 
-        + FimDB()
-        + ~FimDB()
         + FimDB getInstance()
         + void syncDB()
         + bool isFull()
+        + void init()
         + dbresult insertItem(DBItem)
         + dbresult removeItem(DBItem)
         + dbresult updateItem(DBItem)
