@@ -632,11 +632,9 @@ static cJSON* w_create_agent_add_payload(const char *name,
         cJSON_AddStringToObject(arguments, "id", id);
     }
 
-    if (force_options) {
-        cJSON* j_force = w_force_options_to_json(force_options);
-        if(j_force){
-            cJSON_AddItemToObject(arguments, "force", j_force);
-        }
+    cJSON* j_force = w_force_options_to_json(force_options);
+    if(j_force){
+        cJSON_AddItemToObject(arguments, "force", j_force);
     }
 
     return request;
