@@ -21,6 +21,7 @@ int timeout;
 int group_data_flush;
 unsigned receive_chunk;
 unsigned send_chunk;
+unsigned send_buffer_size;
 int buffer_relax;
 
 /* Read the config file (the remote access) */
@@ -40,6 +41,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
     send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
+    send_buffer_size = (unsigned)getDefine_Int("remoted", "send_buffer_size", 65536, 1048576);
 
     /* Setting default values for global parameters */
     cfg->global.agents_disconnection_time = 600;
@@ -152,6 +154,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
     cJSON_AddNumberToObject(remoted,"send_chunk",send_chunk);
     cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);
+    cJSON_AddNumberToObject(remoted,"send_buffer_size",send_buffer_size);
     cJSON_AddNumberToObject(remoted,"tcp_keepidle",tcp_keepidle);
     cJSON_AddNumberToObject(remoted,"tcp_keepintvl",tcp_keepintvl);
     cJSON_AddNumberToObject(remoted,"tcp_keepcnt",tcp_keepcnt);

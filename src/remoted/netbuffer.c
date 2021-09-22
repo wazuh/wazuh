@@ -134,9 +134,10 @@ end:
 }
 
 int nb_send(netbuffer_t * buffer, int socket) {
-    ssize_t sent_bytes = 0;
 
     w_mutex_lock(&mutex);
+
+    ssize_t sent_bytes = 0;
 
     const unsigned long current_data_len = buffer->buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
@@ -146,7 +147,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
     }
 
     if (sent_bytes > 0) {
-        if (sent_bytes == current_data_len) {
+        if ((unsigned long)sent_bytes == current_data_len) {
             os_free(buffer->buffers[socket].data);
             buffer->buffers[socket].data = NULL;
             buffer->buffers[socket].data_len = 0;
@@ -171,17 +172,18 @@ int nb_send(netbuffer_t * buffer, int socket) {
 }
 
 int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
-    int retval = -1;
+    int retval;
 
     for (unsigned int retry = 0; retry < 10; retry++) {
 
         w_mutex_lock(&mutex);
 
+        retval = -1;
         int header_size = sizeof(uint32_t);
         char * data = buffer->buffers[socket].data;
         const unsigned long current_data_len = buffer->buffers[socket].data_len;
 
-        if (current_data_len + msg_size <= OS_MAXSTR) {
+        if (current_data_len + msg_size <= send_buffer_size) {
             os_realloc(data, (current_data_len + msg_size + header_size), data);
 
             buffer->buffers[socket].data = data;

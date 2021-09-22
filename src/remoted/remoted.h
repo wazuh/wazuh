@@ -215,6 +215,7 @@ extern int group_data_flush;
 extern unsigned receive_chunk;
 extern unsigned send_chunk;
 extern int buffer_relax;
+extern unsigned send_buffer_size;
 extern int tcp_keepidle;
 extern int tcp_keepintvl;
 extern int tcp_keepcnt;
