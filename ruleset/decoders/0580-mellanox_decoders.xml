@@ -1,0 +1,19 @@
+<!-- Sample logs for Mellanox Onyx switch systems
+cli[27174]: [cli.NOTICE]: user admin: Executing command: logging format standard 
+cli[27174]: [cli.NOTICE]: user admin: Executing command: wr memory 
+mgmtd[1299]: [mgmtd.NOTICE]: Action ID 990: requested by: user admin (System Administrator) via CLI
+ztpd[2491]: [ztpd.NOTICE]: handling event '/mgmtd/notify/db_save'
+metad[2513]: TID 139897022437184: [metad.NOTICE]: Sending final query response for msg_id '306679984' (no error, has resp)
+ztpd[2491]: [ztpd.NOTICE]: handling db-save event
+mgmtd[1299]: [mgmtd.NOTICE]: zero-touch becomes deactive after db save operation
+chad[2223]: [chad.NOTICE]: chad_handle_sm_dbsave: handling DB save
+chad[2223]: [chad.NOTICE]: chad_handle_sm_dbsave: finished handling DB save , return code : 0
+issd[2584]: TID 140450212899456: [issd.NOTICE]: NPAPI_NOTICE: notice AstValidateReceivedBpdu invalid protocol ID 12970, u2PortNum 258 
+-->
+<decoder name="mlnx-onyx">
+    <prematch>^\w+[\.+]: TID \.+:</prematch>
+</decoder>
+
+<decoder name="mlnx-onyx">
+    <prematch>^\w+[\.+]: [\.+]:</prematch>
+</decoder>
