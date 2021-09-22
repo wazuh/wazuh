@@ -238,12 +238,14 @@ int add_agent(int json_output)
             _ip = NULL;
             c_ip.ip = NULL;
         } else if (!authd_running && (id_exist = IPExist(ip))) {
-            bool replace_agent = false;
+            bool replace_agent = true;
             char error_message[OS_SIZE_128];
             cJSON *j_agent_info = NULL;
             cJSON *j_connection_status = NULL;
             cJSON *j_disconnected_time = NULL;
             cJSON *j_date_add = NULL;
+
+            snprintf(error_message, OS_SIZE_128, "Agent '%s' won't be removed because the force option is disabled.", id_exist);
 
             j_agent_info = wdb_get_agent_info(atoi(id_exist), NULL);
             if(j_agent_info){
@@ -257,39 +259,35 @@ int add_agent(int json_output)
                 merror_exit("Failed to get agent-info for agent '%s'", id_exist);
             }
 
-            /* Check if the agent has been disconnected longer than the value required*/
-            if (env_disconnected_time) {
-                time_t agent_time_since_desconnection = 0;
-                char *status = j_connection_status->valuestring;
+            if(authd_force_options.enabled == false) {
+                replace_agent = false;
+            } else {
+                /* Check if the agent has been disconnected longer than the value required*/
+                if (env_disconnected_time) {
+                    time_t agent_time_since_desconnection = 0;
+                    char *status = j_connection_status->valuestring;
 
-                if(!strcmp(status, AGENT_CS_NEVER_CONNECTED)){
-                    replace_agent = true;
-                } else if(!strcmp(status, AGENT_CS_DISCONNECTED)) {
-                    agent_time_since_desconnection = difftime(time(NULL), j_disconnected_time->valueint);
-                    if(agent_time_since_desconnection <= authd_force_options.disconnected_time){
+                    if(!strcmp(status, AGENT_CS_DISCONNECTED)) {
+                        agent_time_since_desconnection = difftime(time(NULL), j_disconnected_time->valueint);
+                        if(agent_time_since_desconnection <= authd_force_options.disconnected_time){
+                            replace_agent = false;
+                            snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", id_exist);
+                        }
+                    } else if(strcmp(status, AGENT_CS_NEVER_CONNECTED)){
                         replace_agent = false;
-                        snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", id_exist);
-                    } else {
-                        replace_agent = true;
+                        snprintf(error_message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", id_exist);
                     }
-                } else {
-                    replace_agent = false;
-                    snprintf(error_message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", id_exist);
                 }
-            }
 
-            /* Check if the agent is old enough to be removed */
-            if(!replace_agent && env_after_registration_time) {
-                if(authd_force_options.after_registration_time == 0){
-                    replace_agent = true;
-                } else {
-                    time_t agent_registration_time = difftime(time(NULL), j_date_add->valueint);
+                /* Check if the agent is old enough to be removed */
+                if(env_after_registration_time) {
+                    if (authd_force_options.after_registration_time != 0){
+                        time_t agent_registration_time = difftime(time(NULL), j_date_add->valueint);
 
-                    if(agent_registration_time <= authd_force_options.after_registration_time){
-                        snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been registered long enough to be removed.", id_exist);
-                        replace_agent = false;
-                    } else {
-                        replace_agent = true;
+                        if(agent_registration_time <= authd_force_options.after_registration_time){
+                            snprintf(error_message, OS_SIZE_128, "Agent '%s' has not been registered long enough to be removed.", id_exist);
+                            replace_agent = false;
+                        }
                     }
                 }
             }
