@@ -19,6 +19,8 @@ extern wnotify_t * notify;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+void print_buffer_hexa(const char * msg, const unsigned long size);
+
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
     w_mutex_lock(&mutex);
 
@@ -135,31 +137,31 @@ end:
 }
 
 void nb_send(int socket) {
+
     w_mutex_lock(&mutex);
 
     const ssize_t current_data_len = netbuffer_send.buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
 
-    mdebug1("Msg added to buffer, buff.data_size: %d", amount_of_data_to_send);
-
     const ssize_t sent_bytes = send(socket, (const void *)netbuffer_send.buffers[socket].data, amount_of_data_to_send, 0);
+    const int error = errno; // Race condition here, the usage of errno is not thread safe!!!
 
-    const int error = errno; // Race condition here, the usage if errno is not thread safe!!!
+    mdebug1("sent_bytes: %ld, errno %d, errnostr %s", sent_bytes, error, strerror(error));
+    print_buffer_hexa((const char *)netbuffer_send.buffers[socket].data, amount_of_data_to_send);
 
     if (sent_bytes > 0) {
+        mdebug1("sent_bytes: %ld, errno %d, errnostr %s", sent_bytes, error, strerror(error));
         //assert(sent_bytes <= current_data_len);
         if (sent_bytes == current_data_len) {
             os_free(netbuffer_send.buffers[socket].data);
             netbuffer_send.buffers[socket].data = NULL;
             netbuffer_send.buffers[socket].data_len = 0;
-            netbuffer_send.buffers[socket].data_size = 0;
             wnotify_modify(notify, socket, WO_READ);
         }
         else { // sent_bytes < current_data_len
             memmove(netbuffer_send.buffers[socket].data, netbuffer_send.buffers[socket].data + sent_bytes, sent_bytes);
             os_realloc(netbuffer_send.buffers[socket].data, sent_bytes, netbuffer_send.buffers[socket].data);
             netbuffer_send.buffers[socket].data_len -= sent_bytes;
-            netbuffer_send.buffers[socket].data_size -= sent_bytes;
         }
     }
     else if (sent_bytes < 0) {
@@ -168,7 +170,6 @@ void nb_send(int socket) {
             os_free(netbuffer_send.buffers[socket].data);
             netbuffer_send.buffers[socket].data = NULL;
             netbuffer_send.buffers[socket].data_len = 0;
-            netbuffer_send.buffers[socket].data_size = 0;
             wnotify_modify(notify, socket, WO_READ);
         }
 
@@ -199,33 +200,62 @@ void nb_send(int socket) {
 
 void nb_queue(int socket, char *crypt_msg, ssize_t msg_size) {
 
-    w_mutex_lock(&mutex);
+    for (unsigned int retry = 0; retry < 10; retry++) {
 
-    for (unsigned int retry = 0; retry < 1; retry++) {
-
+        w_mutex_lock(&mutex);
+        int header_size = sizeof(uint32_t);
         char * data = netbuffer_send.buffers[socket].data;
-        const unsigned long current_data_size = netbuffer_send.buffers[socket].data_size;
         const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
-        mdebug1("current_data_len %ld, current_data_size: %ld, msg_size: %ld", current_data_len, current_data_size, msg_size);
+        mdebug1("current_data_len: %ld, msg_size: %ld, wnet_order %d", current_data_len, msg_size, wnet_order(msg_size));
 
-        if (current_data_size + msg_size <= OS_MAXSTR) {
-            os_realloc(data, current_data_len + msg_size + sizeof(uint32_t), data);
+        if (current_data_len + msg_size <= OS_MAXSTR) {
+            os_realloc(data, (current_data_len + msg_size + header_size), data);
             netbuffer_send.buffers[socket].data = data;
             *(uint32_t *)(data + current_data_len) = wnet_order(msg_size);
-            memcpy(data + current_data_len + sizeof(uint32_t), crypt_msg, msg_size);
-            netbuffer_send.buffers[socket].data_size += msg_size + sizeof(uint32_t);
-            netbuffer_send.buffers[socket].data_len += msg_size + sizeof(uint32_t);
-            wnotify_modify(notify, socket, WO_READ | WO_WRITE);
+            memcpy((data + current_data_len + header_size), crypt_msg, msg_size);
+            netbuffer_send.buffers[socket].data_len += (msg_size + header_size);
 
-            mdebug1("Msg added to buffer, buff.data_size: %ld", netbuffer_send.buffers[socket].data_size);
-            break;
+            mdebug1("Msg added to buffer, buff.data_len: %ld", netbuffer_send.buffers[socket].data_len);
+            //print_buffer_hexa((const char *)data, netbuffer_send.buffers[socket].data_len);
+
+            wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+
+            w_mutex_unlock(&mutex);
+            return;
         }
         else
         {
-            merror("Could not append data into buffer, not enough space, Retrying.... [buffer_size=%lu, msg_size=%lu]", current_data_size, msg_size);
+            merror("Could not append data into buffer, not enough space, Retrying.... [buffer_size=%lu, msg_size=%lu]", netbuffer_send.buffers[socket].data_len, msg_size);
+            w_mutex_unlock(&mutex);
             sleep(1);
         }
     }
+}
 
-    w_mutex_unlock(&mutex);
+
+void print_buffer_hexa(const char * msg, const unsigned long size) {
+
+    char buf[(size*3)];
+    unsigned long i;
+    memset(buf, 0, sizeof(buf));
+
+    uint32_t header = (uint32_t) *msg;
+    uint32_t msgsize = (uint32_t) (msg[3]<<24|msg[2]<<16|msg[1]<<8|msg[0]);
+
+    if (header > 100000) {
+        mdebug1("Toasty!!! header %u", header);
+    }
+
+    char *ptr = &buf[0];
+
+    mdebug1("size: %ld, buf: %p, ptr: %p, header %u, msgsize %u", size, buf, ptr, header, msgsize);
+
+    for (i = 0; i < size; i++) {
+        sprintf(ptr, "%02X", msg[i]);
+        ptr += 2;
+    }
+    ptr++;
+    *ptr = '\0';
+
+    mdebug1("Msg: %s", buf);
 }

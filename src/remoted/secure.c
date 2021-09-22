@@ -236,7 +236,6 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * p
         rem_inc_tcp();
         mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info->sin_addr), sock_client);
 
-
         if (wnotify_add(notify, sock_client, WO_READ) < 0) {
             merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
             _close_sock(&keys, sock_client);

@@ -70,7 +70,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 {
     int key_id;
     ssize_t msg_size;
-    char crypt_msg[OS_MAXSTR + 1];
+    char crypt_msg[OS_MAXSTR + 1] = {0};
     int retval = 0;
     int error = 0;
 
@@ -100,6 +100,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         merror(SEC_ERROR);
         return (-1);
     }
+
+    crypt_msg[msg_size] = '\0';
 
     /* Send initial message */
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
