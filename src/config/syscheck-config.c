@@ -59,6 +59,77 @@ directory_t *fim_create_directory(const char *path,
     return new_entry;
 }
 
+int initialize_syscheck_configuration(syscheck_config *syscheck) {
+    if (syscheck == NULL) {
+        os_calloc(1, sizeof(syscheck_config), syscheck);
+    }
+
+    syscheck->rootcheck      = 0;
+    syscheck->disabled       = SK_CONF_UNPARSED;
+    syscheck->database_store = FIM_DB_DISK;
+    syscheck->skip_fs.nfs    = 1;
+    syscheck->skip_fs.dev    = 1;
+    syscheck->skip_fs.sys    = 1;
+    syscheck->skip_fs.proc   = 1;
+    syscheck->scan_on_start  = 1;
+    syscheck->time           = 43200;
+    syscheck->ignore         = NULL;
+    syscheck->ignore_regex   = NULL;
+    syscheck->nodiff         = NULL;
+    syscheck->nodiff_regex   = NULL;
+    syscheck->scan_day       = NULL;
+    syscheck->scan_time      = NULL;
+    syscheck->file_limit_enabled = true;
+    syscheck->file_limit     = 100000;
+    syscheck->directories = OSList_Create();
+    if (syscheck->directories == NULL) {
+        return (OS_INVALID);
+    }
+    OSList_SetFreeDataPointer(syscheck->directories, (void (*)(void *))free_directory);
+    syscheck->wildcards = NULL;
+    syscheck->enable_synchronization = 1;
+    syscheck->restart_audit  = 1;
+    syscheck->enable_whodata = 0;
+    syscheck->realtime       = NULL;
+    syscheck->audit_healthcheck = 1;
+    syscheck->process_priority = 10;
+#ifdef WIN_WHODATA
+    syscheck->wdata.interval_scan = 0;
+    syscheck->wdata.fd      = NULL;
+#endif
+#ifdef WIN32
+    syscheck->realtime_change = 0;
+    syscheck->registry       = NULL;
+    syscheck->key_ignore = NULL;
+    syscheck->key_ignore_regex = NULL;
+    syscheck->value_ignore = NULL;
+    syscheck->value_ignore_regex = NULL;
+    syscheck->max_fd_win_rt  = 0;
+    syscheck->registry_nodiff = NULL;
+    syscheck->registry_nodiff_regex = NULL;
+    syscheck->enable_registry_synchronization = 1;
+#endif
+    syscheck->prefilter_cmd  = NULL;
+    syscheck->sync_interval  = 300;
+    syscheck->max_sync_interval = 3600;
+    syscheck->sync_response_timeout = 30;
+    syscheck->sync_queue_size = 16384;
+    syscheck->sync_max_eps = 10;
+    syscheck->max_eps        = 100;
+    syscheck->max_files_per_second = 0;
+    syscheck->allow_remote_prefilter_cmd  = false;
+    syscheck->disk_quota_enabled = true;
+    syscheck->disk_quota_limit = 1024 * 1024; // 1 GB
+    syscheck->file_size_enabled = true;
+    syscheck->file_size_limit = 50 * 1024; // 50 MB
+    syscheck->diff_folder_size = 0;
+    syscheck->comp_estimation_perc = 0.9;    // 90%
+    syscheck->disk_quota_full_msg = true;
+    syscheck->audit_key = NULL;
+
+    return OS_SUCCESS;
+}
+
 void fim_insert_directory(OSList *config_list,
                           directory_t *new_entry) {
     OSListNode *node_it;
@@ -2091,7 +2162,11 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 
 int Test_Syscheck(const char * path){
     int fail = 0;
-    syscheck_config test_syscheck = { .rootcheck = 0 };
+    syscheck_config test_syscheck;
+
+    if (initialize_syscheck_configuration(&test_syscheck) == OS_INVALID) {
+        return OS_INVALID;
+    }
 
     if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Syscheck", path);
