@@ -156,11 +156,6 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
 
     will_return(__wrap_rootcheck_init, 1);
 
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
-
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
-
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -187,9 +182,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(1207): syscheck remote configuration in 'ossec.conf' is corrupted.");
 
     will_return(__wrap_rootcheck_init, 1);
-    expect_value(__wrap_fim_db_init, memory, 0);
-    will_return(__wrap_fim_db_init, NULL);
-    expect_string(__wrap__merror_exit, formatted_msg, "(6698): Creating Data Structure: sqlite3 db. Exiting.");
+
     expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
 
