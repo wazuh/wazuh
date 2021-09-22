@@ -155,7 +155,7 @@ def test_get_cluster_items():
                                               'max_allowed_time_without_keepalive': 120},
                                    'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
                                                      'timeout_receiving_file': 120}},
-                     'sync_options': {'get_agentinfo_newer_than': 1800}, 'distributed_api': {'enabled': True}}
+                     'distributed_api': {'enabled': True}}
 
 
 def test_ClusterFilter():

@@ -432,10 +432,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.setup_receive_files_from_master()
         elif command == b'syn_m_c_e':
             return self.end_receiving_integrity(data.decode())
-        elif command == b'syn_m_e_ok':
-            return self.sync_extravalid_ok_from_master()
-        elif command == b'syn_m_e_err':
-            return self.sync_extravalid_err_from_master(data.decode())
         elif command == b'syn_m_c_r':
             return self.error_receiving_integrity(data.decode())
         elif command == b'syn_m_a_e':
@@ -545,39 +541,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(f"Finished in {(time.time() - self.integrity_check_status['date_start']):.3f}s. "
                               f"Sync not required.")
-        return b'ok', b'Thanks'
-
-    def sync_extravalid_ok_from_master(self) -> Tuple[bytes, bytes]:
-        """Function called when the master sends the "syn_m_e_ok" command.
-
-        This method is called once the master finishes processing extra-valid files. It logs
-        how long it took for the Integrity sync task to finish.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
-        integrity_logger = self.task_loggers['Integrity sync']
-        integrity_logger.info(f"Finished in {(time.time() - self.integrity_sync_status['date_start']):.3f}s.")
-        return b'ok', b'Thanks'
-
-    def sync_extravalid_err_from_master(self, response) -> Tuple[bytes, bytes]:
-        """Function called when the master sends the "syn_m_e_err" command.
-
-        This method is called when there is an error processing extra-valid files in the master node.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
-        integrity_logger = self.task_loggers['Integrity sync']
-        integrity_logger.error(f"There was an error while processing extra valid files on the master: {response}")
         return b'ok', b'Thanks'
 
     def sync_agent_info_from_master(self, response) -> Tuple[bytes, bytes]:
@@ -718,7 +681,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             # Permission is not requested since it was already granted in the 'Integrity check' task.
             await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
-            logger.debug(f"Finished sending extra valid files in {(time.time() - before):.3f}s.")
+            after = time.time()
+            logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
+            logger.info(f"Finished in {(after - self.integrity_sync_status['date_start']):.3f}s.")
 
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:

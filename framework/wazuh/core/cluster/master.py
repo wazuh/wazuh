@@ -854,7 +854,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             agent_ids = set(map(operator.itemgetter('id'), agents))
         except Exception as e:
             logger.error(f"Error getting agent ids: {e}")
-            await self.send_request(command=b'syn_m_e_err', data=str(e).encode())
             raise e
 
         # Iterate and update each file specified in 'files_metadata' if conditions are meets.
@@ -863,7 +862,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 await update_file(data=data, name=filename)
         except Exception as e:
             self.logger.error(f"Error updating worker files (extra valid): '{e}'.")
-            await self.send_request(command=b'syn_m_e_err', data=str(e).encode())
             raise e
 
         # Log errors if any.
@@ -876,8 +874,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             for key, value in n_errors['warnings'].items():
                 if key == 'queue/agent-groups/':
                     logger.debug2(f"Received {value} group assignments for non-existent agents. Skipping.")
-
-        await self.send_request(command=b'syn_m_e_ok', data=b'')
 
     def get_logger(self, logger_tag: str = ''):
         """Get a logger object.
