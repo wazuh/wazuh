@@ -138,7 +138,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
 
     w_mutex_lock(&mutex);
 
-    const ssize_t current_data_len = buffer->buffers[socket].data_len;
+    const unsigned long current_data_len = buffer->buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
 
     if (amount_of_data_to_send > 0) {
