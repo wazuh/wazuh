@@ -853,8 +853,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             agents = Agent.get_agents_overview(select=['name'], limit=None)['items']
             agent_ids = set(map(operator.itemgetter('id'), agents))
         except Exception as e:
-            logger.error(f"Error getting agent ids: {e}")
-            raise e
+            logger.debug2(f"Error getting agent ids: {e}")
+            agent_ids = {}
 
         # Iterate and update each file specified in 'files_metadata' if conditions are meets.
         try:
