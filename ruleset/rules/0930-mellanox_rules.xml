@@ -1,0 +1,16 @@
+<!-- Mellanox Onyx rules to log most kind of generated logs and explicitly command execution -->
+
+<group name="mlnx-onyx,">
+
+  <rule id="92500" level="3">
+    <decoded_as>mlnx-onyx</decoded_as>
+    <description>Mellanox Onyx Logs</description>
+  </rule>
+
+  <rule id="92501" level="10">
+    <if_sid>92500</if_sid>
+    <match>Executing command</match>
+    <description>Mellanox Onyx command execution detected</description>
+  </rule>
+  
+</group>
