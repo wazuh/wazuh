@@ -1328,6 +1328,9 @@ wrappers_windows_lib_o := $(wrappers_windows_lib_c:.c=.o)
 wrappers_windows_posix_c := $(wildcard unit_tests/wrappers/windows/posix/*.c)
 wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 
+wrappers_wazuh_remoted_c := $(wildcard unit_tests/wrappers/wazuh/remoted/*.c)
+wrappers_wazuh_remoted_o := $(wrappers_wazuh_remoted_c:.c=.o)
+
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
@@ -1359,6 +1362,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_config_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
 
 	ifeq (${TARGET},winagent)
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
@@ -2161,6 +2165,9 @@ unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
 unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
+unit_tests/wrappers/wazuh/remoted/%.o: unit_tests/wrappers/wazuh/remoted/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
 .PHONY: test
 
 ###################
@@ -2362,6 +2369,7 @@ clean-unit-tests:
 	rm -f ${wrappers_windows_lib_o}
 	rm -f ${wrappers_windows_posix_o}
 	rm -f ${wrappers_client_agent_o}
+	rm -f ${wrappers_wazuh_remoted_o}
 
 clean-framework:
 	${MAKE} -C ../framework clean

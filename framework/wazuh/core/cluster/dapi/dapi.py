@@ -237,6 +237,9 @@ class DistributedAPI:
             return data
 
         try:
+            if self.f_kwargs.get('agent_list') == '*':
+                del self.f_kwargs['agent_list']
+
             before = time.time()
             self.check_wazuh_status()
 
