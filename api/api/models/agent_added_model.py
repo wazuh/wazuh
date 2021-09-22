@@ -9,7 +9,7 @@ from api.models.base_model_ import Body, Model
 
 
 class DisconnectedTime(Model):
-    def __init__(self, enabled=True, value="1h"):
+    def __init__(self, enabled=None, value=None):
         self.swagger_types = {
             'enabled': bool,
             'value': str
@@ -41,23 +41,20 @@ class DisconnectedTime(Model):
 
 
 class AgentForce(Model):
-    def __init__(self, enabled=True, key_mismatch=True, disconnected_time=None, after_registration_time="1h"):
+    def __init__(self, enabled=None, disconnected_time=None, after_registration_time=None):
         self.swagger_types = {
             'enabled': bool,
-            'key_mismatch': bool,
             'disconnected_time': DisconnectedTime,
             'after_registration_time': str
         }
 
         self.attribute_map = {
             'enabled': 'enabled',
-            'key_mismatch': 'key_mismatch',
             'disconnected_time': 'disconnected_time',
             'after_registration_time': 'after_registration_time'
         }
 
         self._enabled = enabled
-        self._key_mismatch = key_mismatch
         self._disconnected_time = disconnected_time
         self._after_registration_time = after_registration_time
 
@@ -68,14 +65,6 @@ class AgentForce(Model):
     @enabled.setter
     def enabled(self, enabled):
         self._enabled = enabled
-
-    @property
-    def key_mismatch(self):
-        return self._key_mismatch
-
-    @key_mismatch.setter
-    def key_mismatch(self, key_mismatch):
-        self._key_mismatch = key_mismatch
 
     @property
     def disconnected_time(self):
@@ -96,30 +85,28 @@ class AgentForce(Model):
 
 class AgentAddedModel(Body):
 
-    def __init__(self, name: str = None, ip: str = None, force: AgentForce = None):
+    def __init__(self, name: str = None, ip: str = None):
         """AgentAddedModel body model
         :param name: Agent name.
         :type name: str
-        :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
+        :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must
+        set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
         :type ip: str
         :param force: Remove the old agent if conditions are met.
         :type force: AgentForce
         """
         self.swagger_types = {
             'name': str,
-            'ip': str,
-            'force': AgentForce
+            'ip': str
         }
 
         self.attribute_map = {
             'name': 'name',
-            'ip': 'ip',
-            'force': 'force_time'
+            'ip': 'ip'
         }
 
         self._name = name
         self._ip = ip
-        self._force = force
 
     @property
     def name(self) -> str:
@@ -150,18 +137,3 @@ class AgentAddedModel(Body):
         :param ip: Agent IP.
         """
         self._ip = ip
-
-    @property
-    def force(self) -> AgentForce:
-        """
-        :return: Limit time to disconnect an agent with the same IP.
-        :rtype: int
-        """
-        return self._force
-
-    @force.setter
-    def force(self, force):
-        """Limit time to disconnect an agent with the same IP.
-        :param force: Agents limit disconnection time.
-        """
-        self._force = force

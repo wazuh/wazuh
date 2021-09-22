@@ -5691,12 +5691,6 @@ paths:
                     IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
-                  force_time:
-                    description: "Remove the old agent with the same name or IP if disconnected for <force_time>
-                    seconds"
-                    type: integer
-                    format: int32
-                    minimum: 0
                 required:
                 - name
               example:
@@ -7087,12 +7081,10 @@ paths:
                     IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
-                  force_time:
+                  force: # TODO
                     description: "Remove the old agent with the same name, ID or IP if disconnected for <force_time>
                     seconds"
-                    type: integer
-                    format: int32
-                    minimum: 0
+                    type: object
                 required:
                   - name
               example:
