@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Reworked the Google Cloud Pub/Sub integration module to increase the number of processed events per second allowing multithreading. Added new `num_threads` option to module configuration. ([#9927](https://github.com/wazuh/wazuh/pull/9927))
 - Upgraded google-cloud-pubsub dependency to the latest stable version (2.7.1). ([#9964](https://github.com/wazuh/wazuh/pull/9964))
 - Reimplemented the WPK installer rollback on Linux. ([#9443](https://github.com/wazuh/wazuh/pull/9443))
+- Updated AWS WAF implementation to change `httpRequest.headers` field format. ([#10217](https://github.com/wazuh/wazuh/pull/10217))
 
 #### Fixed
 
@@ -46,9 +47,13 @@ All notable changes to this project will be documented in this file.
 
 ### RESTful API
 
+#### Changed
+
+- Made SSL ciphers configurable and renamed SSL protocol option. ([#10219](https://github.com/wazuh/wazuh/pull/10219))
+
 #### Fixed
 
-  - Fixed a bug with distributed API calls when the cluster is disabled. ([#9984](https://github.com/wazuh/wazuh/pull/9984))
+- Fixed a bug with distributed API calls when the cluster is disabled. ([#9984](https://github.com/wazuh/wazuh/pull/9984))
 
 
 ## [v4.2.1] - 2021-09-03
