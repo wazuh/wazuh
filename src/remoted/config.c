@@ -38,7 +38,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->queue_size = 131072;
 
     receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
-    send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 128, 16384);
+    send_chunk = (unsigned)getDefine_Int("remoted", "send_chunk", 512, 16384);
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
 
     /* Setting default values for global parameters */

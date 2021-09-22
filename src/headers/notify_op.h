@@ -58,7 +58,7 @@ typedef struct wnotify_t {
 static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * event) {
     if (event != NULL) {
         const unsigned int filter = notify->events[index].filter;
-        *event = (wevent_t)((filter & EVFILT_READ ? WE_READ: WE_UNKNOWN) | (filter & EVFILT_WRITE ? WE_WRITE : WE_UNKNOWN));
+        *event = (wevent_t)((filter & EVFILT_READ ? WE_READ : WE_UNKNOWN) | (filter & EVFILT_WRITE ? WE_WRITE : WE_UNKNOWN));
     }
 
     return notify->events[index].ident;

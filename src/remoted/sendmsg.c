@@ -13,6 +13,8 @@
 #include "remoted.h"
 #include "os_net/os_net.h"
 
+extern netbuffer_t netbuffer_send;
+
 /* pthread key update mutex */
 static pthread_rwlock_t keyupdate_rwlock;
 
@@ -82,7 +84,6 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         merror(AR_NOAGENT_ERROR, agent_id);
         return (-1);
     }
-    const int socket = keys.keyentries[key_id]->sock;
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
@@ -103,17 +104,21 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     /* Send initial message */
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
+        /* UDP mode, send the message */
         retval = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
         error = errno;
-    } else if (socket >= 0) {
-        nb_queue(socket, crypt_msg, msg_size);
-
+    } else if (keys.keyentries[key_id]->sock >= 0) {
+        /* TCP mode, enqueue the message in the send buffer */
+        retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size);
+        key_unlock();
+        return retval;
     } else {
         key_unlock();
         mdebug1("Send operation cancelled due to closed socket.");
         return -1;
     }
 
+    /* Check UDP send result */
     if (retval < 0) {
         switch (error) {
         case 0:
@@ -134,7 +139,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
             merror(SEND_ERROR " [%d]", agent_id, strerror(error), keys.keyentries[key_id]->sock);
         }
     } else {
-        rem_inc_msg_sent();
+        rem_add_send(retval);
     }
 
     key_unlock();

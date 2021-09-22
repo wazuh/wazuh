@@ -23,16 +23,15 @@
 /* Global variables */
 int sender_pool;
 
-static netbuffer_t netbuffer_recv;
-
-size_t global_counter;
-
+netbuffer_t netbuffer_recv;
 netbuffer_t netbuffer_send;
 
 wnotify_t * notify = NULL;
 
-STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client, struct sockaddr_in * peer_info);
-STATIC void handle_incoming_data_from_tcp_socket(const int sock_client, struct sockaddr_in * peer_info);
+size_t global_counter;
+
+STATIC void handle_outgoing_data_to_tcp_socket(int sock_client, struct sockaddr_in * peer_info);
+STATIC void handle_incoming_data_from_tcp_socket(int sock_client, struct sockaddr_in * peer_info);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_in * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * peer_info);
 
@@ -84,11 +83,6 @@ void HandleSecure()
 
     struct sockaddr_in peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_in));
-
-    /* Events watcher is started (is used to monitor sockets events) */
-    if (notify = wnotify_init(MAX_EVENTS), !notify) {
-        merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
-    }
 
     /* Initialize manager */
     manager_init();
@@ -168,6 +162,11 @@ void HandleSecure()
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
 
+    /* Events watcher is started (is used to monitor sockets events) */
+    if (notify = wnotify_init(MAX_EVENTS), !notify) {
+        merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
+    }
+
     /* If TCP is set on the config, then the corresponding sockets is added to the watching list  */
     if (protocol & REMOTED_NET_PROTOCOL_TCP) {
         if (wnotify_add(notify, logr.tcp_sock, WO_READ) < 0) {
@@ -228,12 +227,14 @@ void HandleSecure()
 
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_in * peer_info)
 {
+    int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
 
-    const int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
     if (sock_client >= 0) {
         nb_open(&netbuffer_recv, sock_client, peer_info);
         nb_open(&netbuffer_send, sock_client, peer_info);
+
         rem_inc_tcp();
+
         mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info->sin_addr), sock_client);
 
         if (wnotify_add(notify, sock_client, WO_READ) < 0) {
@@ -256,7 +257,7 @@ STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_in * peer_info)
     char buffer[OS_MAXSTR + 1];
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    const int recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *) peer_info, &logr.peer_size);
+    int recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *) peer_info, &logr.peer_size);
 
     if (recv_b > 0) {
         rem_msgpush(buffer, recv_b, peer_info, USING_UDP_NO_CLIENT_SOCKET);
@@ -264,11 +265,11 @@ STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_in * peer_info)
     }
 }
 
-STATIC void handle_incoming_data_from_tcp_socket(const int sock_client, struct sockaddr_in * peer_info)
+STATIC void handle_incoming_data_from_tcp_socket(int sock_client, struct sockaddr_in * peer_info)
 {
-    int recv_b = 0;
+    int recv_b = nb_recv(&netbuffer_recv, sock_client);
 
-    switch (recv_b = nb_recv(&netbuffer_recv, sock_client), recv_b) {
+    switch (recv_b) {
     case -2:
         mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info->sin_addr), sock_client);
         _close_sock(&keys, sock_client);
@@ -282,9 +283,7 @@ STATIC void handle_incoming_data_from_tcp_socket(const int sock_client, struct s
 #if EAGAIN != EWOULDBLOCK
         case EWOULDBLOCK:
 #endif
-#if ETIMEDOUT
         case ETIMEDOUT:
-#endif
             mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client,
                     inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
             break;
@@ -302,9 +301,33 @@ STATIC void handle_incoming_data_from_tcp_socket(const int sock_client, struct s
     }
 }
 
-STATIC void handle_outgoing_data_to_tcp_socket(const int sock_client, struct sockaddr_in * peer_info)
+STATIC void handle_outgoing_data_to_tcp_socket(int sock_client, struct sockaddr_in * peer_info)
 {
-    nb_send(sock_client);
+    int sent_b = nb_send(&netbuffer_send, sock_client);
+
+    switch (sent_b) {
+    case -1:
+        switch (errno) {
+        case ETIMEDOUT:
+            mdebug1("socket [%d], Time out.", sock_client);
+            break;
+        case EPIPE:
+        case EBADF:
+        case ECONNRESET:
+            mdebug1("socket [%d], Agent may have disconnected.", sock_client);
+            break;
+        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+        case EWOULDBLOCK:
+#endif
+            mwarn("socket [%d], Agent is not responding.", sock_client);
+            break;
+        default:
+            merror(strerror(errno), sock_client);
+        }
+    default:
+        rem_add_send((unsigned long) sent_b);
+    }
 }
 
 // Message handler thread

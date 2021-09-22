@@ -46,7 +46,7 @@ typedef struct remoted_state_t {
     unsigned int tcp_sessions;
     unsigned int evt_count;
     unsigned int ctrl_msg_count;
-    unsigned int msg_sent;
+    unsigned long sent_bytes;
     unsigned long recv_bytes;
     unsigned int dequeued_after_close;
 } remoted_state_t;
@@ -147,7 +147,7 @@ void rem_inc_tcp();
 void rem_dec_tcp();
 void rem_inc_evt();
 void rem_inc_ctrl_msg();
-void rem_inc_msg_sent();
+void rem_add_send(unsigned long bytes);
 void rem_inc_discarded();
 void rem_add_recv(unsigned long bytes);
 void rem_inc_dequeued();
@@ -167,17 +167,26 @@ int nb_recv(netbuffer_t * buffer, int sock);
 /**
  * @brief Send message through TCP protocol.
  *
- * @param socket, socket id where send message.
+ * @param buffer buffer where messages are stored.
+ * @param socket socket id where send message.
+ *
+ * @return -1 on system call error: send().
+ * @return number of bytes sent on success.
  */
-void nb_send(int socket);
+int nb_send(netbuffer_t * buffer, int socket);
+
 /**
  * @brief Queue message through TCP protocol.
  *
- * @param socket, socket id where send message.
- * @param crypt_msg, msg to send.
- * @param msg_size, message size.
+ * @param buffer buffer where messages will be stored.
+ * @param socket socket id where send message.
+ * @param crypt_msg msg to send.
+ * @param msg_size message size.
+ *
+ * @return -1 on error.
+ * @return 0 on success.
  */
-void nb_queue(int socket, char *crypt_msg, ssize_t msg_size);
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size);
 
 /* Network counter */
 

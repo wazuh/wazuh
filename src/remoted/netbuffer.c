@@ -14,12 +14,9 @@
 #include <os_net/os_net.h>
 #include "remoted.h"
 
-extern netbuffer_t netbuffer_send;
 extern wnotify_t * notify;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void print_buffer_hexa(const char * msg, const unsigned long size);
 
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
     w_mutex_lock(&mutex);
@@ -136,88 +133,82 @@ end:
     return recv_len;
 }
 
-void nb_send(int socket) {
+int nb_send(netbuffer_t * buffer, int socket) {
+    ssize_t sent_bytes = 0;
 
     w_mutex_lock(&mutex);
 
-    const ssize_t current_data_len = netbuffer_send.buffers[socket].data_len;
+    const ssize_t current_data_len = buffer->buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
-    const ssize_t sent_bytes = send(socket, (const void *)netbuffer_send.buffers[socket].data, amount_of_data_to_send, 0);
-    const int error = errno; // Race condition here, the usage of errno is not thread safe!!!
+
+    if (amount_of_data_to_send > 0) {
+        sent_bytes = send(socket, (const void *)buffer->buffers[socket].data, amount_of_data_to_send, 0);
+    }
 
     if (sent_bytes > 0) {
         if (sent_bytes == current_data_len) {
-            os_free(netbuffer_send.buffers[socket].data);
-            netbuffer_send.buffers[socket].data = NULL;
-            netbuffer_send.buffers[socket].data_len -= sent_bytes;
-            wnotify_modify(notify, socket, WO_READ);
-
+            os_free(buffer->buffers[socket].data);
+            buffer->buffers[socket].data = NULL;
+            buffer->buffers[socket].data_len = 0;
+        } else {
+            memmove(buffer->buffers[socket].data, buffer->buffers[socket].data + sent_bytes, current_data_len - sent_bytes);
+            os_realloc(buffer->buffers[socket].data, current_data_len - sent_bytes, buffer->buffers[socket].data);
+            buffer->buffers[socket].data_len -= sent_bytes;
         }
-        else { // sent_bytes < current_data_len
-            memmove(netbuffer_send.buffers[socket].data, netbuffer_send.buffers[socket].data + sent_bytes, current_data_len - sent_bytes);
-            os_realloc(netbuffer_send.buffers[socket].data, current_data_len - sent_bytes, netbuffer_send.buffers[socket].data);
-            netbuffer_send.buffers[socket].data_len -= sent_bytes;
-        }
+    } else if ((sent_bytes < 0) && (errno != ETIMEDOUT)) {
+        os_free(buffer->buffers[socket].data);
+        buffer->buffers[socket].data = NULL;
+        buffer->buffers[socket].data_len = 0;
     }
-    else if (sent_bytes < 0) {
 
-        if (error != ETIMEDOUT) {
-            os_free(netbuffer_send.buffers[socket].data);
-            netbuffer_send.buffers[socket].data = NULL;
-            netbuffer_send.buffers[socket].data_len = 0;
-            wnotify_modify(notify, socket, WO_READ);
-        }
-
-        mdebug1("sent_bytes: %ld, errno %d, errnostr %s", sent_bytes, error, strerror(error));
-
-        switch (error) {
-            case ETIMEDOUT:
-                mdebug1("socket [%d], Time out.", socket);
-                break;
-            case EPIPE:
-            case EBADF:
-            case ECONNRESET:
-                mdebug1("socket [%d], Agent may have disconnected.", socket);
-                break;
-            case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-            case EWOULDBLOCK:
-#endif
-                mwarn("socket [%d], Agent is not responding.", socket);
-                break;
-            default:
-                merror(strerror(error), socket);
-        }
+    if (buffer->buffers[socket].data_len == 0) {
+        wnotify_modify(notify, socket, WO_READ);
     }
 
     w_mutex_unlock(&mutex);
+
+    return sent_bytes;
 }
 
-void nb_queue(int socket, char *crypt_msg, ssize_t msg_size) {
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
+    int retval = -1;
 
     for (unsigned int retry = 0; retry < 10; retry++) {
 
         w_mutex_lock(&mutex);
+
         int header_size = sizeof(uint32_t);
-        char * data = netbuffer_send.buffers[socket].data;
-        const unsigned long current_data_len = netbuffer_send.buffers[socket].data_len;
+        char * data = buffer->buffers[socket].data;
+        const unsigned long current_data_len = buffer->buffers[socket].data_len;
 
         if (current_data_len + msg_size <= OS_MAXSTR) {
             os_realloc(data, (current_data_len + msg_size + header_size), data);
-            netbuffer_send.buffers[socket].data = data;
+
+            buffer->buffers[socket].data = data;
             *(uint32_t *)(data + current_data_len) = wnet_order(msg_size);
             memcpy((data + current_data_len + header_size), crypt_msg, msg_size);
-            netbuffer_send.buffers[socket].data_len += (msg_size + header_size);
+            buffer->buffers[socket].data_len += (msg_size + header_size);
+
             wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
 
             w_mutex_unlock(&mutex);
-            return;
+
+            retval = 0;
+            break;
         }
-        else
-        {
-            merror("Could not append data into buffer, not enough space, Retrying.... [buffer_size=%lu, msg_size=%lu]", netbuffer_send.buffers[socket].data_len, msg_size);
+        else {
+            mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, msg_size=%lu]",
+                buffer->buffers[socket].data_len, msg_size);
+
             w_mutex_unlock(&mutex);
+
             sleep(1);
         }
     }
+
+    if (retval < 0) {
+        merror("Package dropped. Could not append data into buffer.");
+    }
+
+    return retval;
 }
