@@ -173,9 +173,8 @@ class SysInfoProcess final
 
             for (const auto& logicalDrive : logicalDrives)
             {
-                const auto normalizedName { logicalDrive.back() == L'\\' ? logicalDrive.substr(0, logicalDrive.length() - 1) : logicalDrive };
                 const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
-                res = QueryDosDevice(normalizedName.c_str(), spDosDevice.get(), OS_MAXSTR);
+                res = QueryDosDevice(logicalDrive.c_str(), spDosDevice.get(), OS_MAXSTR);
 
                 if (res)
                 {
@@ -591,6 +590,7 @@ nlohmann::json SysInfo::getPackages() const
     }
     PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
     PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, ret);
     return ret;
 }
 
