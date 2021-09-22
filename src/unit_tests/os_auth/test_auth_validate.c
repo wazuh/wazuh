@@ -131,12 +131,12 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-int setup_validate_force_insert_0(void **state) {
+int setup_validate_force_disabled(void **state) {
     config.force_options.enabled = 0;
     return 0;
 }
 
-int setup_validate_force_insert_1(void **state) {
+int setup_validate_force_enabled(void **state) {
     config.force_options.enabled = 1;
     return 0;
 }
@@ -198,7 +198,7 @@ static void test_w_auth_validate_data(void **state) {
     assert_true(index >= 0);
 }
 
-static void test_w_auth_validate_data_force_insert(void **state) {
+static void test_w_auth_validate_data_replace_agent(void **state) {
     char response[2048] = {0};
     w_err_t err;
 
@@ -364,14 +364,14 @@ static void test_w_auth_replace_agent_success(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_auth_validate_groups),
-        cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_insert_0),
-        cmocka_unit_test_setup(test_w_auth_validate_data_force_insert, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_insert_0),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected_long_enough, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_registered_recent, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_insert_1),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_insert_1),
+        cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_validate_data_replace_agent, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected_long_enough, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_registered_recent, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_enabled),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
