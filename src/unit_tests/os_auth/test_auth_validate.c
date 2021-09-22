@@ -309,6 +309,21 @@ static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state)
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char *connection_status = "active";
+    time_t date_add = 1632255744;
+    time_t disconnected_time = 0;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
+
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
 
     // Mocking disconnected_time
     will_return(__wrap_get_time_since_agent_disconnection, 10);
