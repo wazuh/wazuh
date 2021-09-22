@@ -198,6 +198,7 @@ class ReceiveFileTask:
             Pre-defined task_id to identify this object. If not specified, a random task_id will be used.
         """
         self.wazuh_common = wazuh_common
+        self.wazuh_common.extra_valid_requested = False
         self.coro = self.set_up_coro()
         self.task_id = task_id.decode() if task_id else str(uuid4())
         self.received_information = asyncio.Event()
