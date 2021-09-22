@@ -3146,7 +3146,7 @@ def get_script_arguments():
     parsed_args = parser.parse_args()
 
     if parsed_args.iam_role_duration is not None and parsed_args.iam_role_arn is None:
-        raise Exception('Used --iam_role_duration argument but no --iam_role_arn provided.')
+        raise argparse.ArgumentTypeError('Used --iam_role_duration argument but no --iam_role_arn provided.')
 
     return parsed_args
 
