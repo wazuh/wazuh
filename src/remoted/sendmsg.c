@@ -74,8 +74,6 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     int retval = 0;
     int error = 0;
 
-    mdebug1("---> Send Msg: agent: %s, size[%ld].", agent_id, strlen(msg));
-
     key_lock_read();
     key_id = OS_IsAllowedID(&keys, agent_id);
 
