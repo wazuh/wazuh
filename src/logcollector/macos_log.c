@@ -310,7 +310,7 @@ STATIC wfd_t * w_macos_log_exec(char ** log_cmd_array, u_int32_t flags) {
         merror(WPOPENV_ERROR, strerror(errno), errno);
     } else {
         /* The file descriptor, from which the output of `log stream` will be read, is set to non-blocking */
-        log_pipe_fd = fileno(macos_log_wfd->file); // Gets the file descriptor from a file pointer
+        log_pipe_fd = fileno(macos_log_wfd->file_out); // Gets the file descriptor from a file pointer
 
         if (log_pipe_fd <= 0) {
             merror(FP_TO_FD_ERROR, strerror(errno), errno);

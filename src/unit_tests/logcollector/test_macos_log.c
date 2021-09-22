@@ -1924,7 +1924,7 @@ void test_w_macos_log_exec_wpopenv_error(void ** state) {
 void test_w_macos_log_exec_fileno_error(void ** state) {
 
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     char * log_cmd_array = NULL;
     os_strdup("log stream", log_cmd_array);
@@ -1932,7 +1932,7 @@ void test_w_macos_log_exec_fileno_error(void ** state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 0);
 
     expect_string(__wrap__merror, formatted_msg,
@@ -1949,7 +1949,7 @@ void test_w_macos_log_exec_fileno_error(void ** state) {
 
 void test_w_macos_log_exec_fp_to_fd_error(void ** state) {
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     char * log_cmd_array = NULL;
     os_strdup("log stream", log_cmd_array);
@@ -1957,7 +1957,7 @@ void test_w_macos_log_exec_fp_to_fd_error(void ** state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 0);
 
     expect_string(__wrap__merror, formatted_msg,
@@ -1974,7 +1974,7 @@ void test_w_macos_log_exec_fp_to_fd_error(void ** state) {
 
 void test_w_macos_log_exec_get_flags_error(void ** state) {
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     char * log_cmd_array = NULL;
     os_strdup("log stream", log_cmd_array);
@@ -1982,7 +1982,7 @@ void test_w_macos_log_exec_get_flags_error(void ** state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 1);
 
     will_return(__wrap_fcntl, -1);
@@ -2001,7 +2001,7 @@ void test_w_macos_log_exec_get_flags_error(void ** state) {
 
 void test_w_macos_log_exec_set_flags_error(void ** state) {
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     char * log_cmd_array = NULL;
     os_strdup("log stream", log_cmd_array);
@@ -2009,7 +2009,7 @@ void test_w_macos_log_exec_set_flags_error(void ** state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 1);
 
     will_return(__wrap_fcntl, 0);
@@ -2031,7 +2031,7 @@ void test_w_macos_log_exec_set_flags_error(void ** state) {
 
 void test_w_macos_log_exec_success(void ** state) {
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     char * log_cmd_array = NULL;
     os_strdup("log stream", log_cmd_array);
@@ -2039,7 +2039,7 @@ void test_w_macos_log_exec_success(void ** state) {
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 1);
 
     will_return(__wrap_fcntl, 0);
@@ -2048,8 +2048,7 @@ void test_w_macos_log_exec_success(void ** state) {
 
     wfd_t * ret = w_macos_log_exec(&log_cmd_array, flags);
 
-    assert_ptr_equal(ret->file,  wfd->file);
-    assert_int_equal(ret->append_pool, 0);
+    assert_ptr_equal(ret->file_out,  wfd->file_out);
     assert_int_equal(ret->pid, 0);
 
     os_free(log_cmd_array);
@@ -2127,7 +2126,7 @@ void test_w_macos_create_log_stream_env_not_executable(void ** state) {
     current->query_type = 7;
 
     os_calloc(1, sizeof(wfd_t), current->macos_log->processes.stream.wfd);
-    current->macos_log->processes.stream.wfd->file = (FILE*)1;
+    current->macos_log->processes.stream.wfd->file_out = (FILE*)1;
 
     // test_w_macos_is_log_executable_error
     expect_string(__wrap_access, __name, "/usr/bin/log");
@@ -2209,11 +2208,11 @@ void test_w_macos_create_log_stream_env_complete(void ** state) {
 
     // test_w_macos_log_exec_success
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 1);
 
     will_return(__wrap_fcntl, 0);
@@ -2965,7 +2964,7 @@ void test_w_macos_create_log_show_env_show_wfd_NULL(void ** state) {
 void test_w_macos_create_log_show_env_success(void ** state) {
 
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
@@ -2983,7 +2982,7 @@ void test_w_macos_create_log_show_env_success(void ** state) {
     // test_w_macos_log_exec_success
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 1);
 
     will_return(__wrap_fcntl, 0);
@@ -3036,7 +3035,7 @@ void test_w_macos_create_log_stream_env_show_wfd_NULL(void ** state) {
 void test_w_macos_create_log_stream_env_success(void ** state) {
 
     wfd_t * wfd = *state;
-    wfd->file = (FILE*) 1234;
+    wfd->file_out = (FILE*) 1234;
 
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
@@ -3049,7 +3048,7 @@ void test_w_macos_create_log_stream_env_success(void ** state) {
     // test_w_macos_log_exec_success
     will_return(__wrap_wpopenv, wfd);
 
-    expect_value(__wrap_fileno, __stream, wfd->file);
+    expect_value(__wrap_fileno, __stream, wfd->file_out);
     will_return(__wrap_fileno, 1);
 
     will_return(__wrap_fcntl, 0);
