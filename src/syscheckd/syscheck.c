@@ -275,10 +275,9 @@ int Start_win32_Syscheck() {
                 }
             }
         }
-    }
 
-    /* Some sync time */
-    fim_initialize();
+        fim_initialize();
+    }
 
     /* Wait if agent started properly */
     os_wait();

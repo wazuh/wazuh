@@ -268,9 +268,9 @@ int main(int argc, char **argv)
 #endif
             }
         }
-    }
 
-    fim_initialize();
+        fim_initialize();
+    }
 
     if (start_realtime == 1) {
         realtime_start();
