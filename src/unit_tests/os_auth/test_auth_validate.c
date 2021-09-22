@@ -305,45 +305,13 @@ static void test_w_auth_replace_agent_force_disabled(void **state) {
     free_keyentry(&key);
 }
 
-static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state) {
+static void test_w_auth_replace_agent_not_disconnected(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
     char *connection_status = "active";
     time_t date_add = 1632255744;
     time_t disconnected_time = 0;
-    cJSON *j_agent_info_array = NULL;
-    cJSON *j_agent_info = NULL;
-
-    j_agent_info_array = cJSON_CreateArray();
-    j_agent_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
-    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
-    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
-    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
-
-    // Mocking disconnected_time
-    will_return(__wrap_get_time_since_agent_disconnection, 10);
-    config.force_options.disconnected_time_enabled = true;
-    config.force_options.disconnected_time = 100;
-
-    expect_string(__wrap__minfo, formatted_msg, "Agent '001' has not been disconnected long enough to be replaced.");
-    err = w_auth_replace_agent(&key, NULL, &config.force_options);
-
-    assert_int_equal(err, OS_INVALID);
-    free_keyentry(&key);
-}
-
-static void test_w_auth_replace_agent_not_disconnected(void **state) {
-    w_err_t err;
-    keyentry key;
-    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
-    char *connection_status = "disconnected";
-    time_t date_add = 1632255744;
-    time_t disconnected_time = 1632258049;
     cJSON *j_agent_info_array = NULL;
     cJSON *j_agent_info = NULL;
 
@@ -370,6 +338,39 @@ static void test_w_auth_replace_agent_not_disconnected(void **state) {
     free_keyentry(&key);
 }
 
+static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state) {
+    w_err_t err;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char *connection_status = "disconnected";
+    time_t date_add = 1632255744;
+    time_t disconnected_time = 1632258049;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
+
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnected_time", disconnected_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    // time since disconnected
+    will_return(__wrap_difftime, 10);
+
+    config.force_options.disconnected_time_enabled = true;
+    config.force_options.disconnected_time = 100;
+
+    expect_string(__wrap__minfo, formatted_msg, "Agent '001' has not been disconnected long enough to be replaced.");
+    err = w_auth_replace_agent(&key, NULL, &config.force_options);
+
+    assert_int_equal(err, OS_INVALID);
+    free_keyentry(&key);
+}
+
 static void test_w_auth_replace_agent_registered_recent(void **state) {
     w_err_t err;
     keyentry key;
@@ -390,11 +391,12 @@ static void test_w_auth_replace_agent_registered_recent(void **state) {
     expect_value(__wrap_wdb_get_agent_info, id, 1);
     will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
 
-    // time since disconnected
+    config.force_options.disconnected_time_enabled = false;
+
+    // time since registration
     will_return(__wrap_difftime, 10);
 
-    config.force_options.disconnected_time_enabled = true;
-    config.force_options.disconnected_time = 100;
+    config.force_options.after_registration_time = 100;
 
     expect_string(__wrap__minfo, formatted_msg, "Agent '001' doesn't comply with the registration time to be removed.");
     err = w_auth_replace_agent(&key, NULL, &config.force_options);
@@ -438,7 +440,6 @@ static void test_w_auth_replace_agent_not_old_enough(void **state) {
     assert_int_equal(err, OS_INVALID);
     free_keyentry(&key);
 }
-
 
 static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     w_err_t err;
