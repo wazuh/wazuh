@@ -36,9 +36,9 @@ public:
 
 protected:
     std::string             m_identifier;
-    bool                    m_scanned;
+    unsigned int            m_scanned;
     time_t                  m_lastEvent;
     std::string             m_checksum;
-    int                     mode;
+    int                     m_mode;
 };
 #endif //_DBITEM_HPP
