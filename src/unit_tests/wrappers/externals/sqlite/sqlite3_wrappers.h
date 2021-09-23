@@ -54,6 +54,8 @@ const unsigned char *__wrap_sqlite3_column_text(sqlite3_stmt *pStmt,
 
 const char *__wrap_sqlite3_errmsg(sqlite3* db);
 
+int __wrap_sqlite3_extended_errcode(__attribute__((unused)) sqlite3* db);
+
 int __wrap_sqlite3_exec(sqlite3* db,                                 /* An open database */
                         const char *sql,                             /* SQL to be evaluated */
                         int (*callback)(void*,int,char**,char**),    /* Callback function */
@@ -89,5 +91,7 @@ int __wrap_sqlite3_column_count(sqlite3_stmt *pStmt);
 int __wrap_sqlite3_column_type(sqlite3_stmt *pStmt, int i);
 
 const char* __wrap_sqlite3_column_name(sqlite3_stmt *pStmt, int N);
+
+int __wrap_sqlite3_get_autocommit(__attribute__((unused)) sqlite3 * db);
 
 #endif

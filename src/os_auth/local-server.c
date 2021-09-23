@@ -28,7 +28,8 @@ typedef enum auth_local_err {
     ENOAGENT,
     EDUPID,
     EAGLIM,
-    EINVGROUP
+    EINVGROUP,
+    ENOMASTER
 } auth_local_err;
 
 
@@ -42,21 +43,28 @@ static const struct {
     { 9004, "No such argument" },
     { 9005, "No such name" },
     { 9006, "No such IP" },
-    { 9007, "Duplicated IP" },
-    { 9008, "Duplicated name" },
+    { 9007, "Duplicate IP" },
+    { 9008, "Duplicate name" },
     { 9009, "Issue generating key" },
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
-    { 9012, "Duplicated ID" },
+    { 9012, "Duplicate ID" },
     { 9013, "Maximum number of agents reached" },
-    { 9014, "Invalid Group(s) Name(s)"}
+    { 9014, "Invalid Group(s) Name(s)" },
+    { 9015, "Cannot execute this request on a worker node" }
 };
 
 // Dispatch local request
 static char* local_dispatch(const char *input);
 
 // Add a new agent
-static cJSON* local_add(const char *id, const char *name, const char *ip, char *groups, const char *key, int force);
+static cJSON* local_add(const char *id,
+                        const char *name,
+                        const char *ip,
+                        const char *groups,
+                        const char *key,
+                        const char *key_hash,
+                        authd_force_options_t *force_options);
 
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
@@ -105,9 +113,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             if (errno != EINTR) {
                 merror_exit("at run_local_server(): select(): %s", strerror(errno));
             }
-
             continue;
-
         case 0:
             continue;
         }
@@ -116,7 +122,6 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
                 merror("at run_local_server(): accept(): %s", strerror(errno));
             }
-
             continue;
         }
 
@@ -171,7 +176,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
 
 // Dispatch local request
 char* local_dispatch(const char *input) {
-    cJSON *request;
+    cJSON *request = NULL;
     cJSON *function;
     cJSON *arguments;
     cJSON *response = NULL;
@@ -179,6 +184,11 @@ char* local_dispatch(const char *input) {
     int ierror;
 
     if (input[0] == '{') {
+        if (config.worker_node) {
+            ierror = ENOMASTER;
+            goto fail;
+        }
+
         const char *jsonErrPtr;
         if (request = cJSON_ParseWithOpts(input, &jsonErrPtr, 0), !request) {
             ierror = EJSON;
@@ -191,13 +201,14 @@ char* local_dispatch(const char *input) {
         }
 
         if (!strcmp(function->valuestring, "add")) {
-            cJSON *item;
-            char *id;
-            char *name;
-            char *ip;
+            cJSON *item = NULL;
+            char *id = NULL;
+            char *name = NULL;
+            char *ip = NULL;
             char *groups = NULL;
+            char *key_hash = NULL;
             char *key = NULL;
-            int force = 0;
+            authd_force_options_t force_options = {0};
 
             if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
                 ierror = ENOARGUMENT;
@@ -210,27 +221,38 @@ char* local_dispatch(const char *input) {
                 ierror = ENONAME;
                 goto fail;
             }
-
             name = item->valuestring;
 
             if (item = cJSON_GetObjectItem(arguments, "ip"), !item) {
                 ierror = ENOIP;
                 goto fail;
             }
-
             ip = item->valuestring;
 
-            if(item = cJSON_GetObjectItem(arguments, "groups"), item) {
+            if (item = cJSON_GetObjectItem(arguments, "groups"), item) {
                 groups = wstr_delete_repeated_groups(item->valuestring);
-                if (!groups){
+                if (!groups) {
                     ierror = EINVGROUP;
                     goto fail;
                 }
             }
 
+            key_hash = (item = cJSON_GetObjectItem(arguments, "key_hash"), item) ? item->valuestring : NULL;
             key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
-            force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
-            response = local_add(id, name, ip, groups, key, force);
+
+            if (item = cJSON_GetObjectItem(arguments, "force"), item) {
+                if (item->valueint == -1) {
+                    force_options.enabled = false;
+                } else {
+                    force_options.enabled = true;
+                    force_options.connection_time = item->valueint;
+                }
+            } else {
+                force_options.enabled = false;
+            }
+
+            response = local_add(id, name, ip, groups, key, key_hash, &force_options);
+
             os_free(groups);
         } else if (!strcmp(function->valuestring, "remove")) {
             cJSON *item;
@@ -247,6 +269,7 @@ char* local_dispatch(const char *input) {
             }
 
             purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
+
             response = local_remove(item->valuestring, purge);
         } else if (!strcmp(function->valuestring, "get")) {
             cJSON *item;
@@ -276,9 +299,8 @@ char* local_dispatch(const char *input) {
         }
 
         cJSON_Delete(request);
-    }
-    // Read configuration commands
-    else {
+    } else {
+        // Read configuration commands
         authcom_dispatch(input,&output);
     }
 
@@ -293,48 +315,41 @@ fail:
     return output;
 }
 
-cJSON* local_add(const char *id, const char *name, const char *ip, char *groups, const char *key, int force) {
+cJSON* local_add(const char *id,
+                 const char *name,
+                 const char *ip,
+                 const char *groups,
+                 const char *key,
+                 const char *key_hash,
+                 authd_force_options_t *force_options) {
     int index;
-    char *id_exist;
     cJSON *response = NULL;
     int ierror;
-    double antiquity;
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
 
     /* Check if groups are valid to be aggregated */
-    if (groups){
-        if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)){
+    if (groups) {
+        if (OS_SUCCESS != w_auth_validate_groups(groups, NULL)) {
             ierror = EINVGROUP;
             goto fail;
         }
     }
 
-    // Check for duplicated ID
-
+    // Check for duplicate ID
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
-            id_exist = keys.keyentries[index]->id;
-            minfo("Duplicated ID '%s' (%s). Removing old agent.", id, id_exist);
-            add_remove(keys.keyentries[index]);
-            OS_DeleteKey(&keys, id_exist, 0);
-        } else {
+        minfo("Duplicate ID '%s'.", keys.keyentries[index]->id);
+        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
             ierror = EDUPID;
             goto fail;
         }
     }
 
-    /* Check for duplicated IP */
-
+    /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
-                id_exist = keys.keyentries[index]->id;
-                minfo("Duplicated IP '%s' (%s). Removing old agent.", ip, id_exist);
-                add_remove(keys.keyentries[index]);
-                OS_DeleteKey(&keys, id_exist, 0);
-            } else {
+            if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
                 ierror = EDUPIP;
                 goto fail;
             }
@@ -342,24 +357,17 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     }
 
     /* Check whether the agent name is the same as the manager */
-
     if (!strcmp(name, shost)) {
         ierror = EDUPNAME;
         goto fail;
     }
 
-    /* Check for duplicated names */
-
+    /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        if (force >= 0 && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= force || antiquity < 0)) {
-            id_exist = keys.keyentries[index]->id;
-            minfo("Duplicated name '%s' (%s). Removing old agent.", name, id_exist);
-            add_remove(keys.keyentries[index]);
-            OS_DeleteKey(&keys, id_exist, 0);
-        } else {
-            ierror = EDUPNAME;
-            goto fail;
-        }
+        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
+                ierror = EDUPNAME;
+                goto fail;
+            }
     }
 
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
@@ -368,7 +376,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     }
 
 
-    if(groups) {
+    if (groups) {
         char path[PATH_MAX];
         if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             ierror = EINVGROUP;
@@ -381,7 +389,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->raw_key);
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
@@ -433,7 +441,7 @@ cJSON* local_get(const char *id) {
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     }
     else {
-        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->key);
+        response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key);
     }
 
     w_mutex_unlock(&mutex_keys);

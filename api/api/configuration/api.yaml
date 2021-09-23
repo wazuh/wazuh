@@ -14,6 +14,10 @@
 #  ssl_protocol: "TLSv1.2"
 #  ssl_ciphers: ""
 
+# Modify API's intervals (time in seconds)
+# intervals:
+#   request_timeout: 10
+
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
 # logs:
@@ -47,6 +51,9 @@
 
 # Enable features under development
 # experimental_features: no
+
+# Maximum body size that the API can accept, in bytes (0 -> limitless)
+# max_upload_size: 10485760
 
 # Enable remote commands
 # remote_commands:

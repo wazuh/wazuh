@@ -53,11 +53,14 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
 
     if (!address.empty())
     {
-        network["IPv4"]["address"] = address;
-        network["IPv4"]["netmask"] = m_interfaceAddress->netmask();
-        network["IPv4"]["broadcast"] = m_interfaceAddress->broadcast();
-        network["IPv4"]["metric"] = m_interfaceAddress->metrics();
-        network["IPv4"]["dhcp"]   = m_interfaceAddress->dhcp();
+        nlohmann::json ipv4JS { };
+        ipv4JS["address"] = address;
+        ipv4JS["netmask"] = m_interfaceAddress->netmask();
+        ipv4JS["broadcast"] = m_interfaceAddress->broadcast();
+        ipv4JS["metric"] = m_interfaceAddress->metrics();
+        ipv4JS["dhcp"]   = m_interfaceAddress->dhcp();
+
+        network["IPv4"].push_back(ipv4JS);
     }
     else
     {
@@ -71,11 +74,14 @@ void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
 
     if (!address.empty())
     {
-        network["IPv6"]["address"] = address;
-        network["IPv6"]["netmask"] = m_interfaceAddress->netmaskV6();
-        network["IPv6"]["broadcast"] = m_interfaceAddress->broadcastV6();
-        network["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
-        network["IPv6"]["dhcp"]   = m_interfaceAddress->dhcp();
+        nlohmann::json ipv6JS {};
+        ipv6JS["address"] = address;
+        ipv6JS["netmask"] = m_interfaceAddress->netmaskV6();
+        ipv6JS["broadcast"] = m_interfaceAddress->broadcastV6();
+        ipv6JS["metric"] = m_interfaceAddress->metricsV6();
+        ipv6JS["dhcp"]   = m_interfaceAddress->dhcp();
+
+        network["IPv6"].push_back(ipv6JS);
     }
     else
     {

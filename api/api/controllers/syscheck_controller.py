@@ -14,12 +14,13 @@ from wazuh.syscheck import run, clear, files, last_scan
 logger = logging.getLogger('wazuh-api')
 
 
-async def put_syscheck(request, agents_list='*', pretty=False, wait_for_complete=False):
+async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
+                       wait_for_complete: bool = False) -> web.Response:
     """Run a syscheck scan in the specified agents.
 
     Parameters
     ----------
-    list_agents : str
+    agents_list : str
         List of agent ids.
     pretty : bool
         Show results in human-readable format.

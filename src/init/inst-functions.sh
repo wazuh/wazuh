@@ -731,6 +731,21 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
+        if [ -f libwazuhshared.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 libwazuhshared.dylib ${INSTALLDIR}/lib
+        fi
+    elif [ -f libwazuhshared.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
         if [ -f shared_modules/dbsync/build/lib/libdbsync.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${INSTALLDIR}/lib
@@ -1055,6 +1070,8 @@ InstallServer()
     fi
 
     # Install the plugins files
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3.py
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/aws/aws-s3
@@ -1100,6 +1117,9 @@ InstallAgent()
     # Install the plugins files
     # Don't install the plugins if they are already installed. This check affects
     # hybrid installation mode
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
+
     if [ ! -d ${INSTALLDIR}/wodles/aws ]; then
         ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3

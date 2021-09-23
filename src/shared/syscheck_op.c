@@ -10,6 +10,13 @@
 
 #include "syscheck_op.h"
 
+const char *SYSCHECK_EVENT_STRINGS[] = {
+    [FIM_ADDED] = "added",
+    [FIM_MODIFIED] = "modified",
+    [FIM_READDED] = "readded",
+    [FIM_DELETED] = "deleted"
+};
+
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
 extern void mock_assert(const int result, const char* const expression,
@@ -336,7 +343,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     assert(f_name != NULL);
     assert(sum != NULL);
 
-    os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[FIM_FILE].value);
 
     if (sum->size) {
@@ -375,15 +381,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if (sum->mtime) {
-        lf->mtime_after = sum->mtime;
-        os_calloc(20, sizeof(char), lf->fields[FIM_MTIME].value);
-        snprintf(lf->fields[FIM_MTIME].value, 20, "%ld", sum->mtime);
+        lf->fields[FIM_MTIME].value = w_long_str(sum->mtime);
     }
 
     if (sum->inode) {
-        lf->inode_after = sum->inode;
-        os_calloc(20, sizeof(char), lf->fields[FIM_INODE].value);
-        snprintf(lf->fields[FIM_INODE].value, 20, "%ld", sum->inode);
+        lf->fields[FIM_INODE].value = w_long_str(sum->inode);
     }
 
     if(sum->sha256) {
@@ -395,82 +397,66 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if(sum->wdata.user_id) {
-        os_strdup(sum->wdata.user_id, lf->user_id);
         os_strdup(sum->wdata.user_id, lf->fields[FIM_USER_ID].value);
     }
 
     if(sum->wdata.user_name) {
-        os_strdup(sum->wdata.user_name, lf->user_name);
         os_strdup(sum->wdata.user_name, lf->fields[FIM_USER_NAME].value);
     }
 
     if(sum->wdata.group_id) {
-        os_strdup(sum->wdata.group_id, lf->group_id);
         os_strdup(sum->wdata.group_id, lf->fields[FIM_GROUP_ID].value);
     }
 
     if(sum->wdata.group_name) {
-        os_strdup(sum->wdata.group_name, lf->group_name);
         os_strdup(sum->wdata.group_name, lf->fields[FIM_GROUP_NAME].value);
     }
 
     if(sum->wdata.process_name) {
-        os_strdup(sum->wdata.process_name, lf->process_name);
         os_strdup(sum->wdata.process_name, lf->fields[FIM_PROC_NAME].value);
     }
 
     if(sum->wdata.parent_name) {
-        os_strdup(sum->wdata.parent_name, lf->parent_name);
         os_strdup(sum->wdata.parent_name, lf->fields[FIM_PROC_PNAME].value);
     }
 
     if(sum->wdata.cwd) {
-        os_strdup(sum->wdata.cwd, lf->cwd);
         os_strdup(sum->wdata.cwd, lf->fields[FIM_AUDIT_CWD].value);
     }
 
     if(sum->wdata.parent_cwd) {
-        os_strdup(sum->wdata.parent_cwd, lf->parent_cwd);
         os_strdup(sum->wdata.parent_cwd, lf->fields[FIM_AUDIT_PCWD].value);
     }
 
     if(sum->wdata.audit_uid) {
-        os_strdup(sum->wdata.audit_uid, lf->audit_uid);
         os_strdup(sum->wdata.audit_uid, lf->fields[FIM_AUDIT_ID].value);
     }
 
     if(sum->wdata.audit_name) {
-        os_strdup(sum->wdata.audit_name, lf->audit_name);
         os_strdup(sum->wdata.audit_name, lf->fields[FIM_AUDIT_NAME].value);
     }
 
     if(sum->wdata.effective_uid) {
-        os_strdup(sum->wdata.effective_uid, lf->effective_uid);
         os_strdup(sum->wdata.effective_uid, lf->fields[FIM_EFFECTIVE_UID].value);
     }
 
     if(sum->wdata.effective_name) {
-        os_strdup(sum->wdata.effective_name, lf->effective_name);
         os_strdup(sum->wdata.effective_name, lf->fields[FIM_EFFECTIVE_NAME].value);
     }
 
     if(sum->wdata.ppid) {
-        os_strdup(sum->wdata.ppid, lf->ppid);
         os_strdup(sum->wdata.ppid, lf->fields[FIM_PPID].value);
     }
 
     if(sum->wdata.process_id) {
-        os_strdup(sum->wdata.process_id, lf->process_id);
         os_strdup(sum->wdata.process_id, lf->fields[FIM_PROC_ID].value);
     }
 
     if(sum->tag) {
-        os_strdup(sum->tag, lf->sk_tag);
         os_strdup(sum->tag, lf->fields[FIM_TAG].value);
     }
 
     if(sum->symbolic_path) {
-        os_strdup(sum->symbolic_path, lf->sym_path);
         os_strdup(sum->symbolic_path, lf->fields[FIM_SYM_PATH].value);
     }
 }

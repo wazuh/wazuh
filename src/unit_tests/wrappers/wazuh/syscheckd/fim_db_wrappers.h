@@ -84,6 +84,13 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         int storage,
                                         event_data_t *evt_data);
 
+int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
+                                        fim_tmp_file *file,
+                                        pthread_mutex_t *mutex,
+                                        int storage,
+                                        event_data_t *evt_data,
+                                        directory_t *configuration);
+
 int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path);
 
 int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql);

@@ -504,5 +504,93 @@ ID: 80200 - 80499
         <options>no_full_log</options>
     </rule>
 
+</group>
+
+<!-- S3 Access rules -->
+<group name="amazon, aws, s3">
+
+    <rule id="80360" level="0">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">s3_server_access</field>
+        <description>AWS S3 Access Log events group</description>
+    </rule>
+
+     <!-- Error events -->
+    <rule id="80367" level="5">
+        <if_sid>80360</if_sid>
+        <field name="aws.error_code" type="pcre2">^(?!^$|^-$).*</field>
+        <description>AWS S3 Error: $(aws.error_code)</description>
+    </rule>
+
+    <!-- Acces denied errors -->
+    <rule id="80368" level="5">
+        <if_sid>80367</if_sid>
+        <field name="aws.error_code" type="pcre2">^(?:AccessDenied|LambdaPermissionError|AccountNotAuthorized|OrganizationAccessDenied|UnauthorizedAccess)$</field>
+        <description>AWS S3 Error: $(aws.error_code), operation: $(aws.operation)</description>
+    </rule>
+
+    <rule id="80369" level="10" frequency="10" timeframe="60">
+        <if_matched_sid>80368</if_matched_sid>
+        <same_field>aws.error_code</same_field>
+        <description>AWS S3 Error: Multiple Access Denied</description>
+    </rule>
+
+    <!-- Authentication failure -->
+    <rule id="80370" level="5">
+        <if_sid>80367</if_sid>
+        <field name="aws.error_code" type="pcre2">^InvalidSecurity$</field>
+        <description>AWS S3 Authentication Failure: $(aws.error_code), from: $(aws.requester)</description>
+    </rule>
+
+    <rule id="80371" level="10" frequency="10" timeframe="60">
+        <if_matched_sid>80370</if_matched_sid>
+        <description>AWS S3 Multiple Authentication Failures</description>
+        <mitre>
+            <id>T1110</id>
+        </mitre>
+    </rule>
+
+    <rule id="80361" level="3">
+        <if_sid>80360</if_sid>
+        <field name="aws.operation">DELETE</field>
+        <description>AWS S3: DELETE operation: $(aws.request_uri)</description>
+    </rule>
+
+    <rule id="80362" level="2">
+        <if_sid>80360</if_sid>
+        <field name="aws.operation">GET</field>
+        <description>AWS S3: GET operation: $(aws.request_uri)</description>
+    </rule>
+
+    <!-- Silence general REST.GET.OBJECT with status code 200 -->
+    <rule id="80363" level="0">
+        <if_sid>80362</if_sid>
+        <field name="aws.operation">^REST.GET.OBJECT$</field>
+        <field name="aws.http_status">200</field>
+        <description>AWS S3: GET with 200 status code</description>
+    </rule>
+
+    <rule id="80364" level="3">
+        <if_sid>80360</if_sid>
+        <field name="aws.operation">PUT</field>
+        <description>AWS S3: PUT operation: $(aws.request_uri)</description>
+    </rule>
+
+    <!-- Silence events when S3 puts a file into the bucket -->
+    <rule id="80365" level="0">
+        <if_sid>80364</if_sid>
+        <field name="aws.requester">^svc:s3.amazonaws.com$</field>
+        <description>AWS S3: PUT operation: $(aws.request_uri) from S3 service</description>
+    </rule>
+
+    <rule id="80366" level="2">
+        <if_sid>80360</if_sid>
+        <field name="aws.operation">POST</field>
+        <description>AWS S3: POST operation: $(aws.request_uri)</description>
+    </rule>
+
+   
+
+
 
 </group>

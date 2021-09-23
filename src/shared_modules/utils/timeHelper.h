@@ -15,6 +15,7 @@
 #include <string>
 #include <ctime>
 #include <iomanip>
+#include <sstream>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

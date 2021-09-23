@@ -32,11 +32,11 @@ static int error_code_sysinfo_network = 0;
 int mock_sysinfo_networks_func(cJSON **object) {
 
     static const char *ip_update_success =
-    "{ \"iface\": [ { \"gateway\":\"mock_gateway\", \"IPv4\": { \"address\":\"111.222.333.444\" } } ] }";
+    "{ \"iface\": [ { \"gateway\":\"mock_gateway\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
     static const char *iface_bad_name = "{\"iface_fail\":[]}";
     static const char *iface_no_elements = "{\"iface\":[]";
     static const char *gateway_unknown = "{ \"iface\": [ { \"gateway\":\"unknown\" } ] }";
-    char *json_string = NULL;
+    const char *json_string = NULL;
 
     switch (test_case_selector) {
     case 1:

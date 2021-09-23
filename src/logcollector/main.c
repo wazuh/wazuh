@@ -186,8 +186,6 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-    minfo(STARTUP_MSG, (int)getpid());
-
     /* Start the queue */
     if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);

@@ -32,7 +32,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
     (1703, None, ['000'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
     (1650, None, ['001'], None, [], False, None, 'Wazuh v4.0.0'),
     (1652, None, ['002'], 'random', [], False, None, 'Wazuh v4.0.0'),
-    (None, 1651, ['003'], 'restart-wazuh0', [], False, None, None),
+    (None, 1707, ['003'], 'restart-wazuh0', [], False, None, None),
     (None, 1750, ['004'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
     (None, None, ['005'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
     (None, None, ['006'], 'custom-ar', [], True, None, 'Wazuh v4.0.0'),

@@ -59,11 +59,14 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>::buildNetworkData(nlo
 
     if (!address.empty())
     {
-        networkV4["IPv4"]["address"] = address;
-        networkV4["IPv4"]["netmask"] =  m_interfaceAddress->netmask();
-        networkV4["IPv4"]["broadcast"] = m_interfaceAddress->broadcast();
-        networkV4["IPv4"]["metric"] = m_interfaceAddress->metrics();
-        networkV4["IPv4"]["dhcp"] = m_interfaceAddress->dhcp();
+        nlohmann::json ipv4JS;
+        ipv4JS["address"] = address;
+        ipv4JS["netmask"] =  m_interfaceAddress->netmask();
+        ipv4JS["broadcast"] = m_interfaceAddress->broadcast();
+        ipv4JS["metric"] = m_interfaceAddress->metrics();
+        ipv4JS["dhcp"] = m_interfaceAddress->dhcp();
+
+        networkV4["IPv4"].push_back(ipv4JS);
     }
     else
     {
@@ -78,12 +81,14 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV6>::buildNetworkData(nlo
 
     if (!address.empty())
     {
-        networkV6["IPv6"]["address"] = address;
-        networkV6["IPv6"]["netmask"] = m_interfaceAddress->netmaskV6();
-        networkV6["IPv6"]["broadcast"] = m_interfaceAddress->broadcastV6();
-        networkV6["IPv6"]["metric"] = m_interfaceAddress->metricsV6();
-        networkV6["IPv6"]["dhcp"] = m_interfaceAddress->dhcp();
+        nlohmann::json ipv6JS { };
+        ipv6JS["address"] = address;
+        ipv6JS["netmask"] = m_interfaceAddress->netmaskV6();
+        ipv6JS["broadcast"] = m_interfaceAddress->broadcastV6();
+        ipv6JS["metric"] = m_interfaceAddress->metricsV6();
+        ipv6JS["dhcp"] = m_interfaceAddress->dhcp();
 
+        networkV6["IPv6"].push_back(ipv6JS);
     }
     else
     {

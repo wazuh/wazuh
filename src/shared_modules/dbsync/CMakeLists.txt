@@ -60,7 +60,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(dbsync PROPERTIES
         PREFIX ""
         SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
@@ -72,17 +72,13 @@ elseif(UNIX AND NOT APPLE)
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-if(DISABLE_SHARED)
-  target_link_libraries(dbsync cjson sqlite3)
-else()
-  target_link_libraries(dbsync wazuhext)
-endif(DISABLE_SHARED)
+target_link_libraries(dbsync wazuhext)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-    target_link_libraries(dbsync sqlite3 cjson -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
+    target_link_libraries(dbsync -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_BUILD_TYPE STREQUAL "Release")
 

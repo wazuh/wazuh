@@ -16,6 +16,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "sysInfo.h"
 #include "sym_load.h"
+#include "../os_net/os_net.h"
 
 HANDLE hMutex;
 int win_debug_level;
@@ -36,11 +37,13 @@ void *skthread()
     return (NULL);
 }
 
-static void stop_wmodules()
+void stop_wmodules()
 {
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        cur_module->context->destroy(cur_module->data);
+        if (cur_module->context->stop) {
+            cur_module->context->stop(cur_module->data);
+        }
     }
 }
 
@@ -142,7 +145,7 @@ int local_start()
     }
     /* Read keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0);
+    OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
     /* If there is no file to monitor, create a clean entry
      * for the mark messages.
@@ -276,8 +279,6 @@ int local_start()
         }
     }
 
-    atexit(stop_wmodules);
-
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);
 
@@ -343,8 +344,9 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         if (send_msg(tmpstr, -1) >= 0) {
             retval = 0;
         }
-    } else if (buffer_append(tmpstr) == 0) {
-            retval = 0;
+    } else {
+        buffer_append(tmpstr);
+        retval = 0;
     }
 
     if (!ReleaseMutex(hMutex)) {
@@ -361,17 +363,8 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 
 char *get_agent_ip()
 {
-    static char agent_ip[IPSIZE + 1] = { '\0' };
-    static time_t last_update = 0;
-    time_t now = time(NULL);
+    char agent_ip[IPSIZE + 1] = { '\0' };
     cJSON *object;
-
-    if ((now - last_update) < agt->main_ip_update_interval) {
-        return strdup(agent_ip);
-    }
-
-    last_update = now;
-    agent_ip[0] = '\0';
 
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
         const int error_code = sysinfo_network_ptr(&object);
@@ -380,21 +373,31 @@ char *get_agent_ip()
                 const cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 if (iface) {
                     const int size_ids = cJSON_GetArraySize(iface);
-                    for (int i = 0; i < size_ids; i++){
+                    for (int i = 0; i < size_ids; ++i){
                         const cJSON *element = cJSON_GetArrayItem(iface, i);
                         if(!element) {
                             continue;
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
                             const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
                             if (!ipv4) {
                                 continue;
                             }
-                            cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                            if (address && cJSON_GetStringValue(address))
-                            {
-                                strncpy(agent_ip, address->valuestring, IPSIZE);
+                            const int size_proto_interfaces = cJSON_GetArraySize(ipv4);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ipv4 = cJSON_GetArrayItem(ipv4, j);
+                                if(!element_ipv4) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ipv4, "address");
+                                if (address && cJSON_GetStringValue(address))
+                                {
+                                    strncpy(agent_ip, address->valuestring, IPSIZE);
+                                    break;
+                                }
+                            }
+                            if (*agent_ip != '\0') {
                                 break;
                             }
                         }
@@ -406,10 +409,6 @@ char *get_agent_ip()
         else {
             merror("Unable to get system network information. Error code: %d.", error_code);
         }
-    }
-
-    if (agent_ip[0] == '\0') {
-        last_update = 0;
     }
 
     return strdup(agent_ip);

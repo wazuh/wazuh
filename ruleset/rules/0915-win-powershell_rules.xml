@@ -1,0 +1,61 @@
+<!--
+  -  Windows Event Channel - Powershell ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+  - Rule id interval 91601 - 92000
+-->
+
+<group name="windows, powershell,">
+
+<!-- Powershell Operational grouping -->
+    <rule id="91801" level="0">
+        <if_sid>60000</if_sid>
+        <field name="win.system.channel">^Microsoft-Windows-PowerShell/Operational$</field>
+        <options>no_full_log</options>
+        <description>Group of Windows rules for the Powershell/Operational channel</description>
+    </rule>
+
+    <!-- Powershell Script Block rules -->
+
+    <rule id="91802" level="0">
+        <if_sid>91801</if_sid>
+        <field name="win.eventdata.ScriptBlockId" type="pcre2">.+</field>
+        <options>no_full_log</options>
+        <description>Group of Windows rules for the Powershell/Operational channel</description>
+    </rule>
+
+    <!-- Sample log: {"win":{"eventdata":{"path":"C:\\\\Users\\\\AtomicRed\\\\AppData\\\\Roaming\\\\TransbaseOdbcDriver\\\\screenshot__.ps1","messageNumber":"1","messageTotal":"1","scriptBlockText":"function screenshot([Drawing.Rectangle]$bounds, $path){      $bmp = New-Object System.Drawing.Bitmap($bounds.width, $bounds.height)     $graphics = [Drawing.Graphics]::FromImage($bmp)     $graphics.CopyFromScreen($bounds.Location, [Drawing.Point]::Empty, $bounds.size)     $bmp.Save($path)     $graphics.Dispose()     $bmp.Dispose() }","scriptBlockId":"1b79ef82-0efe-4734-b092-3a4b9f17e080"},"system":{"eventID":"4104","keywords":"0x0","providerGuid":"{a0c1853b-5c40-4b15-8766-3cf1c58f985a}","level":"5","channel":"Microsoft-Windows-PowerShell/Operational","opcode":"15","message":"\"Creating Scriptblock text (1 of 1):\r\nfunction screenshot([Drawing.Rectangle]$bounds, $path){ \n    $bmp = New-Object System.Drawing.Bitmap($bounds.width, $bounds.height)\n    $graphics = [Drawing.Graphics]::FromImage($bmp)\n    $graphics.CopyFromScreen($bounds.Location, [Drawing.Point]::Empty, $bounds.size)\n    $bmp.Save($path)\n    $graphics.Dispose()\n    $bmp.Dispose()\n}\r\n\r\nScriptBlock ID: 1b79ef82-0efe-4734-b092-3a4b9f17e080\r\nPath: C:\\Users\\AtomicRed\\AppData\\Roaming\\TransbaseOdbcDriver\\screenshot__.ps1\"","version":"1","systemTime":"2021-06-17T19:42:48.3171903Z","eventRecordID":"95916","threadID":"5292","computer":"hrmanager.ExchangeTest.com","task":"2","processID":"1756","severityValue":"VERBOSE","providerName":"Microsoft-Windows-PowerShell"}}} -->
+    <rule id="91803" level="14">
+        <if_sid>91802</if_sid>
+        <field name="win.system.message" type="pcre2">CopyFromScreen</field>
+        <options>no_full_log</options>
+        <description>Screen capture method invoked from PowerShell script</description>
+        <mitre>
+            <id>T1113</id>
+        </mitre>
+    </rule>
+
+    <!-- Sample: {"win":{"eventdata":{"messageNumber":"1","messageTotal":"1","scriptBlockText":"Get-ADComputer -Identity 'cfo' -Properties *","scriptBlockId":"f6ea30ec-ff1e-4749-b7d8-0c2003a0c250"},"system":{"eventID":"4104","keywords":"0x0","providerGuid":"{A0C1853B-5C40-4B15-8766-3CF1C58F985A}","level":"5","channel":"Microsoft-Windows-PowerShell/Operational","opcode":"15","message":"\"Creating Scriptblock text (1 of 1):\r\nGet-ADComputer -Identity 'cfo' -Properties *\r\n\r\nScriptBlock ID: f6ea30ec-ff1e-4749-b7d8-0c2003a0c250\r\nPath: \"","version":"1","systemTime":"2021-06-30T22:29:22.450624400Z","eventRecordID":"5347","threadID":"920","computer":"bankdc.ExchangeTest.com","task":"2","processID":"6320","severityValue":"VERBOSE","providerName":"Microsoft-Windows-PowerShell"}}} -->
+    <rule id="91805" level="3">
+        <if_sid>91802</if_sid>
+        <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-ADComputer</field>
+        <description>Executed Powershell script "Get-ADComputer" executed</description>
+        <mitre>
+            <id>T1018</id>
+        </mitre>
+    </rule>
+
+    <!-- Sample: {"win":{"eventdata":{"messageNumber":"1","messageTotal":"1","scriptBlockText":"Get-NetUser","scriptBlockId":"b8633c48-c1ea-47b5-bad6-7766ff636abb"},"system":{"eventID":"4104","keywords":"0x0","providerGuid":"{A0C1853B-5C40-4B15-8766-3CF1C58F985A}","level":"5","channel":"Microsoft-Windows-PowerShell/Operational","opcode":"15","message":"\"Creating Scriptblock text (1 of 1):\r\nGet-NetUser\r\n\r\nScriptBlock ID: b8633c48-c1ea-47b5-bad6-7766ff636abb\r\nPath: \"","version":"1","systemTime":"2021-06-30T22:20:57.104893900Z","eventRecordID":"5329","threadID":"9440","computer":"bankdc.ExchangeTest.com","task":"2","processID":"3940","severityValue":"VERBOSE","providerName":"Microsoft-Windows-PowerShell"}}} -->
+    <rule id="91806" level="3">
+        <if_sid>91802</if_sid>
+        <field name="win.eventdata.scriptBlockText" type="pcre2">(?i)Get-NetUser</field>
+        <description>Powershell script "Get-NetUser executed"</description>
+        <mitre>
+            <id>T1087.002</id>>
+        </mitre>
+    </rule>
+</group>

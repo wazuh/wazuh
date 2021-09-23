@@ -15,9 +15,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 406
-      json:
-        error: 6002
+      status_code: 400
+      json: &error_spec
+        detail: !anystr
+        title: !anystr
 
     # POST /agents
   - name: Create a new agent
@@ -73,9 +74,8 @@ stages:
         ip: "any"
     response:
       status_code: 400
-      json: &error_spec
-        detail: !anystr
-        title: !anystr
+      json:
+        <<: *error_spec
 
     # POST /agents
   - name: Create agent without assigning an specific IP
@@ -200,9 +200,22 @@ stages:
               ip: 'any'
 
 ---
-test_name: POST /groups/{group_id}
+test_name: POST /groups
 
 stages:
+
+    # POST /groups
+  - name: Try to create a group without body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
 
     # POST /groups
   - name: Create a group called group4
@@ -263,9 +276,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 406
-      json:
-        error: 6002
+      status_code: 400
 
     # POST /agents/insert
   - name: Create a new agent specifying id, ip, key and name

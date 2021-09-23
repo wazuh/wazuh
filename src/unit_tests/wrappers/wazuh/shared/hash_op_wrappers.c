@@ -120,3 +120,8 @@ int __wrap_OSHash_Update(__attribute__((unused)) OSHash *self,
                             __attribute__((unused)) void *data) {
     return mock();
 }
+
+int __wrap_OSHash_Get_Elem_ex(OSHash *self) {
+    check_expected_ptr(self);
+    return mock();
+}

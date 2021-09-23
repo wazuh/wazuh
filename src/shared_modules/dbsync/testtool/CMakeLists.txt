@@ -23,7 +23,7 @@ add_executable(dbsync_test_tool
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(dbsync_test_tool
 	    dbsync
-	    -static-libgcc -static-libstdc++
+	    -static-libstdc++
 	)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 	target_link_libraries(dbsync_test_tool

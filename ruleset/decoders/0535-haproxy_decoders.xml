@@ -1,0 +1,26 @@
+<!--
+  -  haproxy http log decoder
+  -  Author: George Kissandrakis <gkissand@gmail.com>
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+Sample logs:  (Disclaimer: the slashes - - - - - - was separated to avoid problems with XLM comments. When running tests, put the last 4 together)
+Dec 12 15:44:01 servername haproxy[29883]: 192.168.1.20:60292 [12/Dec/2019:15:44:01.504] fe~ be/lo4 0/0/0/1/1 200 175 - - - - - - 235/235/9/0/0 0/0 {www.localhost.com|10|9|0|0} "GET /index.html HTTP/1.1"
+Dec 12 15:44:02 servername haproxy[29883]: 192.168.1.20:60292 [12/Dec/2019:15:44:02.504] fe~ be/lo4 0/0/0/1/1 404 175 - - - - - - 235/235/9/0/0 0/0 {www.localhost.com|10|9|0|0} "POST /api/test/input.php HTTP/1.1"
+Dec 12 15:44:03 servername haproxy[29883]: 192.168.1.20:60292 [12/Dec/2019:15:44:03.504] fe~ be/lo4 0/0/0/1/1 500 175 - - - - - - 235/235/9/0/0 0/0 {www.localhost.com|10|9|0|0} "GET /cgi-bin/index.cgi HTTP/1.1"
+-->
+
+
+<decoder name="haproxy">
+  <program_name>^haproxy</program_name>
+</decoder>
+<decoder name="haproxy-httplog">
+  <parent>haproxy</parent>
+  <type>web-log</type>
+  <prematch>^\S+:\S+ [\S+] \S+ \S+ \S+ \S+ </prematch>
+  <regex>^(\d+.\d+.\d+.\d+):\S+ \S+ \S+ \S+ \S+ (\d+) \.* {(\S+)\|\.* "(\S+) (\S+)</regex>
+  <order>srcip, id, dstip, protocol, url</order>
+</decoder>

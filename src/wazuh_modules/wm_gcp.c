@@ -32,6 +32,7 @@ const wm_context WM_GCP_CONTEXT = {
     (wm_routine)wm_gcp_main,
     (wm_routine)(void *)wm_gcp_destroy,
     (cJSON * (*)(const void *))wm_gcp_dump,
+    NULL,
     NULL
 };
 
@@ -111,6 +112,14 @@ void wm_gcp_run(const wm_gcp *data) {
         os_malloc(OS_SIZE_1024, int_to_string);
         sprintf(int_to_string, "%d", data->max_messages);
         wm_strcat(&command, "--max_messages", ' ');
+        wm_strcat(&command, int_to_string, ' ');
+        os_free(int_to_string);
+    }
+    if (data->num_threads) {
+        char *int_to_string;
+        os_malloc(OS_SIZE_1024, int_to_string);
+        sprintf(int_to_string, "%d", data->num_threads);
+        wm_strcat(&command, "--num_threads", ' ');
         wm_strcat(&command, int_to_string, ' ');
         os_free(int_to_string);
     }
@@ -225,6 +234,7 @@ cJSON *wm_gcp_dump(const wm_gcp *data) {
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "pull_on_start", data->pull_on_start ? "yes" : "no");
     if (data->max_messages) cJSON_AddNumberToObject(wm_wd, "max_messages", data->max_messages);
+    if (data->num_threads) cJSON_AddNumberToObject(wm_wd, "num_threads", data->num_threads);
     if (data->project_id) cJSON_AddStringToObject(wm_wd, "project_id", data->project_id);
     if (data->subscription_name) cJSON_AddStringToObject(wm_wd, "subscription_name", data->subscription_name);
     if (data->credentials_file) cJSON_AddStringToObject(wm_wd, "credentials_file", data->credentials_file);

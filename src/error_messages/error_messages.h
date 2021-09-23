@@ -426,7 +426,7 @@
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
 #define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
-#define FIM_ERROR_REALTIME_MAXNUM_WATCHES           "(6616): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
+
 #define FIM_ERROR_AUDIT_MODE                        "(6617): Unable to get audit mode: %s (%d)."
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
 #define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'. It will be monitored in Realtime"

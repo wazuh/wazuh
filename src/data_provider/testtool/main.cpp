@@ -13,6 +13,11 @@
 #include "sysInfo.hpp"
 #include "sysInfo.h"
 
+constexpr auto JSON_PRETTY_SPACES
+{
+    2
+};
+
 int main()
 {
     try
@@ -25,12 +30,12 @@ int main()
         const auto& os        {info.os()};
         const auto& ports     {info.ports()};
 
-        std::cout << hw.dump() << std::endl;
-        std::cout << packages.dump() << std::endl;
-        std::cout << processes.dump() << std::endl;
-        std::cout << networks.dump() << std::endl;
-        std::cout << os.dump() << std::endl;
-        std::cout << ports.dump() << std::endl;
+        std::cout << hw.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << packages.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << processes.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << networks.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << os.dump(JSON_PRETTY_SPACES) << std::endl;
+        std::cout << ports.dump(JSON_PRETTY_SPACES) << std::endl;
     }
     catch (const std::exception& e)
     {

@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#if defined (__linux__) || defined (__MACH__) || defined (sun)
+#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
 #include "sysInfo.h"
 #include "sym_load.h"
@@ -26,13 +26,14 @@ const wm_context WM_CONTROL_CONTEXT = {
     (wm_routine)wm_control_main,
     (wm_routine)(void *)wm_control_destroy,
     (cJSON * (*)(const void *))wm_control_dump,
+    NULL,
     NULL
 };
 void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 #include <ifaddrs.h>
 #elif defined sun
 #include <net/if.h>
@@ -77,7 +78,7 @@ char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
 
-#if defined __linux__ || defined __MACH__
+#if defined __linux__ || defined __MACH__ || defined(FreeBSD) || defined(OpenBSD)
     cJSON *object;
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
         const int error_code = sysinfo_network_ptr(&object);
@@ -92,15 +93,25 @@ char* getPrimaryIP(){
                             continue;
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
-                        if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring,"unkwown")) {
+                        if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring," ")) {
                             const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
                             if (!ipv4) {
                                 continue;
                             }
-                            cJSON *address = cJSON_GetObjectItem(ipv4, "address");
-                            if (address && cJSON_GetStringValue(address))
-                            {
-                                os_strdup(address->valuestring, agent_ip);
+                            const int size_proto_interfaces = cJSON_GetArraySize(ipv4);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ipv4 = cJSON_GetArrayItem(ipv4, j);
+                                if(!element_ipv4) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ipv4, "address");
+                                if (address && cJSON_GetStringValue(address))
+                                {
+                                    os_strdup(address->valuestring, agent_ip);
+                                    break;
+                                }
+                            }
+                            if (agent_ip) {
                                 break;
                             }
                         }

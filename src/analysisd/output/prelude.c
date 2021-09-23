@@ -510,20 +510,20 @@ void OS_PreludeLog(const Eventinfo *lf)
                              idmef_analyzer_ref
                              (prelude_client_get_analyzer(prelude_client)),
                              IDMEF_LIST_PREPEND);
-    mdebug1("lf->filename = %s.", lf->filename);
-    if (lf->filename) {
+    mdebug1("lf->fields[FIM_FILE].value = %s.", lf->fields[FIM_FILE].value);
+    if (lf->decoder_info->name != NULL && strncmp(lf->decoder_info->name, "syscheck_", 9) == 0) {
         FileAccess_PreludeLog(idmef,
                               "original",
-                              lf->filename,
-                              lf->md5_before,
-                              lf->sha1_before,
-                              lf->sha256_before,
-                              lf->owner_before,
-                              lf->gowner_before,
-                              lf->perm_before);
+                              lf->fields[FIM_FILE].value,
+                              lf->fields[FIM_MD5_BEFORE].value,
+                              lf->fields[FIM_SHA1_BEFORE].value,
+                              lf->fields[FIM_SHA256_BEFORE].value,
+                              lf->fields[FIM_UID_BEFORE].value,
+                              lf->fields[FIM_GID_BEFORE].value,
+                              lf->fields[FIM_PERM_BEFORE].value);
         FileAccess_PreludeLog(idmef,
                               "current",
-                              lf->filename,
+                              lf->fields[FIM_FILE].value,
                               lf->fields[FIM_MD5].value,
                               lf->fields[FIM_SHA1].value,
                               lf->fields[FIM_SHA256].value,

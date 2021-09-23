@@ -30,7 +30,6 @@ int timeout;    //timeout in seconds waiting for a server reply
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
 static bool agent_handshake_to_server(int server_id, bool is_startup);
-static bool agent_ping_to_server(int server_id);
 static void send_msg_on_startup(void);
 
 /**
@@ -82,8 +81,12 @@ bool connect_server(int server_id, bool verbose)
 
     /* The hostname was not resolved correctly */
     if (tmp_str == NULL || *tmp_str == '\0') {
-        int rip_l = strlen(agt->server[server_id].rip);
-        mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+        if (agt->server[server_id].rip != NULL) {
+            const int rip_l = strlen(agt->server[server_id].rip);
+            mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+        } else {
+            mdebug2("Could not resolve hostname");
+        }
 
         return false;
     }
@@ -158,14 +161,10 @@ void start_agent(int is_startup)
         // Try to enroll and extra attempt
 
         if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
-            if (agent_ping_to_server(current_server_id)) {
-                if (try_enroll_to_server(agt->server[current_server_id].rip) == 0) {
-                    if (agent_handshake_to_server(current_server_id, is_startup)) {
-                        return;
-                    }
+            if (try_enroll_to_server(agt->server[current_server_id].rip) == 0) {
+                if (agent_handshake_to_server(current_server_id, is_startup)) {
+                    return;
                 }
-            } else {
-                mwarn("Polling server '%s' failed. Skipping enrollment.", agt->server[current_server_id].rip);
             }
         }
 
@@ -207,11 +206,7 @@ static void w_agentd_keys_init (void) {
 
                 /* Try to enroll to server list */
                 while (agt->server[rc].rip && (registration_status != 0)) {
-                    if (agent_ping_to_server(rc)) {
-                        registration_status = try_enroll_to_server(agt->server[rc].rip);
-                    } else {
-                        mwarn("Polling server '%s' failed. Skipping enrollment.", agt->server[rc].rip);
-                    }
+                    registration_status = try_enroll_to_server(agt->server[rc].rip);
                     rc++;
                 }
 
@@ -230,8 +225,10 @@ static void w_agentd_keys_init (void) {
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-
-    OS_StartCounter(&keys);
+    else {
+        /* If the key store was empty, the counters will already be initialized in the enrollment process */
+        OS_StartCounter(&keys);
+    }
 
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
                         agt->profile);
@@ -306,47 +303,12 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
     }
     return 0;
 }
-/**
- * @brief Check the server health using ping/pong operation.
- * @param server_id index of the specified server from agt servers list
- * @retval true on good health
- * @retval false when no response
- * */
-static bool agent_ping_to_server(int server_id) {
-    ssize_t recv_b = 0;
-    char *msg = "#ping";
-    char buffer[OS_MAXSTR + 1] = { '\0' };
 
-    if (connect_server(server_id, false)) {
-        /* Send the ping message */
-
-        if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-            recv_b = OS_SendUDPbySize(agt->sock, strlen(msg), msg);
-        } else {
-            recv_b = OS_SendSecureTCP(agt->sock, strlen(msg), msg);
-        }
-
-        if (recv_b != 0) {
-            return false;
-        }
-
-        /* Read until our reply comes back */
-        recv_b = receive_message(buffer, OS_MAXSTR);
-
-        if (recv_b > 0) {
-            if (strncmp(buffer, "#pong", 5) == 0) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
 int try_enroll_to_server(const char * server_rip) {
     int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip);
     if (enroll_result == 0) {
         /* Wait for key update on agent side */
-        minfo("Waiting %d seconds before server connection", agt->enrollment_cfg->delay_after_enrollment);
+        minfo("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
         sleep(agt->enrollment_cfg->delay_after_enrollment);
         /* Successfull enroll, read keys */
         OS_UpdateKeys(&keys);
@@ -355,6 +317,7 @@ int try_enroll_to_server(const char * server_rip) {
     }
     return enroll_result;
 }
+
 /**
  * @brief Holds handshake logic for an attempt to connect to server
  * @param server_id index of the specified server from agt servers list

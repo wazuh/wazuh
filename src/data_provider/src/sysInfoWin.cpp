@@ -47,25 +47,17 @@ constexpr auto SYSTEM_PROCESS_NAME {"System"};
 class SysInfoProcess final
 {
     public:
-        SysInfoProcess(const DWORD pId)
+        SysInfoProcess(const DWORD pId, const HANDLE processHandle)
             : m_pId{ pId },
-              m_hProcess{ OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, m_pId) },
+              m_hProcess{ processHandle },
               m_kernelModeTime{},
               m_userModeTime{}
         {
-            if (m_hProcess)
-            {
-                setProcessTimes();
-                setProcessMemInfo();
-            }
-
-            // else: Unable to open current process
+            setProcessTimes();
+            setProcessMemInfo();
         }
 
-        ~SysInfoProcess()
-        {
-            CloseHandle(m_hProcess);
-        }
+        ~SysInfoProcess() = default;
 
         std::string cmd()
         {
@@ -181,8 +173,9 @@ class SysInfoProcess final
 
             for (const auto& logicalDrive : logicalDrives)
             {
+                const auto normalizedName { logicalDrive.back() == L'\\' ? logicalDrive.substr(0, logicalDrive.length() - 1) : logicalDrive };
                 const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
-                res = QueryDosDevice(logicalDrive.c_str(), spDosDevice.get(), OS_MAXSTR);
+                res = QueryDosDevice(normalizedName.c_str(), spDosDevice.get(), OS_MAXSTR);
 
                 if (res)
                 {
@@ -337,21 +330,28 @@ static std::string processName(const PROCESSENTRY32& processEntry)
 static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 {
     nlohmann::json jsProcessInfo{};
-    const DWORD pId { processEntry.th32ProcessID };
-    SysInfoProcess process(pId);
+    const auto pId { processEntry.th32ProcessID };
+    const auto processHandle { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pId) };
 
-    // Current process information
-    jsProcessInfo["name"]       = processName(processEntry);
-    jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
-    jsProcessInfo["stime"]      = process.kernelModeTime();
-    jsProcessInfo["size"]       = process.pageFileUsage();
-    jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
-    jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
-    jsProcessInfo["pid"]        = std::to_string(pId);
-    jsProcessInfo["session"]    = process.sessionId();
-    jsProcessInfo["nlwp"]       = processEntry.cntThreads;
-    jsProcessInfo["utime"]      = process.userModeTime();
-    jsProcessInfo["vm_size"]    = process.virtualSize();
+    if (processHandle)
+    {
+        SysInfoProcess process(pId, processHandle);
+
+        // Current process information
+        jsProcessInfo["name"]       = processName(processEntry);
+        jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
+        jsProcessInfo["stime"]      = process.kernelModeTime();
+        jsProcessInfo["size"]       = process.pageFileUsage();
+        jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
+        jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
+        jsProcessInfo["pid"]        = std::to_string(pId);
+        jsProcessInfo["session"]    = process.sessionId();
+        jsProcessInfo["nlwp"]       = processEntry.cntThreads;
+        jsProcessInfo["utime"]      = process.userModeTime();
+        jsProcessInfo["vm_size"]    = process.virtualSize();
+        CloseHandle(processHandle);
+    }
+
     return jsProcessInfo;
 }
 
@@ -359,73 +359,75 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
 {
     try
     {
-        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-
-        for (const auto& package : packages)
+        const auto callback
         {
-            std::string value;
-            nlohmann::json packageJson;
-            Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
-
-            std::string name;
-            std::string version;
-            std::string vendor;
-            std::string install_time;
-            std::string location;
-            std::string architecture;
-
-            if (packageReg.string("DisplayName", value))
+            [&](const std::string & package)
             {
-                name = value;
-            }
+                std::string value;
+                nlohmann::json packageJson;
+                Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
 
-            if (packageReg.string("DisplayVersion", value))
-            {
-                version = value;
-            }
+                std::string name;
+                std::string version;
+                std::string vendor;
+                std::string install_time;
+                std::string location;
+                std::string architecture;
 
-            if (packageReg.string("Publisher", value))
-            {
-                vendor = value;
-            }
-
-            if (packageReg.string("InstallDate", value))
-            {
-                install_time = value;
-            }
-
-            if (packageReg.string("InstallLocation", value))
-            {
-                location = value;
-            }
-
-            if (!name.empty())
-            {
-                if (access & KEY_WOW64_32KEY)
+                if (packageReg.string("DisplayName", value))
                 {
-                    architecture = "i686";
-                }
-                else if (access & KEY_WOW64_64KEY)
-                {
-                    architecture = "x86_64";
-                }
-                else
-                {
-                    architecture = UNKNOWN_VALUE;
+                    name = value;
                 }
 
-                packageJson["name"]         = name;
-                packageJson["version"]      = version;
-                packageJson["vendor"]       = vendor;
-                packageJson["install_time"] = install_time;
-                packageJson["location"]     = location;
-                packageJson["architecture"] = architecture;
-                packageJson["format"]       = "win";
+                if (packageReg.string("DisplayVersion", value))
+                {
+                    version = value;
+                }
 
-                data.push_back(packageJson);
+                if (packageReg.string("Publisher", value))
+                {
+                    vendor = value;
+                }
+
+                if (packageReg.string("InstallDate", value))
+                {
+                    install_time = value;
+                }
+
+                if (packageReg.string("InstallLocation", value))
+                {
+                    location = value;
+                }
+
+                if (!name.empty())
+                {
+                    if (access & KEY_WOW64_32KEY)
+                    {
+                        architecture = "i686";
+                    }
+                    else if (access & KEY_WOW64_64KEY)
+                    {
+                        architecture = "x86_64";
+                    }
+                    else
+                    {
+                        architecture = UNKNOWN_VALUE;
+                    }
+
+                    packageJson["name"]         = std::move(name);
+                    packageJson["version"]      = std::move(version);
+                    packageJson["vendor"]       = std::move(vendor);
+                    packageJson["install_time"] = std::move(install_time);
+                    packageJson["location"]     = std::move(location);
+                    packageJson["architecture"] = std::move(architecture);
+                    packageJson["format"]       = "win";
+
+                    data.push_back(std::move(packageJson));
+                }
             }
-        }
+        };
+        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        root.enumerate(callback);
     }
     catch (...)
     {
@@ -566,7 +568,12 @@ nlohmann::json SysInfo::getProcessesInfo() const
     nlohmann::json jsProcessesList{};
     fillProcessesData([&jsProcessesList](const auto & processEntry)
     {
-        jsProcessesList.push_back(getProcessInfo(processEntry));
+        const auto& processInfo { getProcessInfo(processEntry) };
+
+        if (!processInfo.empty())
+        {
+            jsProcessesList.push_back(processInfo);
+        }
     });
 
     return jsProcessesList;

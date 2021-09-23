@@ -93,6 +93,7 @@
 #define VU_UNS_OS             "(5485): Agent '%.3d' has an unsupported OS: '%s'"
 #define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
 #define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
+#define VU_DISCARD_CVE_ENTRY  "(5488): Package '%s' not affected by '%s' with misleading condition (%s '%s')."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -115,7 +116,7 @@
 #define FIM_MAX_RECURSION_LEVEL             "(6217): Maximum level of recursion reached. Depth:%d recursion_level:%d '%s'"
 #define FIM_SYMBOLIC_LINK_DISCARDED         "(6218): Discarding symbolic link '%s' is already added in the configuration."
 #define FIM_SYMBOLIC_LINK_ADD               "(6219): Directory added to FIM configuration by link '%s'"
-#define FIM_FILE_MSG_DELETE                 "(6220): Sending delete message for file: '%s'"
+
 #define FIM_FREQUENCY_DIRECTORY             "(6221): Directory loaded from syscheck db: '%s'"
 #define FIM_STAT_FAILED                     "(6222): Stat() function failed on: '%s' due to [(%d)-(%s)]"
 #define FIM_SKIP_NFS                        "(6223): FIM skip_nfs=%d, '%s'::is_nfs=%d"
@@ -234,7 +235,7 @@
 #define FIM_INODES_INFO                     "(6336): Fim inode entries: %d, path count: %d"
 #define FIM_WHODATA_INVALID_UNKNOWN_UID     "(6337): The user ID could not be extracted from the event."
 #define FIM_EMPTY_DIRECTORIES_CONFIG        "(6338): Empty directories tag found in the configuration."
-#define FIM_DELETE_EVENT_PATH_NOCONF        "(6339): Delete event from path without configuration: '%s'"
+
 #define FIM_DELETE_DB_TRY                   "(6340): Failed to delete FIM database '%s'- %dº try."
 #define FIM_DELETE_DB                       "(6341): Failed to delete FIM database '%s'."
 #define FIM_FILE_LIMIT_VALUE                "(6342): Maximum number of entries to be monitored: '%u'"
@@ -256,6 +257,11 @@
 #define FIM_DIFF_FOLDER_DELETED             "(6358): Folder '%s' has been deleted."
 #define GLOB_NO_MATCH                       "(6359): No matches found for the glob pattern: '%s'"
 #define FIM_DB_FAIL_TO_GET_SCANNED_FILE     "(6360): Failed to get scanned value of '%s' - %s"
+#define FIM_WILDCARDS_UPDATE_START          "(6361): Starting configuration wildcards update."
+#define FIM_WILDCARDS_REMOVE_DIRECTORY      "(6362): Removing entry '%s' due to it has not been expanded by the wildcards"
+#define FIM_WILDCARDS_UPDATE_FINALIZE       "(6363): Configuration wildcards update finalize."
+#define FIM_REALTIME_MAXNUM_WATCHES         "(6364): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
+#define FIM_ADDED_RULE_TO_FILE              "(6365): Added directory '%s' to audit rules file."
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

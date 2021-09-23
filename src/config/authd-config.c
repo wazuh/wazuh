@@ -33,6 +33,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *xml_ssl_manager_cert = "ssl_manager_cert";
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
+    static const char *xml_remote_enrollment = "remote_enrollment";
 
     authd_config_t *config = (authd_config_t *)d1;
     int i;
@@ -50,7 +51,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     }
     config->port = 1515;
     config->flags.use_source_ip = 0;
-    config->flags.force_insert = 0;
+    config->force_options.enabled = false;
     config->flags.clear_removed = 0;
     config->flags.use_password = 0;
     config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
@@ -58,6 +59,7 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     config->manager_cert = strdup(manager_cert);
     config->manager_key = strdup(manager_key);
     config->flags.auto_negotiate = 0;
+    config->flags.remote_enrollment = 1;
 
     if (!node)
         return 0;
@@ -102,10 +104,10 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             }
 
-            config->flags.force_insert = b;
+            config->force_options.enabled = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
             char *end;
-            config->force_time = strtol(node[i]->content, &end, 10);
+            config->force_options.connection_time = strtol(node[i]->content, &end, 10);
 
             if (*end != '\0') {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -129,6 +131,15 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             }
 
             config->flags.use_password = b;
+        } else if (!strcmp(node[i]->element, xml_remote_enrollment)) {
+            short b = eval_bool(node[i]->content);
+
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+
+            config->flags.remote_enrollment = b;
         } else if (!strcmp(node[i]->element, xml_limit_maxagents)) {
             mdebug1("The <%s> tag is deprecated since version 4.1.0.", xml_limit_maxagents);
         } else if (!strcmp(node[i]->element, xml_ciphers)) {

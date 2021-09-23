@@ -64,3 +64,12 @@ int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, __attribute__((
     return mock();
 }
 #endif
+
+int __wrap_OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output) {
+    check_expected(str);
+    check_expected(length);
+
+    snprintf(output, 41, "%s", mock_type(char *));
+
+    return 0;
+}

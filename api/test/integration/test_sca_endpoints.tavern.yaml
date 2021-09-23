@@ -117,7 +117,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -125,7 +125,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -195,7 +195,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> sort=-score,limit=1
+  - name: Parameters -> sort=-score,limit=10
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -203,48 +203,15 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 1
+        limit: 10
         sort: -score
     response:
       status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_001
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
             reverse: True
-
-  - name: Parameters -> sort=+score,limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        sort: +score
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_001
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-      verify_response_with:
-        - function: tavern_utils:test_sort_response
-          extra_kwargs:
-            key: "score"
 
   # Testing GET /sca/006
   - name: Parameters -> limit=2
@@ -347,7 +314,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/006"
@@ -355,7 +322,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
@@ -414,21 +381,12 @@ stages:
         limit: 2
         sort: -score
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_006
-            - <<: *sca_agent_result_006
-          failed_items: [ ]
-          total_affected_items: 2
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
             reverse: True
+      status_code: 200
 
   - name: Parameters -> sort=+score,limit=2
     request:
@@ -441,26 +399,17 @@ stages:
         limit: 2
         sort: +score
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_agent_result_006
-            - <<: *sca_agent_result_006
-          failed_items: [ ]
-          total_affected_items: 2
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "score"
+      status_code: 200
 
 ---
-test_name: GET /sca/001/checks/cis_debian9 (001 is an agent with version >=4.2.0)
+test_name: GET /sca/001/checks/{policy}
 
 stages:
-  - name: Parameters -> limit=1
+  - name: Parameter policy
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -473,30 +422,18 @@ stages:
       status_code: 200
       save:
         json:
-          expected_policy_id: data.affected_items[0].policy_id
+          sca_policy_id: data.affected_items[0].policy_id
 
-  - name: Request
+  - name: Obtain parameter values 1/2 (parameters are obtained in two steps as there is not any response with all the parameters at once)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data: !anything
-
-  - name: Parameters -> limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
+        q: "file~a;status~a;remediation~a"  # Assert that the response will have all the fields
     response:
       status_code: 200
       json:
@@ -520,12 +457,42 @@ stages:
       save:
         json:
           expected_check_id: data.affected_items[0].id
+          expected_result: data.affected_items[0].result
+          expected_title: data.affected_items[0].title
+          expected_description: data.affected_items[0].description
+          expected_rationale: data.affected_items[0].rationale
+          expected_status: data.affected_items[0].status
+          expected_reason: data.affected_items[0].reason
+          expected_file: data.affected_items[0].file
+          expected_remediation: data.affected_items[0].remediation
+
+  - name: Obtain parameter values 2/2 (parameters are obtained in two steps as there is not any response with all the parameters at once)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        q: "command~a"  # Assert that the response will have all the fields
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      save:
+        json:
           expected_command: data.affected_items[0].command
 
   - name: Parameters -> limit=4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -548,7 +515,7 @@ stages:
   - name: Parameters -> sort=-id,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -556,26 +523,17 @@ stages:
         limit: 2
         sort: -id
     response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_check_result_001
-            - <<: *sca_check_result_001
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
             key: "id"
             reverse: True
+      status_code: 200
 
-  - name: Parameters -> search=passwd,limit=1
+  - name: Parameters -> search,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -596,7 +554,7 @@ stages:
   - name: Parameters -> q=id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -614,16 +572,16 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Parameters -> result=failed,limit=1
+  - name: Parameters -> result,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        result: failed
+        result: "{expected_result:s}"
     response:
       status_code: 200
       json:
@@ -631,21 +589,21 @@ stages:
         data:
           affected_items:
             - <<: *sca_check_result_001
-              result: failed
+              result: "{expected_result:s}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Parameters -> file=/etc/shadow,limit=1
+  - name: Parameters -> file,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        file: /etc/shadow
+        file: "{expected_file:s}"
     response:
       status_code: 200
       json:
@@ -653,33 +611,33 @@ stages:
         data:
           affected_items:
             - <<: *sca_check_result_001
-              file: /etc/shadow
+              file: "{expected_file:s}"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Parameters -> limit=2500
+  - name: Parameters -> limit=999999
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 2500
+        limit: 999999
     response:
       status_code: 400
 
-  - name: Parameters -> title="Ensure shadow group is empty",limit=1
+  - name: Parameters -> title,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        title: Ensure shadow group is empty
+        title: "{expected_title:s}"
     response:
       status_code: 200
       json:
@@ -687,36 +645,15 @@ stages:
         data:
           affected_items:
             - <<: *sca_check_result_001
-              title: Ensure shadow group is empty
+              title: "{expected_title:s}"
           failed_items: []
           total_affected_items: !anyint
-          total_failed_items: 0
-
-  - name: Parameters -> title="Ensure address space layout randomization (ASLR) is enabled",limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        title: Ensure address space layout randomization (ASLR) is enabled
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - title: Ensure address space layout randomization (ASLR) is enabled
-          failed_items: []
           total_failed_items: 0
 
   - name: Parameters -> title="non-existent"
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -733,16 +670,16 @@ stages:
           failed_items: []
           total_failed_items: 0
 
-  - name: Parameters -> description="The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root.",limit=1
+  - name: Parameters -> description,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        description: The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root.
+        description: "{expected_description:s}"
     response:
       status_code: 200
       json:
@@ -750,21 +687,21 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
-            - description: The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root.
+            - description: "{expected_description:s}"
           failed_items: []
           total_failed_items: 0
         message: !anystr
 
-  - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
+  - name: Parameters -> remediation,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        remediation: Remove any legacy + entries from /etc/group if they exist.
+        remediation: "{expected_remediation:s}"
     response:
       status_code: 200
       json:
@@ -772,21 +709,20 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
-            - <<: *sca_check_result_001
-              remediation: Remove any legacy + entries from /etc/group if they exist.
+            - remediation: "{expected_remediation:s}"
           failed_items: []
           total_failed_items: 0
 
-  - name: Parameters -> rationale with apostrophe and parenthesis"
+  - name: Parameters -> rationale,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        rationale: Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening. While the recommended setting is 300 seconds (5 minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0. In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages will be sent.
+        rationale: "{expected_rationale:s}"
     response:
       status_code: 200
       json:
@@ -794,63 +730,14 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
-            - rationale: Having no timeout value associated with a connection could allow an unauthorized user access to another user's ssh session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening. While the recommended setting is 300 seconds (5 minutes), set this timeout value based on site policy. The recommended setting for ClientAliveCountMax is 0. In this case, the client session will be terminated after 5 minutes of idle time and no keepalive messages will be sent.
+            - rationale: "{expected_rationale:s}"
           failed_items: []
           total_failed_items: 0
 
-  - name: Parameters -> rationale with word "count"
+  - name: Parameters -> command,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        rationale: >-
-          Any users assigned to the shadow group would be granted read access to the /etc/shadow file.
-          If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking
-          program against the hashed passwords to break them. Other security information that is stored in
-          the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts.
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - rationale: >-
-                Any users assigned to the shadow group would be granted read access to the /etc/shadow file.
-                If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking
-                program against the hashed passwords to break them. Other security information that is stored in
-                the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts.
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> rationale with word "offset"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        rationale: offset
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: 0
-          affected_items: []
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> command
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -868,16 +755,16 @@ stages:
           failed_items: []
           total_failed_items: 0
 
-  - name: Parameters -> status="Not applicable"
+  - name: Parameters -> status,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        status: Not applicable
+        status: "{expected_status:s}"
     response:
       status_code: 200
       json:
@@ -885,20 +772,20 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
-            - status: Not applicable
+            - status: "{expected_status:s}"
           failed_items: []
           total_failed_items: 0
 
-  - name: Parameters -> reason="Invalid path or wrong permissions to run command 'ip6tables -L'"
+  - name: Parameters -> reason,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        reason: Invalid path or wrong permissions to run command 'ip6tables -L'
+        reason: "{expected_reason:s}"
     response:
       status_code: 200
       json:
@@ -906,438 +793,6 @@ stages:
         data:
           total_affected_items: !anyint
           affected_items:
-            - reason: Invalid path or wrong permissions to run command 'ip6tables -L'
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> command="systemctl is-enabled autofs"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{expected_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        command: systemctl is-enabled autofs
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - command: systemctl is-enabled autofs
-          failed_items: [ ]
-          total_failed_items: 0
-
-
----
-test_name: GET /sca/006/checks/cis_debian9_L1 (006 is an agent with version <4.2.0)
-
-stages:
-
-  - name: Request
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data: !anything
-
-  - name: Parameters -> limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - &sca_check_result_006
-              remediation: !anystr
-              rationale: !anystr
-              title: !anystr
-              policy_id: !anystr
-              description: !anystr
-              id: !anyint
-              result: !anystr
-              compliance: !anything
-              rules: !anything
-              condition: !anything
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> limit=4
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 4
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-            - <<: *sca_check_result_006
-            - <<: *sca_check_result_006
-            - <<: *sca_check_result_006
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> sort=-id,limit=2
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 2
-        sort: -id
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-            - <<: *sca_check_result_006
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> search=passwd,limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        search: passwd
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> q=id=3098
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        q: id=3098
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-              id: 3098
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> result=failed,limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        result: failed
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-              result: failed
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> file=/etc/shadow,limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        file: /etc/shadow
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-              file: /etc/shadow
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> limit=2500
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 2500
-    response:
-      status_code: 400
-
-  - name: Parameters -> title="Ensure shadow group is empty,limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        title: Ensure shadow group is empty
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-              title: Ensure shadow group is empty
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> remediation=Remove any legacy + entries from /etc/group if they exist.,limit=1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        remediation: Remove any legacy + entries from /etc/group if they exist.
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - <<: *sca_check_result_006
-              remediation: Remove any legacy + entries from /etc/group if they exist.
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> rationale with apostrophe"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        rationale: With automounting enabled anyone with physical access could attach a USB drive or disc and have it's contents available in system even if they lacked permissions to mount it themselves.
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - rationale: With automounting enabled anyone with physical access could attach a USB drive or disc and have it's contents available in system even if they lacked permissions to mount it themselves.
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> command="systemctl is-enabled autofs"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        command: systemctl is-enabled autofs
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - command: systemctl is-enabled autofs
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> status="Not applicable"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        status: Not applicable
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - status: Not applicable
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> reason="Invalid path or wrong permissions to run command '/sbin/modprobe -n -v freevxfs'"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        reason: Invalid path or wrong permissions to run command '/sbin/modprobe -n -v freevxfs'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - reason: Invalid path or wrong permissions to run command '/sbin/modprobe -n -v freevxfs'
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> rationale with word "count"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        rationale: >-
-          Any users assigned to the shadow group would be granted read access to the /etc/shadow file.
-          If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking
-          program against the hashed passwords to break them. Other security information that is stored in
-          the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts.
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - rationale: >-
-                Any users assigned to the shadow group would be granted read access to the /etc/shadow file.
-                If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking
-                program against the hashed passwords to break them. Other security information that is stored in
-                the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts.
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> rationale with word "offset"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        rationale: offset
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: 0
-          affected_items: []
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> command="dpkg -s libpam-pwquality"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        command: dpkg -s libpam-pwquality
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - command: dpkg -s libpam-pwquality
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Parameters -> reason="Invalid path or wrong permissions to run command 'ip6tables -L'"
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        reason: Invalid path or wrong permissions to run command 'ip6tables -L'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          total_affected_items: !anyint
-          affected_items:
-            - reason: Invalid path or wrong permissions to run command 'ip6tables -L'
+            - reason: "{expected_reason:s}"
           failed_items: []
           total_failed_items: 0

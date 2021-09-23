@@ -12,8 +12,7 @@
 #include "config/syscheck-config.h"
 
 int __wrap_realtime_adddir(const char *dir,
-                           directory_t *configuration,
-                           int followsl);
+                           directory_t *configuration);
 
 int __wrap_realtime_start();
 
@@ -21,4 +20,9 @@ int __wrap_realtime_start();
  * @brief This function loads the expect and will_return calls for the wrapper of realtime_adddir
  */
 void expect_realtime_adddir_call(const char *path, int ret);
+
+int __wrap_fim_add_inotify_watch(const char *dir,
+                                 const directory_t *configuration);
+
+void __wrap_realtime_process();
 #endif

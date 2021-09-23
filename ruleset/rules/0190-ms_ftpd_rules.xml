@@ -71,7 +71,7 @@
     <description>MS-FTP: Multiple FTP errors from same source.</description>
     <mitre>
       <id>T1021</id>
-      <id>T1043</id>
+      <id>T1071.002</id>
     </mitre>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>

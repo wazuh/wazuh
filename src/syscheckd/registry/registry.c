@@ -756,12 +756,6 @@ void fim_read_values(HKEY key_handle,
             break;
         }
 
-        /* Check if no value name is specified */
-        if (value_buffer[0] == '\0') {
-            value_buffer[0] = '@';
-            value_buffer[1] = '\0';
-        }
-
         new->registry_entry.value->name = value_buffer;
         new->registry_entry.value->type = data_type;
         new->registry_entry.value->size = data_size;

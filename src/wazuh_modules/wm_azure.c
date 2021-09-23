@@ -37,6 +37,7 @@ const wm_context WM_AZURE_CONTEXT = {
     (wm_routine)wm_azure_main,
     (wm_routine)(void *)wm_azure_destroy,
     (cJSON * (*)(const void *))wm_azure_dump,
+    NULL,
     NULL
 };
 
