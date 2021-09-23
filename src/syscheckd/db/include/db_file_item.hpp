@@ -29,25 +29,25 @@
 
 class EXPORTED FileItem : public DBItem {
 public:
-    FileItem();
+    FileItem(fim_entry*);
     ~FileItem();
     fim_entry* toFimEntry();
     nlohmann::json* toJSON();
 
 private:
-    int             m_size;
-    int             m_dev;
-    int             m_options;
-    int             m_uid;
-    int             m_inode;
-    int             m_gid;
-    time_t          m_time;
-    std::string     m_username;
-    std::string     m_perm;
-    std::string     m_attributes;
-    std::string     m_groupname;
-    std::string     m_md5;
-    std::string     m_sha1;
-    std::string     m_sha256;
+    int                     m_options;
+    unsigned int            m_time;
+    unsigned int            m_size;
+    unsigned long           m_dev;
+    unsigned long int       m_inode;
+    std::string             m_attributes;
+    std::string             m_gid;
+    std::string             m_groupname;
+    std::string             m_md5;
+    std::string             m_perm;
+    std::string             m_sha1;
+    std::string             m_sha256;
+    std::string             m_uid;
+    std::string             m_username;
 };
 #endif //_DBFILEITEM_HPP
