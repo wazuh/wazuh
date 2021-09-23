@@ -29,11 +29,6 @@ for dir in "${FOLDERS_TO_BACKUP[@]}"; do
     cp -a ${dir}/* "${TMP_DIR_BACKUP}${dir}"
 done
 
-if [ -f /etc/ossec-init.conf ]; then
-    mkdir -p ./tmp_bkp/etc
-    cp -p /etc/ossec-init.conf ./tmp_bkp/etc
-fi
-
 # Save service file
 mkdir -p "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
 cp -a /Library/LaunchDaemons/com.wazuh.agent.plist "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
@@ -88,9 +83,6 @@ else
 
     # Cleanup before restore
     CONTROL="./bin/wazuh-control"
-    if [ ! -f $CONTROL ]; then
-        CONTROL="./bin/ossec-control"
-    fi
     $CONTROL stop >> ./logs/upgrade.log 2>&1
 
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Deleting upgrade files..." >> ./logs/upgrade.log
@@ -122,11 +114,6 @@ else
 
     # Restore service
     /bin/launchctl load /Library/LaunchDaemons/com.wazuh.agent.plist >> ./logs/upgrade.log 2>&1
-
-    CONTROL="./bin/wazuh-control"
-    if [ ! -f $CONTROL ]; then
-        CONTROL="./bin/ossec-control"
-    fi
 
     $CONTROL start >> ./logs/upgrade.log 2>&1
 fi
