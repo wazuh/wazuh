@@ -11,6 +11,8 @@
 #include <shared.h>
 #include "auth.h"
 #include "os_err.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "wazuh_db/wdb.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -189,31 +191,52 @@ w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,
                              authd_force_options_t *force_options) {
 
+    cJSON *j_agent_info = NULL;
+    cJSON *j_date_add = NULL;
+    cJSON *j_disconnected_time = NULL;
+    cJSON *j_connection_status = NULL;
+    bool replace_agent = true;
+
     /* Check if the agent replacement is allowed */
     if (!force_options->enabled) {
         minfo("Agent '%s' won't be removed because the force option is disabled.", key->id);
         return OS_INVALID;
     }
 
+    j_agent_info = wdb_get_agent_info(atoi(key->id), NULL);
+    if (j_agent_info) {
+        j_connection_status = cJSON_GetObjectItem(j_agent_info->child, "connection_status");
+        j_disconnected_time = cJSON_GetObjectItem(j_agent_info->child, "disconnected_time");
+        j_date_add = cJSON_GetObjectItem(j_agent_info->child, "date_add");
+    }
+
+    if (!j_agent_info || !j_connection_status || !j_disconnected_time || !j_date_add) {
+        cJSON_Delete(j_agent_info);
+        minfo("Failed to get agent-info for agent '%s'", key->id);
+        return OS_INVALID;
+    }
+
     /* Check if the agent has been disconnected longer than the value specified in the configuration option*/
     if (force_options->disconnected_time_enabled) {
-        time_t disconnected_time = 0;
-        disconnected_time = (long)get_time_since_agent_disconnection(key->id);
-        if (!disconnected_time) {
-            minfo("Agent '%s' can't be replaced since it is not disconnected.", key->id);
-            return OS_INVALID;
-        } else if (disconnected_time > 0 && disconnected_time < force_options->disconnected_time) {
-            minfo("Agent '%s' has not been disconnected long enough to be replaced.", key->id);
-            return OS_INVALID;
+        if (strcmp(j_connection_status->valuestring, AGENT_CS_NEVER_CONNECTED)) {
+            time_t time_since_disconnected = difftime(time(NULL), j_disconnected_time->valueint);
+            if (!strcmp(j_connection_status->valuestring, AGENT_CS_DISCONNECTED) && j_disconnected_time->valueint > 0 && time_since_disconnected < force_options->disconnected_time) {
+                minfo("Agent '%s' has not been disconnected long enough to be replaced.", key->id);
+                replace_agent = false;
+            } else if (j_disconnected_time->valueint == 0) {
+                minfo("Agent '%s' can't be replaced since it is not disconnected.", key->id);
+                replace_agent = false;
+            }
         }
     }
 
     /* Check if the agent is old enough to be removed */
-    if(force_options->after_registration_time > 0) {
-        time_t agent_registration_time = get_time_since_agent_registration(atoi(key->id));
-        if(agent_registration_time > 0 && agent_registration_time <= force_options->after_registration_time){
+    if (force_options->after_registration_time > 0) {
+        time_t agent_registration_time = difftime(time(NULL), j_date_add->valueint);
+
+        if (agent_registration_time < force_options->after_registration_time) {
             minfo("Agent '%s' doesn't comply with the registration time to be removed.", key->id);
-            return OS_INVALID;
+            replace_agent = false;
         }
     }
 
@@ -223,15 +246,20 @@ w_err_t w_auth_replace_agent(keyentry *key,
         w_get_key_hash(key, manager_key_hash);
         if (!strcmp(manager_key_hash, key_hash)) {
             minfo("Agent '%s' key already exists on the manager.", key->id);
-            return OS_INVALID;
+            replace_agent = false;
         }
     }
 
+    cJSON_Delete(j_agent_info);
+
     /* Replace the agent */
-    minfo("Removing old agent '%s'.", key->id);
-    add_remove(key);
-    OS_DeleteKey(&keys, key->id, 0);
-    return OS_SUCCESS;
+    if (replace_agent) {
+        minfo("Removing old agent '%s'.", key->id);
+        add_remove(key);
+        OS_DeleteKey(&keys, key->id, 0);
+        return OS_SUCCESS;
+    }
+    return OS_INVALID;
 }
 
 w_err_t w_auth_validate_data(char *response,
