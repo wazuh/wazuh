@@ -174,11 +174,11 @@ CREATE INDEX IF NOT EXISTS hotfixes_id ON sys_hotfixes (scan_id);
 
 INSERT INTO sys_osinfo VALUES (2011369005, '2019/03/21 10:25:00', 'master', 'x86_64', 'Ubuntu',
                                '18.04.2 LTS (Bionic Beaver)', 'Bionic Beaver', '18', '04', null, 'ubuntu', 'Linux',
-                               '4.15.0-46-generic', '#49-Ubuntu SMP Wed Feb 6 09:33:07 UTC 2019', 'Ubuntu 20.04');
+                               '4.15.0-46-generic', '#49-Ubuntu SMP Wed Feb 6 09:33:07 UTC 2019', 'Ubuntu 20.04', null);
 
 INSERT INTO sys_osinfo VALUES (2011369001, '2019/03/21 10:25:00', 'agent', 'x86_64', 'Centos',
                                '18.04.2 LTS (Bionic Beaver)', 'Bionic Beaver', '18', '04', null, 'Centos', 'Linux',
-                               '4.15.0-46-generic', '#49-Ubuntu SMP Wed Feb 6 09:33:07 UTC 2019', 'Debian 10');
+                               '4.15.0-46-generic', '#49-Ubuntu SMP Wed Feb 6 09:33:07 UTC 2019', 'Debian 10', null);
 
 INSERT INTO sys_hwinfo VALUES (2089525312, '2019/03/21 11:25:00', '0', 'Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz', 2,
                                1992.001, 492832, 64032, 88);
