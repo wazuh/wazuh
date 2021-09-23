@@ -445,6 +445,16 @@ typedef struct _config {
     bool allow_remote_prefilter_cmd;
 } syscheck_config;
 
+
+/**
+ * @brief Initializes the default configuration for syscheck.
+ *
+ * @param syscheck Configuration structure to initizalize. If NULL, the function will return OS_INVALID.
+ * @retval OS_SUCCESS if the default configuration was loaded successfully.
+ * @retval OS_INVALID if there is a problem allocating resources.
+ */
+int initialize_syscheck_configuration(syscheck_config *syscheck);
+
 /**
  * @brief Converts the value written in the configuration to a determined data unit in KB
  *
