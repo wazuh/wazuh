@@ -162,6 +162,19 @@ static std::string getRelease(const std::string& build)
     return release;
 }
 
+static std::string getDisplayVersion()
+{
+    std::string display_version;
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+
+    if (!currentVersion.string("DisplayVersion", display_version))
+    {
+        display_version = UNKNOWN_VALUE;
+    }
+
+    return display_version;
+}
+
 static std::string getName()
 {
     std::string name;
@@ -263,6 +276,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
     , m_build{getBuild()}
     , m_version{m_majorVersion + "." + m_minorVersion + "." + m_build}
     , m_release{getRelease(m_build)}
+    , m_displayVersion{getDisplayVersion()}
     , m_name{getName()}
     , m_machine{getMachine()}
     , m_nodeName{getNodeName()}
@@ -291,6 +305,10 @@ std::string SysOsInfoProviderWindows::build() const
 std::string SysOsInfoProviderWindows::release() const
 {
     return m_release;
+}
+std::string SysOsInfoProviderWindows::displayVersion() const
+{
+    return m_displayVersion;
 }
 std::string SysOsInfoProviderWindows::machine() const
 {
