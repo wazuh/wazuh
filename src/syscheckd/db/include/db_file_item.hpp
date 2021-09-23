@@ -1,9 +1,12 @@
-/**
- * @file db_file_item.hpp
- * @brief
- * @date 2021-09-22
+/*
+ * Wazuh Syscheckd
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * September 23, 2021.
  *
- * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
  */
 
 #ifndef _DBFILEITEM_HPP
@@ -11,28 +14,40 @@
 #include "shared.h"
 #include "db_item.hpp"
 
-class final File : public DBItem {
+// Define EXPORTED for any platform
+#ifdef _WIN32
+#ifdef WIN_EXPORT
+#define EXPORTED __declspec(dllexport)
+#else
+#define EXPORTED __declspec(dllimport)
+#endif
+#elif __GNUC__ >= 4
+#define EXPORTED __attribute__((visibility("default")))
+#else
+#define EXPORTED
+#endif
+
+class EXPORTED FileItem : public DBItem {
 public:
-    File();
-    ~File();
+    FileItem();
+    ~FileItem();
     fim_entry* toFimEntry();
     nlohmann::json* toJSON();
 
 private:
-    int m_size;
-    std::string m_perm;
-    std::string m_attributes;
-    int m_uid;
-    std::string m_username;
-    int m_gid;
-    std::string m_groupname;
-    time_t m_time;
-    int m_inode;
-    std::string m_md5;
-    std::string m_sha1;
-    std::string m_sha256;
-    int m_dev;
-    int m_options;
+    int             m_size;
+    int             m_dev;
+    int             m_options;
+    int             m_uid;
+    int             m_inode;
+    int             m_gid;
+    time_t          m_time;
+    std::string     m_username;
+    std::string     m_perm;
+    std::string     m_attributes;
+    std::string     m_groupname;
+    std::string     m_md5;
+    std::string     m_sha1;
+    std::string     m_sha256;
 };
-}
 #endif //_DBFILEITEM_HPP
