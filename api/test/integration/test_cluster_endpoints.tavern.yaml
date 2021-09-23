@@ -1841,6 +1841,7 @@ stages:
               evt_count: !anyfloat
               ctrl_msg_count: !anyfloat
               discarded_count: !anyfloat
+              queued_msgs: !anyfloat
               sent_bytes: !anyfloat
               recv_bytes: !anyfloat
           total_affected_items: 1

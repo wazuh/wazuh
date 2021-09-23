@@ -134,16 +134,16 @@ end:
 }
 
 int nb_send(netbuffer_t * buffer, int socket) {
+    ssize_t sent_bytes = 0;
 
     w_mutex_lock(&mutex);
-
-    ssize_t sent_bytes = 0;
 
     const unsigned long current_data_len = buffer->buffers[socket].data_len;
     const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
 
     if (amount_of_data_to_send > 0) {
-        sent_bytes = send(socket, (const void *)buffer->buffers[socket].data, amount_of_data_to_send, 0);
+        // Asynchronous sending
+        sent_bytes = send(socket, (const void *)buffer->buffers[socket].data, amount_of_data_to_send, MSG_DONTWAIT);
     }
 
     if (sent_bytes > 0) {
@@ -156,10 +156,18 @@ int nb_send(netbuffer_t * buffer, int socket) {
             os_realloc(buffer->buffers[socket].data, current_data_len - sent_bytes, buffer->buffers[socket].data);
             buffer->buffers[socket].data_len -= sent_bytes;
         }
-    } else if ((sent_bytes < 0) && (errno != ETIMEDOUT)) {
-        os_free(buffer->buffers[socket].data);
-        buffer->buffers[socket].data = NULL;
-        buffer->buffers[socket].data_len = 0;
+    } else if (sent_bytes < 0) {
+        switch (errno) {
+        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+        case EWOULDBLOCK:
+#endif
+            break;
+        default:
+            os_free(buffer->buffers[socket].data);
+            buffer->buffers[socket].data = NULL;
+            buffer->buffers[socket].data_len = 0;
+        }
     }
 
     if (buffer->buffers[socket].data_len == 0) {
@@ -172,9 +180,9 @@ int nb_send(netbuffer_t * buffer, int socket) {
 }
 
 int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
-    int retval;
+    int retval = -1;
 
-    for (unsigned int retry = 0; retry < 10; retry++) {
+    for (unsigned int retries = 0; retries < 2; retries++) {
 
         w_mutex_lock(&mutex);
 
@@ -197,14 +205,13 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
             retval = 0;
             break;
-        }
-        else {
+        } else {
             mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, msg_size=%lu]",
                 buffer->buffers[socket].data_len, msg_size);
 
             w_mutex_unlock(&mutex);
 
-            sleep(1);
+            sleep(send_timeout_to_retry);
         }
     }
 

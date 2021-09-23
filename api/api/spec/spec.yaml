@@ -2383,6 +2383,10 @@ components:
           type: number
           format: float
           description: "Number of events sent to analysisd during the last five seconds"
+        queued_msgs:
+          type: number
+          format: float
+          description: "Number of messages queued to be sent to agents during the last five seconds"
         sent_bytes:
           type: number
           format: float
@@ -9108,6 +9112,7 @@ paths:
                       evt_count: 9089.0
                       ctrl_msg_count: 2099.0
                       discarded_count: 0
+                      queued_msgs: 4210.0
                       sent_bytes: 784598.0
                       recv_bytes: 4541779.0
                       dequeued_after_close: 0.0
@@ -10511,6 +10516,7 @@ paths:
                       evt_count: 0
                       ctrl_msg_count: 0
                       discarded_count: 0
+                      queued_msgs: 0
                       sent_bytes: 0
                       recv_bytes: 0
                   total_affected_items: 0

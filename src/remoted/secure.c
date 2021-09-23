@@ -215,7 +215,7 @@ void HandleSecure()
             else if ((protocol & REMOTED_NET_PROTOCOL_TCP) && (event & WE_READ)) {
                 handle_incoming_data_from_tcp_socket(fd, &peer_info);
             }
-            // If a TCP client socket is ready for sending and tcp is enabled.
+            // If a TCP client socket is ready for sending and tcp is enabled
             else if ((protocol & REMOTED_NET_PROTOCOL_TCP) && (event & WE_WRITE)) {
                 handle_outgoing_data_to_tcp_socket(fd, &peer_info);
             }
@@ -284,7 +284,7 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client, struct sockadd
         case EWOULDBLOCK:
 #endif
         case ETIMEDOUT:
-            mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client,
+            mdebug1("TCP peer [%d] at %s: %s (%d)", sock_client,
                     inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
             break;
         default:
@@ -292,6 +292,7 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client, struct sockadd
                     inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
         }
         fallthrough;
+
     case 0:
         _close_sock(&keys, sock_client);
         return;
@@ -308,23 +309,22 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client, struct sockaddr_
     switch (sent_b) {
     case -1:
         switch (errno) {
-        case ETIMEDOUT:
-            mdebug1("socket [%d], Time out.", sock_client);
-            break;
         case EPIPE:
         case EBADF:
         case ECONNRESET:
-            mdebug1("socket [%d], Agent may have disconnected.", sock_client);
-            break;
         case EAGAIN:
 #if EAGAIN != EWOULDBLOCK
         case EWOULDBLOCK:
 #endif
-            mwarn("socket [%d], Agent is not responding.", sock_client);
+            mdebug1("TCP peer [%d] at %s: %s (%d)", sock_client,
+                    inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
             break;
         default:
-            merror(strerror(errno), sock_client);
+            merror("TCP peer [%d] at %s: %s (%d)", sock_client,
+                    inet_ntoa(peer_info->sin_addr), strerror(errno), errno);
         }
+        return;
+
     default:
         rem_add_send((unsigned long) sent_b);
     }
