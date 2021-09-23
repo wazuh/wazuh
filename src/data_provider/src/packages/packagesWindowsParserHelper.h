@@ -22,6 +22,7 @@ namespace PackageWindowsHelper
 {
     constexpr auto WIN_REG_HOTFIX {"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
     constexpr auto VISTA_REG_HOTFIX {"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
+    constexpr auto WIN_REG_PRODUCT_HOTFIX {"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData\\S-1-5-18\\Products"};
     constexpr auto WIN_REG_WOW_HOTFIX {"SOFTWARE\\WOW6432Node\\Microsoft\\Updates"};
 
     static std::string extractHFValue(std::string input)
@@ -140,6 +141,56 @@ namespace PackageWindowsHelper
                             if (!hfValue.empty())
                             {
                                 hotfixes.insert(std::move(hfValue));
+                            }
+                        }
+                    };
+                    Utils::Registry root{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+                    root.enumerate(callback2);
+                }
+            };
+            Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+            root.enumerate(callback);
+
+            for (auto& hotfix : hotfixes)
+            {
+                nlohmann::json hotfixValue;
+                hotfixValue["hotfix"] = std::move(hotfix);
+                data.push_back(std::move(hotfixValue));
+            }  
+        }
+        catch(...)
+        {
+        }
+        
+    }
+
+    static void getHotFixFromRegProduct(const HKEY key, const std::string& subKey, nlohmann::json& data){
+        try
+        {
+            std::set<std::string> hotfixes;
+            const auto callback
+            {
+                [&key, &subKey, &hotfixes](const std::string & package)
+                {
+                    const auto callback2
+                    {
+                        [&key, &subKey, &package,&hotfixes](const std::string & package2)
+                        {
+                            
+                            if (Utils::startsWith(package2, "InstallProperties"))
+                            {
+                                
+                                Utils::Registry root{key, subKey + "\\" + package + "\\" + package2, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+                                std::string value;
+                                if (root.string("DisplayName", value))
+                                {
+                                    auto hfValue { extractHFValue(value) };
+
+                                    if (!hfValue.empty())
+                                    {
+                                        hotfixes.insert(std::move(hfValue));
+                                    }
+                                }
                             }
                         }
                     };
