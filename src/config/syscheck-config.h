@@ -449,7 +449,7 @@ typedef struct _config {
 /**
  * @brief Initializes the default configuration for syscheck.
  *
- * @param syscheck Configuration structure to initizalize. If NULL, the function will allocate the memory.
+ * @param syscheck Configuration structure to initizalize. If NULL, the function will return OS_INVALID.
  * @retval OS_SUCCESS if the default configuration was loaded successfully.
  * @retval OS_INVALID if there is a problem allocating resources.
  */
