@@ -361,6 +361,12 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
     return (0);
 }
 
+/* MQReconnectPredicated for Windows */
+int MQReconnectPredicated(__attribute__((unused)) const char *path, __attribute__((unused)) bool (fn_ptr)())
+{
+    return (0);
+}
+
 char *get_agent_ip()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
