@@ -111,6 +111,7 @@ deleteFolderDic = {
     'shared_modules/rsync':         ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
     'shared_modules/utils':         ['build'],
+    'syscheckd/db':                 ['build']
 }
 
 currentBuildDir = Path(__file__).parent
@@ -459,6 +460,8 @@ def _getFoldersToAStyle(moduleName):
     foldersToScan = ""
     if str(moduleName) == 'shared_modules/utils':
         foldersToScan = f'{moduleName}/../*.h {moduleName}/*.cpp'
+    elif str(moduleName) == 'syscheckd/db':
+        foldersToScan = f'{moduleName}/*.hpp {moduleName}/*.cpp'
     else:
         foldersToScan = f'{moduleName}/*.h {moduleName}/*.cpp'
     return foldersToScan
