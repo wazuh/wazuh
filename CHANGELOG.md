@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in Analysisd that overwrote its queue socket when launched in test mode. ([#9987](https://github.com/wazuh/wazuh/pull/9987))
 - Fixed a condition in the Windows Vulnerability Detector to prevent false positives when evaluating DU patches. ([#10016](https://github.com/wazuh/wazuh/pull/10016))
 - Fixed a memory leak when generating the Windows report in Vulnerability Detector. ([#10214](https://github.com/wazuh/wazuh/pull/10214))
+- Fixed a file descriptor leak in Analysisd when delivering an AR request to an agent. ([#10194](https://github.com/wazuh/wazuh/pull/10194))
 
 ### Agent
 
@@ -44,6 +45,8 @@ All notable changes to this project will be documented in this file.
 - Fixed AWS WAF log parsing when there are multiple dicts in one line. ([#9775](https://github.com/wazuh/wazuh/pull/9775))
 - Fixed a bug in AWS CloudWatch Logs module that caused already processed logs to be collected and reprocessed. ([#10024](https://github.com/wazuh/wazuh/pull/10024))
 - Avoid duplicate alerts from case-insensitive 32-bit registry values in FIM configuration for Windows agents. ([#8256](https://github.com/wazuh/wazuh/pull/8256))
+- Fixed error with Wazuh path in Azure module. ([#10250](https://github.com/wazuh/wazuh/pull/10250))
+- Fixed a bug in the sources and WPK installer that made upgrade unable to detect the previous installation on CentOS 7. ([#10210](https://github.com/wazuh/wazuh/pull/10210))
 
 ### RESTful API
 
