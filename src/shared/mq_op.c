@@ -49,6 +49,22 @@ int StartMQ(const char *path, short int type, short int n_attempts)
     }
 }
 
+/* Reconnect to message queue */
+int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
+    int rc = 0;
+    while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
+        if ((*fn_ptr)()) {
+            return OS_INVALID;
+        }
+        merror(UNABLE_TO_RECONNECT, path, strerror(errno), errno);
+        sleep(5);
+    }
+
+    mdebug1(SUCCESSFULLY_RECONNECTED_SOCKET, path);
+    mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
+    return (rc);
+}
+
 /* Send a message to the queue */
 int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
