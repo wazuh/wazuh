@@ -39,7 +39,7 @@ private:
     int             m_type;
     int             m_keyUid;
     int             m_size;
-    RegistryKey*    m_key;
+    std::string     m_registryKey;
     std::string     m_md5;
     std::string     m_sha1;
     std::string     m_sha256;
