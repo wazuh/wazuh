@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _DBFILEITEM_HPP
-#define _DBFILEITEM_HPP
+#ifndef _FILEITEM_HPP
+#define _FILEITEM_HPP
 #include "json.hpp"
 #include "dbItem.hpp"
 
@@ -50,4 +50,4 @@ private:
     std::string             m_sha256;
     std::string             m_username;
 };
-#endif //_DBFILEITEM_HPP
+#endif //_FILEITEM_HPP
