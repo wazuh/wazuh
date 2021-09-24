@@ -11,7 +11,7 @@
 
 #ifndef _DBFILEITEM_HPP
 #define _DBFILEITEM_HPP
-#include "shared.h"
+#include "json.hpp"
 #include "db_item.hpp"
 
 // Define EXPORTED for any platform
@@ -36,18 +36,18 @@ public:
 
 private:
     int                     m_options;
-    unsigned int            m_time;
+    int                     m_gid;
+    int                     m_uid;
     unsigned int            m_size;
-    unsigned long           m_dev;
+    unsigned long int       m_dev;
     unsigned long int       m_inode;
+    time_t                  m_time;
     std::string             m_attributes;
-    std::string             m_gid;
     std::string             m_groupname;
     std::string             m_md5;
     std::string             m_perm;
     std::string             m_sha1;
     std::string             m_sha256;
-    std::string             m_uid;
     std::string             m_username;
 };
 #endif //_DBFILEITEM_HPP
