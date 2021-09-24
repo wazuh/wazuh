@@ -743,7 +743,6 @@ stages:
         content-type: application/octet-stream
     response:
       status_code: 200
-    delay_after: 10
 
   - name: Request validation
     request:
@@ -766,6 +765,7 @@ stages:
                 - 'worker2'
           total_affected_items: 0
           total_failed_items: 3
+    delay_before: 12
 
     #### Delete corrupted rules file
   - name: Delete rules file
@@ -777,7 +777,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-    delay_after: 10
 
   - name: Request cluster validation
     request:
@@ -801,6 +800,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
+    delay_before: 12
 
   - name: Request cluster validation
     request:
