@@ -92,7 +92,19 @@ All notable changes to this project will be documented in this file.
   - Added the capability to disable the max_request_per_minute API configuration option using 0 as value. ([#8115](https://github.com/wazuh/wazuh/pull/8115))
 
 - **Ruleset:**
-  - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
+  - Decoders
+    - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
+    - Added Pix Decoders
+    - Added Sophos firewall Decoders
+    - Added Wazuh API Decoders
+  - Rules
+    - Added Sophos firewall Rules
+    - Added Wazuh API Rules
+    - Added Firewall Rules
+  - SCA
+    - Added Apple MacOS 10.14 SCA
+    - Added Apple MacOS 10.15 SCA
+    - Added Apple MacOS 10.11 SCA
 
 ### Changed
 
@@ -140,7 +152,26 @@ All notable changes to this project will be documented in this file.
 
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
-  - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
+  - SCA
+    - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
+  - Rules
+    - Changed Ossec Rules.
+    - Changed Cisco IOS Rules.
+    - Changed ID from 51000 to 51003 in Dropbear Rules.
+    - Added 6 new rules for Sophos Rules.
+  - Decoders
+    - Changed Active Response Decoders.
+    - Changed Auditd Decoders.
+    - Changed Checkpoint Smart1 Decoders.
+    - Changed Cisco ASA Decoders.
+    - Changed Cisco IOS Decoders.
+    - Changed Kernel Decoders.
+    - Changed OpenLDAP Decoders.
+    - Changed Ossec Decoders.
+    - Changed Sophos Decoders.
+    - Changed PFsense Decoders.
+    - Changed Panda PAPS Decoders.
+
 
 - **External dependencies:**
   - Upgrade boto3, botocore, requests, s3transfer and urllib3 Python dependencies to latest stable versions. ([#8886](https://github.com/wazuh/wazuh/pull/8886))
@@ -213,6 +244,18 @@ All notable changes to this project will be documented in this file.
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
   - Fixed SCA checks for RHEL7 and CentOS 7. Thanks to J. Daniel Medeiros (@jdmedeiros). ([#7645](https://github.com/wazuh/wazuh/pull/7645))
   - Fixed the match criteria of the AWS WAF rules. ([#8111](https://github.com/wazuh/wazuh/pull/8111))
+  - Fixed sample log in sudo decoders.
+  - Fixed regex in Syslog Rules.
+  - Fixed category in PIX Rules.
+  - Changed authentication tag in group for MSauth Rules.
+  - Fixed match om Nginx Rules.
+  - Fixed sample log on Netscaler Rules.
+  - Fixed match field for rules 80441 and 80442 in Amazon Rules.
+  - Fixed sample logs in Owncloud Rules.
+  - Changed authentication tag in group for Win Security Rules.
+  - Fixed sample log in Win Security Rules.
+  - Fixed sample log in Win Application Rules.
+  - Fixed mitre block in Paloalto Rules.
 
 - **Modules:**
   - Fixed an error when trying to use a non-default aws profile with CloudWatchLogs ([#9331](https://github.com/wazuh/wazuh/pull/9331))
@@ -230,6 +273,9 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
+- **Ruleset**
+  - Removed rule 51004 from Dropbear Rules.
+  - Remuved rules 23508, 23509 and 23510 from Vulnerability Detector Rules.
 
 ## [v4.1.5] - 2021-04-22
 
