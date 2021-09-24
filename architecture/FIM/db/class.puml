@@ -1,0 +1,173 @@
+@startuml db_class
+package "db" <<Folder>> #DDDDDD{
+    enum "dbresult" {
+        DB_SUCCESS
+        DB_ERROR
+    }
+    package "item" <<Folder>> {
+        abstract DBItem {
+            - string m_identifier
+            - bool m_scanned
+            - time_t m_lastEvent
+            - string m_checksum
+            - enum m_mode
+
+            + fim_entry toFimEntry()
+            + nlohman::json toJson()
+            + bool getState()
+        }
+
+        class FileItem {
+            - unsigned int m_size
+            - string m_perm
+            - string m_attributes
+            - int m_uid
+            - string m_username
+            - int m_gid
+            - string m_groupname
+            - time_t m_time
+            - unsigned long int m_inode
+            - string m_md5
+            - string m_sha1
+            - string m_sha256
+            - unsigned long int m_dev
+            - int m_options
+
+            + FileItem(args)
+            + FileItem(fim_entry)
+            + ~FileItem()
+            + fim_entry toFIMEntry()
+            + nlohman::json toJsonEntry()
+        }
+        class "RegistryValue" {
+            - int m_type
+            - int m_keyUid
+            - int m_size
+            - string m_md5
+            - string m_sha1
+            - string m_sha256
+            - nlohman::json m_statementConf
+
+            + RegistryValue()
+            + RegistryValue(fim_entry)
+            + ~RegistryValue()
+            + fim_entry toFIMEntry()
+            + json toJson()
+        }
+        class "RegistryKey" {
+            - string m_perms
+            - int m_uid
+            - string m_username
+            - int m_gid
+            - string m_groupname
+            - int m_time
+            - enum m_arch
+            - nlohman::json m_statementConf
+
+            + RegistryKey()
+            + RegistryKey(fim_entry)
+            + ~RegistryKey()
+            + fim_entry toFIMEntry()
+            + json to_Json()
+        }
+    }
+    class "FimDB"  <<(S,#FF7700) Singleton>> {
+        - string m_dbpath
+        - DBSync m_dbsyncHandler
+        - Rsync m_rsyncHandler
+        - bool m_isFull
+        - FimDB()
+        - ~FimDB()
+
+        + FimDB getInstance()
+        + void syncDB()
+        + bool isFull()
+        + void init()
+        + dbresult insertItem(DBItem)
+        + dbresult removeItem(DBItem)
+        + dbresult updateItem(DBItem)
+        + dbresult setAllUnscanned()
+    }
+    class FimDBWrapper {
+        - fim_tmp_file **m_tmpFile
+        - fdb_t *m_fimSQL
+        - int m_storage
+        - fim_entry **m_saved
+        - fim_file_data *m_data
+        - const char *m_path
+        - fim_type m_type
+        - DBItemWrapper *m_itemWrapper
+
+        + void fim_db_clean_file(fim_tmp_file **, int)
+        + int fim_db_file_update(fdb_t*, const char*, fim_file_data*, fim_entry**)
+        + int fim_db_get_checksum_range(fdb_t *, fim_type, const char *, const char *, int, EVP_MD_CTX *, EVP_MD_CTX *, char **, char * *)
+        + int fim_db_get_count_entries(fdb_t*)
+        + int fim_db_get_count_file_inode(fdb_t *)
+        + int fim_db_get_count_range(fdb_t *, fim_type, const char *, const char *, int *)
+        + int fim_db_get_count_registry_data(fdb_t *)
+        + int fim_db_get_count_registry_key(fdb_t *)
+        + int fim_db_get_data_checksum(fdb_t *, fim_type, void *)
+        + fim_entry* fim_db_get_entry_from_sync_msg(fdb_t *, __attribute__((unused)) fim_type, const char *)
+        + int fim_db_get_first_path(fdb_t *, int, char **)
+        + int fim_db_get_last_path(fdb_t *, int, char **)
+        + int fim_db_get_not_scanned(fdb_t *, fim_tmp_file **, int)
+        + fim_entry* fim_db_get_path(fdb_t*, const char*)
+        + int fim_db_get_path_from_pattern(fdb_t *, const char *, fim_tmp_file **, int)
+        + char ** fim_db_get_paths_from_inode(fdb_t*, unsigned long, unsigned long)
+        + int fim_db_get_path_range(fdb_t *, fim_type, const char *, const char *, fim_tmp_file **, int)
+        + int fim_db_get_registry_data_not_scanned(fdb_t *, fim_tmp_file **, int)
+        + fim_registry_key* fim_db_get_registry_key(fdb_t *, const char *, unsigned int)
+        + int fim_db_get_registry_keys_not_scanned(fdb_t *, fim_tmp_file **, int)
+        + int fim_db_get_registry_key_rowid(fdb_t *, const char *, unsigned int, unsigned int *)
+        + int fim_db_get_values_from_registry_key(fdb_t *, fim_tmp_file **, int, unsigned long int)
+        + fdb_t *fim_db_init(int)
+        + int fim_db_is_full(fdb_t*)
+        + int fim_db_insert_registry_data(fdb_t *, fim_registry_value_data *, unsigned int, unsigned int)
+        + int fim_db_insert_registry_key(fdb_t *, fim_registry_key *, unsigned int)
+        + int fim_db_process_missing_entry(fdb_t *, fim_tmp_file *, pthread_mutex_t *, int, event_data_t *)
+        + int fim_db_process_read_file(fdb_t *, fim_tmp_file *, __attribute__((unused)) int, pthread_mutex_t *, void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *), int, void *, void *, void *)
+        + int fim_db_process_read_registry_data_file(fdb_t *, fim_tmp_file *, pthread_mutex_t *, void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *), int, void *, void *, void *)
+        + int fim_db_read_line_from_file(fim_tmp_file *, int, int, char **)
+        + int fim_db_remove_path(fdb_t *, char *)
+        + int fim_db_remove_registry_key(fdb_t *, fim_entry *)
+        + int fim_db_remove_registry_value_data(fdb_t *, fim_registry_value_data *)
+        + int fim_db_remove_wildcard_entry(fdb_t *, fim_tmp_file *, pthread_mutex_t *, int, event_data_t *, directory_t *)
+        + int fim_db_set_all_registry_data_unscanned(fdb_t *)
+        + int fim_db_set_all_registry_key_unscanned(fdb_t *)
+        + int fim_db_set_all_unscanned(fdb_t *)
+        + int fim_db_set_registry_data_scanned(fdb_t *, const char *, unsigned int)
+        + int fim_db_set_registry_key_scanned(fdb_t *, const char *, unsigned int)
+    }
+    class DBItemWrapper {
+        - FimDB m_FimDB
+        - DBItem m_DBItem
+
+        + DBItemWrapper(int, FimDB, DBItem)
+        + ~DBItemWrapper()
+        + int setAllScanned(FimDB)
+        + int setScanned(FimDB, DBItem)
+        + int removeFromDB(FimDB, DBItem)
+        + int insertItem(FimDB, DBItem)
+        + int isFull(FimDB)
+        + int getCount(FimDB, std::string)
+        + int getChecksumRange(FimDB, type, std::string, std::string, int, EVP_MD_CTX*, EVP_MD_CTX*, &std::string, &std::string)
+        + int getDataChecksum(FimDB, std::string)
+        + fim_entry* getEntryFromSyncMsg(FimDB, std::string)
+        + int getPath(FimDB, &std::string, void*)
+        + int getNotScanned(FimDB, fim_tmp_file **file, int storage)
+        + int getDBItem(FimDB, void*)
+        + DBItem getFromPattern(FimDB)
+        + int dbUpdate(FimDB, DBItem)
+    }
+}
+circle input_point
+
+DBItem <|-- FileItem
+DBItem <|-- RegistryValue
+DBItem <|-- RegistryKey
+FimDBWrapper  o-- DBItemWrapper
+DBItemWrapper  o-- DBItem
+DBItemWrapper  o-- FimDB
+FimDB -- dbresult
+input_point => FimDBWrapper
+@enduml
