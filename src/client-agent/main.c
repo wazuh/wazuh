@@ -36,7 +36,7 @@ static void help_agentd(char *home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_AGENT);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_AGENT;
 
     uid_t uid;
     gid_t gid;

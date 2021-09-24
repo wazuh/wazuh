@@ -438,6 +438,63 @@ UpdateOldVersions()
             rm -rfv $LOG_WAZUH_FOLDER/*
         fi
 
+        OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
+        OSSEC_CONF_FILE_BACKUP="$PREINSTALLEDDIR/etc/ossec.conf.backup"
+
+        # Rename ossec.conf to ossec.conf.backup
+        mv $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
+
+        OLD_TEMPLATE="$PREINSTALLEDDIR/etc/shared/agent-template.conf"
+        NEW_TEMPLATE="$PREINSTALLEDDIR/etc/shared/shared-template.conf"
+
+        # Delete template agent-template.conf
+        if [ -f "$OLD_TEMPLATE" ]; then
+            rm $OLD_TEMPLATE
+        fi
+
+        # Delete centralized agent.conf
+        if [ ! "$INSTYPE" = "agent" ]; then
+            for item_path in $PREINSTALLEDDIR/etc/shared/*
+            do
+                OLD_GROUP_SHARED_FILE="$item_path/agent.conf"
+                NEW_GROUP_SHARED_FILE="$item_path/shared.conf"
+                OLD_GROUP_TEMPLATE="$item_path/agent-template.conf"
+
+                if [ -d "$item_path" ]; then
+                    if [ -f "$OLD_GROUP_SHARED_FILE" ]; then
+                        rm $OLD_GROUP_SHARED_FILE
+                        cp -pf $NEW_TEMPLATE $NEW_GROUP_SHARED_FILE
+                    fi
+
+                    if [ -f "$OLD_GROUP_TEMPLATE" ]; then
+                        rm $OLD_GROUP_TEMPLATE
+                    fi
+                fi
+            done
+
+            for item_multigroup in $PREINSTALLEDDIR/var/multigroups/*
+            do
+                OLD_MULTIGROUP_FILE="$item_multigroup/agent.conf"
+                OLD_MULTIGROUP_TEMPLATE="$item_multigroup/agent-template.conf"
+
+                if [ -d "$item_multigroup" ]; then
+                    if [ -f "$OLD_MULTIGROUP_FILE" ]; then
+                        rm $OLD_MULTIGROUP_FILE
+                    fi
+
+                    if [ -f "$OLD_MULTIGROUP_TEMPLATE" ]; then
+                        rm $OLD_MULTIGROUP_TEMPLATE
+                    fi
+                fi
+            done
+        else
+            OLD_SHARED_FILE="$PREINSTALLEDDIR/etc/shared/agent.conf"
+
+            if [ -f "$OLD_SHARED_FILE" ]; then
+                rm $OLD_SHARED_FILE
+            fi
+        fi
+
         # If it is Wazuh 2.0 or newer, exit
         if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
             return
@@ -446,12 +503,6 @@ UpdateOldVersions()
         if [ "X$PREINSTALLEDDIR" != "X" ]; then
             getPreinstalledDir
         fi
-
-        OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
-        OSSEC_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/ossec.conf.orig"
-
-        # ossec.conf -> ossec.conf.orig
-        cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
 
         # Delete old service
         if [ -f /etc/init.d/ossec ]; then
@@ -506,15 +557,20 @@ UpdateOldVersions()
             # Backup rules: All versions
             mv "$PREINSTALLEDDIR/rules" $BACKUP_RULESET
 
-            # New ossec.conf by default
-            ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
-            ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
+            MANAGER_CONF_FILE="$PREINSTALLEDDIR/etc/manager.conf"
+            AGENT_CONF_FILE="$PREINSTALLEDDIR/etc/agent.conf"
+
+            # New manager.conf and agent.conf by default
+            ./gen_wazuh.sh conf "manager" $DIST_NAME $DIST_VER > $MANAGER_CONF_FILE
+            ./gen_wazuh.sh conf "agent-server" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
+            ./add_localfiles.sh $PREINSTALLEDDIR >> $MANAGER_CONF_FILE
         else
-            # New ossec.conf by default
-            ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
-            # Replace IP
-            ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE
-            ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
+            AGENT_CONF_FILE="$PREINSTALLEDDIR/etc/agent.conf"
+
+            # New agent.conf by default
+            ./gen_wazuh.sh conf "agent" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
+            ./add_localfiles.sh $PREINSTALLEDDIR >> $AGENT_CONF_FILE
         fi
     fi
+
 }

@@ -87,7 +87,7 @@
         </Property>
 
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
-        <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
+        <!-- Especially, "agent.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
 
         <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
@@ -322,8 +322,8 @@
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
-                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
+                    <Component Id="AGENT.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
+                        <File Id="AGENT.CONF" Name="agent.conf" Source="default-agent.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
                     </Component>
@@ -566,7 +566,7 @@
                     <Component Id="StartMenuShortcuts" Guid="6C151D64-A90E-48A0-853C-FDEE0BD628C5">
                         <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
                         <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Type="string" Value="[Version]" />
-                        <Shortcut Id="EDIT_CONF" Name="Edit conf" Target="[APPLICATIONFOLDER]ossec.conf" WorkingDirectory="APPLICATIONFOLDER" />
+                        <Shortcut Id="EDIT_CONF" Name="Edit conf" Target="[APPLICATIONFOLDER]agent.conf" WorkingDirectory="APPLICATIONFOLDER" />
                         <Shortcut Id="UninstallProduct" Name="Uninstall" Description="Uninstalls the application" Target="[System64Folder]msiexec.exe" Arguments="/x [ProductCode]" />
                         <Shortcut Id="RUN_WIN32UI" Name="Manage Agent" Target="[APPLICATIONFOLDER]win32ui.exe" WorkingDirectory="APPLICATIONFOLDER" />
                         <util:InternetShortcut Id="WebsiteShortcut" Name="Documentation" Target="https://documentation.wazuh.com" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension" />
@@ -717,7 +717,7 @@
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
-            <ComponentRef Id="OSSEC.CONF" />
+            <ComponentRef Id="AGENT.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />

@@ -115,7 +115,8 @@ def test_create_message(expected_exception, command, arguments, custom):
     (None, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
 ])
 @patch('wazuh.core.common.ar_conf_path', new=test_data_path)
-def test_create_json_message(expected_exception, command, arguments, alert):
+@patch('wazuh.core.active_response.read_cluster_config', return_value={'disabled': True})
+def test_create_json_message(red_cluster_mock, expected_exception, command, arguments, alert):
     """Check if the returned json message is correct.
 
     Checks if the json message returned by create_json_message(...) contains the

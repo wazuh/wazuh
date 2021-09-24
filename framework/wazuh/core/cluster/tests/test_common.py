@@ -9,14 +9,15 @@ with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
         with patch('wazuh.common.wazuh_uid'):
             with patch('wazuh.common.wazuh_gid'):
-                sys.modules['wazuh.rbac.orm'] = MagicMock()
+                with patch('wazuh.core.common.manager_conf'):
+                    sys.modules['wazuh.rbac.orm'] = MagicMock()
 
-                from wazuh.core.cluster.cluster import get_node
-                from wazuh.agent import get_agents_summary_status
-                from wazuh.core.exception import WazuhError, WazuhInternalError
-                from wazuh.core.manager import status
-                from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-                from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
+                    from wazuh.core.cluster.cluster import get_node
+                    from wazuh.agent import get_agents_summary_status
+                    from wazuh.core.exception import WazuhError, WazuhInternalError
+                    from wazuh.core.manager import status
+                    from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+                    from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 
 affected = AffectedItemsWazuhResult(dikt={'data': ['test']}, affected_items=['001', '002'])
 affected.add_failed_item(id_='099', error=WazuhError(code=1750, extra_message='wiiiiiii'))

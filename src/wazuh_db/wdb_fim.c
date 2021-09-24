@@ -803,7 +803,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
                 file = (char *)sqlite3_column_text(stmt, 0);
                 date = sqlite3_column_int64(stmt, 13);
                 mdebug2("DB(%s) Cleaning FIM DDBB. Deleting entry '%s' date<tscheck3 '%ld'<'%ld'.", wdb->id, file, date, tscheck3);
-                if(strcmp(file, "internal_options.conf") != 0 && strcmp(file, "ossec.conf") != 0) {
+                if(strcmp(file, "internal_options.conf") != 0 && strcmp(file, "agent.conf") != 0) {
                     if (del_result = wdb_fim_delete(wdb, file), del_result < 0) {
                         mdebug1("DB(%s) Can't delete FIM entry '%s'.", wdb->id, file);
                     }

@@ -1,4 +1,4 @@
- - Se desideri monitorare qualsiasi altro file, modifica ossec.conf
+ - Se desideri monitorare qualsiasi altro file, modifica agent.conf
    e aggiungi una nuova, specifica, sezione.
    Per qualsiasi dubbio sulla configurazione visita il sito del progetto
    all'indirizzo https://documentation.wazuh.com/.

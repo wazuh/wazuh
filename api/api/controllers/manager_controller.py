@@ -64,7 +64,7 @@ async def get_info(request, pretty=False, wait_for_complete=False):
 
 async def get_configuration(request, pretty=False, wait_for_complete=False, section=None, field=None,
                             raw: bool = False):
-    """Get manager's or local_node's configuration (ossec.conf)
+    """Get manager's or local_node's configuration (manager.conf)
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ async def get_configuration(request, pretty=False, wait_for_complete=False, sect
                 'field': field,
                 'raw': raw}
 
-    dapi = DistributedAPI(f=manager.read_ossec_conf,
+    dapi = DistributedAPI(f=manager.read_manager_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -374,7 +374,7 @@ async def get_manager_config_ondemand(request, component, pretty=False, wait_for
 
 
 async def update_configuration(request, body, pretty=False, wait_for_complete=False):
-    """Update manager's or local_node's configuration (ossec.conf).
+    """Update manager's or local_node's configuration (manager.conf).
 
     Parameters
     ----------
@@ -389,7 +389,7 @@ async def update_configuration(request, body, pretty=False, wait_for_complete=Fa
 
     f_kwargs = {'new_conf': parsed_body}
 
-    dapi = DistributedAPI(f=manager.update_ossec_conf,
+    dapi = DistributedAPI(f=manager.update_manager_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,

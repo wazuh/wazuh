@@ -10,22 +10,24 @@ import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
-        from wazuh.tests.util import RBAC_bypasser
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        with patch('wazuh.core.common.manager_conf',
+                   new=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager_base.conf')):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            del sys.modules['wazuh.rbac.orm']
+            from wazuh.tests.util import RBAC_bypasser
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh import rule
-        from wazuh.core.results import AffectedItemsWazuhResult
-        from wazuh.core.exception import WazuhError
+            from wazuh import rule
+            from wazuh.core.results import AffectedItemsWazuhResult
+            from wazuh.core.exception import WazuhError
 
 
 # Variables
 parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 data_path = 'core/tests/data/rules'
 
-rule_ossec_conf = {
+rule_manager_conf = {
   "ruleset": {
     "rule_dir": [
       "core/tests/data/rules"
@@ -34,7 +36,7 @@ rule_ossec_conf = {
   }
 }
 
-other_rule_ossec_conf = {
+other_rule_manager_conf = {
     'ruleset': {
         'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
         'rule_dir': [data_path],
@@ -84,7 +86,7 @@ def mock_rules_path():
     'disabled',
     'random'
 ])
-@patch("wazuh.rule.configuration.get_ossec_conf", return_value=rule_ossec_conf)
+@patch("wazuh.rule.configuration.get_manager_conf", return_value=rule_manager_conf)
 def test_get_rules_files_status_include(mock_ossec, status, func):
     """Test getting rules using status filter."""
     m = mock_open(read_data=rule_contents)
@@ -114,7 +116,7 @@ def test_get_rules_files_status_include(mock_ossec, status, func):
     ['0010-rules_config.xml'],
     ['0015-wazuh_rules.xml']
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=rule_manager_conf)
 def test_get_rules_files_file_param(mock_config, file_, func):
     """Test getting rules using param filter."""
     d_files = func(filename=file_)
@@ -125,10 +127,10 @@ def test_get_rules_files_file_param(mock_config, file_, func):
         assert d_files.total_affected_items == len(d_files.affected_items)
 
 
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=None)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=None)
 def test_failed_get_rules_file(mock_config):
     """
-    Test failed get_rules_file function when ossec.conf don't have ruleset section
+    Test failed get_rules_file function when manager.conf don't have ruleset section
     """
     with pytest.raises(WazuhError, match=".* 1200 .*"):
         rule.get_rules_files()
@@ -155,7 +157,7 @@ def test_failed_get_rules_file(mock_config):
     {'rule_ids': ['1', '2', '4', '8']},
     {'rule_ids': ['3']}  # No exists
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=other_rule_ossec_conf)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=other_rule_manager_conf)
 def test_get_rules(mock_config, arg):
     """Test get_rules function."""
     result = rule.get_rules(**arg)
@@ -193,7 +195,7 @@ def test_failed_get_rules():
     {'search_text': None},
     {'search_text': "firewall", "complementary_search": False}
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=rule_manager_conf)
 def test_get_groups(mock_config, arg):
     """Test get_groups function."""
     result = rule.get_groups(**arg)
@@ -206,7 +208,7 @@ def test_get_groups(mock_config, arg):
 @pytest.mark.parametrize('requirement', [
     'pci_dss', 'gdpr', 'hipaa', 'nist_800_53', 'gpg13', 'tsc', 'mitre'
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=rule_manager_conf)
 def test_get_requirement(mocked_config, requirement):
     """Test get_requirement function."""
     result = rule.get_requirement(requirement=requirement)
@@ -218,7 +220,7 @@ def test_get_requirement(mocked_config, requirement):
 @pytest.mark.parametrize('requirement', [
     'a', 'b', 'c'
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=rule_manager_conf)
 def test_get_requirement_invalid(mocked_config, requirement):
     """Test get_requirement (invalid) function."""
     result = rule.get_requirement(requirement=requirement)
@@ -231,7 +233,7 @@ def test_get_requirement_invalid(mocked_config, requirement):
     ('0010-rules_config.xml', True),
     ('0015-wazuh_rules.xml', False)
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=rule_manager_conf)
 def test_get_rules_file(mock_config, file_, raw):
     """Test downloading a specified rule filter."""
     d_files = rule.get_rule_file(filename=file_, raw=raw)
@@ -247,7 +249,7 @@ def test_get_rules_file(mock_config, file_, raw):
     ([{'relative_dirname': 'ruleset/rules'}], 'no_exists_os_error.xml', 1414),
     ([], 'no_exists_unk_error.xml', 1415)
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.core.configuration.get_manager_conf', return_value=rule_manager_conf)
 def test_get_rules_file_failed(mock_config, item, file_, error_code):
     """Test downloading a specified rule filter."""
     with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(

@@ -31,7 +31,7 @@ static void help_monitord(char * home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF_MANAGER);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out("    -n          Disable agent monitoring.");
     print_out("    -w <sec>    Time (sec.) to wait before rotating logs and alerts.");
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     gid_t gid;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_MANAGER;
     short day_wait = -1;
     char * end;
     int debug_level = 0;

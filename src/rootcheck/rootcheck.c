@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 
 int rootcheck_init(int test_config)
 {
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF_AGENT;
 
 #endif /* OSSECHIDS */
 

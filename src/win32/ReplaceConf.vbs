@@ -6,9 +6,9 @@ home_dir = Replace(args(0), Chr(34), "")
 
 Set objFSO = CreateObject("Scripting.FileSystemObject")
 
-If objFSO.fileExists(home_dir & "ossec.conf") Then
-  ' Reading ossec.conf file
-  Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
+If objFSO.fileExists(home_dir & "agent.conf") Then
+  ' Reading agent.conf file
+  Set objFile = objFSO.OpenTextFile(home_dir & "agent.conf", ForReading)
   Set re = new regexp
 
   strNewText = objFile.ReadAll
@@ -104,8 +104,8 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
 	  strNewText = re.Replace(strNewText, "$1" & newline & vbCrLf & "$2")
 	End If
 
-  ' Writing the ossec.conf file
-  Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForWriting)
+  ' Writing the agent.conf file
+  Set objFile = objFSO.OpenTextFile(home_dir & "agent.conf", ForWriting)
   objFile.WriteLine strNewText
   objFile.Close
 

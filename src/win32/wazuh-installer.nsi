@@ -187,7 +187,7 @@ Section "Wazuh Agent (required)" MainSec
     ; install files
     File wazuh-agent.exe
     File wazuh-agent-eventchannel.exe
-    File default-ossec.conf
+    File default-agent.conf
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File internal_options.conf
@@ -298,19 +298,19 @@ Section "Wazuh Agent (required)" MainSec
     ConfPresentInternal:
         ClearErrors
 
-    ; rename ossec.conf if it does not already exist
+    ; rename agent.conf if it does not already exist
     ConfInstallOSSEC:
         ClearErrors
-        IfFileExists "$INSTDIR\ossec.conf" ConfPresentOSSEC
-            Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+        IfFileExists "$INSTDIR\agent.conf" ConfPresentOSSEC
+            Rename "$INSTDIR\default-agent.conf" "$INSTDIR\agent.conf"
         IfErrors ConfErrorOSSEC ConfPresentOSSEC
     ConfErrorOSSEC:
         MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
             Failure renaming configuration file.$\r$\n$\r$\n\
             From:$\r$\n$\r$\n\
-            $INSTDIR\default-ossec.conf$\r$\n$\r$\n\
+            $INSTDIR\default-agent.conf$\r$\n$\r$\n\
             To:$\r$\n$\r$\n\
-            $INSTDIR\ossec.conf$\r$\n$\r$\n\
+            $INSTDIR\agent.conf$\r$\n$\r$\n\
             Click Abort to stop the installation,$\r$\n\
             Retry to try again, or$\r$\n\
             Ignore to skip this file." /SD IDABORT IDIGNORE ConfPresentOSSEC IDRETRY ConfInstallOSSEC
@@ -336,7 +336,7 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$SMPROGRAMS\OSSEC"
     CreateShortCut "$SMPROGRAMS\OSSEC\Manage Agent.lnk" "$INSTDIR\win32ui.exe" "" "$INSTDIR\win32ui.exe" 0
     CreateShortCut "$SMPROGRAMS\OSSEC\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
-    CreateShortCut "$SMPROGRAMS\OSSEC\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
+    CreateShortCut "$SMPROGRAMS\OSSEC\Edit Config.lnk" "$INSTDIR\agent.conf" "" "$INSTDIR\agent.conf" 0
     CreateShortCut "$SMPROGRAMS\OSSEC\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 
     ; install OSSEC service
@@ -480,7 +480,7 @@ Section "Uninstall"
     Delete "$INSTDIR\wazuh-agent.exe"
 	Delete "$INSTDIR\agent-auth.exe"
     Delete "$INSTDIR\manage_agents.exe"
-    Delete "$INSTDIR\ossec.conf"
+    Delete "$INSTDIR\agent.conf"
     Delete "$INSTDIR\uninstall.exe"
     Delete "$INSTDIR\*"
     Delete "$INSTDIR\bookmarks\*"

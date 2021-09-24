@@ -173,7 +173,7 @@ int OS_DeleteSocket(keystore * keys, int sock);
  */
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
 
-/* Set the agent crypto method read from the ossec.conf file */
+/* Set the agent crypto method read from the agent.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
 
 /** Remote IDs directories and internal definitions */

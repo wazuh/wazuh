@@ -2,5 +2,5 @@
 
 # Disable active-response for agent 003
 if [ "$HOSTNAME" == "wazuh-agent3" ]; then
-  sed -i "/<active-response>/{n;s/no/yes/}" /var/ossec/etc/ossec.conf
+  sed -i "/<active-response>/{n;s/no/yes/}" /var/ossec/etc/agent.conf
 fi

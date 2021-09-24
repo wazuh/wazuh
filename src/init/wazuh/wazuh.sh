@@ -24,60 +24,6 @@ InstallSELinuxPolicyPackage(){
     fi
 }
 
-CheckModuleIsEnabled(){
-    # This function requires a properly formatted ossec.conf.
-    # It doesn't work if the configuration is set in the same line
-
-    # How to use it:
-    #
-    # CheckModuleIsEnabled '<wodle name="open-scap">' '</wodle>' 'disabled'
-    # CheckModuleIsEnabled '<cluster>' '</cluster>' 'disabled'
-    # CheckModuleIsEnabled '<sca>' '</sca>' 'enabled'
-
-    open_label="$1"
-    close_label="$2"
-    enable_label="$3"
-
-    if grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf > /dev/null ; then
-        is_disabled="no"
-    else
-        is_disabled="yes"
-    fi
-
-    if [ "${enable_label}" = "disabled" ]; then
-        tag="<disabled>"
-        enabled_tag="${tag}no"
-        disabled_tag="${tag}yes"
-    else
-        tag="<enabled>"
-        enabled_tag="${tag}yes"
-        disabled_tag="${tag}no"
-    fi
-
-    end_config_limit="99999999"
-    for start_config in $(grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf | cut -d':' -f 1); do
-        end_config="$(sed -n "${start_config},${end_config_limit}p" $PREINSTALLEDDIR/etc/ossec.conf | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
-        end_config="$((start_config + end_config))"
-
-        if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-            configuration_block="$(sed -n "${start_config},${end_config}p" $PREINSTALLEDDIR/etc/ossec.conf)"
-
-            for line in $(echo ${configuration_block} | grep -n "${tag}" | cut -d':' -f 1); do
-                # Check if the component is enabled
-                if echo ${configuration_block} | sed -n ${line}p | grep "${enabled_tag}" > /dev/null ; then
-                    is_disabled="no"
-
-                # Check if the component is disabled
-                elif echo ${configuration_block} | sed -n ${line}p | grep "${disabled_tag}" > /dev/null; then
-                    is_disabled="yes"
-                fi
-            done
-        fi
-    done
-
-    echo ${is_disabled}
-}
-
 WazuhUpgrade()
 {
     # Encode Agentd passlist if not encoded

@@ -40,7 +40,7 @@ static OSHash *invalid_files;
 static void read_controlmsg(const char *agent_id, char *msg);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
 static void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir);
-static void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup);
+static void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup);
 static void c_files(void);
 
 /*
@@ -518,7 +518,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
 }
 
 /* Generate merged file for multi-groups */
-void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
+void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_multigroup) {
     DIR *dp;
     char *group;
     char *save_ptr = NULL;
@@ -536,8 +536,8 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
         /* Get each group of the multi-group */
         group = strtok_r(multi_group, delim, &save_ptr);
 
-        /* Delete agent.conf from multi group before appending to it */
-        snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
+        /* Delete shared.conf from multi group before appending to it */
+        snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup, "shared.conf");
         unlink(agent_conf_multi_path);
 
         while( group != NULL ) {
@@ -588,9 +588,9 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                    ignored = 1;
                 }
                 if (!ignored) {
-                    /* If the file is agent.conf, append */
-                    if (strcmp(files[i],"agent.conf") == 0) {
-                        snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                    /* If the file is shared.conf, append */
+                    if (strcmp(files[i], "shared.conf") == 0) {
+                        snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/shared.conf -->\n",group);
                         w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message,1);
                     }
                     else {
@@ -630,7 +630,7 @@ next:
         return;
     }
 
-    c_group(hash_multigroup, subdir, _f_sum,MULTIGROUPS_DIR);
+    c_group(hash_multigroup, subdir, _f_sum, MULTIGROUPS_DIR);
     free_strarray(subdir);
 
     closedir(dp);
@@ -878,7 +878,7 @@ static void c_files()
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(my_node->key);
         groups[p_size + 1] = NULL;
-        c_multi_group(key,&groups[p_size]->f_sum,data);
+        c_multi_group(key, &groups[p_size]->f_sum, data);
         free_strarray(subdir);
         p_size++;
     }

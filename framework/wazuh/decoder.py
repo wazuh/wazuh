@@ -109,7 +109,7 @@ def get_decoders_files(status=None, relative_dirname=None, filename=None, offset
                                       some_msg='Some decoder files were not returned',
                                       all_msg='All decoder files were returned')
     status = check_status(status)
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
+    ruleset_conf = configuration.get_manager_conf(section='ruleset')['ruleset']
     if not ruleset_conf:
         raise WazuhInternalError(1500)
 

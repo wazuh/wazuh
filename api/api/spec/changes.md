@@ -332,7 +332,7 @@ to the group and the checksums of the configuration and shared files.
 * New endpoint. Returns the list of agents that belongs to the specified group.
 
 ### GET ​   /groups/{group_id}/configuration
-* New endpoint. Returns the group configuration defined in the agent.conf file.
+* New endpoint. Returns the group configuration defined in the shared.conf file.
 
 ### GET ​   /groups/{group_id}/files
 * New endpoint. Return the files placed under the group directory.

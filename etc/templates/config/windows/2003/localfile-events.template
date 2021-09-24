@@ -12,4 +12,3 @@
     <location>System</location>
     <log_format>eventlog</log_format>
   </localfile>
-  

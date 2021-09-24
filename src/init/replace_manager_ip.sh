@@ -10,8 +10,8 @@
 # Foundation.
 
 # Just for agents
-# Prints the current ossec.conf with <address> of ossec.conf specified as first argument.
-# Example: ./replace_manager_ip.sh /var/ossec/etc/ossec.conf.rpmorig
+# Prints the current agent.conf with <address> of agent.conf specified as first argument.
+# Example: ./replace_manager_ip.sh /var/ossec/etc/agent.conf.rpmorig
 
 # Aux functions
 check_tag_in_file() {  # tag file
@@ -51,7 +51,7 @@ replace(){  # tag olf_file new_file
     manager_ip=$(get_value_tag $1 $2)
 
     if [ "$manager_ip" == "0" ]; then
-        echo "Error updating ossec.conf with previous IP or host: IP or hostname not found."
+        echo "Error updating agent.conf with previous IP or host: IP or hostname not found."
         exit 1
     fi
 
@@ -72,7 +72,7 @@ main() {
     fi
 
     if [ "$status" == "1" ]; then
-        echo "Error updating ossec.conf with previous IP or host."
+        echo "Error updating agent.conf with previous IP or host."
         exit 1
     fi
 
@@ -83,6 +83,6 @@ main() {
 if [ "$#" = "2" ]; then
     main $1 $2
 else
-      echo " USE: ./replace_manager_ip.sh previous_ossec.conf new_ossec.conf"
+      echo " USE: ./replace_manager_ip.sh previous_agent.conf new_agent.conf"
       exit 2
 fi

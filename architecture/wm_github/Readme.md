@@ -26,4 +26,4 @@ Sequence diagram shows the basic flow of Wazuh Github integration based on the c
 
 
 ## Findings
-* Sensitive information can be detected (token) into ossec.conf file, because is used as a plain text without obfuscation. This can lead to potential attacks and information theft.
+* Sensitive information can be detected (token) into agent.conf file, because is used as a plain text without obfuscation. This can lead to potential attacks and information theft.

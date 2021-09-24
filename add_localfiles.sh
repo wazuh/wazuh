@@ -15,23 +15,23 @@ cd `dirname $0`
 . ./src/init/shared.sh
 . ./src/init/inst-functions.sh
 
-NEWCONFIG="./localfiles.temp"
+NEWCONFIG_AGENT="./localfiles.temp"
 
-if [ -r "$NEWCONFIG" ]; then
-    rm "$NEWCONFIG"
+if [ -r "$NEWCONFIG_AGENT" ]; then
+    rm "$NEWCONFIG_AGENT"
 fi
 
 if [ "$#" = "1" ]; then
   INSTALLDIR="$1"
 fi
 
-echo "" >> $NEWCONFIG
-echo "<wazuh_config>" >> $NEWCONFIG
+echo "" >> $NEWCONFIG_AGENT
+echo "<wazuh_config>" >> $NEWCONFIG_AGENT
 WriteLogs "add"
-echo "</wazuh_config>" >> $NEWCONFIG
+echo "</wazuh_config>" >> $NEWCONFIG_AGENT
 
-cat "$NEWCONFIG"
+cat "$NEWCONFIG_AGENT"
 
-rm "$NEWCONFIG"
+rm "$NEWCONFIG_AGENT"
 
 exit 0

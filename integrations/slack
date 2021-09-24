@@ -19,7 +19,7 @@ except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(1)
 
-# ossec.conf configuration:
+# manager.conf configuration:
 #  <integration>
 #      <name>slack</name>
 #      <hook_url>https://hooks.slack.com/services/XXXXXXXXXXXXXX</hook_url>

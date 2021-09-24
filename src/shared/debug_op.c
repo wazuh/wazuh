@@ -227,59 +227,66 @@ void w_logging_init(){
 }
 
 void os_logging_config(){
-  OS_XML xml;
-  const char * xmlf[] = {"wazuh_config", "logging", "log_format", NULL};
-  char * logformat;
-  char ** parts = NULL;
-  int i;
+    OS_XML xml;
+    const char * xmlf[] = {"wazuh_config", "logging", "log_format", NULL};
+    char * logformat;
+    char ** parts = NULL;
+    int i;
 
-  pid = (int)getpid();
-
-  if (OS_ReadXML(OSSECCONF, &xml) < 0){
-    flags.log_plain = 1;
-    flags.log_json = 0;
-    OS_ClearXML(&xml);
-    merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
-  }
-
-  logformat = OS_GetOneContentforElement(&xml, xmlf);
-
-  if (!logformat || logformat[0] == '\0'){
-
-    flags.log_plain = 1;
-    flags.log_json = 0;
-
-    free(logformat);
-    OS_ClearXML(&xml);
-    mdebug1(XML_NO_ELEM, "log_format");
-
-  }else{
-
-    parts = OS_StrBreak(',', logformat, 2);
-    char * part;
-    if (parts){
-      for (i=0; parts[i]; i++){
-        part = w_strtrim(parts[i]);
-        if (!strcmp(part, "plain")){
-          flags.log_plain = 1;
-        }else if(!strcmp(part, "json")){
-          flags.log_json = 1;
-        }else{
-          flags.log_plain = 1;
-          flags.log_json = 0;
-          merror_exit(XML_VALUEERR, "log_format", part);
-        }
-      }
-      for (i=0; parts[i]; i++){
-        free(parts[i]);
-      }
-      free(parts);
+    pid = (int)getpid();
+#ifdef CLIENT
+    if (OS_ReadXML(WAZUHCONF_AGENT, &xml) < 0) {
+#else
+    if (OS_ReadXML(WAZUHCONF_MANAGER, &xml) < 0) {
+#endif
+        flags.log_plain = 1;
+        flags.log_json = 0;
+        OS_ClearXML(&xml);
+#ifdef CLIENT
+        merror_exit(XML_ERROR, WAZUHCONF_AGENT, xml.err, xml.err_line);
+#else
+        merror_exit(XML_ERROR, WAZUHCONF_MANAGER, xml.err, xml.err_line);
+#endif
     }
 
-    free(logformat);
-    OS_ClearXML(&xml);
-  }
+    logformat = OS_GetOneContentforElement(&xml, xmlf);
+
+    if (!logformat || logformat[0] == '\0') {
+
+        flags.log_plain = 1;
+        flags.log_json = 0;
+
+        free(logformat);
+        OS_ClearXML(&xml);
+        mdebug1(XML_NO_ELEM, "log_format");
+
+    } else {
+        parts = OS_StrBreak(',', logformat, 2);
+        char * part;
+        if (parts) {
+            for (i=0; parts[i]; i++) {
+                part = w_strtrim(parts[i]);
+                if (!strcmp(part, "plain")) {
+                    flags.log_plain = 1;
+                } else if(!strcmp(part, "json")) {
+                    flags.log_json = 1;
+                } else {
+                    flags.log_plain = 1;
+                    flags.log_json = 0;
+                    merror_exit(XML_VALUEERR, "log_format", part);
+                }
+            }
+            for (i=0; parts[i]; i++) {
+                free(parts[i]);
+            }
+            free(parts);
+        }
+
+        free(logformat);
+        OS_ClearXML(&xml);
+    }
 }
+
 
 cJSON *getLoggingConfig(void) {
 

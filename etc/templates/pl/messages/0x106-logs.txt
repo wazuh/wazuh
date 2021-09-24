@@ -1,5 +1,5 @@
  - Jeśli chcesz monitorować inne pliki, poprostu
-   zmień ossec.conf oraz dodaj nowy wpis localfile.
+   zmień agent.conf oraz dodaj nowy wpis localfile.
    Wszystkie wyjaśnienia odnośnie konfiguracji
    znajdziesz na https://documentation.wazuh.com/.
 

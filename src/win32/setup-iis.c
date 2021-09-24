@@ -20,7 +20,7 @@
 #include "os_regex/os_regex.h"
 
 
-#define OSSECCONF   "ossec.conf"
+#define AGENTCONF   "agent.conf"
 #define OS_MAXSTR   1024
 
 int total;
@@ -98,7 +98,7 @@ int config_dir(char *name, char *dir, char *vfile)
         return (0);
     }
 
-    if (dogrep(OSSECCONF, vfile)) {
+    if (dogrep(AGENTCONF, vfile)) {
         printf("%s: Log file already configured: '%s'.\n",
                name, vfile);
         return (1);
@@ -111,7 +111,7 @@ int config_dir(char *name, char *dir, char *vfile)
     printf("%s: https://documentation.wazuh.com\n\n", name);
 
     /* Add IIS config */
-    fp = fopen(OSSECCONF, "a");
+    fp = fopen(AGENTCONF, "a");
     if (!fp) {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);
@@ -146,7 +146,7 @@ int config_iis(char *name, char *file, char *vfile)
 
     total++;
 
-    if (dogrep(OSSECCONF, vfile)) {
+    if (dogrep(AGENTCONF, vfile)) {
         printf("%s: Log file already configured: '%s'.\n",
                name, vfile);
         return (1);
@@ -155,7 +155,7 @@ int config_iis(char *name, char *file, char *vfile)
     printf("%s: Adding IIS log file to be monitored: '%s'.\n", name, vfile);
 
     /* Add iis config config */
-    fp = fopen(OSSECCONF, "a");
+    fp = fopen(AGENTCONF, "a");
     if (!fp) {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);
@@ -192,9 +192,9 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Check if ossec was installed already */
-    if (!fileexist(OSSECCONF)) {
-        printf("%s: Unable to find ossec config: '%s'", argv[0], OSSECCONF);
+    /* Check if agent was installed already */
+    if (!fileexist(AGENTCONF)) {
+        printf("%s: Unable to find agent config: '%s'", argv[0], AGENTCONF);
         exit(0);
     }
 

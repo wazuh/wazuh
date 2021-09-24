@@ -255,11 +255,11 @@ int main(int argc, char **argv)
     w_ch_exec_dir();
 
     /* Check permissions */
-    fp = fopen(OSSECCONF, "r");
+    fp = fopen(WAZUHCONF_AGENT, "r");
     if (fp) {
         fclose(fp);
     } else {
-        merror_exit(CONF_ERROR, OSSECCONF);
+        merror_exit(CONF_ERROR, WAZUHCONF_AGENT);
     }
 #endif
 

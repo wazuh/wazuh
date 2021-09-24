@@ -11,13 +11,18 @@ import pytest
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        import wazuh.rbac.decorators
+        with patch('wazuh.core.common.manager_conf',
+                   new=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager_base.conf')):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        from wazuh.tests.util import get_fake_database_data, RBAC_bypasser, InitWDBSocketMock
+            from wazuh.tests.util import get_fake_database_data, RBAC_bypasser, InitWDBSocketMock
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh import task, WazuhError
-        from wazuh.core.task import WazuhDBQueryTask
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+
+            from wazuh import task, WazuhError
+            from wazuh.core.task import WazuhDBQueryTask
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

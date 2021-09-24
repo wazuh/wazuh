@@ -16,7 +16,7 @@
 #undef ARGV0
 #define ARGV0 "verify-agent-conf"
 
-#define AGENT_CONF_FILE "agent.conf"
+#define AGENT_CONF_FILE "shared.conf"
 
 /* Prototypes */
 static void helpmsg(void) __attribute__((noreturn));
@@ -25,8 +25,8 @@ static int verify_agent_conf(const char * path);
 
 static void helpmsg()
 {
-    printf("\n%s %s: Verify agent.conf syntax for errors.\n", __ossec_name, ARGV0);
-    printf("Usage:  %s [-f <agent.conf file>]\n\n", ARGV0);
+    printf("\n%s %s: Verify shared.conf syntax for errors.\n", __ossec_name, ARGV0);
+    printf("Usage:  %s [-f <shared.conf file>]\n\n", ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
     printf("\t-f          Full file name and path to config file to be tested.\n");

@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     char *home_path = w_homedir(argv[0]);
     char *user = USER;
     char *group = GROUPGLOBAL;
-    char *cfg = OSSECCONF;
+    char *cfg = WAZUHCONF_MANAGER;
 
     integrator_config = NULL;
 

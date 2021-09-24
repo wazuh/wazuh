@@ -126,7 +126,7 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
                                       all_msg='All rule files were returned')
     status = check_status(status)
     # Rules configuration
-    ruleset_conf = configuration.get_ossec_conf(section='ruleset')
+    ruleset_conf = configuration.get_manager_conf(section='ruleset')
     if not ruleset_conf:
         raise WazuhError(1200)
     rules_files = list()
