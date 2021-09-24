@@ -102,6 +102,7 @@ All notable changes to this project will be documented in this file.
     - Added Wazuh API Rules
     - Added Firewall Rules
   - SCA
+    - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
     - Added Apple MacOS 10.14 SCA
     - Added Apple MacOS 10.15 SCA
     - Added Apple MacOS 10.11 SCA
@@ -152,13 +153,11 @@ All notable changes to this project will be documented in this file.
 
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
-  - SCA
-    - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
   - Rules
     - Changed Ossec Rules.
     - Changed Cisco IOS Rules.
     - Changed ID from 51000 to 51003 in Dropbear Rules.
-    - Added 6 new rules for Sophos Rules.
+    - Changed 6 new rules for Sophos Rules.
   - Decoders
     - Changed Active Response Decoders.
     - Changed Auditd Decoders.
@@ -247,12 +246,12 @@ All notable changes to this project will be documented in this file.
   - Fixed sample log in sudo decoders.
   - Fixed regex in Syslog Rules.
   - Fixed category in PIX Rules.
-  - Changed authentication tag in group for MSauth Rules.
+  - Fixed authentication tag in group for MSauth Rules.
   - Fixed match om Nginx Rules.
   - Fixed sample log on Netscaler Rules.
   - Fixed match field for rules 80441 and 80442 in Amazon Rules.
   - Fixed sample logs in Owncloud Rules.
-  - Changed authentication tag in group for Win Security Rules.
+  - Fixed authentication tag in group for Win Security Rules.
   - Fixed sample log in Win Security Rules.
   - Fixed sample log in Win Application Rules.
   - Fixed mitre block in Paloalto Rules.
