@@ -173,8 +173,9 @@ class SysInfoProcess final
 
             for (const auto& logicalDrive : logicalDrives)
             {
+                const auto normalizedName { logicalDrive.back() == L'\\' ? logicalDrive.substr(0, logicalDrive.length() - 1) : logicalDrive };
                 const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
-                res = QueryDosDevice(logicalDrive.c_str(), spDosDevice.get(), OS_MAXSTR);
+                res = QueryDosDevice(normalizedName.c_str(), spDosDevice.get(), OS_MAXSTR);
 
                 if (res)
                 {
