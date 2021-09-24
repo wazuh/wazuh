@@ -94,18 +94,19 @@ All notable changes to this project will be documented in this file.
 - **Ruleset:**
   - Decoders
     - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
-    - Added Pix Decoders
-    - Added Sophos firewall Decoders
-    - Added Wazuh API Decoders
+    - Added Sophos firewall Decoders ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Added Wazuh API Decoders ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Added F5 BigIP Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
   - Rules
-    - Added Sophos firewall Rules
-    - Added Wazuh API Rules
+    - Added Sophos firewall Rules ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Added Wazuh API Rules ([#7289](https://github.com/wazuh/wazuh/pull/7289))
     - Added Firewall Rules
+    - Added F5 BigIp Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
   - SCA
     - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
-    - Added Apple MacOS 10.14 SCA
-    - Added Apple MacOS 10.15 SCA
-    - Added Apple MacOS 10.11 SCA
+    - Added Apple MacOS 10.14 SCA ([#7035](https://github.com/wazuh/wazuh/pull/7035))
+    - Added Apple MacOS 10.15 SCA ([#7036](https://github.com/wazuh/wazuh/pull/7036))
+    - Added Apple MacOS 11.11 SCA ([#7037](https://github.com/wazuh/wazuh/pull/7037))
 
 ### Changed
 
@@ -154,22 +155,22 @@ All notable changes to this project will be documented in this file.
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
   - Rules
-    - Changed Ossec Rules.
-    - Changed Cisco IOS Rules.
-    - Changed ID from 51000 to 51003 in Dropbear Rules.
-    - Changed 6 new rules for Sophos Rules.
+    - Changed Ossec Rules. ([#7260](https://github.com/wazuh/wazuh/pull/7260))
+    - Changed Cisco IOS Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed ID from 51000 to 51003 in Dropbear Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed 6 new rules for Sophos Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
   - Decoders
-    - Changed Active Response Decoders.
-    - Changed Auditd Decoders.
-    - Changed Checkpoint Smart1 Decoders.
-    - Changed Cisco ASA Decoders.
-    - Changed Cisco IOS Decoders.
-    - Changed Kernel Decoders.
-    - Changed OpenLDAP Decoders.
-    - Changed Ossec Decoders.
-    - Changed Sophos Decoders.
-    - Changed PFsense Decoders.
-    - Changed Panda PAPS Decoders.
+    - Changed Active Response Decoders. ([#7317](https://github.com/wazuh/wazuh/pull/7317))
+    - Changed Auditd Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Checkpoint Smart1 Decoders. ([#8676](https://github.com/wazuh/wazuh/pull/8676))
+    - Changed Cisco ASA Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Cisco IOS Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Kernel Decoders. ([#7837](https://github.com/wazuh/wazuh/pull/7837))
+    - Changed OpenLDAP Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Ossec Decoders. ([#7260](https://github.com/wazuh/wazuh/pull/7260))
+    - Changed Sophos Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed PFsense Decoders. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+    - Changed Panda PAPS Decoders. ([#8676](https://github.com/wazuh/wazuh/pull/8676))
 
 
 - **External dependencies:**
@@ -243,18 +244,19 @@ All notable changes to this project will be documented in this file.
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
   - Fixed SCA checks for RHEL7 and CentOS 7. Thanks to J. Daniel Medeiros (@jdmedeiros). ([#7645](https://github.com/wazuh/wazuh/pull/7645))
   - Fixed the match criteria of the AWS WAF rules. ([#8111](https://github.com/wazuh/wazuh/pull/8111))
-  - Fixed sample log in sudo decoders.
-  - Fixed regex in Syslog Rules.
-  - Fixed category in PIX Rules.
-  - Fixed authentication tag in group for MSauth Rules.
-  - Fixed match om Nginx Rules.
-  - Fixed sample log on Netscaler Rules.
-  - Fixed match field for rules 80441 and 80442 in Amazon Rules.
-  - Fixed sample logs in Owncloud Rules.
-  - Fixed authentication tag in group for Win Security Rules.
-  - Fixed sample log in Win Security Rules.
-  - Fixed sample log in Win Application Rules.
-  - Fixed mitre block in Paloalto Rules.
+  - Fixed sample log in sudo decoders. 
+  - Fixed Pix Decoders match regex. ([#7485](https://github.com/wazuh/wazuh/pull/7495))
+  - Fixed regex in Syslog Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed category in PIX Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed authentication tag in group for MSauth Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed match on Nginx Rules. ([#7122](https://github.com/wazuh/wazuh/pull/7122))
+  - Fixed sample log on Netscaler Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
+  - Fixed match field for rules 80441 and 80442 in Amazon Rules. ([#8111](https://github.com/wazuh/wazuh/pull/8111))
+  - Fixed sample logs in Owncloud Rules. ([#7122](https://github.com/wazuh/wazuh/pull/7122))
+  - Fixed authentication tag in group for Win Security Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
+  - Fixed sample log in Win Security Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
+  - Fixed sample log in Win Application Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
+  - Fixed mitre block in Paloalto Rules. ([#7783](https://github.com/wazuh/wazuh/pull/7783))
 
 - **Modules:**
   - Fixed an error when trying to use a non-default aws profile with CloudWatchLogs ([#9331](https://github.com/wazuh/wazuh/pull/9331))
@@ -273,7 +275,7 @@ All notable changes to this project will be documented in this file.
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
 - **Ruleset**
-  - Removed rule 51004 from Dropbear Rules.
+  - Removed rule 51004 from Dropbear Rules. ([#7289](https://github.com/wazuh/wazuh/pull/7289))
   - Remuved rules 23508, 23509 and 23510 from Vulnerability Detector Rules.
 
 ## [v4.1.5] - 2021-04-22
