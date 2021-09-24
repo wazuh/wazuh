@@ -19,6 +19,10 @@
         {
             "name":"wazuh_modules/syscollector",
             "flags":"-r"
+        },
+        {
+            "name":"syscheckd/db",
+            "flags":"--scheck"
         }
     ]
 }
