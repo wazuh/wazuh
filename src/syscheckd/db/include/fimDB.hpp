@@ -12,8 +12,8 @@
 #ifndef _FIMDB_HPP
 #define _FIMDB_HPP
 #include "dbsync.hpp"
-#include "fim_db.hpp"
-#include "db_item.hpp"
+#include "fimDB.hpp"
+#include "dbItem.hpp"
 #include "rsync.hpp"
 #include "shared.h"
 
@@ -31,14 +31,14 @@
 #endif
 
 enum class dbResult {
-    DB_SUCESS,
+    DB_SUCCESS,
     DB_ERROR
 };
 
 class EXPORTED FIMDB final
 {
 public:
-    static FIMDB& get_instance()
+    static FIMDB& getInstance()
     {
         static FIMDB s_instance;
         return s_instance;

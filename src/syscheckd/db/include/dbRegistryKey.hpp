@@ -9,11 +9,10 @@
  * Foundation.
  */
 
-#ifndef _REGISTRYVALUE_HPP
-#define _REGISTRYVALUE_HPP
+#ifndef _REGISTRYKEY_HPP
+#define _REGISTRYKEY_HPP
 #include "shared.h"
-#include "db_item.hpp"
-#include "db_registry_key.hpp"
+#include "dbItem.hpp"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -28,20 +27,20 @@
 #define EXPORTED
 #endif
 
-class EXPORTED RegistryValue : public DBItem {
+class EXPORTED RegistryKey : public DBItem {
 public:
-    RegistryValue();
-    ~RegistryValue();
+    RegistryKey();
+    ~RegistryKey();
     fim_entry* toFimEntry();
     nlohmann::json* toJSON();
 
 private:
-    int             m_type;
-    int             m_keyUid;
-    int             m_size;
-    std::string     m_registryKey;
-    std::string     m_md5;
-    std::string     m_sha1;
-    std::string     m_sha256;
+    int             m_uid;
+    int             m_gid;
+    int             m_time;
+    std::string     m_perms;
+    std::string     m_username;
+    std::string     m_groupname;
+    std::string     m_arch;
 };
-#endif //_REGISTRYVALUE_HPP
+#endif //_REGISTRYKEY_HPP

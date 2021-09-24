@@ -12,7 +12,7 @@
 #ifndef _DBFILEITEM_HPP
 #define _DBFILEITEM_HPP
 #include "json.hpp"
-#include "db_item.hpp"
+#include "dbItem.hpp"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32

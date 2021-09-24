@@ -11,8 +11,8 @@
 
 #ifndef _DBITEMWRAPPER_HPP
 #define _DBITEMWRAPPER_HPP
-#include "fim_db.hpp"
-#include "db_item.hpp"
+#include "fimDB.hpp"
+#include "dbItem.hpp"
 #include "shared.h"
 
 // Define EXPORTED for any platform
