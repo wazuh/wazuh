@@ -1,0 +1,465 @@
+<group name="qa,test">
+
+<!-- May 27 14:49:04 testUser ow_test[13244]: overwrite and list test -->
+<!-- testing overwrite and list -->
+  <rule id="99900" level="5">
+    <match>overwrite and list test</match>
+    <description>Testing overwrite and list</description>
+  </rule>
+
+  <rule id="99900" level="7" overwrite="yes">
+    <match>overwrite and list test</match>
+    <list field="program_name" lookup="match_key">etc/lists/black_list</list>
+    <description>Successfully</description>
+  </rule>
+
+
+<!-- Trigger alerts which depend on same_fields . Also it tests if_matched_sid -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
+
+<rule id="999205" level="3">
+  <match>this is the same_fields test</match>
+  <description>Testing same_fields</description>
+</rule>
+
+<rule id="999206" level="7" frequency="3" timeframe="300">
+  <if_matched_sid>999205</if_matched_sid>
+  <same_field>number</same_field>
+  <description>Same fields works</description>
+</rule>
+
+
+<!-- Trigger alerts which depend on not_same_fields . Also it tests if_matched_sid. -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the not_same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 6 this is the not_same_fields test -->
+<!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 7 this is the not_same_fields test -->
+  <rule id="999207" level="3">
+  <match>this is the not_same_fields test</match>
+  <description>Testing not_same_fields</description>
+</rule>
+
+<rule id="999208" level="7" frequency="3" timeframe="300">
+ <if_matched_sid>999207</if_matched_sid>
+  <not_same_field>number</not_same_field>
+  <description>Not Same fields works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_srcip. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999209" level="3">
+  <match>Test same_srcip</match>
+  <description>Testing same_srcip</description>
+</rule>
+
+<rule id="999210" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999209</if_matched_sid>
+  <same_srcip />
+  <description>Same source ip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_dstip. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999211" level="3">
+  <match>Test same_dstip</match>
+  <description>Testing same_dstip</description>
+</rule>
+
+<rule id="999212" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999211</if_matched_sid>
+  <same_dstip />
+  <description>Same destination ip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_user. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_user 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999213" level="3">
+  <match>Test same_user</match>
+  <description>Testing same_user</description>
+</rule>
+
+<rule id="999214" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999213</if_matched_sid>
+  <same_user />
+  <description>Same user works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_srcport. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcport 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999215" level="3">
+  <match>Test same_srcport</match>
+  <description>Testing same_srcport</description>
+</rule>
+
+<rule id="999216" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999215</if_matched_sid>
+  <same_srcport />
+  <description>Same src port works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_dstport. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstport 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999217" level="3">
+  <match>Test same_dstport</match>
+  <description>Testing same_dstport</description>
+</rule>
+
+<rule id="999218" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999217</if_matched_sid>
+  <same_dstport />
+  <description>Same dst port works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_protocol. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_protocol 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999219" level="3">
+  <match>Test same_protocol</match>
+  <description>Testing same_protocol</description>
+</rule>
+
+<rule id="999220" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999219</if_matched_sid>
+  <same_protocol/>
+  <description>Same protocol works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_action. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_action 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999221" level="3">
+  <match>Test same_action</match>
+  <description>Testing same_action</description>
+</rule>
+
+<rule id="999222" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999221</if_matched_sid>
+  <same_action/>
+  <description>Same action works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_id. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_id 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999223" level="3">
+  <match>Test same_id</match>
+  <description>Testing same_id</description>
+</rule>
+
+<rule id="999224" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999223</if_matched_sid>
+  <same_id />
+  <description>Same id works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_url. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_url 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999225" level="3">
+  <match>Test same_url</match>
+  <description>Testing same_url</description>
+</rule>
+
+<rule id="999226" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999225</if_matched_sid>
+  <same_url />
+  <description>Same url works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_data. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999227" level="3">
+  <match>Test same_data</match>
+  <description>Testing same_data</description>
+</rule>
+
+<rule id="999228" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999227</if_matched_sid>
+  <same_data />
+  <description>Same data works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_extra_data. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_extra_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999229" level="3">
+  <match>Test same_extra_data</match>
+  <description>Testing same_extra_data</description>
+</rule>
+
+<rule id="999230" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999229</if_matched_sid>
+  <same_extra_data />
+  <description>Same extra_data works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_status. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_status 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999231" level="3">
+  <match>Test same_status</match>
+  <description>Testing same_status</description>
+</rule>
+
+<rule id="999232" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999231</if_matched_sid>
+  <same_status />
+  <description>Same status works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_system_name. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999233" level="3">
+  <match>Test same_system_name</match>
+  <description>Testing same_system_name</description>
+</rule>
+
+<rule id="999234" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999233</if_matched_sid>
+  <same_system_name />
+  <description>Same system_name works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_srcip. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999235" level="3">
+  <match>Test different_srcip</match>
+  <description>Testing different_srcip</description>
+</rule>
+
+<rule id="999236" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999235</if_matched_sid>
+  <different_srcip />
+  <description>Different source ip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_dstip. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dstip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999237" level="3">
+  <match>Test different_dstip</match>
+  <description>Testing different_dstip</description>
+</rule>
+
+<rule id="999238" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999237</if_matched_sid>
+  <different_dstip />
+  <description>Different destination ip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_user. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_user 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999239" level="3">
+  <match>Test different_user</match>
+  <description>Testing different_user</description>
+</rule>
+
+<rule id="999240" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999239</if_matched_sid>
+  <different_user />
+  <description>Different user works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_src_port. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_src_port 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999241" level="3">
+  <match>Test different_src_port</match>
+  <description>Testing different_src_port</description>
+</rule>
+
+<rule id="999242" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999241</if_matched_sid>
+  <different_src_port />
+  <description>Different src port works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_dst_port. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dst_port 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999243" level="3">
+  <match>Test different_dst_port</match>
+  <description>Testing different_dst_port</description>
+</rule>
+
+<rule id="999244" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999243</if_matched_sid>
+  <different_dst_port />
+  <description>Different dst port works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_protocol. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_protocol 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999245" level="3">
+  <match>Test different_protocol</match>
+  <description>Testing different_protocol</description>
+</rule>
+
+<rule id="999246" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999245</if_matched_sid>
+  <different_protocol/>
+  <description>Different protocol works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_action. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_action 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999247" level="3">
+  <match>Test different_action</match>
+  <description>Testing different_action</description>
+</rule>
+
+<rule id="999248" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999247</if_matched_sid>
+  <different_action/>
+  <description>Different action works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_id. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_id 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999249" level="3">
+  <match>Test different_id</match>
+  <description>Testing different_id</description>
+</rule>
+
+<rule id="999250" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999249</if_matched_sid>
+  <different_id />
+  <description>Different id works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_url. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_url 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999251" level="3">
+  <match>Test different_url</match>
+  <description>Testing different_url</description>
+</rule>
+
+<rule id="999252" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999251</if_matched_sid>
+  <different_url />
+  <description>Different url works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_data. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999253" level="3">
+  <match>Test different_data</match>
+  <description>Testing different_data</description>
+</rule>
+
+<rule id="999254" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999253</if_matched_sid>
+  <different_data />
+  <description>Different data works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_extra_data. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_extra_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999255" level="3">
+  <match>Test different_extra_data</match>
+  <description>Testing different_extra_data</description>
+</rule>
+
+<rule id="999256" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999255</if_matched_sid>
+  <different_extra_data />
+  <description>Different extra_data works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_status. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_status 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999257" level="3">
+  <match>Test different_status</match>
+  <description>Testing different_status</description>
+</rule>
+
+<rule id="999258" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999257</if_matched_sid>
+  <different_status />
+  <description>Different status works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_system_name. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999259" level="3">
+  <match>Test different_system_name</match>
+  <description>Testing different_system_name</description>
+</rule>
+
+<rule id="999260" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999259</if_matched_sid>
+  <different_system_name />
+  <description>Different system_name works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_srcgeoip. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcgeoip 'Srcuser' 'User' logged from 2.136.147.146:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999261" level="3">
+  <match>Test same_srcgeoip</match>
+  <description>Testing same_srcgeoip</description>
+</rule>
+
+<rule id="999262" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999261</if_matched_sid>
+  <same_srcgeoip />
+  <description>Same srcgeoip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_srcgeoip. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcgeoip 'Srcuser' 'User' logged from 2.136.147.146:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999263" level="3">
+  <match>Test different_srcgeoip</match>
+  <description>Testing different_srcgeoip</description>
+</rule>
+
+<rule id="999264" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999263</if_matched_sid>
+  <different_srcgeoip />
+  <description>Different srcgeoip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_dstgeoip. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstgeoip 'Srcuser' 'User' logged from 192.168.1.100:8 to 2.136.147.146:8 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999265" level="3">
+  <match>Test same_dstgeoip</match>
+  <description>Testing same_dstgeoip</description>
+</rule>
+
+<rule id="999266" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999265</if_matched_sid>
+  <same_dstgeoip />
+  <description>Same dstgeoip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_dstgeoip. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dstgeoip 'Srcuser' 'User' logged from 192.168.1.100:8 to 2.136.147.146:8 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999267" level="3">
+  <match>Test different_dstgeoip</match>
+  <description>Testing different_dstgeoip</description>
+</rule>
+
+<rule id="999268" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999267</if_matched_sid>
+  <different_dstgeoip />
+  <description>Different dstgeoip works</description>
+</rule>
+
+<!-- Trigger alerts which depend on same_srcuser. -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcuser 'Srcuser' 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999269" level="3">
+  <match>Test same_srcuser</match>
+  <description>Testing same_srcuser</description>
+</rule>
+
+<rule id="999270" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999269</if_matched_sid>
+  <same_srcuser />
+  <description>Same srcuser works</description>
+</rule>
+
+<!-- Trigger alerts which depend on different_srcuser. -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcuser 'Srcuser' 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<rule id="999271" level="3">
+  <match>Test different_srcuser</match>
+  <description>Testing different_srcuser</description>
+</rule>
+
+<rule id="999272" level="7" frequency="4" timeframe="300">
+  <if_matched_sid>999271</if_matched_sid>
+  <different_srcuser />
+  <description>Different srcuser works</description>
+</rule>
+
+</group>

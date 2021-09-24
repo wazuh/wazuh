@@ -1,0 +1,170 @@
+<!--
+  -  Windows Event Channel ruleset for the Microsoft Antimalware channel 
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  ID range: 63600 - 64099
+-->
+
+<var name="MS_FREQ">8</var>
+
+<group name="windows,mse,">
+
+  <rule id="63600" level="0">
+    <if_sid>60008</if_sid>
+    <field name="win.system.severityValue">^INFORMATION$</field>
+    <description>Microsoft Antimalware informational event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63601" level="0">
+    <if_sid>60008</if_sid>
+    <field name="win.system.severityValue">^WARNING$</field>
+    <description>Microsoft Antimalware warning event</description>
+    <options>no_full_log</options>
+    <group>gpg13_4.12,</group>
+  </rule>
+
+  <rule id="63602" level="5">
+    <if_sid>60008</if_sid>
+    <field name="win.system.severityValue">^ERROR$</field>
+    <description>Microsoft Antimalware error event</description>
+    <options>no_full_log</options>
+    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+ <!-- MS SE rules -->
+
+  <rule id="63603" level="12">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^1118$|^1119$</field>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <description>Microsoft Security Essentials - Virus detected, but unable to remove</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63604" level="7">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^1107$</field>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <description>Microsoft Security Essentials - Virus detected and properly removed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63605" level="7">
+    <if_sid>63601</if_sid>
+    <field name="win.system.eventID">^1119$|^1118$|^1117$|^1116$</field>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <description>Microsoft Security Essentials - Virus detected</description>
+    <options>no_full_log</options>
+  </rule>
+
+   <rule id="63606" level="7">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^1015$</field>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.3,nist_800_53_AU.6,nist_800_53_SI.4,tsc_A1.2,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
+    <description>Microsoft Security Essentials - Suspicious activity detected</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63607" level="3">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^5007$</field>
+    <description>Microsoft Security Essentials - Configuration changed</description>
+    <options>no_full_log</options>
+    <group>policy_changed,pci_dss_10.2.7,pci_dss_10.6.1,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="63608" level="9">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^5008$</field>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Microsoft Security Essentials - Service failed</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+  </rule>
+
+  <rule id="63609" level="9">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^3002$</field>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Microsoft Security Essentials - Real time protection failed</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+  </rule>
+
+  <rule id="63610" level="8">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^2012$</field>
+    <description>Microsoft Security Essentials - Cannot use Dynamic Signature Service</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63611" level="8">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^2004$</field>
+    <group>pci_dss_10.6.1,gpg13_4.14,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Microsoft Security Essentials - Loading definitions failed. Using last good set</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63612" level="8">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^2003$</field>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Microsoft Security Essentials - Engine update failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63613" level="8">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^2001$</field>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Microsoft Security Essentials - Definitions update failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63614" level="7">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^1005$</field>
+    <group>pci_dss_10.6.1,gpg13_4.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Microsoft Security Essentials - Scan error. Scan has stopped</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63615" level="5">
+    <if_sid>63600,63601,63602</if_sid>
+    <field name="win.system.eventID">^1002$</field>
+    <group>pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Microsoft Security Essentials - Scan stopped before completion</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63616" level="5">
+    <if_sid>63604,63605</if_sid>
+    <field name="win.system.message">\.*DOS/EICAR_Test_File</field>
+    <options>alert_by_email</options>
+    <description>Microsoft Security Essentials - EICAR test file detected</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63617" level="10" frequency="$MS_FREQ" timeframe="240">
+    <if_matched_sid>63602</if_matched_sid>
+    <description>Multiple Microsoft Antimalware error events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="63618" level="10" frequency="$MS_FREQ" timeframe="240">
+    <if_matched_sid>63601</if_matched_sid>
+    <description>Multiple Microsoft Antimalware warning events</description>
+    <options>no_full_log</options>
+  </rule>
+
+</group>

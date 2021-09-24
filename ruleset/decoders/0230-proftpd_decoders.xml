@@ -1,0 +1,38 @@
+<!--
+  -  ProFTPD decoders
+  -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+
+<!--
+  - Will extract the username/srcip
+  - Examples:
+  - proftpd[26916]: hayaletgemi (85.101.218.135[85.101.218.135]) - ANON anonymous: Login successful.
+  - proftpd[12564]: juf01 (pD9EE35B1.dip.t-dialin.net[217.238.53.177]) - USER jufu: Login successful
+  - proftpd[30362] xx.yy.zz (aa.bb.cc[aa.bb.vv.dd]): USER backup: Login successful.
+  - proftpd[2344]: refused connect from 192.168.1.2 (192.168.1.2)
+  - proftpd[15181]: valhalla (crawl-66-249-66-80.googlebot.com[66.249.66.80]) - Connection from crawl-66-249-66-80.googlebot.com [66.249.66.80] denied.
+  - proftpd[26169] server.example.net: Fatal: unable to open incoming connection: Der Socket ist nicht verbunden
+  -->
+<decoder name="proftpd">
+  <program_name>^proftpd</program_name>
+</decoder>
+
+<decoder name="proftpd-success">
+  <parent>proftpd</parent>
+  <prematch>: Login successful</prematch>
+  <regex>^\S+ \(\S+[(\S+)]\)\s*\S \w+ (\S+): </regex>
+  <regex>Login successful</regex>
+  <order>srcip, user</order>
+  <fts>name, user, srcip, location</fts>
+</decoder>
+
+<decoder name="proftpd-ip">
+  <parent>proftpd</parent>
+  <regex>^\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[(\S+)]\)</regex>
+  <order>srcip</order>
+</decoder>

@@ -1,0 +1,35 @@
+<group name="qa,test">
+
+    <!-- Testing PCRE2 srcgeoip option. -->
+    <!-- Dec 19 17:20:08 ubuntu test_pcre2_16[12345]:test_srcgeoip 8.8.8.8 -->
+    <rule id="999600" level="3">
+        <decoded_as>test_pcre2_16</decoded_as>
+        <match>test_srcgeoip</match>
+        <srcgeoip type="pcre2" negate="no">(?i)US</srcgeoip>
+        <description>Testing PCRE2 srcgeoip</description>
+    </rule>
+    <!-- Dec 19 17:20:08 ubuntu test_pcre2_16[12345]:test_srcgeoip 194.69.224.10 -->
+    <rule id="999601" level="3">
+        <decoded_as>test_pcre2_16</decoded_as>
+        <match>test_srcgeoip</match>
+        <srcgeoip type="pcre2" negate="yes">(?i)AR</srcgeoip>
+        <description>Testing PCRE2 srcgeoip negation</description>
+    </rule>
+
+    <!-- Testing PCRE2 dstgeoip option. -->
+    <!-- Dec 19 17:20:08 ubuntu test_pcre2_17[12345]:test_dstgeoip 8.8.8.8 -->
+    <rule id="999602" level="3">
+        <decoded_as>test_pcre2_17</decoded_as>
+        <match>test_dstgeoip</match>
+        <dstgeoip type="pcre2" negate="no">(?i)US</dstgeoip>
+        <description>Testing PCRE2 dspgeoip</description>
+    </rule>
+    <!-- Dec 19 17:20:08 ubuntu test_pcre2_17[12345]:test_dstgeoip 194.69.224.10 -->
+    <rule id="999603" level="3">
+        <decoded_as>test_pcre2_17</decoded_as>
+        <match>test_dstgeoip</match>
+        <dstgeoip type="pcre2" negate="yes">(?i)AR</dstgeoip>
+        <description>Testing PCRE2 dspgeoip negation</description>
+    </rule>
+
+</group>

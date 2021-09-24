@@ -1,0 +1,74 @@
+<decoder name="macos-date-format-sshd">
+  <type>syslog</type>
+  <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d.\d\d\d\d\d\d\p\d\d\d\d  \S+ sshd[\d+]: </prematch>
+</decoder>
+
+<decoder name="macos-sshd-success">
+  <parent>macos-date-format-sshd</parent>
+  <prematch offset="after_parent">^Accepted \S+ </prematch>
+  <regex offset="after_prematch">^for (\S+) from (\S+) port (\d+)</regex>
+  <order>user, srcip, srcport</order>
+  <fts>name, user, location</fts>
+</decoder>
+
+
+<decoder name="macos-sshd-error">
+  <parent>macos-date-format-sshd</parent>
+  <prematch>Broken pipe|Bad protocol version</prematch>
+  <regex offset="after_parent">from (\S+) port (\S+)</regex>
+  <order>srcip, srcport</order>
+</decoder>
+
+<decoder name="macos-sshd-rmap">
+  <parent>macos-date-format-sshd</parent>
+  <prematch>but this does not map back</prematch>
+  <regex offset="after_parent">Address (\S+) maps to \S+,</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="macos-sshd-rmap-2">
+  <parent>macos-date-format-sshd</parent>
+  <prematch>reverse mapping</prematch>
+  <regex offset="after_prematch">for (\S+) [(\S+)] </regex>
+  <order>srcuser, srcip</order>
+</decoder>
+
+<decoder name="macos-sshd-reset">
+  <parent>macos-date-format-sshd</parent>
+  <prematch>Connection reset</prematch>
+  <regex offset="after_prematch">(\S+) (\S+) port (\d+)</regex>
+  <order>user, srcip, srcport</order>
+</decoder>
+
+<decoder name="macos-sshd-disconnect">
+  <parent>macos-date-format-sshd</parent>
+  <prematch>Disconnected from user </prematch>
+  <regex offset="after_prematch">^(\S+) (\S+) port (\d+)</regex>
+  <order>srcuser,srcip,srcport</order>
+</decoder>
+
+<decoder name="macos-sshd-insecure-connection">
+  <parent>macos-date-format-sshd</parent>
+  <prematch>Did not receive</prematch>
+  <regex offset="after_parent">from (\S+) port (\S+)</regex>
+  <order>srcip, srcport</order>
+</decoder>
+
+<decoder name="macos-sshd-closed">
+  <parent>macos-date-format-sshd</parent>
+  <prematch>Connection closed</prematch>
+  <regex offset="after_prematch">by (\S+) port (\S+)</regex>
+  <order>srcip, srcport</order>
+</decoder>
+
+<decoder name="macos-sshd-from">
+  <parent>macos-date-format-sshd</parent>
+  <regex>user (\S+) from (\S+)|for (\S+) from (\S+)</regex>
+  <order>srcuser, srcip</order>
+</decoder>
+
+<decoder name="macos-sshd-from">
+  <parent>macos-date-format-sshd</parent>
+  <regex>port (\d+)</regex>
+  <order>srcport</order>
+</decoder>

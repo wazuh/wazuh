@@ -1,0 +1,287 @@
+
+<group name="qa,test">
+
+<!-- Testing action field negation. -->
+<rule id="999300" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_action</match>
+  <action negate="no">GET</action>
+  <description>Testing disabled action field negation</description>
+</rule>
+
+<rule id="999301" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_action</match>
+  <action negate="yes">POST</action>
+  <description>Testing enabled action field negation</description>
+</rule>
+
+<!-- Testing dstip field negation. -->
+<rule id="999302" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_dstip</match>
+  <dstip negate="no">172.115.14.241</dstip>
+  <description>Testing disabled dstip field negation</description>
+</rule>
+
+<rule id="999303" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_dstip</match>
+  <dstip negate="yes">192.168.0.15</dstip>
+  <description>Testing enabled dstip field negation</description>
+</rule>
+
+<!-- Testing extra_data field negation. -->
+<rule id="999304" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_extra_data</match>
+  <extra_data negate="no">{'msg'='helloworld'}</extra_data>
+  <description>Testing disabled extra_data field negation</description>
+</rule>
+
+<rule id="999305" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_extra_data</match>
+  <extra_data negate="yes">{'msg'='Soyez le premier'}</extra_data>
+  <description>Testing enabled extra_data field negation</description>
+</rule>
+
+<!-- Testing field field negation. -->
+<rule id="999306" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_field</match>
+  <field name="querystring" negate="no">format=json</field>
+  <description>Testing disabled field field negation</description>
+</rule>
+
+<rule id="999307" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_field</match>
+  <field name="querystring" negate="yes">format=xml</field>
+  <description>Testing enabled field field negation</description>
+</rule>
+
+<!-- Testing hostname field negation. -->
+<rule id="999308" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_hostname</match>
+  <hostname negate="no">hostname_1</hostname>
+  <description>Testing disabled hostname field negation</description>
+</rule>
+
+<rule id="999309" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_hostname</match>
+  <hostname negate="yes">hostname_2</hostname>
+  <description>Testing enabled hostname field negation</description>
+</rule>
+
+<!-- Testing id field negation. -->
+<rule id="999310" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_id</match>
+  <id negate="no">0</id>
+  <description>Testing disabled id field negation</description>
+</rule>
+
+<rule id="999311" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_id</match>
+  <id negate="yes">999</id>
+  <description>Testing enabled id field negation</description>
+</rule>
+
+<!-- Testing location field negation. -->
+<rule id="999312" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_location_1</match>
+  <location negate="no">stdin</location>
+  <description>Testing disabled location field negation</description>
+</rule>
+
+<rule id="999313" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_location_2</match>
+  <location negate="yes">dummy_location</location>
+  <description>Testing enabled location field negation</description>
+</rule>
+
+<!-- Testing match field negation. -->
+<rule id="999314" level="3">
+  <decoded_as>test_expr_negation_match</decoded_as>
+  <match negate="yes">test_match_1</match>
+  <match negate="no">|test_match_2</match>
+  <description>Testing disabled match field negation</description>
+</rule>
+
+<rule id="999315" level="3">
+  <decoded_as>test_expr_negation_match</decoded_as>
+  <match negate="no">test_match_3</match>
+  <match negate="yes">|test_match_4</match>
+  <description>Testing enabled match field negation</description>
+</rule>
+
+<!-- Testing program_name field negation. -->
+<rule id="999316" level="3">
+  <decoded_as>test_expr_negation_program_name</decoded_as>
+  <program_name negate="no">test_program_name_01</program_name>
+  <description>Testing disabled program_name field negation</description>
+</rule>
+
+<rule id="999317" level="3">
+  <decoded_as>test_expr_negation_program_name</decoded_as>
+  <program_name negate="yes">test_program_name_02</program_name>
+  <description>Testing enabled program_name field negation</description>
+</rule>
+
+<!-- Testing protocol field negation. -->
+<rule id="999318" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_protocol</match>
+  <protocol negate="no">HTTP</protocol>
+  <description>Testing disabled protocol field negation</description>
+</rule>
+
+<rule id="999319" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_protocol</match>
+  <protocol negate="yes">HTTPS</protocol>
+  <description>Testing enabled protocol field negation</description>
+</rule>
+
+<!-- Testing regex field negation. -->
+<rule id="999320" level="3">
+  <decoded_as>test_expr_negation_regex</decoded_as>
+  <regex negate="yes">regex</regex>
+  <regex negate="no">_id-\d</regex>
+  <description>Testing disabled regex field negation</description>
+</rule>
+
+<rule id="999321" level="3">
+  <decoded_as>test_expr_negation_regex</decoded_as>
+  <regex negate="no">regex</regex>
+  <regex negate="yes">_id-\w</regex>
+  <description>Testing enabled regex field negation</description>
+</rule>
+
+<!-- Testing srcip field negation. -->
+<rule id="999322" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_srcip</match>
+  <srcip negate="no">172.115.14.241</srcip>
+  <description>Testing disabled srcip field negation</description>
+</rule>
+
+<rule id="999323" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_srcip</match>
+  <srcip negate="yes">192.168.0.15</srcip>
+  <description>Testing enabled srcip field negation</description>
+</rule>
+
+<!-- Testing user field negation. -->
+<rule id="999324" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_user</match>
+  <user negate="no">ltorv</user>
+  <description>Testing disabled user field negation</description>
+</rule>
+
+<rule id="999325" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_user</match>
+  <user negate="yes">dritch</user>
+  <description>Testing enabled user field negation</description>
+</rule>
+
+<!-- Testing url field negation. -->
+<rule id="999326" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_url</match>
+  <url negate="no">/admin/auth_key</url>
+  <description>Testing disabled url field negation</description>
+</rule>
+
+<rule id="999327" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_url</match>
+  <url negate="yes">/resources/user_info</url>
+  <description>Testing enabled url field negation</description>
+</rule>
+
+<!-- Testing srcport field negation. -->
+<rule id="999328" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_srcport</match>
+  <srcport negate="no">1234</srcport>
+  <description>Testing disabled srcport field negation</description>
+</rule>
+
+<rule id="999329" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_srcport</match>
+  <srcport negate="yes">4321</srcport>
+  <description>Testing enabled srcport field negation</description>
+</rule>
+
+<!-- Testing dstport field negation. -->
+<rule id="999330" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_dstport</match>
+  <dstport negate="no">1234</dstport>
+  <description>Testing dstport url field negation</description>
+</rule>
+
+<rule id="999331" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_dstport</match>
+  <dstport negate="yes">4321</dstport>
+  <description>Testing enabled dstport field negation</description>
+</rule>
+
+<!-- Testing status field negation. -->
+<rule id="999332" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_status</match>
+  <status negate="no">success</status>
+  <description>Testing disabled status field negation</description>
+</rule>
+
+<rule id="999333" level="3">
+  <decoded_as>test_expr_negation</decoded_as>
+  <match>test_status</match>
+  <status negate="yes">fail</status>
+  <description>Testing enabled status field negation</description>
+</rule>
+
+<!-- Testing system_name field negation. -->
+<rule id="999334" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_system_name</match>
+  <system_name negate="no">system_name_1</system_name>
+  <description>Testing disabled system_name field negation</description>
+</rule>
+
+<rule id="999335" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_system_name</match>
+  <system_name negate="yes">system_name_2</system_name>
+  <description>Testing enabled system_name field negation</description>
+</rule>
+
+<!-- Testing data field negation. -->
+<rule id="999336" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_data</match>
+  <data negate="no">data_1</data>
+  <description>Testing disabled data field negation</description>
+</rule>
+
+<rule id="999337" level="3">
+  <decoded_as>test_expr_negation_predec_fields</decoded_as>
+  <match>test_data</match>
+  <data negate="yes">data_2</data>
+  <description>Testing enabled data field negation</description>
+</rule>
+
+</group>

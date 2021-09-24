@@ -1,0 +1,325 @@
+<!--
+  -  Apache rules
+  -  Author: Daniel Cid.
+  -  Contributed by: Ahmet Ozturk
+  -                  Ben Chavet <ben.chavet@lullabot.com>
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="apache,web,">
+  <rule id="30100" level="0">
+    <decoded_as>apache-errorlog</decoded_as>
+    <description>Apache messages grouped.</description>
+  </rule>
+
+  <rule id="30101" level="0">
+    <if_sid>30100</if_sid>
+    <match>^[error] </match>
+    <description>Apache error messages grouped.</description>
+  </rule>
+
+  <rule id="30102" level="0">
+    <if_sid>30100</if_sid>
+    <match>^[warn] </match>
+    <description>Apache warn messages grouped.</description>
+  </rule>
+
+  <rule id="30103" level="0">
+    <if_sid>30100</if_sid>
+    <match>^[notice] </match>
+    <description>Apache notice messages grouped.</description>
+  </rule>
+
+  <rule id="30104" level="12">
+    <if_sid>30103</if_sid>
+    <match>exit signal Segmentation Fault</match>
+    <description>Apache: segmentation fault.</description>
+    <info type="link">http://www.securityfocus.com/infocus/1633</info>
+    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.5,nist_800_53_SI.3,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,</group>
+  </rule>
+
+  <rule id="30105" level="5">
+    <if_sid>30101</if_sid>
+    <match>denied by server configuration</match>
+    <description>Apache: Attempt to access forbidden file or directory.</description>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30106" level="5">
+    <if_sid>30101</if_sid>
+    <match>Directory index forbidden by rule</match>
+    <description>Apache: Attempt to access forbidden directory index.</description>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30107" level="6">
+    <if_sid>30101</if_sid>
+    <match>Client sent malformed Host header</match>
+    <description>Apache: Code Red attack.</description>
+    <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
+    <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
+    <mitre>
+      <id>T1102</id>
+    </mitre>
+    <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30108" level="5">
+    <if_sid>30102</if_sid>
+    <match>authentication failed</match>
+    <description>Apache: User authentication failed.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30109" level="9">
+    <if_sid>30101</if_sid>
+    <regex>user \S+ not found|user \S+ in realm \.* not found</regex>
+    <description>Apache: Attempt to login using a non-existent user.</description>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30110" level="5">
+    <if_sid>30101</if_sid>
+    <match>authentication failure</match>
+    <description>Apache: User authentication failed.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30112" level="0">
+    <if_sid>30101</if_sid>
+    <match>File does not exist: |</match>
+    <match>failed to open stream: No such file or directory|</match>
+    <match>Failed opening </match>
+    <description>Apache: Attempt to access an non-existent file (those are reported on the access.log).</description>
+    <group>unknown_resource,pci_dss_10.2.1,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- [Tue Mar 07 12:05:15 2006] [error] [client 200.206.165.91] Invalid URI in request %3Bi%3A3%3Bi%3A0%3B%7D; usercookie[password]=d6ed9e1750d0b2aba6b3311cbec087d8; 45befd35f8a0f47b89ed8831f892b8dc=167c4e46a940cd2570b952eea527b27a; PHPSESSID=616hjdg7kj9bln37efsv7vt7g3
+  - [client 65.204.137.200] script '/var/www/html/xmlrpc.php' not found or unable to stat
+  -->
+  <rule id="30115" level="5">
+    <if_sid>30101</if_sid>
+    <match>Invalid URI in request</match>
+    <description>Apache: Invalid URI (bad client request).</description>
+    <group>invalid_request,</group>
+  </rule>
+
+  <rule id="30116" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>30115</if_matched_sid>
+    <same_source_ip />
+    <description>Apache: Multiple Invalid URI requests from same source.</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30117" level="10">
+    <if_sid>30101</if_sid>
+    <match>File name too long|request failed: URI too long</match>
+    <description>Apache: Invalid URI, file name too long.</description>
+    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Mod security rules by <ossec ( at ) sioban.net -->
+  <rule id="30118" level="6">
+    <if_sid>30101</if_sid>
+    <match>mod_security: Access denied|ModSecurity: Access denied</match>
+    <description>ModSecurity: Access attempt blocked.</description>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30119" level="12" frequency="8" timeframe="120">
+    <if_matched_sid>30118</if_matched_sid>
+    <same_source_ip />
+    <description>ModSecurity: Multiple attempts blocked.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30120" level="12">
+    <if_sid>30101</if_sid>
+    <match>Resource temporarily unavailable:</match>
+    <description>Apache: without resources to run.</description>
+    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30200" level="6" noalert="1">
+    <match>^mod_security-message: </match>
+    <description>Modsecurity alert.</description>
+    <group>modsecurity,</group>
+  </rule>
+
+  <rule id="30201" level="6">
+    <if_sid>30200</if_sid>
+    <match>^mod_security-message: Access denied </match>
+    <description>ModSecurity: access denied.</description>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30202" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>30201</if_matched_sid>
+    <description>ModSecurity: Multiple attempts blocked.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>modsecurity,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Apache 2.4 Rules -->
+  <rule id="30301" level="0">
+    <if_sid>30100</if_sid>
+    <regex> [\S*:error] </regex>
+    <description>Apache error messages grouped.</description>
+  </rule>
+
+  <rule id="30302" level="0">
+    <if_sid>30100</if_sid>
+    <regex> [\S+:warn] </regex>
+    <description>Apache warn messages grouped.</description>
+  </rule>
+
+  <rule id="30303" level="0">
+    <if_sid>30100</if_sid>
+    <regex> [\S+:notice] </regex>
+    <description>Apache notice messages grouped.</description>
+  </rule>
+
+  <rule id="30304" level="12">
+    <if_sid>30303</if_sid>
+    <match>exit signal Segmentation Fault</match>
+    <description>Apache: segmentation fault.</description>
+    <info type="link">http://www.securityfocus.com/infocus/1633</info>
+    <group>service_availability,pci_dss_6.5.2,pci_dss_6.6,gpg13_4.14,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.5,nist_800_53_SI.3,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,</group>
+  </rule>
+
+  <rule id="30305" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH01630</id>
+    <description>Apache: Attempt to access forbidden file or directory.</description>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30306" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH01276</id>
+    <description>Apache: Attempt to access forbidden directory index.</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>access_denied,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30307" level="6">
+    <if_sid>30301</if_sid>
+    <id>AH00550</id>
+    <description>Apache: Client sent malformed Host header. Possible Code Red attack.</description>
+    <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
+    <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
+    <mitre>
+      <id>T1102</id>
+    </mitre>
+    <group>automatic_attack,pci_dss_6.2,pci_dss_6.5.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.2,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.8,tsc_CC6.6,tsc_CC7.1,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30308" level="5">
+    <if_sid>30302</if_sid>
+    <id>AH01617|AH01807|AH01694|AH01695|AH02009|AH02010</id>
+    <description>Apache: User authentication failed.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30309" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH01618|AH01808|AH01790</id>
+    <description>Apache: Attempt to login using a non-existent user.</description>
+    <group>invalid_login,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30310" level="10" frequency="12" timeframe="160">
+    <if_matched_sid>30309</if_matched_sid>
+    <same_source_ip/>
+    <description>Apache: Multiple authentication failures with invalid user.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30312" level="0">
+    <if_sid>30301</if_sid>
+    <match>File does not exist: |</match>
+    <match>failed to open stream: No such file or directory|</match>
+    <match>Failed opening </match>
+    <description>Apache: Attempt to access an non-existent file (those are reported on the access.log).</description>
+    <group>unknown_resource,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30315" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH00126</id>
+    <description>Apache: Invalid URI (bad client request).</description>
+    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30316" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>30315</if_matched_sid>
+    <same_source_ip />
+    <description>Apache: Multiple Invalid URI requests from same source.</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>invalid_request,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30317" level="10">
+    <if_sid>30301</if_sid>
+    <id>AH00565</id>
+    <description>Apache: Invalid URI, file name too long.</description>
+    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30318" level="5">
+    <if_sid>30301</if_sid>
+    <match>PHP Notice:</match>
+    <description>Apache: PHP Notice in Apache log</description>
+  </rule>
+
+  <!-- Apache 2.4 ModSecurity Rules -->
+  <rule id="30401" level="0">
+    <if_sid>30301</if_sid>
+    <match>ModSecurity: Warning</match>
+    <description>ModSecurity Warning messages grouped</description>
+    <group>modsecurity,</group>
+  </rule>
+
+  <rule id="30402" level="0">
+    <if_sid>30301</if_sid>
+    <match>ModSecurity: Access denied</match>
+    <description>ModSecurity Access denied messages grouped</description>
+    <group>modsecurity,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="30403" level="0">
+    <if_sid>30301</if_sid>
+    <match>ModSecurity: Audit log:</match>
+    <description>ModSecurity Audit log messages grouped</description>
+    <group>modsecurity,gpg13_10.1,</group>
+  </rule>
+
+  <rule id="30411" level="7">
+    <if_sid>30402</if_sid>
+    <match>with code 403</match>
+    <description>ModSecurity rejected a query</description>
+    <mitre>
+      <id>T1083</id>
+    </mitre>
+    <group>modsecurity,gpg13_10.1,</group>
+  </rule>
+
+</group>

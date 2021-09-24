@@ -1,0 +1,342 @@
+<!--
+  -  Google Cloud Pub/Sub rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+ID: 65000 - 65499
+-->
+<group name="gcp,">
+    <!-- GCP wodle -->
+    <rule id="65000" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="integration">gcp</field>
+        <description>GCP alert.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65001" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.resource.type">^dns_query$</field>
+        <description>GCP dns query event</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65002" level="0">
+        <if_sid>65001</if_sid>
+        <field name="gcp.resource.labels.source_type">^internet$</field>
+        <description>GCP internet event</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65003" level="0">
+        <if_sid>65001</if_sid>
+        <field name="gcp.resource.labels.source_type">^gce-vm$</field>
+        <description>GCP virtual machine event</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65004" level="2">
+        <if_sid>65002</if_sid>
+        <field name="gcp.severity">^INFO$</field>
+        <description>GCP info event with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65005" level="5">
+        <if_sid>65002</if_sid>
+        <field name="gcp.severity">^WARNING$</field>
+        <description>GCP warning event with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65006" level="3">
+        <if_sid>65002</if_sid>
+        <field name="gcp.severity">^NOTICE$</field>
+        <description>GCP notice event with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65007" level="7">
+        <if_sid>65002</if_sid>
+        <field name="gcp.severity">^ERROR$</field>
+        <description>GCP error with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65008" level="9">
+        <if_sid>65002</if_sid>
+        <field name="gcp.severity">^CRITICAL$</field>
+        <description>GCP critical event with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65009" level="11">
+        <if_sid>65002</if_sid>
+        <field name="gcp.severity">^ALERT$</field>
+        <description>GCP alert event with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65010" level="12">
+        <if_sid>65002</if_sid>
+        <field name="gcp.severity">^EMERGENCY$</field>
+        <description>GCP emergency event with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65011" level="2">
+        <if_sid>65003</if_sid>
+        <field name="gcp.severity">^INFO$</field>
+        <description>GCP info event from VM $(gcp.jsonPayload.vmInstanceName) with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65012" level="5">
+        <if_sid>65003</if_sid>
+        <field name="gcp.severity">^WARNING$</field>
+        <description>GCP warning event from VM $(gcp.jsonPayload.vmInstanceName) with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65013" level="3">
+        <if_sid>65003</if_sid>
+        <field name="gcp.severity">^NOTICE$</field>
+        <description>GCP notice event from VM $(gcp.jsonPayload.vmInstanceName) with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65014" level="7">
+        <if_sid>65003</if_sid>
+        <field name="gcp.severity">^ERROR$</field>
+        <description>GCP error event from VM $(gcp.jsonPayload.vmInstanceName) with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65015" level="9">
+        <if_sid>65003</if_sid>
+        <field name="gcp.severity">^CRITICAL$</field>
+        <description>GCP critical event from VM $(gcp.jsonPayload.vmInstanceName) with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65016" level="11">
+        <if_sid>65003</if_sid>
+        <field name="gcp.severity">^ALERT$</field>
+        <description>GCP alert event from VM $(gcp.jsonPayload.vmInstanceName) with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65017" level="12">
+        <if_sid>65003</if_sid>
+        <field name="gcp.severity">^EMERGENCY$</field>
+        <description>GCP emergency event from VM $(gcp.jsonPayload.vmInstanceName) with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location) with response code $(gcp.jsonPayload.responseCode)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65018" level="10">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^ERROR$</field>
+        <description>GCP error with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65019" level="5">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^NXDOMAIN$</field>
+        <description>Unable to resolve domain name with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65020" level="12">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^SERVFAIL$</field>
+        <description>Unable to process query due to a problem with the name server with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65021" level="5">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^FORMERR$</field>
+        <description>Unable to interpret query with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65022" level="5">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^NOTIMP$</field>
+        <description>Unsupported requested query with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65023" level="5">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^REFUSED$</field>
+        <description>Refuse to perform the specified operation for policy reasons with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65024" level="10">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^YXDOMAIN$</field>
+        <description>Specified name already created, when it ought not to exist with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65025" level="10">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^YXRRSET$</field>
+        <description>The specified RR Set already exists with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65026" level="10">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^NXRRSET$</field>
+        <description>The specified RR Set does not exist, and should with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65027" level="10">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^NOTAUTH$</field>
+        <description>Server not authoritative for zone with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65028" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^NOTZONE$</field>
+        <description>Name not contained in zone with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65029" level="5">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^DSOTYPENI$</field>
+        <description>DSO-TYPE not implemented with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65030" level="10">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADVERS$</field>
+        <description>Bad OPT version with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65031" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADSIG$</field>
+        <description>TSIG Signature Failure with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65032" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADKEY$</field>
+        <description>Key not recognized with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65033" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADTIME$</field>
+        <description>Signature out of time window with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65034" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADMODE$</field>
+        <description>Bad TKEY Mode with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65035" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADNAME$</field>
+        <description>Duplicate key name with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65036" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADALG$</field>
+        <description>Algorithm not supported with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65037" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADTRUNC$</field>
+        <description>Bad Truncation with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65038" level="7">
+        <if_sid>65002,65003</if_sid>
+        <field name="gcp.jsonPayload.responseCode">^BADCOOKIE$</field>
+        <description>Bad/missing Server Cookie with source IP $(gcp.jsonPayload.sourceIP) from $(gcp.resource.labels.location), severity $(gcp.severity)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- GCP Generic Events -->
+    <rule id="65039" level="0">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^DEFAULT$</field>
+        <description>A GCP event with no severity information happened on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65040" level="2">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^INFO$</field>
+        <description>GCP information event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65041" level="5">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^WARNING$</field>
+        <description>GCP warning event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65042" level="3">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^NOTICE$</field>
+        <description>GCP notice event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65043" level="7">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^ERROR$</field>
+        <description>GCP error event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65044" level="9">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^CRITICAL$</field>
+        <description>GCP critical event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65045" level="11">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^ALERT$</field>
+        <description>GCP alert event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="65046" level="12">
+        <if_sid>65000</if_sid>
+        <field name="gcp.severity">^EMERGENCY$</field>
+        <description>GCP emergency event on project $(gcp.resource.labels.project_id), monitored resource type: $(gcp.resource.type)</description>
+        <options>no_full_log</options>
+    </rule>
+</group>
