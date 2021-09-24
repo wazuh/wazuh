@@ -94,6 +94,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
             Synchronization process result.
         """
         super().done_callback(future)
+        self.wazuh_common.extra_valid_requested = False
         self.wazuh_common.sync_integrity_free = True
 
 
@@ -604,11 +605,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
         await self.sync_worker_files(task_id, received_file, logger)
-        self.sync_integrity_free = True
         self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
         self.integrity_sync_status['date_end_master'] = datetime.now()
         logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
                                                    self.integrity_sync_status['date_start_master']).total_seconds()))
+        self.extra_valid_requested = False
+        self.sync_integrity_free = True
 
     async def sync_integrity(self, task_id: str, received_file: asyncio.Event):
         """Perform the integrity synchronization process by comparing local and received files.

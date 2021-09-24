@@ -128,8 +128,9 @@ class SyncFiles(SyncTask):
             await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
             return
 
-        self.logger.debug("Compressing files and 'files_metadata.json'." if files_to_sync else
-                          "Compressing 'files_metadata.json'.")
+        self.logger.debug(
+            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
+        )
         compressed_data_path = wazuh.core.cluster.cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
                                                                          cluster_control_json=files_metadata)
 
