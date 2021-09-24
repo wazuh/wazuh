@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include "os_err.h"
 
 typedef enum auth_local_err {
     EINTERNAL = 0,
@@ -336,6 +337,7 @@ cJSON* local_add(const char *id,
     int index;
     cJSON *response = NULL;
     int ierror;
+    char* str_result = NULL;
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
@@ -350,8 +352,10 @@ cJSON* local_add(const char *id,
 
     // Check for duplicate ID
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        minfo("Duplicate ID '%s'.", keys.keyentries[index]->id);
-        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate ID. %s", str_result);
+        } else {
+            mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
             ierror = EDUPID;
             goto fail;
         }
@@ -360,10 +364,13 @@ cJSON* local_add(const char *id,
     /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
         if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-            if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
-                ierror = EDUPIP;
-                goto fail;
-            }
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate IP '%s'. %s", ip, str_result);
+        } else {
+            mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+            ierror = EDUPIP;
+            goto fail;
+        }
         }
     }
 
@@ -375,10 +382,13 @@ cJSON* local_add(const char *id,
 
     /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        if (OS_SUCCESS != w_auth_replace_agent(keys.keyentries[index], key_hash, force_options)) {
-                ierror = EDUPNAME;
-                goto fail;
-            }
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            minfo("Duplicate name '%s'. %s.", keys.keyentries[index]->name, str_result);
+        } else {
+            mwarn("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
+            ierror = EDUPNAME;
+            goto fail;
+        }
     }
 
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
@@ -404,12 +414,14 @@ cJSON* local_add(const char *id,
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
+    os_free(str_result);
     return response;
 
 fail:
     w_mutex_unlock(&mutex_keys);
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
+    os_free(str_result);
     return response;
 }
 

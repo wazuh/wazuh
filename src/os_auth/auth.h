@@ -151,7 +151,8 @@ w_err_t w_auth_validate_data(char *response,
  * */
 w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,
-                             authd_force_options_t *force_options);
+                             authd_force_options_t *force_options,
+                             char** str_result);
 
 /**
  * @brief Adds new agent with provided enrollment data.
