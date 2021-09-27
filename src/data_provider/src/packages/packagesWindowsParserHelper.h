@@ -124,7 +124,8 @@ namespace PackageWindowsHelper
         }
     }
 
-    static void getHotFixFromRegWOW(const HKEY key, const std::string& subKey, nlohmann::json& data){
+    static void getHotFixFromRegWOW(const HKEY key, const std::string& subKey, nlohmann::json& data)
+    {
         try
         {
             std::set<std::string> hotfixes;
@@ -134,7 +135,7 @@ namespace PackageWindowsHelper
                 {
                     const auto callbackKey
                     {
-                        [&key, &subKey, &packageKey,&hotfixes](const std::string & package)
+                        [&key, &subKey, &packageKey, &hotfixes](const std::string & package)
                         {
                             auto hfValue { extractHFValue(package) };
 
@@ -156,15 +157,16 @@ namespace PackageWindowsHelper
                 nlohmann::json hotfixValue;
                 hotfixValue["hotfix"] = std::move(hotfix);
                 data.push_back(std::move(hotfixValue));
-            }  
+            }
         }
-        catch(...)
+        catch (...)
         {
         }
-        
+
     }
 
-    static void getHotFixFromRegProduct(const HKEY key, const std::string& subKey, nlohmann::json& data){
+    static void getHotFixFromRegProduct(const HKEY key, const std::string& subKey, nlohmann::json& data)
+    {
         try
         {
             std::set<std::string> hotfixes;
@@ -174,14 +176,15 @@ namespace PackageWindowsHelper
                 {
                     const auto callbackKey
                     {
-                        [&key, &subKey, &packageKey,&hotfixes](const std::string & package)
+                        [&key, &subKey, &packageKey, &hotfixes](const std::string & package)
                         {
-                            
+
                             if (Utils::startsWith(package, "InstallProperties"))
                             {
-                                
+
                                 Utils::Registry packageReg{key, subKey + "\\" + packageKey + "\\" + package, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
                                 std::string value;
+
                                 if (packageReg.string("DisplayName", value))
                                 {
                                     auto hfValue { extractHFValue(value) };
@@ -206,12 +209,12 @@ namespace PackageWindowsHelper
                 nlohmann::json hotfixValue;
                 hotfixValue["hotfix"] = std::move(hotfix);
                 data.push_back(std::move(hotfixValue));
-            }  
+            }
         }
-        catch(...)
+        catch (...)
         {
         }
-        
+
     }
 };
 
