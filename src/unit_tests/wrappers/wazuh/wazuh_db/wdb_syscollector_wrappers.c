@@ -30,6 +30,7 @@ int __wrap_wdb_osinfo_save(__attribute__((unused)) wdb_t * wdb,
                            const char * release,
                            const char * version,
                            const char * os_release,
+                           const char * os_display_version,
                            const char * checksum,
                            const bool replace) {
     if (scan_id) check_expected(scan_id);
@@ -48,6 +49,7 @@ int __wrap_wdb_osinfo_save(__attribute__((unused)) wdb_t * wdb,
     if (release) check_expected(release);
     if (version) check_expected(version);
     if (os_release) check_expected(os_release);
+    if (os_display_version) check_expected(os_display_version);
     if (checksum) check_expected(checksum);
     check_expected(replace);
     return mock();
