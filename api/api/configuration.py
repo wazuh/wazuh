@@ -274,5 +274,5 @@ except ValidationError as e:
     raise APIError(2000, details=e.message)
 
 # Configuration - global object
-api_conf = dict()
+api_conf = read_yaml_config()
 security_conf = read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=default_security_configuration)
