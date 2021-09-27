@@ -29,12 +29,16 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_inf
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
     memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_in));
 
+    buffer->buffers[sock].bqueue = bqueue_init(send_buffer_size, BQUEUE_NOFLAG);
+
     w_mutex_unlock(&mutex);
 }
 
 void nb_close(netbuffer_t * buffer, int sock) {
 
     w_mutex_lock(&mutex);
+
+    bqueue_destroy(buffer->buffers[sock].bqueue);
 
     free(buffer->buffers[sock].data);
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
@@ -135,27 +139,24 @@ end:
 
 int nb_send(netbuffer_t * buffer, int socket) {
     ssize_t sent_bytes = 0;
+    ssize_t get_bytes = 0;
 
     w_mutex_lock(&mutex);
 
-    const unsigned long current_data_len = buffer->buffers[socket].data_len;
-    const uint32_t amount_of_data_to_send = send_chunk < current_data_len ? send_chunk : current_data_len;
+    char data[send_chunk];
 
-    if (amount_of_data_to_send > 0) {
+    if ((get_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG)) > 0) {
         // Asynchronous sending
-        sent_bytes = send(socket, (const void *)buffer->buffers[socket].data, amount_of_data_to_send, MSG_DONTWAIT);
+        sent_bytes = send(socket, (const void *)data, get_bytes, MSG_DONTWAIT);
     }
 
     if (sent_bytes > 0) {
-        if ((unsigned long)sent_bytes == current_data_len) {
-            os_free(buffer->buffers[socket].data);
-            buffer->buffers[socket].data = NULL;
-            buffer->buffers[socket].data_len = 0;
-        } else {
-            memmove(buffer->buffers[socket].data, buffer->buffers[socket].data + sent_bytes, current_data_len - sent_bytes);
-            os_realloc(buffer->buffers[socket].data, current_data_len - sent_bytes, buffer->buffers[socket].data);
-            buffer->buffers[socket].data_len -= sent_bytes;
+
+        ssize_t popped_bytes = bqueue_pop(buffer->buffers[socket].bqueue, data, sent_bytes, BQUEUE_NOFLAG);
+        if (popped_bytes != sent_bytes) {
+            merror("bqueue error: sent bytes %lu, different than popped bytes %lu", sent_bytes, popped_bytes);
         }
+
     } else if (sent_bytes < 0) {
         switch (errno) {
         case EAGAIN:
@@ -164,13 +165,15 @@ int nb_send(netbuffer_t * buffer, int socket) {
 #endif
             break;
         default:
-            os_free(buffer->buffers[socket].data);
-            buffer->buffers[socket].data = NULL;
-            buffer->buffers[socket].data_len = 0;
+            // clean bqueue buffer
+            //mdebug1("clean bqueue buffer");
+            if (!bqueue_drop(buffer->buffers[socket].bqueue, send_buffer_size)) {
+                merror("clean bqueue buffer fail");
+            }
         }
     }
 
-    if (buffer->buffers[socket].data_len == 0) {
+    if (bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG) <= 0) {
         wnotify_modify(notify, socket, WO_READ);
     }
 
@@ -188,16 +191,12 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
         retval = -1;
         int header_size = sizeof(uint32_t);
-        char * data = buffer->buffers[socket].data;
-        const unsigned long current_data_len = buffer->buffers[socket].data_len;
+        char data[msg_size + header_size];
+        memcpy((data + header_size), crypt_msg, msg_size);
+        // Add header at begining, first 4 bytes, it is message msg_size.
+        *(uint32_t *)(data) = wnet_order(msg_size);
 
-        if (current_data_len + msg_size <= send_buffer_size) {
-            os_realloc(data, (current_data_len + msg_size + header_size), data);
-
-            buffer->buffers[socket].data = data;
-            *(uint32_t *)(data + current_data_len) = wnet_order(msg_size);
-            memcpy((data + current_data_len + header_size), crypt_msg, msg_size);
-            buffer->buffers[socket].data_len += (msg_size + header_size);
+        if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
 
             wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
 
@@ -206,8 +205,8 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
             retval = 0;
             break;
         } else {
-            mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, msg_size=%lu]",
-                buffer->buffers[socket].data_len, msg_size);
+            mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
+                buffer->buffers[socket].bqueue->max_length, buffer->buffers[socket].bqueue->length, msg_size);
 
             w_mutex_unlock(&mutex);
 

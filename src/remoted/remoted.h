@@ -59,6 +59,7 @@ typedef struct sockbuffer_t {
     char * data;
     unsigned long data_size;
     unsigned long data_len;
+    bqueue_t * bqueue;
 } sockbuffer_t;
 
 typedef struct netbuffer_t {
